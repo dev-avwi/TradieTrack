@@ -346,18 +346,172 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
-  notesLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.mutedForeground,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  notesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: spacing.sm,
+  },
+  notesIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  notesLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    flex: 1,
+    marginRight: spacing.sm,
   },
   notesText: {
     fontSize: 14,
     color: colors.foreground,
     lineHeight: 21,
+    marginTop: spacing.xs,
+  },
+  emptyNotesPlaceholder: {
+    paddingVertical: spacing.md,
+  },
+  emptyNotesText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    fontStyle: 'italic',
+  },
+  photosCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  photosHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  photosIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  photosHeaderLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    flex: 1,
+  },
+  photosCountBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.md,
+  },
+  photosCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  photosScrollView: {
+    flexDirection: 'row',
+  },
+  photosScrollContent: {
+    paddingRight: spacing.md,
+  },
+  inlinePhotoItem: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: spacing.sm,
+  },
+  inlinePhotoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  morePhotosButton: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.lg,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: spacing.sm,
+  },
+  morePhotosText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  morePhotosLabel: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+  },
+  addPhotoButton: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    marginRight: spacing.sm,
+  },
+  emptyPhotosContainer: {
+    flexDirection: 'row',
+    paddingTop: spacing.sm,
+  },
+  takePhotoInlineButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    marginRight: spacing.sm,
+  },
+  takePhotoInlineButtonIcon: {
+    marginRight: spacing.sm,
+  },
+  takePhotoInlineText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+  galleryInlineButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.muted,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  galleryInlineButtonIcon: {
+    marginRight: spacing.sm,
+  },
+  galleryInlineText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
   },
   actionButtonContainer: {
     marginTop: spacing.md,
@@ -369,7 +523,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.lg,
     borderRadius: radius.xl,
-    gap: spacing.sm,
+  },
+  mainActionButtonIcon: {
+    marginRight: spacing.sm,
   },
   mainActionText: {
     fontSize: 16,
@@ -443,7 +599,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   documentViewButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     backgroundColor: colors.primary,
@@ -457,9 +612,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
     marginBottom: spacing.md,
     paddingLeft: spacing.xs,
+  },
+  sectionHeaderIcon: {
+    marginRight: spacing.sm,
   },
   modalOverlay: {
     flex: 1,
@@ -558,7 +715,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
     backgroundColor: colors.primary,
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
@@ -1279,20 +1435,117 @@ export default function JobDetailScreen() {
           </View>
         )}
 
-        {/* Notes Section - Show if notes exist */}
-        {job.notes && (
-          <TouchableOpacity 
-            style={styles.notesCard}
-            onPress={() => {
-              setEditedNotes(job.notes || '');
-              setShowNotesModal(true);
-            }}
-            activeOpacity={0.7}
-          >
+        {/* Notes Section - Always visible */}
+        <TouchableOpacity 
+          style={styles.notesCard}
+          onPress={() => {
+            setEditedNotes(job.notes || '');
+            setShowNotesModal(true);
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={styles.notesHeader}>
+            <View style={styles.notesIconContainer}>
+              <Feather name="file-text" size={iconSizes.lg} color={colors.primary} />
+            </View>
             <Text style={styles.notesLabel}>Notes</Text>
-            <Text style={styles.notesText} numberOfLines={3}>{job.notes}</Text>
-          </TouchableOpacity>
-        )}
+            <Feather name="edit-2" size={iconSizes.sm} color={colors.mutedForeground} />
+          </View>
+          {job.notes ? (
+            <Text style={styles.notesText} numberOfLines={4}>{job.notes}</Text>
+          ) : (
+            <View style={styles.emptyNotesPlaceholder}>
+              <Text style={styles.emptyNotesText}>Tap to add notes about this job...</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Photos Section - Always visible */}
+        <View style={styles.photosCard}>
+          <View style={styles.photosHeader}>
+            <View style={styles.photosIconContainer}>
+              <Feather name="camera" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <Text style={styles.photosHeaderLabel}>Photos</Text>
+            {photos.length > 0 && (
+              <View style={styles.photosCountBadge}>
+                <Text style={styles.photosCountText}>{photos.length}</Text>
+              </View>
+            )}
+          </View>
+          
+          {photos.length > 0 ? (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.photosScrollView}
+              contentContainerStyle={styles.photosScrollContent}
+            >
+              {photos.slice(0, 5).map((photo) => (
+                <TouchableOpacity 
+                  key={photo.id}
+                  style={styles.inlinePhotoItem}
+                  onPress={() => setSelectedPhoto(photo)}
+                  activeOpacity={0.8}
+                >
+                  <Image 
+                    source={{ uri: photo.thumbnailUrl || photo.url }} 
+                    style={styles.inlinePhotoImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+              {photos.length > 5 && (
+                <TouchableOpacity 
+                  style={styles.morePhotosButton}
+                  onPress={() => setShowPhotosModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.morePhotosText}>+{photos.length - 5}</Text>
+                  <Text style={styles.morePhotosLabel}>more</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity 
+                style={styles.addPhotoButton}
+                onPress={() => setShowPhotosModal(true)}
+                activeOpacity={0.7}
+              >
+                <Feather name="plus" size={iconSizes.xl} color={colors.primary} />
+              </TouchableOpacity>
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyPhotosContainer}>
+              <TouchableOpacity 
+                style={styles.takePhotoInlineButton}
+                onPress={handleTakePhoto}
+                disabled={isUploadingPhoto}
+                activeOpacity={0.7}
+              >
+                {isUploadingPhoto ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <>
+                    <View style={styles.takePhotoInlineButtonIcon}>
+                      <Feather name="camera" size={18} color={colors.primaryForeground} />
+                    </View>
+                    <Text style={styles.takePhotoInlineText}>Take Photo</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.galleryInlineButton}
+                onPress={handlePickPhoto}
+                disabled={isUploadingPhoto}
+                activeOpacity={0.7}
+              >
+                <View style={styles.galleryInlineButtonIcon}>
+                  <Feather name="image" size={18} color={colors.foreground} />
+                </View>
+                <Text style={styles.galleryInlineText}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         {/* Invoice Card - Show if job has an invoice */}
         {invoice && (
@@ -1399,7 +1652,9 @@ export default function JobDetailScreen() {
               onPress={handleStatusChange}
               activeOpacity={0.8}
             >
-              <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
+              <View style={styles.mainActionButtonIcon}>
+                <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
+              </View>
               <Text style={styles.mainActionText}>{action.label}</Text>
             </TouchableOpacity>
           ) : job.status === 'invoiced' && !invoice && (
@@ -1520,7 +1775,7 @@ export default function JobDetailScreen() {
                 style={styles.closePhotoButton}
                 onPress={() => setSelectedPhoto(null)}
               >
-                <Feather name="x" size={24} color="#fff" />
+                <Feather name="x" size={24} color={colors.primaryForeground} />
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.deletePhotoButton}
