@@ -88,7 +88,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.sm,
   },
   betaBadgeText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontWeight: '700',
     fontSize: 12,
   },
@@ -227,7 +227,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...shadows.md,
   },
   ctaButtonText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontWeight: '700',
     fontSize: 16,
   },

@@ -125,7 +125,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontWeight: '600',
     fontSize: 16,
   },
@@ -308,10 +308,10 @@ export default function BusinessSettingsScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.primaryForeground} />
             ) : (
               <>
-                <Feather name="save" size={20} color="#FFFFFF" />
+                <Feather name="save" size={20} color={colors.primaryForeground} />
                 <Text style={styles.saveButtonText}>Save Changes</Text>
               </>
             )}

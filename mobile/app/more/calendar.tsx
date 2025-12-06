@@ -66,7 +66,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.xs,
   },
   scheduleButtonText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -94,7 +94,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   viewToggleTextActive: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
   },
   todayButton: {
     flexDirection: 'row',
@@ -176,7 +176,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   weekDayTextActive: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
   },
   jobDot: {
     width: 6,
@@ -280,7 +280,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   todayBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
   },
   noJobsCard: {
     alignItems: 'center',
@@ -498,7 +498,7 @@ export default function CalendarScreen() {
               style={styles.scheduleButton}
               onPress={handleScheduleJob}
             >
-              <Feather name="plus" size={18} color="#FFFFFF" />
+              <Feather name="plus" size={18} color={colors.primaryForeground} />
               <Text style={styles.scheduleButtonText}>Schedule Job</Text>
             </TouchableOpacity>
           </View>

@@ -73,7 +73,7 @@ function createStyles(colors: ThemeColors) {
     },
     tabContainer: {
       flexDirection: 'row',
-      backgroundColor: '#E5E5E5',
+      backgroundColor: colors.muted,
       borderRadius: 14,
       padding: 5,
       width: '100%',
@@ -96,13 +96,13 @@ function createStyles(colors: ThemeColors) {
       gap: 10,
     },
     tabActive: {
-      backgroundColor: '#E54B4B',
+      backgroundColor: colors.primary,
     },
     tabPressed: {
       opacity: 0.8,
     },
     tabActivePressed: {
-      backgroundColor: '#D43D3D',
+      backgroundColor: colors.primaryDark,
     },
     tabText: {
       fontSize: 17,
@@ -110,11 +110,11 @@ function createStyles(colors: ThemeColors) {
       color: colors.foreground,
     },
     tabTextActive: {
-      color: '#FFFFFF',
+      color: colors.primaryForeground,
     },
     previewContainer: {
       flex: 1,
-      backgroundColor: '#F8FAFC',
+      backgroundColor: colors.background,
     },
     editContainer: {
       flex: 1,
@@ -683,7 +683,7 @@ export default function NewInvoiceScreen() {
           {/* Tab Switcher */}
           <View style={{
             flexDirection: 'row',
-            backgroundColor: colors.isDark ? colors.muted : '#E5E5E5',
+            backgroundColor: colors.muted,
             borderRadius: 10,
             padding: 4,
             width: '100%',

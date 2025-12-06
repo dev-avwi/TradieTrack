@@ -114,7 +114,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
   },
   logoButtonTextPrimary: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
   },
   logoRemoveButton: {
     backgroundColor: colors.destructiveLight,
@@ -183,7 +183,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.md,
   },
   applyButtonText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontWeight: '600',
     fontSize: 15,
   },
@@ -227,7 +227,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.md,
   },
   previewButtonText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -291,7 +291,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   uploadText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     marginTop: 12,
   },
 });
@@ -489,7 +489,7 @@ export default function BrandingScreen() {
                   <Image source={{ uri: logoUrl }} style={styles.logoPreview} />
                   {isUploadingLogo && (
                     <View style={[styles.uploadOverlay, { width: 100, height: 100 }]}>
-                      <ActivityIndicator size="large" color="#FFFFFF" />
+                      <ActivityIndicator size="large" color={colors.primaryForeground} />
                     </View>
                   )}
                 </View>
@@ -509,7 +509,7 @@ export default function BrandingScreen() {
                   onPress={() => pickImage(false)}
                   disabled={isUploadingLogo}
                 >
-                  <Feather name="upload" size={16} color="#FFFFFF" />
+                  <Feather name="upload" size={16} color={colors.primaryForeground} />
                   <Text style={[styles.logoButtonText, styles.logoButtonTextPrimary]}>
                     {logoUrl ? 'Change' : 'Upload'}
                   </Text>
@@ -575,7 +575,7 @@ export default function BrandingScreen() {
                   activeOpacity={0.8}
                 >
                   {customColor === color.hex && (
-                    <Feather name="check" size={20} color="#FFFFFF" />
+                    <Feather name="check" size={20} color={colors.primaryForeground} />
                   )}
                 </TouchableOpacity>
               ))}

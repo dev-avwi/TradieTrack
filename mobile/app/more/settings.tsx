@@ -70,7 +70,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.lg,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -173,7 +173,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.xl,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -236,7 +236,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   upgradeButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
   },
   manageBillingButton: {
     flexDirection: 'row',
