@@ -1,0 +1,1290 @@
+import sgMail from '@sendgrid/mail';
+
+// Initialize SendGrid with API key or use mock mode
+const initializeSendGrid = () => {
+  if (process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    console.log('✅ SendGrid initialized for email sending');
+    return true;
+  }
+  console.log('⚠️ SendGrid API key not found, using mock email service for testing');
+  return false;
+};
+
+// Initialize on module load
+const isSendGridConfigured = initializeSendGrid();
+
+// Mock email service for testing
+const mockEmailService = {
+  send: async (emailData: any) => {
+    console.log('\n🎭 MOCK EMAIL SERVICE - Email would be sent:');
+    console.log('📧 To:', emailData.to);
+    console.log('📤 From:', emailData.from?.email || emailData.from);
+    console.log('📝 Subject:', emailData.subject);
+    console.log('📄 Content Type:', emailData.html ? 'HTML' : 'Text');
+    console.log('✅ Mock email sent successfully\n');
+    
+    return Promise.resolve([{ statusCode: 202, headers: {}, body: {} }]);
+  }
+};
+
+// Platform email settings
+const PLATFORM_FROM_EMAIL = 'mail@avwebinnovation.com';
+const PLATFORM_REPLY_TO_EMAIL = 'admin@avwebinnovation.com';
+const PLATFORM_FROM_NAME = 'TradieTrack';
+
+// Simple footer for transactional emails (quote/invoice emails are transactional, not marketing)
+const UNSUBSCRIBE_FOOTER = `
+  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #666; font-size: 12px;">
+    <p style="margin: 0;">Powered by <strong>TradieTrack</strong> | The business management platform for Australian tradies</p>
+    <p style="margin: 10px 0 0 0; font-size: 11px; color: #888;">
+      This is a transactional email regarding your quote or invoice request.
+    </p>
+  </div>
+`;
+
+// Email template for quotes
+const createQuoteEmail = (quote: any, client: any, business: any, acceptanceUrl?: string | null) => {
+  const lineItemsHtml = quote.lineItems?.map((item: any) => `
+    <tr>
+      <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.description}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${Number(item.quantity).toFixed(2)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${Number(item.unitPrice).toFixed(2)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${Number(item.total).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  // Use persisted totals from the database instead of recalculating
+  const subtotal = Number(quote.subtotal);
+  const gstAmount = Number(quote.gstAmount);
+  const totalAmount = Number(quote.total);
+  const brandColor = business.brandColor || '#2563eb';
+
+  // Platform sends from mail@avwebinnovation.com, but reply-to goes to the tradie's business email
+  return {
+    to: client.email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: business.businessName || PLATFORM_FROM_NAME
+    },
+    replyTo: business.email || PLATFORM_REPLY_TO_EMAIL,
+    subject: `Quote #${quote.number || quote.id?.substring(0, 8).toUpperCase()} from ${business.businessName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Quote - ${quote.title}</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <h1 style="color: ${brandColor}; margin: 0;">${business.businessName}</h1>
+          ${business.abn ? `<p style="margin: 5px 0 0 0; color: #666; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
+          <p style="margin: 5px 0; color: #666;">Quote #${quote.number || quote.id?.substring(0, 8).toUpperCase()}</p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <p style="font-size: 16px;">Hi ${client.name},</p>
+          <p>Thanks for getting in touch! Here's your quote for the work we discussed.</p>
+        </div>
+        
+        ${acceptanceUrl ? `
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${acceptanceUrl}" style="background-color: ${brandColor}; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 18px; font-weight: bold;">
+            View & Accept Quote
+          </a>
+          <p style="margin-top: 12px; color: #666; font-size: 14px;">Click above to view the full quote and accept online</p>
+        </div>
+        ` : ''}
+
+        <div style="margin-bottom: 20px;">
+          <h2 style="color: #333; border-bottom: 2px solid ${brandColor}; padding-bottom: 10px;">Quote Summary</h2>
+          <p><strong>Job:</strong> ${quote.title}</p>
+          ${quote.description ? `<p><strong>Description:</strong> ${quote.description}</p>` : ''}
+          <p><strong>Date:</strong> ${new Date(quote.createdAt).toLocaleDateString('en-AU')}</p>
+          ${quote.validUntil ? `<p><strong>Valid Until:</strong> ${new Date(quote.validUntil).toLocaleDateString('en-AU')}</p>` : ''}
+        </div>
+
+        ${quote.lineItems?.length ? `
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #333;">Line Items</h3>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
+            <thead>
+              <tr style="background: #f8f9fa;">
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Description</th>
+                <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Qty</th>
+                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Unit Price</th>
+                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lineItemsHtml}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          ${business.gstEnabled ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span>Subtotal:</span>
+              <span>$${subtotal.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span>GST (10%):</span>
+              <span>$${gstAmount.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-top: 2px solid #2563eb; padding-top: 10px; font-size: 20px; font-weight: bold; color: #2563eb;">
+              <span>Total Amount:</span>
+              <span>$${totalAmount.toFixed(2)}</span>
+            </div>
+          ` : `
+            <h3 style="margin: 0 0 10px 0; color: #333;">Total Amount</h3>
+            <p style="font-size: 24px; font-weight: bold; color: #2563eb; margin: 0;">$${totalAmount.toFixed(2)}</p>
+          `}
+        </div>
+
+        ${quote.notes ? `
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #333;">Notes</h3>
+          <p style="background: #f8f9fa; padding: 15px; border-radius: 8px;">${quote.notes}</p>
+        </div>
+        ` : ''}
+
+        ${acceptanceUrl ? `
+        <div style="text-align: center; margin: 30px 0; padding: 20px; background: linear-gradient(135deg, ${brandColor}15, ${brandColor}05); border-radius: 12px; border: 1px solid ${brandColor}30;">
+          <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">Ready to go ahead?</p>
+          <a href="${acceptanceUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
+            Accept This Quote
+          </a>
+        </div>
+        ` : ''}
+
+        <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid ${brandColor};">
+          <p style="margin: 0; color: #333; font-weight: 500;">Questions about this quote?</p>
+          <p style="margin: 10px 0 0 0; color: #666;">Just reply to this email or give us a call - we're happy to help.</p>
+          ${business.phone ? `<p style="margin: 10px 0 0 0;"><strong>Phone:</strong> <a href="tel:${business.phone}" style="color: ${brandColor}; text-decoration: none;">${business.phone}</a></p>` : ''}
+          ${business.email ? `<p style="margin: 5px 0 0 0;"><strong>Email:</strong> <a href="mailto:${business.email}" style="color: ${brandColor}; text-decoration: none;">${business.email}</a></p>` : ''}
+        </div>
+
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
+          <p style="margin: 0; color: #999; font-size: 12px;">
+            This quote was sent by ${business.businessName}${business.abn ? ` (ABN: ${business.abn})` : ''}
+          </p>
+          ${business.address ? `<p style="margin: 5px 0 0 0; color: #999; font-size: 12px;">${business.address}</p>` : ''}
+        </div>
+        
+        ${UNSUBSCRIBE_FOOTER}
+      </body>
+      </html>
+    `
+  };
+};
+
+// Email template for invoices
+const createInvoiceEmail = (invoice: any, client: any, business: any, paymentUrl?: string | null) => {
+  const lineItemsHtml = invoice.lineItems?.map((item: any) => `
+    <tr>
+      <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.description}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${Number(item.quantity).toFixed(2)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${Number(item.unitPrice).toFixed(2)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${Number(item.total).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  // Use persisted totals from the database
+  const subtotal = Number(invoice.subtotal);
+  const gstAmount = Number(invoice.gstAmount);
+  const totalAmount = Number(invoice.total);
+  const brandColor = business.brandColor || '#16a34a';
+  const dueDateStr = invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-AU') : null;
+
+  // Platform sends from mail@avwebinnovation.com, but reply-to goes to the tradie's business email
+  return {
+    to: client.email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: business.businessName || PLATFORM_FROM_NAME
+    },
+    replyTo: business.email || PLATFORM_REPLY_TO_EMAIL,
+    subject: `Invoice #${invoice.number || invoice.id?.substring(0, 8).toUpperCase()} from ${business.businessName}${dueDateStr ? ` - Due ${dueDateStr}` : ''}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Invoice - ${invoice.title}</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <p style="margin: 0 0 5px 0; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">TAX INVOICE</p>
+          <h1 style="color: ${brandColor}; margin: 0;">${business.businessName}</h1>
+          ${business.abn ? `<p style="margin: 5px 0 0 0; color: #666; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
+          <p style="margin: 5px 0; color: #666;">Invoice #${invoice.number || invoice.id?.substring(0, 8).toUpperCase()}</p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <p style="font-size: 16px;">Hi ${client.name},</p>
+          <p>Here's your invoice for the completed work. ${dueDateStr ? `Payment is due by <strong>${dueDateStr}</strong>.` : ''}</p>
+        </div>
+        
+        ${paymentUrl ? `
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${paymentUrl}" style="background-color: ${brandColor}; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 18px; font-weight: bold;">
+            Pay Now - $${totalAmount.toFixed(2)}
+          </a>
+          <p style="margin-top: 12px; color: #666; font-size: 14px;">Secure payment via card</p>
+        </div>
+        ` : ''}
+
+        <div style="margin-bottom: 20px;">
+          <h2 style="color: #333; border-bottom: 2px solid ${brandColor}; padding-bottom: 10px;">Invoice Summary</h2>
+          <p><strong>Job:</strong> ${invoice.title}</p>
+          ${invoice.description ? `<p><strong>Description:</strong> ${invoice.description}</p>` : ''}
+          <p><strong>Date:</strong> ${new Date(invoice.createdAt).toLocaleDateString('en-AU')}</p>
+          ${dueDateStr ? `<p><strong>Due Date:</strong> ${dueDateStr}</p>` : ''}
+        </div>
+
+        ${invoice.lineItems?.length ? `
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #333;">Line Items</h3>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
+            <thead>
+              <tr style="background: #f8f9fa;">
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Description</th>
+                <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Qty</th>
+                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Unit Price</th>
+                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lineItemsHtml}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          ${business.gstEnabled ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span>Subtotal:</span>
+              <span>$${subtotal.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span>GST (10%):</span>
+              <span>$${gstAmount.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-top: 2px solid #ddd; padding-top: 10px; font-size: 20px; font-weight: bold; color: #dc2626;">
+              <span>Total Amount:</span>
+              <span>$${totalAmount.toFixed(2)}</span>
+            </div>
+          ` : `
+            <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; color: #dc2626;">
+              <span>Total Amount:</span>
+              <span>$${totalAmount.toFixed(2)}</span>
+            </div>
+          `}
+        </div>
+
+        ${invoice.notes ? `
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #333;">Notes</h3>
+          <p style="background: #f8f9fa; padding: 15px; border-radius: 8px;">${invoice.notes}</p>
+        </div>
+        ` : ''}
+
+        ${paymentUrl ? `
+        <div style="text-align: center; margin: 30px 0; padding: 20px; background: linear-gradient(135deg, ${brandColor}15, ${brandColor}05); border-radius: 12px; border: 1px solid ${brandColor}30;">
+          <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">Ready to pay?</p>
+          <a href="${paymentUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
+            Pay $${totalAmount.toFixed(2)} Now
+          </a>
+        </div>
+        ` : `
+        <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid ${brandColor};">
+          <p style="margin: 0; color: #333; font-weight: 500;">Payment Methods</p>
+          <p style="margin: 10px 0 0 0; color: #666;">Please contact us for payment options including bank transfer or card payment.</p>
+          ${business.bankName ? `<p style="margin: 10px 0 0 0;"><strong>Bank:</strong> ${business.bankName}</p>` : ''}
+          ${business.bsb ? `<p style="margin: 5px 0 0 0;"><strong>BSB:</strong> ${business.bsb}</p>` : ''}
+          ${business.accountNumber ? `<p style="margin: 5px 0 0 0;"><strong>Account:</strong> ${business.accountNumber}</p>` : ''}
+        </div>
+        `}
+
+        <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid ${brandColor};">
+          <p style="margin: 0; color: #333; font-weight: 500;">Questions about this invoice?</p>
+          <p style="margin: 10px 0 0 0; color: #666;">Just reply to this email or give us a call.</p>
+          ${business.phone ? `<p style="margin: 10px 0 0 0;"><strong>Phone:</strong> <a href="tel:${business.phone}" style="color: ${brandColor}; text-decoration: none;">${business.phone}</a></p>` : ''}
+          ${business.email ? `<p style="margin: 5px 0 0 0;"><strong>Email:</strong> <a href="mailto:${business.email}" style="color: ${brandColor}; text-decoration: none;">${business.email}</a></p>` : ''}
+        </div>
+
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
+          <p style="margin: 0; color: #999; font-size: 12px;">
+            This is a tax invoice from ${business.businessName}${business.abn ? ` (ABN: ${business.abn})` : ''}
+          </p>
+          ${business.address ? `<p style="margin: 5px 0 0 0; color: #999; font-size: 12px;">${business.address}</p>` : ''}
+        </div>
+        
+        ${UNSUBSCRIBE_FOOTER}
+      </body>
+      </html>
+    `
+  };
+};
+
+// Email template for receipts (when invoice is marked as paid)
+const createReceiptEmail = (invoice: any, client: any, business: any) => {
+  const lineItemsHtml = invoice.lineItems?.map((item: any) => `
+    <tr>
+      <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.description}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${Number(item.quantity).toFixed(2)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${Number(item.unitPrice).toFixed(2)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${Number(item.total).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  // Use persisted totals from the database
+  const subtotal = Number(invoice.subtotal);
+  const gstAmount = Number(invoice.gstAmount);
+  const totalAmount = Number(invoice.total);
+
+  // Platform sends from mail@avwebinnovation.com, but reply-to goes to the tradie's business email
+  return {
+    to: client.email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: business.businessName || PLATFORM_FROM_NAME
+    },
+    replyTo: business.email || PLATFORM_REPLY_TO_EMAIL,
+    subject: `Receipt: ${invoice.title}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Receipt - ${invoice.title}</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #10b981; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <h1 style="margin: 0;">Payment Received</h1>
+          <h2 style="margin: 10px 0 0 0;">${business.businessName}</h2>
+          <p style="margin: 5px 0; opacity: 0.9;">Receipt #${invoice.id?.substring(0, 8).toUpperCase()}</p>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <h2 style="color: #333; border-bottom: 2px solid #10b981; padding-bottom: 10px;">Payment Details</h2>
+          <p><strong>Service:</strong> ${invoice.title}</p>
+          ${invoice.description ? `<p><strong>Description:</strong> ${invoice.description}</p>` : ''}
+          <p><strong>Client:</strong> ${client.name}</p>
+          <p><strong>Payment Date:</strong> ${new Date(invoice.paidAt || Date.now()).toLocaleDateString()}</p>
+          <p><strong>Status:</strong> <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px;">PAID</span></p>
+        </div>
+
+        ${invoice.lineItems?.length ? `
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #333;">Services Provided</h3>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
+            <thead>
+              <tr style="background: #f8f9fa;">
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Description</th>
+                <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Qty</th>
+                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Unit Price</th>
+                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lineItemsHtml}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          ${business.gstEnabled ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span>Subtotal:</span>
+              <span>$${subtotal.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span>GST (10%):</span>
+              <span>$${gstAmount.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-top: 2px solid #10b981; padding-top: 10px; font-size: 20px; font-weight: bold; color: #10b981;">
+              <span>Amount Paid:</span>
+              <span>$${totalAmount.toFixed(2)}</span>
+            </div>
+          ` : `
+            <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; color: #10b981;">
+              <span>Amount Paid:</span>
+              <span>$${totalAmount.toFixed(2)}</span>
+            </div>
+          `}
+        </div>
+
+        ${invoice.notes ? `
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #333;">Notes</h3>
+          <p style="background: #f8f9fa; padding: 15px; border-radius: 8px;">${invoice.notes}</p>
+        </div>
+        ` : ''}
+
+        <div style="margin-top: 30px; padding: 20px; background: #f0fdf4; border-radius: 8px; text-align: center;">
+          <p style="margin: 0; color: #059669; font-weight: bold;">Thank you for your business!</p>
+          <p style="margin: 10px 0 0 0;">This receipt confirms that payment has been received in full.</p>
+          ${business.phone ? `<p style="margin: 10px 0 0 0;"><strong>Phone:</strong> ${business.phone}</p>` : ''}
+          ${business.email ? `<p style="margin: 5px 0 0 0;"><strong>Email:</strong> ${business.email}</p>` : ''}
+        </div>
+        
+        ${UNSUBSCRIBE_FOOTER}
+      </body>
+      </html>
+    `
+  };
+};
+
+// Export HTML template creators for use by email integration service
+export const createQuoteEmailHtml = (quote: any, client: any, business: any, acceptanceUrl?: string | null) => {
+  const emailData = createQuoteEmail(quote, client, business, acceptanceUrl);
+  return {
+    to: emailData.to,
+    subject: emailData.subject,
+    html: emailData.html,
+  };
+};
+
+export const createInvoiceEmailHtml = (invoice: any, client: any, business: any, paymentUrl?: string | null) => {
+  const emailData = createInvoiceEmail(invoice, client, business, paymentUrl);
+  return {
+    to: emailData.to,
+    subject: emailData.subject,
+    html: emailData.html,
+  };
+};
+
+export const createReceiptEmailHtml = (invoice: any, client: any, business: any) => {
+  const emailData = createReceiptEmail(invoice, client, business);
+  return {
+    to: emailData.to,
+    subject: emailData.subject,
+    html: emailData.html,
+  };
+};
+
+// Send quote email
+export const sendQuoteEmail = async (quote: any, client: any, business: any = {}, acceptanceUrl?: string | null) => {
+  const sendGridInitialized = initializeSendGrid();
+
+  if (!client.email) {
+    throw new Error('Client email address is required');
+  }
+
+  try {
+    const emailData = createQuoteEmail(quote, client, business, acceptanceUrl);
+    
+    if (sendGridInitialized) {
+      await sgMail.send(emailData);
+    } else {
+      await mockEmailService.send(emailData);
+    }
+    
+    return { success: true, message: 'Quote sent successfully' };
+  } catch (error: any) {
+    console.error('Error sending quote email:', error);
+    // Sanitize error message for client response
+    if (error.message?.includes('SendGrid') || error.response?.body) {
+      throw new Error('Email service error. Please check your configuration.');
+    }
+    throw new Error('Email sending failed. Please try again.');
+  }
+};
+
+// Send invoice email
+export const sendInvoiceEmail = async (invoice: any, client: any, business: any = {}, paymentUrl?: string | null) => {
+  const sendGridInitialized = initializeSendGrid();
+
+  if (!client.email) {
+    throw new Error('Client email address is required');
+  }
+
+  try {
+    const emailData = createInvoiceEmail(invoice, client, business, paymentUrl);
+    
+    if (sendGridInitialized) {
+      await sgMail.send(emailData);
+    } else {
+      await mockEmailService.send(emailData);
+    }
+    
+    return { success: true, message: 'Invoice sent successfully' };
+  } catch (error: any) {
+    console.error('Error sending invoice email:', error);
+    // Sanitize error message for client response
+    if (error.message?.includes('SendGrid') || error.response?.body) {
+      throw new Error('Email service error. Please check your configuration.');
+    }
+    throw new Error('Email sending failed. Please try again.');
+  }
+};
+
+// Send receipt email
+export const sendReceiptEmail = async (invoice: any, client: any, business: any = {}) => {
+  if (!initializeSendGrid()) {
+    throw new Error('SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.');
+  }
+
+  if (!client.email) {
+    throw new Error('Client email address is required');
+  }
+
+  try {
+    const emailData = createReceiptEmail(invoice, client, business);
+    await sgMail.send(emailData);
+    return { success: true, message: 'Receipt sent successfully' };
+  } catch (error: any) {
+    console.error('Error sending receipt email:', error);
+    // Sanitize error message for client response
+    if (error.message?.includes('SendGrid') || error.response?.body) {
+      throw new Error('Email service error. Please check your configuration.');
+    }
+    throw new Error('Email sending failed. Please try again.');
+  }
+};
+
+// Email template for job confirmation/scheduling
+const createJobConfirmationEmail = (job: any, client: any, business: any) => {
+  const brandColor = business.brandColor || '#2563eb';
+  const scheduledDate = job.scheduledAt ? new Date(job.scheduledAt).toLocaleDateString('en-AU', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }) : 'To be confirmed';
+  
+  const scheduledTime = job.scheduledAt ? new Date(job.scheduledAt).toLocaleTimeString('en-AU', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }) : '';
+
+  return {
+    to: client.email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: business.businessName || PLATFORM_FROM_NAME
+    },
+    replyTo: business.email || PLATFORM_REPLY_TO_EMAIL,
+    subject: `Job Confirmed: ${job.title} - ${business.businessName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Job Confirmation - ${job.title}</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: ${brandColor}; padding: 25px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">${business.businessName}</h1>
+          ${business.abn ? `<p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 12px;">ABN: ${business.abn}</p>` : ''}
+        </div>
+
+        <div style="background: #10b981; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <h2 style="margin: 0; font-size: 22px;">Job Confirmed</h2>
+          <p style="margin: 8px 0 0 0; opacity: 0.9;">Your appointment has been scheduled</p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <p style="font-size: 16px;">Hi ${client.name?.split(' ')[0] || 'there'},</p>
+          <p>Great news! We've confirmed your job booking. Here are the details:</p>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-bottom: 20px;">
+          <h3 style="margin: 0 0 15px 0; color: ${brandColor}; font-size: 18px;">${job.title}</h3>
+          
+          ${job.description ? `<p style="color: #666; margin: 0 0 20px 0;">${job.description}</p>` : ''}
+          
+          <div style="border-left: 4px solid ${brandColor}; padding-left: 15px; margin: 15px 0;">
+            <div style="margin-bottom: 12px;">
+              <p style="margin: 0; color: #999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Scheduled Date</p>
+              <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: bold; color: #333;">${scheduledDate}</p>
+              ${scheduledTime ? `<p style="margin: 2px 0 0 0; color: #666;">${scheduledTime}</p>` : ''}
+            </div>
+            
+            ${job.address ? `
+            <div>
+              <p style="margin: 0; color: #999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Location</p>
+              <p style="margin: 4px 0 0 0; font-size: 14px; color: #333;">${job.address}</p>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <div style="background: #fef3c7; border: 1px solid #fcd34d; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+          <p style="margin: 0; color: #92400e; font-size: 14px;">
+            <strong>Need to reschedule?</strong><br>
+            Please contact us at least 24 hours before your appointment if you need to make changes.
+          </p>
+        </div>
+
+        <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; margin-top: 30px;">
+          <h4 style="margin: 0 0 10px 0; color: #333;">Contact Us</h4>
+          ${business.phone ? `<p style="margin: 5px 0; color: #666;"><strong>Phone:</strong> ${business.phone}</p>` : ''}
+          ${business.email ? `<p style="margin: 5px 0; color: #666;"><strong>Email:</strong> ${business.email}</p>` : ''}
+          ${business.address ? `<p style="margin: 5px 0; color: #666;"><strong>Address:</strong> ${business.address}</p>` : ''}
+        </div>
+
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+          <p style="margin: 0; color: #999; font-size: 12px;">
+            This confirmation was sent by ${business.businessName}${business.abn ? ` (ABN: ${business.abn})` : ''}
+          </p>
+          <p style="margin: 5px 0 0 0; color: #999; font-size: 12px;">Powered by TradieTrack</p>
+        </div>
+        
+        ${UNSUBSCRIBE_FOOTER}
+      </body>
+      </html>
+    `
+  };
+};
+
+// Send job confirmation email
+export const sendJobConfirmationEmail = async (job: any, client: any, business: any = {}) => {
+  const sendGridInitialized = initializeSendGrid();
+
+  if (!client.email) {
+    throw new Error('Client email address is required');
+  }
+
+  try {
+    const emailData = createJobConfirmationEmail(job, client, business);
+    
+    if (sendGridInitialized) {
+      await sgMail.send(emailData);
+    } else {
+      await mockEmailService.send(emailData);
+    }
+    
+    return { success: true, message: 'Job confirmation sent successfully' };
+  } catch (error: any) {
+    console.error('Error sending job confirmation email:', error);
+    if (error.message?.includes('SendGrid') || error.response?.body) {
+      throw new Error('Email service error. Please check your configuration.');
+    }
+    throw new Error('Email sending failed. Please try again.');
+  }
+};
+
+// Export job confirmation HTML creator
+export const createJobConfirmationEmailHtml = (job: any, client: any, business: any) => {
+  const emailData = createJobConfirmationEmail(job, client, business);
+  return {
+    to: emailData.to,
+    subject: emailData.subject,
+    html: emailData.html,
+  };
+};
+
+// Email template for email verification
+const createEmailVerificationEmail = (user: any, verificationToken: string) => {
+  const verificationUrl = `${process.env.VITE_APP_URL || 'http://localhost:5000'}/verify-email?token=${verificationToken}`;
+
+  return {
+    to: user.email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: 'TradieTrack'
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: 'Verify Your Email Address - TradieTrack',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Verify Your Email - TradieTrack</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to TradieTrack!</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your business management platform</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 20px;">
+          <h2 style="color: #333; margin-top: 0;">Hi ${user.firstName || 'there'},</h2>
+          <p>Thanks for signing up for TradieTrack! We're excited to help you streamline your trade business operations.</p>
+          <p>To get started, please verify your email address by clicking the button below:</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationUrl}" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Verify Email Address</a>
+          </div>
+          
+          <p style="color: #666; font-size: 14px;">If the button doesn't work, you can also copy and paste this link into your browser:</p>
+          <p style="background: #e5e7eb; padding: 10px; border-radius: 4px; font-size: 14px; word-break: break-all;">${verificationUrl}</p>
+        </div>
+        
+        <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; color: #666; font-size: 14px;">
+          <p><strong>Why verify your email?</strong></p>
+          <ul>
+            <li>Secure your account and data</li>
+            <li>Receive important notifications about quotes and invoices</li>
+            <li>Enable password recovery options</li>
+            <li>Get product updates and tips</li>
+          </ul>
+          
+          <p style="margin-top: 30px;">This verification link will expire in 24 hours for security reasons.</p>
+          <p>If you didn't create this account, you can safely ignore this email.</p>
+          
+          <p style="margin-top: 30px; text-align: center; color: #999;">
+            <strong>TradieTrack</strong><br>
+            Streamline your trade business operations
+          </p>
+          ${UNSUBSCRIBE_FOOTER}
+        </div>
+      </body>
+      </html>
+    `
+  };
+};
+
+// Generic email interface for notification service
+export interface EmailOptions {
+  to: string;
+  subject: string;
+  text?: string;
+  html?: string;
+  replyTo?: string;
+}
+
+export interface EmailResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  simulated?: boolean;
+}
+
+// Send a generic email - used by notification service
+export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => {
+  const { to, subject, text, html, replyTo } = options;
+  const sendGridEnabled = initializeSendGrid();
+  
+  const emailData = {
+    to,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: PLATFORM_FROM_NAME
+    },
+    subject,
+    text: text || '',
+    html: html || text || '',
+    replyTo: replyTo || undefined
+  };
+
+  try {
+    if (sendGridEnabled) {
+      await sgMail.send(emailData);
+      return { success: true, messageId: `sg_${Date.now()}` };
+    } else {
+      await mockEmailService.send(emailData);
+      return { success: true, simulated: true, messageId: `mock_${Date.now()}` };
+    }
+  } catch (error: any) {
+    // Log detailed SendGrid error response
+    if (error.response) {
+      console.error('Email send error - Status:', error.code);
+      console.error('Email send error - Body:', JSON.stringify(error.response.body, null, 2));
+    } else {
+      console.error('Email send error:', error.message);
+    }
+    return { success: false, error: error.message || 'Failed to send email' };
+  }
+};
+
+// Send login code email for passwordless authentication
+export const sendLoginCodeEmail = async (email: string, code: string) => {
+  const sendGridEnabled = initializeSendGrid();
+  const emailService = sendGridEnabled ? sgMail : mockEmailService;
+  
+  const emailData = {
+    to: email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: 'TradieTrack'
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: 'Your TradieTrack Login Code',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Your Login Code</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <h1 style="color: #2563eb; margin: 0;">TradieTrack</h1>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <h2 style="color: #333;">Your Login Code</h2>
+          <p>Use this code to log in to your TradieTrack account:</p>
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+            <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2563eb; margin: 0;">${code}</p>
+          </div>
+          <p><strong>This code will expire in 10 minutes.</strong></p>
+          <p>If you didn't request this code, please ignore this email.</p>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px;">
+          <p>This is an automated email from TradieTrack. Please do not reply to this message.</p>
+          ${UNSUBSCRIBE_FOOTER}
+        </div>
+      </body>
+      </html>
+    `,
+    text: `Your TradieTrack Login Code: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please ignore this email.`
+  };
+  
+  try {
+    await emailService.send(emailData);
+    console.log(`✅ Login code email sent to ${email}`);
+  } catch (error) {
+    console.error('Failed to send login code email:', error);
+    throw error;
+  }
+};
+
+// Send email verification email
+export const sendEmailVerificationEmail = async (user: any, verificationToken: string) => {
+  if (!initializeSendGrid()) {
+    throw new Error('SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.');
+  }
+
+  if (!user.email) {
+    throw new Error('User email address is required');
+  }
+
+  try {
+    const emailData = createEmailVerificationEmail(user, verificationToken);
+    await sgMail.send(emailData);
+    return { success: true, message: 'Verification email sent successfully' };
+  } catch (error: any) {
+    console.error('Error sending verification email:', error);
+    // Sanitize error message for client response
+    if (error.message?.includes('SendGrid') || error.response?.body) {
+      throw new Error('Email service error. Please check your configuration.');
+    }
+    throw new Error('Email sending failed. Please try again.');
+  }
+};
+
+// Send password reset email
+export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
+  if (!initializeSendGrid()) {
+    throw new Error('SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.');
+  }
+
+  if (!user.email) {
+    throw new Error('User email address is required');
+  }
+
+  const resetUrl = `${process.env.VITE_APP_URL || 'http://localhost:5000'}/reset-password?token=${resetToken}`;
+
+  const emailData = {
+    to: user.email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: 'TradieTrack'
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: 'Reset Your Password - TradieTrack',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reset Your Password - TradieTrack</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Password Reset Request</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">TradieTrack</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 20px;">
+          <h2 style="color: #333; margin-top: 0;">Hi ${user.firstName || 'there'},</h2>
+          <p>We received a request to reset the password for your TradieTrack account.</p>
+          <p>Click the button below to create a new password:</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Reset Password</a>
+          </div>
+          
+          <p style="color: #666; font-size: 14px;">If the button doesn't work, you can also copy and paste this link into your browser:</p>
+          <p style="background: #e5e7eb; padding: 10px; border-radius: 4px; font-size: 14px; word-break: break-all;">${resetUrl}</p>
+        </div>
+        
+        <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; color: #666; font-size: 14px;">
+          <p><strong>Important security information:</strong></p>
+          <ul>
+            <li>This password reset link will expire in 1 hour</li>
+            <li>If you didn't request this reset, you can safely ignore this email</li>
+            <li>Your password won't change until you create a new one</li>
+          </ul>
+          
+          <p style="margin-top: 30px; text-align: center; color: #999;">
+            Powered by <strong>TradieTrack</strong> | The business management platform for Australian tradies
+          </p>
+          ${UNSUBSCRIBE_FOOTER}
+        </div>
+      </body>
+      </html>
+    `,
+    text: `Password Reset Request\n\nHi ${user.firstName || 'there'},\n\nWe received a request to reset the password for your TradieTrack account.\n\nClick this link to reset your password: ${resetUrl}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this reset, you can safely ignore this email.\n\n- The TradieTrack Team`
+  };
+
+  try {
+    await sgMail.send(emailData);
+    return { success: true, message: 'Password reset email sent successfully' };
+  } catch (error: any) {
+    console.error('Error sending password reset email:', error);
+    if (error.message?.includes('SendGrid') || error.response?.body) {
+      throw new Error('Email service error. Please check your configuration.');
+    }
+    throw new Error('Email sending failed. Please try again.');
+  }
+};
+
+// Payment success email
+export async function sendPaymentSuccessEmail(user: any, businessSettings: any, plan: string): Promise<void> {
+  const sendGridEnabled = initializeSendGrid();
+  const emailService = sendGridEnabled ? sgMail : mockEmailService;
+
+  const emailData = {
+    to: user.email || businessSettings.email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: 'TradieTrack'
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: `Payment Successful - ${plan} Plan Activated`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Successful</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">Payment Successful! 🎉</h1>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <p>Hi ${user.firstName || user.username},</p>
+          <p>Thank you for subscribing to TradieTrack ${plan}! Your payment has been processed successfully.</p>
+          
+          <div style="background: white; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #2563eb;">Your ${plan} Plan is Active</h3>
+            <p style="margin: 0;">You now have access to all ${plan} features.</p>
+          </div>
+          
+          <p>If you have any questions, our support team is here to help.</p>
+        </div>
+        
+        ${UNSUBSCRIBE_FOOTER}
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await emailService.send(emailData);
+    console.log('✅ Payment success email sent to:', user.email);
+  } catch (error) {
+    console.error('❌ Failed to send payment success email:', error);
+    throw error;
+  }
+}
+
+// Payment failed email
+export async function sendPaymentFailedEmail(user: any, businessSettings: any): Promise<void> {
+  const sendGridEnabled = initializeSendGrid();
+  const emailService = sendGridEnabled ? sgMail : mockEmailService;
+
+  const emailData = {
+    to: user.email || businessSettings.email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: 'TradieTrack'
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: 'Payment Failed - Action Required',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Failed</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #dc2626; padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">Payment Failed</h1>
+        </div>
+        
+        <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #dc2626;">
+          <p>Hi ${user.firstName || user.username},</p>
+          <p><strong>We were unable to process your subscription payment.</strong></p>
+          
+          <p>Please update your payment method to continue using TradieTrack Pro features.</p>
+        </div>
+        
+        ${UNSUBSCRIBE_FOOTER}
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await emailService.send(emailData);
+    console.log('✅ Payment failed email sent to:', user.email);
+  } catch (error) {
+    console.error('❌ Failed to send payment failed email:', error);
+    throw error;
+  }
+}
+
+// Payment request email function (for phone-to-phone payments)
+interface PaymentRequestEmailParams {
+  to: string;
+  businessName: string;
+  amount: number;
+  description: string;
+  paymentUrl: string;
+  reference?: string;
+}
+
+export async function sendPaymentRequestEmail(params: PaymentRequestEmailParams): Promise<void> {
+  const { to, businessName, amount, description, paymentUrl, reference } = params;
+  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+
+  const emailData = {
+    to,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: businessName || PLATFORM_FROM_NAME
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: `Payment Request from ${businessName} - $${amount.toFixed(2)}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Request</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">${businessName}</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Payment Request</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin-bottom: 20px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <p style="font-size: 14px; color: #666; margin: 0 0 5px 0;">Amount Due</p>
+            <p style="font-size: 36px; font-weight: bold; color: #111; margin: 0;">$${amount.toFixed(2)} AUD</p>
+            <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">Includes GST</p>
+          </div>
+          
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 15px;">
+            <p style="margin: 0 0 10px 0;"><strong>For:</strong> ${description}</p>
+            ${reference ? `<p style="margin: 0;"><strong>Reference:</strong> ${reference}</p>` : ''}
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${paymentUrl}" style="background-color: #2563eb; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 18px; font-weight: bold;">
+            Pay Now Securely
+          </a>
+          <p style="margin-top: 12px; color: #666; font-size: 14px;">Click the button above to pay with your card</p>
+        </div>
+        
+        <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+          <p style="margin: 0; font-size: 14px; color: #92400e;">
+            <strong>Secure Payment:</strong> Your payment is processed securely through Stripe. We never store your card details.
+          </p>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">This payment request was sent by ${businessName}</p>
+          <p style="margin: 5px 0 0 0;">Powered by TradieTrack</p>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await emailService.send(emailData);
+    console.log('✅ Payment request email sent to:', to);
+  } catch (error) {
+    console.error('❌ Failed to send payment request email:', error);
+    throw error;
+  }
+}
+
+// Welcome email for new user signups
+export async function sendWelcomeEmail(
+  user: { email: string; firstName?: string | null; lastName?: string | null },
+  businessName?: string
+): Promise<{ success: boolean; error?: string; mock?: boolean }> {
+  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+  const userName = user.firstName || user.email.split('@')[0];
+  const displayBusinessName = businessName || 'your business';
+
+  const emailData = {
+    to: user.email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: PLATFORM_FROM_NAME
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: 'Welcome to TradieTrack - Let\'s get your business sorted!',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to TradieTrack</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+        <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to TradieTrack!</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">The business management platform built for Australian tradies</p>
+        </div>
+        
+        <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <p style="font-size: 18px; margin-bottom: 20px;">G'day ${userName}!</p>
+          
+          <p>Thanks for signing up to TradieTrack. You've just taken the first step towards running a more organised, professional trade business.</p>
+          
+          <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2563eb;">
+            <h3 style="margin: 0 0 15px 0; color: #1d4ed8;">Here's what you can do:</h3>
+            <ul style="margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;"><strong>Create professional quotes</strong> - Send them directly to clients</li>
+              <li style="margin-bottom: 8px;"><strong>Track jobs</strong> - From quote to payment</li>
+              <li style="margin-bottom: 8px;"><strong>Send invoices</strong> - Get paid faster with online payments</li>
+              <li style="margin-bottom: 8px;"><strong>Manage clients</strong> - All your customer info in one place</li>
+              <li><strong>Australian GST compliant</strong> - ABN and tax handling built in</li>
+            </ul>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://tradietrack.replit.app" style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
+              Get Started Now
+            </a>
+          </div>
+          
+          <p style="color: #666; font-size: 14px; margin-top: 30px;">
+            Need help? Just reply to this email and we'll get back to you.
+          </p>
+          
+          <p style="margin-top: 25px;">
+            Cheers,<br>
+            <strong>The TradieTrack Team</strong><br>
+            <span style="color: #666; font-size: 14px;">AVWeb Innovation</span>
+          </p>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">TradieTrack - Making Australian tradies more professional</p>
+          <p style="margin: 5px 0 0 0;">Questions? Contact us at admin@avwebinnovation.com</p>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await emailService.send(emailData);
+    console.log('✅ Welcome email sent to:', user.email);
+    return { success: true, mock: !isSendGridConfigured };
+  } catch (error: any) {
+    console.error('❌ Failed to send welcome email:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Failed to send welcome email',
+      mock: !isSendGridConfigured
+    };
+  }
+}
+
+// Test email function for integration testing
+export async function sendTestEmail(
+  toEmail: string, 
+  businessName: string
+): Promise<{ success: boolean; error?: string; mock?: boolean }> {
+  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+
+  const emailData = {
+    to: toEmail,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: PLATFORM_FROM_NAME
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: 'TradieTrack - Test Email',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Test Email</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">Email Test Successful!</h1>
+        </div>
+        
+        <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
+          <p style="margin: 0;">Hi ${businessName},</p>
+          <p>Your TradieTrack email integration is working perfectly.</p>
+          <p>Your clients will now receive professional emails for:</p>
+          <ul>
+            <li>Quotes and estimates</li>
+            <li>Invoices and payment links</li>
+            <li>Payment confirmations</li>
+            <li>Job updates and reminders</li>
+          </ul>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; color: #666;">
+          <p style="margin: 0; font-size: 12px;">This is a test email from TradieTrack</p>
+          <p style="margin: 5px 0 0 0; font-size: 12px;">Replies to your business emails will go to your registered email address</p>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await emailService.send(emailData);
+    console.log('✅ Test email sent to:', toEmail);
+    return { success: true, mock: !isSendGridConfigured };
+  } catch (error: any) {
+    console.error('❌ Failed to send test email:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Failed to send email',
+      mock: !isSendGridConfigured
+    };
+  }
+}

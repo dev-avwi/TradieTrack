@@ -1,0 +1,702 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* LIGHT MODE */
+:root {
+  --button-outline: rgba(0,0,0, .10);
+  --badge-outline: rgba(0,0,0, .05);
+
+  /* Automatic computation of border around primary / danger buttons */
+  --opaque-button-border-intensity: -8; /* In terms of percentages */
+
+  /* Backgrounds applied on top of other backgrounds when hovered/active */
+  --elevate-1: rgba(0,0,0, .03);
+  --elevate-2: rgba(0,0,0, .08);
+
+  --background: 0 0% 98%;
+  --foreground: 220 15% 15%;
+  --border: 220 13% 91%;
+  --card: 0 0% 96%;
+  --card-foreground: 220 15% 15%;
+  --card-border: 220 13% 88%;
+  --sidebar: 0 0% 94%;
+  --sidebar-foreground: 220 15% 15%;
+  --sidebar-border: 220 13% 86%;
+  --sidebar-primary: 220 15% 15%;
+  --sidebar-primary-foreground: 210 20% 98%;
+  --sidebar-accent: 0 0% 91%;
+  --sidebar-accent-foreground: 220 15% 15%;
+  --sidebar-ring: 220 15% 15%;
+  --popover: 0 0% 92%;
+  --popover-foreground: 220 15% 15%;
+  --popover-border: 220 13% 84%;
+  --primary: 220 15% 15%;
+  --primary-foreground: 210 20% 98%;
+  --secondary: 0 0% 89%;
+  --secondary-foreground: 220 15% 15%;
+  --muted: 0 0% 93%;
+  --muted-foreground: 220 10% 46%;
+  --accent: 220 13% 89%;
+  --accent-foreground: 220 15% 15%;
+  --destructive: 5 85% 55%;
+  --destructive-foreground: 0 0% 98%;
+  --input: 220 13% 75%;
+  --ring: 220 15% 15%;
+  --chart-1: 145 65% 45%;
+  --chart-2: 35 90% 55%;
+  --chart-3: 220 70% 50%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 10 80% 58%;
+
+  /* Semantic status colors for consistency */
+  --success: 145 65% 42%;
+  --success-foreground: 0 0% 98%;
+  --warning: 35 90% 50%;
+  --warning-foreground: 0 0% 10%;
+  --info: 210 80% 52%;
+  --info-foreground: 0 0% 98%;
+
+  /* Trade-specific colors - dynamically set by JavaScript */
+  --trade: 220 15% 15%; /* Default, overridden by trade selection */
+  --trade-bg: 220 15% 96%; /* Light tint for backgrounds */
+  --trade-border: 220 15% 30%; /* Darker for borders */
+  --trade-accent: 220 25% 40%; /* Enhanced accent color */
+  --trade-glow: 220 35% 85%; /* Subtle glow effect color */
+
+  --font-sans: Inter, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+  --radius: .5rem; /* 8px */
+  --shadow-2xs: 0px 1px 2px 0px hsl(220 13% 86% / 0.3);
+  --shadow-xs: 0px 1px 2px 0px hsl(220 13% 86% / 0.4);
+  --shadow-sm: 0px 1px 3px 0px hsl(220 13% 86% / 0.4), 0px 1px 2px -1px hsl(220 13% 86% / 0.3);
+  --shadow: 0px 1px 3px 0px hsl(220 13% 86% / 0.4), 0px 1px 2px -1px hsl(220 13% 86% / 0.3);
+  --shadow-md: 0px 4px 6px -1px hsl(220 13% 86% / 0.4), 0px 2px 4px -2px hsl(220 13% 86% / 0.3);
+  --shadow-lg: 0px 10px 15px -3px hsl(220 13% 86% / 0.4), 0px 4px 6px -4px hsl(220 13% 86% / 0.3);
+  --shadow-xl: 0px 20px 25px -5px hsl(220 13% 86% / 0.4), 0px 8px 10px -6px hsl(220 13% 86% / 0.3);
+  --shadow-2xl: 0px 25px 50px -12px hsl(220 13% 86% / 0.5);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
+
+  /* Fallback for older browsers */
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+.dark {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+
+  --opaque-button-border-intensity: 9;  /* In terms of percentages */
+
+  /* Backgrounds applied on top of other backgrounds when hovered/active */
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+
+  --background: 220 15% 8%;
+  --foreground: 210 20% 95%;
+  --border: 220 13% 15%;
+  --card: 220 15% 11%;
+  --card-foreground: 210 20% 95%;
+  --card-border: 220 13% 18%;
+  --sidebar: 220 15% 9%;
+  --sidebar-foreground: 210 20% 95%;
+  --sidebar-border: 220 13% 16%;
+  --sidebar-primary: 210 20% 95%;
+  --sidebar-primary-foreground: 220 15% 8%;
+  --sidebar-accent: 220 15% 14%;
+  --sidebar-accent-foreground: 210 20% 95%;
+  --sidebar-ring: 210 20% 95%;
+  --popover: 220 15% 12%;
+  --popover-foreground: 210 20% 95%;
+  --popover-border: 220 13% 19%;
+  --primary: 210 20% 95%;
+  --primary-foreground: 220 15% 8%;
+  --secondary: 220 15% 16%;
+  --secondary-foreground: 210 20% 95%;
+  --muted: 220 15% 13%;
+  --muted-foreground: 220 10% 65%;
+  --accent: 220 13% 18%;
+  --accent-foreground: 210 20% 95%;
+  --destructive: 5 85% 55%;
+  --destructive-foreground: 0 0% 98%;
+  --input: 220 13% 35%;
+  --ring: 210 20% 95%;
+  --chart-1: 145 65% 65%;
+  --chart-2: 35 90% 70%;
+  --chart-3: 220 70% 70%;
+  --chart-4: 280 65% 75%;
+  --chart-5: 10 80% 68%;
+
+  /* Semantic status colors for consistency - dark mode */
+  --success: 145 65% 55%;
+  --success-foreground: 0 0% 10%;
+  --warning: 35 90% 60%;
+  --warning-foreground: 0 0% 10%;
+  --info: 210 80% 62%;
+  --info-foreground: 0 0% 10%;
+
+  /* Trade-specific colors - dynamically set by JavaScript */
+  --trade: 210 20% 95%; /* Default for dark mode */
+  --trade-bg: 220 15% 16%; /* Dark tint for backgrounds */
+  --trade-border: 210 20% 80%; /* Lighter for borders */
+  --trade-accent: 210 30% 70%; /* Enhanced accent color for dark mode */
+  --trade-glow: 210 40% 25%; /* Subtle glow effect color for dark mode */
+
+  --shadow-2xs: 0px 1px 2px 0px hsl(220 15% 3% / 0.4);
+  --shadow-xs: 0px 1px 2px 0px hsl(220 15% 3% / 0.5);
+  --shadow-sm: 0px 1px 3px 0px hsl(220 15% 3% / 0.5), 0px 1px 2px -1px hsl(220 15% 3% / 0.4);
+  --shadow: 0px 1px 3px 0px hsl(220 15% 3% / 0.5), 0px 1px 2px -1px hsl(220 15% 3% / 0.4);
+  --shadow-md: 0px 4px 6px -1px hsl(220 15% 3% / 0.5), 0px 2px 4px -2px hsl(220 15% 3% / 0.4);
+  --shadow-lg: 0px 10px 15px -3px hsl(220 15% 3% / 0.5), 0px 4px 6px -4px hsl(220 15% 3% / 0.4);
+  --shadow-xl: 0px 20px 25px -5px hsl(220 15% 3% / 0.5), 0px 8px 10px -6px hsl(220 15% 3% / 0.4);
+  --shadow-2xl: 0px 25px 50px -12px hsl(220 15% 3% / 0.6);
+
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  /* Global smooth transitions for a fluid, app-like feel */
+  button, a, input, textarea, select, 
+  [role="button"], [role="tab"], [role="menuitem"],
+  .transition-all {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+
+  /* Dialogs and menus get smooth transitions */
+  [role="dialog"], [role="menu"], [role="listbox"] {
+    transition: transform 200ms ease-out, box-shadow 200ms ease-out, opacity 200ms ease-out;
+  }
+}
+
+/* Global animation keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes fadeInDown {
+  from { 
+    opacity: 0; 
+    transform: translateY(-10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes slideInRight {
+  from { 
+    opacity: 0; 
+    transform: translateX(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    opacity: 0; 
+    transform: scale(0.95); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/**
+ * Using the elevate system.
+ * Automatic contrast adjustment.
+ *
+ * <element className="hover-elevate" />
+ * <element className="active-elevate-2" />
+ *
+ * // Using the tailwind utility when a data attribute is "on"
+ * <element className="toggle-elevate data-[state=on]:toggle-elevated" />
+ * // Or manually controlling the toggle state
+ * <element className="toggle-elevate toggle-elevated" />
+ *
+ * Elevation systems have to handle many states.
+ * - not-hovered, vs. hovered vs. active  (three mutually exclusive states)
+ * - toggled or not
+ * - focused or not (this is not handled with these utilities)
+ *
+ * Even without handling focused or not, this is six possible combinations that
+ * need to be distinguished from eachother visually.
+ */
+@layer utilities {
+
+  /* Animation utility classes */
+  .animate-fade-in {
+    animation: fadeIn 200ms ease-out forwards;
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 250ms ease-out forwards;
+  }
+
+  .animate-fade-in-down {
+    animation: fadeInDown 250ms ease-out forwards;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 250ms ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 200ms ease-out forwards;
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+
+  /* Staggered animation delays for lists */
+  .stagger-1 { animation-delay: 50ms; }
+  .stagger-2 { animation-delay: 100ms; }
+  .stagger-3 { animation-delay: 150ms; }
+  .stagger-4 { animation-delay: 200ms; }
+  .stagger-5 { animation-delay: 250ms; }
+
+  /* Hide ugly search cancel button in Chrome until we can style it properly */
+  input[type="search"]::-webkit-search-cancel-button {
+    @apply hidden;
+  }
+
+  /* Placeholder styling for contentEditable div */
+  [contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
+
+  /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
+   * buttons/badges can remove the automatic brightness adjustment on interactions
+   * and program their own. */
+  .no-default-hover-elevate {}
+
+  .no-default-active-elevate {}
+
+
+  /**
+   * Toggleable backgrounds go behind the content. Hoverable/active goes on top.
+   * This way they can stack/compound. Both will overlap the parent's borders!
+   * So borders will be automatically adjusted both on toggle, and hover/active,
+   * and they will be compounded.
+   */
+  .toggle-elevate::before,
+  .toggle-elevate-2::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    /*border-radius: inherit;   match rounded corners */
+    border-radius: inherit;
+    z-index: -1;
+    /* sits behind content but above backdrop */
+  }
+
+  .toggle-elevate.toggle-elevated::before {
+    background-color: var(--elevate-2);
+  }
+
+  /* If there's a 1px border, adjust the inset so that it covers that parent's border */
+  .border.toggle-elevate::before {
+    inset: -1px;
+  }
+
+  /* Does not work on elements with overflow:hidden! */
+  .hover-elevate:not(.no-default-hover-elevate),
+  .active-elevate:not(.no-default-active-elevate),
+  .hover-elevate-2:not(.no-default-hover-elevate),
+  .active-elevate-2:not(.no-default-active-elevate) {
+    position: relative;
+    z-index: 0;
+  }
+
+  .hover-elevate:not(.no-default-hover-elevate)::after,
+  .active-elevate:not(.no-default-active-elevate)::after,
+  .hover-elevate-2:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:not(.no-default-active-elevate)::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    /*border-radius: inherit;   match rounded corners */
+    border-radius: inherit;
+    z-index: 999;
+    /* sits in front of content */
+  }
+
+  .hover-elevate:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-1);
+  }
+
+  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-2);
+  }
+
+  /* If there's a 1px border, adjust the inset so that it covers that parent's border */
+  .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
+  .border.active-elevate:not(.no-active-interaction-elevate)::after,
+  .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
+  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
+  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
+    inset: -1px;
+  }
+
+  /* Special Trade Theme Utilities - Make themes distinctive */
+  .trade-gradient-bg {
+    background: linear-gradient(135deg, 
+      hsl(var(--trade-bg) / 0.15) 0%, 
+      hsl(var(--trade-glow) / 0.12) 50%,
+      hsl(var(--trade-bg) / 0.15) 100%
+    );
+    width: 100%;
+    margin-inline: 0;
+  }
+  
+  /* More subtle in light mode */
+  :root .trade-gradient-bg {
+    background: linear-gradient(135deg, 
+      hsl(var(--trade-bg) / 0.08) 0%, 
+      hsl(var(--trade-glow) / 0.05) 50%,
+      hsl(var(--trade-bg) / 0.08) 100%
+    );
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  .trade-border-special {
+    border: 2px solid hsl(var(--trade) / 0.3);
+    box-shadow: 0 0 0 1px hsl(var(--trade) / 0.1);
+  }
+
+  .trade-accent-glow {
+    box-shadow: 
+      0 4px 20px hsl(var(--trade) / 0.15),
+      0 2px 8px hsl(var(--trade) / 0.2);
+  }
+
+  .trade-text-special {
+    background: linear-gradient(135deg, 
+      hsl(var(--trade)), 
+      hsl(var(--trade-accent))
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 600;
+  }
+
+  /* Subtle trade-themed animation */
+  .trade-pulse {
+    animation: trade-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes trade-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--trade) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px hsl(var(--trade) / 0);
+    }
+  }
+
+  /* Special hover effect for trade elements */
+  .trade-hover-special:hover {
+    transform: translateY(-1px);
+    box-shadow: 
+      0 8px 25px hsl(var(--trade) / 0.15),
+      0 4px 10px hsl(var(--trade) / 0.1);
+    transition: all 0.2s ease-in-out;
+  }
+
+  /* ============================================
+   * iOS-STYLE TYPOGRAPHY SYSTEM
+   * ServiceM8-inspired native mobile feel
+   * ============================================ */
+  
+  /* Large iOS-style page titles */
+  .ios-title {
+    @apply text-[32px] sm:text-[34px] font-bold tracking-tight leading-tight;
+  }
+  
+  /* Section headers with iOS large title feel */
+  .ios-section-title {
+    @apply text-[22px] sm:text-[24px] font-semibold tracking-tight;
+  }
+  
+  /* Card titles */
+  .ios-card-title {
+    @apply text-[17px] font-semibold tracking-tight;
+  }
+  
+  /* Body text */
+  .ios-body {
+    @apply text-[15px] leading-relaxed;
+  }
+  
+  /* Caption/secondary text */
+  .ios-caption {
+    @apply text-[13px] text-muted-foreground;
+  }
+  
+  /* Tiny labels */
+  .ios-label {
+    @apply text-[11px] font-medium uppercase tracking-wider text-muted-foreground;
+  }
+
+  /* ============================================
+   * NATIVE MOBILE CARD STYLES
+   * ============================================ */
+  
+  /* Native feed card - like a social media post */
+  .feed-card {
+    @apply bg-card rounded-2xl overflow-hidden;
+    box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+  }
+  
+  /* Elevated card with subtle depth */
+  .card-elevated {
+    @apply bg-card rounded-2xl overflow-hidden border-0;
+    box-shadow: 
+      0 2px 8px hsl(var(--foreground) / 0.04),
+      0 1px 2px hsl(var(--foreground) / 0.06);
+  }
+  
+  /* Primary action card with accent border */
+  .card-accent {
+    @apply bg-card rounded-2xl overflow-hidden;
+    border: 2px solid hsl(var(--trade) / 0.2);
+    background: linear-gradient(
+      180deg,
+      hsl(var(--trade) / 0.03) 0%,
+      hsl(var(--card)) 100%
+    );
+  }
+
+  /* ============================================
+   * NATIVE ANIMATIONS & MICRO-INTERACTIONS
+   * ============================================ */
+  
+  /* Springy press feedback */
+  .press-scale {
+    @apply transition-transform duration-100;
+  }
+  .press-scale:active {
+    transform: scale(0.97);
+  }
+  
+  /* Smooth card press */
+  .card-press {
+    @apply transition-all duration-150 ease-out;
+  }
+  .card-press:active {
+    transform: scale(0.985);
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.08);
+  }
+  
+  /* List item slide animation */
+  @keyframes slideInFromRight {
+    from {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slideInFromRight 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  /* Staggered list item delays */
+  .stagger-delay-1 { animation-delay: 30ms; }
+  .stagger-delay-2 { animation-delay: 60ms; }
+  .stagger-delay-3 { animation-delay: 90ms; }
+  .stagger-delay-4 { animation-delay: 120ms; }
+  .stagger-delay-5 { animation-delay: 150ms; }
+  .stagger-delay-6 { animation-delay: 180ms; }
+  .stagger-delay-7 { animation-delay: 210ms; }
+  .stagger-delay-8 { animation-delay: 240ms; }
+  
+  /* Bounce in animation for badges/indicators */
+  @keyframes bounceIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .animate-bounce-in {
+    animation: bounceIn 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+  }
+  
+  /* Fade up animation for content sections */
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fade-up {
+    animation: fadeUp 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  /* Timeline connector line */
+  .timeline-line {
+    @apply absolute left-5 top-12 bottom-0 w-0.5;
+    background: linear-gradient(
+      180deg,
+      hsl(var(--border)) 0%,
+      transparent 100%
+    );
+  }
+  
+  /* Activity dot with pulse */
+  .activity-dot {
+    @apply w-2.5 h-2.5 rounded-full;
+    background: hsl(var(--trade));
+  }
+  
+  .activity-dot-pulse {
+    @apply relative;
+  }
+  .activity-dot-pulse::after {
+    content: '';
+    @apply absolute inset-0 rounded-full;
+    background: hsl(var(--trade));
+    animation: dot-pulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes dot-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.8); opacity: 0; }
+  }
+
+  /* ============================================
+   * NATIVE SPACING UTILITIES
+   * ============================================ */
+  
+  /* iOS-style section spacing */
+  .section-gap {
+    @apply space-y-6;
+  }
+  
+  /* Card content padding */
+  .card-padding {
+    @apply p-4 sm:p-5;
+  }
+  
+  /* Feed item gap */
+  .feed-gap {
+    @apply space-y-3;
+  }
+}
+
+/* Override any cached width constraints on scroll container children */
+main[data-scroll-container] > * {
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+/* Hide scrollbar utility class - for horizontal scroll areas */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar on mobile and touch devices to maximize content width */
+/* Scrolling functionality remains fully intact */
+@media (pointer: coarse), (max-width: 768px) {
+  [data-scroll-container] {
+    /* Firefox */
+    scrollbar-width: none;
+    /* IE and Edge */
+    -ms-overflow-style: none;
+  }
+  
+  /* Chrome, Safari, and Opera */
+  [data-scroll-container]::-webkit-scrollbar {
+    display: none;
+  }
+}

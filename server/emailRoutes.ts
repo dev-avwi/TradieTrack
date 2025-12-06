@@ -1,0 +1,1021 @@
+// Properly ordered email handlers with validation, business settings, and idempotency
+import crypto from 'crypto';
+import { createQuoteEmailHtml, createInvoiceEmailHtml, createReceiptEmailHtml } from './emailService';
+import { sendEmailViaIntegration } from './emailIntegrationService';
+import { generateQuotePDF, generateInvoicePDF, generatePDFBuffer } from './pdfService';
+
+// Helper to create tradie-friendly error messages with clear fixes
+function getTradieFriendlyEmailError(rawError: string): { title: string; message: string; fix: string } {
+  const errorLower = rawError.toLowerCase();
+  
+  if (errorLower.includes('insufficient permission') || errorLower.includes('oauth') || errorLower.includes('scope')) {
+    return {
+      title: "Email Setup Needed",
+      message: "Your email service needs to be reconnected.",
+      fix: "Go to Settings → Email Integration and reconnect your email account. This will refresh your email permissions."
+    };
+  }
+  
+  if (errorLower.includes('bad request') || errorLower.includes('sender') || errorLower.includes('forbidden') || errorLower.includes('403')) {
+    return {
+      title: "Email Not Set Up",
+      message: "Email sending isn't configured yet.",
+      fix: "Go to Settings → Email Integration and connect your Gmail or Outlook account. This lets you send quotes and invoices directly from your own email address."
+    };
+  }
+  
+  if (errorLower.includes('network') || errorLower.includes('timeout') || errorLower.includes('econnrefused')) {
+    return {
+      title: "Connection Issue",
+      message: "Couldn't connect to the email service.",
+      fix: "Check your internet connection and try again in a few minutes. If this keeps happening, go to Settings → Email Integration to reconnect your email."
+    };
+  }
+  
+  if (errorLower.includes('authentication') || errorLower.includes('auth') || errorLower.includes('password')) {
+    return {
+      title: "Email Login Expired",
+      message: "Your email login needs to be refreshed.",
+      fix: "Go to Settings → Email Integration and reconnect your email account. Your password or login may have changed."
+    };
+  }
+  
+  if (errorLower.includes('rate limit') || errorLower.includes('too many')) {
+    return {
+      title: "Too Many Emails",
+      message: "You've sent too many emails in a short time.",
+      fix: "Wait 5-10 minutes and try again. Email services limit how many emails you can send to prevent spam."
+    };
+  }
+  
+  if (errorLower.includes('invalid') && errorLower.includes('email')) {
+    return {
+      title: "Invalid Email Address",
+      message: "The client's email address doesn't look right.",
+      fix: "Check the client's email address is correct (e.g., john@email.com). Go to Clients and update their email address."
+    };
+  }
+  
+  // Default helpful message
+  return {
+    title: "Couldn't Send Email",
+    message: "There was a problem sending this email.",
+    fix: "Go to Settings → Email Integration and connect your Gmail or Outlook account. This is the easiest way to make sure emails work reliably."
+  };
+}
+
+// Fixed quote sending handler
+export const handleQuoteSend = async (req: any, res: any, storage: any) => {
+  try {
+    // Get custom subject and message from request body (optional)
+    // skipEmail=true means just mark as sent without sending (user will send via Gmail)
+    const { customSubject, customMessage, skipEmail } = req.body || {};
+    
+    // 1. Get quote with line items
+    let quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, req.userId);
+    if (!quoteWithItems) {
+      return res.status(404).json({ 
+        title: "Quote Not Found",
+        message: "We couldn't find this quote.",
+        fix: "The quote may have been deleted. Go back to your Quotes list and try again."
+      });
+    }
+
+    // 2. Check if already sent (idempotency) - allow force override
+    const forceResend = req.query.force === 'true';
+    if (quoteWithItems.status === 'sent' && quoteWithItems.sentAt && !forceResend) {
+      const sentDate = new Date(quoteWithItems.sentAt).toLocaleDateString('en-AU');
+      return res.status(400).json({ 
+        title: "Quote Already Sent",
+        message: `This quote was already sent on ${sentDate}.`,
+        fix: "If you want to send it again, use the 'Resend' option instead."
+      });
+    }
+
+    // 3. Get client information
+    const client = await storage.getClient(quoteWithItems.clientId, req.userId);
+    if (!client) {
+      return res.status(404).json({ 
+        title: "Client Not Found",
+        message: "The client for this quote no longer exists.",
+        fix: "Update the quote to select a different client, or recreate the client in your Clients list."
+      });
+    }
+
+    // 4. Validate client email
+    if (!client.email || !client.email.trim()) {
+      return res.status(400).json({ 
+        title: "Client Email Missing",
+        message: `${client.name} doesn't have an email address.`,
+        fix: `Go to Clients → ${client.name} → Edit and add their email address.`
+      });
+    }
+
+    // 5. Get business settings
+    const businessSettings = await storage.getBusinessSettings(req.userId);
+    if (!businessSettings) {
+      return res.status(404).json({ 
+        title: "Business Setup Incomplete",
+        message: "Your business details haven't been set up yet.",
+        fix: "Go to Settings and complete your business profile before sending quotes."
+      });
+    }
+
+    // 6. Validate business email for sending
+    if (!businessSettings.email || !businessSettings.email.trim()) {
+      return res.status(400).json({ 
+        title: "Business Email Missing",
+        message: "Your business email isn't set up.",
+        fix: "Go to Settings → Business Profile and add your business email address."
+      });
+    }
+
+    // 6.5 Generate acceptance token if not already present
+    let acceptanceToken = quoteWithItems.acceptanceToken;
+    if (!acceptanceToken) {
+      acceptanceToken = await storage.generateQuoteAcceptanceToken(req.params.id, req.userId);
+      // Refresh quote data with token
+      quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, req.userId);
+    }
+
+    // Generate public quote URL for client to view and accept
+    const baseUrl = process.env.APP_BASE_URL 
+      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+        : 'http://localhost:5000');
+    const quoteAcceptanceUrl = acceptanceToken ? `${baseUrl}/q/${acceptanceToken}` : null;
+
+    // 7. Send email (skip if user is sending via Gmail themselves)
+    let emailSentVia = 'gmail_user'; // Default for skipEmail mode
+    
+    if (!skipEmail) {
+      // Try to send via integration (User's SMTP, Gmail connector, or SendGrid)
+      try {
+        let emailSubject: string;
+        let emailHtml: string;
+        
+        if (customSubject && customMessage) {
+          // Use custom subject and message with professional template
+          emailSubject = customSubject;
+          const brandColor = businessSettings.brandColor || '#2563eb';
+          const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(quoteWithItems.total || '0'));
+          
+          emailHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
+                ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
+                <div style="margin-top: 12px; background: rgba(255,255,255,0.2); display: inline-block; padding: 6px 16px; border-radius: 20px;">
+                  <span style="color: white; font-size: 13px; font-weight: 600;">QUOTE #${quoteWithItems.number || quoteWithItems.id}</span>
+                </div>
+              </div>
+              
+              <div style="background: #f8f9fa; padding: 25px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
+                ${customMessage.split('\n').map((p: string) => p.trim() ? `<p style="margin: 0 0 16px 0;">${p}</p>` : '<br>').join('')}
+                
+                <div style="background: white; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+                  <p style="margin: 0 0 8px 0; color: #666; font-size: 13px;">Quote Details:</p>
+                  <p style="margin: 0 0 4px 0; font-weight: 600;">${quoteWithItems.title}</p>
+                  <p style="margin: 0; font-size: 20px; color: ${brandColor}; font-weight: 700;">${formattedTotal}</p>
+                </div>
+                
+                ${quoteAcceptanceUrl ? `
+                <div style="text-align: center; margin: 24px 0;">
+                  <a href="${quoteAcceptanceUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">View & Accept Quote</a>
+                </div>
+                <p style="text-align: center; color: #666; font-size: 13px; margin: 0;">Click the button above to view the full quote and accept it online.</p>
+                ` : ''}
+              </div>
+              
+              <div style="margin-top: 20px; padding: 16px; text-align: center; color: #666; font-size: 12px;">
+                ${businessSettings.phone ? `<p style="margin: 4px 0;">Phone: ${businessSettings.phone}</p>` : ''}
+                ${businessSettings.email ? `<p style="margin: 4px 0;">Email: ${businessSettings.email}</p>` : ''}
+                ${businessSettings.address ? `<p style="margin: 4px 0;">${businessSettings.address}</p>` : ''}
+              </div>
+            </body>
+            </html>
+          `;
+        } else {
+          // Use default email template
+          const emailContent = createQuoteEmailHtml(quoteWithItems, client, businessSettings, quoteAcceptanceUrl);
+          emailSubject = emailContent.subject;
+          emailHtml = emailContent.html;
+        }
+        
+        // Generate PDF with acceptance link for attachment
+        let pdfAttachment: { filename: string; content: Buffer; contentType: string } | undefined;
+        try {
+          // Get line items for PDF generation
+          const lineItems = await storage.getQuoteLineItems(req.params.id, req.userId);
+          const pdfHtml = generateQuotePDF({
+            quote: quoteWithItems,
+            lineItems: lineItems || [],
+            client,
+            business: businessSettings,
+            acceptanceUrl: quoteAcceptanceUrl || undefined,
+          });
+          const pdfBuffer = await generatePDFBuffer(pdfHtml);
+          pdfAttachment = {
+            filename: `Quote-${quoteWithItems.number || quoteWithItems.id}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          };
+          console.log(`Generated PDF attachment for quote ${quoteWithItems.number}`);
+        } catch (pdfError) {
+          // If PDF generation fails, continue without attachment
+          console.error('Failed to generate quote PDF attachment:', pdfError);
+        }
+        
+        const result = await sendEmailViaIntegration({
+          to: client.email,
+          subject: emailSubject,
+          html: emailHtml,
+          attachments: pdfAttachment ? [pdfAttachment] : undefined,
+          userId: req.userId,
+          type: 'quote',
+          relatedId: req.params.id,
+        });
+        
+        if (result.success) {
+          console.log(`Quote sent via ${result.sentVia}:`, req.params.id);
+          emailSentVia = result.sentVia || 'integration';
+        } else {
+          console.error("Email integration failed:", result.error);
+          const friendlyError = getTradieFriendlyEmailError(result.error || 'unknown error');
+          return res.status(502).json(friendlyError);
+        }
+      } catch (emailError: any) {
+        console.error("Quote email sending failed:", emailError.message);
+        const friendlyError = getTradieFriendlyEmailError(emailError.message);
+        return res.status(502).json(friendlyError);
+      }
+    } else {
+      // skipEmail mode - user is sending via Gmail themselves
+      console.log(`Quote ${req.params.id} marked as sent (user sending via Gmail)`);
+    }
+
+    // 8. Log resend event if applicable
+    if (forceResend && quoteWithItems.sentAt) {
+      console.log('Force resend quote:', req.params.id, 'Previous sent:', quoteWithItems.sentAt);
+    }
+
+    // 9. Update quote status ONLY after successful email send
+    const updatedQuote = await storage.updateQuote(req.params.id, req.userId, {
+      status: 'sent',
+      sentAt: new Date()
+    });
+
+    if (!updatedQuote) {
+      // Email was sent but status update failed - log this for manual review
+      console.error("CRITICAL: Quote email sent but status update failed for quote:", req.params.id);
+      return res.status(500).json({ 
+        title: "Partial Success",
+        message: "The quote was emailed to your client, but we had trouble updating its status.",
+        fix: "The email was sent successfully. You can manually update the quote status if needed."
+      });
+    }
+
+    res.json({ 
+      ...updatedQuote, 
+      emailSent: true, 
+      message: 'Quote sent successfully to ' + client.email 
+    });
+
+  } catch (error) {
+    console.error("Error in quote send handler:", error);
+    res.status(500).json({ 
+      title: "Something Went Wrong",
+      message: "We couldn't send this quote right now.",
+      fix: "Try again in a few minutes. If this keeps happening, contact support."
+    });
+  }
+};
+
+// Fixed invoice sending handler
+export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
+  try {
+    // Get custom subject and message from request body (optional)
+    // skipEmail=true means just mark as sent without sending (user will send via Gmail)
+    const { customSubject, customMessage, skipEmail } = req.body || {};
+    
+    // 1. Get invoice with line items
+    let invoiceWithItems = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
+    if (!invoiceWithItems) {
+      return res.status(404).json({ 
+        title: "Invoice Not Found",
+        message: "We couldn't find this invoice.",
+        fix: "The invoice may have been deleted. Go back to your Invoices list and try again."
+      });
+    }
+
+    // 2. Check if already sent (idempotency) - allow force override  
+    const forceResend = req.query.force === 'true';
+    if (invoiceWithItems.status === 'sent' && invoiceWithItems.sentAt && !forceResend) {
+      const sentDate = new Date(invoiceWithItems.sentAt).toLocaleDateString('en-AU');
+      return res.status(400).json({ 
+        title: "Invoice Already Sent",
+        message: `This invoice was already sent on ${sentDate}.`,
+        fix: "If you want to send it again, use the 'Resend' option instead."
+      });
+    }
+
+    // 3. Get client information
+    const client = await storage.getClient(invoiceWithItems.clientId, req.userId);
+    if (!client) {
+      return res.status(404).json({ 
+        title: "Client Not Found",
+        message: "The client for this invoice no longer exists.",
+        fix: "Update the invoice to select a different client, or recreate the client in your Clients list."
+      });
+    }
+
+    // 4. Validate client email
+    if (!client.email || !client.email.trim()) {
+      return res.status(400).json({ 
+        title: "Client Email Missing",
+        message: `${client.name} doesn't have an email address.`,
+        fix: `Go to Clients → ${client.name} → Edit and add their email address.`
+      });
+    }
+
+    // 5. Get business settings
+    const businessSettings = await storage.getBusinessSettings(req.userId);
+    if (!businessSettings) {
+      return res.status(404).json({ 
+        title: "Business Setup Incomplete",
+        message: "Your business details haven't been set up yet.",
+        fix: "Go to Settings and complete your business profile before sending invoices."
+      });
+    }
+
+    // 6. Validate business email for sending
+    if (!businessSettings.email || !businessSettings.email.trim()) {
+      return res.status(400).json({ 
+        title: "Business Email Missing",
+        message: "Your business email isn't set up.",
+        fix: "Go to Settings → Business Profile and add your business email address."
+      });
+    }
+
+    // 6.5. Generate payment token and URL if online payment is enabled
+    let paymentUrl: string | null = null;
+    if (invoiceWithItems.allowOnlinePayment) {
+      // Generate payment token if not already present (12 chars alphanumeric for shorter URLs)
+      if (!invoiceWithItems.paymentToken) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        const bytes = crypto.randomBytes(12);
+        let paymentToken = '';
+        for (let i = 0; i < 12; i++) {
+          paymentToken += chars[bytes[i] % chars.length];
+        }
+        await storage.updateInvoice(req.params.id, req.userId, { paymentToken });
+        invoiceWithItems = { ...invoiceWithItems, paymentToken };
+      }
+      
+      // Generate payment URL with priority: APP_BASE_URL > REPLIT_DOMAINS > localhost
+      const baseUrl = process.env.APP_BASE_URL 
+        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : 'http://localhost:5000');
+      paymentUrl = `${baseUrl}/pay/${invoiceWithItems.paymentToken}`;
+    }
+
+    // 7. Send email (skip if user is sending via Gmail themselves)
+    let emailSentVia = 'gmail_user'; // Default for skipEmail mode
+    
+    if (!skipEmail) {
+      // Try to send via integration (User's SMTP, Gmail connector, or SendGrid)
+      try {
+        let emailSubject: string;
+        let emailHtml: string;
+        
+        if (customSubject && customMessage) {
+          // Use custom subject and message with professional template
+          emailSubject = customSubject;
+          const brandColor = businessSettings.brandColor || '#16a34a'; // Green for invoices
+          const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoiceWithItems.total || '0'));
+          const isGstRegistered = businessSettings.gstEnabled && businessSettings.abn;
+          const documentType = isGstRegistered ? 'TAX INVOICE' : 'INVOICE';
+          
+          emailHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
+                ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
+                <div style="margin-top: 12px; background: rgba(255,255,255,0.2); display: inline-block; padding: 6px 16px; border-radius: 20px;">
+                  <span style="color: white; font-size: 13px; font-weight: 600;">${documentType} #${invoiceWithItems.number || invoiceWithItems.id}</span>
+                </div>
+              </div>
+              
+              <div style="background: #f8f9fa; padding: 25px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
+                ${customMessage.split('\n').map((p: string) => p.trim() ? `<p style="margin: 0 0 16px 0;">${p}</p>` : '<br>').join('')}
+                
+                <div style="background: white; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+                  <p style="margin: 0 0 8px 0; color: #666; font-size: 13px;">Invoice Details:</p>
+                  <p style="margin: 0 0 4px 0; font-weight: 600;">${invoiceWithItems.title}</p>
+                  <p style="margin: 0; font-size: 20px; color: ${brandColor}; font-weight: 700;">${formattedTotal}</p>
+                  ${invoiceWithItems.dueDate ? `<p style="margin: 8px 0 0 0; color: #666; font-size: 13px;">Due: ${new Date(invoiceWithItems.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}</p>` : ''}
+                </div>
+                
+                ${paymentUrl ? `
+                <div style="text-align: center; margin: 24px 0;">
+                  <a href="${paymentUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Pay Now</a>
+                </div>
+                <p style="text-align: center; color: #666; font-size: 13px; margin: 0;">Secure online payment via Stripe.</p>
+                ` : ''}
+              </div>
+              
+              <div style="margin-top: 20px; padding: 16px; text-align: center; color: #666; font-size: 12px;">
+                ${businessSettings.phone ? `<p style="margin: 4px 0;">Phone: ${businessSettings.phone}</p>` : ''}
+                ${businessSettings.email ? `<p style="margin: 4px 0;">Email: ${businessSettings.email}</p>` : ''}
+                ${businessSettings.address ? `<p style="margin: 4px 0;">${businessSettings.address}</p>` : ''}
+              </div>
+            </body>
+            </html>
+          `;
+        } else {
+          // Use default email template
+          const emailContent = createInvoiceEmailHtml(invoiceWithItems, client, businessSettings, paymentUrl);
+          emailSubject = emailContent.subject;
+          emailHtml = emailContent.html;
+        }
+        
+        // Generate PDF with payment link for attachment
+        let pdfAttachment: { filename: string; content: Buffer; contentType: string } | undefined;
+        try {
+          // Get line items for PDF generation
+          const lineItems = await storage.getInvoiceLineItems(req.params.id, req.userId);
+          const pdfHtml = generateInvoicePDF({
+            invoice: invoiceWithItems,
+            lineItems: lineItems || [],
+            client,
+            business: businessSettings,
+            paymentUrl: paymentUrl || undefined,
+          });
+          const pdfBuffer = await generatePDFBuffer(pdfHtml);
+          pdfAttachment = {
+            filename: `Invoice-${invoiceWithItems.number || invoiceWithItems.id}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          };
+          console.log(`Generated PDF attachment for invoice ${invoiceWithItems.number}`);
+        } catch (pdfError) {
+          // If PDF generation fails, continue without attachment
+          console.error('Failed to generate invoice PDF attachment:', pdfError);
+        }
+        
+        const result = await sendEmailViaIntegration({
+          to: client.email,
+          subject: emailSubject,
+          html: emailHtml,
+          attachments: pdfAttachment ? [pdfAttachment] : undefined,
+          userId: req.userId,
+          type: 'invoice',
+          relatedId: req.params.id,
+        });
+        
+        if (result.success) {
+          console.log(`Invoice sent via ${result.sentVia}:`, req.params.id);
+          emailSentVia = result.sentVia || 'integration';
+        } else {
+          console.error("Email integration failed:", result.error);
+          const friendlyError = getTradieFriendlyEmailError(result.error || 'unknown error');
+          return res.status(502).json(friendlyError);
+        }
+      } catch (emailError: any) {
+        console.error("Invoice email sending failed:", emailError.message);
+        const friendlyError = getTradieFriendlyEmailError(emailError.message);
+        return res.status(502).json(friendlyError);
+      }
+    } else {
+      // skipEmail mode - user is sending via Gmail themselves
+      console.log(`Invoice ${req.params.id} marked as sent (user sending via Gmail)`);
+    }
+
+    // 8. Log resend event if applicable
+    if (forceResend && invoiceWithItems.sentAt) {
+      console.log('Force resend invoice:', req.params.id, 'Previous sent:', invoiceWithItems.sentAt);
+    }
+
+    // 9. Update invoice status ONLY after successful email send
+    const updatedInvoice = await storage.updateInvoice(req.params.id, req.userId, {
+      status: 'sent',
+      sentAt: new Date()
+    });
+
+    if (!updatedInvoice) {
+      // Email was sent but status update failed - log this for manual review
+      console.error("CRITICAL: Invoice email sent but status update failed for invoice:", req.params.id);
+      return res.status(500).json({ 
+        title: "Partial Success",
+        message: "The invoice was emailed to your client, but we had trouble updating its status.",
+        fix: "The email was sent successfully. You can manually update the invoice status if needed."
+      });
+    }
+
+    res.json({ 
+      ...updatedInvoice, 
+      emailSent: true, 
+      paymentUrl,
+      message: 'Invoice sent successfully to ' + client.email 
+    });
+
+  } catch (error) {
+    console.error("Error in invoice send handler:", error);
+    res.status(500).json({ 
+      title: "Something Went Wrong",
+      message: "We couldn't send this invoice right now.",
+      fix: "Try again in a few minutes. If this keeps happening, contact support."
+    });
+  }
+};
+
+// Fixed mark paid handler with receipt
+export const handleInvoiceMarkPaid = async (req: any, res: any, storage: any) => {
+  try {
+    // 1. Get invoice with line items
+    const invoiceWithItems = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
+    if (!invoiceWithItems) {
+      return res.status(404).json({ 
+        title: "Invoice Not Found",
+        message: "We couldn't find this invoice.",
+        fix: "The invoice may have been deleted. Go back to your Invoices list."
+      });
+    }
+
+    // 2. Check if already paid (idempotency)
+    if (invoiceWithItems.status === 'paid' && invoiceWithItems.paidAt) {
+      const paidDate = new Date(invoiceWithItems.paidAt).toLocaleDateString('en-AU');
+      return res.status(400).json({ 
+        title: "Already Paid",
+        message: `This invoice was already marked as paid on ${paidDate}.`,
+        fix: "No action needed - the payment is already recorded."
+      });
+    }
+
+    // 3. Get client information  
+    const client = await storage.getClient(invoiceWithItems.clientId, req.userId);
+    if (!client) {
+      return res.status(404).json({ 
+        title: "Client Not Found",
+        message: "The client for this invoice no longer exists.",
+        fix: "The payment can still be recorded, but the client details are missing."
+      });
+    }
+
+    // 4. Get business settings
+    const businessSettings = await storage.getBusinessSettings(req.userId);
+    if (!businessSettings) {
+      return res.status(404).json({ 
+        title: "Business Setup Incomplete",
+        message: "Your business details haven't been set up yet.",
+        fix: "Go to Settings and complete your business profile."
+      });
+    }
+
+    // 5. Update invoice status to paid FIRST (payment is recorded regardless of email)
+    const updatedInvoice = await storage.updateInvoice(req.params.id, req.userId, {
+      status: 'paid',
+      paidAt: new Date()
+    });
+
+    if (!updatedInvoice) {
+      return res.status(500).json({ 
+        title: "Couldn't Record Payment",
+        message: "There was a problem saving the payment.",
+        fix: "Try again in a few minutes. If this keeps happening, contact support."
+      });
+    }
+
+    // 6. Send receipt email (optional - don't fail if email issues)
+    // Always use sendEmailViaIntegration which handles:
+    // 1. User's SMTP integration (if connected)
+    // 2. Gmail via Replit connector (if available)
+    // 3. SendGrid platform email (fallback)
+    let receiptEmailSent = false;
+    let emailMessage = '';
+
+    if (client.email && client.email.trim() && businessSettings.email && businessSettings.email.trim()) {
+      try {
+        const invoiceData = { ...invoiceWithItems, paidAt: updatedInvoice.paidAt };
+        const emailContent = createReceiptEmailHtml(invoiceData, client, businessSettings);
+        
+        const result = await sendEmailViaIntegration({
+          to: client.email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+          userId: req.userId,
+          type: 'receipt',
+          relatedId: req.params.id,
+        });
+        
+        if (result.success) {
+          receiptEmailSent = true;
+          emailMessage = `Payment recorded and receipt sent to ${client.email}`;
+          console.log(`Receipt sent via ${result.sentVia}:`, req.params.id);
+        } else {
+          emailMessage = `Payment recorded. Receipt couldn't be sent - you may need to set up email in Settings.`;
+          console.error("Receipt email integration failed:", result.error);
+        }
+      } catch (emailError: any) {
+        console.error("Receipt email sending failed:", emailError.message);
+        emailMessage = `Payment recorded. Receipt couldn't be sent - check Settings → Email Integration.`;
+      }
+    } else {
+      emailMessage = 'Payment recorded. Receipt not sent - add email addresses to send receipts.';
+    }
+
+    res.json({ 
+      ...updatedInvoice, 
+      emailSent: receiptEmailSent, 
+      message: emailMessage
+    });
+
+  } catch (error) {
+    console.error("Error in mark paid handler:", error);
+    res.status(500).json({ 
+      title: "Something Went Wrong",
+      message: "We couldn't record this payment right now.",
+      fix: "Try again in a few minutes. If this keeps happening, contact support."
+    });
+  }
+};
+
+// ===== AUTOMATED EMAIL WITH PDF ATTACHMENT =====
+// These handlers automatically generate PDF, upload to cloud storage, and create Gmail draft
+
+import { createGmailDraftWithAttachment, isGmailConnected } from './gmailClient';
+import { ObjectStorageService } from './objectStorage';
+
+const objectStorage = new ObjectStorageService();
+
+// Helper to upload PDF to cloud storage and return metadata
+async function uploadPDFToStorage(
+  pdfBuffer: Buffer,
+  type: 'quote' | 'invoice',
+  documentNumber: string,
+  userId: string
+): Promise<{ path: string; filename: string }> {
+  const timestamp = Date.now();
+  const sanitizedNumber = documentNumber.replace(/[^a-zA-Z0-9-]/g, '_');
+  const filename = `${type}s/${userId}/${sanitizedNumber}_${timestamp}.pdf`;
+  
+  try {
+    const path = await objectStorage.uploadFile(filename, pdfBuffer, 'application/pdf');
+    console.log(`✅ PDF uploaded to storage: ${filename}`);
+    return { path, filename: `${type.toUpperCase()}-${documentNumber}.pdf` };
+  } catch (error: any) {
+    console.error('PDF upload error:', error);
+    throw new Error('Failed to save PDF to cloud storage');
+  }
+}
+
+// Create Gmail draft with quote PDF attached - opens in Gmail for tradie to review and send
+export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) => {
+  try {
+    const { customSubject, customMessage } = req.body || {};
+    
+    // 1. Check Gmail connection
+    const gmailConnected = await isGmailConnected();
+    if (!gmailConnected) {
+      return res.status(400).json({
+        title: "Gmail Not Connected",
+        message: "Gmail needs to be connected to use this feature.",
+        fix: "Go to Settings → Email Integration and connect your Gmail account."
+      });
+    }
+    
+    // 2. Get quote with line items
+    let quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, req.userId);
+    if (!quoteWithItems) {
+      return res.status(404).json({
+        title: "Quote Not Found",
+        message: "We couldn't find this quote.",
+        fix: "The quote may have been deleted. Go back to your Quotes list."
+      });
+    }
+    
+    // 3. Get client
+    const client = await storage.getClient(quoteWithItems.clientId, req.userId);
+    if (!client) {
+      return res.status(404).json({
+        title: "Client Not Found",
+        message: "The client for this quote no longer exists.",
+        fix: "Update the quote to select a different client."
+      });
+    }
+    
+    if (!client.email || !client.email.trim()) {
+      return res.status(400).json({
+        title: "Client Email Missing",
+        message: `${client.name} doesn't have an email address.`,
+        fix: `Go to Clients → ${client.name} → Edit and add their email.`
+      });
+    }
+    
+    // 4. Get business settings
+    const businessSettings = await storage.getBusinessSettings(req.userId);
+    if (!businessSettings) {
+      return res.status(404).json({
+        title: "Business Setup Incomplete",
+        message: "Your business details haven't been set up yet.",
+        fix: "Go to Settings and complete your business profile."
+      });
+    }
+    
+    // 5. Generate acceptance token if needed
+    let acceptanceToken = quoteWithItems.acceptanceToken;
+    if (!acceptanceToken) {
+      acceptanceToken = await storage.generateQuoteAcceptanceToken(req.params.id, req.userId);
+      quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, req.userId);
+    }
+    
+    // Generate public quote URL
+    const baseUrl = process.env.APP_BASE_URL 
+      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+        : 'http://localhost:5000');
+    const quoteAcceptanceUrl = acceptanceToken ? `${baseUrl}/q/${acceptanceToken}` : null;
+    
+    // 6. Get linked job for site address
+    let linkedJob = null;
+    if (quoteWithItems.jobId) {
+      linkedJob = await storage.getJob(quoteWithItems.jobId, req.userId);
+    }
+    
+    // Check Stripe Connect status for payment capability
+    const canAcceptPayments = businessSettings.stripeAccountId && businessSettings.stripeDetailsSubmitted;
+    
+    // 7. Generate PDF buffer
+    const pdfBuffer = await generatePDFBuffer(generateQuotePDF({
+      quote: quoteWithItems,
+      lineItems: quoteWithItems.lineItems || [],
+      client,
+      business: businessSettings,
+      signature: quoteWithItems.signature,
+      canAcceptPayments,
+      acceptanceUrl: quoteAcceptanceUrl || undefined,
+      job: linkedJob,
+    }));
+    
+    // 8. Upload PDF to cloud storage
+    const quoteNumber = quoteWithItems.number || quoteWithItems.id.slice(0, 8);
+    const { filename: pdfFilename } = await uploadPDFToStorage(
+      pdfBuffer,
+      'quote',
+      quoteNumber,
+      req.userId
+    );
+    
+    // 9. Prepare email content
+    const brandColor = businessSettings.brandColor || '#2563eb';
+    const formattedTotal = new Intl.NumberFormat('en-AU', { 
+      style: 'currency', 
+      currency: 'AUD' 
+    }).format(parseFloat(quoteWithItems.total || '0'));
+    
+    const subject = customSubject || `Quote ${quoteNumber} from ${businessSettings.businessName} - ${formattedTotal}`;
+    
+    // Australian-friendly email template
+    const emailHtml = customMessage ? `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
+          ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
+        </div>
+        <div style="padding: 25px; background: #f9f9f9; border-radius: 0 0 8px 8px;">
+          <p style="margin: 0 0 15px 0;">G'day ${client.name},</p>
+          <div style="white-space: pre-line;">${customMessage}</div>
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${brandColor};">
+            <p style="margin: 0; font-weight: bold;">Quote Total: ${formattedTotal}</p>
+            ${quoteWithItems.gstIncluded ? `<p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Includes GST</p>` : ''}
+          </div>
+          ${quoteAcceptanceUrl ? `
+            <div style="text-align: center; margin: 25px 0;">
+              <a href="${quoteAcceptanceUrl}" style="background: ${brandColor}; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">View & Accept Quote</a>
+            </div>
+          ` : ''}
+          <p style="margin: 20px 0 0 0; font-size: 13px; color: #666;">📎 Quote PDF attached for your records.</p>
+          <p style="margin: 15px 0 0 0;">Cheers,<br>${businessSettings.businessName}</p>
+        </div>
+      </body>
+      </html>
+    ` : createQuoteEmailHtml(quoteWithItems, client, businessSettings, quoteAcceptanceUrl).html;
+    
+    // 10. Create Gmail draft with PDF attached
+    const draftResult = await createGmailDraftWithAttachment({
+      to: client.email,
+      subject,
+      html: emailHtml,
+      fromName: businessSettings.businessName,
+      attachments: [{
+        filename: pdfFilename,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }]
+    });
+    
+    if (!draftResult.success) {
+      throw new Error(draftResult.error || 'Failed to create Gmail draft');
+    }
+    
+    // 11. Return success with draft URL
+    res.json({
+      success: true,
+      draftId: draftResult.draftId,
+      draftUrl: draftResult.draftUrl,
+      pdfAttached: true,
+      recipientEmail: client.email,
+      message: `Gmail draft created with ${pdfFilename} attached. Click to open Gmail and send.`
+    });
+    
+  } catch (error: any) {
+    console.error("Error creating quote email with PDF:", error);
+    const friendlyError = getTradieFriendlyEmailError(error.message);
+    res.status(500).json(friendlyError);
+  }
+};
+
+// Create Gmail draft with invoice PDF attached
+export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any) => {
+  try {
+    const { customSubject, customMessage } = req.body || {};
+    
+    // 1. Check Gmail connection
+    const gmailConnected = await isGmailConnected();
+    if (!gmailConnected) {
+      return res.status(400).json({
+        title: "Gmail Not Connected",
+        message: "Gmail needs to be connected to use this feature.",
+        fix: "Go to Settings → Email Integration and connect your Gmail account."
+      });
+    }
+    
+    // 2. Get invoice with line items
+    let invoiceWithItems = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
+    if (!invoiceWithItems) {
+      return res.status(404).json({
+        title: "Invoice Not Found",
+        message: "We couldn't find this invoice.",
+        fix: "The invoice may have been deleted. Go back to your Invoices list."
+      });
+    }
+    
+    // 3. Get client
+    const client = await storage.getClient(invoiceWithItems.clientId, req.userId);
+    if (!client) {
+      return res.status(404).json({
+        title: "Client Not Found",
+        message: "The client for this invoice no longer exists.",
+        fix: "Update the invoice to select a different client."
+      });
+    }
+    
+    if (!client.email || !client.email.trim()) {
+      return res.status(400).json({
+        title: "Client Email Missing",
+        message: `${client.name} doesn't have an email address.`,
+        fix: `Go to Clients → ${client.name} → Edit and add their email.`
+      });
+    }
+    
+    // 4. Get business settings
+    const businessSettings = await storage.getBusinessSettings(req.userId);
+    if (!businessSettings) {
+      return res.status(404).json({
+        title: "Business Setup Incomplete",
+        message: "Your business details haven't been set up yet.",
+        fix: "Go to Settings and complete your business profile."
+      });
+    }
+    
+    // 5. Generate payment token if needed
+    let paymentToken = invoiceWithItems.paymentToken;
+    if (!paymentToken) {
+      paymentToken = await storage.generateInvoicePaymentToken(req.params.id, req.userId);
+      invoiceWithItems = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
+    }
+    
+    // Generate public payment URL
+    const baseUrl = process.env.APP_BASE_URL 
+      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+        : 'http://localhost:5000');
+    const paymentUrl = paymentToken ? `${baseUrl}/pay/${paymentToken}` : null;
+    
+    // 6. Get linked job for site address and time entries
+    let linkedJob = null;
+    let timeEntries: any[] = [];
+    if (invoiceWithItems.jobId) {
+      linkedJob = await storage.getJob(invoiceWithItems.jobId, req.userId);
+      timeEntries = await storage.getTimeEntriesForJob(invoiceWithItems.jobId, req.userId);
+    }
+    
+    // 7. Generate PDF buffer
+    const pdfBuffer = await generatePDFBuffer(generateInvoicePDF({
+      invoice: invoiceWithItems,
+      lineItems: invoiceWithItems.lineItems || [],
+      client,
+      business: businessSettings,
+      job: linkedJob,
+      timeEntries,
+      paymentUrl: paymentUrl || undefined,
+    }));
+    
+    // 8. Upload PDF to cloud storage
+    const invoiceNumber = invoiceWithItems.number || invoiceWithItems.id.slice(0, 8);
+    const { filename: pdfFilename } = await uploadPDFToStorage(
+      pdfBuffer,
+      'invoice',
+      invoiceNumber,
+      req.userId
+    );
+    
+    // 9. Prepare email content
+    const brandColor = businessSettings.brandColor || '#2563eb';
+    const formattedTotal = new Intl.NumberFormat('en-AU', { 
+      style: 'currency', 
+      currency: 'AUD' 
+    }).format(parseFloat(invoiceWithItems.total || '0'));
+    
+    // "TAX INVOICE" label for GST-registered businesses
+    const isTaxInvoice = businessSettings.gstRegistered && parseFloat(invoiceWithItems.total || '0') > 82.50;
+    const invoiceLabel = isTaxInvoice ? 'Tax Invoice' : 'Invoice';
+    
+    const subject = customSubject || `${invoiceLabel} ${invoiceNumber} from ${businessSettings.businessName} - ${formattedTotal}`;
+    
+    // Australian-friendly email template
+    const emailHtml = customMessage ? `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
+          ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
+        </div>
+        <div style="padding: 25px; background: #f9f9f9; border-radius: 0 0 8px 8px;">
+          <p style="margin: 0 0 15px 0;">G'day ${client.name},</p>
+          <div style="white-space: pre-line;">${customMessage}</div>
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${brandColor};">
+            <p style="margin: 0; font-weight: bold;">${invoiceLabel} Total: ${formattedTotal}</p>
+            ${invoiceWithItems.gstIncluded ? `<p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Includes GST (10%)</p>` : ''}
+          </div>
+          ${paymentUrl ? `
+            <div style="text-align: center; margin: 25px 0;">
+              <a href="${paymentUrl}" style="background: ${brandColor}; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Pay Online Now</a>
+            </div>
+          ` : ''}
+          <p style="margin: 20px 0 0 0; font-size: 13px; color: #666;">📎 ${invoiceLabel} PDF attached for your records.</p>
+          <p style="margin: 15px 0 0 0;">Cheers,<br>${businessSettings.businessName}</p>
+        </div>
+      </body>
+      </html>
+    ` : createInvoiceEmailHtml(invoiceWithItems, client, businessSettings, paymentUrl).html;
+    
+    // 10. Create Gmail draft with PDF attached
+    const draftResult = await createGmailDraftWithAttachment({
+      to: client.email,
+      subject,
+      html: emailHtml,
+      fromName: businessSettings.businessName,
+      attachments: [{
+        filename: pdfFilename,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }]
+    });
+    
+    if (!draftResult.success) {
+      throw new Error(draftResult.error || 'Failed to create Gmail draft');
+    }
+    
+    // 11. Return success with draft URL
+    res.json({
+      success: true,
+      draftId: draftResult.draftId,
+      draftUrl: draftResult.draftUrl,
+      pdfAttached: true,
+      recipientEmail: client.email,
+      message: `Gmail draft created with ${pdfFilename} attached. Click to open Gmail and send.`
+    });
+    
+  } catch (error: any) {
+    console.error("Error creating invoice email with PDF:", error);
+    const friendlyError = getTradieFriendlyEmailError(error.message);
+    res.status(500).json(friendlyError);
+  }
+};

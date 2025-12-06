@@ -1,0 +1,27 @@
+{
+  "name": "TradieTrack",
+  "short_name": "TradieTrack",
+  "description": "Job management for Australian tradies. Manage jobs, quotes, invoices, and get paid faster.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3B5998",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/attached_assets/generated_images/Clean_pin_hard_hat_icon_eae36170.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/attached_assets/generated_images/Clean_pin_hard_hat_icon_eae36170.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "en-AU"
+}

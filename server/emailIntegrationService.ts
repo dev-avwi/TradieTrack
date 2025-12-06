@@ -1,0 +1,548 @@
+import { db } from './storage';
+import { emailIntegrations, emailDeliveryLogs, type EmailIntegration, type InsertEmailIntegration } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
+import nodemailer from 'nodemailer';
+import { sendEmail as sendPlatformEmail } from './emailService';
+import { encrypt, decrypt, isEncryptionEnabled } from './cryptoHelper';
+import { isGmailConnected, sendViaGmailAPI, getGmailProfile } from './gmailClient';
+
+// Email Integration Service - Manages tradie email connections
+// Tradies can connect their own Gmail, Outlook, or SMTP email to send quotes/invoices
+// Security: SMTP passwords are encrypted at rest using AES-256-GCM when EMAIL_ENCRYPTION_KEY is set
+// Gmail: Uses Replit's managed OAuth connector - NOTE: This is a platform-level connection
+// that applies to the entire application, not per-user. See getGmailConnectionStatus for details.
+
+interface SendEmailOptions {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
+  userId: string;
+  type: 'quote' | 'invoice' | 'receipt' | 'reminder';
+  relatedId?: string;
+}
+
+interface EmailResult {
+  success: boolean;
+  messageId?: string;
+  sentVia?: string;
+  error?: string;
+}
+
+// Get user's email integration
+export async function getEmailIntegration(userId: string): Promise<EmailIntegration | null> {
+  const [integration] = await db
+    .select()
+    .from(emailIntegrations)
+    .where(and(
+      eq(emailIntegrations.userId, userId),
+      eq(emailIntegrations.status, 'connected')
+    ))
+    .limit(1);
+  
+  return integration || null;
+}
+
+// Get all email integrations for a user
+export async function getUserEmailIntegrations(userId: string): Promise<EmailIntegration[]> {
+  return db
+    .select()
+    .from(emailIntegrations)
+    .where(eq(emailIntegrations.userId, userId));
+}
+
+// Create or update SMTP integration
+export async function connectSmtpEmail(
+  userId: string,
+  config: {
+    host: string;
+    port: number;
+    user: string;
+    password: string;
+    secure: boolean;
+    emailAddress: string;
+    displayName: string;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Test the SMTP connection first
+    const transporter = nodemailer.createTransport({
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      auth: {
+        user: config.user,
+        pass: config.password,
+      },
+    });
+
+    await transporter.verify();
+
+    // Encrypt the password before storing
+    const encryptedPassword = encrypt(config.password);
+    
+    if (isEncryptionEnabled()) {
+      console.log(`🔐 SMTP password encrypted for user ${userId}`);
+    }
+
+    // Check if user already has an integration
+    const existing = await db
+      .select()
+      .from(emailIntegrations)
+      .where(eq(emailIntegrations.userId, userId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing integration
+      await db
+        .update(emailIntegrations)
+        .set({
+          provider: 'smtp',
+          status: 'connected',
+          smtpHost: config.host,
+          smtpPort: config.port,
+          smtpUser: config.user,
+          smtpPassword: encryptedPassword,
+          smtpSecure: config.secure,
+          emailAddress: config.emailAddress,
+          displayName: config.displayName,
+          lastError: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(emailIntegrations.id, existing[0].id));
+    } else {
+      // Create new integration
+      await db.insert(emailIntegrations).values({
+        userId,
+        provider: 'smtp',
+        status: 'connected',
+        smtpHost: config.host,
+        smtpPort: config.port,
+        smtpUser: config.user,
+        smtpPassword: encryptedPassword,
+        smtpSecure: config.secure,
+        emailAddress: config.emailAddress,
+        displayName: config.displayName,
+      });
+    }
+
+    console.log(`✅ SMTP email connected for user ${userId}: ${config.emailAddress}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to connect SMTP email:', error);
+    return { success: false, error: error.message || 'Failed to connect email' };
+  }
+}
+
+// Disconnect email integration
+export async function disconnectEmail(userId: string): Promise<{ success: boolean }> {
+  try {
+    await db
+      .update(emailIntegrations)
+      .set({
+        status: 'disconnected',
+        accessToken: null,
+        refreshToken: null,
+        smtpPassword: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(emailIntegrations.userId, userId));
+
+    console.log(`✅ Email disconnected for user ${userId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to disconnect email:', error);
+    return { success: false };
+  }
+}
+
+// Send email through tradie's connected account or fallback to platform
+// Fallback cascade: User SMTP → Gmail Connector → SendGrid Platform
+export async function sendEmailViaIntegration(options: SendEmailOptions): Promise<EmailResult> {
+  const { to, subject, html, text, attachments, userId, type, relatedId } = options;
+
+  // Get user's email integration from database (SMTP only for now)
+  const integration = await getEmailIntegration(userId);
+  
+  // Check if Gmail is connected via Replit connector
+  const gmailConnected = await isGmailConnected();
+
+  // Log the email attempt
+  const [logEntry] = await db.insert(emailDeliveryLogs).values({
+    userId,
+    emailIntegrationId: integration?.id || null,
+    recipientEmail: to,
+    subject,
+    type,
+    relatedId,
+    status: 'pending',
+  }).returning();
+
+  // Helper to attempt sending with fallback cascade
+  const attemptSendWithFallback = async (): Promise<EmailResult> => {
+    // 1. Try user's SMTP integration first (if connected)
+    if (integration && integration.status === 'connected' && integration.provider === 'smtp') {
+      const smtpResult = await sendViaSMTP(integration, { to, subject, html, text, attachments });
+      if (smtpResult.success) {
+        return smtpResult;
+      }
+      console.warn(`SMTP sending failed, trying fallback: ${smtpResult.error}`);
+    }
+
+    // 2. Try Gmail via Replit connector (if available)
+    if (gmailConnected) {
+      console.log('Attempting Gmail via Replit connector');
+      const gmailResult = await sendViaGmailDirect({ to, subject, html, text, attachments });
+      if (gmailResult.success) {
+        return gmailResult;
+      }
+      console.warn(`Gmail connector failed, falling back to SendGrid: ${gmailResult.error}`);
+    }
+
+    // 3. Final fallback - SendGrid platform email
+    console.log('Using SendGrid platform email as final fallback');
+    return await sendViaPlatform({ to, subject, html, text });
+  };
+
+  try {
+    const result = await attemptSendWithFallback();
+
+    // Update log entry
+    await db
+      .update(emailDeliveryLogs)
+      .set({
+        status: result.success ? 'sent' : 'failed',
+        sentVia: result.sentVia,
+        messageId: result.messageId,
+        errorMessage: result.error,
+        sentAt: result.success ? new Date() : null,
+      })
+      .where(eq(emailDeliveryLogs.id, logEntry.id));
+
+    // Update last used time on integration
+    if (integration && result.success && result.sentVia === 'smtp') {
+      await db
+        .update(emailIntegrations)
+        .set({ lastUsedAt: new Date() })
+        .where(eq(emailIntegrations.id, integration.id));
+    }
+
+    return result;
+  } catch (error: any) {
+    // Update log entry with error
+    await db
+      .update(emailDeliveryLogs)
+      .set({
+        status: 'failed',
+        errorMessage: error.message,
+      })
+      .where(eq(emailDeliveryLogs.id, logEntry.id));
+
+    return { success: false, error: error.message };
+  }
+}
+
+// Send email via SMTP
+async function sendViaSMTP(
+  integration: EmailIntegration,
+  options: { to: string; subject: string; html: string; text?: string; attachments?: any[] }
+): Promise<EmailResult> {
+  try {
+    // Decrypt the password before using it
+    const decryptedPassword = decrypt(integration.smtpPassword!);
+    
+    const transporter = nodemailer.createTransport({
+      host: integration.smtpHost!,
+      port: integration.smtpPort!,
+      secure: integration.smtpSecure ?? true,
+      auth: {
+        user: integration.smtpUser!,
+        pass: decryptedPassword,
+      },
+    });
+
+    const mailOptions: any = {
+      from: {
+        name: integration.displayName || 'Business',
+        address: integration.emailAddress!,
+      },
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+    };
+
+    if (options.attachments && options.attachments.length > 0) {
+      mailOptions.attachments = options.attachments;
+    }
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log(`✅ Email sent via SMTP (${integration.emailAddress}) to ${options.to}`);
+
+    return {
+      success: true,
+      messageId: result.messageId,
+      sentVia: 'smtp',
+    };
+  } catch (error: any) {
+    console.error('SMTP send error:', error);
+    
+    // Update integration status if there's an auth error
+    if (error.code === 'EAUTH') {
+      await db
+        .update(emailIntegrations)
+        .set({
+          status: 'error',
+          lastError: 'Authentication failed. Please reconnect your email.',
+          updatedAt: new Date(),
+        })
+        .where(eq(emailIntegrations.id, integration.id));
+    }
+
+    return {
+      success: false,
+      error: error.message,
+      sentVia: 'smtp',
+    };
+  }
+}
+
+// Send email via Gmail using Replit's managed OAuth connector (with integration record)
+async function sendViaGmail(
+  integration: EmailIntegration,
+  options: { to: string; subject: string; html: string; text?: string; attachments?: any[] }
+): Promise<EmailResult> {
+  try {
+    const result = await sendViaGmailAPI({
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+      fromName: integration.displayName || undefined,
+      attachments: options.attachments,
+    });
+
+    if (result.success) {
+      console.log(`✅ Email sent via Gmail (${integration.emailAddress}) to ${options.to}`);
+      return {
+        success: true,
+        messageId: result.messageId,
+        sentVia: 'gmail',
+      };
+    } else {
+      console.error('Gmail send failed:', result.error);
+      // Update integration status if there's an error
+      await db
+        .update(emailIntegrations)
+        .set({
+          lastError: result.error || 'Failed to send via Gmail',
+          updatedAt: new Date(),
+        })
+        .where(eq(emailIntegrations.id, integration.id));
+
+      return {
+        success: false,
+        error: result.error,
+        sentVia: 'gmail',
+      };
+    }
+  } catch (error: any) {
+    console.error('Gmail send error:', error);
+    return {
+      success: false,
+      error: error.message,
+      sentVia: 'gmail',
+    };
+  }
+}
+
+// Send email via Gmail directly (without integration record - uses Replit connector)
+async function sendViaGmailDirect(
+  options: { to: string; subject: string; html: string; text?: string; attachments?: any[] }
+): Promise<EmailResult> {
+  try {
+    const result = await sendViaGmailAPI({
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+      attachments: options.attachments,
+    });
+
+    if (result.success) {
+      console.log(`✅ Email sent via Gmail (Replit connector) to ${options.to}`);
+      return {
+        success: true,
+        messageId: result.messageId,
+        sentVia: 'gmail_connector',
+      };
+    } else {
+      console.error('Gmail connector send failed:', result.error);
+      return {
+        success: false,
+        error: result.error,
+        sentVia: 'gmail_connector',
+      };
+    }
+  } catch (error: any) {
+    console.error('Gmail connector send error:', error);
+    return {
+      success: false,
+      error: error.message,
+      sentVia: 'gmail_connector',
+    };
+  }
+}
+
+// Send email via Outlook OAuth (placeholder for future implementation)
+async function sendViaOutlook(
+  integration: EmailIntegration,
+  options: { to: string; subject: string; html: string; text?: string; attachments?: any[] }
+): Promise<EmailResult> {
+  // TODO: Implement Microsoft Graph API sending
+  // For now, fall back to platform email
+  console.log('Outlook OAuth not yet implemented, falling back to platform email');
+  return sendViaPlatform(options);
+}
+
+// Send email via platform (SendGrid)
+async function sendViaPlatform(
+  options: { to: string; subject: string; html: string; text?: string }
+): Promise<EmailResult> {
+  try {
+    const result = await sendPlatformEmail({
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+    });
+
+    return {
+      success: result.success,
+      messageId: result.messageId,
+      sentVia: 'sendgrid',
+      error: result.error,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message,
+      sentVia: 'sendgrid',
+    };
+  }
+}
+
+// Test email connection
+export async function testEmailConnection(userId: string): Promise<{ success: boolean; message: string }> {
+  // First check Gmail via Replit connector
+  const gmailConnected = await isGmailConnected();
+  if (gmailConnected) {
+    try {
+      const profile = await getGmailProfile();
+      if (profile) {
+        return { 
+          success: true, 
+          message: `Gmail connected as ${profile.email}. Managed by Replit.` 
+        };
+      }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: 'Gmail connection error. Please try reconnecting your account.' 
+      };
+    }
+  }
+
+  const integration = await getEmailIntegration(userId);
+
+  if (!integration) {
+    return { success: false, message: 'No email integration found. Please connect your email first.' };
+  }
+
+  try {
+    if (integration.provider === 'smtp') {
+      // Decrypt the password before testing
+      const decryptedPassword = decrypt(integration.smtpPassword!);
+      
+      const transporter = nodemailer.createTransport({
+        host: integration.smtpHost!,
+        port: integration.smtpPort!,
+        secure: integration.smtpSecure ?? true,
+        auth: {
+          user: integration.smtpUser!,
+          pass: decryptedPassword,
+        },
+      });
+
+      await transporter.verify();
+      return { success: true, message: 'SMTP connection verified successfully!' };
+    }
+
+    // For OAuth providers
+    return { success: true, message: 'Email connection is active.' };
+  } catch (error: any) {
+    // Update integration status
+    await db
+      .update(emailIntegrations)
+      .set({
+        status: 'error',
+        lastError: error.message,
+        updatedAt: new Date(),
+      })
+      .where(eq(emailIntegrations.id, integration.id));
+
+    return { success: false, message: `Connection failed: ${error.message}` };
+  }
+}
+
+// Check if user has connected email (SMTP or Gmail with matching email)
+export async function hasConnectedEmail(userId: string): Promise<boolean> {
+  const integration = await getEmailIntegration(userId);
+  return integration !== null && integration.status === 'connected';
+}
+
+// Get Gmail connection status at platform level
+// Note: This is platform-level, meaning the connected Gmail is shared
+// Only useful for platform owner or when Gmail matches user's configured email
+export async function getGmailConnectionStatus(userId: string): Promise<{
+  connected: boolean;
+  email?: string;
+  displayName?: string;
+}> {
+  try {
+    const gmailConnected = await isGmailConnected();
+    if (!gmailConnected) {
+      return { connected: false };
+    }
+
+    // Gmail connector is connected - try to get profile but don't fail if we can't
+    // The connector might have send permissions but not profile read permissions
+    try {
+      const profile = await getGmailProfile();
+      if (profile) {
+        return {
+          connected: true,
+          email: profile.email,
+          displayName: profile.displayName,
+        };
+      }
+    } catch (profileError) {
+      console.log('[Gmail] Profile fetch failed (likely scope limitation), connector still usable for sending');
+    }
+
+    // Gmail is connected even if we couldn't get the profile
+    return {
+      connected: true,
+      email: undefined,
+      displayName: 'Gmail Connector',
+    };
+  } catch (error) {
+    console.error('Error checking Gmail status:', error);
+    return { connected: false };
+  }
+}

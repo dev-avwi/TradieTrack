@@ -1,0 +1,1237 @@
+import { useEffect, useCallback, useState, useMemo } from 'react';
+import { 
+  View, 
+  Text, 
+  ScrollView, 
+  RefreshControl,
+  TouchableOpacity,
+  StyleSheet,
+  Linking,
+  ActivityIndicator,
+  Alert
+} from 'react-native';
+import { router } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore } from '../../src/lib/store';
+import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
+import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
+
+// Trust Banner Component - compact modern design
+function TrustBanner() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  return (
+    <View style={styles.trustBanner}>
+      <View style={styles.trustBannerTop}>
+        <View style={styles.trustBannerIcon}>
+          <Feather name="star" size={14} color={colors.primary} />
+        </View>
+        <View style={styles.trustBannerContent}>
+          <View style={styles.trustBannerTitleRow}>
+            <Text style={styles.trustBannerTitle}>TradieTrack</Text>
+            <View style={styles.betaBadge}>
+              <Text style={styles.betaBadgeText}>Free During Beta</Text>
+            </View>
+          </View>
+          <Text style={styles.trustBannerSubtitle}>Built for Australian tradies</Text>
+        </View>
+      </View>
+      <View style={styles.trustBannerFeatures}>
+        <View style={styles.trustFeature}>
+          <Feather name="check-circle" size={10} color={colors.success} />
+          <Text style={styles.trustFeatureText}>GST compliant</Text>
+        </View>
+        <View style={styles.trustFeature}>
+          <Feather name="check-circle" size={10} color={colors.success} />
+          <Text style={styles.trustFeatureText}>Secure payments</Text>
+        </View>
+        <View style={styles.trustFeature}>
+          <Feather name="check-circle" size={10} color={colors.success} />
+          <Text style={styles.trustFeatureText}>Encrypted</Text>
+        </View>
+      </View>
+      {/* Security & Privacy Rows */}
+      <View style={styles.trustSecuritySection}>
+        <View style={styles.trustSecurityRow}>
+          <Feather name="shield" size={14} color={colors.primary} />
+          <View style={styles.trustSecurityContent}>
+            <Text style={styles.trustSecurityTitle}>Bank-grade security</Text>
+            <Text style={styles.trustSecurityDesc}>256-bit encryption for all data</Text>
+          </View>
+        </View>
+        <View style={styles.trustSecurityRow}>
+          <Feather name="lock" size={14} color={colors.primary} />
+          <View style={styles.trustSecurityContent}>
+            <Text style={styles.trustSecurityTitle}>Your data stays private</Text>
+            <Text style={styles.trustSecurityDesc}>We never share your information</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// Activity Feed Component - matches web Recent Activity section
+function ActivityFeed({ activities }: { activities: any[] }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  const getActivityIcon = (type: string): keyof typeof Feather.glyphMap => {
+    switch (type) {
+      case 'job': return 'briefcase';
+      case 'quote': return 'file-text';
+      case 'invoice': return 'dollar-sign';
+      case 'payment': return 'credit-card';
+      case 'client': return 'user';
+      default: return 'activity';
+    }
+  };
+
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case 'job': return colors.primary;
+      case 'quote': return colors.info;
+      case 'invoice': return colors.warning;
+      case 'payment': return colors.success;
+      case 'client': return colors.mutedForeground;
+      default: return colors.mutedForeground;
+    }
+  };
+
+  const formatTimeAgo = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  };
+
+  if (activities.length === 0) {
+    return (
+      <View style={styles.activityEmpty}>
+        <Feather name="activity" size={sizes.emptyIconSm} color={colors.mutedForeground} />
+        <Text style={styles.activityEmptyText}>No recent activity</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.activityList}>
+      {activities.slice(0, 5).map((activity, index) => (
+        <View key={activity.id || index} style={styles.activityItem}>
+          <View style={[styles.activityIcon, { backgroundColor: `${getActivityColor(activity.type)}12` }]}>
+            <Feather 
+              name={getActivityIcon(activity.type)} 
+              size={12} 
+              color={getActivityColor(activity.type)} 
+            />
+          </View>
+          <View style={styles.activityContent}>
+            <Text style={styles.activityTitle} numberOfLines={1}>{activity.title}</Text>
+            <Text style={styles.activityTime}>{formatTimeAgo(activity.createdAt)}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// KPI Stat Card Component - compact modern design
+function KPICard({ 
+  title, 
+  value, 
+  icon,
+  iconBg,
+  iconColor,
+  onPress
+}: { 
+  title: string; 
+  value: string | number; 
+  icon: keyof typeof Feather.glyphMap;
+  iconBg: string;
+  iconColor: string;
+  onPress?: () => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  return (
+    <TouchableOpacity
+      style={styles.kpiCard}
+      onPress={onPress}
+      activeOpacity={0.9}
+    >
+      <View style={styles.kpiCardContent}>
+        <View style={[styles.kpiIconContainer, { backgroundColor: iconBg }]}>
+          <Feather name={icon} size={14} color={iconColor} />
+        </View>
+        <View>
+          <Text style={styles.kpiValue}>{value}</Text>
+          <Text style={styles.kpiTitle}>{title}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// Quick Action Button Component - compact
+function QuickActionButton({ 
+  title, 
+  icon, 
+  variant = 'outline',
+  onPress 
+}: { 
+  title: string; 
+  icon: keyof typeof Feather.glyphMap;
+  variant?: 'primary' | 'outline';
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.9}
+      style={[
+        styles.quickActionButton,
+        variant === 'primary' && styles.quickActionButtonPrimary
+      ]}
+    >
+      <Feather 
+        name={icon} 
+        size={14} 
+        color={variant === 'primary' ? colors.white : colors.foreground} 
+      />
+      <Text style={[
+        styles.quickActionText,
+        variant === 'primary' && styles.quickActionTextPrimary
+      ]}>
+        {title}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+// Job Card Component - matches web Today's Schedule cards
+function TodayJobCard({ 
+  job, 
+  clients,
+  isFirst,
+  onPress,
+  onStartJob,
+  onCompleteJob,
+  isUpdating
+}: { 
+  job: any;
+  clients: any[];
+  isFirst: boolean;
+  onPress: () => void;
+  onStartJob: (id: string) => void;
+  onCompleteJob: (id: string) => void;
+  isUpdating: boolean;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  const formatTime = (dateStr?: string) => {
+    if (!dateStr) return { hour: '', period: '' };
+    const date = new Date(dateStr);
+    const time = date.toLocaleTimeString('en-AU', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    const parts = time.split(' ');
+    return { hour: parts[0], period: parts[1]?.toUpperCase() || '' };
+  };
+
+  const getClient = (clientId?: string) => {
+    if (!clientId) return null;
+    return clients.find(c => c.id === clientId);
+  };
+
+  const client = getClient(job.clientId);
+  const time = formatTime(job.scheduledAt);
+
+  const handleCall = () => {
+    if (client?.phone) {
+      Linking.openURL(`tel:${client.phone}`);
+    }
+  };
+
+  const handleSMS = () => {
+    if (client?.phone) {
+      Linking.openURL(`sms:${client.phone}`);
+    }
+  };
+
+  const handleNavigate = () => {
+    if (job.address) {
+      const encodedAddress = encodeURIComponent(job.address);
+      Linking.openURL(`https://maps.google.com/maps?q=${encodedAddress}`);
+    }
+  };
+
+  const getStatusBadge = () => {
+    if (job.status === 'done') {
+      return (
+        <View style={[styles.statusBadge, styles.statusBadgeComplete]}>
+          <Text style={[styles.statusBadgeText, styles.statusBadgeTextComplete]}>Complete</Text>
+        </View>
+      );
+    } else if (job.status === 'in_progress') {
+      return (
+        <View style={[styles.statusBadge, styles.statusBadgeProgress]}>
+          <View style={styles.pulseDot} />
+          <Text style={[styles.statusBadgeText, styles.statusBadgeTextProgress]}>In Progress</Text>
+        </View>
+      );
+    }
+    return (
+      <View style={[styles.statusBadge, styles.statusBadgeScheduled]}>
+        <Text style={styles.statusBadgeText}>Scheduled</Text>
+      </View>
+    );
+  };
+
+  const getActionButton = () => {
+    if (job.status === 'pending' || job.status === 'scheduled') {
+      return (
+        <TouchableOpacity 
+          style={styles.primaryActionButton}
+          onPress={() => onStartJob(job.id)}
+          disabled={isUpdating}
+          activeOpacity={0.8}
+        >
+          <Feather name="play" size={iconSizes.lg} color={colors.white} />
+          <Text style={styles.primaryActionButtonText}>Start Job</Text>
+        </TouchableOpacity>
+      );
+    } else if (job.status === 'in_progress') {
+      return (
+        <TouchableOpacity 
+          style={[styles.primaryActionButton, styles.completeActionButton]}
+          onPress={() => onCompleteJob(job.id)}
+          disabled={isUpdating}
+          activeOpacity={0.8}
+        >
+          <Feather name="check-circle" size={iconSizes.lg} color={colors.white} />
+          <Text style={styles.primaryActionButtonText}>Complete Job</Text>
+        </TouchableOpacity>
+      );
+    }
+    return (
+      <TouchableOpacity 
+        style={styles.outlineActionButton}
+        onPress={onPress}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.outlineActionButtonText}>View Details</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const getAccentColor = () => {
+    switch (job.status) {
+      case 'pending': return colors.pending;
+      case 'scheduled': return colors.scheduled;
+      case 'in_progress': return colors.inProgress;
+      case 'done': return colors.done;
+      case 'invoiced': return colors.invoiced;
+      default: return colors.primary;
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.9}
+      style={styles.jobCard}
+    >
+      {/* Left Accent Bar */}
+      <View style={[styles.jobCardAccent, { backgroundColor: getAccentColor() }]} />
+      
+      {/* Card Content */}
+      <View style={styles.jobCardContent}>
+        {/* Job Header */}
+        <View style={styles.jobCardHeader}>
+          <View style={styles.jobCardHeaderLeft}>
+            <View style={styles.timeBox}>
+              <Text style={styles.timeBoxText}>{time.hour}</Text>
+            </View>
+            <View style={styles.jobCardTitleArea}>
+              <View style={styles.jobCardMetaRow}>
+                <Text style={styles.timePeriod}>{time.period}</Text>
+                {getStatusBadge()}
+              </View>
+              <Text style={styles.jobCardTitle} numberOfLines={1}>{job.title}</Text>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
+        </View>
+
+        {/* Client & Address */}
+        <View style={styles.jobCardDetails}>
+          {client?.name && (
+            <View style={styles.jobDetailRow}>
+              <Feather name="user" size={iconSizes.md} color={colors.mutedForeground} />
+              <Text style={styles.jobDetailText} numberOfLines={1}>{client.name}</Text>
+            </View>
+          )}
+          {job.address && (
+            <View style={styles.jobDetailRow}>
+              <Feather name="map-pin" size={iconSizes.md} color={colors.mutedForeground} />
+              <Text style={styles.jobDetailText} numberOfLines={1}>{job.address}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Quick Contact Buttons */}
+        {(client?.phone || job.address) && (
+          <View style={styles.quickContactRow}>
+            {client?.phone && (
+              <>
+                <TouchableOpacity 
+                  style={styles.quickContactButton}
+                  onPress={handleCall}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="phone" size={iconSizes.md} color={colors.foreground} />
+                  <Text style={styles.quickContactText}>Call</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.quickContactButton}
+                  onPress={handleSMS}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="message-square" size={iconSizes.md} color={colors.foreground} />
+                  <Text style={styles.quickContactText}>SMS</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {job.address && (
+              <TouchableOpacity 
+                style={[styles.quickContactButton, !client?.phone && styles.quickContactButtonFull]}
+                onPress={handleNavigate}
+                activeOpacity={0.7}
+              >
+                <Feather name="navigation" size={iconSizes.md} color={colors.foreground} />
+                <Text style={styles.quickContactText}>Navigate</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Primary Action Button */}
+        {getActionButton()}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// Empty State Component
+function EmptyTodayState({ onCreateJob }: { onCreateJob: () => void }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  return (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyStateIcon}>
+        <Feather name="briefcase" size={sizes.emptyIcon} color={colors.mutedForeground} />
+      </View>
+      <Text style={styles.emptyStateTitle}>No jobs scheduled for today</Text>
+      <TouchableOpacity 
+        style={styles.scheduleJobButton}
+        onPress={onCreateJob}
+        activeOpacity={0.8}
+      >
+        <Feather name="plus" size={iconSizes.md} color={colors.white} />
+        <Text style={styles.scheduleJobButtonText}>Schedule a Job</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+export default function DashboardScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  const { user, businessSettings } = useAuthStore();
+  const { todaysJobs, fetchTodaysJobs, isLoading: jobsLoading, updateJobStatus } = useJobsStore();
+  const { stats, fetchStats, isLoading: statsLoading } = useDashboardStore();
+  const { clients, fetchClients } = useClientsStore();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  
+  const handleNavigateToItem = (type: string, id: string) => {
+    switch (type) {
+      case 'job':
+        router.push(`/job/${id}`);
+        break;
+      case 'quote':
+        router.push(`/more/quote/${id}`);
+        break;
+      case 'invoice':
+        router.push(`/more/invoice/${id}`);
+        break;
+      case 'client':
+        router.push(`/more/client/${id}`);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const refreshData = useCallback(async () => {
+    await Promise.all([
+      fetchTodaysJobs(),
+      fetchStats(),
+      fetchClients(),
+    ]);
+  }, [fetchTodaysJobs, fetchStats, fetchClients]);
+
+  useEffect(() => {
+    refreshData();
+  }, []);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `$${amount.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
+
+  const handleStartJob = async (jobId: string) => {
+    setIsUpdating(true);
+    try {
+      await updateJobStatus(jobId, 'in_progress');
+      Alert.alert('Job Started', 'Timer started. You\'re on the clock!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to start job');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCompleteJob = async (jobId: string) => {
+    setIsUpdating(true);
+    try {
+      await updateJobStatus(jobId, 'done');
+      Alert.alert('Job Complete', 'Nice work! Job marked as done.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to complete job');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const userName = user?.firstName || 'there';
+  const jobsToday = stats.jobsToday || todaysJobs.length;
+  const overdueCount = stats.overdueJobs || 0;
+  const quotesCount = stats.pendingQuotes || 0;
+  const monthRevenue = formatCurrency(stats.thisMonthRevenue || 0);
+
+  const isLoading = jobsLoading || statsLoading;
+
+  return (
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      refreshControl={
+        <RefreshControl
+          refreshing={isLoading}
+          onRefresh={refreshData}
+          colors={[colors.primary]}
+          tintColor={colors.primary}
+        />
+      }
+      showsVerticalScrollIndicator={false}
+    >
+      {/* iOS-Style Header with Notification Bell */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>{getGreeting()}, {userName}</Text>
+            <Text style={styles.headerSubtitle}>
+              {todaysJobs.length > 0 
+                ? `You have ${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} scheduled today`
+                : businessSettings?.businessName || "Welcome back"}
+            </Text>
+          </View>
+          <NotificationBell onPress={() => setShowNotifications(true)} />
+        </View>
+      </View>
+      
+      {/* Notifications Panel */}
+      <NotificationsPanel
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        onNavigateToItem={handleNavigateToItem}
+      />
+
+      {/* Trust Banner */}
+      <TrustBanner />
+
+      {/* Quick Stats */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Quick Stats</Text>
+        <View style={styles.kpiGrid}>
+          <KPICard
+            title="Jobs Today"
+            value={jobsToday}
+            icon="briefcase"
+            iconBg={colors.primaryLight}
+            iconColor={colors.primary}
+            onPress={() => router.push('/(tabs)/jobs')}
+          />
+          <KPICard
+            title="Overdue"
+            value={overdueCount}
+            icon="alert-circle"
+            iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
+            iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
+            onPress={() => router.push('/more/invoices')}
+          />
+          <KPICard
+            title="Quotes Pending"
+            value={quotesCount}
+            icon="clock"
+            iconBg={colors.muted}
+            iconColor={colors.mutedForeground}
+            onPress={() => router.push('/more/quotes')}
+          />
+          <KPICard
+            title="This Month"
+            value={monthRevenue}
+            icon="trending-up"
+            iconBg={colors.successLight}
+            iconColor={colors.success}
+            onPress={() => router.push('/more/invoices')}
+          />
+        </View>
+      </View>
+
+      {/* Quick Actions */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Quick Actions</Text>
+        <View style={styles.quickActionsCard}>
+          <View style={styles.quickActionsRow}>
+            <QuickActionButton
+              title="Job"
+              icon="briefcase"
+              variant="primary"
+              onPress={() => router.push('/more/create-job')}
+            />
+            <QuickActionButton
+              title="Quote"
+              icon="file-text"
+              onPress={() => router.push('/more/quote/new')}
+            />
+            <QuickActionButton
+              title="Invoice"
+              icon="dollar-sign"
+              onPress={() => router.push('/more/invoice/new')}
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* Today's Schedule */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <View style={styles.sectionTitleIcon}>
+              <Feather name="calendar" size={iconSizes.md} color={colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Today</Text>
+          </View>
+          {todaysJobs.length > 0 && (
+            <TouchableOpacity 
+              style={styles.viewAllButton}
+              onPress={() => router.push('/(tabs)/jobs')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.viewAllText}>View All</Text>
+              <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {todaysJobs.length === 0 ? (
+          <EmptyTodayState onCreateJob={() => router.push('/more/create-job')} />
+        ) : (
+          <View style={styles.jobsList}>
+            {todaysJobs.map((job: any, index: number) => (
+              <TodayJobCard
+                key={job.id}
+                job={job}
+                clients={clients}
+                isFirst={index === 0}
+                onPress={() => router.push(`/job/${job.id}`)}
+                onStartJob={handleStartJob}
+                onCompleteJob={handleCompleteJob}
+                isUpdating={isUpdating}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* Recent Activity */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <View style={styles.sectionTitleIcon}>
+              <Feather name="activity" size={iconSizes.md} color={colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+          </View>
+        </View>
+        <ActivityFeed 
+          activities={[
+            // Generate sample activity from today's jobs for visual consistency
+            ...todaysJobs.slice(0, 3).map((job: any) => ({
+              id: job.id,
+              type: 'job',
+              title: `Job: ${job.title}`,
+              createdAt: job.scheduledAt || new Date().toISOString()
+            }))
+          ]} 
+        />
+      </View>
+
+      {/* Bottom Spacing */}
+      <View style={{ height: spacing['4xl'] }} />
+    </ScrollView>
+  );
+}
+
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  contentContainer: {
+    padding: spacing.lg,
+    paddingBottom: 100,
+  },
+
+  // Header
+  header: {
+    marginBottom: spacing.lg,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerTitle: {
+    ...typography.pageTitle,
+    color: colors.foreground,
+  },
+  headerSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
+  },
+
+  // Trust Banner - compact
+  trustBanner: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: `${colors.primary}25`,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
+    backgroundColor: `${colors.primary}06`,
+  },
+  trustBannerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  trustBannerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: `${colors.primary}12`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trustBannerContent: {
+    flex: 1,
+  },
+  trustBannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  trustBannerTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+  },
+  betaBadge: {
+    backgroundColor: colors.successLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  betaBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.success,
+  },
+  trustBannerSubtitle: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  trustBannerFeatures: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  trustFeature: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  trustFeatureText: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+  trustSecuritySection: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.md,
+  },
+  trustSecurityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  trustSecurityContent: {
+    flex: 1,
+  },
+  trustSecurityTitle: {
+    ...typography.body,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  trustSecurityDesc: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+
+  // Activity Feed - compact
+  activityList: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
+  },
+  activityIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityTitle: {
+    ...typography.body,
+    color: colors.foreground,
+  },
+  activityTime: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  activityEmpty: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.xl,
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  activityEmptyText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: spacing.sm,
+  },
+
+  // Sections
+  section: {
+    marginBottom: spacing.xl,
+  },
+  sectionLabel: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    marginBottom: spacing.md,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  sectionTitleIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.sm,
+    backgroundColor: `${colors.primary}10`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+  },
+  viewAllText: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+
+  // KPI Grid - 2-col with 10-12px gap
+  kpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  kpiCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  kpiCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+  },
+  kpiIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  kpiValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  kpiTitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+
+  // Quick Actions - matches web Card p-4 (16px)
+  quickActionsCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: 16,
+    ...shadows.sm,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  quickActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.secondary,
+  },
+  quickActionButtonPrimary: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  quickActionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  quickActionTextPrimary: {
+    color: colors.primaryForeground,
+  },
+
+  // Job Cards - with left accent bar
+  jobsList: {
+    gap: 10,
+  },
+  jobCard: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  jobCardAccent: {
+    width: 4,
+    backgroundColor: colors.primary,
+  },
+  jobCardContent: {
+    flex: 1,
+    padding: 16,
+  },
+  jobCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  jobCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+  },
+  timeBox: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: `${colors.primary}10`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeBoxText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  jobCardTitleArea: {
+    flex: 1,
+  },
+  jobCardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  timePeriod: {
+    ...typography.label,
+    color: colors.mutedForeground,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+  },
+  statusBadgeComplete: {
+    backgroundColor: `${colors.success}15`,
+    borderColor: `${colors.success}30`,
+  },
+  statusBadgeProgress: {
+    backgroundColor: `${colors.warning}15`,
+    borderColor: `${colors.warning}30`,
+  },
+  statusBadgeScheduled: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  statusBadgeTextComplete: {
+    color: colors.success,
+  },
+  statusBadgeTextProgress: {
+    color: colors.warning,
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.warning,
+  },
+  jobCardTitle: {
+    ...typography.cardTitle,
+    color: colors.foreground,
+    marginTop: 2,
+  },
+  jobCardDetails: {
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  jobDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  jobDetailText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    flex: 1,
+  },
+  quickContactRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  quickContactButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.muted,
+  },
+  quickContactButtonFull: {
+    flex: 1,
+  },
+  quickContactText: {
+    ...typography.captionSmall,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  primaryActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.success,
+  },
+  completeActionButton: {
+    backgroundColor: colors.primary,
+  },
+  primaryActionButtonText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+  outlineActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  outlineActionButtonText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+
+  // Empty State - compact
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing['3xl'],
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  emptyStateIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.lg,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyStateTitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginBottom: spacing.md,
+  },
+  scheduleJobButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+  },
+  scheduleJobButtonText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.white,
+  },
+});
