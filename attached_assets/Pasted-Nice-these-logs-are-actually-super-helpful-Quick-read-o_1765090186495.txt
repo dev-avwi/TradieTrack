@@ -1,0 +1,339 @@
+Nice, these logs are actually super helpful.
+
+Quick read of what they’re telling us:
+
+* `401 Not authenticated` → mobile app is hitting `/api/auth/me` etc. before/without a valid session/token.
+* `Location] Running in Expo Go - location tracking requires native build` → expected warning in Expo Go; real GPS tracking will only work in a dev/client build.
+* `expo-notifications` warnings → also expected in Expo Go; push needs dev build.
+* `"palette" is not a valid icon name for family "feather"` → small UI bug in your icon config.
+* Stripe Terminal:
+
+  * `POST /api/stripe/terminal-connection-token` → `500 Failed to create connection token`
+  * `POST /api/stripe/create-terminal-payment-intent` → `500 Failed to create payment intent`
+    → backend for Terminal is not configured properly (keys / account / code path).
+* `GET /api/time-entries/active` → `404 Time entry not found` → probably missing “no active entry” handling.
+* Everything else (jobs, clients, quotes, invoices) is being hit a lot → good sign: mobile is wired into real endpoints.
+
+So: you’re *very* close. The master QA prompt should tell Replit to:
+
+* Fix these specific issues.
+* Verify *all* workflows are wired (not just UI).
+* Confirm mobile app matches web app behaviour.
+* Check map/team location + chat + roles.
+* Check Stripe / SendGrid / PDFs.
+* Mark anything half-done as “coming soon” instead of fake.
+
+Here’s a single **Replit Master QA Prompt for TradieTrack** you can paste straight into Replit AI:
+
+---
+
+```text
+You are my QA engineer + senior full-stack dev for my app **TradieTrack**.
+
+TradieTrack = a job / quote / invoice / payments / map / team app for tradies (plumbers, sparkies, etc.), with:
+
+- Web app (main)
+- Mobile app (Expo / React Native)
+
+I now want a **technically solid beta**.
+
+Your job:
+- Fix obvious issues from logs
+- Make sure no feature is “UI only”
+- Check that web + mobile workflows actually work end-to-end
+- Mark or hide anything that isn’t ready
+- Summarise what’s ready for real tradies
+
+Use the codebase + the logs below as truth:
+
+LOG SNIPPET (from Expo/mobile):
+- expo-notifications not fully supported in Expo Go
+- [OfflineStorage] Initialized successfully
+- [Location] Running in Expo Go - location tracking requires native build
+- [API] Error 401: {"error": "Not authenticated"}
+- WARN "palette" is not a valid icon name for family "feather"
+- [API] POST /api/stripe/terminal-connection-token → 500 Failed to create connection token
+- [API] POST /api/stripe/create-terminal-payment-intent → 500 Failed to create payment intent
+- [StripeTerminal] Canceling payment collection
+- [API] GET /api/time-entries/active → 404 {"error": "Time entry not found"}
+
+Please go through the project in this order:
+
+────────────────────────────────
+1️⃣ Fix log issues & obvious bugs
+────────────────────────────────
+A. Authentication
+- Check why `/api/auth/me` sometimes returns 401 in the mobile app.
+- Ensure that after login:
+  - Auth token/session is stored correctly (secure storage / cookies / headers).
+  - All subsequent `GET /api/*` calls include valid auth.
+  - There’s a consistent “Not logged in” handling (redirect to login, not infinite 401 spam).
+
+B. Feather icon `"palette"`
+- Find where `"palette"` is used with `react-native-vector-icons/Feather` or similar.
+- Replace with a valid Feather icon name OR use a supported icon family.
+- Remove all repeated icon warnings.
+
+C. Stripe Terminal 500 errors
+- Inspect the backend code for:
+  - `/api/stripe/terminal-connection-token`
+  - `/api/stripe/create-terminal-payment-intent`
+- Fix:
+  - Use correct Stripe secret key (test) from env.
+  - Use the appropriate Stripe Terminal API (if you’re not ready for Terminal, either:
+    - implement proper test-mode logic, or
+    - disable/hide Terminal UI + endpoints for beta).
+- Ensure that for beta:
+  - At least **online payments** (checkout / PaymentIntent) work.
+  - Terminal features that are not ready are clearly marked “coming soon” or hidden.
+
+D. Time tracking 404
+- For `GET /api/time-entries/active`:
+  - When no active time entry exists, return a **valid “no active entry” response** instead of an error the frontend can’t handle.
+  - Adjust frontend to handle “no active time entry” gracefully (show Start timer button instead of error).
+
+E. Expo Go warnings
+- Acknowledge:
+  - `expo-notifications` & `location` limitations in Expo Go are expected.
+- Ensure code paths are:
+  - Safe to run in Expo Go (fail gracefully).
+  - Ready for dev/prod builds where permissions & native modules work.
+
+────────────────────────────────
+2️⃣ Verify REAL workflows (web + mobile) are fully wired (no UI-only)
+────────────────────────────────
+Use this mock business consistently in your reasoning/tests:
+
+Business:
+- Name: "Cairns Coast Plumbing"
+- ABN: 12 345 678 910
+- Email: cairnscoastplumbing@example.com
+- Phone: 0400 123 456
+- Address: 123 Sheridan St, Cairns QLD
+- Plan: basic → then Pro
+
+Clients:
+- Sarah Thompson – sarah.thompson@example.com – 45 Lake St, Cairns
+- John Harris – john.harris@example.com – 10 Mulgrave Rd, Cairns
+
+Jobs:
+- Job 1: “Fix leaking shower” for Sarah
+- Job 2: “Install new vanity” for Sarah
+- Job 3: “Blocked toilet” for John
+
+Check these full flows in **both web and mobile**:
+
+A. Auth + Onboarding + Roles
+- New owner signup → onboarding:
+  - Capture: business name, ABN, trade type, team size (solo vs team), region/city.
+  - Store “solo vs team” and show different dashboard accordingly (solo view vs owner/manager/team view).
+- Confirm:
+  - Owner can invite team members.
+  - Roles: owner / manager / tradie “field worker”.
+  - Permissions:
+    - Owner: full access to jobs, quotes, invoices, team, map, settings.
+    - Manager: similar to owner except billing.
+    - Tradie: only see assigned jobs, map view for their own jobs, job chat, time tracking, limited clients.
+
+B. Job → Quote → Invoice → Payment flow
+For each platform (web, mobile):
+
+1. Create job
+   - Create a job linked to a client with:
+     - Title
+     - Description
+     - Address
+     - Scheduled time
+     - Assigned tradie
+   - Verify DB persistence and correct relationship.
+
+2. Create quote from job
+   - Includes:
+     - Line items (qty, price, description)
+     - GST calculation (if enabled)
+     - Auto quote number (Q-1001 style)
+   - Confirm:
+     - Live preview / PDF preview displays correctly.
+     - All data matches what user entered.
+
+3. Send quote
+   - “Send quote” button:
+     - Calls real backend (SendGrid).
+     - Generates PDF or hosted quote page.
+   - Confirm:
+     - Uses verified “from” address.
+     - Uses Reply-To as tradie’s business email.
+     - Email template is professional.
+
+4. Accept quote (client)
+   - Confirm:
+     - There is an acceptance endpoint.
+     - Acceptance updates quote status = Accepted.
+     - Acceptance timestamp + “accepted by name/email” stored.
+     - Optionally job status moves to “Approved”.
+
+5. Convert quote → invoice
+   - Data carries over correctly (client, job, line items).
+   - Auto invoice number (INV-1001 style).
+   - Status = Draft → Sent → Paid.
+
+6. Payment (online)
+   - For customer payments:
+     - Stripe (non-terminal) payment flow works in test mode.
+   - Confirm:
+     - Invoice can generate a “Pay now” link.
+     - Successful payment marks invoice Paid and stores payment metadata.
+
+C. Pro branding (logo, footer, “Powered by TradieTrack”)
+- When business is on Pro:
+  - Emails:
+    - include business logo in header.
+    - include custom footer (e.g. license details).
+    - “Powered by TradieTrack” can be subtle or removed, depending on your intended behaviour.
+  - PDFs:
+    - Show logo in header.
+    - Use brand colour accent if configured.
+- When on free/basic:
+  - Show some “Powered by TradieTrack” branding.
+  - No custom header or advanced theming.
+
+D. Team management + roles + permissions
+- Verify:
+  - Owner can create multiple team members.
+  - Each member:
+    - has a role.
+    - can log in separately (web + mobile).
+  - Permission enforcement:
+    - A tradie cannot see other teams’ jobs/clients if not allowed.
+    - Only owner/manager can see billing settings.
+
+E. Time tracking
+- For tradie user:
+  - Start timer on a job → creates active time entry.
+  - Stop timer → closes time entry with duration.
+  - Handle:
+    - No active time entry state correctly.
+  - Show time logs in job detail / timesheets.
+
+────────────────────────────────
+3️⃣ Location map, team map, and dispatch
+────────────────────────────────
+For the **map/dispatch feature**, ensure the following:
+
+A. Job location storage
+- On job creation/edit:
+  - Store address AND (if implemented) geocoded lat/lng.
+- Confirm DB schema:
+  - job has fields for address and optional coordinates.
+
+B. Owner map page
+- Owner/manager can open a “Map” page that:
+  - Shows past + upcoming jobs as pins.
+  - Pin info includes:
+    - Status (Scheduled, In progress, Completed).
+    - Client name.
+    - Job title.
+  - Clicking a pin opens a job summary / link to job detail.
+
+C. Team location view
+- If `/api/team/locations` is implemented:
+  - Confirm each team member has last known location stored (if you’re capturing it).
+  - Map shows location of tradies with their avatar/initials.
+- If live tracking is NOT fully implemented:
+  - Hide or mark “Live location tracking coming soon” instead of exposing broken UI.
+
+D. Dispatch behaviour
+- Ensure you can:
+  - Assign a job to a tradie from map or job detail.
+  - Existing assignments reflect correctly in UI and DB.
+
+E. Expo vs native build behaviour
+- For location:
+  - Handle Expo Go “location tracking requires native build” gracefully.
+  - Ensure native build path is correct for when you ship (permissions & hooks in place).
+
+────────────────────────────────
+4️⃣ Chat (job chat + team chat)
+────────────────────────────────
+- Confirm:
+  - Job chat:
+    - Messages link to a specific job.
+    - Visible to owner + assigned tradies.
+  - Team/general chat:
+    - Room for entire team.
+- Check:
+  - Messages are persisted in DB.
+  - Timestamps, sender, role are stored.
+  - No fake UI-only chat components.
+
+────────────────────────────────
+5️⃣ Mobile vs Web parity (UI + features)
+────────────────────────────────
+Your goal: **mobile app should mirror web app behaviour and structure** as much as possible.
+
+Check:
+
+- All main sections exist on both:
+  - Activity/Home, Jobs, Clients, Quotes, Invoices, Calendar, Map, Chat, Settings/More.
+- Navigation labels and icons are consistent.
+- Core actions available on both:
+  - Create job
+  - Create/send quote
+  - Create/send invoice
+  - View PDFs
+  - Start/stop time tracking
+  - View map and job locations
+- Valid states (no half-done screens on mobile that are complete on web).
+- Layout:
+  - Mobile uses bottom nav.
+  - Cards and spacing feel app-like.
+  - No huge unused right column or weird alignment.
+
+If any feature exists on web but not mobile:
+- Either implement it properly on mobile, OR hide it on mobile until it’s ready.
+
+────────────────────────────────
+6️⃣ Offline storage & error handling
+────────────────────────────────
+- Confirm `[OfflineStorage] Initialized successfully` leads to:
+  - At least basic caching of key lists (jobs, clients, etc.)
+  - Safe behaviour when network is temporarily unavailable.
+- For all API calls:
+  - Show loading states.
+  - Handle errors with user-friendly messages.
+  - Don’t leave UI in inconsistent state on failure.
+
+────────────────────────────────
+7️⃣ Final “Technically Solid Beta” summary
+────────────────────────────────
+When you’re done, provide (in comments or a summary file):
+
+1. ✅ List of flows that are fully working end-to-end on both web and mobile:
+   - Auth + onboarding
+   - Job → Quote → Invoice → Payment
+   - Pro branding
+   - Team management
+   - Map + jobs pins
+   - Chat
+   - Time tracking
+
+2. ⚠️ Items that are **partially implemented** and should be:
+   - either labeled “coming soon”,
+   - or removed from visible UI for beta.
+
+3. 🛠 Critical MUST-FIX items before real tradie beta:
+   - Anything still throwing runtime errors
+   - Any payments/email flows not behaving correctly
+   - Any serious UX traps (e.g. stuck states)
+
+4. 🎯 Answer this explicitly:
+   “Is TradieTrack now a **technically solid beta** that a small team of real tradies can use day-to-day (even if a few advanced features are still marked as coming soon)?”
+
+Please make code changes as needed (fix endpoints, handle errors, hide unfinished UI) so the answer to that question is **yes**.
+```
+
+---
+
+You can paste that straight into Replit’s AI in your project.
+
+Then once you’ve let it run and you’ve tried a couple of real-world tests on your phone (job → quote → email in Gmail → accept → invoice → Stripe pay → receipt, plus map/team view), we can write the “explain this to Dad” paragraph about why this app has massive potential and how it scales your web agency.
