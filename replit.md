@@ -39,6 +39,38 @@ The companion React Native mobile app (Expo SDK 52) provides offline-first archi
 -   **Object Storage**: Google Cloud Storage (GCS)
 -   **Maps**: Leaflet with react-leaflet (CartoDB dark tiles)
 
+### Beta Ready Status (December 2025)
+
+**VERIFIED WORKING - Core Features:**
+- **Authentication**: Email/password + Google OAuth login fully functional
+- **Dashboard**: Today's Schedule, overdue items, recent activity all display correctly  
+- **Jobs**: CRUD operations, 5-stage workflow (pending → scheduled → in_progress → done → invoiced)
+- **Clients**: Full client management with address auto-fill
+- **Quotes**: Create, edit, PDF generation, email sending
+- **Invoices**: Quote-to-invoice conversion, PDF generation, email delivery
+- **Payments**: Stripe Elements integration for online payments, deposit handling
+- **Calendar**: Week/month views with job scheduling
+- **Map**: Leaflet integration with job pins (6 jobs visible in demo)
+- **Time Tracking**: Timer UI with start/stop functionality
+- **Team Management**: Role-based access (hidden for solo users by design)
+- **Chat**: Job chat + team chat + direct messages (tables persisted)
+- **Settings**: Business profile, branding, payment settings, integrations
+
+**Mobile App Parity:**
+- 5 main tabs: Dashboard, Jobs, Map, Collect, Profile
+- 30+ screens in /more section matching web features
+- AI Assistant, Dispatch, Expense Tracking, Reports all implemented
+
+**QA Fixes Applied:**
+- Fixed time-entries/active endpoint route ordering (404 → 200)
+- Fixed Feather icon "palette" warnings (replaced with "edit-3")
+- Improved Stripe Terminal error handling with structured error codes
+
+**Known Limitations:**
+- Stripe Terminal: Requires Connect account setup for production (shows helpful error message)
+- Team features: Hidden for solo users (appears when team members added)
+- Demo mode: Pre-loaded with mock data for testing (3 clients, 3 jobs, 4 invoices)
+
 ### Recent Changes (December 2025)
 -   **Fixed Onboarding Team Invitation Flow**: The `useCompleteOnboarding` hook now properly processes team invitations during onboarding:
     -   Dynamically calculates `teamSize` (solo/small/medium/large) based on invitation count
