@@ -1,0 +1,308 @@
+I can *absolutely* walk you through **how to test**, **what to test**, **what should happen**, **what to expect**, and **how a real tradie would behave**…
+
+…but **I can’t directly create accounts inside your live app** or interact with external URLs the way a human would** (no browser, no clicking, no phone-level simulation).
+So instead, I’ll do the *next best thing*:
+
+### ✅ I will simulate a full tradie workflow **step-by-step**
+
+### ✅ I will tell you exactly what SHOULD happen
+
+### ✅ You follow each step inside your app and check if it behaves correctly
+
+### 🔥 This becomes a full “QA Script” you can run every time you update the app
+
+### 🔧 AND I’ll generate a Replit prompt that tests 100% of the backend functions
+
+---
+
+# ✅ **🔥 SIMULATED TRADIE WORKFLOW — FULL REAL-WORLD TEST**
+
+This is the full run-through a real tradie (and their team) will experience.
+
+This is the best way to see if TradieTrack is ready for actual Cairns tradies.
+
+---
+
+# 🧑‍🔧 **Step 1 — Create Owner Account**
+
+**User:** *Owner / Business Manager*
+**Business:** “Cairns Coast Plumbing”
+
+### EXPECTED RESULTS:
+
+* Account creates with Owner role
+* Dashboard loads with:
+
+  * Jobs
+  * Quotes
+  * Team
+  * Dispatch Board / Map
+  * Settings
+
+---
+
+# 🧑‍🔧 **Step 2 — Set Up Business Profile**
+
+Fill these:
+
+| Field             | Expected Behaviour                   |
+| ----------------- | ------------------------------------ |
+| Logo upload       | Shows instantly in quotes/invoices   |
+| ABN               | Required + validated                 |
+| Address           | Saved + used for map region          |
+| Email             | Used for reply-to in SendGrid emails |
+| Stripe Connect    | Creates a connected account          |
+| Subscription Tier | Free → Pro in test mode              |
+
+---
+
+# 👤 **Step 3 — Create Additional Users (Team Management)**
+
+Create:
+
+1️⃣ **Tradie #1** – Electrician
+2️⃣ **Tradie #2** – Apprentice
+
+### EXPECTED:
+
+* Owner sees all team members
+* Tradie sees only:
+
+  * Their own jobs
+  * Group chats
+  * Direct chat with owner
+  * Settings (limited)
+
+---
+
+# 📍 **Step 4 — TEAM LOCATION TEST**
+
+Open the app on your phone (or simulate):
+
+* Turn on “Share My Location”
+* Tradie #1 moves to another suburb (just simulate by typing in location)
+* Map should show:
+
+  * Pins for all tradies
+  * Pins for all active jobs
+  * Colour-coded:
+
+    * Green: Completed
+    * Blue: Scheduled
+    * Orange: In-progress
+
+### EXPECTED:
+
+* Map loads
+* Pins have status labels (“Scheduled”, “Completed”, etc.)
+* Clicking a pin opens job/tradie details
+
+---
+
+# 🛠 **Step 5 — Create a Client**
+
+Client: **Sarah Thompson**
+
+Fields to test:
+
+* Name
+* Email
+* Phone
+* Address (convert to Lat/Lng automatically)
+
+---
+
+# 🔧 **Step 6 — Create a Job**
+
+Job: *“Fix leaking shower”*
+Assign to: Tradie #1
+
+### EXPECTED:
+
+* Job assigned correctly
+* Map pin appears instantly
+* Team member receives push notification (if implemented)
+* Job shows in Tradie #1’s dashboard
+* Owner sees it on Dispatch Board
+
+---
+
+# 📄 **Step 7 — Create Quote From Job**
+
+Line Items:
+
+* Labour – 2 hrs @ $110/hr
+* Tap – $165
+
+### EXPECTED:
+
+#### Quote Preview:
+
+* Live PDF preview
+* Logo shows
+* ABN shows
+* Totals correct
+* GST correct
+* Format clean, professional
+
+#### SAVE & REOPEN:
+
+* Quote number auto-set (Q-1001)
+* Linked to job & client automatically
+
+---
+
+# 📧 **Step 8 — Send Quote (SendGrid)**
+
+Send to Sarah.
+
+### EXPECTED CLIENT EXPERIENCE (Simulate by using your Gmail):
+
+* Email arrives within 5–10 seconds
+* Subject: *“Your Quote from Cairns Coast Plumbing”*
+* Reply-to = tradie’s real email
+* PDF attached or link to view online
+* When clicking link:
+
+  * Public quote page loads
+  * Styled properly
+  * Button: **Accept Quote**
+
+---
+
+# ✍️ **Step 9 — Accept Quote (Client View)**
+
+Click **Accept Quote**
+
+### EXPECTED:
+
+* Status updates to *Accepted*
+* Owner sees acceptance instantly
+* Tradie sees job move into “Approved”
+* Acceptance timestamp saved
+* IP + device info optional
+
+---
+
+# 💵 **Step 10 — Convert Quote → Invoice**
+
+Click “Convert to invoice”
+
+### EXPECTED:
+
+* Invoice number (INV-1001)
+* All line items copied automatically
+* Totals correct
+* PDF preview works
+* Send email works
+
+---
+
+# 🔔 **Step 11 — Payment (Stripe)**
+
+Make test payment using Stripe test card.
+
+### EXPECTED:
+
+* Payment succeeds
+* Invoice marked PAID
+* Receipt email sent
+* Payment date saved
+* Payment reference stored
+
+---
+
+# 💬 **Step 12 — Messaging System Test**
+
+Test these:
+
+### Group Chat
+
+* Owner + Tradie #1 + Tradie #2
+* Messages appear instantly
+
+### Direct Chat
+
+Owner ↔ Tradie #1
+
+### EXPECTED:
+
+* Messages save to DB
+* Seen/read statuses optional
+* Push notifications optional
+
+---
+
+# 📍 **Step 13 — Location + Time Tracking**
+
+Tradie #1 clocks in at job.
+
+### EXPECTED:
+
+* Start time saved
+* Map updates tradie position
+* Time tracked stored
+* When job completed:
+
+  * “Time Tracked: X hours” appears in job
+  * Export available
+
+---
+
+# 🧹 **Step 14 — Check for UI/UX Issues**
+
+Since your screenshots show a **very clean, iOS-inspired design**, you must check:
+
+* No broken spacing
+* No unused columns
+* Every card has shadow + border radius matching design
+* No “fake” buttons
+* Every click leads somewhere real
+
+---
+
+# 🎯 FINAL checkpoint — Is the app production-ready?
+
+If all steps above pass without issues…
+
+Your app is **real-world tradie ready.**
+
+---
+
+# 🔥 Now here is your prompt:
+
+If you're ready, say:
+
+**“Generate the Replit Master QA Prompt for TradieTrack.”**
+
+And I will produce:
+
+### ✔ A fully updated prompt
+
+### ✔ Including maps
+
+### ✔ team tracking
+
+### ✔ end-to-end quotes/invoices
+
+### ✔ Stripe
+
+### ✔ SendGrid
+
+### ✔ Roles
+
+### ✔ Dispatch board
+
+### ✔ Messaging
+
+### ✔ Time tracking
+
+### ✔ UI/UX matching your screenshots
+
+This becomes the final “approve or deny” level check before publishing.
+
+---
+
+Just tell me:
+
+👉 **“Generate the Replit Master QA Prompt for TradieTrack.”**
