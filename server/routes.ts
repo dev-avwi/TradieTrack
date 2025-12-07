@@ -5053,6 +5053,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get active timer - MUST be defined BEFORE /:id route to avoid matching "active" as an ID
+  app.get("/api/time-entries/active", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const activeEntry = await storage.getActiveTimeEntry(userId);
+      // Return null explicitly when no active entry exists (not 404 or undefined)
+      res.json(activeEntry || null);
+    } catch (error) {
+      console.error('Error fetching active timer:', error);
+      res.status(500).json({ error: 'Failed to fetch active timer' });
+    }
+  });
+
   app.get("/api/time-entries/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
@@ -6202,18 +6215,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get active timer (running time entry without end time)
-  app.get("/api/time-entries/active", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const activeEntry = await storage.getActiveTimeEntry(userId);
-      res.json(activeEntry);
-    } catch (error) {
-      console.error('Error fetching active timer:', error);
-      res.status(500).json({ error: 'Failed to fetch active timer' });
-    }
-  });
-  
   // ===== STAFF SCHEDULING / CALENDAR ROUTES =====
   
   // Get schedules (calendar events)
@@ -7033,7 +7034,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const settings = await storage.getBusinessSettings(userId);
       
       if (!settings?.stripeConnectAccountId) {
-        return res.status(400).json({ error: 'Stripe Connect account not set up' });
+        return res.status(400).json({ 
+          error: 'Stripe Connect account not set up',
+          code: 'STRIPE_NOT_CONNECTED',
+          message: 'Please connect your Stripe account in Settings > Payments before using Tap to Pay'
+        });
       }
 
       // Create connection token using the connected account
@@ -7045,7 +7050,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ secret: connectionToken.secret });
     } catch (error: any) {
       console.error('Error creating Terminal connection token:', error);
-      res.status(500).json({ error: 'Failed to create connection token' });
+      // Provide more helpful error messages
+      if (error.code === 'resource_missing') {
+        return res.status(400).json({ 
+          error: 'Stripe Terminal not enabled for this account',
+          code: 'TERMINAL_NOT_ENABLED',
+          message: 'Tap to Pay requires Stripe Terminal to be enabled. Please contact support.'
+        });
+      }
+      res.status(500).json({ 
+        error: 'Failed to create connection token',
+        code: 'TERMINAL_ERROR',
+        message: 'Unable to initialize Tap to Pay. Please try again later.'
+      });
     }
   });
 
@@ -7056,13 +7073,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { amount, description, currency = 'aud', invoiceId, jobId } = req.body;
       
       if (!amount || amount < 500) {
-        return res.status(400).json({ error: 'Minimum amount is $5.00 (500 cents)' });
+        return res.status(400).json({ 
+          error: 'Minimum amount is $5.00 (500 cents)',
+          code: 'AMOUNT_TOO_LOW'
+        });
       }
 
       const settings = await storage.getBusinessSettings(userId);
       
       if (!settings?.stripeConnectAccountId) {
-        return res.status(400).json({ error: 'Stripe Connect account not set up' });
+        return res.status(400).json({ 
+          error: 'Stripe Connect account not set up',
+          code: 'STRIPE_NOT_CONNECTED',
+          message: 'Please connect your Stripe account in Settings > Payments before accepting payments'
+        });
       }
 
       // Calculate platform fee (2.5%)
@@ -7093,7 +7117,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error creating Terminal payment intent:', error);
-      res.status(500).json({ error: 'Failed to create payment intent' });
+      // Provide more helpful error messages
+      if (error.code === 'resource_missing') {
+        return res.status(400).json({ 
+          error: 'Stripe Terminal not enabled',
+          code: 'TERMINAL_NOT_ENABLED',
+          message: 'Tap to Pay requires Stripe Terminal to be enabled. Please contact support.'
+        });
+      }
+      if (error.type === 'StripeInvalidRequestError') {
+        return res.status(400).json({ 
+          error: 'Invalid payment request',
+          code: 'INVALID_REQUEST',
+          message: error.message || 'Unable to create payment. Please check your settings.'
+        });
+      }
+      res.status(500).json({ 
+        error: 'Failed to create payment intent',
+        code: 'PAYMENT_ERROR',
+        message: 'Unable to create payment. Please try again later.'
+      });
     }
   });
 

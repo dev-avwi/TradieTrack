@@ -499,7 +499,7 @@ export default function MoreScreen() {
         )}
         {!isStaff && (
           <MenuItem
-            icon="palette"
+            icon="edit-3"
             iconBg={colors.primaryLight}
             iconColor={colors.primary}
             title="Branding"
