@@ -38,3 +38,12 @@ The companion React Native mobile app (Expo SDK 52) provides offline-first archi
 -   **SMS Notifications**: Twilio
 -   **Object Storage**: Google Cloud Storage (GCS)
 -   **Maps**: Leaflet with react-leaflet (CartoDB dark tiles)
+
+### Recent Changes (December 2025)
+-   **Fixed Onboarding Team Invitation Flow**: The `useCompleteOnboarding` hook now properly processes team invitations during onboarding:
+    -   Dynamically calculates `teamSize` (solo/small/medium/large) based on invitation count
+    -   Fetches available roles from `/api/team/roles` and maps role names to roleIds
+    -   Sends team invitations via `POST /api/team/members/invite` endpoint
+    -   Provides structured feedback with success/failure counts
+    -   Shows toast notifications for partial failures
+-   **Owner Recognition**: Users are automatically recognized as owners via the `getUserContext` function in `server/permissions.ts` when they have no team membership (as opposed to being a team member of someone else's business)
