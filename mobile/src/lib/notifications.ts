@@ -28,7 +28,7 @@ export interface PushToken {
 }
 
 export interface NotificationPayload {
-  type: 'job_update' | 'payment_received' | 'team_message' | 'job_assigned' | 'quote_accepted';
+  type: 'job_update' | 'payment_received' | 'team_message' | 'job_assigned' | 'quote_accepted' | 'job_reminder';
   title: string;
   body: string;
   data?: {
@@ -64,7 +64,16 @@ class NotificationService {
       let finalStatus = existingStatus;
       
       if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
+        const { status } = await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+            allowAnnouncements: true,
+            allowCriticalAlerts: false,
+            provideAppNotificationSettings: true,
+          },
+        });
         finalStatus = status;
       }
       
@@ -272,12 +281,14 @@ class NotificationService {
 
   /**
    * Handle deep linking when notification is tapped
+   * Works on both iOS and Android
    */
   navigateToNotification(payload: NotificationPayload): void {
     try {
       switch (payload.type) {
         case 'job_update':
         case 'job_assigned':
+        case 'job_reminder':
           if (payload.data?.jobId) {
             router.push(`/job/${payload.data.jobId}`);
           } else {
@@ -307,6 +318,48 @@ class NotificationService {
     } catch (error) {
       console.error('[Notifications] Navigation failed:', error);
       router.push('/');
+    }
+  }
+
+  /**
+   * Handle iOS notification action buttons
+   * Call this from the onNotificationTapped handler
+   */
+  async handleNotificationAction(payload: NotificationPayload, actionId?: string): Promise<void> {
+    if (!actionId) {
+      this.navigateToNotification(payload);
+      return;
+    }
+
+    switch (actionId) {
+      case 'VIEW_JOB':
+      case 'VIEW_INVOICE':
+      case 'VIEW_CHAT':
+        this.navigateToNotification(payload);
+        break;
+      
+      case 'SNOOZE':
+        if (payload.data?.jobId && payload.type === 'job_reminder') {
+          await this.scheduleLocalNotification(
+            payload.title,
+            payload.body,
+            { type: 'job_reminder', jobId: payload.data.jobId },
+            15 * 60
+          );
+          console.log('[Notifications] Snoozed reminder for 15 minutes');
+        }
+        break;
+      
+      case 'MARK_COMPLETE':
+        console.log('[Notifications] Mark complete action - would update job status');
+        break;
+      
+      case 'REPLY':
+        this.navigateToNotification(payload);
+        break;
+      
+      default:
+        this.navigateToNotification(payload);
     }
   }
 
