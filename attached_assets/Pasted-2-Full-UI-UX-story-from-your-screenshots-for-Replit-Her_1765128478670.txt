@@ -1,0 +1,468 @@
+2. Full UI/UX story from your screenshots (for Replit)
+
+Here’s the summary story of what your app is doing now, based on all the screenshots:
+
+Global layout
+
+Top bar with TradieTrack logo + title, search, theme toggle (sun/moon), notifications bell, user avatar circle.
+
+Bottom nav with 4 tabs: Dashboard, Jobs, Map, More.
+
+A floating “sparkle +” action button at bottom-right that opens AI / suggested actions.
+
+Dashboard
+
+Greets user by name: “Good afternoon, Luke”.
+
+Shows a pink hero card “TradieTrack – Free during Beta” with badges: GST compliant, Secure payments, Encrypted.
+
+Quick stats cards (Jobs Today, Overdue, Quotes Pending, Revenue This Month).
+
+In dark mode, everything in deep navy/black with red accent; light mode uses white backgrounds with pink/red accent.
+
+Jobs
+
+Jobs list with search bar (“Search jobs, clients, addresses…”).
+
+Filter chips: All, New, Scheduled, In Progress, Completed, Invoiced with counts.
+
+Stat cards at top: Total Jobs, Scheduled, In Progress, Completed.
+
+“Recent Activity” feed of job cards.
+
+Tapping a job → Job details screen with:
+
+Client details, address, job description, etc.
+
+Photos section: “No photos yet → Take or Upload Photo” card.
+
+Bottom of job details: Suggested actions panel (“See Suggested Actions”) → Quote, Invoice, etc.
+
+What’s Next / Suggested Actions
+
+A vertical panel listing actions with toggles:
+
+Create Invoice (Suggested)
+
+Email Invoice (Suggested)
+
+SMS Payment Link (Suggested)
+
+Each action has a short English explanation and a “Preview what will happen” link.
+
+Bottom: big blue button Run X Actions.
+
+Quotes
+
+More → Quotes shows:
+
+Search bar (“Search quotes by number, client, or job…”).
+
+Filter chips: All, Draft, Sent, Accepted, Rejected.
+
+Stat tiles: Total Quotes, Draft, etc.
+
+List of quote cards with status badges and amounts.
+
+Quote detail page:
+
+Business header with logo, ABN, contact info.
+
+Meta card: Quote #, Date, Valid Until, Status (pill badge).
+
+“Quote Details” and “Items” table (Description, Qty, Unit Price).
+
+Totals area + business footer.
+
+Top actions: Print and Save as PDF.
+
+Invoices
+
+New Invoice screen with Edit / Preview segmented control at top.
+
+Client dropdown with contact list.
+
+Invoice Details card (title, dates, etc).
+
+Line items section (description, qty, price, total).
+
+Live Preview card showing TAX INVOICE layout, due date in red, bill-to, totals, and footer contact info.
+
+Clients
+
+Clients screen showing:
+
+Total count (“15 total”).
+
+Search by name/email/phone/address.
+
+Filter chips: All, With Email, With Phone, With Address.
+
+Summary tiles: Total Clients, With Email, With Phone, With Address.
+
+More tab
+
+Vertical list of feature cards:
+
+Clients, Quotes, Invoices, Calendar, Time Tracking, Templates, Map, Reports etc.
+
+Integrations:
+
+Email via Gmail card: description + “Built-in” badge.
+
+Payments / Stripe card(s).
+
+Subscription & Brand:
+
+Subscription screen in dark mode listing Free Plan vs Pro features.
+
+Brand → App Color palette with 3×3 colour swatches and a custom colour card.
+
+AI Assistant
+
+Bottom sheet called “TradieTrack AI – Your smart business mate”.
+
+Intro text + “Quick actions” buttons like:
+
+What needs my attention today?
+
+Help me chase up overdue payments
+
+Draft a follow-up email for a quote
+
+Complete today’s jobs…, Send invoices…, etc.
+
+Input bar at bottom: “Ask me anything…” with send icon.
+
+Job Map
+
+Dark map view with pins along the Cairns coast.
+
+Top map card: “Job Map – 20 jobs”.
+
+Filters: dropdown for All Jobs, job type toggle, “Legend”, and refresh icon.
+
+Bottom nav still visible with Map highlighted red.
+
+Navigation Drawer (hamburger menu)
+
+Slide-out left panel with:
+
+Dashboard, Jobs, Clients, Quotes, Invoices, Calendar, Time Tracking, Templates, Map, Reports.
+
+Account switcher card (“Harris Electrical – Free Plan”).
+
+Logout button.
+
+So: visually, you’ve built a card-based, mobile-first SaaS UI with:
+
+Rounded cards, lots of white space, soft shadows.
+
+Accent color (blue or red) that drives selected states, CTAs, FAB, bottom-tab highlight.
+
+Consistent layout: header → filters/search → stats cards → lists → FAB.
+
+Prompt for Replit: “TradieTrack UI/UX Design + Implementation”
+
+Here’s a prompt you can paste into Replit so the agent knows exactly how to treat the UI for both web + mobile:
+
+You are the lead UI/UX + front-end engineer for a job-management app called TradieTrack.
+
+Goal: Maintain and refine a unified design system across the web app (desktop/tablet) and the mobile app (Expo React Native), based on these principles:
+
+Navigation
+
+Mobile: keep a 4-tab bottom nav: Dashboard, Jobs, Map, More with pill-style highlight and a floating sparkle “+” action button in the bottom-right.
+
+Web: a top header bar with logo + “TradieTrack” text, search, theme toggle, notifications, and user avatar. Hamburger icon opens a side drawer with: Dashboard, Jobs, Clients, Quotes, Invoices, Calendar, Time Tracking, Templates, Map, Reports, Account switcher, Logout.
+
+All screens must work in light and dark mode, using a single theme object.
+
+Visual style
+
+Card-based layout with generous spacing, 12–16px border radius, soft shadows, and clean, system-native fonts.
+
+Accent colour comes from a Brand → App Color setting (blue/red/green etc). Use it consistently for:
+
+Primary buttons
+
+Selected tabs/chips
+
+Icon highlights
+
+FAB background
+
+Light mode: white cards on #F5F5F5 style background.
+Dark mode: deep navy/charcoal backgrounds with subtle gradients and high-contrast text.
+
+Key screens to preserve
+
+Dashboard: hero “TradieTrack – Free During Beta” card (with badges for GST compliant, Secure payments, Encrypted) + quick stats tiles (Jobs Today, Overdue, Quotes Pending, Revenue).
+
+Jobs: filters (chips for All/New/Scheduled/In Progress/Completed/Invoiced), stat tiles, job cards, and a job-details view with the Photos section (“Take or Upload Photo”) and “See Suggested Actions” panel.
+
+What’s Next panel: vertical list of suggested actions (Create Invoice, Email Invoice, SMS Payment Link, etc.) with toggles, descriptions, “Preview what will happen”, and a CTA button “Run X Actions”.
+
+Quotes & Invoices: list views with filter chips and stat tiles; detail pages with business header, meta section (Quote #/Invoice #, dates, status), items table (Description, Qty, Unit Price, Total), totals section, and top actions (Print, Save as PDF).
+
+Clients: searchable list, chips for With Email/Phone/Address, and stat tiles.
+- Map: dark map view with Job Map card and filters (job type, legend, refresh).
+
+AI Assistant: bottom sheet called “TradieTrack AI – Your smart business mate” with quick-action buttons and a text input.
+
+Settings: Subscription screen (Free Plan vs Pro features) and Brand → App Color palette.
+
+Behaviour
+
+All cards, filters, and lists should feel native-mobile: smooth scrolling, clear tap targets, no cramped rows.
+
+Whenever a new feature is added (e.g. team management, job photos, Stripe terminal, AI prompts), it must:
+
+Plug into this design system (colors, spacing, typography).
+
+Use existing patterns (cards, chips, bottom sheet, detail layout) instead of inventing new ones.
+
+Keep accessibility in mind: minimum 4.5:1 contrast for text, large hit areas, and readable font sizes.
+
+When you edit any UI code, preserve this structure and polish: don’t introduce inconsistent colors, border radii, or typography. If you need a new component, build it on top of the shared design system (buttons, cards, chips, list items) so web and mobile stay visually aligned.
+
+3. Replit Master QA Prompt for TradieTrack
+
+This is the one you asked for explicitly: “Generate the Replit Master QA Prompt for TradieTrack.”
+Copy-paste this into Replit so the agent can systematically test everything:
+
+Role: You are a senior QA engineer testing TradieTrack, a job/quote/invoice management system for tradies. There is a web app and a mobile app (Expo React Native) talking to the same backend.
+
+Overall goal: Simulate real tradies using the product end-to-end. Attempt to break things, find confusing flows, and verify that the UI, API calls and data stay in sync.
+
+Test data setup
+
+Create a new business account (if possible) called “Harris Electrical Test”.
+
+Create test clients with realistic Australian details (names, emails, phone numbers, addresses around Cairns).
+
+Create ~10 jobs with a mix of statuses:
+
+New, Scheduled, In Progress, Completed, Invoiced.
+
+Include different locations so the Job Map has multiple pins.
+
+Create 3–5 quotes and convert some of them into invoices.
+
+Web app QA (desktop browser)
+
+Go through every major area using the sidebar + tabs:
+
+Dashboard
+
+Check stats match actual data (jobs today, overdue, quotes pending, revenue).
+
+Toggle dark/light mode and confirm UI updates correctly.
+
+Open the AI assistant and trigger quick actions (“What needs my attention today?”, “Help me chase up overdue payments”) and verify responses make sense.
+
+Clients
+
+Create, edit, and delete a client.
+
+Test searching by name, email, phone, and address.
+
+Verify the summary tiles (Total Clients, With Email, With Phone, With Address) update correctly.
+
+Jobs
+
+Create a new job, assign client + address, schedule date/time.
+
+Use chips (All/New/Scheduled/In Progress/Completed/Invoiced) and confirm counts + filters.
+
+Open a job:
+
+Upload at least one photo.
+
+Use “See Suggested Actions” → create a quote and/or invoice via the “Run X Actions” flow.
+
+Confirm jobs, quotes, and invoices stay linked.
+
+Quotes
+
+Verify counts and filters (All/Draft/Sent/Accepted/Rejected).
+
+Open a quote, edit line items, save, print, and save as PDF.
+
+Send via email (using the Gmail integration if configured) and confirm the email content.
+
+Invoices
+
+Use the “New Invoice” screen:
+
+Select a client, set dates, add line items.
+
+Switch between Edit and Preview modes and verify the preview updates live.
+
+Mark an invoice as paid (if supported) and confirm revenue on Dashboard updates.
+
+Map
+
+Open Job Map and check that all jobs appear as pins in the correct locations.
+
+Use filters (job type, legend, refresh) and confirm they behave correctly.
+
+Settings / More
+
+Subscription page: confirm Free vs Pro features are labelled correctly.
+
+Brand → App color: change accent colors and confirm it updates buttons, chips, and FAB.
+
+Email via Gmail: trigger a quote/invoice send and confirm Gmail opens with correct template.
+
+Mobile app QA (Expo/EAS build on iOS)
+
+Using the installed iOS build:
+
+Log in with the same account used on web.
+
+Verify Dashboard, Jobs, Map, More tabs match the web in data and layout (within mobile constraints).
+
+For Jobs:
+
+Start from Dashboard -> open a job -> add photos using the phone camera + gallery.
+
+Use “See Suggested Actions” → create quote/invoice from mobile and then confirm on web.
+
+For Quotes & Invoices:
+
+Ensure lists, filters, detail views and totals match the web.
+
+Confirm that creating/editing here is reflected in web almost instantly (or after refresh).
+
+Job Map on mobile:
+
+Allow location permissions.
+
+Confirm your current location appears where expected and that job pins are visible.
+
+Notifications:
+
+If push notifications are configured, trigger whatever events are available (e.g. new job, overdue invoice) and verify iOS receives and opens the correct screen.
+
+Team management & roles
+
+Create a team with at least 3 members:
+
+Owner (Admin)
+
+Field Tech
+
+Office Staff
+
+For each role:
+
+Confirm what they can see (jobs, clients, quotes, invoices, map).
+
+Confirm what they can do (create/edit/send, mark complete, dispatch, etc.).
+
+Ensure that:
+
+Dispatching a job to a tech updates both the Job list and Map for that user.
+
+Permissions are enforced (e.g. techs can’t modify Stripe settings or global brand colors).
+
+Payments (Stripe / Tap to Pay)
+
+On web, open an invoice and attempt a payment using any available Stripe test mode (or at least hit the “Collect Payment” flows).
+
+On mobile, test any Tap-to-Pay or NFC-related flows and verify errors are handled (your logs showed 500s for terminal-connection-token—ensure the UI surfaces those errors nicely).
+
+Reporting
+
+Use the Reports section if available: run each report, export if possible, and compare numbers to invoices/jobs.
+
+Output
+
+Produce a structured QA report:
+
+Passed / Failed / Not Implemented per feature.
+
+Steps to reproduce any bugs.
+
+Screens where UI/UX is inconsistent with the design system.
+
+Suggestions where a tradie might be confused in real life.
+
+4. Do you need a trademark?
+
+Short version:
+
+No, you don’t have to register a trademark to ship the app.
+
+Yes, it’s a good idea long-term if:
+
+You plan to grow this into a real business.
+
+You don’t want someone else to use the same/similar name in Australia.
+
+What actually matters right now:
+
+Make sure nobody obvious is already using “TradieTrack” for a similar app (quick IP Australia / Google / App Store search).
+
+When you’re closer to public launch and paying customers, talk to a real IP/trade-mark lawyer or use an Australian trade-mark filing service to register the name + logo.
+
+(That’s high-level info only – not legal advice.)
+
+5. Will tradies actually switch? Is it useful enough?
+
+From your screenshots + features, real value props:
+
+All-in-one: Jobs, quotes, invoices, map, clients, calendar, time tracking.
+
+Aussie-specific: GST, “Friendly Australian-style email”, AU addresses, etc.
+
+AI sidekick: “Your smart business mate” that drafts emails, chases payments, surfaces what needs attention.
+
+Gmail built-in: No weird SMTP setup. Tradie just uses their Gmail.
+
+Stripe + Tap-to-Pay: On-site card payments with iPhone.
+
+Clean, modern UI: Much less clunky than ServiceM8/Tradify visually.
+
+This is absolutely useful enough to test with real tradies.
+
+Where you still need proof:
+
+How fast is it in the field with bad reception?
+
+Is the job workflow (new job → schedule → onsite → photos → complete → invoice → payment) smoother than ServiceM8/Tradify for their exact trade?
+
+Does AI actually save time, or just look cool?
+
+That’s what your beta tests should answer.
+
+6. How to create Bevel-style 3D promo mockups
+
+That Bevel ad is basically:
+
+A 3D iPhone mockup,
+
+Dropped onto a dark gradient background,
+
+With labels pointing at different features.
+
+You can recreate that with:
+
+Figma + a “device mockup” plugin (shots.so, Mockuuups Studio plugin)
+
+or Canva with “smart mockups” (search “phone mockup” templates)
+
+or tools like Rotato / Artboard Studio if you want proper 3D.
+
+Basic steps:
+
+Screenshot your best screen (e.g. dark-mode dashboard or Job Map).
+
+Drop it into a device mockup (iPhone 15 Pro frame).
+
+Put that on a dark gradient background.
+
+Add short feature callouts with arrows/lines (e.g. “Job Map”, “AI Business Mate”, “Tap to Pay”, “Quotes & Invoices”).
+
+Export as vertical 9:16 for TikTok/Reels and you’ve got something very close to that Bevel ad.
