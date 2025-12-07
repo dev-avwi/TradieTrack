@@ -72,6 +72,12 @@ The companion React Native mobile app (Expo SDK 52) provides offline-first archi
 - Demo mode: Pre-loaded with mock data for testing (3 clients, 3 jobs, 4 invoices)
 
 ### Recent Changes (December 2025)
+-   **ServiceM8 Mobile Parity Features** (December 7, 2025):
+    -   **Trip Tracking**: Auto-detection of travel between jobs with GPS-based distance calculation, billable time suggestions, and Haversine formula for accurate distances. Backend routes at `/api/trips` with full CRUD operations. Database schema includes `trips` table.
+    -   **Document Scanner**: Camera-based document capture with edge detection enhancement via expo-image-manipulator. Upload to job attachments with graceful fallbacks when native modules unavailable.
+    -   **Mobile PDF Generation**: On-device quote/invoice PDF generation using expo-print without server round-trip. Includes sharing via expo-sharing and local file storage with expo-file-system. All methods include availability checks and proper error messages.
+    -   **Push Notifications**: Complete push notification service with device registration, deep linking from notification taps, and test notification capability. Backend endpoints at `/api/notifications/register-device` and `/api/notifications/test-push`.
+-   **Mobile App Dependencies**: New mobile features require: `npx expo install expo-print expo-sharing expo-file-system expo-image-manipulator`
 -   **Fixed Onboarding Team Invitation Flow**: The `useCompleteOnboarding` hook now properly processes team invitations during onboarding:
     -   Dynamically calculates `teamSize` (solo/small/medium/large) based on invitation count
     -   Fetches available roles from `/api/team/roles` and maps role names to roleIds

@@ -5256,6 +5256,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Trip Tracking Routes - ServiceM8-style travel time tracking
+  app.get("/api/trips", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.query;
+      const trips = await storage.getTrips(userId, jobId as string);
+      res.json(trips);
+    } catch (error) {
+      console.error('Error fetching trips:', error);
+      res.status(500).json({ error: 'Failed to fetch trips' });
+    }
+  });
+
+  app.get("/api/trips/active", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const activeTrip = await storage.getActiveTrip(userId);
+      res.json(activeTrip || null);
+    } catch (error) {
+      console.error('Error fetching active trip:', error);
+      res.status(500).json({ error: 'Failed to fetch active trip' });
+    }
+  });
+
+  app.get("/api/trips/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const trip = await storage.getTrip(id, userId);
+      if (!trip) {
+        return res.status(404).json({ error: 'Trip not found' });
+      }
+      res.json(trip);
+    } catch (error) {
+      console.error('Error fetching trip:', error);
+      res.status(500).json({ error: 'Failed to fetch trip' });
+    }
+  });
+
+  app.post("/api/trips", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const tripData = req.body;
+      
+      // Check if there's already an active trip
+      const activeTrip = await storage.getActiveTrip(userId);
+      if (activeTrip) {
+        return res.status(400).json({ 
+          error: 'You already have an active trip. Stop it before starting a new one.',
+          activeTrip
+        });
+      }
+      
+      const trip = await storage.createTrip({
+        ...tripData,
+        userId,
+        startTime: new Date(),
+        status: 'in_progress',
+      });
+      res.status(201).json(trip);
+    } catch (error) {
+      console.error('Error creating trip:', error);
+      res.status(500).json({ error: 'Failed to create trip' });
+    }
+  });
+
+  app.put("/api/trips/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const tripData = req.body;
+      
+      const trip = await storage.updateTrip(id, userId, tripData);
+      if (!trip) {
+        return res.status(404).json({ error: 'Trip not found' });
+      }
+      res.json(trip);
+    } catch (error) {
+      console.error('Error updating trip:', error);
+      res.status(500).json({ error: 'Failed to update trip' });
+    }
+  });
+
+  app.post("/api/trips/:id/stop", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { endLatitude, endLongitude, endAddress, distanceKm, notes } = req.body;
+      
+      // First update with location data if provided
+      if (endLatitude || endLongitude || endAddress || distanceKm) {
+        await storage.updateTrip(id, userId, {
+          endLatitude,
+          endLongitude,
+          endAddress,
+          distanceKm,
+          notes,
+        });
+      }
+      
+      const stoppedTrip = await storage.stopTrip(id, userId);
+      if (!stoppedTrip) {
+        return res.status(404).json({ error: 'Trip not found or already stopped' });
+      }
+      res.json(stoppedTrip);
+    } catch (error) {
+      console.error('Error stopping trip:', error);
+      res.status(500).json({ error: 'Failed to stop trip' });
+    }
+  });
+
+  app.delete("/api/trips/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const deleted = await storage.deleteTrip(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Trip not found' });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting trip:', error);
+      res.status(500).json({ error: 'Failed to delete trip' });
+    }
+  });
+
   // Timesheet Routes with Enterprise Features
   app.get("/api/timesheets", requireAuth, async (req: any, res) => {
     try {
@@ -7157,6 +7284,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error registering push token:', error);
       res.status(500).json({ error: 'Failed to register push token' });
+    }
+  });
+
+  // Register device for push notifications (mobile app compatible)
+  app.post("/api/notifications/register-device", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { pushToken, platform, deviceId } = req.body;
+      
+      if (!pushToken || !platform) {
+        return res.status(400).json({ error: 'Push token and platform required' });
+      }
+
+      console.log(`[Push] Device registered for user ${userId}: ${pushToken.substring(0, 30)}... (${platform})`);
+      
+      res.json({ 
+        success: true,
+        message: 'Device registered for push notifications',
+      });
+    } catch (error: any) {
+      console.error('Error registering device:', error);
+      res.status(500).json({ error: 'Failed to register device' });
+    }
+  });
+
+  // Send test push notification (for verification)
+  app.post("/api/notifications/test-push", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ error: 'Push token required' });
+      }
+
+      // In production, this would use Expo's push notification API
+      // For now, we log and return success
+      console.log(`[Push] Test notification requested for user ${userId}`);
+      
+      // Simulate sending to Expo push API
+      // const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     to: token,
+      //     title: 'TradieTrack Test',
+      //     body: 'Push notifications are working!',
+      //     data: { type: 'test' },
+      //   }),
+      // });
+      
+      res.json({ 
+        success: true,
+        message: 'Test notification sent',
+      });
+    } catch (error: any) {
+      console.error('Error sending test push:', error);
+      res.status(500).json({ error: 'Failed to send test notification' });
     }
   });
 

@@ -735,6 +735,31 @@ export const timesheets = pgTable("timesheets", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Trip Tracking - ServiceM8-style travel time tracking
+export const trips = pgTable("trips", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'cascade' }),
+  tripType: text("trip_type").notNull().default('travel'), // 'travel', 'supply_run', 'site_visit'
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  duration: integer("duration"), // in minutes
+  distanceKm: decimal("distance_km", { precision: 10, scale: 2 }),
+  startLatitude: decimal("start_latitude", { precision: 10, scale: 7 }),
+  startLongitude: decimal("start_longitude", { precision: 10, scale: 7 }),
+  endLatitude: decimal("end_latitude", { precision: 10, scale: 7 }),
+  endLongitude: decimal("end_longitude", { precision: 10, scale: 7 }),
+  startAddress: text("start_address"),
+  endAddress: text("end_address"),
+  isBillable: boolean("is_billable").default(true),
+  billableRate: decimal("billable_rate", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  status: text("status").default('in_progress'), // 'in_progress', 'completed', 'cancelled'
+  autoDetected: boolean("auto_detected").default(false), // Was this trip auto-detected via GPS
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Expense Tracking
 export const expenseCategories = pgTable("expense_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1217,6 +1242,29 @@ export const insertTimesheetSchema = createInsertSchema(timesheets).omit({
   updatedAt: true,
 });
 
+// Trip Tracking Schema
+export const insertTripSchema = createInsertSchema(trips).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  startTime: z.preprocess(
+    (val) => val ? new Date(val as string | number | Date) : undefined,
+    z.date().optional()
+  ),
+  endTime: z.preprocess(
+    (val) => val ? new Date(val as string | number | Date) : undefined,
+    z.date().optional()
+  ),
+  distanceKm: z.string().optional(),
+  startLatitude: z.string().optional(),
+  startLongitude: z.string().optional(),
+  endLatitude: z.string().optional(),
+  endLongitude: z.string().optional(),
+  billableRate: z.string().optional(),
+});
+
 // Expense Tracking Schemas
 export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).omit({
   id: true,
@@ -1400,6 +1448,10 @@ export type TimeEntry = typeof timeEntries.$inferSelect;
 
 export type InsertTimesheet = z.infer<typeof insertTimesheetSchema>;
 export type Timesheet = typeof timesheets.$inferSelect;
+
+// Trip Tracking Types
+export type InsertTrip = z.infer<typeof insertTripSchema>;
+export type Trip = typeof trips.$inferSelect;
 
 // Expense Tracking Types
 export type InsertExpenseCategory = z.infer<typeof insertExpenseCategorySchema>;

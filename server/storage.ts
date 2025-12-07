@@ -39,6 +39,8 @@ import {
   type InsertTimeEntry,
   type Timesheet,
   type InsertTimesheet,
+  type Trip,
+  type InsertTrip,
   type ExpenseCategory,
   type InsertExpenseCategory,
   type Expense,
@@ -93,6 +95,7 @@ import {
   paymentRequests,
   timeEntries,
   timesheets,
+  trips,
   expenseCategories,
   expenses,
   inventoryCategories,
@@ -314,6 +317,15 @@ export interface IStorage {
   getTimesheet(id: string, userId: string): Promise<Timesheet | undefined>;
   createTimesheet(timesheet: InsertTimesheet & { userId: string }): Promise<Timesheet>;
   updateTimesheet(id: string, userId: string, timesheet: Partial<InsertTimesheet>): Promise<Timesheet | undefined>;
+  
+  // Trip Tracking
+  getTrips(userId: string, jobId?: string): Promise<Trip[]>;
+  getTrip(id: string, userId: string): Promise<Trip | undefined>;
+  getActiveTrip(userId: string): Promise<Trip | undefined>;
+  createTrip(trip: InsertTrip & { userId: string }): Promise<Trip>;
+  updateTrip(id: string, userId: string, trip: Partial<InsertTrip>): Promise<Trip | undefined>;
+  deleteTrip(id: string, userId: string): Promise<boolean>;
+  stopTrip(id: string, userId: string): Promise<Trip | undefined>;
   
   // Expense Tracking
   getExpenseCategories(userId: string): Promise<ExpenseCategory[]>;
@@ -1654,6 +1666,81 @@ export class PostgresStorage implements IStorage {
     const result = await db.update(timesheets)
       .set({ ...timesheet, updatedAt: new Date() })
       .where(and(eq(timesheets.id, id), eq(timesheets.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  // Trip Tracking
+  async getTrips(userId: string, jobId?: string): Promise<Trip[]> {
+    if (jobId) {
+      return await db.select().from(trips)
+        .where(and(eq(trips.userId, userId), eq(trips.jobId, jobId)))
+        .orderBy(desc(trips.startTime));
+    }
+    return await db.select().from(trips)
+      .where(eq(trips.userId, userId))
+      .orderBy(desc(trips.startTime));
+  }
+
+  async getTrip(id: string, userId: string): Promise<Trip | undefined> {
+    const result = await db.select().from(trips)
+      .where(and(eq(trips.id, id), eq(trips.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getActiveTrip(userId: string): Promise<Trip | undefined> {
+    const result = await db.select().from(trips)
+      .where(and(
+        eq(trips.userId, userId),
+        eq(trips.status, 'in_progress')
+      ))
+      .orderBy(desc(trips.startTime))
+      .limit(1);
+    return result[0];
+  }
+
+  async createTrip(trip: InsertTrip & { userId: string }): Promise<Trip> {
+    const result = await db.insert(trips).values({
+      ...trip,
+      startTime: trip.startTime || new Date(),
+    }).returning();
+    return result[0];
+  }
+
+  async updateTrip(id: string, userId: string, trip: Partial<InsertTrip>): Promise<Trip | undefined> {
+    const result = await db.update(trips)
+      .set({ ...trip, updatedAt: new Date() })
+      .where(and(eq(trips.id, id), eq(trips.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async deleteTrip(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(trips)
+      .where(and(eq(trips.id, id), eq(trips.userId, userId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async stopTrip(id: string, userId: string): Promise<Trip | undefined> {
+    const existingTrip = await this.getTrip(id, userId);
+    if (!existingTrip || existingTrip.status !== 'in_progress') {
+      return undefined;
+    }
+
+    const endTime = new Date();
+    const startTime = existingTrip.startTime;
+    const duration = Math.round((endTime.getTime() - new Date(startTime).getTime()) / 60000); // minutes
+
+    const result = await db.update(trips)
+      .set({
+        endTime,
+        duration,
+        status: 'completed',
+        updatedAt: new Date(),
+      })
+      .where(and(eq(trips.id, id), eq(trips.userId, userId)))
       .returning();
     return result[0];
   }
