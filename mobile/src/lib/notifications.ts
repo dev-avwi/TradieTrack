@@ -9,7 +9,9 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { router } from 'expo-router';
 import api from './api';
+import { offlineStore } from './offlineStore';
 
 // Configure how notifications appear when app is in foreground
 Notifications.setNotificationHandler({
@@ -182,6 +184,72 @@ class NotificationService {
         amount: data?.amount,
       },
     };
+  }
+
+  /**
+   * Handle deep linking when notification is tapped
+   */
+  navigateToNotification(payload: NotificationPayload): void {
+    try {
+      switch (payload.type) {
+        case 'job_update':
+        case 'job_assigned':
+          if (payload.data?.jobId) {
+            router.push(`/job/${payload.data.jobId}`);
+          } else {
+            router.push('/jobs');
+          }
+          break;
+        case 'quote_accepted':
+          if (payload.data?.quoteId) {
+            router.push(`/more/quote/${payload.data.quoteId}`);
+          } else {
+            router.push('/more/quotes');
+          }
+          break;
+        case 'payment_received':
+          if (payload.data?.invoiceId) {
+            router.push(`/more/invoice/${payload.data.invoiceId}`);
+          } else {
+            router.push('/more/invoices');
+          }
+          break;
+        case 'team_message':
+          router.push('/more/chat-hub');
+          break;
+        default:
+          router.push('/');
+      }
+    } catch (error) {
+      console.error('[Notifications] Navigation failed:', error);
+      router.push('/');
+    }
+  }
+
+  /**
+   * Schedule a job reminder notification
+   */
+  async scheduleJobReminder(
+    jobId: string,
+    jobTitle: string,
+    scheduledAt: Date,
+    minutesBefore: number = 30
+  ): Promise<string | null> {
+    const reminderTime = new Date(scheduledAt.getTime() - minutesBefore * 60 * 1000);
+    
+    if (reminderTime <= new Date()) {
+      console.log('[Notifications] Reminder time is in the past, skipping');
+      return null;
+    }
+
+    const secondsUntilReminder = Math.floor((reminderTime.getTime() - Date.now()) / 1000);
+    
+    return await this.scheduleLocalNotification(
+      'Job Reminder',
+      `${jobTitle} starts in ${minutesBefore} minutes`,
+      { type: 'job_update', jobId },
+      secondsUntilReminder
+    );
   }
 
   /**

@@ -18,12 +18,17 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tradietrack.app",
+      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "TradieTrack needs camera access to take job photos",
         "NSPhotoLibraryUsageDescription": "TradieTrack needs photo library access to upload job photos",
         "NSLocationWhenInUseUsageDescription": "TradieTrack needs location access to track job sites",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "TradieTrack needs location access for team tracking",
-        "NFCReaderUsageDescription": "TradieTrack uses NFC for Tap to Pay contactless payments"
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "TradieTrack needs background location access for team tracking and geofencing",
+        "NFCReaderUsageDescription": "TradieTrack uses NFC for Tap to Pay contactless payments",
+        "UIBackgroundModes": ["location", "fetch", "remote-notification"]
+      },
+      "entitlements": {
+        "com.apple.developer.proximity-reader.payment.acceptance": true
       }
     },
     "android": {
@@ -32,6 +37,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.tradietrack.app",
+      "versionCode": 1,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
@@ -41,8 +47,14 @@
         "ACCESS_BACKGROUND_LOCATION",
         "NFC",
         "VIBRATE",
-        "RECEIVE_BOOT_COMPLETED"
-      ]
+        "RECEIVE_BOOT_COMPLETED",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -60,15 +72,24 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow TradieTrack to track your location for team features"
+          "locationAlwaysAndWhenInUsePermission": "Allow TradieTrack to track your location for team coordination",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
       ],
       [
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#f97316"
+          "color": "#3b82f6",
+          "sounds": ["./assets/notification-sound.wav"]
         }
+      ],
+      [
+        "expo-sqlite"
+      ],
+      [
+        "expo-task-manager"
       ]
     ],
     "experiments": {
@@ -81,6 +102,12 @@
       "eas": {
         "projectId": "your-project-id"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/your-project-id"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }

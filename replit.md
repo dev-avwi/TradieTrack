@@ -166,14 +166,58 @@ A React Native mobile app is built in `mobile/` directory with full API integrat
 3. Run `npm start`
 4. Scan QR code with Expo Go app on your phone
 
-**Upcoming Features:**
-- **Tap to Pay** - Stripe Terminal SDK for NFC contactless payments
-- **Push Notifications** - Real-time job and payment alerts  
-- **Background Location** - Life360-style team tracking
-- **Offline Mode** - SQLite cache for poor connectivity areas
+### Native Mobile Features (December 2025)
+
+The mobile app now includes full native capabilities requiring EAS Build for production:
+
+**Offline-First Architecture (`mobile/src/lib/`):**
+- `database.ts` - SQLite schema for all entities (jobs, clients, quotes, invoices, assets, messages, time entries, signatures, location history)
+- `offlineStore.ts` - CRUD operations with mutation queue, auto-sync, conflict resolution (last-write-wins), temp ID reconciliation
+- `useNetworkStatus.ts` hook - Network state monitoring with pending change counts
+- `OfflineBanner.tsx` - Visual offline indicator with sync button
+
+**Push Notifications (`mobile/src/lib/notifications.ts`):**
+- Expo Notifications with permission handling
+- Android channels: jobs (high), payments (high), messages (default), reminders (default)
+- Deep linking via expo-router to job/quote/invoice/chat screens
+- Local notification scheduling for job reminders (30 min before)
+- Badge count management
+
+**Background GPS Tracking (`mobile/src/lib/locationTracking.ts`):**
+- TaskManager background task for continuous location updates
+- Foreground service notification (Android requirement)
+- Geofence monitoring with 100m radius for job sites
+- Activity detection (stationary, walking, running, driving)
+- Battery-optimized updates (30s interval, 50m distance)
+- Location history saved to SQLite for offline sync
+
+**Tap to Pay (`mobile/src/lib/tapToPay.ts`):**
+- Service layer ready for @stripe/stripe-terminal-react-native
+- Payment intent creation and capture flow
+- Connection status and payment status subscriptions
+- Offline payment queueing for retry
+- Manual entry fallback
+
+**EAS Build Configuration:**
+- `eas.json` - Development (simulator APK), Preview (internal), Production (app-bundle) profiles
+- `app.json` - Native entitlements including:
+  - iOS: UIBackgroundModes (location, fetch, remote-notification), Tap to Pay entitlement
+  - Android: FOREGROUND_SERVICE, FOREGROUND_SERVICE_LOCATION, POST_NOTIFICATIONS
 
 **App Store Requirements:**
-1. Apple Developer Program ($99/year) + Tap to Pay entitlement
-2. Google Play Developer account ($25 one-time)
+1. Apple Developer Program ($99/year)
+2. Tap to Pay entitlement request: https://developer.apple.com/contact/request/tap-to-pay-on-iphone
+3. Google Play Developer account ($25 one-time)
+4. FCM/APNs credentials for push notifications
+5. EAS Build for native module compilation
+
+**Testing Native Features:**
+```bash
+cd mobile
+npm install
+npx expo prebuild  # Generate native projects
+eas build --platform ios --profile development
+eas build --platform android --profile development
+```
 
 Full requirements in `docs/NATIVE_APP_REQUIREMENTS.md`.
