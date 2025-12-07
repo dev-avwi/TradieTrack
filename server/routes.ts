@@ -1664,7 +1664,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Business Settings Routes
   app.get("/api/business-settings", requireAuth, async (req: any, res) => {
     try {
-      const settings = await storage.getBusinessSettings(req.userId);
+      // Use effectiveUserId for staff members to get their business owner's settings
+      const userContext = await getUserContext(req.userId);
+      const settings = await storage.getBusinessSettings(userContext.effectiveUserId);
       if (!settings) {
         return res.status(404).json({ error: "Business settings not found" });
       }
@@ -8190,10 +8192,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       const { recipientId } = req.params;
-      const { content, attachmentUrl, attachmentType } = req.body;
+      // Accept both 'message' and 'content' for backwards compatibility
+      const messageText = req.body.message || req.body.content;
       
-      if (!content?.trim() && !attachmentUrl) {
-        return res.status(400).json({ error: 'Message content or attachment is required' });
+      if (!messageText?.trim()) {
+        return res.status(400).json({ error: 'Message content is required' });
       }
       
       // Verify both users exist and can message each other
@@ -8207,9 +8210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const message = await storage.createDirectMessage({
         senderId: userId,
         recipientId,
-        content: content?.trim() || '',
-        attachmentUrl,
-        attachmentType,
+        message: messageText.trim(),
       });
       
       // Enrich with sender info

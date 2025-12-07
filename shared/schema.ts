@@ -1673,18 +1673,19 @@ export type TeamChat = typeof teamChat.$inferSelect;
 // Direct Messages - Private conversations between team members
 export const directMessages = pgTable("direct_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessOwnerId: varchar("business_owner_id").references(() => users.id, { onDelete: 'cascade' }),
   senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   recipientId: varchar("recipient_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  content: text("content").notNull(),
-  attachmentUrl: text("attachment_url"),
-  attachmentType: text("attachment_type"), // image, file, etc.
+  message: text("message").notNull(),
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertDirectMessageSchema = createInsertSchema(directMessages).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 export type InsertDirectMessage = z.infer<typeof insertDirectMessageSchema>;
 export type DirectMessage = typeof directMessages.$inferSelect;

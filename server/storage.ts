@@ -2411,7 +2411,7 @@ export class PostgresStorage implements IStorage {
           partnerId,
           partnerName: partner ? `${partner.firstName || ''} ${partner.lastName || ''}`.trim() || partner.email : 'Unknown',
           partnerAvatar: partner?.profileImageUrl,
-          lastMessage: msg.content,
+          lastMessage: msg.message,
           lastMessageAt: msg.createdAt,
           unreadCount: received.filter(m => m.senderId === partnerId && !m.isRead).length,
         });
