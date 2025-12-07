@@ -4,6 +4,8 @@ import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit,
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { JobChat } from "./JobChat";
+import { SignatureCapture } from "./SignatureCapture";
+import { JobFormResponse } from "./JobFormResponse";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
@@ -581,6 +583,16 @@ export default function JobDetailView({
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Digital Signatures - show when job is in progress or done */}
+        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
+          <SignatureCapture jobId={jobId} />
+        )}
+
+        {/* Job Forms - show when job is in progress or done */}
+        {(job.status === 'in_progress' || job.status === 'done') && (
+          <JobFormResponse jobId={jobId} />
         )}
 
         {/* Job Discussion - only show for team mode (not solo owners) */}

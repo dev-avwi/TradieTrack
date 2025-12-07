@@ -18,10 +18,12 @@ import { useClients } from "@/hooks/use-clients";
 import { useCreateQuote } from "@/hooks/use-quotes";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useDocumentTemplates, type DocumentTemplate } from "@/hooks/use-templates";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import LiveDocumentPreview from "./LiveDocumentPreview";
 import CatalogModal from "@/components/CatalogModal";
 import RecentJobPicker from "@/components/RecentJobPicker";
+import QuoteRevisions from "./QuoteRevisions";
 import {
   Plus,
   Trash2,
@@ -38,7 +40,8 @@ import {
   Check,
   DollarSign,
   Percent,
-  Briefcase
+  Briefcase,
+  History
 } from "lucide-react";
 
 const lineItemSchema = z.object({
@@ -61,15 +64,48 @@ const quoteFormSchema = z.object({
 type QuoteFormData = z.infer<typeof quoteFormSchema>;
 
 interface LiveQuoteEditorProps {
+  quoteId?: string;
   onSave?: (quoteId: string) => void;
   onCancel?: () => void;
 }
 
-export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorProps) {
+export default function LiveQuoteEditor({ quoteId, onSave, onCancel }: LiveQuoteEditorProps) {
   const { toast } = useToast();
   const { data: clients = [] } = useClients();
   const { data: businessSettings } = useBusinessSettings();
   const createQuoteMutation = useCreateQuote();
+  const isEditMode = !!quoteId;
+
+  const { data: existingQuote, isLoading: quoteLoading } = useQuery({
+    queryKey: ['/api/quotes', quoteId],
+    enabled: !!quoteId,
+  });
+
+  const { data: revisions = [] } = useQuery<any[]>({
+    queryKey: ['/api/quotes', quoteId, 'revisions'],
+    enabled: !!quoteId,
+  });
+
+  const updateQuoteMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("PATCH", `/api/quotes/${quoteId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quoteId] });
+    },
+  });
+
+  const createRevisionMutation = useMutation({
+    mutationFn: async (notes?: string) => {
+      const response = await apiRequest("POST", `/api/quotes/${quoteId}/revisions`, { notes });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quoteId, 'revisions'] });
+    },
+  });
   
   // Read jobId from URL query parameters (e.g., /quotes/new?jobId=123)
   const searchString = useSearch();
@@ -120,9 +156,41 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     name: "lineItems"
   });
 
+  // Auto-fill form when editing an existing quote
+  const [quoteLoaded, setQuoteLoaded] = useState(false);
+  useEffect(() => {
+    if (existingQuote && !quoteLoaded && clients.length > 0) {
+      setQuoteLoaded(true);
+      const quote = existingQuote as any;
+      
+      form.setValue("clientId", quote.clientId || "");
+      form.setValue("title", quote.title || "");
+      form.setValue("description", quote.description || "");
+      form.setValue("notes", quote.notes || "");
+      
+      if (quote.validUntil) {
+        form.setValue("validUntil", new Date(quote.validUntil).toISOString().split('T')[0]);
+      }
+      
+      if (quote.depositPercent && Number(quote.depositPercent) > 0) {
+        form.setValue("depositRequired", true);
+        form.setValue("depositPercent", Number(quote.depositPercent));
+      }
+      
+      if (quote.lineItems && quote.lineItems.length > 0) {
+        const items = quote.lineItems.map((item: any) => ({
+          description: item.description || "",
+          quantity: String(item.quantity || 1),
+          unitPrice: String(item.unitPrice || 0),
+        }));
+        form.setValue("lineItems", items);
+      }
+    }
+  }, [existingQuote, quoteLoaded, clients, form]);
+
   // Auto-fill form when job is loaded from URL parameter
   useEffect(() => {
-    if (preloadedJob && !jobAutoLoaded && clients.length > 0) {
+    if (preloadedJob && !jobAutoLoaded && clients.length > 0 && !isEditMode) {
       setJobAutoLoaded(true);
       const job = preloadedJob as any;
       
@@ -140,7 +208,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
         description: `Creating quote for "${job.title}"`,
       });
     }
-  }, [preloadedJob, jobAutoLoaded, clients, form, toast]);
+  }, [preloadedJob, jobAutoLoaded, clients, form, toast, isEditMode]);
 
   const watchedValues = form.watch();
   const selectedClient = (clients as any[]).find(c => c.id === watchedValues.clientId);
@@ -295,6 +363,23 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   const gst = subtotal * 0.1;
   const total = subtotal + gst;
 
+  const hasSignificantChanges = (data: QuoteFormData): boolean => {
+    if (!existingQuote) return false;
+    const quote = existingQuote as any;
+    
+    const currentTotal = data.lineItems.reduce(
+      (sum, item) => sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0),
+      0
+    ) * 1.1;
+    const existingTotal = parseFloat(quote.total) || 0;
+    
+    const lineItemsChanged = data.lineItems.length !== (quote.lineItems?.length || 0);
+    const totalChanged = Math.abs(currentTotal - existingTotal) > 0.01;
+    const titleChanged = data.title !== quote.title;
+    
+    return lineItemsChanged || totalChanged || titleChanged;
+  };
+
   const handleSubmit = async (data: QuoteFormData) => {
     try {
       const quoteData = {
@@ -313,19 +398,38 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
         })),
       };
 
-      const result = await createQuoteMutation.mutateAsync(quoteData);
-      
-      toast({
-        title: "Quote created!",
-        description: "Your quote has been saved successfully",
-      });
+      if (isEditMode && quoteId) {
+        const shouldCreateRevision = hasSignificantChanges(data);
+        
+        if (shouldCreateRevision) {
+          await createRevisionMutation.mutateAsync("Auto-saved before update");
+        }
+        
+        await updateQuoteMutation.mutateAsync(quoteData);
+        
+        toast({
+          title: "Quote updated!",
+          description: shouldCreateRevision 
+            ? "Quote saved and revision created" 
+            : "Your changes have been saved",
+        });
 
-      onSave?.(result.id);
+        onSave?.(quoteId);
+      } else {
+        const result = await createQuoteMutation.mutateAsync(quoteData);
+        
+        toast({
+          title: "Quote created!",
+          description: "Your quote has been saved successfully",
+        });
+
+        onSave?.(result.id);
+      }
     } catch (error) {
-      console.error("Error creating quote:", error);
+      console.error("Error saving quote:", error);
       toast({
         title: "Error",
-        description: "Failed to create quote. Please try again.",
+        description: `Failed to ${isEditMode ? 'update' : 'create'} quote. Please try again.`,
         variant: "destructive",
       });
     }
@@ -386,7 +490,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
         <div className={`flex-1 overflow-auto p-4 lg:p-6 ${mobileView === 'preview' ? 'hidden lg:block' : ''}`}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 max-w-xl mx-auto lg:mx-0">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-3">
                 <Button
                   type="button"
@@ -398,18 +502,26 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
-                <h1 className="ios-title">New Quote</h1>
+                <h1 className="ios-title">{isEditMode ? 'Edit Quote' : 'New Quote'}</h1>
               </div>
-              <Badge 
-                className="px-3 py-1.5 text-xs font-semibold"
-                style={{ 
-                  backgroundColor: 'hsl(var(--trade) / 0.1)', 
-                  color: 'hsl(var(--trade))',
-                  border: 'none'
-                }}
-              >
-                {formatCurrency(total)}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {isEditMode && quoteId && (
+                  <QuoteRevisions 
+                    quoteId={quoteId} 
+                    compact={true}
+                  />
+                )}
+                <Badge 
+                  className="px-3 py-1.5 text-xs font-semibold"
+                  style={{ 
+                    backgroundColor: 'hsl(var(--trade) / 0.1)', 
+                    color: 'hsl(var(--trade))',
+                    border: 'none'
+                  }}
+                >
+                  {formatCurrency(total)}
+                </Badge>
+              </div>
             </div>
 
             {/* Quick Create from Job */}
@@ -682,23 +794,23 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
             {/* Submit Button */}
             <Button
               type="submit"
-              disabled={createQuoteMutation.isPending}
+              disabled={createQuoteMutation.isPending || updateQuoteMutation.isPending}
               className="w-full h-14 rounded-2xl text-base font-semibold gap-2 press-scale"
               style={{ 
                 backgroundColor: 'hsl(var(--trade))',
                 color: 'white'
               }}
-              data-testid="button-create-quote"
+              data-testid={isEditMode ? "button-update-quote" : "button-create-quote"}
             >
-              {createQuoteMutation.isPending ? (
+              {(createQuoteMutation.isPending || updateQuoteMutation.isPending) ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Creating...
+                  {isEditMode ? 'Saving...' : 'Creating...'}
                 </>
               ) : (
                 <>
                   <Check className="h-5 w-5" />
-                  Create Quote
+                  {isEditMode ? 'Save Changes' : 'Create Quote'}
                 </>
               )}
             </Button>

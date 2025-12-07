@@ -18,6 +18,7 @@ import {
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import Svg, { Path } from 'react-native-svg';
 import api from '../../src/lib/api';
 import { useJobsStore, useTimeTrackingStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';
@@ -73,6 +74,19 @@ interface JobPhoto {
   thumbnailUrl?: string;
   caption?: string;
   createdAt: string;
+}
+
+interface JobSignature {
+  id: string;
+  signatureData: string;
+  signerName: string;
+  signatureType: 'customer' | 'technician';
+  createdAt: string;
+}
+
+interface SignaturePoint {
+  x: number;
+  y: number;
 }
 
 const STATUS_ACTIONS = {
@@ -784,6 +798,196 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
+  signatureCountBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.success,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  signatureCountText: {
+    color: colors.primaryForeground,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  signatureModalContent: {
+    padding: spacing.lg,
+  },
+  signatureInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  signatureInput: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    fontSize: 15,
+    color: colors.foreground,
+    marginBottom: spacing.lg,
+  },
+  signatureTypeContainer: {
+    marginBottom: spacing.lg,
+  },
+  signatureTypeRow: {
+    flexDirection: 'row',
+  },
+  signatureTypeButton: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+  },
+  signatureTypeButtonActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
+  signatureTypeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+  },
+  signatureTypeTextActive: {
+    color: colors.primary,
+  },
+  signatureCanvasContainer: {
+    marginBottom: spacing.lg,
+  },
+  signatureCanvasLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  signatureCanvas: {
+    height: 200,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  signatureCanvasPlaceholder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  signatureCanvasPlaceholderText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    fontStyle: 'italic',
+  },
+  signatureButtonsRow: {
+    flexDirection: 'row',
+    marginTop: spacing.md,
+  },
+  clearSignatureButton: {
+    flex: 1,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  clearSignatureButtonText: {
+    color: colors.foreground,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  saveSignatureButton: {
+    flex: 2,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    marginLeft: spacing.sm,
+  },
+  saveSignatureButtonDisabled: {
+    backgroundColor: colors.muted,
+  },
+  saveSignatureButtonText: {
+    color: colors.primaryForeground,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  signaturesSection: {
+    marginBottom: spacing.xl,
+  },
+  signaturesScrollView: {
+    flexDirection: 'row',
+  },
+  signaturesScrollContent: {
+    paddingRight: spacing.md,
+  },
+  signatureItem: {
+    width: 140,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    overflow: 'hidden',
+    marginRight: spacing.md,
+  },
+  signatureItemImage: {
+    width: '100%',
+    height: 80,
+    backgroundColor: colors.white,
+  },
+  signatureItemInfo: {
+    padding: spacing.sm,
+  },
+  signatureItemName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  signatureItemType: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+    textTransform: 'capitalize',
+  },
+  signatureTypeBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+  },
+  signatureTypeBadgeCustomer: {
+    backgroundColor: `${colors.scheduled}20`,
+  },
+  signatureTypeBadgeTechnician: {
+    backgroundColor: `${colors.success}20`,
+  },
+  signatureTypeBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  noSignaturesContainer: {
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  noSignaturesText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    fontStyle: 'italic',
+  },
 });
 
 export default function JobDetailScreen() {
@@ -808,6 +1012,15 @@ export default function JobDetailScreen() {
   const [selectedPhoto, setSelectedPhoto] = useState<JobPhoto | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [signatures, setSignatures] = useState<JobSignature[]>([]);
+  const [signatureSignerName, setSignatureSignerName] = useState('');
+  const [signatureType, setSignatureType] = useState<'customer' | 'technician'>('customer');
+  const [signaturePoints, setSignaturePoints] = useState<SignaturePoint[][]>([]);
+  const [currentStroke, setCurrentStroke] = useState<SignaturePoint[]>([]);
+  const [isSavingSignature, setIsSavingSignature] = useState(false);
+  const [signatureCanvasLayout, setSignatureCanvasLayout] = useState({ width: 0, height: 0 });
+  
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { 
     activeTimer, 
@@ -825,6 +1038,7 @@ export default function JobDetailScreen() {
     loadJob();
     fetchActiveTimer();
     loadPhotos();
+    loadSignatures();
     loadRelatedDocuments();
   }, [id]);
 
@@ -877,6 +1091,119 @@ export default function JobDetailScreen() {
       console.log('No photos or error loading:', error);
       setPhotos([]);
     }
+  };
+
+  const loadSignatures = async () => {
+    try {
+      const response = await api.get<JobSignature[]>(`/api/jobs/${id}/signatures`);
+      if (response.data) {
+        setSignatures(response.data);
+      }
+    } catch (error) {
+      console.log('No signatures or error loading:', error);
+      setSignatures([]);
+    }
+  };
+
+  const handleSignatureTouch = (event: any, isStart: boolean) => {
+    const { locationX, locationY } = event.nativeEvent;
+    const point: SignaturePoint = { x: locationX, y: locationY };
+    
+    if (isStart) {
+      setCurrentStroke([point]);
+    } else {
+      setCurrentStroke(prev => [...prev, point]);
+    }
+  };
+
+  const handleSignatureTouchEnd = () => {
+    if (currentStroke.length > 0) {
+      setSignaturePoints(prev => [...prev, currentStroke]);
+      setCurrentStroke([]);
+    }
+  };
+
+  const clearSignature = () => {
+    setSignaturePoints([]);
+    setCurrentStroke([]);
+  };
+
+  const openSignatureModal = () => {
+    setSignatureSignerName(client?.name || '');
+    setSignatureType('customer');
+    clearSignature();
+    setShowSignatureModal(true);
+  };
+
+  const generateSignatureSvgPath = (): string => {
+    const allStrokes = [...signaturePoints, currentStroke].filter(s => s.length > 0);
+    let pathData = '';
+    
+    allStrokes.forEach(stroke => {
+      if (stroke.length > 0) {
+        pathData += `M ${stroke[0].x} ${stroke[0].y} `;
+        for (let i = 1; i < stroke.length; i++) {
+          pathData += `L ${stroke[i].x} ${stroke[i].y} `;
+        }
+      }
+    });
+    
+    return pathData;
+  };
+
+  const generateSignatureDataUrl = (): string => {
+    const { width, height } = signatureCanvasLayout;
+    if (width === 0 || height === 0) return '';
+    
+    const pathData = generateSignatureSvgPath();
+    if (!pathData) return '';
+    
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      <rect width="100%" height="100%" fill="white"/>
+      <path d="${pathData}" stroke="#1f2733" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+    
+    const base64 = btoa(svgContent);
+    return `data:image/svg+xml;base64,${base64}`;
+  };
+
+  const handleSaveSignature = async () => {
+    if (!job) return;
+    
+    if (!signatureSignerName.trim()) {
+      Alert.alert('Error', 'Please enter the signer name');
+      return;
+    }
+    
+    if (signaturePoints.length === 0) {
+      Alert.alert('Error', 'Please draw a signature');
+      return;
+    }
+    
+    setIsSavingSignature(true);
+    try {
+      const signatureData = generateSignatureDataUrl();
+      
+      const response = await api.post(`/api/jobs/${job.id}/signatures`, {
+        signatureData,
+        signerName: signatureSignerName.trim(),
+        signatureType,
+      });
+      
+      if (response.data) {
+        await loadSignatures();
+        setShowSignatureModal(false);
+        clearSignature();
+        setSignatureSignerName('');
+        Alert.alert('Success', 'Signature saved successfully');
+      } else if (response.error) {
+        Alert.alert('Error', response.error);
+      }
+    } catch (error: any) {
+      console.error('Save signature error:', error);
+      Alert.alert('Error', 'Failed to save signature. Please try again.');
+    }
+    setIsSavingSignature(false);
   };
 
   const loadRelatedDocuments = async () => {
@@ -1641,8 +1968,60 @@ export default function JobDetailScreen() {
               </View>
               <Text style={styles.quickActionText}>Notes</Text>
             </TouchableOpacity>
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              style={styles.quickActionButton}
+              onPress={openSignatureModal}
+            >
+              <View style={styles.quickActionIcon}>
+                <Feather name="edit-3" size={iconSizes['2xl']} color={colors.primary} />
+                {signatures.length > 0 && (
+                  <View style={styles.signatureCountBadge}>
+                    <Text style={styles.signatureCountText}>{signatures.length}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.quickActionText}>Signature</Text>
+            </TouchableOpacity>
           </View>
         </View>
+
+        {/* Signatures Section */}
+        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && signatures.length > 0 && (
+          <View style={styles.signaturesSection}>
+            <Text style={styles.sectionTitle}>Signatures</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.signaturesScrollView}
+              contentContainerStyle={styles.signaturesScrollContent}
+            >
+              {signatures.map((sig) => (
+                <View key={sig.id} style={styles.signatureItem}>
+                  <Image 
+                    source={{ uri: sig.signatureData }} 
+                    style={styles.signatureItemImage}
+                    resizeMode="contain"
+                  />
+                  <View style={styles.signatureItemInfo}>
+                    <Text style={styles.signatureItemName} numberOfLines={1}>{sig.signerName}</Text>
+                    <View style={[
+                      styles.signatureTypeBadge,
+                      sig.signatureType === 'customer' ? styles.signatureTypeBadgeCustomer : styles.signatureTypeBadgeTechnician
+                    ]}>
+                      <Text style={[
+                        styles.signatureTypeBadgeText, 
+                        { color: sig.signatureType === 'customer' ? colors.scheduled : colors.success }
+                      ]}>
+                        {sig.signatureType}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Main Action Button */}
         <View style={styles.actionButtonContainer}>
@@ -1662,6 +2041,123 @@ export default function JobDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Signature Modal */}
+      <Modal visible={showSignatureModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Capture Signature</Text>
+              <TouchableOpacity onPress={() => setShowSignatureModal(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.signatureModalContent} showsVerticalScrollIndicator={false}>
+              <Text style={styles.signatureInputLabel}>Signer Name</Text>
+              <TextInput
+                style={styles.signatureInput}
+                value={signatureSignerName}
+                onChangeText={setSignatureSignerName}
+                placeholder="Enter signer's name..."
+                placeholderTextColor={colors.mutedForeground}
+              />
+              
+              <View style={styles.signatureTypeContainer}>
+                <Text style={styles.signatureInputLabel}>Signature Type</Text>
+                <View style={styles.signatureTypeRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.signatureTypeButton,
+                      signatureType === 'customer' && styles.signatureTypeButtonActive,
+                      { marginRight: spacing.sm }
+                    ]}
+                    onPress={() => setSignatureType('customer')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.signatureTypeText,
+                      signatureType === 'customer' && styles.signatureTypeTextActive
+                    ]}>Customer</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.signatureTypeButton,
+                      signatureType === 'technician' && styles.signatureTypeButtonActive,
+                      { marginLeft: spacing.sm }
+                    ]}
+                    onPress={() => setSignatureType('technician')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.signatureTypeText,
+                      signatureType === 'technician' && styles.signatureTypeTextActive
+                    ]}>Technician</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.signatureCanvasContainer}>
+                <Text style={styles.signatureCanvasLabel}>Draw Signature</Text>
+                <View 
+                  style={styles.signatureCanvas}
+                  onLayout={(event) => {
+                    const { width, height } = event.nativeEvent.layout;
+                    setSignatureCanvasLayout({ width, height });
+                  }}
+                  onTouchStart={(e) => handleSignatureTouch(e, true)}
+                  onTouchMove={(e) => handleSignatureTouch(e, false)}
+                  onTouchEnd={handleSignatureTouchEnd}
+                >
+                  {signaturePoints.length === 0 && currentStroke.length === 0 && (
+                    <View style={styles.signatureCanvasPlaceholder}>
+                      <Text style={styles.signatureCanvasPlaceholderText}>Sign here</Text>
+                    </View>
+                  )}
+                  <Svg 
+                    width="100%" 
+                    height="100%" 
+                    style={{ position: 'absolute', top: 0, left: 0 }}
+                  >
+                    <Path
+                      d={generateSignatureSvgPath()}
+                      stroke={colors.foreground}
+                      strokeWidth={2}
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </Svg>
+                </View>
+              </View>
+              
+              <View style={styles.signatureButtonsRow}>
+                <TouchableOpacity
+                  style={styles.clearSignatureButton}
+                  onPress={clearSignature}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.clearSignatureButtonText}>Clear</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.saveSignatureButton,
+                    (signaturePoints.length === 0 || !signatureSignerName.trim()) && styles.saveSignatureButtonDisabled
+                  ]}
+                  onPress={handleSaveSignature}
+                  disabled={isSavingSignature || signaturePoints.length === 0 || !signatureSignerName.trim()}
+                  activeOpacity={0.7}
+                >
+                  {isSavingSignature ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Text style={styles.saveSignatureButtonText}>Save Signature</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Notes Modal */}
       <Modal visible={showNotesModal} animationType="slide" transparent>

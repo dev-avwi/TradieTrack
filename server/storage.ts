@@ -121,6 +121,31 @@ import {
   type Automation,
   type InsertAutomation,
   type AutomationLog,
+  // ServiceM8 parity features
+  jobSignatures,
+  type JobSignature,
+  type InsertJobSignature,
+  quoteRevisions,
+  type QuoteRevision,
+  type InsertQuoteRevision,
+  assets,
+  type Asset,
+  type InsertAsset,
+  jobAssets,
+  type JobAsset,
+  type InsertJobAsset,
+  staffAvailability,
+  type StaffAvailability,
+  type InsertStaffAvailability,
+  staffTimeOff,
+  type StaffTimeOff,
+  type InsertStaffTimeOff,
+  jobFormTemplates,
+  type JobFormTemplate,
+  type InsertJobFormTemplate,
+  jobFormResponses,
+  type JobFormResponse,
+  type InsertJobFormResponse,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -381,6 +406,50 @@ export interface IStorage {
   // Automation Logs
   hasAutomationProcessed(automationId: string, entityType: string, entityId: string): Promise<boolean>;
   logAutomationProcessed(automationId: string, entityType: string, entityId: string, result: string, errorMessage?: string): Promise<void>;
+
+  // ===== SERVICEM8 PARITY FEATURES =====
+
+  // Job Signatures
+  getJobSignatures(jobId: string): Promise<JobSignature[]>;
+  createJobSignature(data: InsertJobSignature): Promise<JobSignature>;
+  deleteJobSignature(id: string, userId: string): Promise<void>;
+
+  // Quote Revisions
+  getQuoteRevisions(quoteId: string): Promise<QuoteRevision[]>;
+  createQuoteRevision(data: InsertQuoteRevision): Promise<QuoteRevision>;
+
+  // Assets
+  getAssets(userId: string): Promise<Asset[]>;
+  getAsset(id: string, userId: string): Promise<Asset | undefined>;
+  createAsset(data: InsertAsset): Promise<Asset>;
+  updateAsset(id: string, userId: string, data: Partial<InsertAsset>): Promise<Asset>;
+  deleteAsset(id: string, userId: string): Promise<void>;
+
+  // Job Assets
+  getJobAssets(jobId: string): Promise<JobAsset[]>;
+  addJobAsset(data: InsertJobAsset): Promise<JobAsset>;
+  updateJobAsset(id: string, data: Partial<InsertJobAsset>): Promise<JobAsset>;
+  removeJobAsset(id: string): Promise<void>;
+
+  // Staff Availability
+  getStaffAvailability(userId: string, businessOwnerId: string): Promise<StaffAvailability[]>;
+  setStaffAvailability(data: InsertStaffAvailability): Promise<StaffAvailability>;
+  updateStaffAvailability(id: string, data: Partial<InsertStaffAvailability>): Promise<StaffAvailability>;
+
+  // Staff Time Off
+  getStaffTimeOff(businessOwnerId: string): Promise<StaffTimeOff[]>;
+  createTimeOffRequest(data: InsertStaffTimeOff): Promise<StaffTimeOff>;
+  updateTimeOffRequest(id: string, data: Partial<InsertStaffTimeOff>): Promise<StaffTimeOff>;
+
+  // Job Forms
+  getJobFormTemplates(userId: string): Promise<JobFormTemplate[]>;
+  getJobFormTemplate(id: string, userId: string): Promise<JobFormTemplate | undefined>;
+  createJobFormTemplate(data: InsertJobFormTemplate): Promise<JobFormTemplate>;
+  updateJobFormTemplate(id: string, userId: string, data: Partial<InsertJobFormTemplate>): Promise<JobFormTemplate>;
+  deleteJobFormTemplate(id: string, userId: string): Promise<void>;
+  getJobFormResponses(jobId: string): Promise<JobFormResponse[]>;
+  createJobFormResponse(data: InsertJobFormResponse): Promise<JobFormResponse>;
+  updateJobFormResponse(id: string, data: Partial<InsertJobFormResponse>): Promise<JobFormResponse>;
 }
 
 // Initialize database connection
@@ -2470,6 +2539,187 @@ export class PostgresStorage implements IStorage {
     } catch (error) {
       console.error(`[Storage] Error logging automation:`, error);
     }
+  }
+
+  // ===== SERVICEM8 PARITY FEATURES =====
+
+  // Job Signatures
+  async getJobSignatures(jobId: string): Promise<JobSignature[]> {
+    return await db.select().from(jobSignatures)
+      .where(eq(jobSignatures.jobId, jobId))
+      .orderBy(desc(jobSignatures.createdAt));
+  }
+
+  async createJobSignature(data: InsertJobSignature): Promise<JobSignature> {
+    const [result] = await db.insert(jobSignatures).values(data).returning();
+    return result;
+  }
+
+  async deleteJobSignature(id: string, userId: string): Promise<void> {
+    await db.delete(jobSignatures)
+      .where(and(eq(jobSignatures.id, id), eq(jobSignatures.userId, userId)));
+  }
+
+  // Quote Revisions
+  async getQuoteRevisions(quoteId: string): Promise<QuoteRevision[]> {
+    return await db.select().from(quoteRevisions)
+      .where(eq(quoteRevisions.quoteId, quoteId))
+      .orderBy(desc(quoteRevisions.revisionNumber));
+  }
+
+  async createQuoteRevision(data: InsertQuoteRevision): Promise<QuoteRevision> {
+    const [result] = await db.insert(quoteRevisions).values(data).returning();
+    return result;
+  }
+
+  // Assets
+  async getAssets(userId: string): Promise<Asset[]> {
+    return await db.select().from(assets)
+      .where(eq(assets.userId, userId))
+      .orderBy(desc(assets.createdAt));
+  }
+
+  async getAsset(id: string, userId: string): Promise<Asset | undefined> {
+    const result = await db.select().from(assets)
+      .where(and(eq(assets.id, id), eq(assets.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createAsset(data: InsertAsset): Promise<Asset> {
+    const [result] = await db.insert(assets).values(data).returning();
+    return result;
+  }
+
+  async updateAsset(id: string, userId: string, data: Partial<InsertAsset>): Promise<Asset> {
+    const [result] = await db.update(assets)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(assets.id, id), eq(assets.userId, userId)))
+      .returning();
+    return result;
+  }
+
+  async deleteAsset(id: string, userId: string): Promise<void> {
+    await db.delete(assets)
+      .where(and(eq(assets.id, id), eq(assets.userId, userId)));
+  }
+
+  // Job Assets
+  async getJobAssets(jobId: string): Promise<JobAsset[]> {
+    return await db.select().from(jobAssets)
+      .where(eq(jobAssets.jobId, jobId));
+  }
+
+  async addJobAsset(data: InsertJobAsset): Promise<JobAsset> {
+    const [result] = await db.insert(jobAssets).values(data).returning();
+    return result;
+  }
+
+  async updateJobAsset(id: string, data: Partial<InsertJobAsset>): Promise<JobAsset> {
+    const [result] = await db.update(jobAssets)
+      .set(data)
+      .where(eq(jobAssets.id, id))
+      .returning();
+    return result;
+  }
+
+  async removeJobAsset(id: string): Promise<void> {
+    await db.delete(jobAssets).where(eq(jobAssets.id, id));
+  }
+
+  // Staff Availability
+  async getStaffAvailability(userId: string, businessOwnerId: string): Promise<StaffAvailability[]> {
+    return await db.select().from(staffAvailability)
+      .where(and(
+        eq(staffAvailability.userId, userId),
+        eq(staffAvailability.businessOwnerId, businessOwnerId)
+      ))
+      .orderBy(asc(staffAvailability.dayOfWeek));
+  }
+
+  async setStaffAvailability(data: InsertStaffAvailability): Promise<StaffAvailability> {
+    const [result] = await db.insert(staffAvailability).values(data).returning();
+    return result;
+  }
+
+  async updateStaffAvailability(id: string, data: Partial<InsertStaffAvailability>): Promise<StaffAvailability> {
+    const [result] = await db.update(staffAvailability)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(staffAvailability.id, id))
+      .returning();
+    return result;
+  }
+
+  // Staff Time Off
+  async getStaffTimeOff(businessOwnerId: string): Promise<StaffTimeOff[]> {
+    return await db.select().from(staffTimeOff)
+      .where(eq(staffTimeOff.businessOwnerId, businessOwnerId))
+      .orderBy(desc(staffTimeOff.startDate));
+  }
+
+  async createTimeOffRequest(data: InsertStaffTimeOff): Promise<StaffTimeOff> {
+    const [result] = await db.insert(staffTimeOff).values(data).returning();
+    return result;
+  }
+
+  async updateTimeOffRequest(id: string, data: Partial<InsertStaffTimeOff>): Promise<StaffTimeOff> {
+    const [result] = await db.update(staffTimeOff)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(staffTimeOff.id, id))
+      .returning();
+    return result;
+  }
+
+  // Job Form Templates
+  async getJobFormTemplates(userId: string): Promise<JobFormTemplate[]> {
+    return await db.select().from(jobFormTemplates)
+      .where(eq(jobFormTemplates.userId, userId))
+      .orderBy(desc(jobFormTemplates.createdAt));
+  }
+
+  async getJobFormTemplate(id: string, userId: string): Promise<JobFormTemplate | undefined> {
+    const result = await db.select().from(jobFormTemplates)
+      .where(and(eq(jobFormTemplates.id, id), eq(jobFormTemplates.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createJobFormTemplate(data: InsertJobFormTemplate): Promise<JobFormTemplate> {
+    const [result] = await db.insert(jobFormTemplates).values(data).returning();
+    return result;
+  }
+
+  async updateJobFormTemplate(id: string, userId: string, data: Partial<InsertJobFormTemplate>): Promise<JobFormTemplate> {
+    const [result] = await db.update(jobFormTemplates)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(jobFormTemplates.id, id), eq(jobFormTemplates.userId, userId)))
+      .returning();
+    return result;
+  }
+
+  async deleteJobFormTemplate(id: string, userId: string): Promise<void> {
+    await db.delete(jobFormTemplates)
+      .where(and(eq(jobFormTemplates.id, id), eq(jobFormTemplates.userId, userId)));
+  }
+
+  // Job Form Responses
+  async getJobFormResponses(jobId: string): Promise<JobFormResponse[]> {
+    return await db.select().from(jobFormResponses)
+      .where(eq(jobFormResponses.jobId, jobId))
+      .orderBy(desc(jobFormResponses.createdAt));
+  }
+
+  async createJobFormResponse(data: InsertJobFormResponse): Promise<JobFormResponse> {
+    const [result] = await db.insert(jobFormResponses).values(data).returning();
+    return result;
+  }
+
+  async updateJobFormResponse(id: string, data: Partial<InsertJobFormResponse>): Promise<JobFormResponse> {
+    const [result] = await db.update(jobFormResponses)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(jobFormResponses.id, id))
+      .returning();
+    return result;
   }
 }
 

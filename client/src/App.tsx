@@ -59,6 +59,10 @@ import JobMapPage from "@/pages/JobMap";
 import DirectMessagesPage from "@/pages/DirectMessages";
 import DispatchBoard from "@/pages/DispatchBoard";
 import Automations from "@/pages/Automations";
+import Assets from "@/pages/Assets";
+import JobForms from "@/pages/JobForms";
+import StaffRostering from "@/pages/StaffRostering";
+import RouteOptimization from "@/pages/RouteOptimization";
 
 // Types for job completion
 interface JobPhoto {
@@ -420,6 +424,22 @@ function Router({
       
       <Route path="/automations" component={() => (
         <Automations />
+      )} />
+      
+      <Route path="/assets" component={() => (
+        <Assets />
+      )} />
+      
+      <Route path="/staff-rostering" component={() => (
+        <StaffRostering />
+      )} />
+      
+      <Route path="/job-forms" component={() => (
+        <JobForms />
+      )} />
+      
+      <Route path="/route-optimize" component={() => (
+        <RouteOptimization />
       )} />
       
       <Route path="/collect-payment" component={() => (

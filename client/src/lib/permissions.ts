@@ -114,6 +114,18 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   
   // More page - all roles
   { path: '/more', label: 'More', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
+  
+  // Staff Rostering - owner/solo_owner/manager (team scheduling)
+  { path: '/staff-rostering', label: 'Staff Rostering', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  
+  // Route Optimization - all roles except staff
+  { path: '/route-optimize', label: 'Route Optimization', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  
+  // Assets/Equipment - owner/solo/manager
+  { path: '/assets', label: 'Assets', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  
+  // Job Forms - owner/solo/manager for template management
+  { path: '/job-forms', label: 'Job Forms', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
 ];
 
 // Check if a role can access a specific path

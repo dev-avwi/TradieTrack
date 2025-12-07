@@ -49,6 +49,15 @@ import {
   // Location tracking tables
   locationTracking,
   tradieStatus,
+  // ServiceM8 parity feature schemas
+  insertJobSignatureSchema,
+  insertQuoteRevisionSchema,
+  insertAssetSchema,
+  insertJobAssetSchema,
+  insertStaffAvailabilitySchema,
+  insertStaffTimeOffSchema,
+  insertJobFormTemplateSchema,
+  insertJobFormResponseSchema,
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { 
@@ -9152,6 +9161,631 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error: any) {
       console.error('Error clearing data:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // SERVICEM8 PARITY FEATURES
+  // ============================================
+
+  // ----- JOB SIGNATURES -----
+  
+  // Get all signatures for a job
+  app.get("/api/jobs/:jobId/signatures", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const signatures = await storage.getJobSignatures(jobId);
+      res.json(signatures);
+    } catch (error: any) {
+      console.error('Error fetching job signatures:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a new signature for a job
+  app.post("/api/jobs/:jobId/signatures", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const validatedData = insertJobSignatureSchema.parse({
+        ...req.body,
+        jobId,
+        capturedBy: userId,
+      });
+      
+      const signature = await storage.createJobSignature(validatedData);
+      res.status(201).json(signature);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Validation error', details: error.errors });
+      }
+      console.error('Error creating job signature:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a signature
+  app.delete("/api/jobs/:jobId/signatures/:signatureId", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId, signatureId } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      await storage.deleteJobSignature(signatureId, effectiveUserId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting job signature:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ----- QUOTE REVISIONS -----
+  
+  // Get all revisions for a quote
+  app.get("/api/quotes/:quoteId/revisions", requireAuth, async (req: any, res) => {
+    try {
+      const { quoteId } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const quote = await storage.getQuote(quoteId, effectiveUserId);
+      if (!quote) {
+        return res.status(404).json({ error: 'Quote not found' });
+      }
+      
+      const revisions = await storage.getQuoteRevisions(quoteId);
+      res.json(revisions);
+    } catch (error: any) {
+      console.error('Error fetching quote revisions:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a revision snapshot for a quote
+  app.post("/api/quotes/:quoteId/revisions", requireAuth, async (req: any, res) => {
+    try {
+      const { quoteId } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const quote = await storage.getQuoteWithLineItems(quoteId, effectiveUserId);
+      if (!quote) {
+        return res.status(404).json({ error: 'Quote not found' });
+      }
+      
+      const existingRevisions = await storage.getQuoteRevisions(quoteId);
+      const revisionNumber = existingRevisions.length + 1;
+      
+      const validatedData = insertQuoteRevisionSchema.parse({
+        quoteId,
+        revisionNumber,
+        snapshotData: {
+          quote: {
+            total: quote.total,
+            subtotal: quote.subtotal,
+            gstAmount: quote.gstAmount,
+            notes: quote.notes,
+            status: quote.status,
+          },
+          lineItems: quote.lineItems,
+        },
+        createdBy: userId,
+        notes: req.body.notes,
+      });
+      
+      const revision = await storage.createQuoteRevision(validatedData);
+      res.status(201).json(revision);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Validation error', details: error.errors });
+      }
+      console.error('Error creating quote revision:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ----- ASSETS -----
+  
+  // Get all assets for user
+  app.get("/api/assets", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const assets = await storage.getAssets(effectiveUserId);
+      res.json(assets);
+    } catch (error: any) {
+      console.error('Error fetching assets:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get single asset
+  app.get("/api/assets/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const asset = await storage.getAsset(id, effectiveUserId);
+      if (!asset) {
+        return res.status(404).json({ error: 'Asset not found' });
+      }
+      
+      res.json(asset);
+    } catch (error: any) {
+      console.error('Error fetching asset:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create new asset
+  app.post("/api/assets", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const validatedData = insertAssetSchema.parse({
+        ...req.body,
+        userId: effectiveUserId,
+      });
+      
+      const asset = await storage.createAsset(validatedData);
+      res.status(201).json(asset);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Validation error', details: error.errors });
+      }
+      console.error('Error creating asset:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update asset
+  app.patch("/api/assets/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const asset = await storage.updateAsset(id, effectiveUserId, req.body);
+      res.json(asset);
+    } catch (error: any) {
+      console.error('Error updating asset:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete asset
+  app.delete("/api/assets/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      await storage.deleteAsset(id, effectiveUserId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting asset:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ----- JOB ASSETS -----
+  
+  // Get assets assigned to job
+  app.get("/api/jobs/:jobId/assets", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const jobAssets = await storage.getJobAssets(jobId);
+      res.json(jobAssets);
+    } catch (error: any) {
+      console.error('Error fetching job assets:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Add asset to job
+  app.post("/api/jobs/:jobId/assets", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const validatedData = insertJobAssetSchema.parse({
+        ...req.body,
+        jobId,
+      });
+      
+      const jobAsset = await storage.addJobAsset(validatedData);
+      res.status(201).json(jobAsset);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Validation error', details: error.errors });
+      }
+      console.error('Error adding asset to job:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update job asset
+  app.patch("/api/jobs/:jobId/assets/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId, id } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const jobAsset = await storage.updateJobAsset(id, req.body);
+      res.json(jobAsset);
+    } catch (error: any) {
+      console.error('Error updating job asset:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Remove asset from job
+  app.delete("/api/jobs/:jobId/assets/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId, id } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      await storage.removeJobAsset(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error removing asset from job:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ----- STAFF AVAILABILITY -----
+  
+  // Get availability for all staff (owner view)
+  app.get("/api/staff/availability", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const availability = await storage.getStaffAvailability(userId, effectiveUserId);
+      res.json(availability);
+    } catch (error: any) {
+      console.error('Error fetching staff availability:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get availability for specific staff member
+  app.get("/api/staff/availability/:staffUserId", requireAuth, async (req: any, res) => {
+    try {
+      const { staffUserId } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const availability = await storage.getStaffAvailability(staffUserId, effectiveUserId);
+      res.json(availability);
+    } catch (error: any) {
+      console.error('Error fetching staff availability:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Set availability
+  app.post("/api/staff/availability", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const validatedData = insertStaffAvailabilitySchema.parse({
+        ...req.body,
+        userId: req.body.userId || userId,
+        businessOwnerId: effectiveUserId,
+      });
+      
+      const availability = await storage.setStaffAvailability(validatedData);
+      res.status(201).json(availability);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Validation error', details: error.errors });
+      }
+      console.error('Error setting staff availability:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update availability
+  app.patch("/api/staff/availability/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const availability = await storage.updateStaffAvailability(id, req.body);
+      res.json(availability);
+    } catch (error: any) {
+      console.error('Error updating staff availability:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ----- STAFF TIME OFF -----
+  
+  // Get all time off requests
+  app.get("/api/staff/time-off", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const timeOffRequests = await storage.getStaffTimeOff(effectiveUserId);
+      res.json(timeOffRequests);
+    } catch (error: any) {
+      console.error('Error fetching time off requests:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create time off request
+  app.post("/api/staff/time-off", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const validatedData = insertStaffTimeOffSchema.parse({
+        ...req.body,
+        userId: req.body.userId || userId,
+        businessOwnerId: effectiveUserId,
+      });
+      
+      const timeOff = await storage.createTimeOffRequest(validatedData);
+      res.status(201).json(timeOff);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Validation error', details: error.errors });
+      }
+      console.error('Error creating time off request:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update time off request (approve/reject)
+  app.patch("/api/staff/time-off/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.userId!;
+      
+      const updateData = {
+        ...req.body,
+        ...(req.body.status && { reviewedBy: userId, reviewedAt: new Date() }),
+      };
+      
+      const timeOff = await storage.updateTimeOffRequest(id, updateData);
+      res.json(timeOff);
+    } catch (error: any) {
+      console.error('Error updating time off request:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ----- JOB FORMS -----
+  
+  // Get all form templates
+  app.get("/api/job-forms/templates", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const templates = await storage.getJobFormTemplates(effectiveUserId);
+      res.json(templates);
+    } catch (error: any) {
+      console.error('Error fetching form templates:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get single form template
+  app.get("/api/job-forms/templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const template = await storage.getJobFormTemplate(id, effectiveUserId);
+      if (!template) {
+        return res.status(404).json({ error: 'Form template not found' });
+      }
+      
+      res.json(template);
+    } catch (error: any) {
+      console.error('Error fetching form template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create form template
+  app.post("/api/job-forms/templates", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const validatedData = insertJobFormTemplateSchema.parse({
+        ...req.body,
+        userId: effectiveUserId,
+      });
+      
+      const template = await storage.createJobFormTemplate(validatedData);
+      res.status(201).json(template);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Validation error', details: error.errors });
+      }
+      console.error('Error creating form template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update form template
+  app.patch("/api/job-forms/templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const template = await storage.updateJobFormTemplate(id, effectiveUserId, req.body);
+      res.json(template);
+    } catch (error: any) {
+      console.error('Error updating form template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete form template
+  app.delete("/api/job-forms/templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      await storage.deleteJobFormTemplate(id, effectiveUserId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting form template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get form responses for job
+  app.get("/api/jobs/:jobId/forms", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const responses = await storage.getJobFormResponses(jobId);
+      res.json(responses);
+    } catch (error: any) {
+      console.error('Error fetching job form responses:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Submit form response for job
+  app.post("/api/jobs/:jobId/forms", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const validatedData = insertJobFormResponseSchema.parse({
+        ...req.body,
+        jobId,
+        submittedBy: userId,
+      });
+      
+      const response = await storage.createJobFormResponse(validatedData);
+      res.status(201).json(response);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Validation error', details: error.errors });
+      }
+      console.error('Error submitting form response:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update form response
+  app.patch("/api/jobs/:jobId/forms/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId, id } = req.params;
+      const userId = req.userId!;
+      const context = await getUserContext(userId);
+      const effectiveUserId = context.businessOwnerId || userId;
+      
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const response = await storage.updateJobFormResponse(id, req.body);
+      res.json(response);
+    } catch (error: any) {
+      console.error('Error updating form response:', error);
       res.status(500).json({ error: error.message });
     }
   });

@@ -1727,3 +1727,201 @@ export const insertAutomationLogSchema = createInsertSchema(automationLogs).omit
 });
 export type InsertAutomationLog = z.infer<typeof insertAutomationLogSchema>;
 export type AutomationLog = typeof automationLogs.$inferSelect;
+
+// ============================================
+// SERVICEM8 PARITY FEATURES
+// ============================================
+
+// Job Signatures - Digital signature capture on job completion
+export const jobSignatures = pgTable("job_signatures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  signatureType: text("signature_type").notNull().default('customer'), // customer, technician
+  signatureData: text("signature_data").notNull(), // Base64 encoded signature image
+  signatureImageUrl: text("signature_image_url"), // URL if stored in object storage
+  signerName: text("signer_name").notNull(),
+  signerRole: text("signer_role"), // e.g., "Property Manager", "Home Owner"
+  ipAddress: text("ip_address"),
+  deviceInfo: text("device_info"), // Browser/device info for audit
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertJobSignatureSchema = createInsertSchema(jobSignatures).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertJobSignature = z.infer<typeof insertJobSignatureSchema>;
+export type JobSignature = typeof jobSignatures.$inferSelect;
+
+// Quote Revisions - Track quote version history
+export const quoteRevisions = pgTable("quote_revisions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quoteId: varchar("quote_id").notNull().references(() => quotes.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  revisionNumber: integer("revision_number").notNull().default(1),
+  // Snapshot of quote data at this revision
+  title: text("title").notNull(),
+  description: text("description"),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  gstAmount: decimal("gst_amount", { precision: 10, scale: 2 }).notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  lineItems: jsonb("line_items").notNull().default([]), // Snapshot of line items
+  notes: text("notes"),
+  changeReason: text("change_reason"), // Why was this revision made
+  changedBy: text("changed_by"), // Name of person who made changes
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertQuoteRevisionSchema = createInsertSchema(quoteRevisions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertQuoteRevision = z.infer<typeof insertQuoteRevisionSchema>;
+export type QuoteRevision = typeof quoteRevisions.$inferSelect;
+
+// Assets/Equipment - Track tools and equipment per job
+export const assets = pgTable("assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category"), // tool, vehicle, equipment, material
+  serialNumber: text("serial_number"),
+  purchaseDate: timestamp("purchase_date"),
+  purchasePrice: decimal("purchase_price", { precision: 10, scale: 2 }),
+  currentValue: decimal("current_value", { precision: 10, scale: 2 }),
+  condition: text("condition").default('good'), // new, good, fair, poor, retired
+  location: text("location"), // Where is it stored/located
+  assignedTo: varchar("assigned_to"), // Team member ID
+  photoUrl: text("photo_url"),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  lastMaintenanceDate: timestamp("last_maintenance_date"),
+  nextMaintenanceDate: timestamp("next_maintenance_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertAssetSchema = createInsertSchema(assets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAsset = z.infer<typeof insertAssetSchema>;
+export type Asset = typeof assets.$inferSelect;
+
+// Job Assets - Track which assets were used on a job
+export const jobAssets = pgTable("job_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  assetId: varchar("asset_id").notNull().references(() => assets.id, { onDelete: 'cascade' }),
+  quantity: integer("quantity").default(1),
+  notes: text("notes"),
+  checkedOutAt: timestamp("checked_out_at").defaultNow(),
+  checkedInAt: timestamp("checked_in_at"),
+  checkedOutBy: varchar("checked_out_by").references(() => users.id),
+  checkedInBy: varchar("checked_in_by").references(() => users.id),
+});
+
+export const insertJobAssetSchema = createInsertSchema(jobAssets).omit({
+  id: true,
+});
+export type InsertJobAsset = z.infer<typeof insertJobAssetSchema>;
+export type JobAsset = typeof jobAssets.$inferSelect;
+
+// Staff Availability/Rostering - Track staff schedules and availability
+export const staffAvailability = pgTable("staff_availability", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  dayOfWeek: integer("day_of_week").notNull(), // 0 = Sunday, 6 = Saturday
+  startTime: text("start_time").notNull(), // HH:MM format
+  endTime: text("end_time").notNull(), // HH:MM format
+  isAvailable: boolean("is_available").default(true),
+  breakStartTime: text("break_start_time"), // Optional break
+  breakEndTime: text("break_end_time"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertStaffAvailabilitySchema = createInsertSchema(staffAvailability).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertStaffAvailability = z.infer<typeof insertStaffAvailabilitySchema>;
+export type StaffAvailability = typeof staffAvailability.$inferSelect;
+
+// Staff Time Off - Track leave and time off requests
+export const staffTimeOff = pgTable("staff_time_off", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  type: text("type").notNull().default('leave'), // leave, sick, holiday, personal
+  status: text("status").notNull().default('pending'), // pending, approved, rejected
+  reason: text("reason"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertStaffTimeOffSchema = createInsertSchema(staffTimeOff).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertStaffTimeOff = z.infer<typeof insertStaffTimeOffSchema>;
+export type StaffTimeOff = typeof staffTimeOff.$inferSelect;
+
+// Custom Job Forms - Dynamic form templates for different job types
+export const jobFormTemplates = pgTable("job_form_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category"), // electrical, plumbing, hvac, general
+  fields: jsonb("fields").notNull().default([]), // Array of field definitions
+  isActive: boolean("is_active").default(true),
+  isDefault: boolean("is_default").default(false), // Use for all new jobs of this category
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobFormTemplateSchema = createInsertSchema(jobFormTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertJobFormTemplate = z.infer<typeof insertJobFormTemplateSchema>;
+export type JobFormTemplate = typeof jobFormTemplates.$inferSelect;
+
+// Job Form Responses - Submitted form data for jobs
+export const jobFormResponses = pgTable("job_form_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  templateId: varchar("template_id").notNull().references(() => jobFormTemplates.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  responses: jsonb("responses").notNull().default({}), // Field ID -> value mapping
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  photos: jsonb("photos").default([]), // Photos attached to form
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobFormResponseSchema = createInsertSchema(jobFormResponses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertJobFormResponse = z.infer<typeof insertJobFormResponseSchema>;
+export type JobFormResponse = typeof jobFormResponses.$inferSelect;
