@@ -82,9 +82,11 @@ class NotificationService {
       this.pushToken = tokenData.data;
       console.log('[Notifications] Push token:', this.pushToken);
 
-      // Set up notification channels for Android
+      // Set up platform-specific notification configuration
       if (Platform.OS === 'android') {
         await this.setupAndroidChannels();
+      } else if (Platform.OS === 'ios') {
+        await this.setupIOSCategories();
       }
 
       // Set up listeners
@@ -102,31 +104,113 @@ class NotificationService {
 
   /**
    * Set up Android notification channels
+   * Required for Android 8.0+ (API 26+) for all notifications
    */
   private async setupAndroidChannels(): Promise<void> {
     await Notifications.setNotificationChannelAsync('jobs', {
       name: 'Job Updates',
+      description: 'Notifications about job status changes and assignments',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#f97316',
       sound: 'default',
+      enableVibrate: true,
+      enableLights: true,
     });
 
     await Notifications.setNotificationChannelAsync('payments', {
       name: 'Payments',
+      description: 'Payment received and invoice notifications',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 500, 250, 500],
       lightColor: '#22c55e',
       sound: 'default',
+      enableVibrate: true,
+      enableLights: true,
     });
 
     await Notifications.setNotificationChannelAsync('messages', {
       name: 'Team Messages',
+      description: 'Chat messages from your team',
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 250],
       lightColor: '#3b82f6',
       sound: 'default',
+      enableVibrate: true,
+      enableLights: true,
     });
+
+    await Notifications.setNotificationChannelAsync('reminders', {
+      name: 'Reminders',
+      description: 'Job reminders and scheduled alerts',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 500, 250, 500],
+      lightColor: '#eab308',
+      sound: 'default',
+      enableVibrate: true,
+      enableLights: true,
+    });
+
+    console.log('[Notifications] Android channels configured');
+  }
+
+  /**
+   * Set up iOS notification categories with actions
+   * Categories define what actions users can take directly from notifications
+   */
+  private async setupIOSCategories(): Promise<void> {
+    await Notifications.setNotificationCategoryAsync('JOB_UPDATE', [
+      {
+        identifier: 'VIEW_JOB',
+        buttonTitle: 'View Job',
+        options: { opensAppToForeground: true },
+      },
+      {
+        identifier: 'MARK_COMPLETE',
+        buttonTitle: 'Mark Complete',
+        options: { opensAppToForeground: false },
+      },
+    ]);
+
+    await Notifications.setNotificationCategoryAsync('PAYMENT', [
+      {
+        identifier: 'VIEW_INVOICE',
+        buttonTitle: 'View Invoice',
+        options: { opensAppToForeground: true },
+      },
+    ]);
+
+    await Notifications.setNotificationCategoryAsync('MESSAGE', [
+      {
+        identifier: 'VIEW_CHAT',
+        buttonTitle: 'View Chat',
+        options: { opensAppToForeground: true },
+      },
+      {
+        identifier: 'REPLY',
+        buttonTitle: 'Reply',
+        options: { opensAppToForeground: true },
+        textInput: {
+          submitButtonTitle: 'Send',
+          placeholder: 'Type a reply...',
+        },
+      },
+    ]);
+
+    await Notifications.setNotificationCategoryAsync('REMINDER', [
+      {
+        identifier: 'VIEW_JOB',
+        buttonTitle: 'View Job',
+        options: { opensAppToForeground: true },
+      },
+      {
+        identifier: 'SNOOZE',
+        buttonTitle: 'Snooze 15min',
+        options: { opensAppToForeground: false },
+      },
+    ]);
+
+    console.log('[Notifications] iOS categories configured');
   }
 
   /**
@@ -228,6 +312,7 @@ class NotificationService {
 
   /**
    * Schedule a job reminder notification
+   * Works on both iOS and Android with appropriate channels/categories
    */
   async scheduleJobReminder(
     jobId: string,
@@ -247,8 +332,49 @@ class NotificationService {
     return await this.scheduleLocalNotification(
       'Job Reminder',
       `${jobTitle} starts in ${minutesBefore} minutes`,
-      { type: 'job_update', jobId },
+      { type: 'job_reminder', jobId },
       secondsUntilReminder
+    );
+  }
+
+  /**
+   * Send a notification for specific events
+   * Convenience methods for common notification types
+   */
+  async notifyJobAssigned(jobId: string, jobTitle: string, clientName: string): Promise<string> {
+    return this.scheduleLocalNotification(
+      'New Job Assigned',
+      `${jobTitle} for ${clientName}`,
+      { type: 'job_assigned', jobId }
+    );
+  }
+
+  async notifyPaymentReceived(invoiceId: string, amount: number, clientName: string): Promise<string> {
+    const formattedAmount = new Intl.NumberFormat('en-AU', {
+      style: 'currency',
+      currency: 'AUD',
+    }).format(amount);
+    
+    return this.scheduleLocalNotification(
+      'Payment Received',
+      `${formattedAmount} from ${clientName}`,
+      { type: 'payment_received', invoiceId, amount }
+    );
+  }
+
+  async notifyQuoteAccepted(quoteId: string, quoteName: string, clientName: string): Promise<string> {
+    return this.scheduleLocalNotification(
+      'Quote Accepted',
+      `${clientName} accepted your quote for ${quoteName}`,
+      { type: 'quote_accepted', quoteId }
+    );
+  }
+
+  async notifyNewMessage(senderId: string, senderName: string, preview: string): Promise<string> {
+    return this.scheduleLocalNotification(
+      `Message from ${senderName}`,
+      preview.length > 50 ? `${preview.substring(0, 50)}...` : preview,
+      { type: 'team_message', messageId: senderId }
     );
   }
 
@@ -286,6 +412,7 @@ class NotificationService {
 
   /**
    * Schedule a local notification (for testing or reminders)
+   * Automatically assigns correct Android channel and iOS category based on notification type
    */
   async scheduleLocalNotification(
     title: string,
@@ -293,13 +420,50 @@ class NotificationService {
     data?: any,
     triggerSeconds?: number
   ): Promise<string> {
+    const notificationType = data?.type || 'job_update';
+    
+    // Determine Android channel and iOS category based on notification type
+    let androidChannelId = 'jobs';
+    let iosCategoryIdentifier = 'JOB_UPDATE';
+    
+    switch (notificationType) {
+      case 'payment_received':
+        androidChannelId = 'payments';
+        iosCategoryIdentifier = 'PAYMENT';
+        break;
+      case 'team_message':
+        androidChannelId = 'messages';
+        iosCategoryIdentifier = 'MESSAGE';
+        break;
+      case 'job_reminder':
+        androidChannelId = 'reminders';
+        iosCategoryIdentifier = 'REMINDER';
+        break;
+      case 'job_update':
+      case 'job_assigned':
+      case 'quote_accepted':
+      default:
+        androidChannelId = 'jobs';
+        iosCategoryIdentifier = 'JOB_UPDATE';
+        break;
+    }
+
+    const content: Notifications.NotificationContentInput = {
+      title,
+      body,
+      data,
+      sound: 'default',
+    };
+
+    // Add platform-specific settings
+    if (Platform.OS === 'android') {
+      (content as any).channelId = androidChannelId;
+    } else if (Platform.OS === 'ios') {
+      content.categoryIdentifier = iosCategoryIdentifier;
+    }
+
     const id = await Notifications.scheduleNotificationAsync({
-      content: {
-        title,
-        body,
-        data,
-        sound: 'default',
-      },
+      content,
       trigger: triggerSeconds ? { seconds: triggerSeconds } : null,
     });
     

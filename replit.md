@@ -177,10 +177,12 @@ The mobile app now includes full native capabilities requiring EAS Build for pro
 - `OfflineBanner.tsx` - Visual offline indicator with sync button
 
 **Push Notifications (`mobile/src/lib/notifications.ts`):**
-- Expo Notifications with permission handling
-- Android channels: jobs (high), payments (high), messages (default), reminders (default)
+- Expo Notifications with permission handling (works on both iOS and Android)
+- **Android channels**: jobs (high), payments (high), messages (default), reminders (high) - with custom vibration patterns and LED colors
+- **iOS categories**: JOB_UPDATE, PAYMENT, MESSAGE, REMINDER - with actionable buttons (View, Mark Complete, Reply, Snooze)
 - Deep linking via expo-router to job/quote/invoice/chat screens
 - Local notification scheduling for job reminders (30 min before)
+- Convenience methods: notifyJobAssigned, notifyPaymentReceived, notifyQuoteAccepted, notifyNewMessage
 - Badge count management
 
 **Background GPS Tracking (`mobile/src/lib/locationTracking.ts`):**
