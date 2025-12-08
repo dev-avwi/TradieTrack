@@ -113,3 +113,9 @@ The companion React Native mobile app (Expo SDK 52) provides offline-first archi
     -   **Materials Catalog/Price Book**: Mobile screen at `/more/materials-catalog` for managing line items with name, description, price, trade type, and units. Backend routes at `/api/catalog` with user ownership protection.
     -   **Stripe Terminal Tap to Pay**: Production-ready implementation with connection token and payment intent routes. Requires EAS build with `@stripe/stripe-terminal-react-native` package. Comprehensive documentation in `mobile/src/lib/tapToPay.ts`.
 -   **Profile Navigation Updates**: Added Price Book and Quick Messages to profile menu for easy access
+-   **Mobile UX Polish - Beta Launch Prep** (December 8, 2025):
+    -   **Google OAuth on Mobile**: Added Google Sign-In button to mobile login screen using expo-web-browser to open backend OAuth flow, with expo-linking for callback handling.
+    -   **Forgot Password Flow**: Complete password reset flow with email input, 6-digit code verification, and new password entry. Integrates with `/api/auth/forgot-password`, `/api/auth/verify-reset-code`, and `/api/auth/reset-password` endpoints.
+    -   **Skeleton Loaders**: Reusable skeleton loader components (`mobile/src/components/ui/Skeleton.tsx`) with shimmer animation. Applied to Dashboard and Jobs screens for better perceived performance during initial data loads.
+    -   **Sticky Search Header**: Jobs list now has sticky header with search bar and filter pills that remain visible while scrolling. Added clear button (x-circle icon) to search input for easy query clearing.
+    -   **Illustrated Empty States**: New reusable EmptyState component (`mobile/src/components/ui/EmptyState.tsx`) with type-specific icons, colors, and messaging for jobs, clients, invoices, quotes, messages, notifications, search, expenses, and documents. Applied to Jobs list.
