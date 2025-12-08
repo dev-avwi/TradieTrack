@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, ActivityIndicator, Alert } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -324,8 +324,27 @@ export default function PaymentsScreen() {
     }).format(amount);
   };
 
-  const handleConnectStripe = () => {
-    Linking.openURL('https://tradietrack.com/settings/payments');
+  const handleConnectStripe = async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.post('/api/stripe-connect/onboard');
+      
+      if (response.data?.onboardingUrl) {
+        await Linking.openURL(response.data.onboardingUrl);
+      } else if (response.data?.error) {
+        Alert.alert('Connection Error', response.data.error);
+      } else {
+        Alert.alert('Error', 'Unable to start Stripe connection. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Stripe connect error:', error);
+      Alert.alert(
+        'Connection Failed',
+        error.response?.data?.error || 'Unable to connect to Stripe. Please check your internet connection and try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

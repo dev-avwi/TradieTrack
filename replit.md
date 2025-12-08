@@ -85,3 +85,13 @@ The companion React Native mobile app (Expo SDK 52) provides offline-first archi
     -   Provides structured feedback with success/failure counts
     -   Shows toast notifications for partial failures
 -   **Owner Recognition**: Users are automatically recognized as owners via the `getUserContext` function in `server/permissions.ts` when they have no team membership (as opposed to being a team member of someone else's business)
+-   **Mobile Theme Consistency** (December 8, 2025):
+    -   Converted `DocumentPreview.tsx` from static colors import to dynamic `useTheme()` hook for proper brand color support
+    -   Mobile quote/invoice previews now respect custom brand colors set in business settings
+-   **Stripe Connect Mobile Integration** (December 8, 2025):
+    -   Updated mobile payments screen to call proper API endpoint `/api/stripe-connect/onboard` instead of external URL
+    -   Added proper error handling with Alert dialogs for connection failures
+    -   Stripe onboarding flow now opens properly in mobile browser
+-   **TypeScript Fixes**:
+    -   Fixed timer reference type in time-tracking.tsx (NodeJS.Timeout → ReturnType<typeof setInterval>)
+    -   Fixed reports.tsx to not reference non-existent Job.totalHours property

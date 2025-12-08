@@ -347,7 +347,7 @@ export default function TimeTrackingScreen() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refreshData = useCallback(async () => {
     await fetchJobs();

@@ -387,7 +387,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
         reportData = `Jobs Report\n\nTotal Jobs: ${jobs.length}\nCompleted: ${completedJobs}\nIn Progress: ${jobs.filter(j => j.status === 'in_progress').length}\nPending: ${jobs.filter(j => j.status === 'pending').length}`;
         break;
       case 'time':
-        reportData = `Time Tracking Report\n\nTotal Jobs with Time: ${jobs.filter(j => j.totalHours).length}\nTotal Hours: ${jobs.reduce((sum, j) => sum + (j.totalHours || 0), 0).toFixed(1)}`;
+        reportData = `Time Tracking Report\n\nTotal Jobs: ${jobs.length}\nCompleted Jobs: ${completedJobs}`;
         break;
       case 'tax':
         const gstCollected = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + (i.gstAmount || 0), 0);

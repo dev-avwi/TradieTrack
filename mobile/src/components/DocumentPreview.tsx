@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { colors } from '../lib/colors';
+import { useTheme, ThemeColors } from '../lib/theme';
 import { useAuthStore } from '../lib/store';
 
 interface LineItem {
@@ -47,245 +47,7 @@ interface DocumentPreviewProps {
   };
 }
 
-export function DocumentPreview({ visible, onClose, type, document }: DocumentPreviewProps) {
-  const { businessSettings } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (visible) {
-      const timer = setTimeout(() => setIsLoading(false), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [visible]);
-
-  const formatCurrency = (amount: number) => {
-    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString('en-AU', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  };
-
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `${type === 'quote' ? 'Quote' : 'Invoice'} ${document.number}\n\nTotal: ${formatCurrency(document.total)}\n\nFrom ${businessSettings?.businessName || 'TradieTrack'}`,
-        title: `${type === 'quote' ? 'Quote' : 'Invoice'} ${document.number}`,
-      });
-    } catch (error) {
-      console.log('Share error:', error);
-    }
-  };
-
-  const brandColor = businessSettings?.primaryColor || '#3b82f6';
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Feather name="x" size={24} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {type === 'quote' ? 'Quote' : 'Invoice'} Preview
-          </Text>
-          <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-            <Feather name="share-2" size={20} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={brandColor} />
-            <Text style={styles.loadingText}>Loading preview...</Text>
-          </View>
-        ) : (
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            {/* Document Preview */}
-            <View style={styles.documentContainer}>
-              <View style={styles.document}>
-                {/* Document Header */}
-                <View style={[styles.documentHeader, { backgroundColor: brandColor }]}>
-                  <View style={styles.businessInfo}>
-                    {businessSettings?.logoUrl && (
-                      <Image 
-                        source={{ uri: businessSettings.logoUrl }} 
-                        style={styles.logo}
-                        resizeMode="contain"
-                      />
-                    )}
-                    <View style={styles.businessDetails}>
-                      <Text style={styles.businessName}>{businessSettings?.businessName || 'Your Business'}</Text>
-                      {businessSettings?.abn && (
-                        <Text style={styles.businessAbn}>ABN: {businessSettings.abn}</Text>
-                      )}
-                      {businessSettings?.email && (
-                        <Text style={styles.businessContact}>{businessSettings.email}</Text>
-                      )}
-                      {businessSettings?.phone && (
-                        <Text style={styles.businessContact}>{businessSettings.phone}</Text>
-                      )}
-                      {businessSettings?.address && (
-                        <Text style={styles.businessContact}>{businessSettings.address}</Text>
-                      )}
-                    </View>
-                  </View>
-                  <View style={styles.documentTypeContainer}>
-                    <Text style={styles.documentType}>{type === 'quote' ? 'QUOTE' : 'TAX INVOICE'}</Text>
-                    <Text style={styles.documentNumber}>{document.number}</Text>
-                  </View>
-                </View>
-
-                {/* Document Body */}
-                <View style={styles.documentBody}>
-                  {/* Client & Dates Row */}
-                  <View style={styles.infoRow}>
-                    <View style={styles.infoColumn}>
-                      <Text style={styles.infoLabel}>Bill To:</Text>
-                      <Text style={styles.clientName}>{document.clientName}</Text>
-                      {document.clientEmail && (
-                        <Text style={styles.clientDetail}>{document.clientEmail}</Text>
-                      )}
-                      {document.clientPhone && (
-                        <Text style={styles.clientDetail}>{document.clientPhone}</Text>
-                      )}
-                      {document.clientAddress && (
-                        <Text style={styles.clientDetail}>{document.clientAddress}</Text>
-                      )}
-                    </View>
-                    <View style={styles.infoColumn}>
-                      <View style={styles.dateRow}>
-                        <Text style={styles.dateLabel}>Date:</Text>
-                        <Text style={styles.dateValue}>{formatDate(document.createdAt)}</Text>
-                      </View>
-                      {document.validUntil && (
-                        <View style={styles.dateRow}>
-                          <Text style={styles.dateLabel}>Valid Until:</Text>
-                          <Text style={styles.dateValue}>{formatDate(document.validUntil)}</Text>
-                        </View>
-                      )}
-                      {document.dueDate && (
-                        <View style={styles.dateRow}>
-                          <Text style={styles.dateLabel}>Due Date:</Text>
-                          <Text style={styles.dateValue}>{formatDate(document.dueDate)}</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-
-                  {/* Line Items Table */}
-                  <View style={styles.itemsTable}>
-                    <View style={[styles.tableHeader, { backgroundColor: brandColor + '15' }]}>
-                      <Text style={[styles.tableHeaderText, { flex: 2 }]}>Description</Text>
-                      <Text style={[styles.tableHeaderText, styles.textCenter]}>Qty</Text>
-                      <Text style={[styles.tableHeaderText, styles.textRight]}>Price</Text>
-                      <Text style={[styles.tableHeaderText, styles.textRight]}>Total</Text>
-                    </View>
-                    
-                    {document.lineItems.map((item, index) => (
-                      <View 
-                        key={item.id} 
-                        style={[
-                          styles.tableRow,
-                          index % 2 === 1 && styles.tableRowAlt
-                        ]}
-                      >
-                        <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={2}>
-                          {item.description}
-                        </Text>
-                        <Text style={[styles.tableCell, styles.textCenter]}>{item.quantity}</Text>
-                        <Text style={[styles.tableCell, styles.textRight]}>
-                          {formatCurrency(item.unitPrice)}
-                        </Text>
-                        <Text style={[styles.tableCell, styles.textRight]}>
-                          {formatCurrency(item.total)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  {/* Totals */}
-                  <View style={styles.totalsContainer}>
-                    <View style={styles.totalsRow}>
-                      <Text style={styles.totalsLabel}>Subtotal</Text>
-                      <Text style={styles.totalsValue}>{formatCurrency(document.subtotal)}</Text>
-                    </View>
-                    <View style={styles.totalsRow}>
-                      <Text style={styles.totalsLabel}>GST (10%)</Text>
-                      <Text style={styles.totalsValue}>{formatCurrency(document.gstAmount)}</Text>
-                    </View>
-                    <View style={[styles.totalsRow, styles.totalsFinal]}>
-                      <Text style={styles.totalsFinalLabel}>Total (AUD)</Text>
-                      <Text style={[styles.totalsFinalValue, { color: brandColor }]}>
-                        {formatCurrency(document.total)}
-                      </Text>
-                    </View>
-                    {document.depositRequired && !document.depositPaid && (
-                      <View style={styles.depositRow}>
-                        <Text style={styles.depositLabel}>Deposit Required</Text>
-                        <Text style={styles.depositValue}>
-                          {formatCurrency(document.depositRequired)}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Notes */}
-                  {document.notes && (
-                    <View style={styles.notesSection}>
-                      <Text style={styles.notesTitle}>Notes</Text>
-                      <Text style={styles.notesText}>{document.notes}</Text>
-                    </View>
-                  )}
-
-                  {/* Footer */}
-                  <View style={styles.documentFooter}>
-                    <Text style={styles.footerText}>
-                      Thank you for your business!
-                    </Text>
-                    {businessSettings?.phone && (
-                      <Text style={styles.footerContact}>
-                        Phone: {businessSettings.phone}
-                      </Text>
-                    )}
-                    {businessSettings?.email && (
-                      <Text style={styles.footerContact}>
-                        Email: {businessSettings.email}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Actions */}
-            <View style={styles.actions}>
-              <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-                <Feather name="share-2" size={20} color={colors.primary} />
-                <Text style={styles.actionButtonText}>Share</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        )}
-      </View>
-    </Modal>
-  );
-}
-
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.muted,
@@ -582,3 +344,233 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
 });
+
+export function DocumentPreview({ visible, onClose, type, document }: DocumentPreviewProps) {
+  const { colors } = useTheme();
+  const { businessSettings } = useAuthStore();
+  const [isLoading, setIsLoading] = useState(true);
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  useEffect(() => {
+    if (visible) {
+      const timer = setTimeout(() => setIsLoading(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
+
+  const formatCurrency = (amount: number) => {
+    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('en-AU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `${type === 'quote' ? 'Quote' : 'Invoice'} ${document.number}\n\nTotal: ${formatCurrency(document.total)}\n\nFrom ${businessSettings?.businessName || 'TradieTrack'}`,
+        title: `${type === 'quote' ? 'Quote' : 'Invoice'} ${document.number}`,
+      });
+    } catch (error) {
+      console.log('Share error:', error);
+    }
+  };
+
+  const brandColor = businessSettings?.primaryColor || colors.primary;
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Feather name="x" size={24} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {type === 'quote' ? 'Quote' : 'Invoice'} Preview
+          </Text>
+          <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
+            <Feather name="share-2" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={brandColor} />
+            <Text style={styles.loadingText}>Loading preview...</Text>
+          </View>
+        ) : (
+          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            <View style={styles.documentContainer}>
+              <View style={styles.document}>
+                <View style={[styles.documentHeader, { backgroundColor: brandColor }]}>
+                  <View style={styles.businessInfo}>
+                    {businessSettings?.logoUrl && (
+                      <Image 
+                        source={{ uri: businessSettings.logoUrl }} 
+                        style={styles.logo}
+                        resizeMode="contain"
+                      />
+                    )}
+                    <View style={styles.businessDetails}>
+                      <Text style={styles.businessName}>{businessSettings?.businessName || 'Your Business'}</Text>
+                      {businessSettings?.abn && (
+                        <Text style={styles.businessAbn}>ABN: {businessSettings.abn}</Text>
+                      )}
+                      {businessSettings?.email && (
+                        <Text style={styles.businessContact}>{businessSettings.email}</Text>
+                      )}
+                      {businessSettings?.phone && (
+                        <Text style={styles.businessContact}>{businessSettings.phone}</Text>
+                      )}
+                      {businessSettings?.address && (
+                        <Text style={styles.businessContact}>{businessSettings.address}</Text>
+                      )}
+                    </View>
+                  </View>
+                  <View style={styles.documentTypeContainer}>
+                    <Text style={styles.documentType}>{type === 'quote' ? 'QUOTE' : 'TAX INVOICE'}</Text>
+                    <Text style={styles.documentNumber}>{document.number}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.documentBody}>
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoColumn}>
+                      <Text style={styles.infoLabel}>Bill To:</Text>
+                      <Text style={styles.clientName}>{document.clientName}</Text>
+                      {document.clientEmail && (
+                        <Text style={styles.clientDetail}>{document.clientEmail}</Text>
+                      )}
+                      {document.clientPhone && (
+                        <Text style={styles.clientDetail}>{document.clientPhone}</Text>
+                      )}
+                      {document.clientAddress && (
+                        <Text style={styles.clientDetail}>{document.clientAddress}</Text>
+                      )}
+                    </View>
+                    <View style={styles.infoColumn}>
+                      <View style={styles.dateRow}>
+                        <Text style={styles.dateLabel}>Date:</Text>
+                        <Text style={styles.dateValue}>{formatDate(document.createdAt)}</Text>
+                      </View>
+                      {document.validUntil && (
+                        <View style={styles.dateRow}>
+                          <Text style={styles.dateLabel}>Valid Until:</Text>
+                          <Text style={styles.dateValue}>{formatDate(document.validUntil)}</Text>
+                        </View>
+                      )}
+                      {document.dueDate && (
+                        <View style={styles.dateRow}>
+                          <Text style={styles.dateLabel}>Due Date:</Text>
+                          <Text style={styles.dateValue}>{formatDate(document.dueDate)}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  <View style={styles.itemsTable}>
+                    <View style={[styles.tableHeader, { backgroundColor: brandColor + '15' }]}>
+                      <Text style={[styles.tableHeaderText, { flex: 2 }]}>Description</Text>
+                      <Text style={[styles.tableHeaderText, styles.textCenter]}>Qty</Text>
+                      <Text style={[styles.tableHeaderText, styles.textRight]}>Price</Text>
+                      <Text style={[styles.tableHeaderText, styles.textRight]}>Total</Text>
+                    </View>
+                    
+                    {document.lineItems.map((item, index) => (
+                      <View 
+                        key={item.id} 
+                        style={[
+                          styles.tableRow,
+                          index % 2 === 1 && styles.tableRowAlt
+                        ]}
+                      >
+                        <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={2}>
+                          {item.description}
+                        </Text>
+                        <Text style={[styles.tableCell, styles.textCenter]}>{item.quantity}</Text>
+                        <Text style={[styles.tableCell, styles.textRight]}>
+                          {formatCurrency(item.unitPrice)}
+                        </Text>
+                        <Text style={[styles.tableCell, styles.textRight]}>
+                          {formatCurrency(item.total)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={styles.totalsContainer}>
+                    <View style={styles.totalsRow}>
+                      <Text style={styles.totalsLabel}>Subtotal</Text>
+                      <Text style={styles.totalsValue}>{formatCurrency(document.subtotal)}</Text>
+                    </View>
+                    <View style={styles.totalsRow}>
+                      <Text style={styles.totalsLabel}>GST (10%)</Text>
+                      <Text style={styles.totalsValue}>{formatCurrency(document.gstAmount)}</Text>
+                    </View>
+                    <View style={[styles.totalsRow, styles.totalsFinal]}>
+                      <Text style={styles.totalsFinalLabel}>Total (AUD)</Text>
+                      <Text style={[styles.totalsFinalValue, { color: brandColor }]}>
+                        {formatCurrency(document.total)}
+                      </Text>
+                    </View>
+                    {document.depositRequired && !document.depositPaid && (
+                      <View style={styles.depositRow}>
+                        <Text style={styles.depositLabel}>Deposit Required</Text>
+                        <Text style={styles.depositValue}>
+                          {formatCurrency(document.depositRequired)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {document.notes && (
+                    <View style={styles.notesSection}>
+                      <Text style={styles.notesTitle}>Notes</Text>
+                      <Text style={styles.notesText}>{document.notes}</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.documentFooter}>
+                    <Text style={styles.footerText}>
+                      Thank you for your business!
+                    </Text>
+                    {businessSettings?.phone && (
+                      <Text style={styles.footerContact}>
+                        Phone: {businessSettings.phone}
+                      </Text>
+                    )}
+                    {businessSettings?.email && (
+                      <Text style={styles.footerContact}>
+                        Email: {businessSettings.email}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.actions}>
+              <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+                <Feather name="share-2" size={20} color={colors.primary} />
+                <Text style={styles.actionButtonText}>Share</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        )}
+      </View>
+    </Modal>
+  );
+}
