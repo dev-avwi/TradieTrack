@@ -347,6 +347,22 @@ function createStyles(colors: ThemeColors) {
       fontWeight: '600',
       color: colors.white,
     },
+    clientSelectorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    clientSelectorField: {
+      flex: 1,
+    },
+    inlineAddButton: {
+      width: 52,
+      height: 52,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
   });
 }
 
@@ -638,6 +654,153 @@ function StatusSelector({
   );
 }
 
+function QuickAddClientModal({
+  visible,
+  onClose,
+  onClientCreated,
+  onSelectClient,
+  colors,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onClientCreated: () => void;
+  onSelectClient: (id: string) => void;
+  colors: ThemeColors;
+}) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [clientAddress, setClientAddress] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const resetForm = () => {
+    setName('');
+    setEmail('');
+    setPhone('');
+    setClientAddress('');
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      Alert.alert('Missing Name', 'Please enter a client name');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await api.post<{ id: string }>('/api/clients', {
+        name: name.trim(),
+        email: email.trim() || null,
+        phone: phone.trim() || null,
+        address: clientAddress.trim() || null,
+      });
+
+      if (response.data?.id) {
+        onClientCreated();
+        onSelectClient(response.data.id);
+        handleClose();
+        Alert.alert('Success', 'Client created and selected');
+      } else if (response.error) {
+        Alert.alert('Error', response.error);
+      }
+    } catch (error: any) {
+      console.error('Quick add client error:', error);
+      Alert.alert('Error', 'Failed to create client. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Quick Add Client</Text>
+            <TouchableOpacity onPress={handleClose}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1 }}
+          >
+            <ScrollView style={styles.modalList} keyboardShouldPersistTaps="handled">
+              <View style={styles.quickAddForm}>
+                <View style={styles.quickAddField}>
+                  <Text style={styles.quickAddLabel}>Name *</Text>
+                  <TextInput
+                    style={styles.quickAddInput}
+                    placeholder="Client name"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={name}
+                    onChangeText={setName}
+                    autoFocus
+                  />
+                </View>
+                <View style={styles.quickAddField}>
+                  <Text style={styles.quickAddLabel}>Email</Text>
+                  <TextInput
+                    style={styles.quickAddInput}
+                    placeholder="email@example.com"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+                <View style={styles.quickAddField}>
+                  <Text style={styles.quickAddLabel}>Phone</Text>
+                  <TextInput
+                    style={styles.quickAddInput}
+                    placeholder="0400 000 000"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+                <View style={styles.quickAddField}>
+                  <Text style={styles.quickAddLabel}>Address</Text>
+                  <TextInput
+                    style={styles.quickAddInput}
+                    placeholder="123 Main St, Sydney NSW"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={clientAddress}
+                    onChangeText={setClientAddress}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={styles.quickAddButton}
+                  onPress={handleSave}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <>
+                      <Feather name="user-plus" size={18} color={colors.white} />
+                      <Text style={styles.quickAddButtonText}>Create Client</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function CreateJobScreen() {
   const { clients, fetchClients } = useClientsStore();
   const { fetchJobs } = useJobsStore();
@@ -656,6 +819,7 @@ export default function CreateJobScreen() {
   const [notes, setNotes] = useState('');
 
   const [showClientPicker, setShowClientPicker] = useState(false);
+  const [showQuickAddClient, setShowQuickAddClient] = useState(false);
   const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -816,25 +980,34 @@ export default function CreateJobScreen() {
             {/* Client Selection */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Client (Optional)</Text>
-              <TouchableOpacity
-                style={styles.selector}
-                onPress={() => setShowClientPicker(true)}
-              >
-                {selectedClient ? (
-                  <View style={styles.selectedItem}>
-                    <View style={styles.clientAvatar}>
-                      <Feather name="user" size={18} color={colors.primary} />
+              <View style={styles.clientSelectorRow}>
+                <TouchableOpacity
+                  style={[styles.selector, styles.clientSelectorField]}
+                  onPress={() => setShowClientPicker(true)}
+                >
+                  {selectedClient ? (
+                    <View style={styles.selectedItem}>
+                      <View style={styles.clientAvatar}>
+                        <Feather name="user" size={18} color={colors.primary} />
+                      </View>
+                      <View style={styles.selectedItemText}>
+                        <Text style={styles.selectedItemName}>{selectedClient.name}</Text>
+                        <Text style={styles.selectedItemDetail}>{selectedClient.email}</Text>
+                      </View>
                     </View>
-                    <View style={styles.selectedItemText}>
-                      <Text style={styles.selectedItemName}>{selectedClient.name}</Text>
-                      <Text style={styles.selectedItemDetail}>{selectedClient.email}</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <Text style={styles.selectorPlaceholder}>Select a client</Text>
-                )}
-                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+                  ) : (
+                    <Text style={styles.selectorPlaceholder}>Select a client</Text>
+                  )}
+                  <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.inlineAddButton}
+                  onPress={() => setShowQuickAddClient(true)}
+                  data-testid="button-quick-add-client"
+                >
+                  <Feather name="user-plus" size={22} color={colors.white} />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Address */}
@@ -960,6 +1133,20 @@ export default function CreateJobScreen() {
         onSelect={setStatus}
         visible={showStatusPicker}
         onClose={() => setShowStatusPicker(false)}
+        colors={colors}
+      />
+
+      <QuickAddClientModal
+        visible={showQuickAddClient}
+        onClose={() => setShowQuickAddClient(false)}
+        onClientCreated={fetchClients}
+        onSelectClient={(id) => {
+          setClientId(id);
+          const client = clients.find((c) => c.id === id);
+          if (client?.address && !address) {
+            setAddress(client.address);
+          }
+        }}
         colors={colors}
       />
     </>
