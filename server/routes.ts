@@ -5817,6 +5817,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const profit = totalRevenue - totalCosts;
       const profitMargin = totalRevenue > 0 ? ((profit / totalRevenue) * 100) : 0;
 
+      const estimatedLaborCost = parseFloat(job.estimatedLaborCost?.toString() || '0');
+      const estimatedMaterialCost = parseFloat(job.estimatedMaterialCost?.toString() || '0');
+      const estimatedTotalCost = parseFloat(job.estimatedTotalCost?.toString() || '0');
+
       res.json({
         jobId,
         jobTitle: job.title,
@@ -5832,6 +5836,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profit: {
           amount: profit,
           margin: profitMargin
+        },
+        estimates: {
+          laborCost: estimatedLaborCost,
+          materialCost: estimatedMaterialCost,
+          totalCost: estimatedTotalCost
         },
         expenses: expenses.map(expense => ({
           id: expense.id,
@@ -5853,6 +5862,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get job profitability error:", error);
       res.status(500).json({ error: "Failed to fetch job profitability" });
+    }
+  });
+
+  // Job Profitability Report - Summary across all jobs
+  app.get("/api/reports/job-profitability", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      
+      const jobs = await storage.getJobs(effectiveUserId);
+      const invoices = await storage.getInvoices(effectiveUserId);
+      
+      const profitabilityData = await Promise.all(
+        jobs.map(async (job) => {
+          const jobInvoices = invoices.filter(inv => inv.jobId === job.id);
+          const totalRevenue = jobInvoices.reduce((sum, inv) => 
+            sum + (inv.status === 'paid' ? parseFloat(inv.total || '0') : 0), 0);
+          const pendingRevenue = jobInvoices.filter(inv => inv.status === 'sent')
+            .reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+          
+          const expenses = await storage.getExpenses(effectiveUserId, { jobId: job.id });
+          const totalExpenses = expenses.reduce((sum, exp) => 
+            sum + parseFloat(exp.amount || '0'), 0);
+          
+          const timeEntries = await storage.getTimeEntries(effectiveUserId, job.id);
+          const totalLaborCost = timeEntries
+            .filter(entry => entry.endTime)
+            .reduce((sum, entry) => {
+              const start = new Date(entry.startTime);
+              const end = new Date(entry.endTime!);
+              const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+              const rate = parseFloat(entry.hourlyRate?.toString() || '0');
+              return sum + (hours * rate);
+            }, 0);
+          
+          const totalCosts = totalExpenses + totalLaborCost;
+          const profit = totalRevenue - totalCosts;
+          const profitMargin = totalRevenue > 0 ? ((profit / totalRevenue) * 100) : 0;
+          
+          return {
+            jobId: job.id,
+            jobTitle: job.title,
+            clientName: job.clientName,
+            status: job.status,
+            revenue: {
+              invoiced: totalRevenue,
+              pending: pendingRevenue
+            },
+            costs: {
+              materials: totalExpenses,
+              labor: totalLaborCost,
+              total: totalCosts
+            },
+            profit: {
+              amount: profit,
+              margin: profitMargin
+            },
+            estimates: {
+              laborCost: parseFloat(job.estimatedLaborCost?.toString() || '0'),
+              materialCost: parseFloat(job.estimatedMaterialCost?.toString() || '0'),
+              totalCost: parseFloat(job.estimatedTotalCost?.toString() || '0')
+            }
+          };
+        })
+      );
+      
+      res.json(profitabilityData);
+    } catch (error) {
+      console.error("Get job profitability report error:", error);
+      res.status(500).json({ error: "Failed to fetch job profitability report" });
     }
   });
 

@@ -264,10 +264,16 @@ export default function Reports() {
             </SelectContent>
           </Select>
           
-          <Button variant="outline" data-testid="button-export-report">
-            <Download className="h-4 w-4 mr-2" />
-            Export Report
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => navigate('/job-profitability')} data-testid="button-job-profitability">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Job Profitability
+            </Button>
+            <Button variant="outline" data-testid="button-export-report">
+              <Download className="h-4 w-4 mr-2" />
+              Export Report
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

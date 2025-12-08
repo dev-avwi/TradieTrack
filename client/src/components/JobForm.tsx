@@ -32,6 +32,8 @@ const jobFormSchema = z.object({
   scheduledAt: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
   estimatedHours: z.string().optional(),
+  estimatedLaborCost: z.string().optional(),
+  estimatedMaterialCost: z.string().optional(),
 });
 
 type JobFormData = z.infer<typeof jobFormSchema>;
@@ -95,6 +97,8 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
       scheduledAt: "",
       priority: "medium",
       estimatedHours: "",
+      estimatedLaborCost: "",
+      estimatedMaterialCost: "",
     },
   });
 
@@ -278,10 +282,17 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
 
   const handleSubmit = async (data: JobFormData) => {
     try {
+      const estimatedLaborCost = data.estimatedLaborCost ? parseFloat(data.estimatedLaborCost) : 0;
+      const estimatedMaterialCost = data.estimatedMaterialCost ? parseFloat(data.estimatedMaterialCost) : 0;
+      const estimatedTotalCost = estimatedLaborCost + estimatedMaterialCost;
+      
       const jobData = {
         ...data,
         estimatedHours: data.estimatedHours ? parseInt(data.estimatedHours) : undefined,
         scheduledAt: data.scheduledAt ? new Date(data.scheduledAt).toISOString() : undefined,
+        estimatedLaborCost: estimatedLaborCost > 0 ? estimatedLaborCost.toString() : undefined,
+        estimatedMaterialCost: estimatedMaterialCost > 0 ? estimatedMaterialCost.toString() : undefined,
+        estimatedTotalCost: estimatedTotalCost > 0 ? estimatedTotalCost.toString() : undefined,
       };
 
       const result = await createJobMutation.mutateAsync(jobData);
@@ -579,6 +590,48 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
                           placeholder="0" 
                           {...field} 
                           data-testid="input-estimated-hours" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="estimatedLaborCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Est. Labor Cost ($)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          placeholder="0.00" 
+                          {...field} 
+                          data-testid="input-estimated-labor-cost" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="estimatedMaterialCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Est. Materials Cost ($)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          placeholder="0.00" 
+                          {...field} 
+                          data-testid="input-estimated-material-cost" 
                         />
                       </FormControl>
                       <FormMessage />

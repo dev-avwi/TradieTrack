@@ -263,6 +263,11 @@ export const jobs = pgTable("jobs", {
   recurrenceEndDate: timestamp("recurrence_end_date"), // When to stop recurring
   parentJobId: varchar("parent_job_id"), // Links to original recurring job
   nextRecurrenceDate: timestamp("next_recurrence_date"), // When to create next occurrence
+  // Job Costing - Estimates for budget comparison
+  estimatedLaborCost: decimal("estimated_labor_cost", { precision: 10, scale: 2 }).default('0.00'),
+  estimatedMaterialCost: decimal("estimated_material_cost", { precision: 10, scale: 2 }).default('0.00'),
+  estimatedTotalCost: decimal("estimated_total_cost", { precision: 10, scale: 2 }).default('0.00'),
+  laborHourlyRate: decimal("labor_hourly_rate", { precision: 10, scale: 2 }), // Override default rate for this job
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

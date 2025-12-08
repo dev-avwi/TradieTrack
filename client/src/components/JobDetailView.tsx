@@ -7,6 +7,7 @@ import { JobChat } from "./JobChat";
 import { SignatureCapture } from "./SignatureCapture";
 import { JobFormResponse } from "./JobFormResponse";
 import { JobDiary } from "./JobDiary";
+import { JobCosting } from "./JobCosting";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
@@ -595,6 +596,9 @@ export default function JobDetailView({
         {(job.status === 'in_progress' || job.status === 'done') && (
           <JobFormResponse jobId={jobId} />
         )}
+
+        {/* Job Costing - Budget vs Actual comparison */}
+        <JobCosting jobId={jobId} />
 
         {/* Job Diary - Complete activity history/timeline */}
         <JobDiary jobId={jobId} />

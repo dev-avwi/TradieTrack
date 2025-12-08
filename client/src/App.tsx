@@ -65,6 +65,7 @@ import JobForms from "@/pages/JobForms";
 import FormStore from "@/pages/FormStore";
 import StaffRostering from "@/pages/StaffRostering";
 import RouteOptimization from "@/pages/RouteOptimization";
+import JobProfitability from "@/pages/JobProfitability";
 
 // Types for job completion
 interface JobPhoto {
@@ -442,6 +443,9 @@ function Router({
       
       <Route path="/form-store" component={() => (
         <FormStore />
+      )} />
+      <Route path="/job-profitability" component={() => (
+        <JobProfitability />
       )} />
       
       <Route path="/route-optimize" component={() => (

@@ -129,6 +129,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   
   // Form Store - browse and install pre-made forms
   { path: '/form-store', label: 'Form Store', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  
+  // Job Profitability - view profit margins across all jobs
+  { path: '/job-profitability', label: 'Job Profitability', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
 ];
 
 // Check if a role can access a specific path
