@@ -107,6 +107,8 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Settings - owner/solo full, manager limited, staff profile only
   { path: '/settings', label: 'Settings', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   { path: '/settings/calendar', label: 'Calendar Sync', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  { path: '/settings/booking', label: 'Booking Portal', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  { path: '/booking/requests', label: 'Booking Requests', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   
   // Billing - owner only
   { path: '/billing', label: 'Billing', allowedRoles: ['owner', 'solo_owner'], showInNav: false },

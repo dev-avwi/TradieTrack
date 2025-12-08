@@ -161,6 +161,15 @@ import {
   calendarSyncEvents,
   type CalendarSyncEvent,
   type InsertCalendarSyncEvent,
+  bookingPortalSettings,
+  type BookingPortalSettings,
+  type InsertBookingPortalSettings,
+  bookingServices,
+  type BookingService,
+  type InsertBookingService,
+  bookingRequests,
+  type BookingRequest,
+  type InsertBookingRequest,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -496,6 +505,26 @@ export interface IStorage {
   installFormFromStore(userId: string, storeTemplateId: string, userTemplateId: string): Promise<FormStoreInstallation>;
   rateStoreForm(installationId: string, rating: number): Promise<FormStoreInstallation>;
   incrementFormDownloadCount(storeTemplateId: string): Promise<void>;
+
+  // Booking Portal Settings
+  getBookingPortalSettings(userId: string): Promise<BookingPortalSettings | undefined>;
+  getBookingPortalBySlug(slug: string): Promise<BookingPortalSettings | undefined>;
+  createBookingPortalSettings(userId: string, settings: InsertBookingPortalSettings): Promise<BookingPortalSettings>;
+  updateBookingPortalSettings(userId: string, settings: Partial<InsertBookingPortalSettings>): Promise<BookingPortalSettings | undefined>;
+
+  // Booking Services
+  getBookingServices(userId: string): Promise<BookingService[]>;
+  getActiveBookingServices(userId: string): Promise<BookingService[]>;
+  getBookingService(id: string): Promise<BookingService | undefined>;
+  createBookingService(userId: string, service: InsertBookingService): Promise<BookingService>;
+  updateBookingService(id: string, userId: string, service: Partial<InsertBookingService>): Promise<BookingService | undefined>;
+  deleteBookingService(id: string, userId: string): Promise<boolean>;
+
+  // Booking Requests
+  getBookingRequests(userId: string): Promise<BookingRequest[]>;
+  getBookingRequest(id: string): Promise<BookingRequest | undefined>;
+  createBookingRequest(request: InsertBookingRequest & { userId: string }): Promise<BookingRequest>;
+  updateBookingRequest(id: string, updates: Partial<BookingRequest>): Promise<BookingRequest | undefined>;
 }
 
 // Initialize database connection
@@ -2986,6 +3015,116 @@ export class PostgresStorage implements IStorage {
     await db.update(formStoreTemplates)
       .set({ downloadCount: sql`${formStoreTemplates.downloadCount} + 1` })
       .where(eq(formStoreTemplates.id, storeTemplateId));
+  }
+
+  // Booking Portal Settings
+  async getBookingPortalSettings(userId: string): Promise<BookingPortalSettings | undefined> {
+    const result = await db.select().from(bookingPortalSettings)
+      .where(eq(bookingPortalSettings.userId, userId))
+      .limit(1);
+    return result[0];
+  }
+
+  async getBookingPortalBySlug(slug: string): Promise<BookingPortalSettings | undefined> {
+    const result = await db.select().from(bookingPortalSettings)
+      .where(eq(bookingPortalSettings.urlSlug, slug))
+      .limit(1);
+    return result[0];
+  }
+
+  async createBookingPortalSettings(userId: string, settings: InsertBookingPortalSettings): Promise<BookingPortalSettings> {
+    const [result] = await db.insert(bookingPortalSettings).values({
+      ...settings,
+      userId,
+    }).returning();
+    return result;
+  }
+
+  async updateBookingPortalSettings(userId: string, settings: Partial<InsertBookingPortalSettings>): Promise<BookingPortalSettings | undefined> {
+    const [result] = await db.update(bookingPortalSettings)
+      .set({ ...settings, updatedAt: new Date() })
+      .where(eq(bookingPortalSettings.userId, userId))
+      .returning();
+    return result;
+  }
+
+  // Booking Services
+  async getBookingServices(userId: string): Promise<BookingService[]> {
+    return await db.select().from(bookingServices)
+      .where(eq(bookingServices.userId, userId))
+      .orderBy(asc(bookingServices.sortOrder));
+  }
+
+  async getActiveBookingServices(userId: string): Promise<BookingService[]> {
+    return await db.select().from(bookingServices)
+      .where(and(
+        eq(bookingServices.userId, userId),
+        eq(bookingServices.isActive, true)
+      ))
+      .orderBy(asc(bookingServices.sortOrder));
+  }
+
+  async getBookingService(id: string): Promise<BookingService | undefined> {
+    const result = await db.select().from(bookingServices)
+      .where(eq(bookingServices.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async createBookingService(userId: string, service: InsertBookingService): Promise<BookingService> {
+    const [result] = await db.insert(bookingServices).values({
+      ...service,
+      userId,
+    }).returning();
+    return result;
+  }
+
+  async updateBookingService(id: string, userId: string, service: Partial<InsertBookingService>): Promise<BookingService | undefined> {
+    const [result] = await db.update(bookingServices)
+      .set({ ...service, updatedAt: new Date() })
+      .where(and(
+        eq(bookingServices.id, id),
+        eq(bookingServices.userId, userId)
+      ))
+      .returning();
+    return result;
+  }
+
+  async deleteBookingService(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(bookingServices)
+      .where(and(
+        eq(bookingServices.id, id),
+        eq(bookingServices.userId, userId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Booking Requests
+  async getBookingRequests(userId: string): Promise<BookingRequest[]> {
+    return await db.select().from(bookingRequests)
+      .where(eq(bookingRequests.userId, userId))
+      .orderBy(desc(bookingRequests.createdAt));
+  }
+
+  async getBookingRequest(id: string): Promise<BookingRequest | undefined> {
+    const result = await db.select().from(bookingRequests)
+      .where(eq(bookingRequests.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async createBookingRequest(request: InsertBookingRequest & { userId: string }): Promise<BookingRequest> {
+    const [result] = await db.insert(bookingRequests).values(request).returning();
+    return result;
+  }
+
+  async updateBookingRequest(id: string, updates: Partial<BookingRequest>): Promise<BookingRequest | undefined> {
+    const [result] = await db.update(bookingRequests)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(bookingRequests.id, id))
+      .returning();
+    return result;
   }
 }
 

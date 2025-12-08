@@ -17,6 +17,8 @@ Key architectural decisions and features include:
 -   **Location & Tracking**: Implements a Life360-style interactive map for owners/managers, displaying job pins and real-time location tracking for team members, including activity status and geofence alerts. Trip tracking with auto-detection and GPS-based distance calculation is also included.
 -   **Team Management**: Features Role-Based Access Control (RBAC) with granular permissions and role templates (OWNER, ADMIN, SUPERVISOR, STAFF).
 -   **Smart Features**: Includes Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, Contextual Quote/Invoice Creation, and Workflow-Integrated Smart Actions for contextual automation suggestions.
+-   **Calendar Sync**: Google Calendar OAuth 2.0 integration for two-way job synchronization with secure state token CSRF protection.
+-   **Online Booking Portal**: Public-facing booking page (/book/:slug) for client self-service booking. Business owners configure portal settings, available services, working hours, and minimum lead times. Clients can submit booking requests with preferred dates and times, which appear in the Booking Requests management page for confirmation or decline.
 -   **PWA Support**: Web manifest and service worker enable offline capabilities.
 -   **Mobile App (React Native/Expo)**: Provides an offline-first architecture with SQLite for local data, push notifications (Expo Notifications), background GPS tracking (TaskManager), on-device PDF generation, and Tap to Pay integration (Stripe Terminal). It also features a document scanner with edge detection and a comprehensive job diary/activity log.
 

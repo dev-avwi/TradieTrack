@@ -2097,3 +2097,102 @@ export const insertFormStoreInstallationSchema = createInsertSchema(formStoreIns
 });
 export type InsertFormStoreInstallation = z.infer<typeof insertFormStoreInstallationSchema>;
 export type FormStoreInstallation = typeof formStoreInstallations.$inferSelect;
+
+// Online Booking Portal - Public booking page configuration
+export const bookingPortalSettings = pgTable("booking_portal_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  isEnabled: boolean("is_enabled").default(false),
+  urlSlug: text("url_slug").unique(), // public booking URL: /book/{slug}
+  welcomeMessage: text("welcome_message").default('Welcome! Book a service with us.'),
+  businessDescription: text("business_description"),
+  coverImageUrl: text("cover_image_url"),
+  allowInstantBooking: boolean("allow_instant_booking").default(false), // true = auto-confirm, false = request only
+  requirePhone: boolean("require_phone").default(true),
+  requireAddress: boolean("require_address").default(true),
+  minLeadTimeHours: integer("min_lead_time_hours").default(24), // Minimum hours before appointment
+  maxAdvanceBookingDays: integer("max_advance_booking_days").default(30), // How far in advance can book
+  defaultJobDurationMinutes: integer("default_job_duration_minutes").default(60),
+  confirmationEmailEnabled: boolean("confirmation_email_enabled").default(true),
+  notifyOnBookingEmail: text("notify_on_booking_email"), // Email to notify for new bookings
+  availableDays: json("available_days").default(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']),
+  workingHoursStart: text("working_hours_start").default('08:00'),
+  workingHoursEnd: text("working_hours_end").default('17:00'),
+  slotDurationMinutes: integer("slot_duration_minutes").default(60),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertBookingPortalSettingsSchema = createInsertSchema(bookingPortalSettings).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBookingPortalSettings = z.infer<typeof insertBookingPortalSettingsSchema>;
+export type BookingPortalSettings = typeof bookingPortalSettings.$inferSelect;
+
+// Booking Services - Services available for public booking
+export const bookingServices = pgTable("booking_services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  description: text("description"),
+  durationMinutes: integer("duration_minutes").default(60),
+  price: decimal("price", { precision: 10, scale: 2 }),
+  priceType: text("price_type").default('fixed'), // fixed, from, hourly, quote
+  category: text("category"), // plumbing, electrical, hvac, etc.
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  catalogItemId: varchar("catalog_item_id").references(() => lineItemCatalog.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertBookingServiceSchema = createInsertSchema(bookingServices).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBookingService = z.infer<typeof insertBookingServiceSchema>;
+export type BookingService = typeof bookingServices.$inferSelect;
+
+// Booking Requests - Client booking submissions
+export const bookingRequests = pgTable("booking_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }), // Business owner
+  serviceId: varchar("service_id").references(() => bookingServices.id, { onDelete: 'set null' }),
+  status: text("status").default('pending'), // pending, confirmed, declined, cancelled, completed
+  clientName: text("client_name").notNull(),
+  clientEmail: text("client_email").notNull(),
+  clientPhone: text("client_phone"),
+  clientAddress: text("client_address"),
+  preferredDate: timestamp("preferred_date"),
+  preferredTimeSlot: text("preferred_time_slot"), // e.g., "09:00-10:00"
+  alternateDate: timestamp("alternate_date"),
+  notes: text("notes"),
+  serviceName: text("service_name"), // Denormalized for display
+  estimatedPrice: decimal("estimated_price", { precision: 10, scale: 2 }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }), // Created job when confirmed
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }), // Created/matched client
+  confirmedAt: timestamp("confirmed_at"),
+  declinedAt: timestamp("declined_at"),
+  declineReason: text("decline_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertBookingRequestSchema = createInsertSchema(bookingRequests).omit({
+  id: true,
+  userId: true,
+  status: true,
+  jobId: true,
+  clientId: true,
+  confirmedAt: true,
+  declinedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBookingRequest = z.infer<typeof insertBookingRequestSchema>;
+export type BookingRequest = typeof bookingRequests.$inferSelect;
