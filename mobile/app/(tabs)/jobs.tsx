@@ -18,6 +18,7 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
 import { JobsListSkeleton, SkeletonStatCard } from '../../src/components/ui/Skeleton';
+import { EmptyState } from '../../src/components/ui/EmptyState';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
@@ -378,18 +379,8 @@ export default function JobsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isLoading}
-            onRefresh={refreshData}
-            tintColor={colors.primary}
-          />
-        }
-      >
+      {/* Sticky Header Section */}
+      <View style={styles.stickyHeader}>
         {/* Header Section */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -416,6 +407,11 @@ export default function JobsScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Feather name="x-circle" size={iconSizes.md} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Filter Pills with Counts */}
@@ -460,7 +456,20 @@ export default function JobsScreen() {
             );
           })}
         </ScrollView>
+      </View>
 
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContentContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={refreshData}
+            tintColor={colors.primary}
+          />
+        }
+      >
         {/* Stats Cards Grid */}
         <View style={styles.statsGrid}>
           <View style={styles.statsRow}>
@@ -547,17 +556,19 @@ export default function JobsScreen() {
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : sortedJobs.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyStateIcon}>
-                <Feather name="briefcase" size={iconSizes['4xl']} color={colors.mutedForeground} />
-              </View>
-              <Text style={styles.emptyStateTitle}>No jobs found</Text>
-              <Text style={styles.emptyStateSubtitle}>
-                {searchQuery || activeFilter !== 'all'
-                  ? 'Try adjusting your search or filters'
-                  : 'Create your first job to get started'}
-              </Text>
-            </View>
+            searchQuery || activeFilter !== 'all' ? (
+              <EmptyState
+                type="search"
+                title="No matching jobs"
+                subtitle="Try adjusting your search or filters to find what you're looking for."
+              />
+            ) : (
+              <EmptyState
+                type="jobs"
+                actionLabel="Create Job"
+                onAction={navigateToCreateJob}
+              />
+            )
           ) : (
             <View style={styles.jobsList}>
               {sortedJobs.map((job) => (
@@ -582,8 +593,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  stickyHeader: {
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    zIndex: 10,
+  },
   scrollView: {
     flex: 1,
+  },
+  scrollContentContainer: {
+    padding: spacing.lg,
+    paddingBottom: pageShell.paddingBottom,
   },
   contentContainer: {
     padding: spacing.lg,
@@ -643,7 +666,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
   // Filter Pills - pill-shaped with rounded ends
   filtersScroll: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
     marginHorizontal: -spacing.lg,
   },
   filtersContent: {
