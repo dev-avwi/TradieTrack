@@ -67,9 +67,6 @@ import StaffRostering from "@/pages/StaffRostering";
 import RouteOptimization from "@/pages/RouteOptimization";
 import JobProfitability from "@/pages/JobProfitability";
 import CalendarSync from "@/pages/CalendarSync";
-import BookingPortalSettings from "@/pages/BookingPortalSettings";
-import BookingRequests from "@/pages/BookingRequests";
-import PublicBookingPage from "@/pages/PublicBookingPage";
 
 // Types for job completion
 interface JobPhoto {
@@ -387,14 +384,6 @@ function Router({
       
       <Route path="/settings/calendar" component={() => (
         <CalendarSync />
-      )} />
-      
-      <Route path="/settings/booking" component={() => (
-        <BookingPortalSettings />
-      )} />
-      
-      <Route path="/booking/requests" component={() => (
-        <BookingRequests />
       )} />
       
       <Route path="/settings" component={SettingsWrapper} />
@@ -953,7 +942,6 @@ function App() {
             <Route path="/pay/:token" component={PaymentPage} />
             <Route path="/privacy" component={PrivacyPolicy} />
             <Route path="/terms" component={TermsOfService} />
-            <Route path="/book/:slug" component={PublicBookingPage} />
             {/* All other routes go through AppLayout */}
             <Route>
               <AppLayout />
