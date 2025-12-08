@@ -1980,3 +1980,25 @@ export const insertJobFormResponseSchema = createInsertSchema(jobFormResponses).
 });
 export type InsertJobFormResponse = z.infer<typeof insertJobFormResponseSchema>;
 export type JobFormResponse = typeof jobFormResponses.$inferSelect;
+
+// Job Activities - Unified activity log for complete job history (Job Diary)
+export const jobActivities = pgTable("job_activities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
+  activityType: text("activity_type").notNull(), // status_change, note, photo, email_sent, sms_sent, payment, checkin, checkout, form_submitted, signature, quote_sent, invoice_sent, call, material_added
+  title: text("title").notNull(),
+  description: text("description"),
+  metadata: jsonb("metadata").default({}), // Flexible data storage (old/new status, payment amount, email recipient, etc.)
+  relatedEntityType: text("related_entity_type"), // quote, invoice, photo, form, signature, etc.
+  relatedEntityId: varchar("related_entity_id"), // ID of the related entity
+  isSystemGenerated: boolean("is_system_generated").default(false), // Auto-generated vs manual entry
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertJobActivitySchema = createInsertSchema(jobActivities).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertJobActivity = z.infer<typeof insertJobActivitySchema>;
+export type JobActivity = typeof jobActivities.$inferSelect;

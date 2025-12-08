@@ -3066,6 +3066,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (data.status === 'done') {
           await notifyJobCompleted(storage, effectiveUserId, job, { firstName: 'You', username: 'You' });
         }
+
+        // Auto-create job diary entry for status change
+        const statusLabels: Record<string, string> = {
+          pending: 'Pending',
+          scheduled: 'Scheduled',
+          in_progress: 'In Progress',
+          done: 'Completed',
+          invoiced: 'Invoiced'
+        };
+        await storage.createJobActivity({
+          jobId: job.id,
+          userId: req.userId,
+          activityType: 'status_change',
+          title: `Job status changed to ${statusLabels[data.status] || data.status}`,
+          description: `Status changed from ${statusLabels[existingJob.status] || existingJob.status} to ${statusLabels[data.status] || data.status}`,
+          metadata: { oldStatus: existingJob.status, newStatus: data.status },
+          isSystemGenerated: true,
+        });
       }
 
       res.json(job);
@@ -3145,6 +3163,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Notify business owner that staff completed the job
           await notifyJobCompleted(storage, effectiveUserId, job, { firstName: userName, username: userName });
         }
+
+        // Auto-create job diary entry for status change
+        const statusLabels: Record<string, string> = {
+          pending: 'Pending',
+          scheduled: 'Scheduled',
+          in_progress: 'In Progress',
+          done: 'Completed',
+          invoiced: 'Invoiced'
+        };
+        await storage.createJobActivity({
+          jobId: job.id,
+          userId: req.userId,
+          activityType: 'status_change',
+          title: `Job status changed to ${statusLabels[status] || status}`,
+          description: `${userName} changed status from ${statusLabels[existingJob.status] || existingJob.status} to ${statusLabels[status] || status}`,
+          metadata: { oldStatus: existingJob.status, newStatus: status, changedBy: userName },
+          isSystemGenerated: true,
+        });
       }
       
       res.json(job);
@@ -7783,6 +7819,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error: any) {
       console.error('Error deleting job chat message:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== JOB ACTIVITIES (JOB DIARY) ROUTES =====
+
+  // Get job activities/diary entries for a specific job
+  app.get("/api/jobs/:jobId/activities", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const { jobId } = req.params;
+
+      // Verify job access
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const activities = await storage.getJobActivities(jobId);
+      
+      // Enrich activities with user info
+      const enrichedActivities = await Promise.all(activities.map(async (activity) => {
+        let userName = 'System';
+        if (activity.userId) {
+          const user = await storage.getUser(activity.userId);
+          if (user) {
+            userName = user.firstName && user.lastName 
+              ? `${user.firstName} ${user.lastName}`
+              : user.email || 'Unknown User';
+          }
+        }
+        return { ...activity, userName };
+      }));
+
+      res.json(enrichedActivities);
+    } catch (error: any) {
+      console.error('Error fetching job activities:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Add a new activity/diary entry to a job
+  app.post("/api/jobs/:jobId/activities", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const { jobId } = req.params;
+
+      // Verify job access
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const { activityType, title, description, metadata, relatedEntityType, relatedEntityId } = req.body;
+
+      if (!activityType || !title) {
+        return res.status(400).json({ error: 'Activity type and title are required' });
+      }
+
+      const activity = await storage.createJobActivity({
+        jobId,
+        userId,
+        activityType,
+        title,
+        description: description || null,
+        metadata: metadata || {},
+        relatedEntityType: relatedEntityType || null,
+        relatedEntityId: relatedEntityId || null,
+        isSystemGenerated: false,
+      });
+
+      // Get user info for the response
+      const user = await storage.getUser(userId);
+      const userName = user?.firstName && user?.lastName 
+        ? `${user.firstName} ${user.lastName}`
+        : user?.email || 'Unknown User';
+
+      res.status(201).json({ ...activity, userName });
+    } catch (error: any) {
+      console.error('Error creating job activity:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a job activity entry
+  app.delete("/api/jobs/:jobId/activities/:activityId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const { jobId, activityId } = req.params;
+
+      // Verify job access
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      await storage.deleteJobActivity(activityId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting job activity:', error);
       res.status(500).json({ error: error.message });
     }
   });

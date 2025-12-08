@@ -117,6 +117,19 @@ interface FormResponse {
   photos?: string[];
 }
 
+interface JobActivity {
+  id: string;
+  jobId: string;
+  userId?: string;
+  activityType: string;
+  title: string;
+  description?: string;
+  metadata?: Record<string, any>;
+  isSystemGenerated?: boolean;
+  createdAt: string;
+  userName?: string;
+}
+
 const STATUS_ACTIONS = {
   pending: { next: 'scheduled', label: 'Schedule Job', icon: 'calendar' as const, iconSize: 20 },
   scheduled: { next: 'in_progress', label: 'Start Job', icon: 'play' as const, iconSize: 20 },
@@ -1055,6 +1068,12 @@ export default function JobDetailScreen() {
   const [selectedFormTemplate, setSelectedFormTemplate] = useState<FormTemplate | null>(null);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   
+  const [activities, setActivities] = useState<JobActivity[]>([]);
+  const [showDiaryModal, setShowDiaryModal] = useState(false);
+  const [showAddDiaryEntry, setShowAddDiaryEntry] = useState(false);
+  const [newDiaryEntry, setNewDiaryEntry] = useState({ activityType: 'note', title: '', description: '' });
+  const [isSubmittingDiaryEntry, setIsSubmittingDiaryEntry] = useState(false);
+  
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { 
     activeTimer, 
@@ -1075,6 +1094,7 @@ export default function JobDetailScreen() {
     loadSignatures();
     loadRelatedDocuments();
     loadForms();
+    loadActivities();
   }, [id]);
 
   useEffect(() => {
@@ -1155,6 +1175,94 @@ export default function JobDetailScreen() {
     } catch (error) {
       console.log('Error loading forms:', error);
     }
+  };
+
+  const loadActivities = async () => {
+    try {
+      const response = await api.get<JobActivity[]>(`/api/jobs/${id}/activities`);
+      if (response.data) {
+        setActivities(response.data);
+      }
+    } catch (error) {
+      console.log('Error loading activities:', error);
+      setActivities([]);
+    }
+  };
+
+  const handleAddDiaryEntry = async () => {
+    if (!newDiaryEntry.title.trim()) {
+      Alert.alert('Required', 'Please enter a title for this entry');
+      return;
+    }
+    
+    setIsSubmittingDiaryEntry(true);
+    try {
+      const response = await api.post(`/api/jobs/${id}/activities`, newDiaryEntry);
+      if (response.data) {
+        await loadActivities();
+        setShowAddDiaryEntry(false);
+        setNewDiaryEntry({ activityType: 'note', title: '', description: '' });
+        Alert.alert('Success', 'Diary entry added');
+      } else if (response.error) {
+        Alert.alert('Error', response.error);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add entry. Please try again.');
+    } finally {
+      setIsSubmittingDiaryEntry(false);
+    }
+  };
+
+  const getActivityIcon = (type: string): string => {
+    const iconMap: Record<string, string> = {
+      note: 'edit-3',
+      status_change: 'check-circle',
+      photo: 'camera',
+      email_sent: 'mail',
+      sms_sent: 'message-square',
+      call: 'phone',
+      payment: 'dollar-sign',
+      checkin: 'map-pin',
+      checkout: 'log-out',
+      form_submitted: 'file-text',
+      signature: 'edit-2',
+      issue: 'alert-triangle',
+      material_added: 'package',
+    };
+    return iconMap[type] || 'activity';
+  };
+
+  const getActivityColor = (type: string): string => {
+    const colorMap: Record<string, string> = {
+      note: colors.primary,
+      status_change: '#22c55e',
+      photo: '#a855f7',
+      email_sent: '#f97316',
+      sms_sent: '#14b8a6',
+      call: '#06b6d4',
+      payment: '#10b981',
+      checkin: '#6366f1',
+      checkout: '#f43f5e',
+      form_submitted: '#f59e0b',
+      issue: '#ef4444',
+      material_added: '#eab308',
+    };
+    return colorMap[type] || colors.mutedForeground;
+  };
+
+  const formatActivityDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
   };
 
   const handleFormSubmit = async (templateId: string, responses: Record<string, any>, photos: string[]) => {
@@ -2081,6 +2189,22 @@ export default function JobDetailScreen() {
               </View>
               <Text style={styles.quickActionText}>Forms</Text>
             </TouchableOpacity>
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              style={styles.quickActionButton}
+              onPress={() => setShowDiaryModal(true)}
+              data-testid="button-diary"
+            >
+              <View style={styles.quickActionIcon}>
+                <Feather name="book-open" size={iconSizes['2xl']} color={colors.primary} />
+                {activities.length > 0 && (
+                  <View style={styles.signatureCountBadge}>
+                    <Text style={styles.signatureCountText}>{activities.length}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.quickActionText}>Diary</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -2564,6 +2688,137 @@ export default function JobDetailScreen() {
           </View>
         </Modal>
       )}
+
+      {/* Job Diary Modal */}
+      <Modal visible={showDiaryModal} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '85%' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <TouchableOpacity onPress={() => setShowDiaryModal(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+              <Text style={{ ...typography.subtitle, color: colors.foreground }}>Job Diary</Text>
+              <TouchableOpacity onPress={() => setShowAddDiaryEntry(true)}>
+                <Feather name="plus" size={24} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+            
+            {showAddDiaryEntry ? (
+              <View style={{ padding: spacing.lg }}>
+                <Text style={{ ...typography.subtitle, color: colors.foreground, marginBottom: spacing.md }}>Add Entry</Text>
+                
+                <View style={{ marginBottom: spacing.md }}>
+                  <Text style={{ ...typography.label, color: colors.foreground, marginBottom: spacing.xs }}>Type</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
+                    {['note', 'call', 'issue', 'material_added'].map((type) => (
+                      <TouchableOpacity
+                        key={type}
+                        style={{ 
+                          paddingHorizontal: spacing.md, 
+                          paddingVertical: spacing.sm, 
+                          borderRadius: radius.md, 
+                          backgroundColor: newDiaryEntry.activityType === type ? colors.primary : colors.muted 
+                        }}
+                        onPress={() => setNewDiaryEntry({ ...newDiaryEntry, activityType: type })}
+                      >
+                        <Text style={{ color: newDiaryEntry.activityType === type ? colors.primaryForeground : colors.foreground, fontSize: 13 }}>
+                          {type === 'note' ? 'Note' : type === 'call' ? 'Call' : type === 'issue' ? 'Issue' : 'Material'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+                
+                <View style={{ marginBottom: spacing.md }}>
+                  <Text style={{ ...typography.label, color: colors.foreground, marginBottom: spacing.xs }}>Title *</Text>
+                  <TextInput
+                    style={{ backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md, color: colors.foreground, borderWidth: 1, borderColor: colors.border }}
+                    placeholder="Brief summary..."
+                    placeholderTextColor={colors.mutedForeground}
+                    value={newDiaryEntry.title}
+                    onChangeText={(text) => setNewDiaryEntry({ ...newDiaryEntry, title: text })}
+                  />
+                </View>
+                
+                <View style={{ marginBottom: spacing.lg }}>
+                  <Text style={{ ...typography.label, color: colors.foreground, marginBottom: spacing.xs }}>Details (optional)</Text>
+                  <TextInput
+                    style={{ backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md, color: colors.foreground, borderWidth: 1, borderColor: colors.border, height: 80, textAlignVertical: 'top' }}
+                    placeholder="Add more details..."
+                    placeholderTextColor={colors.mutedForeground}
+                    value={newDiaryEntry.description}
+                    onChangeText={(text) => setNewDiaryEntry({ ...newDiaryEntry, description: text })}
+                    multiline
+                  />
+                </View>
+                
+                <View style={{ flexDirection: 'row', gap: spacing.md }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: colors.muted, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' }}
+                    onPress={() => {
+                      setShowAddDiaryEntry(false);
+                      setNewDiaryEntry({ activityType: 'note', title: '', description: '' });
+                    }}
+                  >
+                    <Text style={{ color: colors.foreground, fontWeight: '600' }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' }}
+                    onPress={handleAddDiaryEntry}
+                    disabled={isSubmittingDiaryEntry}
+                  >
+                    <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>
+                      {isSubmittingDiaryEntry ? 'Adding...' : 'Add Entry'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <FlatList
+                data={activities}
+                keyExtractor={(item) => item.id}
+                style={{ maxHeight: 400 }}
+                contentContainerStyle={{ padding: spacing.md }}
+                ListEmptyComponent={
+                  <View style={{ alignItems: 'center', paddingVertical: spacing['3xl'] }}>
+                    <Feather name="book-open" size={48} color={colors.mutedForeground} style={{ opacity: 0.5 }} />
+                    <Text style={{ ...typography.body, color: colors.mutedForeground, marginTop: spacing.md }}>No diary entries yet</Text>
+                    <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs }}>Tap + to add notes, calls, or issues</Text>
+                  </View>
+                }
+                renderItem={({ item }) => (
+                  <View style={{ flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: getActivityColor(item.activityType), alignItems: 'center', justifyContent: 'center' }}>
+                      <Feather name={getActivityIcon(item.activityType) as any} size={18} color="#fff" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '500' }}>{item.title}</Text>
+                      {item.description && (
+                        <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>{item.description}</Text>
+                      )}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xs }}>
+                        <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                          {formatActivityDate(item.createdAt)}
+                        </Text>
+                        {item.userName && (
+                          <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                            by {item.userName}
+                          </Text>
+                        )}
+                        {item.isSystemGenerated && (
+                          <View style={{ backgroundColor: colors.muted, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                            <Text style={{ fontSize: 10, color: colors.mutedForeground }}>Auto</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Full Photo Preview Modal */}
       <Modal visible={!!selectedPhoto} animationType="fade" transparent>

@@ -6,6 +6,7 @@ import JobPhotoGallery from "./JobPhotoGallery";
 import { JobChat } from "./JobChat";
 import { SignatureCapture } from "./SignatureCapture";
 import { JobFormResponse } from "./JobFormResponse";
+import { JobDiary } from "./JobDiary";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
@@ -594,6 +595,9 @@ export default function JobDetailView({
         {(job.status === 'in_progress' || job.status === 'done') && (
           <JobFormResponse jobId={jobId} />
         )}
+
+        {/* Job Diary - Complete activity history/timeline */}
+        <JobDiary jobId={jobId} />
 
         {/* Job Discussion - only show for team mode (not solo owners) */}
         {currentUser && !isSolo && (

@@ -149,6 +149,9 @@ import {
   jobFormResponses,
   type JobFormResponse,
   type InsertJobFormResponse,
+  jobActivities,
+  type JobActivity,
+  type InsertJobActivity,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -463,6 +466,11 @@ export interface IStorage {
   getJobFormResponses(jobId: string): Promise<JobFormResponse[]>;
   createJobFormResponse(data: InsertJobFormResponse): Promise<JobFormResponse>;
   updateJobFormResponse(id: string, data: Partial<InsertJobFormResponse>): Promise<JobFormResponse>;
+
+  // Job Activities (Job Diary)
+  getJobActivities(jobId: string): Promise<JobActivity[]>;
+  createJobActivity(data: InsertJobActivity): Promise<JobActivity>;
+  deleteJobActivity(id: string): Promise<void>;
 }
 
 // Initialize database connection
@@ -2818,6 +2826,22 @@ export class PostgresStorage implements IStorage {
       .where(eq(jobFormResponses.id, id))
       .returning();
     return result;
+  }
+
+  // Job Activities (Job Diary)
+  async getJobActivities(jobId: string): Promise<JobActivity[]> {
+    return await db.select().from(jobActivities)
+      .where(eq(jobActivities.jobId, jobId))
+      .orderBy(desc(jobActivities.createdAt));
+  }
+
+  async createJobActivity(data: InsertJobActivity): Promise<JobActivity> {
+    const [result] = await db.insert(jobActivities).values(data).returning();
+    return result;
+  }
+
+  async deleteJobActivity(id: string): Promise<void> {
+    await db.delete(jobActivities).where(eq(jobActivities.id, id));
   }
 }
 
