@@ -1156,17 +1156,20 @@ export default function TimeTrackingScreen() {
                       dayHours[day] += duration / 60;
                     });
                     
-                    const maxHours = Math.max(...dayHours, 8);
+                    const maxHours = Math.max(...dayHours, 8, 1);
                     
-                    return days.map((day, i) => (
-                      <View key={day} style={styles.statsBarRow}>
-                        <Text style={styles.statsBarLabel}>{day}</Text>
-                        <View style={styles.statsBarTrack}>
-                          <View style={[styles.statsBarFill, { width: `${(dayHours[i] / maxHours) * 100}%` }]} />
+                    return days.map((day, i) => {
+                      const widthPercent = maxHours > 0 ? Math.min((dayHours[i] / maxHours) * 100, 100) : 0;
+                      return (
+                        <View key={day} style={styles.statsBarRow}>
+                          <Text style={styles.statsBarLabel}>{day}</Text>
+                          <View style={styles.statsBarTrack}>
+                            <View style={[styles.statsBarFill, { width: `${widthPercent}%` }]} />
+                          </View>
+                          <Text style={styles.statsBarValue}>{dayHours[i].toFixed(1)}h</Text>
                         </View>
-                        <Text style={styles.statsBarValue}>{dayHours[i].toFixed(1)}h</Text>
-                      </View>
-                    ));
+                      );
+                    });
                   })()}
                 </View>
               </View>

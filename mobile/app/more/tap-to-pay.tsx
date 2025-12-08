@@ -352,14 +352,14 @@ export default function TapToPayScreen() {
             <TouchableOpacity
               style={[
                 styles.collectButton,
-                (!amount || isProcessing || !hasStripeConnect) && styles.collectButtonDisabled
+                (!amount || !hasStripeConnect) && styles.collectButtonDisabled
               ]}
               onPress={handleCollectPayment}
               disabled={!amount || isProcessing || !hasStripeConnect}
               activeOpacity={0.7}
             >
               {isProcessing ? (
-                <ActivityIndicator size="small" color={colors.mutedForeground} />
+                <ActivityIndicator size="small" color={colors.successForeground} />
               ) : (
                 <Feather 
                   name="smartphone" 

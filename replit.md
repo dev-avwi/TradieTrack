@@ -126,3 +126,17 @@ The companion React Native mobile app (Expo SDK 52) provides offline-first archi
     -   Auto-selects newly created client and auto-fills job address if provided
     -   Form state properly resets on modal dismissal (including Android back button)
     -   Uses `useCallback` and `useEffect` for proper cleanup to prevent stale data on re-open
+-   **Mobile Time Tracking Full Implementation** (December 8, 2025):
+    -   **Timesheet Tab**: Date-grouped time entries with job titles, durations, start/end times. Uses String coercion for job ID matching.
+    -   **Reports Tab**: Weekly/monthly summaries with hours, entry counts, averages. Export button with messaging.
+    -   **Stats Tab**: Daily hours bar chart with safe width calculations. Productivity insights cards with dynamic messaging.
+-   **Tap to Pay Screen** (December 8, 2025):
+    -   New dedicated screen at `/more/tap-to-pay` with amount input, description field, and payment collection
+    -   Stripe Connect status check with proper disabled state when not connected
+    -   Button colors use theme-based `successForeground` for proper contrast
+    -   Instructions, feature list, and EAS build requirement messaging
+    -   Removed all "Coming Soon" badges - feature is ready for EAS build
+-   **Password Reset Email Enhancement** (December 8, 2025):
+    -   Updated `sendPasswordResetEmail` to include optional 6-digit code for mobile app
+    -   Email now displays both clickable link (web) and styled code box (mobile)
+    -   Supports dual-flow password reset for web and mobile parity
