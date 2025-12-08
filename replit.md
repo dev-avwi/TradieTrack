@@ -119,3 +119,10 @@ The companion React Native mobile app (Expo SDK 52) provides offline-first archi
     -   **Skeleton Loaders**: Reusable skeleton loader components (`mobile/src/components/ui/Skeleton.tsx`) with shimmer animation. Applied to Dashboard and Jobs screens for better perceived performance during initial data loads.
     -   **Sticky Search Header**: Jobs list now has sticky header with search bar and filter pills that remain visible while scrolling. Added clear button (x-circle icon) to search input for easy query clearing.
     -   **Illustrated Empty States**: New reusable EmptyState component (`mobile/src/components/ui/EmptyState.tsx`) with type-specific icons, colors, and messaging for jobs, clients, invoices, quotes, messages, notifications, search, expenses, and documents. Applied to Jobs list.
+-   **Quick Add Client UX Improvement** (December 8, 2025):
+    -   Added visible "+" button next to client selector on Create Job screen for better discoverability
+    -   New `QuickAddClientModal` component allows creating clients directly without opening the full client picker first
+    -   Modal includes fields for name, email, phone, and address
+    -   Auto-selects newly created client and auto-fills job address if provided
+    -   Form state properly resets on modal dismissal (including Android back button)
+    -   Uses `useCallback` and `useEffect` for proper cleanup to prevent stale data on re-open
