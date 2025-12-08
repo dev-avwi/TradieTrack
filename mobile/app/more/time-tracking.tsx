@@ -333,6 +333,219 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.sm,
   },
+  timesheetSection: {
+    gap: spacing.md,
+  },
+  dateGroupHeader: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
+  },
+  timeEntryCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  timeEntryLeft: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeEntryContent: {
+    flex: 1,
+    gap: 2,
+  },
+  timeEntryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  timeEntryMeta: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  timeEntryDuration: {
+    alignItems: 'flex-end',
+  },
+  timeEntryDurationText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  timeEntryTime: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+  },
+  reportsSection: {
+    gap: spacing.md,
+  },
+  reportCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  reportTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  reportPeriod: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  reportStatsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  reportStat: {
+    flex: 1,
+    alignItems: 'center',
+    padding: spacing.md,
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+  },
+  reportStatValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  reportStatLabel: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  reportExportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    gap: spacing.sm,
+  },
+  reportExportButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+  statsSection: {
+    gap: spacing.md,
+  },
+  statsCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statsCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: spacing.md,
+  },
+  statsBarContainer: {
+    gap: spacing.sm,
+  },
+  statsBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  statsBarLabel: {
+    width: 40,
+    fontSize: 11,
+    color: colors.mutedForeground,
+    textAlign: 'right',
+  },
+  statsBarTrack: {
+    flex: 1,
+    height: 24,
+    backgroundColor: colors.muted,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+  },
+  statsBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
+  },
+  statsBarValue: {
+    width: 50,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.foreground,
+    textAlign: 'right',
+  },
+  insightCard: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  insightIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  insightContent: {
+    flex: 1,
+  },
+  insightTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  insightText: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl * 2,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginTop: spacing.md,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
 });
 
 function StatCard({ 
@@ -792,32 +1005,213 @@ export default function TimeTrackingScreen() {
           )}
 
           {activeTab === 'sheet' && (
-            <View style={styles.placeholderSection}>
-              <Feather name="calendar" size={48} color={colors.mutedForeground} />
-              <Text style={styles.placeholderTitle}>Timesheet</Text>
-              <Text style={styles.placeholderText}>
-                View and manage your time entries.{'\n'}Full timesheet management coming soon!
-              </Text>
+            <View style={styles.timesheetSection}>
+              {timeEntries.length === 0 ? (
+                <View style={styles.emptyStateContainer}>
+                  <Feather name="clock" size={48} color={colors.mutedForeground} />
+                  <Text style={styles.emptyStateTitle}>No Time Entries Yet</Text>
+                  <Text style={styles.emptyStateText}>Start tracking time using the Timer tab</Text>
+                </View>
+              ) : (
+                <>
+                  {/* Group entries by date */}
+                  {(() => {
+                    const groupedEntries: { [key: string]: TimeEntry[] } = {};
+                    timeEntries.forEach(entry => {
+                      const date = new Date(entry.startTime).toLocaleDateString('en-AU', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'short'
+                      });
+                      if (!groupedEntries[date]) {
+                        groupedEntries[date] = [];
+                      }
+                      groupedEntries[date].push(entry);
+                    });
+                    
+                    return Object.entries(groupedEntries)
+                      .sort(([a], [b]) => {
+                        const dateA = timeEntries.find(e => 
+                          new Date(e.startTime).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' }) === a
+                        );
+                        const dateB = timeEntries.find(e => 
+                          new Date(e.startTime).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' }) === b
+                        );
+                        return new Date(dateB?.startTime || 0).getTime() - new Date(dateA?.startTime || 0).getTime();
+                      })
+                      .map(([date, entries]) => (
+                        <View key={date}>
+                          <Text style={styles.dateGroupHeader}>{date}</Text>
+                          {entries.map(entry => {
+                            const job = entry.jobId ? jobs.find(j => String(j.id) === String(entry.jobId)) : null;
+                            const duration = entry.durationMinutes || 0;
+                            const hours = Math.floor(duration / 60);
+                            const mins = duration % 60;
+                            const startTime = new Date(entry.startTime).toLocaleTimeString('en-AU', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            });
+                            const endTime = entry.endTime ? new Date(entry.endTime).toLocaleTimeString('en-AU', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            }) : 'ongoing';
+                            
+                            return (
+                              <TouchableOpacity key={entry.id} style={styles.timeEntryCard} activeOpacity={0.7}>
+                                <View style={styles.timeEntryLeft}>
+                                  <Feather name="briefcase" size={20} color={colors.primary} />
+                                </View>
+                                <View style={styles.timeEntryContent}>
+                                  <Text style={styles.timeEntryTitle} numberOfLines={1}>
+                                    {job?.title || entry.description || 'Time Entry'}
+                                  </Text>
+                                  <Text style={styles.timeEntryMeta}>
+                                    {startTime} - {endTime}
+                                  </Text>
+                                </View>
+                                <View style={styles.timeEntryDuration}>
+                                  <Text style={styles.timeEntryDurationText}>
+                                    {hours > 0 ? `${hours}h ` : ''}{mins}m
+                                  </Text>
+                                  <Text style={styles.timeEntryTime}>{entry.endTime ? 'completed' : 'running'}</Text>
+                                </View>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      ));
+                  })()}
+                </>
+              )}
             </View>
           )}
 
           {activeTab === 'reports' && (
-            <View style={styles.placeholderSection}>
-              <Feather name="file-text" size={48} color={colors.mutedForeground} />
-              <Text style={styles.placeholderTitle}>Reports</Text>
-              <Text style={styles.placeholderText}>
-                Generate time tracking reports.{'\n'}Export and analytics coming soon!
-              </Text>
+            <View style={styles.reportsSection}>
+              <View style={styles.reportCard}>
+                <View style={styles.reportHeader}>
+                  <Text style={styles.reportTitle}>Weekly Summary</Text>
+                  <Text style={styles.reportPeriod}>{weekStart.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} - Today</Text>
+                </View>
+                
+                <View style={styles.reportStatsRow}>
+                  <View style={styles.reportStat}>
+                    <Text style={styles.reportStatValue}>{weekHours.toFixed(1)}</Text>
+                    <Text style={styles.reportStatLabel}>HOURS</Text>
+                  </View>
+                  <View style={styles.reportStat}>
+                    <Text style={styles.reportStatValue}>{weekEntries.length}</Text>
+                    <Text style={styles.reportStatLabel}>ENTRIES</Text>
+                  </View>
+                  <View style={styles.reportStat}>
+                    <Text style={styles.reportStatValue}>{weekEntries.length > 0 ? (weekHours / Math.max(weekEntries.length, 1)).toFixed(1) : '0'}</Text>
+                    <Text style={styles.reportStatLabel}>AVG/ENTRY</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.reportExportButton} 
+                  activeOpacity={0.7}
+                  onPress={() => Alert.alert('Export', 'Time report will be exported to CSV. This feature requires the full app build.')}
+                >
+                  <Feather name="download" size={18} color={colors.primaryForeground} />
+                  <Text style={styles.reportExportButtonText}>Export Report</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.reportCard}>
+                <View style={styles.reportHeader}>
+                  <Text style={styles.reportTitle}>Monthly Summary</Text>
+                  <Text style={styles.reportPeriod}>{new Date().toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })}</Text>
+                </View>
+                
+                <View style={styles.reportStatsRow}>
+                  <View style={styles.reportStat}>
+                    <Text style={styles.reportStatValue}>{calculateHours(timeEntries).toFixed(1)}</Text>
+                    <Text style={styles.reportStatLabel}>TOTAL HOURS</Text>
+                  </View>
+                  <View style={styles.reportStat}>
+                    <Text style={styles.reportStatValue}>{timeEntries.length}</Text>
+                    <Text style={styles.reportStatLabel}>TOTAL ENTRIES</Text>
+                  </View>
+                </View>
+              </View>
             </View>
           )}
 
           {activeTab === 'stats' && (
-            <View style={styles.placeholderSection}>
-              <Feather name="bar-chart-2" size={48} color={colors.mutedForeground} />
-              <Text style={styles.placeholderTitle}>Statistics</Text>
-              <Text style={styles.placeholderText}>
-                View your productivity stats.{'\n'}Charts and insights coming soon!
-              </Text>
+            <View style={styles.statsSection}>
+              <View style={styles.statsCard}>
+                <Text style={styles.statsCardTitle}>Hours by Day (This Week)</Text>
+                <View style={styles.statsBarContainer}>
+                  {(() => {
+                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    const dayHours: number[] = [0, 0, 0, 0, 0, 0, 0];
+                    
+                    weekEntries.forEach(entry => {
+                      const day = new Date(entry.startTime).getDay();
+                      const duration = entry.durationMinutes || 0;
+                      dayHours[day] += duration / 60;
+                    });
+                    
+                    const maxHours = Math.max(...dayHours, 8);
+                    
+                    return days.map((day, i) => (
+                      <View key={day} style={styles.statsBarRow}>
+                        <Text style={styles.statsBarLabel}>{day}</Text>
+                        <View style={styles.statsBarTrack}>
+                          <View style={[styles.statsBarFill, { width: `${(dayHours[i] / maxHours) * 100}%` }]} />
+                        </View>
+                        <Text style={styles.statsBarValue}>{dayHours[i].toFixed(1)}h</Text>
+                      </View>
+                    ));
+                  })()}
+                </View>
+              </View>
+
+              <View style={styles.statsCard}>
+                <Text style={styles.statsCardTitle}>Productivity Insights</Text>
+                
+                <View style={styles.insightCard}>
+                  <View style={styles.insightIconContainer}>
+                    <Feather name="trending-up" size={20} color={colors.primaryForeground} />
+                  </View>
+                  <View style={styles.insightContent}>
+                    <Text style={styles.insightTitle}>
+                      {todayHours >= 6 ? 'Great Progress Today!' : todayHours >= 3 ? 'Good Work!' : 'Keep Going!'}
+                    </Text>
+                    <Text style={styles.insightText}>
+                      You've logged {todayHours.toFixed(1)} hours today
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.insightCard}>
+                  <View style={styles.insightIconContainer}>
+                    <Feather name="clock" size={20} color={colors.primaryForeground} />
+                  </View>
+                  <View style={styles.insightContent}>
+                    <Text style={styles.insightTitle}>Weekly Average</Text>
+                    <Text style={styles.insightText}>
+                      {(weekHours / 7).toFixed(1)} hours per day this week
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.insightCard}>
+                  <View style={styles.insightIconContainer}>
+                    <Feather name="briefcase" size={20} color={colors.primaryForeground} />
+                  </View>
+                  <View style={styles.insightContent}>
+                    <Text style={styles.insightTitle}>Most Active Jobs</Text>
+                    <Text style={styles.insightText}>
+                      {activeJobs} active job{activeJobs !== 1 ? 's' : ''} being tracked
+                    </Text>
+                  </View>
+                </View>
+              </View>
             </View>
           )}
         </ScrollView>

@@ -940,11 +940,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await AuthService.createPasswordResetToken(email);
       
       if (result.success && result.token) {
-        // Send password reset email
+        // Send password reset email with both token (for web link) and code (for mobile)
         const user = await storage.getUserByEmail(email);
         if (user) {
           try {
-            await sendPasswordResetEmail(user, result.token);
+            await sendPasswordResetEmail(user, result.token, result.code);
           } catch (emailError) {
             console.error('Failed to send password reset email:', emailError);
             // Don't reveal email sending failure for security
@@ -960,6 +960,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Forgot password error:", error);
       res.status(500).json({ error: "Failed to process password reset request" });
+    }
+  });
+
+  // Password Reset - Verify 6-digit code (for mobile)
+  app.post("/api/auth/verify-reset-code", async (req: any, res) => {
+    try {
+      const { email, code } = req.body;
+      if (!email || !code) {
+        return res.status(400).json({ error: "Email and code are required" });
+      }
+
+      const result = await AuthService.verifyResetCode(email, code);
+      
+      if (result.success) {
+        res.json({ valid: true, token: result.token });
+      } else {
+        res.status(400).json({ valid: false, error: result.error });
+      }
+    } catch (error) {
+      console.error("Verify reset code error:", error);
+      res.status(500).json({ error: "Failed to verify reset code" });
     }
   });
 

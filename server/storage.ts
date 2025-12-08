@@ -166,6 +166,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByVerificationToken(token: string): Promise<User | undefined>;
   getUserByPasswordResetToken(token: string): Promise<User | undefined>;
+  getUserByPasswordResetTokenSuffix(token: string): Promise<User | undefined>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
@@ -562,6 +563,16 @@ export class PostgresStorage implements IStorage {
       .select()
       .from(users)
       .where(eq(users.passwordResetToken, token))
+      .limit(1);
+    return result[0];
+  }
+
+  async getUserByPasswordResetTokenSuffix(token: string): Promise<User | undefined> {
+    // Find user whose passwordResetToken ends with "|<token>" (combined format: code|token)
+    const result = await db
+      .select()
+      .from(users)
+      .where(sql`${users.passwordResetToken} LIKE ${'%|' + token}`)
       .limit(1);
     return result[0];
   }

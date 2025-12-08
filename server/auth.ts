@@ -139,6 +139,11 @@ export class AuthService {
     return crypto.randomBytes(32).toString('hex');
   }
 
+  static generateResetCode(): string {
+    // Generate a 6-digit numeric code for mobile password reset
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
   static async createEmailVerificationToken(userId: string): Promise<string> {
     const token = this.generateVerificationToken();
     const expiresAt = new Date();
@@ -205,27 +210,70 @@ export class AuthService {
   }
 
   // Password Reset methods
-  static async createPasswordResetToken(email: string): Promise<{ success: true; token: string } | { success: false; error: string }> {
+  static async createPasswordResetToken(email: string): Promise<{ success: true; token: string; code: string } | { success: false; error: string }> {
     try {
       const user = await storage.getUserByEmail(email);
       if (!user) {
         // Don't reveal if email exists - security best practice
-        return { success: true, token: '' };
+        return { success: true, token: '', code: '' };
       }
 
+      // Generate both a 6-digit code (for mobile) and a long token (for web links)
+      const code = this.generateResetCode();
       const token = this.generateVerificationToken();
+      // Store as "code|token" format so we can validate both
+      const combinedToken = `${code}|${token}`;
+      
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + PASSWORD_RESET_EXPIRY_HOURS);
 
       await storage.updateUser(user.id, {
-        passwordResetToken: token,
+        passwordResetToken: combinedToken,
         passwordResetExpiresAt: expiresAt,
       });
 
-      return { success: true, token };
+      return { success: true, token, code };
     } catch (error) {
       console.error('Create password reset token error:', error);
       return { success: false, error: 'Failed to create password reset token' };
+    }
+  }
+
+  // Verify 6-digit reset code (for mobile) and return the long token
+  static async verifyResetCode(email: string, code: string): Promise<{ success: true; token: string } | { success: false; error: string }> {
+    try {
+      const user = await storage.getUserByEmail(email);
+      if (!user || !user.passwordResetToken) {
+        return { success: false, error: 'Invalid or expired reset code' };
+      }
+
+      // Check if token has expired
+      if (user.passwordResetExpiresAt && new Date() > user.passwordResetExpiresAt) {
+        return { success: false, error: 'Reset code has expired. Please request a new one.' };
+      }
+
+      // Parse the combined token (format: "code|token")
+      const [storedCode, storedToken] = user.passwordResetToken.split('|');
+      
+      // Handle legacy tokens that don't have the code|token format
+      if (!storedToken) {
+        // Legacy format - check if the provided code matches the first 6 chars
+        if (code === user.passwordResetToken.slice(0, 6)) {
+          return { success: true, token: user.passwordResetToken };
+        }
+        return { success: false, error: 'Invalid reset code' };
+      }
+
+      // Validate the 6-digit code
+      if (storedCode !== code) {
+        return { success: false, error: 'Invalid reset code' };
+      }
+
+      // Return the long token for the final reset step
+      return { success: true, token: storedToken };
+    } catch (error) {
+      console.error('Verify reset code error:', error);
+      return { success: false, error: 'Failed to verify reset code' };
     }
   }
 
@@ -235,7 +283,16 @@ export class AuthService {
         return { success: false, error: 'Password must be at least 8 characters' };
       }
 
-      const user = await storage.getUserByPasswordResetToken(token);
+      // First try exact match (for legacy tokens)
+      let user = await storage.getUserByPasswordResetToken(token);
+      
+      // If not found, try matching tokens that contain "|" and end with the provided token
+      if (!user) {
+        // The token from verify-reset-code is just the long token part
+        // We need to find users whose passwordResetToken ends with |<token>
+        user = await storage.getUserByPasswordResetTokenSuffix(token);
+      }
+      
       if (!user) {
         return { success: false, error: 'Invalid or expired reset token' };
       }

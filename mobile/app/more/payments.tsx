@@ -476,7 +476,11 @@ export default function PaymentsScreen() {
                 </View>
               </TouchableOpacity>
 
-              <View style={styles.card}>
+              <TouchableOpacity 
+                style={styles.card}
+                activeOpacity={0.7}
+                onPress={() => router.push('/more/tap-to-pay')}
+              >
                 <View style={styles.cardRow}>
                   <View style={[styles.cardIconContainer, { backgroundColor: colors.successLight }]}>
                     <Feather name="smartphone" size={20} color={colors.success} />
@@ -485,11 +489,9 @@ export default function PaymentsScreen() {
                     <Text style={styles.cardTitle}>Tap to Pay</Text>
                     <Text style={styles.cardSubtitle}>Collect payments on-site with your phone</Text>
                   </View>
-                  <View style={[styles.betaBadge, { marginTop: 0 }]}>
-                    <Text style={styles.betaText}>Coming Soon</Text>
-                  </View>
+                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} style={styles.cardChevron} />
                 </View>
-              </View>
+              </TouchableOpacity>
 
               {/* Info Note */}
               <View style={styles.infoCard}>
