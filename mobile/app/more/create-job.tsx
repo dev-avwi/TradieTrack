@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -664,7 +664,7 @@ function QuickAddClientModal({
   visible: boolean;
   onClose: () => void;
   onClientCreated: () => void;
-  onSelectClient: (id: string) => void;
+  onSelectClient: (id: string, address?: string) => void;
   colors: ThemeColors;
 }) {
   const [name, setName] = useState('');
@@ -674,15 +674,20 @@ function QuickAddClientModal({
   const [isSaving, setIsSaving] = useState(false);
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setName('');
     setEmail('');
     setPhone('');
     setClientAddress('');
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!visible) {
+      resetForm();
+    }
+  }, [visible, resetForm]);
 
   const handleClose = () => {
-    resetForm();
     onClose();
   };
 
@@ -693,17 +698,18 @@ function QuickAddClientModal({
     }
 
     setIsSaving(true);
+    const savedAddress = clientAddress.trim() || undefined;
     try {
       const response = await api.post<{ id: string }>('/api/clients', {
         name: name.trim(),
         email: email.trim() || null,
         phone: phone.trim() || null,
-        address: clientAddress.trim() || null,
+        address: savedAddress || null,
       });
 
       if (response.data?.id) {
-        onClientCreated();
-        onSelectClient(response.data.id);
+        await onClientCreated();
+        onSelectClient(response.data.id, savedAddress);
         handleClose();
         Alert.alert('Success', 'Client created and selected');
       } else if (response.error) {
@@ -1140,11 +1146,10 @@ export default function CreateJobScreen() {
         visible={showQuickAddClient}
         onClose={() => setShowQuickAddClient(false)}
         onClientCreated={fetchClients}
-        onSelectClient={(id) => {
-          setClientId(id);
-          const client = clients.find((c) => c.id === id);
-          if (client?.address && !address) {
-            setAddress(client.address);
+        onSelectClient={(id, clientAddress) => {
+          handleClientSelect(id);
+          if (clientAddress && !address) {
+            setAddress(clientAddress);
           }
         }}
         colors={colors}
