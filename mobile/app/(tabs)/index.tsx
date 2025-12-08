@@ -17,6 +17,7 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
+import { DashboardSkeleton } from '../../src/components/ui/Skeleton';
 
 // Trust Banner Component - compact modern design
 function TrustBanner() {
@@ -473,6 +474,7 @@ export default function DashboardScreen() {
   const { clients, fetchClients } = useClientsStore();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   const handleNavigateToItem = (type: string, id: string) => {
     switch (type) {
@@ -502,7 +504,7 @@ export default function DashboardScreen() {
   }, [fetchTodaysJobs, fetchStats, fetchClients]);
 
   useEffect(() => {
-    refreshData();
+    refreshData().finally(() => setIsInitialLoad(false));
   }, []);
 
   const getGreeting = () => {
@@ -547,6 +549,23 @@ export default function DashboardScreen() {
   const monthRevenue = formatCurrency(stats.thisMonthRevenue || 0);
 
   const isLoading = jobsLoading || statsLoading;
+  const showSkeleton = isInitialLoad && isLoading;
+
+  if (showSkeleton) {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.headerTitle}>{getGreeting()}, {user?.firstName || 'there'}</Text>
+              <Text style={styles.headerSubtitle}>Loading your dashboard...</Text>
+            </View>
+          </View>
+        </View>
+        <DashboardSkeleton />
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView 

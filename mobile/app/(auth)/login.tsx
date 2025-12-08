@@ -9,18 +9,23 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
-  Image
+  Image,
+  ActivityIndicator
 } from 'react-native';
 import { Link, router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import api, { API_URL } from '../../src/lib/api';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const { login, isLoading, error, clearError, checkAuth } = useAuthStore();
   const { colors } = useTheme();
   const styles = createStyles(colors);
 
@@ -34,6 +39,30 @@ export default function LoginScreen() {
     
     if (success) {
       router.replace('/(tabs)');
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const authUrl = `${API_URL}/api/auth/google`;
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        'tradietrack://'
+      );
+      
+      if (result.type === 'success') {
+        await checkAuth();
+        const { isAuthenticated } = useAuthStore.getState();
+        if (isAuthenticated) {
+          router.replace('/(tabs)');
+        }
+      }
+    } catch (err) {
+      console.error('[Login] Google sign-in error:', err);
+      Alert.alert('Error', 'Failed to sign in with Google. Please try again.');
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -121,9 +150,33 @@ export default function LoginScreen() {
 
               <TouchableOpacity 
                 style={styles.forgotPassword}
-                onPress={() => Alert.alert('Forgot Password', 'Password reset functionality coming soon!')}
+                onPress={() => router.push('/(auth)/forgot-password')}
               >
                 <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              </TouchableOpacity>
+
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or continue with</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <TouchableOpacity
+                style={styles.googleButton}
+                onPress={handleGoogleSignIn}
+                disabled={isGoogleLoading}
+                activeOpacity={0.8}
+              >
+                {isGoogleLoading ? (
+                  <ActivityIndicator size="small" color={colors.foreground} />
+                ) : (
+                  <>
+                    <View style={styles.googleIconContainer}>
+                      <Text style={styles.googleIcon}>G</Text>
+                    </View>
+                    <Text style={styles.googleButtonText}>Sign in with Google</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </CardContent>
           </Card>
@@ -239,6 +292,52 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   forgotPasswordText: {
     color: colors.primary,
     fontSize: 14,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.cardBorder,
+  },
+  dividerText: {
+    paddingHorizontal: 12,
+    color: colors.mutedForeground,
+    fontSize: 12,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 10,
+    gap: 12,
+  },
+  googleIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  googleIcon: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4285F4',
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.foreground,
   },
   spacer: {
     flex: 1,

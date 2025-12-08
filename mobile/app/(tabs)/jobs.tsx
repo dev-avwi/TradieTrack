@@ -17,6 +17,7 @@ import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
+import { JobsListSkeleton, SkeletonStatCard } from '../../src/components/ui/Skeleton';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
@@ -292,13 +293,14 @@ export default function JobsScreen() {
   const { clients, fetchClients } = useClientsStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const refreshData = useCallback(async () => {
     await Promise.all([fetchJobs(), fetchClients()]);
   }, [fetchJobs, fetchClients]);
 
   useEffect(() => {
-    refreshData();
+    refreshData().finally(() => setIsInitialLoad(false));
   }, []);
 
   const getClientName = (clientId?: string) => {
@@ -505,7 +507,11 @@ export default function JobsScreen() {
           <View style={styles.activityCard}>
             <Text style={styles.activityLabel}>THIS WEEK</Text>
             
-            {isLoading ? (
+            {isLoading && isInitialLoad ? (
+              <View style={styles.loadingContainer}>
+                <JobsListSkeleton />
+              </View>
+            ) : isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={colors.primary} />
               </View>
@@ -534,7 +540,9 @@ export default function JobsScreen() {
             <Text style={styles.sectionTitle}>ALL JOBS</Text>
           </View>
           
-          {isLoading ? (
+          {isLoading && isInitialLoad ? (
+            <JobsListSkeleton />
+          ) : isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
