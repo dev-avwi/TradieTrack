@@ -105,3 +105,11 @@ The companion React Native mobile app (Expo SDK 52) provides offline-first archi
     -   Quick access to job-forms settings screen from empty state
     -   Backend integration with `/api/job-forms/templates` and `/api/jobs/:jobId/forms` endpoints
     -   Types: FormTemplate (jobFormTemplates) and FormResponse (jobFormResponses) from shared schema
+-   **Mobile Feature Parity Improvements** (December 8, 2025):
+    -   **Offline Authentication**: SQLite user_session table caching enables login without network after first successful login. Network status detection with graceful messaging when offline with no cached session.
+    -   **Time Tracking Backend Integration**: Timer now persists to `/api/time-entries` with POST on start, PATCH on stop, GET for stats. Loading states and error handling with user-friendly alerts.
+    -   **Recurring Jobs Mobile Screen**: Full management screen at `/more/recurring-jobs` with daily/weekly/fortnightly/monthly/quarterly/yearly patterns. Backend routes at `/api/recurring/jobs` with full CRUD.
+    -   **Quick Messages SMS**: "I'm On My Way" and ETA templates via `/api/sms/send` endpoint. Pre-filled message templates with client selection and job linking.
+    -   **Materials Catalog/Price Book**: Mobile screen at `/more/materials-catalog` for managing line items with name, description, price, trade type, and units. Backend routes at `/api/catalog` with user ownership protection.
+    -   **Stripe Terminal Tap to Pay**: Production-ready implementation with connection token and payment intent routes. Requires EAS build with `@stripe/stripe-terminal-react-native` package. Comprehensive documentation in `mobile/src/lib/tapToPay.ts`.
+-   **Profile Navigation Updates**: Added Price Book and Quick Messages to profile menu for easy access
