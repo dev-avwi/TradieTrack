@@ -307,8 +307,8 @@ class OfflineStore {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `, [
       location.userId, location.latitude, location.longitude,
-      location.accuracy, location.speed, location.heading,
-      location.altitude, location.batteryLevel, location.activityType
+      location.accuracy ?? null, location.speed ?? null, location.heading ?? null,
+      location.altitude ?? null, location.batteryLevel ?? null, location.activityType ?? null
     ]);
   }
 
@@ -431,8 +431,11 @@ class OfflineStore {
 
         const response = await api.request(method, endpoint, mutation.operation !== 'delete' ? payload : undefined);
         
-        if (response && mutation.operation === 'create' && mutation.record_id.startsWith('temp-')) {
-          await this.reconcileTempId(mutation.table_name, mutation.record_id, response.id);
+        if (response?.data && mutation.operation === 'create' && mutation.record_id.startsWith('temp-')) {
+          const responseData = response.data as { id?: string };
+          if (responseData.id) {
+            await this.reconcileTempId(mutation.table_name, mutation.record_id, responseData.id);
+          }
         }
         
         await this.markMutationSynced(mutation.id);
@@ -481,19 +484,19 @@ class OfflineStore {
 
   private async pullLatestData(): Promise<void> {
     try {
-      const [clients, jobs, quotes, invoices] = await Promise.all([
-        api.get('/api/clients'),
-        api.get('/api/jobs'),
-        api.get('/api/quotes'),
-        api.get('/api/invoices'),
+      const [clientsRes, jobsRes, quotesRes, invoicesRes] = await Promise.all([
+        api.get<any[]>('/api/clients'),
+        api.get<any[]>('/api/jobs'),
+        api.get<any[]>('/api/quotes'),
+        api.get<any[]>('/api/invoices'),
       ]);
 
-      if (clients) await this.saveClients(clients);
-      if (jobs) await this.saveJobs(jobs);
-      for (const quote of (quotes || [])) {
+      if (clientsRes?.data) await this.saveClients(clientsRes.data);
+      if (jobsRes?.data) await this.saveJobs(jobsRes.data);
+      for (const quote of (quotesRes?.data || [])) {
         await this.saveQuote(quote);
       }
-      for (const invoice of (invoices || [])) {
+      for (const invoice of (invoicesRes?.data || [])) {
         await this.saveInvoice(invoice);
       }
 
