@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Phone, MessageSquare, Navigation, Play, DollarSign, Mic, MicOff } from "lucide-react";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
+import { VoiceNotes } from "./VoiceNotes";
 import { JobChat } from "./JobChat";
 import { SignatureCapture } from "./SignatureCapture";
 import { JobFormResponse } from "./JobFormResponse";
@@ -121,26 +122,30 @@ export default function JobDetailView({
     queryKey: ['/api/auth/me'],
   });
 
-  // Fetch linked quote/invoice for this job from contextual endpoint
-  // Uses the same queryKey pattern as the contextual jobs list for proper cache sharing
-  const { data: contextualJobs } = useQuery<JobWithLinks[]>({
-    queryKey: ['/api/jobs/contextual'],
+  // Fetch linked quote/invoice directly for this specific job
+  // This ensures we always get linked documents regardless of contextual jobs list size
+  interface LinkedDocuments {
+    jobId: string;
+    linkedQuote: LinkedDocument | null;
+    linkedInvoice: LinkedDocument | null;
+  }
+  
+  const { data: linkedDocuments } = useQuery<LinkedDocuments>({
+    queryKey: ['/api/jobs', jobId, 'linked-documents'],
     queryFn: async () => {
-      const res = await fetch('/api/jobs/contextual', { credentials: 'include' });
+      const res = await fetch(`/api/jobs/${jobId}/linked-documents`, { credentials: 'include' });
       if (!res.ok) {
-        if (res.status === 401) return []; // Handle unauthenticated gracefully
-        throw new Error('Failed to fetch contextual jobs');
+        if (res.status === 401) return { jobId, linkedQuote: null, linkedInvoice: null };
+        throw new Error('Failed to fetch linked documents');
       }
       return res.json();
     },
-    enabled: !!currentUser, // Only fetch when authenticated
+    enabled: !!currentUser && !!jobId,
     staleTime: 30000,
   });
 
-  // Find the current job from contextual data
-  const currentJobWithLinks = contextualJobs?.find((j: any) => j.id === jobId);
-  const linkedQuote = currentJobWithLinks?.linkedQuote;
-  const linkedInvoice = currentJobWithLinks?.linkedInvoice;
+  const linkedQuote = linkedDocuments?.linkedQuote;
+  const linkedInvoice = linkedDocuments?.linkedInvoice;
 
   const updateJobMutation = useMutation({
     mutationFn: async (data: { status: string }) => {
@@ -155,6 +160,7 @@ export default function JobDetailView({
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       queryClient.invalidateQueries({ queryKey: ['/api/jobs/contextual'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'linked-documents'] });
       toast({
         title: "Job Updated",
         description: "Job status has been updated",
@@ -321,19 +327,56 @@ export default function JobDetailView({
     );
   }
 
+  // Mobile quick actions
+  const handleCall = () => {
+    if (client?.phone) {
+      window.location.href = `tel:${client.phone}`;
+    }
+  };
+
+  const handleSMS = () => {
+    if (client?.phone) {
+      window.location.href = `sms:${client.phone}`;
+    }
+  };
+
+  const handleNavigate = () => {
+    if (job.address) {
+      const encodedAddress = encodeURIComponent(job.address);
+      window.open(`https://maps.google.com/maps?q=${encodedAddress}`, '_blank');
+    }
+  };
+
+  const handleStartJob = async () => {
+    try {
+      await updateJobMutation.mutateAsync({ status: 'in_progress' });
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleCompleteJobAction = async () => {
+    try {
+      await updateJobMutation.mutateAsync({ status: 'done' });
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
   return (
     <PageShell data-testid="job-detail-view">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
+      {/* Compact Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3 min-w-0">
           <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back">
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="text-lg font-semibold">{job.title}</h1>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold truncate">{job.title}</h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               {client?.name && (
                 <span 
-                  className="hover:underline cursor-pointer"
+                  className="hover:underline cursor-pointer truncate"
                   onClick={() => job.clientId && onViewClient?.(job.clientId)}
                   data-testid="link-client"
                 >
@@ -348,7 +391,7 @@ export default function JobDetailView({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" data-testid="button-job-actions">
-              <MoreVertical className="h-4 w-4" />
+              <MoreVertical className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -361,7 +404,7 @@ export default function JobDetailView({
             {job.status !== 'done' && onCompleteJob && (
               <DropdownMenuItem onClick={() => onCompleteJob(jobId)} data-testid="menu-complete-job">
                 <CheckCircle className="h-4 w-4 mr-2" />
-                Go Complete Job
+                Complete Job
               </DropdownMenuItem>
             )}
             {onCreateQuote && !isTradie && (
@@ -379,6 +422,157 @@ export default function JobDetailView({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* MOBILE-FIRST: Quick Actions Bar - Large Touch Targets */}
+      <div className="grid grid-cols-4 gap-2 mb-4" data-testid="quick-actions-bar">
+        <Button
+          variant="outline"
+          className="h-14 flex-col gap-1 p-2"
+          onClick={handleCall}
+          disabled={!client?.phone}
+          data-testid="button-quick-call"
+        >
+          <Phone className="h-5 w-5" style={{ color: client?.phone ? 'hsl(142 76% 36%)' : undefined }} />
+          <span className="text-xs">Call</span>
+        </Button>
+        <Button
+          variant="outline"
+          className="h-14 flex-col gap-1 p-2"
+          onClick={handleSMS}
+          disabled={!client?.phone}
+          data-testid="button-quick-sms"
+        >
+          <MessageSquare className="h-5 w-5" style={{ color: client?.phone ? 'hsl(217 91% 60%)' : undefined }} />
+          <span className="text-xs">SMS</span>
+        </Button>
+        <Button
+          variant="outline"
+          className="h-14 flex-col gap-1 p-2"
+          onClick={handleNavigate}
+          disabled={!job.address}
+          data-testid="button-quick-navigate"
+        >
+          <Navigation className="h-5 w-5" style={{ color: job.address ? 'hsl(var(--trade))' : undefined }} />
+          <span className="text-xs">Navigate</span>
+        </Button>
+        <Button
+          variant="outline"
+          className="h-14 flex-col gap-1 p-2"
+          onClick={() => {
+            const photoSection = document.querySelector('[data-testid="job-photo-gallery"]');
+            if (photoSection) {
+              photoSection.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+          data-testid="button-quick-photo"
+        >
+          <Camera className="h-5 w-5" style={{ color: 'hsl(45 93% 47%)' }} />
+          <span className="text-xs">Photo</span>
+        </Button>
+      </div>
+
+      {/* PROMINENT: Invoice/Quote Section - Shows at TOP when job is invoiced */}
+      {job.status === 'invoiced' && linkedInvoice && (
+        <Card className="mb-4 border-2" style={{ borderColor: 'hsl(var(--trade))' }} data-testid="card-invoice-prominent">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                  <Receipt className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                </div>
+                <div>
+                  <p className="font-bold text-lg">Invoice #{linkedInvoice.invoiceNumber}</p>
+                  <Badge 
+                    className={`text-xs ${
+                      linkedInvoice.status === 'paid' 
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
+                        : linkedInvoice.status === 'sent'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                        : linkedInvoice.status === 'overdue'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                        : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                    }`}
+                  >
+                    {linkedInvoice.status === 'paid' ? 'Paid' : 
+                     linkedInvoice.status === 'sent' ? 'Awaiting Payment' : 
+                     linkedInvoice.status === 'overdue' ? 'Overdue' : 'Draft'}
+                  </Badge>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold" style={{ color: 'hsl(var(--trade))' }}>
+                  ${parseFloat(linkedInvoice.total || '0').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                </p>
+                {linkedInvoice.dueDate && (
+                  <p className="text-xs text-muted-foreground">
+                    Due {format(new Date(linkedInvoice.dueDate), 'MMM d, yyyy')}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 h-12"
+                onClick={() => navigate(`/invoices/${linkedInvoice.id}`)}
+                data-testid="button-view-invoice"
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                View Invoice
+              </Button>
+              {linkedInvoice.status !== 'paid' && (
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12"
+                  onClick={() => navigate(`/collect-payment/${linkedInvoice.id}`)}
+                  data-testid="button-collect-payment"
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Collect Payment
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Primary Action Button - Contextual based on status */}
+      {(job.status === 'pending' || job.status === 'scheduled') && (
+        <Button
+          className="w-full h-14 text-lg font-bold mb-4"
+          style={{ backgroundColor: 'hsl(142 76% 36%)' }}
+          onClick={handleStartJob}
+          disabled={updateJobMutation.isPending}
+          data-testid="button-start-job"
+        >
+          <Play className="h-6 w-6 mr-2" />
+          Start Job
+        </Button>
+      )}
+
+      {job.status === 'in_progress' && (
+        <Button
+          className="w-full h-14 text-lg font-bold mb-4"
+          style={{ backgroundColor: 'hsl(var(--trade))' }}
+          onClick={handleCompleteJobAction}
+          disabled={updateJobMutation.isPending}
+          data-testid="button-complete-job"
+        >
+          <CheckCircle className="h-6 w-6 mr-2" />
+          Complete Job
+        </Button>
+      )}
+
+      {job.status === 'done' && !linkedInvoice && !isTradie && (
+        <Button
+          className="w-full h-14 text-lg font-bold mb-4"
+          style={{ backgroundColor: 'hsl(var(--trade))' }}
+          onClick={() => navigate(`/invoices/new?jobId=${jobId}`)}
+          data-testid="button-create-invoice-done"
+        >
+          <Receipt className="h-6 w-6 mr-2" />
+          Create Invoice
+        </Button>
+      )}
 
       <div className="space-y-4">
         <Card>
@@ -585,6 +779,11 @@ export default function JobDetailView({
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Voice Notes - hands-free mobile updates for in_progress or done jobs */}
+        {(job.status === 'in_progress' || job.status === 'done') && (
+          <VoiceNotes jobId={jobId} canRecord={job.status === 'in_progress'} />
         )}
 
         {/* Digital Signatures - show when job is in progress or done */}

@@ -170,6 +170,9 @@ import {
   bookingRequests,
   type BookingRequest,
   type InsertBookingRequest,
+  voiceNotes,
+  type VoiceNote,
+  type InsertVoiceNote,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -2253,6 +2256,31 @@ export class PostgresStorage implements IStorage {
   async deleteJobPhoto(id: string, userId: string): Promise<boolean> {
     const result = await db.delete(jobPhotos)
       .where(and(eq(jobPhotos.id, id), eq(jobPhotos.userId, userId)));
+    return result.rowCount > 0;
+  }
+
+  // Voice Notes - Mobile-first audio recordings for jobs
+  async getVoiceNotes(jobId: string, userId: string): Promise<VoiceNote[]> {
+    return await db.select().from(voiceNotes)
+      .where(and(eq(voiceNotes.jobId, jobId), eq(voiceNotes.userId, userId)))
+      .orderBy(desc(voiceNotes.createdAt));
+  }
+
+  async getVoiceNote(id: string, userId: string): Promise<VoiceNote | undefined> {
+    const result = await db.select().from(voiceNotes)
+      .where(and(eq(voiceNotes.id, id), eq(voiceNotes.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createVoiceNote(voiceNote: InsertVoiceNote): Promise<VoiceNote> {
+    const result = await db.insert(voiceNotes).values(voiceNote).returning();
+    return result[0];
+  }
+
+  async deleteVoiceNote(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(voiceNotes)
+      .where(and(eq(voiceNotes.id, id), eq(voiceNotes.userId, userId)));
     return result.rowCount > 0;
   }
 

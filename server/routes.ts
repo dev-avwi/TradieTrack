@@ -3130,6 +3130,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get linked documents (quote/invoice) for a specific job - always returns linked documents
+  app.get("/api/jobs/:id/linked-documents", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const jobId = req.params.id;
+      
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      // Get all quotes and invoices for this user
+      const [quotes, invoices] = await Promise.all([
+        storage.getQuotes(effectiveUserId),
+        storage.getInvoices(effectiveUserId)
+      ]);
+      
+      // Find quote and invoice linked to this specific job
+      const linkedQuote = quotes.find((q: any) => q.jobId === jobId);
+      const linkedInvoice = invoices.find((i: any) => i.jobId === jobId);
+      
+      res.json({
+        jobId,
+        linkedQuote: linkedQuote ? {
+          id: linkedQuote.id,
+          quoteNumber: linkedQuote.number,
+          title: linkedQuote.title,
+          description: linkedQuote.description,
+          lineItems: linkedQuote.lineItems,
+          subtotal: linkedQuote.subtotal,
+          gstAmount: linkedQuote.gstAmount,
+          total: linkedQuote.total,
+          status: linkedQuote.status,
+          notes: linkedQuote.notes,
+          terms: linkedQuote.terms,
+          depositPercent: linkedQuote.depositPercent,
+          createdAt: linkedQuote.createdAt,
+          sentAt: linkedQuote.sentAt,
+        } : null,
+        linkedInvoice: linkedInvoice ? {
+          id: linkedInvoice.id,
+          invoiceNumber: linkedInvoice.number,
+          title: linkedInvoice.title,
+          description: linkedInvoice.description,
+          lineItems: linkedInvoice.lineItems,
+          subtotal: linkedInvoice.subtotal,
+          gstAmount: linkedInvoice.gstAmount,
+          total: linkedInvoice.total,
+          status: linkedInvoice.status,
+          notes: linkedInvoice.notes,
+          dueDate: linkedInvoice.dueDate,
+          paidAt: linkedInvoice.paidAt,
+          amountPaid: linkedInvoice.amountPaid,
+          createdAt: linkedInvoice.createdAt,
+          sentAt: linkedInvoice.sentAt,
+        } : null,
+      });
+    } catch (error) {
+      console.error("Error fetching linked documents:", error);
+      res.status(500).json({ error: "Failed to fetch linked documents" });
+    }
+  });
+
   app.post("/api/jobs", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       // Use effectiveUserId (business owner's ID) for multi-tenant data scoping
@@ -7837,6 +7900,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error: any) {
       console.error('Error deleting photo:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== VOICE NOTES ROUTES =====
+  
+  // Get voice notes for a job
+  app.get("/api/jobs/:jobId/voice-notes", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { jobId } = req.params;
+      
+      const notes = await storage.getVoiceNotes(jobId, effectiveUserId);
+      
+      // Generate signed URLs for playback
+      const { getSignedPhotoUrl } = await import('./photoService');
+      const notesWithUrls = await Promise.all(
+        notes.map(async (note) => {
+          const { url } = await getSignedPhotoUrl(note.objectStorageKey, 60);
+          return {
+            ...note,
+            audioUrl: url || '',
+          };
+        })
+      );
+      
+      res.json(notesWithUrls);
+    } catch (error: any) {
+      console.error('Error getting voice notes:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Upload voice note for a job (base64 encoded like photos)
+  app.post("/api/jobs/:jobId/voice-notes", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { jobId } = req.params;
+      const { audioBase64, duration, mimeType } = req.body;
+      
+      if (!audioBase64) {
+        return res.status(400).json({ error: 'audioBase64 is required' });
+      }
+      
+      // Verify job exists
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      // Decode base64 audio
+      const buffer = Buffer.from(audioBase64, 'base64');
+      
+      // Use object storage to save audio
+      const crypto = await import('crypto');
+      const uniqueId = crypto.randomBytes(8).toString('hex');
+      const audioMimeType = mimeType || 'audio/webm';
+      const extension = audioMimeType.includes('webm') ? 'webm' : 'ogg';
+      const objectKey = `.private/voice-notes/${jobId}/${uniqueId}.${extension}`;
+      
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      
+      try {
+        await objectStorageService.uploadFile(objectKey, buffer, audioMimeType);
+      } catch (uploadError) {
+        console.error('Voice note upload error:', uploadError);
+        return res.status(500).json({ error: 'Failed to upload voice note. Object storage may not be configured.' });
+      }
+      
+      // Save to database
+      const voiceNote = await storage.createVoiceNote({
+        userId: effectiveUserId,
+        jobId,
+        objectStorageKey: objectKey,
+        fileName: `voice-note-${uniqueId}.${extension}`,
+        fileSize: buffer.length,
+        mimeType: audioMimeType,
+        duration: parseInt(duration || '0') || 0,
+        recordedBy: req.userId,
+      });
+      
+      res.status(201).json(voiceNote);
+    } catch (error: any) {
+      console.error('Error uploading voice note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Delete voice note
+  app.delete("/api/jobs/:jobId/voice-notes/:noteId", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { noteId } = req.params;
+      
+      const note = await storage.getVoiceNote(noteId, effectiveUserId);
+      if (!note) {
+        return res.status(404).json({ error: 'Voice note not found' });
+      }
+      
+      // Delete from object storage
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      
+      try {
+        await objectStorageService.deleteFile(note.objectStorageKey);
+      } catch (e) {
+        console.warn('Voice note file may not exist in storage:', e);
+      }
+      
+      // Delete from database
+      await storage.deleteVoiceNote(noteId, effectiveUserId);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting voice note:', error);
       res.status(500).json({ error: error.message });
     }
   });

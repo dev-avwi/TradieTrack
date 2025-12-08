@@ -12,6 +12,7 @@ Key architectural decisions and features include:
 -   **Authentication**: Supports email/password, Google OAuth 2.0, session management, and secure token-based password reset.
 -   **AI Assistant**: Integrates GPT-4o-mini for business-aware suggestions, Australian English phrasing, and tone adjustments.
 -   **Job Workflow**: A 5-stage ServiceM8-style job status workflow (`pending` → `scheduled` → `in_progress` → `done` → `invoiced`) with visual indicators and professional job confirmation emails.
+-   **Voice Notes**: Mobile-first audio recording feature for hands-free job updates. Tradies can record voice notes on-site using the MediaRecorder API, which are stored in object storage and attached to jobs. Available for in_progress and done jobs, with playback via signed URLs.
 -   **Quoting & Invoicing**: Features a live editor, integration of templates and catalog items, seamless quote-to-invoice conversion, configurable deposit payments, and server-side PDF generation via Puppeteer.
 -   **Communication**: Includes Job Chat, Team Chat, and Direct Messages with role-based access, along with customizable email templates with AI suggestions and automated Gmail integration.
 -   **Location & Tracking**: Implements a Life360-style interactive map for owners/managers, displaying job pins and real-time location tracking for team members, including activity status and geofence alerts. Trip tracking with auto-detection and GPS-based distance calculation is also included.

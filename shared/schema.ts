@@ -1676,6 +1676,28 @@ export const insertJobPhotoSchema = createInsertSchema(jobPhotos).omit({
 export type InsertJobPhoto = z.infer<typeof insertJobPhotoSchema>;
 export type JobPhoto = typeof jobPhotos.$inferSelect;
 
+// Voice Notes - Audio recordings for jobs (mobile-first feature)
+export const voiceNotes = pgTable("voice_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  objectStorageKey: text("object_storage_key").notNull(),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: text("mime_type").default('audio/webm'),
+  duration: integer("duration"), // Duration in seconds
+  transcription: text("transcription"), // AI-generated transcription (future feature)
+  recordedBy: varchar("recorded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertVoiceNoteSchema = createInsertSchema(voiceNotes).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertVoiceNote = z.infer<typeof insertVoiceNoteSchema>;
+export type VoiceNote = typeof voiceNotes.$inferSelect;
+
 // Invoice Reminder Logs - Track sent reminders to avoid duplicates
 export const invoiceReminderLogs = pgTable("invoice_reminder_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
