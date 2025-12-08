@@ -294,6 +294,8 @@ export const jobs = pgTable("jobs", {
   recurrenceEndDate: timestamp("recurrence_end_date"), // When to stop recurring
   parentJobId: varchar("parent_job_id"), // Links to original recurring job
   nextRecurrenceDate: timestamp("next_recurrence_date"), // When to create next occurrence
+  recurrenceStatus: text("recurrence_status").default('active'), // active, paused, ended - status of recurring series
+  recurrenceLabel: text("recurrence_label"), // Tradie-friendly label like "Mrs. Smith - Lawn Mowing"
   // Job Costing - Estimates for budget comparison
   estimatedLaborCost: decimal("estimated_labor_cost", { precision: 10, scale: 2 }).default('0.00'),
   estimatedMaterialCost: decimal("estimated_material_cost", { precision: 10, scale: 2 }).default('0.00'),

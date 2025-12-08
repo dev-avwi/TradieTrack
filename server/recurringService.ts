@@ -58,34 +58,45 @@ export async function processRecurringJobsForUser(userId: string): Promise<Recur
       try {
         if (!job.recurrencePattern || !job.isRecurring) continue;
         
+        // Check if the recurring job has reached its end date
         if (job.recurrenceEndDate && new Date(job.recurrenceEndDate) < new Date()) {
           await storage.updateJob(job.id, job.userId, { 
-            isRecurring: false,
-            recurrencePattern: null,
-            recurrenceInterval: null,
-            recurrenceEndDate: null,
-            nextRecurrenceDate: null,
+            recurrenceStatus: 'ended',
           });
           continue;
         }
         
+        // Store the current scheduled date for the new job
+        const currentScheduledDate = job.nextRecurrenceDate ? new Date(job.nextRecurrenceDate) : new Date();
+        
+        // Calculate the next recurrence date for the template
         const nextDate = calculateNextRecurrence(
-          new Date(job.nextRecurrenceDate || new Date()),
+          currentScheduledDate,
           job.recurrencePattern,
           job.recurrenceInterval || 1
         );
         
-        await storage.updateJob(job.id, job.userId, {
-          nextRecurrenceDate: nextDate,
-        });
+        // Check if next date would exceed end date
+        if (job.recurrenceEndDate && nextDate > new Date(job.recurrenceEndDate)) {
+          // This is the last job in the series
+          await storage.updateJob(job.id, job.userId, {
+            recurrenceStatus: 'ended',
+          });
+        } else {
+          // Update the template's next recurrence date (keep isRecurring true, recurrenceStatus active)
+          await storage.updateJob(job.id, job.userId, {
+            nextRecurrenceDate: nextDate,
+          });
+        }
         
+        // Create the new job instance with the current scheduled date
         const newJob = await storage.createJob({
           userId: job.userId,
           clientId: job.clientId,
           title: job.title,
           description: job.description,
           status: 'pending',
-          scheduledAt: job.nextRecurrenceDate,
+          scheduledAt: currentScheduledDate,
           assignedTo: job.assignedTo,
           notes: job.notes,
           address: job.address,

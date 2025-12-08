@@ -3511,6 +3511,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== Recurring Jobs Routes ====================
+  
+  // Get all recurring jobs for the user
+  app.get("/api/recurring-jobs", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const recurringJobs = await storage.getRecurringJobs(effectiveUserId);
+      res.json(recurringJobs);
+    } catch (error: any) {
+      console.error("Error fetching recurring jobs:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch recurring jobs" });
+    }
+  });
+
+  // Get recurring jobs for a specific client
+  app.get("/api/clients/:clientId/recurring-jobs", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { clientId } = req.params;
+      const recurringJobs = await storage.getRecurringJobsForClient(clientId, effectiveUserId);
+      res.json(recurringJobs);
+    } catch (error: any) {
+      console.error("Error fetching client recurring jobs:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch recurring jobs" });
+    }
+  });
+
+  // Get child jobs generated from a recurring job
+  app.get("/api/recurring-jobs/:id/jobs", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { id } = req.params;
+      const childJobs = await storage.getChildJobs(id, effectiveUserId);
+      res.json(childJobs);
+    } catch (error: any) {
+      console.error("Error fetching child jobs:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch child jobs" });
+    }
+  });
+
+  // Pause a recurring job
+  app.post("/api/recurring-jobs/:id/pause", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { id } = req.params;
+      const updated = await storage.pauseRecurringJob(id, effectiveUserId);
+      if (!updated) {
+        return res.status(404).json({ error: "Recurring job not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error pausing recurring job:", error);
+      res.status(500).json({ error: error.message || "Failed to pause recurring job" });
+    }
+  });
+
+  // Resume a recurring job
+  app.post("/api/recurring-jobs/:id/resume", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { id } = req.params;
+      const updated = await storage.resumeRecurringJob(id, effectiveUserId);
+      if (!updated) {
+        return res.status(404).json({ error: "Recurring job not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error resuming recurring job:", error);
+      res.status(500).json({ error: error.message || "Failed to resume recurring job" });
+    }
+  });
+
+  // End a recurring job series
+  app.post("/api/recurring-jobs/:id/end", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { id } = req.params;
+      const updated = await storage.endRecurringJob(id, effectiveUserId);
+      if (!updated) {
+        return res.status(404).json({ error: "Recurring job not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error ending recurring job:", error);
+      res.status(500).json({ error: error.message || "Failed to end recurring job" });
+    }
+  });
+
+  // Skip the next occurrence
+  app.post("/api/recurring-jobs/:id/skip", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { id } = req.params;
+      const updated = await storage.skipNextOccurrence(id, effectiveUserId);
+      if (!updated) {
+        return res.status(404).json({ error: "Recurring job not found or cannot skip" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error skipping next occurrence:", error);
+      res.status(500).json({ error: error.message || "Failed to skip next occurrence" });
+    }
+  });
+
   // Checklist Items
   app.get("/api/jobs/:jobId/checklist", requireAuth, async (req: any, res) => {
     try {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Phone, MessageSquare, Navigation, Play, DollarSign, Mic, MicOff } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Phone, MessageSquare, Navigation, Play, DollarSign, Mic, MicOff, Repeat } from "lucide-react";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { VoiceNotes } from "./VoiceNotes";
@@ -47,6 +47,11 @@ interface Job {
   notes?: string;
   estimatedHours?: number;
   estimatedCost?: number;
+  isRecurring?: boolean;
+  recurrencePattern?: string;
+  recurrenceLabel?: string;
+  recurrenceStatus?: string;
+  parentJobId?: string;
 }
 
 interface Client {
@@ -373,7 +378,7 @@ export default function JobDetailView({
           </Button>
           <div className="min-w-0">
             <h1 className="text-lg font-bold truncate">{job.title}</h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
               {client?.name && (
                 <span 
                   className="hover:underline cursor-pointer truncate"
@@ -384,6 +389,26 @@ export default function JobDetailView({
                 </span>
               )}
               {getStatusBadge(job.status)}
+              {job.isRecurring && (
+                <Badge 
+                  variant="outline" 
+                  className="text-[10px] bg-primary/10 text-primary border-primary/20"
+                  data-testid="badge-recurring"
+                >
+                  <Repeat className="h-3 w-3 mr-1" />
+                  Recurring
+                </Badge>
+              )}
+              {job.parentJobId && (
+                <Badge 
+                  variant="outline" 
+                  className="text-[10px] bg-muted text-muted-foreground"
+                  data-testid="badge-series"
+                >
+                  <Repeat className="h-3 w-3 mr-1" />
+                  Part of series
+                </Badge>
+              )}
             </div>
           </div>
         </div>

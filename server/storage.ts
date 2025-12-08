@@ -247,6 +247,16 @@ export interface IStorage {
   updateJob(id: string, userId: string, job: Partial<InsertJob>): Promise<Job | undefined>;
   deleteJob(id: string, userId: string): Promise<boolean>;
   getJobsForClient(clientId: string, userId: string): Promise<Job[]>;
+  
+  // Recurring Jobs
+  getRecurringJobs(userId: string): Promise<Job[]>;
+  getRecurringJobsForClient(clientId: string, userId: string): Promise<Job[]>;
+  getActiveRecurringJobs(userId: string): Promise<Job[]>;
+  getChildJobs(parentJobId: string, userId: string): Promise<Job[]>;
+  pauseRecurringJob(id: string, userId: string): Promise<Job | undefined>;
+  resumeRecurringJob(id: string, userId: string): Promise<Job | undefined>;
+  endRecurringJob(id: string, userId: string): Promise<Job | undefined>;
+  skipNextOccurrence(id: string, userId: string): Promise<Job | undefined>;
 
   // Checklist Items
   getChecklistItems(jobId: string, userId: string): Promise<ChecklistItem[]>;
@@ -1020,6 +1030,143 @@ export class PostgresStorage implements IStorage {
       .from(jobs)
       .where(and(eq(jobs.clientId, clientId), eq(jobs.userId, userId)))
       .orderBy(desc(jobs.createdAt));
+  }
+
+  // Recurring Jobs
+  async getRecurringJobs(userId: string): Promise<Job[]> {
+    return await db
+      .select()
+      .from(jobs)
+      .where(and(
+        eq(jobs.userId, userId),
+        eq(jobs.isRecurring, true)
+      ))
+      .orderBy(desc(jobs.createdAt));
+  }
+
+  async getRecurringJobsForClient(clientId: string, userId: string): Promise<Job[]> {
+    return await db
+      .select()
+      .from(jobs)
+      .where(and(
+        eq(jobs.userId, userId),
+        eq(jobs.clientId, clientId),
+        eq(jobs.isRecurring, true)
+      ))
+      .orderBy(desc(jobs.createdAt));
+  }
+
+  async getActiveRecurringJobs(userId: string): Promise<Job[]> {
+    return await db
+      .select()
+      .from(jobs)
+      .where(and(
+        eq(jobs.userId, userId),
+        eq(jobs.isRecurring, true),
+        eq(jobs.recurrenceStatus, 'active')
+      ))
+      .orderBy(desc(jobs.createdAt));
+  }
+
+  async getChildJobs(parentJobId: string, userId: string): Promise<Job[]> {
+    return await db
+      .select()
+      .from(jobs)
+      .where(and(
+        eq(jobs.userId, userId),
+        eq(jobs.parentJobId, parentJobId)
+      ))
+      .orderBy(desc(jobs.scheduledAt));
+  }
+
+  async pauseRecurringJob(id: string, userId: string): Promise<Job | undefined> {
+    const result = await db
+      .update(jobs)
+      .set({ recurrenceStatus: 'paused', updatedAt: new Date() })
+      .where(and(
+        eq(jobs.id, id),
+        eq(jobs.userId, userId),
+        eq(jobs.isRecurring, true)
+      ))
+      .returning();
+    return result[0];
+  }
+
+  async resumeRecurringJob(id: string, userId: string): Promise<Job | undefined> {
+    const result = await db
+      .update(jobs)
+      .set({ recurrenceStatus: 'active', updatedAt: new Date() })
+      .where(and(
+        eq(jobs.id, id),
+        eq(jobs.userId, userId),
+        eq(jobs.isRecurring, true)
+      ))
+      .returning();
+    return result[0];
+  }
+
+  async endRecurringJob(id: string, userId: string): Promise<Job | undefined> {
+    const result = await db
+      .update(jobs)
+      .set({ recurrenceStatus: 'ended', updatedAt: new Date() })
+      .where(and(
+        eq(jobs.id, id),
+        eq(jobs.userId, userId),
+        eq(jobs.isRecurring, true)
+      ))
+      .returning();
+    return result[0];
+  }
+
+  async skipNextOccurrence(id: string, userId: string): Promise<Job | undefined> {
+    const recurringJob = await this.getJob(id, userId);
+    if (!recurringJob || !recurringJob.isRecurring || !recurringJob.nextRecurrenceDate) {
+      return undefined;
+    }
+
+    const nextDate = this.calculateNextRecurrenceDate(
+      new Date(recurringJob.nextRecurrenceDate),
+      recurringJob.recurrencePattern || 'weekly',
+      recurringJob.recurrenceInterval || 1
+    );
+
+    const result = await db
+      .update(jobs)
+      .set({ nextRecurrenceDate: nextDate, updatedAt: new Date() })
+      .where(and(
+        eq(jobs.id, id),
+        eq(jobs.userId, userId),
+        eq(jobs.isRecurring, true)
+      ))
+      .returning();
+    return result[0];
+  }
+
+  private calculateNextRecurrenceDate(currentDate: Date, pattern: string, interval: number): Date {
+    const next = new Date(currentDate);
+    switch (pattern) {
+      case 'daily':
+        next.setDate(next.getDate() + interval);
+        break;
+      case 'weekly':
+        next.setDate(next.getDate() + (7 * interval));
+        break;
+      case 'fortnightly':
+        next.setDate(next.getDate() + (14 * interval));
+        break;
+      case 'monthly':
+        next.setMonth(next.getMonth() + interval);
+        break;
+      case 'quarterly':
+        next.setMonth(next.getMonth() + (3 * interval));
+        break;
+      case 'yearly':
+        next.setFullYear(next.getFullYear() + interval);
+        break;
+      default:
+        next.setDate(next.getDate() + (7 * interval));
+    }
+    return next;
   }
 
   // Checklist Items
@@ -2336,6 +2483,7 @@ export class PostgresStorage implements IStorage {
     return await db.select().from(jobs)
       .where(and(
         eq(jobs.isRecurring, true),
+        eq(jobs.recurrenceStatus, 'active'),
         lte(jobs.nextRecurrenceDate, now)
       ));
   }
@@ -2355,6 +2503,7 @@ export class PostgresStorage implements IStorage {
       .where(and(
         eq(jobs.userId, userId),
         eq(jobs.isRecurring, true),
+        eq(jobs.recurrenceStatus, 'active'),
         lte(jobs.nextRecurrenceDate, now)
       ));
   }

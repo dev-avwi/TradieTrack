@@ -18,7 +18,8 @@ import UpgradePrompt from "@/components/UpgradePrompt";
 import { type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Plus, User, Phone, Mail, MapPin, Loader2, X, History, Copy, ChevronDown, ChevronUp, Calendar, FileText } from "lucide-react";
+import { Plus, User, Phone, Mail, MapPin, Loader2, X, History, Copy, ChevronDown, ChevronUp, Calendar, FileText, Repeat } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useSearch } from "wouter";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,11 @@ const jobFormSchema = z.object({
   estimatedHours: z.string().optional(),
   estimatedLaborCost: z.string().optional(),
   estimatedMaterialCost: z.string().optional(),
+  isRecurring: z.boolean().default(false),
+  recurrencePattern: z.enum(["daily", "weekly", "fortnightly", "monthly", "quarterly", "yearly"]).optional(),
+  recurrenceInterval: z.string().optional(),
+  recurrenceEndDate: z.string().optional(),
+  recurrenceLabel: z.string().optional(),
 });
 
 type JobFormData = z.infer<typeof jobFormSchema>;
@@ -99,8 +105,15 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
       estimatedHours: "",
       estimatedLaborCost: "",
       estimatedMaterialCost: "",
+      isRecurring: false,
+      recurrencePattern: undefined,
+      recurrenceInterval: "1",
+      recurrenceEndDate: "",
+      recurrenceLabel: "",
     },
   });
+  
+  const isRecurring = form.watch("isRecurring");
 
   // Track pending client to select after cache updates
   const pendingClientToSelect = useRef<{ id: string; address?: string } | null>(null);
@@ -286,7 +299,11 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
       const estimatedMaterialCost = data.estimatedMaterialCost ? parseFloat(data.estimatedMaterialCost) : 0;
       const estimatedTotalCost = estimatedLaborCost + estimatedMaterialCost;
       
-      const jobData = {
+      // Get selected client name for recurrence label
+      const selectedClient = (clients as any[]).find(c => c.id === data.clientId);
+      const autoLabel = selectedClient ? `${selectedClient.name} - ${data.title}` : data.title;
+      
+      const jobData: any = {
         ...data,
         estimatedHours: data.estimatedHours ? parseInt(data.estimatedHours) : undefined,
         scheduledAt: data.scheduledAt ? new Date(data.scheduledAt).toISOString() : undefined,
@@ -294,6 +311,19 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
         estimatedMaterialCost: estimatedMaterialCost > 0 ? estimatedMaterialCost.toString() : undefined,
         estimatedTotalCost: estimatedTotalCost > 0 ? estimatedTotalCost.toString() : undefined,
       };
+      
+      // Add recurring job fields if enabled
+      if (data.isRecurring && data.recurrencePattern) {
+        jobData.isRecurring = true;
+        jobData.recurrencePattern = data.recurrencePattern;
+        jobData.recurrenceInterval = data.recurrenceInterval ? parseInt(data.recurrenceInterval) : 1;
+        jobData.recurrenceStatus = 'active';
+        jobData.recurrenceLabel = data.recurrenceLabel || autoLabel;
+        jobData.nextRecurrenceDate = data.scheduledAt ? new Date(data.scheduledAt).toISOString() : new Date().toISOString();
+        if (data.recurrenceEndDate) {
+          jobData.recurrenceEndDate = new Date(data.recurrenceEndDate).toISOString();
+        }
+      }
 
       const result = await createJobMutation.mutateAsync(jobData);
       
@@ -596,6 +626,151 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* Recurring Job Toggle */}
+              <div className="border rounded-lg p-4 space-y-4">
+                <FormField
+                  control={form.control}
+                  name="isRecurring"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10">
+                          <Repeat className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <FormLabel className="text-base font-medium cursor-pointer">
+                            Make this a recurring job
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            Auto-generate jobs on a schedule
+                          </p>
+                        </div>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-recurring"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                {isRecurring && (
+                  <div className="space-y-4 pt-2 border-t">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="recurrencePattern"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Repeat</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-recurrence-pattern">
+                                  <SelectValue placeholder="Select frequency" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                                <SelectItem value="quarterly">Quarterly</SelectItem>
+                                <SelectItem value="yearly">Yearly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="recurrenceInterval"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Every</FormLabel>
+                            <div className="flex items-center gap-2">
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="1"
+                                  max="52"
+                                  placeholder="1" 
+                                  className="w-20"
+                                  {...field} 
+                                  data-testid="input-recurrence-interval" 
+                                />
+                              </FormControl>
+                              <span className="text-sm text-muted-foreground">
+                                {form.watch("recurrencePattern") === 'daily' ? 'day(s)' :
+                                 form.watch("recurrencePattern") === 'weekly' ? 'week(s)' :
+                                 form.watch("recurrencePattern") === 'fortnightly' ? 'fortnight(s)' :
+                                 form.watch("recurrencePattern") === 'monthly' ? 'month(s)' :
+                                 form.watch("recurrencePattern") === 'quarterly' ? 'quarter(s)' :
+                                 form.watch("recurrencePattern") === 'yearly' ? 'year(s)' :
+                                 'period(s)'}
+                              </span>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <FormField
+                      control={form.control}
+                      name="recurrenceEndDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>End Date (optional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              data-testid="input-recurrence-end-date" 
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">
+                            Leave blank to continue indefinitely
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="recurrenceLabel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Label (optional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g., Mrs. Smith - Weekly Lawn Mowing" 
+                              {...field} 
+                              data-testid="input-recurrence-label" 
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">
+                            A friendly name for this recurring job
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">
+                        Jobs will be automatically created based on this schedule. You can pause, skip, or end the recurring job at any time from the client's profile.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
