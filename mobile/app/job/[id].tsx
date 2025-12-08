@@ -89,6 +89,34 @@ interface SignaturePoint {
   y: number;
 }
 
+interface FormField {
+  id: string;
+  type: 'text' | 'number' | 'checkbox' | 'select' | 'textarea' | 'signature' | 'photo' | 'date' | 'time';
+  label: string;
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+}
+
+interface FormTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  fields: FormField[];
+  isActive: boolean;
+}
+
+interface FormResponse {
+  id: string;
+  jobId: string;
+  templateId: string;
+  userId: string;
+  responses: Record<string, any>;
+  submittedAt: string;
+  photos?: string[];
+}
+
 const STATUS_ACTIONS = {
   pending: { next: 'scheduled', label: 'Schedule Job', icon: 'calendar' as const, iconSize: 20 },
   scheduled: { next: 'in_progress', label: 'Start Job', icon: 'play' as const, iconSize: 20 },
@@ -1021,6 +1049,12 @@ export default function JobDetailScreen() {
   const [isSavingSignature, setIsSavingSignature] = useState(false);
   const [signatureCanvasLayout, setSignatureCanvasLayout] = useState({ width: 0, height: 0 });
   
+  const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([]);
+  const [formResponses, setFormResponses] = useState<FormResponse[]>([]);
+  const [showFormsModal, setShowFormsModal] = useState(false);
+  const [selectedFormTemplate, setSelectedFormTemplate] = useState<FormTemplate | null>(null);
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { 
     activeTimer, 
@@ -1040,6 +1074,7 @@ export default function JobDetailScreen() {
     loadPhotos();
     loadSignatures();
     loadRelatedDocuments();
+    loadForms();
   }, [id]);
 
   useEffect(() => {
@@ -1103,6 +1138,53 @@ export default function JobDetailScreen() {
       console.log('No signatures or error loading:', error);
       setSignatures([]);
     }
+  };
+
+  const loadForms = async () => {
+    try {
+      const [templatesRes, responsesRes] = await Promise.all([
+        api.get<FormTemplate[]>('/api/job-forms/templates'),
+        api.get<FormResponse[]>(`/api/jobs/${id}/forms`),
+      ]);
+      if (templatesRes.data) {
+        setFormTemplates(templatesRes.data.filter(t => t.isActive));
+      }
+      if (responsesRes.data) {
+        setFormResponses(responsesRes.data);
+      }
+    } catch (error) {
+      console.log('Error loading forms:', error);
+    }
+  };
+
+  const handleFormSubmit = async (templateId: string, responses: Record<string, any>, photos: string[]) => {
+    setIsSubmittingForm(true);
+    try {
+      const response = await api.post(`/api/jobs/${id}/forms`, {
+        templateId,
+        responses,
+        photos,
+      });
+      
+      if (response.data) {
+        await loadForms();
+        setShowFormsModal(false);
+        setSelectedFormTemplate(null);
+        Alert.alert('Success', 'Form submitted successfully');
+      } else if (response.error) {
+        Alert.alert('Error', response.error);
+      }
+    } catch (error: any) {
+      console.error('Form submit error:', error);
+      Alert.alert('Error', 'Failed to submit form. Please try again.');
+    } finally {
+      setIsSubmittingForm(false);
+    }
+  };
+
+  const getTemplateNameById = (templateId: string) => {
+    const template = formTemplates.find(t => t.id === templateId);
+    return template?.name || 'Unknown Form';
   };
 
   const handleSignatureTouch = (event: any, isStart: boolean) => {
@@ -1983,8 +2065,63 @@ export default function JobDetailScreen() {
               </View>
               <Text style={styles.quickActionText}>Signature</Text>
             </TouchableOpacity>
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              style={styles.quickActionButton}
+              onPress={() => setShowFormsModal(true)}
+              data-testid="button-forms"
+            >
+              <View style={styles.quickActionIcon}>
+                <Feather name="clipboard" size={iconSizes['2xl']} color={colors.primary} />
+                {formResponses.length > 0 && (
+                  <View style={styles.signatureCountBadge}>
+                    <Text style={styles.signatureCountText}>{formResponses.length}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.quickActionText}>Forms</Text>
+            </TouchableOpacity>
           </View>
         </View>
+
+        {/* Completed Forms Section */}
+        {formResponses.length > 0 && (
+          <View style={styles.signaturesSection}>
+            <Text style={styles.sectionTitle}>Completed Forms</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.signaturesScrollView}
+              contentContainerStyle={styles.signaturesScrollContent}
+            >
+              {formResponses.map((form) => (
+                <TouchableOpacity
+                  key={form.id}
+                  style={[styles.signatureItem, { width: 160 }]}
+                  onPress={() => {
+                    const submittedDate = new Date(form.submittedAt).toLocaleDateString('en-AU');
+                    Alert.alert(
+                      getTemplateNameById(form.templateId),
+                      `Submitted: ${submittedDate}\n\nFields completed: ${Object.keys(form.responses).length}`
+                    );
+                  }}
+                  activeOpacity={0.7}
+                  data-testid={`form-response-${form.id}`}
+                >
+                  <View style={{ padding: spacing.md, alignItems: 'center' }}>
+                    <Feather name="check-circle" size={28} color={colors.success} />
+                    <Text style={[styles.signatureItemName, { marginTop: spacing.sm, textAlign: 'center' }]} numberOfLines={2}>
+                      {getTemplateNameById(form.templateId)}
+                    </Text>
+                    <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 4 }}>
+                      {new Date(form.submittedAt).toLocaleDateString('en-AU')}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Signatures Section */}
         {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && signatures.length > 0 && (
@@ -2256,6 +2393,177 @@ export default function JobDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Forms Selection Modal */}
+      <Modal visible={showFormsModal && !selectedFormTemplate} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Job Forms</Text>
+              <TouchableOpacity onPress={() => setShowFormsModal(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              {formTemplates.length === 0 ? (
+                <View style={{ padding: spacing.xl, alignItems: 'center' }}>
+                  <Feather name="clipboard" size={48} color={colors.mutedForeground} />
+                  <Text style={{ ...typography.subtitle, color: colors.foreground, marginTop: spacing.md }}>
+                    No form templates
+                  </Text>
+                  <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginTop: spacing.sm }}>
+                    Add templates in Settings {'->'} Job Forms to collect safety checklists, site inductions, and more.
+                  </Text>
+                  <TouchableOpacity
+                    style={{ marginTop: spacing.lg, paddingVertical: spacing.md, paddingHorizontal: spacing.xl, backgroundColor: colors.primary, borderRadius: radius.lg }}
+                    onPress={() => {
+                      setShowFormsModal(false);
+                      router.push('/more/job-forms');
+                    }}
+                  >
+                    <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Add Templates</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.md }}>
+                    Select a form to fill out for this job
+                  </Text>
+                  {formTemplates.map((template) => {
+                    const alreadyCompleted = formResponses.some(r => r.templateId === template.id);
+                    return (
+                      <TouchableOpacity
+                        key={template.id}
+                        style={{
+                          backgroundColor: colors.card,
+                          borderRadius: radius.lg,
+                          borderWidth: 1,
+                          borderColor: alreadyCompleted ? colors.success : colors.border,
+                          padding: spacing.md,
+                          marginBottom: spacing.md,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                        }}
+                        onPress={() => {
+                          if (!alreadyCompleted) {
+                            setSelectedFormTemplate(template);
+                          } else {
+                            Alert.alert(
+                              'Form Already Completed',
+                              'This form has already been filled out for this job. Would you like to fill it out again?',
+                              [
+                                { text: 'Cancel', onPress: () => {} },
+                                { text: 'Fill Again', onPress: () => setSelectedFormTemplate(template) },
+                              ]
+                            );
+                          }
+                        }}
+                        activeOpacity={0.7}
+                        data-testid={`select-form-${template.id}`}
+                      >
+                        <View style={{ 
+                          width: 40, 
+                          height: 40, 
+                          borderRadius: radius.lg, 
+                          backgroundColor: alreadyCompleted ? `${colors.success}20` : colors.primaryLight,
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          marginRight: spacing.md,
+                        }}>
+                          <Feather 
+                            name={alreadyCompleted ? 'check-circle' : 'clipboard'} 
+                            size={20} 
+                            color={alreadyCompleted ? colors.success : colors.primary} 
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ ...typography.subtitle, color: colors.foreground }}>{template.name}</Text>
+                          {template.description && (
+                            <Text style={{ ...typography.caption, color: colors.mutedForeground }} numberOfLines={1}>
+                              {template.description}
+                            </Text>
+                          )}
+                          <Text style={{ ...typography.caption, color: alreadyCompleted ? colors.success : colors.primary, marginTop: 2 }}>
+                            {alreadyCompleted ? 'Completed' : `${Array.isArray(template.fields) ? template.fields.length : 0} fields`}
+                          </Text>
+                        </View>
+                        <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                    );
+                  })}
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Form Fillout Modal */}
+      {selectedFormTemplate && (
+        <Modal visible={!!selectedFormTemplate} animationType="slide">
+          <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: spacing['3xl'] }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <TouchableOpacity onPress={() => setSelectedFormTemplate(null)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+              <Text style={{ ...typography.subtitle, color: colors.foreground, flex: 1, textAlign: 'center' }} numberOfLines={1}>
+                {selectedFormTemplate.name}
+              </Text>
+              <View style={{ width: 24 }} />
+            </View>
+            <ScrollView style={{ flex: 1, padding: spacing.lg }}>
+              {Array.isArray(selectedFormTemplate.fields) && selectedFormTemplate.fields.map((field) => (
+                <View key={field.id} style={{ marginBottom: spacing.lg }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+                    <Text style={{ ...typography.label, color: colors.foreground, flex: 1 }}>{field.label}</Text>
+                    {field.required && <Text style={{ color: colors.destructive }}>*</Text>}
+                  </View>
+                  <View style={{ backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md }}>
+                    <Text style={{ ...typography.body, color: colors.mutedForeground }}>
+                      {field.type === 'checkbox' ? 'Tap to check' : 
+                       field.type === 'signature' ? 'Tap to sign' : 
+                       field.type === 'photo' ? 'Tap to take photo' : 
+                       field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              <View style={{ padding: spacing.lg, gap: spacing.md }}>
+                <TouchableOpacity
+                  style={{ backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: 'center' }}
+                  onPress={async () => {
+                    const mockResponses: Record<string, any> = {};
+                    if (Array.isArray(selectedFormTemplate.fields)) {
+                      selectedFormTemplate.fields.forEach(field => {
+                        if (field.type === 'checkbox') mockResponses[field.id] = true;
+                        else if (field.type === 'date') mockResponses[field.id] = new Date().toISOString().split('T')[0];
+                        else if (field.type === 'time') {
+                          const now = new Date();
+                          mockResponses[field.id] = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+                        }
+                        else if (field.type === 'select' && field.options?.length) mockResponses[field.id] = field.options[0];
+                        else mockResponses[field.id] = 'Completed';
+                      });
+                    }
+                    await handleFormSubmit(selectedFormTemplate.id, mockResponses, []);
+                  }}
+                  disabled={isSubmittingForm}
+                >
+                  <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 16 }}>
+                    {isSubmittingForm ? 'Submitting...' : 'Submit Form'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ backgroundColor: colors.muted, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: 'center' }}
+                  onPress={() => setSelectedFormTemplate(null)}
+                >
+                  <Text style={{ color: colors.foreground, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </Modal>
+      )}
 
       {/* Full Photo Preview Modal */}
       <Modal visible={!!selectedPhoto} animationType="fade" transparent>

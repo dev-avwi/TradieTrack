@@ -9984,7 +9984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertJobFormResponseSchema.parse({
         ...req.body,
         jobId,
-        submittedBy: userId,
+        userId: userId,
       });
       
       const response = await storage.createJobFormResponse(validatedData);

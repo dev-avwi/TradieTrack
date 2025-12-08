@@ -95,3 +95,13 @@ The companion React Native mobile app (Expo SDK 52) provides offline-first archi
 -   **TypeScript Fixes**:
     -   Fixed timer reference type in time-tracking.tsx (NodeJS.Timeout → ReturnType<typeof setInterval>)
     -   Fixed reports.tsx to not reference non-existent Job.totalHours property
+-   **Job Site Forms & Checklists - Mobile Integration** (December 8, 2025):
+    -   Integrated forms system into mobile job detail screen (`mobile/app/job/[id].tsx`)
+    -   New "Forms" quick action button with badge showing completed form count
+    -   Forms selection modal showing available templates with completion status
+    -   Template fillout modal with field preview and submit functionality
+    -   Completed forms section displaying submitted forms with date and field count
+    -   Re-fill option for already completed forms with confirmation dialog
+    -   Quick access to job-forms settings screen from empty state
+    -   Backend integration with `/api/job-forms/templates` and `/api/jobs/:jobId/forms` endpoints
+    -   Types: FormTemplate (jobFormTemplates) and FormResponse (jobFormResponses) from shared schema
