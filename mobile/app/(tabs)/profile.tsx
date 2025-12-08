@@ -417,6 +417,16 @@ export default function MoreScreen() {
             title="Expense Tracking"
             subtitle="Monitor business expenses"
             onPress={() => router.push('/more/expense-tracking')}
+          />
+        )}
+        {!isStaff && (
+          <MenuItem
+            icon="tool"
+            iconBg={colors.muted}
+            iconColor={colors.foreground}
+            title="Assets"
+            subtitle="Tools, equipment & vehicles"
+            onPress={() => router.push('/more/assets')}
             isLast
           />
         )}
