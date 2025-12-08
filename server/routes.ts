@@ -1796,6 +1796,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Calendar Sync Routes
+  app.get("/api/calendar/status", requireAuth, async (req: any, res) => {
+    try {
+      const { getGoogleCalendarStatus } = await import("./calendarService");
+      const status = await getGoogleCalendarStatus(req.userId);
+      res.json(status);
+    } catch (error) {
+      console.error("Error getting calendar status:", error);
+      res.json({ provider: 'google', connected: false, syncDirection: 'both' });
+    }
+  });
+
+  app.get("/api/calendar/google/auth", requireAuth, async (req: any, res) => {
+    try {
+      const { getGoogleCalendarAuthUrl } = await import("./calendarService");
+      const authUrl = await getGoogleCalendarAuthUrl(req.userId);
+      res.json({ authUrl });
+    } catch (error: any) {
+      console.error("Error generating auth URL:", error);
+      res.status(500).json({ error: error.message || "Failed to generate auth URL" });
+    }
+  });
+
+  app.get("/api/calendar/google/callback", async (req: any, res) => {
+    try {
+      const { code, state } = req.query;
+      if (!code || !state) {
+        return res.redirect('/settings/calendar?error=missing_params');
+      }
+
+      const { verifyOAuthState, handleGoogleCalendarCallback } = await import("./calendarService");
+      
+      const userId = verifyOAuthState(state as string);
+      if (!userId) {
+        console.error("[Calendar] Invalid or expired OAuth state token");
+        return res.redirect('/settings/calendar?error=invalid_state');
+      }
+
+      const result = await handleGoogleCalendarCallback(code as string, userId);
+      
+      if (result.success) {
+        res.redirect('/settings/calendar?connected=true');
+      } else {
+        res.redirect(`/settings/calendar?error=${encodeURIComponent(result.error || 'unknown')}`);
+      }
+    } catch (error: any) {
+      console.error("Calendar callback error:", error);
+      res.redirect(`/settings/calendar?error=${encodeURIComponent(error.message || 'callback_error')}`);
+    }
+  });
+
+  app.get("/api/calendar/google/calendars", requireAuth, async (req: any, res) => {
+    try {
+      const { getGoogleCalendarList } = await import("./calendarService");
+      const calendars = await getGoogleCalendarList(req.userId);
+      res.json(calendars);
+    } catch (error) {
+      console.error("Error listing calendars:", error);
+      res.json([]);
+    }
+  });
+
+  app.post("/api/calendar/google/sync", requireAuth, async (req: any, res) => {
+    try {
+      const { syncAllJobsToGoogleCalendar } = await import("./calendarService");
+      const result = await syncAllJobsToGoogleCalendar(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error syncing to calendar:", error);
+      res.status(500).json({ 
+        success: false, 
+        created: 0, 
+        updated: 0, 
+        deleted: 0, 
+        errors: [error.message] 
+      });
+    }
+  });
+
+  app.post("/api/calendar/google/sync-job/:jobId", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId } = req.params;
+      const job = await storage.getJob(jobId, req.userId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      let client = undefined;
+      if (job.clientId) {
+        client = await storage.getClient(job.clientId, req.userId) || undefined;
+      }
+
+      const { syncJobToGoogleCalendar } = await import("./calendarService");
+      const result = await syncJobToGoogleCalendar(req.userId, job, client);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error syncing job to calendar:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get("/api/calendar/google/events", requireAuth, async (req: any, res) => {
+    try {
+      const { timeMin, timeMax } = req.query;
+      const { importEventsFromGoogleCalendar } = await import("./calendarService");
+      const events = await importEventsFromGoogleCalendar(
+        req.userId,
+        timeMin ? new Date(timeMin as string) : undefined,
+        timeMax ? new Date(timeMax as string) : undefined
+      );
+      res.json(events);
+    } catch (error) {
+      console.error("Error importing events:", error);
+      res.json([]);
+    }
+  });
+
+  app.post("/api/calendar/google/disconnect", requireAuth, async (req: any, res) => {
+    try {
+      const { disconnectGoogleCalendar } = await import("./calendarService");
+      await disconnectGoogleCalendar(req.userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error disconnecting calendar:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.patch("/api/calendar/settings", requireAuth, async (req: any, res) => {
+    try {
+      const { calendarId, syncDirection } = req.body;
+      const { updateCalendarSyncSettings } = await import("./calendarService");
+      await updateCalendarSyncSettings(req.userId, { calendarId, syncDirection });
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error updating calendar settings:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // Integration Test Routes
   app.post("/api/integrations/test-email", requireAuth, async (req: any, res) => {
     try {

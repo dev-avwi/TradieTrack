@@ -26,8 +26,11 @@ import {
   ArrowRight,
   Building2,
   Wallet,
-  Info
+  Info,
+  Calendar,
+  CloudOff
 } from "lucide-react";
+import { Link } from "wouter";
 import { SiStripe, SiGmail } from "react-icons/si";
 
 interface ServiceHealth {
@@ -109,6 +112,69 @@ function ServiceBadge({ status, fetchFailed }: { status: string | undefined; fet
     <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
       Not Connected
     </Badge>
+  );
+}
+
+function CalendarSyncCard() {
+  const { data: calendarStatus } = useQuery<{ connected: boolean }>({
+    queryKey: ['/api/calendar/status'],
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-purple-100 dark:bg-purple-900/50">
+              <Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Calendar Sync</CardTitle>
+              <p className="text-xs text-muted-foreground">Sync jobs with Google Calendar</p>
+            </div>
+          </div>
+          {calendarStatus?.connected ? (
+            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Connected
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+              <CloudOff className="w-3 h-3 mr-1" />
+              Not Connected
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <p className="text-sm text-muted-foreground mb-3">
+          {calendarStatus?.connected 
+            ? "Your jobs are syncing with Google Calendar. Your team can see appointments on their calendars."
+            : "Connect your Google Calendar to automatically sync scheduled jobs and keep your team coordinated."
+          }
+        </p>
+        <Link href="/settings/calendar">
+          <Button 
+            variant={calendarStatus?.connected ? "outline" : "default"} 
+            className="w-full"
+            data-testid="button-calendar-sync"
+          >
+            {calendarStatus?.connected ? (
+              <>
+                <Settings className="w-4 h-4 mr-2" />
+                Calendar Settings
+              </>
+            ) : (
+              <>
+                <Calendar className="w-4 h-4 mr-2" />
+                Connect Calendar
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </>
+            )}
+          </Button>
+        </Link>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -475,6 +541,9 @@ export default function Integrations() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Calendar Sync */}
+        <CalendarSyncCard />
       </div>
 
       {/* Optional Email Provider Integration */}

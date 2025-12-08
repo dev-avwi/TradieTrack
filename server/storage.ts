@@ -158,6 +158,9 @@ import {
   formStoreInstallations,
   type FormStoreInstallation,
   type InsertFormStoreInstallation,
+  calendarSyncEvents,
+  type CalendarSyncEvent,
+  type InsertCalendarSyncEvent,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -199,6 +202,13 @@ export interface IStorage {
   getIntegrationSettings(userId: string): Promise<IntegrationSettings | undefined>;
   createIntegrationSettings(settings: InsertIntegrationSettings & { userId: string }): Promise<IntegrationSettings>;
   updateIntegrationSettings(userId: string, settings: Partial<InsertIntegrationSettings>): Promise<IntegrationSettings | undefined>;
+
+  // Calendar Sync Events
+  getCalendarSyncEvents(userId: string): Promise<CalendarSyncEvent[]>;
+  getCalendarSyncEventByJobId(jobId: string, provider: string): Promise<CalendarSyncEvent | undefined>;
+  createCalendarSyncEvent(event: InsertCalendarSyncEvent): Promise<CalendarSyncEvent>;
+  updateCalendarSyncEvent(id: string, event: Partial<InsertCalendarSyncEvent>): Promise<CalendarSyncEvent | undefined>;
+  deleteCalendarSyncEvent(id: string): Promise<boolean>;
 
   // Notifications
   getNotifications(userId: string): Promise<Notification[]>;
@@ -784,6 +794,48 @@ export class PostgresStorage implements IStorage {
       .where(eq(integrationSettings.userId, userId))
       .returning();
     return result[0];
+  }
+
+  // Calendar Sync Events
+  async getCalendarSyncEvents(userId: string): Promise<CalendarSyncEvent[]> {
+    return await db
+      .select()
+      .from(calendarSyncEvents)
+      .where(eq(calendarSyncEvents.userId, userId))
+      .orderBy(desc(calendarSyncEvents.createdAt));
+  }
+
+  async getCalendarSyncEventByJobId(jobId: string, provider: string): Promise<CalendarSyncEvent | undefined> {
+    const result = await db
+      .select()
+      .from(calendarSyncEvents)
+      .where(and(
+        eq(calendarSyncEvents.jobId, jobId),
+        eq(calendarSyncEvents.calendarProvider, provider)
+      ))
+      .limit(1);
+    return result[0];
+  }
+
+  async createCalendarSyncEvent(event: InsertCalendarSyncEvent): Promise<CalendarSyncEvent> {
+    const result = await db.insert(calendarSyncEvents).values(event).returning();
+    return result[0];
+  }
+
+  async updateCalendarSyncEvent(id: string, event: Partial<InsertCalendarSyncEvent>): Promise<CalendarSyncEvent | undefined> {
+    const result = await db
+      .update(calendarSyncEvents)
+      .set({ ...event, updatedAt: new Date() })
+      .where(eq(calendarSyncEvents.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCalendarSyncEvent(id: string): Promise<boolean> {
+    const result = await db
+      .delete(calendarSyncEvents)
+      .where(eq(calendarSyncEvents.id, id));
+    return result.rowCount > 0;
   }
 
   // Notifications

@@ -202,6 +202,37 @@ export const integrationSettings = pgTable("integration_settings", {
   notifyPaymentConfirmations: boolean("notify_payment_confirmations").default(true),
   notifyOverdueInvoices: boolean("notify_overdue_invoices").default(true),
   notifyWeeklySummary: boolean("notify_weekly_summary").default(false),
+  // Google Calendar Sync Settings
+  googleCalendarSyncEnabled: boolean("google_calendar_sync_enabled").default(false),
+  googleCalendarId: text("google_calendar_id"), // Which calendar to sync with
+  googleCalendarAccessToken: text("google_calendar_access_token"), // OAuth token
+  googleCalendarRefreshToken: text("google_calendar_refresh_token"), // OAuth refresh token
+  googleCalendarTokenExpiry: timestamp("google_calendar_token_expiry"), // Token expiration
+  googleCalendarSyncDirection: text("google_calendar_sync_direction").default('both'), // 'to_google', 'from_google', 'both'
+  googleCalendarLastSyncAt: timestamp("google_calendar_last_sync_at"),
+  // Outlook Calendar Sync Settings  
+  outlookCalendarSyncEnabled: boolean("outlook_calendar_sync_enabled").default(false),
+  outlookCalendarId: text("outlook_calendar_id"),
+  outlookCalendarAccessToken: text("outlook_calendar_access_token"),
+  outlookCalendarRefreshToken: text("outlook_calendar_refresh_token"),
+  outlookCalendarTokenExpiry: timestamp("outlook_calendar_token_expiry"),
+  outlookCalendarSyncDirection: text("outlook_calendar_sync_direction").default('both'),
+  outlookCalendarLastSyncAt: timestamp("outlook_calendar_last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Calendar Sync Events - Maps TradieTrack jobs to external calendar events
+export const calendarSyncEvents = pgTable("calendar_sync_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'cascade' }),
+  calendarProvider: text("calendar_provider").notNull(), // 'google' | 'outlook'
+  externalEventId: text("external_event_id").notNull(), // ID in Google/Outlook
+  externalCalendarId: text("external_calendar_id").notNull(),
+  syncStatus: text("sync_status").default('synced'), // 'synced', 'pending', 'error'
+  lastSyncError: text("last_sync_error"),
+  eventData: json("event_data").default({}), // Cached event details
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -655,6 +686,15 @@ export const insertIntegrationSettingsSchema = createInsertSchema(integrationSet
 });
 export type InsertIntegrationSettings = z.infer<typeof insertIntegrationSettingsSchema>;
 export type IntegrationSettings = typeof integrationSettings.$inferSelect;
+
+// Calendar Sync Events
+export const insertCalendarSyncEventSchema = createInsertSchema(calendarSyncEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCalendarSyncEvent = z.infer<typeof insertCalendarSyncEventSchema>;
+export type CalendarSyncEvent = typeof calendarSyncEvents.$inferSelect;
 
 // ===== ADVANCED FEATURES SCHEMAS =====
 

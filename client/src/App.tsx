@@ -66,6 +66,7 @@ import FormStore from "@/pages/FormStore";
 import StaffRostering from "@/pages/StaffRostering";
 import RouteOptimization from "@/pages/RouteOptimization";
 import JobProfitability from "@/pages/JobProfitability";
+import CalendarSync from "@/pages/CalendarSync";
 
 // Types for job completion
 interface JobPhoto {
@@ -379,6 +380,10 @@ function Router({
       
       <Route path="/templates" component={() => (
         <TemplateManagement />
+      )} />
+      
+      <Route path="/settings/calendar" component={() => (
+        <CalendarSync />
       )} />
       
       <Route path="/settings" component={SettingsWrapper} />
