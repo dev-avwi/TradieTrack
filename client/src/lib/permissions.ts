@@ -126,6 +126,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   
   // Job Forms - owner/solo/manager for template management
   { path: '/job-forms', label: 'Job Forms', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  
+  // Form Store - browse and install pre-made forms
+  { path: '/form-store', label: 'Form Store', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
 ];
 
 // Check if a role can access a specific path

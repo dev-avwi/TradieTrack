@@ -152,6 +152,12 @@ import {
   jobActivities,
   type JobActivity,
   type InsertJobActivity,
+  formStoreTemplates,
+  type FormStoreTemplate,
+  type InsertFormStoreTemplate,
+  formStoreInstallations,
+  type FormStoreInstallation,
+  type InsertFormStoreInstallation,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -471,6 +477,15 @@ export interface IStorage {
   getJobActivities(jobId: string): Promise<JobActivity[]>;
   createJobActivity(data: InsertJobActivity): Promise<JobActivity>;
   deleteJobActivity(id: string): Promise<void>;
+
+  // Form Store
+  getFormStoreTemplates(category?: string, tradeType?: string): Promise<FormStoreTemplate[]>;
+  getFormStoreTemplate(id: string): Promise<FormStoreTemplate | undefined>;
+  getFormStoreInstallations(userId: string): Promise<FormStoreInstallation[]>;
+  hasUserInstalledForm(userId: string, storeTemplateId: string): Promise<boolean>;
+  installFormFromStore(userId: string, storeTemplateId: string, userTemplateId: string): Promise<FormStoreInstallation>;
+  rateStoreForm(installationId: string, rating: number): Promise<FormStoreInstallation>;
+  incrementFormDownloadCount(storeTemplateId: string): Promise<void>;
 }
 
 // Initialize database connection
@@ -2842,6 +2857,83 @@ export class PostgresStorage implements IStorage {
 
   async deleteJobActivity(id: string): Promise<void> {
     await db.delete(jobActivities).where(eq(jobActivities.id, id));
+  }
+
+  // Form Store Methods
+  async getFormStoreTemplates(category?: string, tradeType?: string): Promise<FormStoreTemplate[]> {
+    const conditions = [eq(formStoreTemplates.isActive, true)];
+    if (category) conditions.push(eq(formStoreTemplates.category, category));
+    if (tradeType) conditions.push(eq(formStoreTemplates.tradeType, tradeType));
+    
+    return await db.select().from(formStoreTemplates)
+      .where(and(...conditions))
+      .orderBy(desc(formStoreTemplates.downloadCount), asc(formStoreTemplates.name));
+  }
+
+  async getFormStoreTemplate(id: string): Promise<FormStoreTemplate | undefined> {
+    const result = await db.select().from(formStoreTemplates)
+      .where(eq(formStoreTemplates.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async getFormStoreInstallations(userId: string): Promise<FormStoreInstallation[]> {
+    return await db.select().from(formStoreInstallations)
+      .where(eq(formStoreInstallations.userId, userId))
+      .orderBy(desc(formStoreInstallations.installedAt));
+  }
+
+  async hasUserInstalledForm(userId: string, storeTemplateId: string): Promise<boolean> {
+    const result = await db.select().from(formStoreInstallations)
+      .where(and(
+        eq(formStoreInstallations.userId, userId),
+        eq(formStoreInstallations.storeTemplateId, storeTemplateId)
+      ))
+      .limit(1);
+    return result.length > 0;
+  }
+
+  async installFormFromStore(userId: string, storeTemplateId: string, userTemplateId: string): Promise<FormStoreInstallation> {
+    const [result] = await db.insert(formStoreInstallations).values({
+      userId,
+      storeTemplateId,
+      userTemplateId,
+    }).returning();
+    return result;
+  }
+
+  async rateStoreForm(installationId: string, rating: number): Promise<FormStoreInstallation> {
+    const [result] = await db.update(formStoreInstallations)
+      .set({ rating, ratedAt: new Date() })
+      .where(eq(formStoreInstallations.id, installationId))
+      .returning();
+    
+    // Update the store template's average rating
+    const installation = result;
+    if (installation) {
+      const allRatings = await db.select({ rating: formStoreInstallations.rating })
+        .from(formStoreInstallations)
+        .where(and(
+          eq(formStoreInstallations.storeTemplateId, installation.storeTemplateId),
+          isNotNull(formStoreInstallations.rating)
+        ));
+      
+      const validRatings = allRatings.filter(r => r.rating !== null).map(r => r.rating!);
+      if (validRatings.length > 0) {
+        const avgRating = validRatings.reduce((a, b) => a + b, 0) / validRatings.length;
+        await db.update(formStoreTemplates)
+          .set({ rating: avgRating.toFixed(2), ratingCount: validRatings.length })
+          .where(eq(formStoreTemplates.id, installation.storeTemplateId));
+      }
+    }
+    
+    return result;
+  }
+
+  async incrementFormDownloadCount(storeTemplateId: string): Promise<void> {
+    await db.update(formStoreTemplates)
+      .set({ downloadCount: sql`${formStoreTemplates.downloadCount} + 1` })
+      .where(eq(formStoreTemplates.id, storeTemplateId));
   }
 }
 

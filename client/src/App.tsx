@@ -62,6 +62,7 @@ import DispatchBoard from "@/pages/DispatchBoard";
 import Automations from "@/pages/Automations";
 import Assets from "@/pages/Assets";
 import JobForms from "@/pages/JobForms";
+import FormStore from "@/pages/FormStore";
 import StaffRostering from "@/pages/StaffRostering";
 import RouteOptimization from "@/pages/RouteOptimization";
 
@@ -437,6 +438,10 @@ function Router({
       
       <Route path="/job-forms" component={() => (
         <JobForms />
+      )} />
+      
+      <Route path="/form-store" component={() => (
+        <FormStore />
       )} />
       
       <Route path="/route-optimize" component={() => (

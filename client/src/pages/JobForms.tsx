@@ -76,8 +76,10 @@ import {
   Camera,
   PenTool,
   FolderOpen,
-  Layers
+  Layers,
+  Store
 } from "lucide-react";
+import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import KPIBox from "@/components/KPIBox";
 
@@ -386,15 +388,26 @@ export default function JobForms() {
         title="Job Forms"
         subtitle={`${templates.length} templates`}
         action={
-          <Button 
-            onClick={handleOpenCreate} 
-            data-testid="button-create-template"
-            className="text-white font-medium"
-            style={{ backgroundColor: 'hsl(var(--trade))', borderRadius: '12px' }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Template
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href="/form-store">
+              <Button 
+                variant="outline"
+                data-testid="button-form-store"
+              >
+                <Store className="h-4 w-4 mr-2" />
+                Form Store
+              </Button>
+            </Link>
+            <Button 
+              onClick={handleOpenCreate} 
+              data-testid="button-create-template"
+              className="text-white font-medium"
+              style={{ backgroundColor: 'hsl(var(--trade))', borderRadius: '12px' }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Template
+            </Button>
+          </div>
         }
       />
 
@@ -437,12 +450,20 @@ export default function JobForms() {
           title={searchTerm || statusFilter !== "all" ? "No matching templates" : "No job form templates yet"}
           description={searchTerm || statusFilter !== "all" 
             ? "Try adjusting your search or filters" 
-            : "Create custom forms for your jobs - checklists, inspections, sign-offs and more."}
+            : "Create custom forms for your jobs, or browse 50+ pre-made templates in the Form Store."}
           action={!searchTerm && statusFilter === "all" ? (
-            <Button onClick={handleOpenCreate} data-testid="button-empty-create-template">
-              <Plus className="h-4 w-4 mr-2" />
-              Create First Template
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Link href="/form-store">
+                <Button variant="outline" data-testid="button-empty-form-store">
+                  <Store className="h-4 w-4 mr-2" />
+                  Browse Form Store
+                </Button>
+              </Link>
+              <Button onClick={handleOpenCreate} data-testid="button-empty-create-template">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Custom Template
+              </Button>
+            </div>
           ) : undefined}
         />
       ) : (

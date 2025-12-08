@@ -2002,3 +2002,53 @@ export const insertJobActivitySchema = createInsertSchema(jobActivities).omit({
 });
 export type InsertJobActivity = z.infer<typeof insertJobActivitySchema>;
 export type JobActivity = typeof jobActivities.$inferSelect;
+
+// Form Store Templates - Pre-made global form templates for all users to download
+export const formStoreTemplates = pgTable("form_store_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull(), // electrical, plumbing, hvac, carpentry, roofing, landscaping, painting, cleaning, general
+  tradeType: text("trade_type").notNull(), // safety, compliance, inspection, checklist, quote, report, maintenance, installation
+  fields: jsonb("fields").notNull().default([]), // Array of field definitions matching jobFormTemplates format
+  icon: text("icon"), // Lucide icon name for display
+  isPremium: boolean("is_premium").default(false), // Future: paid templates
+  downloadCount: integer("download_count").default(0),
+  rating: decimal("rating", { precision: 3, scale: 2 }).default('0'),
+  ratingCount: integer("rating_count").default(0),
+  version: text("version").default('1.0'),
+  author: text("author").default('TradieTrack'),
+  tags: text("tags").array(), // Searchable tags
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertFormStoreTemplateSchema = createInsertSchema(formStoreTemplates).omit({
+  id: true,
+  downloadCount: true,
+  rating: true,
+  ratingCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertFormStoreTemplate = z.infer<typeof insertFormStoreTemplateSchema>;
+export type FormStoreTemplate = typeof formStoreTemplates.$inferSelect;
+
+// User Form Store Installations - Track which store templates users have installed
+export const formStoreInstallations = pgTable("form_store_installations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  storeTemplateId: varchar("store_template_id").notNull().references(() => formStoreTemplates.id, { onDelete: 'cascade' }),
+  userTemplateId: varchar("user_template_id").references(() => jobFormTemplates.id, { onDelete: 'set null' }), // The created user template
+  installedAt: timestamp("installed_at").defaultNow(),
+  rating: integer("rating"), // User's rating 1-5
+  ratedAt: timestamp("rated_at"),
+});
+
+export const insertFormStoreInstallationSchema = createInsertSchema(formStoreInstallations).omit({
+  id: true,
+  installedAt: true,
+});
+export type InsertFormStoreInstallation = z.infer<typeof insertFormStoreInstallationSchema>;
+export type FormStoreInstallation = typeof formStoreInstallations.$inferSelect;

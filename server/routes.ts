@@ -7928,6 +7928,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== FORM STORE ROUTES =====
+
+  // Get all form store templates (public browsing)
+  app.get("/api/form-store/templates", requireAuth, async (req: any, res) => {
+    try {
+      const { category, tradeType } = req.query;
+      const templates = await storage.getFormStoreTemplates(
+        category as string | undefined, 
+        tradeType as string | undefined
+      );
+      res.json(templates);
+    } catch (error: any) {
+      console.error('Error fetching form store templates:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get a single form store template
+  app.get("/api/form-store/templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getFormStoreTemplate(id);
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      res.json(template);
+    } catch (error: any) {
+      console.error('Error fetching form store template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get user's installed forms
+  app.get("/api/form-store/installations", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const installations = await storage.getFormStoreInstallations(effectiveUserId);
+      res.json(installations);
+    } catch (error: any) {
+      console.error('Error fetching form store installations:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Install a form from the store
+  app.post("/api/form-store/templates/:id/install", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const { id } = req.params;
+
+      // Check if already installed
+      const alreadyInstalled = await storage.hasUserInstalledForm(effectiveUserId, id);
+      if (alreadyInstalled) {
+        return res.status(400).json({ error: 'Form already installed' });
+      }
+
+      // Get the store template
+      const storeTemplate = await storage.getFormStoreTemplate(id);
+      if (!storeTemplate) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+
+      // Create a copy as a user template
+      const userTemplate = await storage.createJobFormTemplate({
+        userId: effectiveUserId,
+        name: storeTemplate.name,
+        description: storeTemplate.description || `Installed from Form Store`,
+        category: storeTemplate.category,
+        fields: storeTemplate.fields,
+        isActive: true,
+        isDefault: false,
+      });
+
+      // Record the installation
+      const installation = await storage.installFormFromStore(
+        effectiveUserId, 
+        id, 
+        userTemplate.id
+      );
+
+      // Increment download count
+      await storage.incrementFormDownloadCount(id);
+
+      res.status(201).json({ 
+        installation, 
+        userTemplate,
+        message: 'Form installed successfully' 
+      });
+    } catch (error: any) {
+      console.error('Error installing form from store:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Rate an installed form
+  app.post("/api/form-store/installations/:installationId/rate", requireAuth, async (req: any, res) => {
+    try {
+      const { installationId } = req.params;
+      const { rating } = req.body;
+
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+      }
+
+      const installation = await storage.rateStoreForm(installationId, rating);
+      res.json({ installation, message: 'Rating submitted successfully' });
+    } catch (error: any) {
+      console.error('Error rating form:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get form store categories
+  app.get("/api/form-store/categories", requireAuth, async (req: any, res) => {
+    try {
+      const categories = [
+        { id: 'electrical', name: 'Electrical', icon: 'Zap' },
+        { id: 'plumbing', name: 'Plumbing', icon: 'Droplet' },
+        { id: 'hvac', name: 'HVAC', icon: 'Wind' },
+        { id: 'carpentry', name: 'Carpentry', icon: 'Hammer' },
+        { id: 'roofing', name: 'Roofing', icon: 'Home' },
+        { id: 'landscaping', name: 'Landscaping', icon: 'Trees' },
+        { id: 'painting', name: 'Painting', icon: 'Paintbrush' },
+        { id: 'cleaning', name: 'Cleaning', icon: 'Sparkles' },
+        { id: 'general', name: 'General', icon: 'FileText' },
+      ];
+      res.json(categories);
+    } catch (error: any) {
+      console.error('Error fetching categories:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get form store trade types
+  app.get("/api/form-store/trade-types", requireAuth, async (req: any, res) => {
+    try {
+      const tradeTypes = [
+        { id: 'safety', name: 'Safety', icon: 'ShieldCheck' },
+        { id: 'compliance', name: 'Compliance', icon: 'ClipboardCheck' },
+        { id: 'inspection', name: 'Inspection', icon: 'Search' },
+        { id: 'checklist', name: 'Checklist', icon: 'CheckSquare' },
+        { id: 'quote', name: 'Quote Template', icon: 'FileText' },
+        { id: 'report', name: 'Report', icon: 'FileSpreadsheet' },
+        { id: 'maintenance', name: 'Maintenance', icon: 'Wrench' },
+        { id: 'installation', name: 'Installation', icon: 'Package' },
+      ];
+      res.json(tradeTypes);
+    } catch (error: any) {
+      console.error('Error fetching trade types:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ===== JOB MAP ROUTES =====
 
   // Get all jobs with location data for map display
