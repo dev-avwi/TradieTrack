@@ -6,13 +6,26 @@ import {
   TouchableOpacity,
   RefreshControl,
   StyleSheet,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius } from '../../src/lib/design-tokens';
+import api from '../../src/lib/api';
+
+interface TimeEntry {
+  id: string;
+  userId: string;
+  jobId?: string;
+  description?: string;
+  startTime: string;
+  endTime?: string;
+  durationMinutes?: number;
+  notes?: string;
+}
 
 type TabKey = 'timer' | 'sheet' | 'reports' | 'stats';
 
@@ -205,6 +218,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     color: colors.destructive,
   },
+  timerActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+  },
   currentTime: {
     fontSize: 14,
     color: colors.mutedForeground,
@@ -347,11 +367,42 @@ export default function TimeTrackingScreen() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
+  const [activeTimeEntry, setActiveTimeEntry] = useState<TimeEntry | null>(null);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerStartRef = useRef<Date | null>(null);
+
+  const fetchTimeEntries = useCallback(async () => {
+    try {
+      const response = await api.get<TimeEntry[]>('/api/time-entries');
+      if (response.data) {
+        setTimeEntries(response.data);
+      }
+    } catch (error) {
+      console.error('[TimeTracking] Failed to fetch time entries:', error);
+    }
+  }, []);
+
+  const checkActiveTimer = useCallback(async () => {
+    try {
+      const response = await api.get<TimeEntry | null>('/api/time-entries/active');
+      if (response.data) {
+        setActiveTimeEntry(response.data);
+        setSelectedJob(response.data.jobId || null);
+        setIsTimerRunning(true);
+        timerStartRef.current = new Date(response.data.startTime);
+        const elapsed = Math.floor((Date.now() - new Date(response.data.startTime).getTime()) / 1000);
+        setTimerSeconds(elapsed);
+      }
+    } catch (error) {
+      console.error('[TimeTracking] Failed to check active timer:', error);
+    }
+  }, []);
 
   const refreshData = useCallback(async () => {
-    await fetchJobs();
-  }, [fetchJobs]);
+    await Promise.all([fetchJobs(), fetchTimeEntries(), checkActiveTimer()]);
+  }, [fetchJobs, fetchTimeEntries, checkActiveTimer]);
 
   useEffect(() => {
     refreshData();
@@ -386,12 +437,37 @@ export default function TimeTrackingScreen() {
     return now.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
   };
 
-  const handleStartTimer = () => {
+  const handleStartTimer = async () => {
     if (!selectedJob) {
       Alert.alert('Select a Job', 'Please select a job to track time for.');
       return;
     }
-    setIsTimerRunning(true);
+    
+    setIsSaving(true);
+    try {
+      const response = await api.post<TimeEntry>('/api/time-entries', {
+        jobId: selectedJob,
+        startTime: new Date().toISOString(),
+        description: `Time tracked for job`
+      });
+      
+      if (response.error) {
+        Alert.alert('Error', response.error);
+        return;
+      }
+      
+      if (response.data) {
+        setActiveTimeEntry(response.data);
+        timerStartRef.current = new Date();
+        setTimerSeconds(0);
+        setIsTimerRunning(true);
+      }
+    } catch (error) {
+      console.error('[TimeTracking] Failed to start timer:', error);
+      Alert.alert('Error', 'Failed to start timer. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handlePauseTimer = () => {
@@ -399,7 +475,7 @@ export default function TimeTrackingScreen() {
   };
 
   const handleStopTimer = () => {
-    if (timerSeconds > 0) {
+    if (timerSeconds > 0 || activeTimeEntry) {
       Alert.alert(
         'Stop Timer',
         `Save ${formatTime(timerSeconds)} of time?`,
@@ -407,10 +483,37 @@ export default function TimeTrackingScreen() {
           { text: 'Cancel', style: 'cancel' },
           { 
             text: 'Save', 
-            onPress: () => {
-              setIsTimerRunning(false);
-              setTimerSeconds(0);
-              Alert.alert('Saved', 'Time entry saved successfully!');
+            onPress: async () => {
+              if (!activeTimeEntry) {
+                setIsTimerRunning(false);
+                setTimerSeconds(0);
+                return;
+              }
+              
+              setIsSaving(true);
+              try {
+                const response = await api.patch<TimeEntry>(`/api/time-entries/${activeTimeEntry.id}`, {
+                  endTime: new Date().toISOString(),
+                  durationMinutes: Math.ceil(timerSeconds / 60)
+                });
+                
+                if (response.error) {
+                  Alert.alert('Error', response.error);
+                  return;
+                }
+                
+                setIsTimerRunning(false);
+                setTimerSeconds(0);
+                setActiveTimeEntry(null);
+                timerStartRef.current = null;
+                await fetchTimeEntries();
+                Alert.alert('Saved', 'Time entry saved successfully!');
+              } catch (error) {
+                console.error('[TimeTracking] Failed to save time entry:', error);
+                Alert.alert('Error', 'Failed to save time entry. Please try again.');
+              } finally {
+                setIsSaving(false);
+              }
             }
           },
         ]
@@ -420,10 +523,70 @@ export default function TimeTrackingScreen() {
     }
   };
 
+  const handleDiscardTimer = () => {
+    if (!activeTimeEntry) return;
+    
+    Alert.alert(
+      'Discard Timer',
+      'Are you sure you want to discard this time entry?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Discard', 
+          style: 'destructive',
+          onPress: async () => {
+            setIsSaving(true);
+            try {
+              await api.delete(`/api/time-entries/${activeTimeEntry.id}`);
+              setIsTimerRunning(false);
+              setTimerSeconds(0);
+              setActiveTimeEntry(null);
+              timerStartRef.current = null;
+            } catch (error) {
+              console.error('[TimeTracking] Failed to discard time entry:', error);
+              Alert.alert('Error', 'Failed to discard time entry.');
+            } finally {
+              setIsSaving(false);
+            }
+          }
+        },
+      ]
+    );
+  };
+
   const activeJobs = jobs.filter(j => j.status === 'in_progress').length;
-  const todayHours = 0;
-  const weekHours = 0;
-  const avgRate = 0;
+  
+  // Calculate actual stats from time entries
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  
+  const todayEntries = timeEntries.filter(e => {
+    const entryDate = new Date(e.startTime);
+    return entryDate >= today;
+  });
+  const weekEntries = timeEntries.filter(e => {
+    const entryDate = new Date(e.startTime);
+    return entryDate >= weekStart;
+  });
+  
+  const calculateHours = (entries: TimeEntry[]) => {
+    return entries.reduce((sum, e) => {
+      if (e.durationMinutes) {
+        return sum + (e.durationMinutes / 60);
+      }
+      if (e.startTime && e.endTime) {
+        const diff = new Date(e.endTime).getTime() - new Date(e.startTime).getTime();
+        return sum + (diff / 1000 / 60 / 60);
+      }
+      return sum;
+    }, 0);
+  };
+  
+  const todayHours = calculateHours(todayEntries);
+  const weekHours = calculateHours(weekEntries);
+  const avgRate = 0; // Would need hourly rate data
 
   const inProgressJobs = jobs.filter(j => j.status === 'in_progress' || j.status === 'scheduled');
 
@@ -529,12 +692,19 @@ export default function TimeTrackingScreen() {
                 <TouchableOpacity
                   style={[
                     styles.timerButton,
-                    isTimerRunning ? styles.timerButtonStop : styles.timerButtonStart
+                    isTimerRunning ? styles.timerButtonStop : styles.timerButtonStart,
+                    isSaving && { opacity: 0.7 }
                   ]}
                   onPress={isTimerRunning ? handlePauseTimer : handleStartTimer}
                   activeOpacity={0.7}
+                  disabled={isSaving}
                 >
-                  {isTimerRunning ? (
+                  {isSaving ? (
+                    <>
+                      <ActivityIndicator size="small" color={colors.primaryForeground} />
+                      <Text style={styles.timerButtonText}>Saving...</Text>
+                    </>
+                  ) : isTimerRunning ? (
                     <>
                       <Feather name="pause" size={20} color={colors.primaryForeground} />
                       <Text style={styles.timerButtonText}>Pause Timer</Text>
@@ -547,15 +717,30 @@ export default function TimeTrackingScreen() {
                   )}
                 </TouchableOpacity>
 
-                {timerSeconds > 0 && (
-                  <TouchableOpacity
-                    style={styles.stopButton}
-                    onPress={handleStopTimer}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="square" size={16} color={colors.destructive} />
-                    <Text style={styles.stopButtonText}>Stop & Save</Text>
-                  </TouchableOpacity>
+                {(timerSeconds > 0 || activeTimeEntry) && (
+                  <View style={styles.timerActionsRow}>
+                    <TouchableOpacity
+                      style={styles.stopButton}
+                      onPress={handleStopTimer}
+                      activeOpacity={0.7}
+                      disabled={isSaving}
+                    >
+                      <Feather name="check-circle" size={16} color={colors.success} />
+                      <Text style={[styles.stopButtonText, { color: colors.success }]}>Save Time</Text>
+                    </TouchableOpacity>
+                    
+                    {activeTimeEntry && (
+                      <TouchableOpacity
+                        style={styles.stopButton}
+                        onPress={handleDiscardTimer}
+                        activeOpacity={0.7}
+                        disabled={isSaving}
+                      >
+                        <Feather name="trash-2" size={16} color={colors.destructive} />
+                        <Text style={styles.stopButtonText}>Discard</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
 
                 <Text style={styles.currentTime}>{formatCurrentTime()}</Text>

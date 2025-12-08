@@ -37,6 +37,14 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
       error TEXT
     );
     
+    -- Cached user session for offline auth
+    CREATE TABLE IF NOT EXISTS user_session (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      user_data TEXT NOT NULL,
+      business_settings TEXT,
+      cached_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    
     -- Clients table
     CREATE TABLE IF NOT EXISTS clients (
       id TEXT PRIMARY KEY,
@@ -311,4 +319,41 @@ export async function closeDatabase(): Promise<void> {
     await db.closeAsync();
     db = null;
   }
+}
+
+// Session caching for offline auth
+export async function cacheUserSession(user: any, businessSettings?: any): Promise<void> {
+  const database = await getDatabase();
+  await database.runAsync(
+    `INSERT OR REPLACE INTO user_session (id, user_data, business_settings, cached_at) 
+     VALUES (1, ?, ?, datetime('now'))`,
+    [JSON.stringify(user), businessSettings ? JSON.stringify(businessSettings) : null]
+  );
+  console.log('[Database] User session cached for offline use');
+}
+
+export async function getCachedSession(): Promise<{ user: any; businessSettings: any } | null> {
+  try {
+    const database = await getDatabase();
+    const result = await database.getFirstAsync<{ user_data: string; business_settings: string | null }>(
+      'SELECT user_data, business_settings FROM user_session WHERE id = 1'
+    );
+    
+    if (result) {
+      return {
+        user: JSON.parse(result.user_data),
+        businessSettings: result.business_settings ? JSON.parse(result.business_settings) : null
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('[Database] Failed to get cached session:', error);
+    return null;
+  }
+}
+
+export async function clearCachedSession(): Promise<void> {
+  const database = await getDatabase();
+  await database.runAsync('DELETE FROM user_session WHERE id = 1');
+  console.log('[Database] Cached session cleared');
 }

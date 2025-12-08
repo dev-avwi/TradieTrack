@@ -4876,6 +4876,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to create catalog item" });
     }
   });
+  
+  app.put("/api/catalog/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      // Verify the item belongs to this user before updating
+      const existingItem = await storage.getLineItemCatalogItem(id);
+      if (!existingItem || (existingItem.userId !== req.userId && existingItem.userId !== 'shared')) {
+        return res.status(404).json({ error: "Catalog item not found" });
+      }
+      // Only allow updating user's own items, not shared ones
+      if (existingItem.userId === 'shared') {
+        return res.status(403).json({ error: "Cannot modify shared catalog items" });
+      }
+      const data = insertLineItemCatalogSchema.partial().parse(req.body);
+      const item = await storage.updateLineItemCatalogItem(id, data);
+      res.json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Error updating catalog item:", error);
+      res.status(500).json({ error: "Failed to update catalog item" });
+    }
+  });
+  
+  app.delete("/api/catalog/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      // Verify the item belongs to this user before deleting
+      const existingItem = await storage.getLineItemCatalogItem(id);
+      if (!existingItem || (existingItem.userId !== req.userId && existingItem.userId !== 'shared')) {
+        return res.status(404).json({ error: "Catalog item not found" });
+      }
+      // Only allow deleting user's own items, not shared ones
+      if (existingItem.userId === 'shared') {
+        return res.status(403).json({ error: "Cannot delete shared catalog items" });
+      }
+      await storage.deleteLineItemCatalogItem(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting catalog item:", error);
+      res.status(500).json({ error: "Failed to delete catalog item" });
+    }
+  });
 
   // Rate Cards Routes
   app.get("/api/rate-cards", requireAuth, async (req: any, res) => {
@@ -8786,6 +8830,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success });
     } catch (error: any) {
       console.error('Error stopping recurring invoice:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== SMS / QUICK MESSAGES ROUTES =====
+  
+  // Send SMS to a client (for "I'm on my way" type messages)
+  app.post("/api/sms/send", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { to, message, clientId, jobId } = req.body;
+      
+      if (!to || !message) {
+        return res.status(400).json({ error: 'Phone number and message are required' });
+      }
+      
+      // Check if Twilio is configured
+      if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
+        // Simulate success for development without Twilio
+        console.log(`[SMS Simulated] To: ${to}, Message: ${message}`);
+        return res.json({ 
+          success: true, 
+          simulated: true,
+          message: 'SMS simulated (Twilio not configured)'
+        });
+      }
+      
+      // Import Twilio and send SMS
+      const twilio = await import('twilio');
+      const client = twilio.default(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      
+      const smsResult = await client.messages.create({
+        body: message,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: to.startsWith('+') ? to : `+${to}`
+      });
+      
+      console.log(`[SMS Sent] SID: ${smsResult.sid}, To: ${to}`);
+      
+      res.json({ 
+        success: true, 
+        sid: smsResult.sid,
+        message: 'SMS sent successfully'
+      });
+    } catch (error: any) {
+      console.error('Error sending SMS:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to send SMS',
+        details: process.env.NODE_ENV === 'development' ? error.toString() : undefined
+      });
+    }
+  });
+  
+  // Get quick message templates
+  app.get("/api/sms/templates", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const businessSettings = await storage.getBusinessSettings(userId);
+      const businessName = businessSettings?.businessName || 'Your Tradie';
+      
+      // Default quick message templates
+      const templates = [
+        {
+          id: 'on-my-way',
+          title: "I'm On My Way",
+          message: `G'day! Just letting you know I'm on my way now. Should be there in about {eta} minutes. - ${businessName}`,
+          icon: 'navigation',
+          category: 'arrival'
+        },
+        {
+          id: 'running-late',
+          title: "Running Late",
+          message: `Hi there, I'm running a bit behind schedule. I'll be there in about {eta} minutes. Apologies for any inconvenience. - ${businessName}`,
+          icon: 'clock',
+          category: 'arrival'
+        },
+        {
+          id: 'arrived',
+          title: "I've Arrived",
+          message: `Hi, I've just arrived. I'm outside now. - ${businessName}`,
+          icon: 'map-pin',
+          category: 'arrival'
+        },
+        {
+          id: 'job-complete',
+          title: "Job Complete",
+          message: `Good news! The job is all done. Everything's looking great. I'll send through the invoice shortly. Cheers! - ${businessName}`,
+          icon: 'check-circle',
+          category: 'completion'
+        },
+        {
+          id: 'quote-follow-up',
+          title: "Quote Follow-up",
+          message: `Hi, just following up on the quote I sent through. Let me know if you have any questions or if you'd like to go ahead. - ${businessName}`,
+          icon: 'file-text',
+          category: 'follow-up'
+        },
+        {
+          id: 'reschedule',
+          title: "Need to Reschedule",
+          message: `Hi, unfortunately I need to reschedule our appointment. Please let me know what other times work for you. Sorry for any inconvenience. - ${businessName}`,
+          icon: 'calendar',
+          category: 'scheduling'
+        },
+        {
+          id: 'payment-reminder',
+          title: "Payment Reminder",
+          message: `Hi, just a friendly reminder about the outstanding invoice. Please let me know if you have any questions. - ${businessName}`,
+          icon: 'dollar-sign',
+          category: 'payment'
+        }
+      ];
+      
+      res.json(templates);
+    } catch (error: any) {
+      console.error('Error getting SMS templates:', error);
       res.status(500).json({ error: error.message });
     }
   });

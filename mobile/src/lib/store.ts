@@ -3,6 +3,7 @@ import api from './api';
 import { offlineStore } from './offlineStore';
 import { notificationService } from './notifications';
 import { locationTrackingService } from './locationTracking';
+import { cacheUserSession, getCachedSession, clearCachedSession } from './database';
 import NetInfo from '@react-native-community/netinfo';
 
 // ============ TYPES ============
@@ -159,8 +160,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return false;
     }
 
+    const user = response.data.user;
     set({ 
-      user: response.data.user, 
+      user, 
       isAuthenticated: true, 
       isLoading: false,
       isInitialized: true,
@@ -168,8 +170,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
 
     const settingsResponse = await api.get<BusinessSettings>('/api/business-settings');
-    if (settingsResponse.data) {
-      set({ businessSettings: settingsResponse.data });
+    const businessSettings = settingsResponse.data || null;
+    if (businessSettings) {
+      set({ businessSettings });
+    }
+
+    // Cache user session for offline auth
+    try {
+      await cacheUserSession(user, businessSettings);
+    } catch (e) {
+      console.warn('[AuthStore] Failed to cache session:', e);
     }
 
     return true;
@@ -178,6 +188,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     set({ isLoading: true });
     await api.logout();
+    
+    // Clear cached session
+    try {
+      await clearCachedSession();
+    } catch (e) {
+      console.warn('[AuthStore] Failed to clear cached session:', e);
+    }
+    
     set({ 
       user: null, 
       businessSettings: null,
@@ -202,9 +220,64 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
+    // Check if we're online
+    const networkState = await NetInfo.fetch();
+    const isOnline = networkState.isConnected && networkState.isInternetReachable;
+
+    if (!isOnline) {
+      // Offline - try to use cached session
+      console.log('[AuthStore] Offline - checking cached session');
+      try {
+        const cached = await getCachedSession();
+        if (cached?.user) {
+          console.log('[AuthStore] Using cached session for offline mode');
+          set({ 
+            user: cached.user, 
+            businessSettings: cached.businessSettings,
+            isAuthenticated: true, 
+            isLoading: false,
+            isInitialized: true 
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn('[AuthStore] Failed to get cached session:', e);
+      }
+      
+      // No cached session available offline
+      set({ 
+        user: null, 
+        isAuthenticated: false, 
+        isLoading: false,
+        isInitialized: true,
+        error: 'No internet connection. Please connect to log in.' 
+      });
+      return;
+    }
+
+    // Online - validate with server
     const response = await api.getCurrentUser();
     
     if (response.error) {
+      // Server error - try cached session as fallback
+      console.log('[AuthStore] Server error - trying cached session');
+      try {
+        const cached = await getCachedSession();
+        if (cached?.user) {
+          console.log('[AuthStore] Using cached session as fallback');
+          set({ 
+            user: cached.user, 
+            businessSettings: cached.businessSettings,
+            isAuthenticated: true, 
+            isLoading: false,
+            isInitialized: true 
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn('[AuthStore] Failed to get cached session:', e);
+      }
+      
       await api.setToken(null);
       set({ 
         user: null, 
@@ -215,16 +288,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
+    const user = response.data;
     set({ 
-      user: response.data, 
+      user, 
       isAuthenticated: true, 
       isLoading: false,
       isInitialized: true 
     });
 
     const settingsResponse = await api.get<BusinessSettings>('/api/business-settings');
-    if (settingsResponse.data) {
-      set({ businessSettings: settingsResponse.data });
+    const businessSettings = settingsResponse.data || null;
+    if (businessSettings) {
+      set({ businessSettings });
+    }
+
+    // Update cached session with fresh data
+    try {
+      await cacheUserSession(user, businessSettings);
+    } catch (e) {
+      console.warn('[AuthStore] Failed to update cached session:', e);
     }
   },
 
