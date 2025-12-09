@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
+import { useUserRole } from '../../src/hooks/use-user-role';
 
 interface TeamMember {
   id: string;
@@ -398,6 +399,10 @@ export default function TeamManagementScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
+  // RBAC: Permission checks for team management actions
+  const { isOwner, isManager, hasTeamAccess, isLoading: roleLoading } = useUserRole();
+  const canModifyTeam = isOwner || isManager; // Only owner/admin can invite, remove, or change roles
+  
   const ROLE_CONFIG = useMemo(() => ({
     owner: { 
       label: 'Owner', 
@@ -455,7 +460,9 @@ export default function TeamManagementScreen() {
     fetchTeam();
   }, []);
 
-  const currentUserIsOwner = teamMembers.some(m => m.role === 'owner');
+  // RBAC: Use canModifyTeam from useUserRole hook instead of checking team members
+  // This correctly checks if the current user is an owner or admin
+  const currentUserIsOwner = canModifyTeam;
 
   const handleInvite = async () => {
     if (!inviteEmail) {
@@ -617,12 +624,14 @@ export default function TeamManagementScreen() {
               <Text style={styles.headerTitle}>Team Management</Text>
               <Text style={styles.headerSubtitle}>{teamMembers.length} team members</Text>
             </View>
-            <TouchableOpacity 
-              style={styles.inviteButton}
-              onPress={() => setShowInviteModal(true)}
-            >
-              <Feather name="user-plus" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
+            {canModifyTeam && (
+              <TouchableOpacity 
+                style={styles.inviteButton}
+                onPress={() => setShowInviteModal(true)}
+              >
+                <Feather name="user-plus" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.statsRow}>

@@ -18,6 +18,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
 import { DashboardSkeleton } from '../../src/components/ui/Skeleton';
+import { useUserRole } from '../../src/hooks/use-user-role';
 
 // Trust Banner Component - compact modern design
 function TrustBanner() {
@@ -476,6 +477,17 @@ export default function DashboardScreen() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   
+  // RBAC: Role-based access control - staff see limited data
+  const { isOwner, isManager, isStaff, canAccessInvoices, canAccessQuotes, isLoading: roleLoading } = useUserRole();
+  const canSeeFinancials = isOwner || isManager;
+  
+  // Staff only see their assigned jobs
+  const filteredTodaysJobs = useMemo(() => {
+    if (isOwner || isManager) return todaysJobs;
+    // Staff: filter to only their assigned jobs
+    return todaysJobs.filter(job => job.assignedToId === user?.id);
+  }, [todaysJobs, isOwner, isManager, user?.id]);
+  
   const handleNavigateToItem = (type: string, id: string) => {
     switch (type) {
       case 'job':
@@ -543,12 +555,15 @@ export default function DashboardScreen() {
   };
 
   const userName = user?.firstName || 'there';
-  const jobsToday = stats.jobsToday || todaysJobs.length;
-  const overdueCount = stats.overdueJobs || 0;
-  const quotesCount = stats.pendingQuotes || 0;
-  const monthRevenue = formatCurrency(stats.thisMonthRevenue || 0);
+  // RBAC: Use filtered jobs for staff, all jobs for owners/managers
+  const jobsToday = canSeeFinancials 
+    ? (stats.jobsToday || todaysJobs.length)
+    : filteredTodaysJobs.length;
+  const overdueCount = canSeeFinancials ? (stats.overdueJobs || 0) : 0;
+  const quotesCount = canSeeFinancials ? (stats.pendingQuotes || 0) : 0;
+  const monthRevenue = canSeeFinancials ? formatCurrency(stats.thisMonthRevenue || 0) : '--';
 
-  const isLoading = jobsLoading || statsLoading;
+  const isLoading = jobsLoading || statsLoading || roleLoading;
   const showSkeleton = isInitialLoad && isLoading;
 
   if (showSkeleton) {
@@ -587,8 +602,8 @@ export default function DashboardScreen() {
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>{getGreeting()}, {userName}</Text>
             <Text style={styles.headerSubtitle}>
-              {todaysJobs.length > 0 
-                ? `You have ${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} scheduled today`
+              {filteredTodaysJobs.length > 0 
+                ? `You have ${filteredTodaysJobs.length} job${filteredTodaysJobs.length > 1 ? 's' : ''} scheduled today`
                 : businessSettings?.businessName || "Welcome back"}
             </Text>
           </View>
@@ -606,7 +621,7 @@ export default function DashboardScreen() {
       {/* Trust Banner */}
       <TrustBanner />
 
-      {/* Quick Stats */}
+      {/* Quick Stats - RBAC: Staff see limited stats */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Quick Stats</Text>
         <View style={styles.kpiGrid}>
@@ -618,34 +633,47 @@ export default function DashboardScreen() {
             iconColor={colors.primary}
             onPress={() => router.push('/(tabs)/jobs')}
           />
-          <KPICard
-            title="Overdue"
-            value={overdueCount}
-            icon="alert-circle"
-            iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
-            iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
-            onPress={() => router.push('/more/invoices')}
-          />
-          <KPICard
-            title="Quotes Pending"
-            value={quotesCount}
-            icon="clock"
-            iconBg={colors.muted}
-            iconColor={colors.mutedForeground}
-            onPress={() => router.push('/more/quotes')}
-          />
-          <KPICard
-            title="This Month"
-            value={monthRevenue}
-            icon="trending-up"
-            iconBg={colors.successLight}
-            iconColor={colors.success}
-            onPress={() => router.push('/more/invoices')}
-          />
+          {canSeeFinancials ? (
+            <>
+              <KPICard
+                title="Overdue"
+                value={overdueCount}
+                icon="alert-circle"
+                iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
+                iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
+                onPress={() => router.push('/more/invoices')}
+              />
+              <KPICard
+                title="Quotes Pending"
+                value={quotesCount}
+                icon="clock"
+                iconBg={colors.muted}
+                iconColor={colors.mutedForeground}
+                onPress={() => router.push('/more/quotes')}
+              />
+              <KPICard
+                title="This Month"
+                value={monthRevenue}
+                icon="trending-up"
+                iconBg={colors.successLight}
+                iconColor={colors.success}
+                onPress={() => router.push('/more/invoices')}
+              />
+            </>
+          ) : (
+            <KPICard
+              title="My Jobs"
+              value={filteredTodaysJobs.filter(j => j.status === 'in_progress' || j.status === 'scheduled').length}
+              icon="clock"
+              iconBg={colors.muted}
+              iconColor={colors.mutedForeground}
+              onPress={() => router.push('/(tabs)/jobs')}
+            />
+          )}
         </View>
       </View>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - RBAC: Staff only see job-related actions */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Quick Actions</Text>
         <View style={styles.quickActionsCard}>
@@ -656,21 +684,25 @@ export default function DashboardScreen() {
               variant="primary"
               onPress={() => router.push('/more/create-job')}
             />
-            <QuickActionButton
-              title="Quote"
-              icon="file-text"
-              onPress={() => router.push('/more/quote/new')}
-            />
-            <QuickActionButton
-              title="Invoice"
-              icon="dollar-sign"
-              onPress={() => router.push('/more/invoice/new')}
-            />
+            {canAccessQuotes && (
+              <QuickActionButton
+                title="Quote"
+                icon="file-text"
+                onPress={() => router.push('/more/quote/new')}
+              />
+            )}
+            {canAccessInvoices && (
+              <QuickActionButton
+                title="Invoice"
+                icon="dollar-sign"
+                onPress={() => router.push('/more/invoice/new')}
+              />
+            )}
           </View>
         </View>
       </View>
 
-      {/* Today's Schedule */}
+      {/* Today's Schedule - RBAC: Staff only see their assigned jobs */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
@@ -679,7 +711,7 @@ export default function DashboardScreen() {
             </View>
             <Text style={styles.sectionTitle}>Today</Text>
           </View>
-          {todaysJobs.length > 0 && (
+          {filteredTodaysJobs.length > 0 && (
             <TouchableOpacity 
               style={styles.viewAllButton}
               onPress={() => router.push('/(tabs)/jobs')}
@@ -691,11 +723,11 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        {todaysJobs.length === 0 ? (
+        {filteredTodaysJobs.length === 0 ? (
           <EmptyTodayState onCreateJob={() => router.push('/more/create-job')} />
         ) : (
           <View style={styles.jobsList}>
-            {todaysJobs.map((job: any, index: number) => (
+            {filteredTodaysJobs.map((job: any, index: number) => (
               <TodayJobCard
                 key={job.id}
                 job={job}
@@ -711,7 +743,7 @@ export default function DashboardScreen() {
         )}
       </View>
 
-      {/* Recent Activity */}
+      {/* Recent Activity - RBAC: Staff only see their own activity */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
@@ -724,7 +756,7 @@ export default function DashboardScreen() {
         <ActivityFeed 
           activities={[
             // Generate sample activity from today's jobs for visual consistency
-            ...todaysJobs.slice(0, 3).map((job: any) => ({
+            ...filteredTodaysJobs.slice(0, 3).map((job: any) => ({
               id: job.id,
               type: 'job',
               title: `Job: ${job.title}`,
