@@ -1,0 +1,145 @@
+~/workspace$ cd mobile && npx expo start --tunnel
+Starting project at /home/runner/workspace/mobile
+Starting Metro Bundler
+Tunnel connected.
+Tunnel ready.
+The following packages should be updated for best compatibility with the installed expo version:
+  react-native-reanimated@3.16.7 - expected version: ~4.1.1
+  react-native-worklets@0.5.2 - expected version: 0.5.1
+  @types/react@19.0.0 - expected version: ~19.1.10
+  typescript@5.3.3 - expected version: ~5.9.2
+Your project may not work correctly until you install the expected versions of the packages.
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+█ ▄▄▄▄▄ █▄▄▄ ▀ ▄██ ▀▀██ ▄▄▄▄▄ █
+█ █   █ ██▄▀ █ ▄█▄▀▀▄▄█ █   █ █
+█ █▄▄▄█ ██▀▄ ▄▀▄█▄▀▄▄▀█ █▄▄▄█ █
+█▄▄▄▄▄▄▄█ ▀▄█ ▀▄█▄█▄█▄█▄▄▄▄▄▄▄█
+█▄ █▄ ▀▄█▀▄▀█▄█▄▀▄ ▄▀█▀▄▀▀██▀▄█
+█▄▀  █ ▄▀ ▄██▄██▄█  █▀▀▀█▄██▄▀█
+█▄▀██  ▄▀ ▄ █▀▄   █▄█▄▄ ▄▀▄█  █
+███▀▄▄ ▄▄   █▀▀  ▄█ ▄ ▀▀▄▀█ █ █
+█▀▀▄▄  ▄█  ▄ ▄██▀▀█▄ ▀██▄▀▀▀ ▄█
+█  █▀█ ▄ ▄▀ ▀▄ ▄▄▄▄ ▄▄ ▄▀▄█▀▀▄█
+█▄▄█▄█▄▄█ █▄▄▀ █ █▄▄█ ▄▄▄ ▄ █▄█
+█ ▄▄▄▄▄ ██▀▄ ▀ █▄▀ ▄  █▄█  █▀██
+█ █   █ █ █▄▄▄ ▀▀▀▀ ▄▄ ▄▄▄▀▀█ █
+█ █▄▄▄█ █▀   ▄▄█▄█▄▀█▄ █▄ █ ▄ █
+█▄▄▄▄▄▄▄█▄█▄███▄▄███▄▄▄▄▄▄▄████
+
+› Metro waiting on exp://cs0mc-u-anonymous-8081.exp.direct
+› Scan the QR code above with Expo Go (Android) or the Camera app (iOS)
+
+› Web is waiting on http://localhost:8081
+
+› Using Expo Go
+› Press s │ switch to development build
+
+› Press a │ open Android
+› Press w │ open web
+
+› Press j │ open debugger
+› Press r │ reload app
+› Press m │ toggle menu
+› shift+m │ more tools
+› Press o │ open project code in your editor
+
+› Press ? │ show all commands
+
+Logs for your project will appear below. Press Ctrl+C to exit.
+Unable to resolve asset "./assets/splash.png" from "splash.image" in your app.json or app.config.js
+✔ 
+
+It is recommended to log in with your Expo account before proceeding. 
+Learn more: https://expo.fyi/unverified-app-expo-go
+ › Log in
+
+? Email or username › Log in to EAS with email or username (exit and run 'npx expo login --help' for other login options)
+✔ Email or username … admin@avwebinnovation.com
+✔ Password … ************
+iOS node_modules/expo-router/entry.js ▓▓▓▓▓░░░░░░░░░░░ 35.9% (446/744)
+iOS Bundling failed 28166ms node_modules/expo-router/entry.js (1 module)
+Unable to resolve "expo-web-browser" from "app/(auth)/login.tsx"
+  14 | } from 'react-native';
+  15 | import { Link, router } from 'expo-router';
+> 16 | import * as WebBrowser from 'expo-web-browser';
+     |                              ^
+  17 | import { Feather } from '@expo/vector-icons';
+  18 | import { useAuthStore } from '../../src/lib/store';
+  19 | import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
+
+Import stack:
+
+ app/(auth)/login.tsx
+ | import "expo-web-browser"
+
+ app (require.context)
+
+iOS Bundling failed 44974ms node_modules/expo-router/entry.js (1798 modules)
+Unable to resolve "expo-web-browser" from "app/(auth)/login.tsx"
+  14 | } from 'react-native';
+  15 | import { Link, router } from 'expo-router';
+> 16 | import * as WebBrowser from 'expo-web-browser';
+     |                              ^
+  17 | import { Feather } from '@expo/vector-icons';
+  18 | import { useAuthStore } from '../../src/lib/store';
+  19 | import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
+
+Import stack:
+
+ app/(auth)/login.tsx
+ | import "expo-web-browser"
+
+ app (require.context)
+
+Unable to resolve asset "./assets/splash.png" from "splash.image" in your app.json or app.config.js
+iOS Bundling failed 1112ms node_modules/expo-router/entry.js (1667 modules)
+Unable to resolve "expo-web-browser" from "app/(auth)/login.tsx"
+  14 | } from 'react-native';
+  15 | import { Link, router } from 'expo-router';
+> 16 | import * as WebBrowser from 'expo-web-browser';
+     |                              ^
+  17 | import { Feather } from '@expo/vector-icons';
+  18 | import { useAuthStore } from '../../src/lib/store';
+  19 | import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
+
+Import stack:
+
+ app/(auth)/login.tsx
+ | import "expo-web-browser"
+
+ app (require.context)
+
+iOS node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  5.3% ( 80/349)
+iOS Bundling failed 1146ms node_modules/expo-router/entry.js (1786 modules)
+Unable to resolve "expo-web-browser" from "app/(auth)/login.tsx"
+  14 | } from 'react-native';
+  15 | import { Link, router } from 'expo-router';
+> 16 | import * as WebBrowser from 'expo-web-browser';
+     |                              ^
+  17 | import { Feather } from '@expo/vector-icons';
+  18 | import { useAuthStore } from '../../src/lib/store';
+  19 | import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
+
+Import stack:
+
+ app/(auth)/login.tsx
+ | import "expo-web-browser"
+
+ app (require.context)
+
+iOS Bundling failed 966ms node_modules/expo-router/entry.js (1722 modules)
+Unable to resolve "expo-web-browser" from "app/(auth)/login.tsx"
+  14 | } from 'react-native';
+  15 | import { Link, router } from 'expo-router';
+> 16 | import * as WebBrowser from 'expo-web-browser';
+     |                              ^
+  17 | import { Feather } from '@expo/vector-icons';
+  18 | import { useAuthStore } from '../../src/lib/store';
+  19 | import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
+
+Import stack:
+
+ app/(auth)/login.tsx
+ | import "expo-web-browser"
+
+ app (require.context)
