@@ -1,0 +1,43 @@
+PS C:\Users\vogle\TradieTrack> cd mobile
+PS C:\Users\vogle\TradieTrack\mobile> dir
+
+
+    Directory: C:\Users\vogle\TradieTrack\mobile
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----         9/12/2025   7:09 PM                mobile
+
+
+PS C:\Users\vogle\TradieTrack\mobile> npm install --legacy-peer-deps
+-
+PS C:\Users\vogle\TradieTrack\mobile> cd mobile
+PS C:\Users\vogle\TradieTrack\mobile\mobile> npx expo start --tunnel
+Starting project at C:\Users\vogle\TradieTrack\mobile\mobile
+Starting Metro Bundler
+Error "ENOENT" reading contents of "C:\Users\vogle\TradieTrack\mobile\shared", skipping. Add this directory to your ignore list to exclude it.
+C:\Users\vogle\TradieTrack\mobile\mobile\node_modules\@expo\cli\build\src\utils\errors.js:130
+    throw error;
+    ^
+
+Error: ENOENT: no such file or directory, watch 'C:\Users\vogle\TradieTrack\mobile\shared'
+    at FSWatcher.<computed> (node:internal/fs/watchers:254:19)
+    at Object.watch (node:fs:2539:36)
+    at FallbackWatcher._watchdir (C:\Users\vogle\TradieTrack\mobile\mobile\node_modules\metro-file-map\src\watchers\FallbackWatcher.js:119:33)
+    at FallbackWatcher.startWatching (C:\Users\vogle\TradieTrack\mobile\mobile\node_modules\metro-file-map\src\watchers\FallbackWatcher.js:49:10)
+    at C:\Users\vogle\TradieTrack\mobile\mobile\node_modules\metro-file-map\src\Watcher.js:179:23
+    at new Promise (<anonymous>)
+    at createWatcherBackend (C:\Users\vogle\TradieTrack\mobile\mobile\node_modules\metro-file-map\src\Watcher.js:159:14)
+    at Array.map (<anonymous>)
+    at Watcher.watch (C:\Users\vogle\TradieTrack\mobile\mobile\node_modules\metro-file-map\src\Watcher.js:185:27)
+    at FileMap._watch (C:\Users\vogle\TradieTrack\mobile\mobile\node_modules\metro-file-map\src\index.js:678:25) {
+  errno: -4058,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: 'C:\\Users\\vogle\\TradieTrack\\mobile\\shared',
+  filename: 'C:\\Users\\vogle\\TradieTrack\\mobile\\shared'
+}
+
+Node.js v24.11.1
+PS C:\Users\vogle\TradieTrack\mobile\mobile>
