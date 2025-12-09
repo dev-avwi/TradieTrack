@@ -24,6 +24,7 @@ interface LineItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  cost: number; // Cost for profit margin calculation (in cents)
 }
 
 function generateId() {
@@ -200,14 +201,25 @@ function LineItemRow({
   onDelete,
   colors,
   styles,
+  showMargin,
 }: {
   item: LineItem;
   onUpdate: (updates: Partial<LineItem>) => void;
   onDelete: () => void;
   colors: any;
   styles: any;
+  showMargin: boolean;
 }) {
   const total = (item.quantity * item.unitPrice) / 100;
+  const totalCost = (item.quantity * item.cost) / 100;
+  const margin = total > 0 ? ((total - totalCost) / total) * 100 : 0;
+  const hasCost = item.cost > 0;
+
+  const getMarginColor = () => {
+    if (margin >= 30) return '#16a34a'; // green
+    if (margin >= 15) return '#ca8a04'; // yellow
+    return '#dc2626'; // red
+  };
 
   return (
     <View style={styles.lineItemCard}>
@@ -260,6 +272,36 @@ function LineItemRow({
           <Text style={styles.lineTotalValue}>${total.toFixed(2)}</Text>
         </View>
       </View>
+      
+      {/* Cost and margin section */}
+      {showMargin && (
+        <View style={styles.costMarginSection}>
+          <View style={styles.costInput}>
+            <Text style={styles.numberLabel}>Your Cost</Text>
+            <View style={styles.priceInputContainer}>
+              <Text style={styles.currencySymbol}>$</Text>
+              <TextInput
+                style={styles.priceField}
+                value={(item.cost / 100).toFixed(2)}
+                onChangeText={(text) => {
+                  const cost = Math.round(parseFloat(text.replace(/[^0-9.]/g, '') || '0') * 100);
+                  onUpdate({ cost: cost });
+                }}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={colors.mutedForeground}
+              />
+            </View>
+          </View>
+          {hasCost && (
+            <View style={[styles.marginBadge, { backgroundColor: getMarginColor() + '20' }]}>
+              <Text style={[styles.marginBadgeText, { color: getMarginColor() }]}>
+                {margin.toFixed(0)}% margin
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -324,6 +366,23 @@ const createStyles = (colors: any) => StyleSheet.create({
   clientItemEmail: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
   emptyList: { alignItems: 'center', paddingVertical: 32 },
   emptyListText: { fontSize: 14, color: colors.mutedForeground },
+  costMarginSection: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border, borderStyle: 'dashed' },
+  costInput: { flex: 1, maxWidth: 140 },
+  marginBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  marginBadgeText: { fontSize: 12, fontWeight: '600' },
+  profitSection: { backgroundColor: `${colors.muted}50`, borderRadius: 10, padding: 12, marginTop: 12 },
+  profitSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  profitSectionTitle: { fontSize: 12, fontWeight: '600', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.5 },
+  profitToggleButton: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.background },
+  profitToggleText: { fontSize: 12, fontWeight: '500', color: colors.primary },
+  profitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  profitLabel: { fontSize: 13, color: colors.mutedForeground },
+  profitValue: { fontSize: 14, fontWeight: '500', color: colors.foreground },
+  profitValuePositive: { color: '#16a34a' },
+  profitValueNegative: { color: '#dc2626' },
+  overallMarginBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'flex-start' },
+  overallMarginText: { fontSize: 14, fontWeight: '700' },
+  noCostHint: { fontSize: 12, color: colors.mutedForeground, textAlign: 'center', paddingVertical: 8 },
 });
 
 export default function CreateQuoteScreen() {
@@ -337,7 +396,7 @@ export default function CreateQuoteScreen() {
   const [clientId, setClientId] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: generateId(), description: '', quantity: 1, unitPrice: 0 },
+    { id: generateId(), description: '', quantity: 1, unitPrice: 0, cost: 0 },
   ]);
   const [notes, setNotes] = useState('');
   const [termsAndConditions, setTermsAndConditions] = useState(
@@ -347,6 +406,7 @@ export default function CreateQuoteScreen() {
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
   );
   const [depositPercentage, setDepositPercentage] = useState(0);
+  const [showMarginMode, setShowMarginMode] = useState(false);
 
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showJobPicker, setShowJobPicker] = useState(false);
@@ -364,7 +424,7 @@ export default function CreateQuoteScreen() {
   const addLineItem = () => {
     setLineItems([
       ...lineItems,
-      { id: generateId(), description: '', quantity: 1, unitPrice: 0 },
+      { id: generateId(), description: '', quantity: 1, unitPrice: 0, cost: 0 },
     ]);
   };
 
@@ -390,6 +450,21 @@ export default function CreateQuoteScreen() {
   const gstAmount = Math.round(subtotal * 0.1); // 10% GST
   const total = subtotal + gstAmount;
   const depositAmount = Math.round(total * (depositPercentage / 100));
+  
+  // Profit margin calculations
+  const totalCost = lineItems.reduce(
+    (sum, item) => sum + item.quantity * item.cost,
+    0
+  );
+  const grossProfit = subtotal - totalCost;
+  const profitMargin = subtotal > 0 ? (grossProfit / subtotal) * 100 : 0;
+  const hasCostData = lineItems.some(item => item.cost > 0);
+  
+  const getMarginColor = (margin: number) => {
+    if (margin >= 30) return '#16a34a'; // green
+    if (margin >= 15) return '#ca8a04'; // yellow
+    return '#dc2626'; // red
+  };
 
   const formatCurrency = (cents: number) => {
     return `$${(cents / 100).toLocaleString('en-AU', {
@@ -429,21 +504,24 @@ export default function CreateQuoteScreen() {
         clientId,
         jobId,
         status,
+        title: selectedClient ? `Quote for ${selectedClient.name}` : 'New Quote',
         lineItems: lineItems
           .filter((item) => item.description.trim())
           .map((item) => ({
             description: item.description,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
+            quantity: String(item.quantity),
+            unitPrice: (item.unitPrice / 100).toFixed(2), // Convert cents to dollars
+            total: ((item.quantity * item.unitPrice) / 100).toFixed(2), // Calculate total in dollars
+            cost: item.cost > 0 ? (item.cost / 100).toFixed(2) : null, // Convert cents to dollars
           })),
-        subtotal,
-        gstAmount,
-        total,
+        subtotal: (subtotal / 100).toFixed(2), // Convert cents to dollars
+        gstAmount: (gstAmount / 100).toFixed(2), // Convert cents to dollars
+        total: (total / 100).toFixed(2), // Convert cents to dollars
         notes: notes.trim() || null,
         termsAndConditions: termsAndConditions.trim() || null,
         validUntil: validUntil.toISOString(),
-        depositPercentage: depositPercentage > 0 ? depositPercentage : null,
-        depositAmount: depositPercentage > 0 ? depositAmount : null,
+        depositPercent: depositPercentage > 0 ? String(depositPercentage) : null,
+        depositAmount: depositPercentage > 0 ? (depositAmount / 100).toFixed(2) : null,
       };
 
       const response = await api.post<{ id: string }>('/api/quotes', quoteData);
@@ -560,6 +638,7 @@ export default function CreateQuoteScreen() {
                 onDelete={() => deleteLineItem(item.id)}
                 colors={colors}
                 styles={styles}
+                showMargin={showMarginMode}
               />
             ))}
           </View>
@@ -577,6 +656,55 @@ export default function CreateQuoteScreen() {
             <View style={[styles.totalRow, styles.grandTotalRow]}>
               <Text style={styles.grandTotalLabel}>Total (inc. GST)</Text>
               <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
+            </View>
+            
+            {/* Profit Analysis Section */}
+            <View style={styles.profitSection}>
+              <View style={styles.profitSectionHeader}>
+                <Text style={styles.profitSectionTitle}>
+                  <Feather name="dollar-sign" size={12} color={colors.mutedForeground} /> Profit Analysis
+                </Text>
+                <TouchableOpacity 
+                  style={styles.profitToggleButton}
+                  onPress={() => setShowMarginMode(!showMarginMode)}
+                >
+                  <Text style={styles.profitToggleText}>
+                    {showMarginMode ? 'Hide' : 'Show'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              
+              {showMarginMode && (
+                hasCostData ? (
+                  <>
+                    <View style={styles.profitRow}>
+                      <Text style={styles.profitLabel}>Total Costs</Text>
+                      <Text style={styles.profitValue}>{formatCurrency(totalCost)}</Text>
+                    </View>
+                    <View style={styles.profitRow}>
+                      <Text style={styles.profitLabel}>Gross Profit</Text>
+                      <Text style={[
+                        styles.profitValue,
+                        grossProfit >= 0 ? styles.profitValuePositive : styles.profitValueNegative
+                      ]}>
+                        {formatCurrency(grossProfit)}
+                      </Text>
+                    </View>
+                    <View style={styles.profitRow}>
+                      <Text style={styles.profitLabel}>Profit Margin</Text>
+                      <View style={[styles.overallMarginBadge, { backgroundColor: getMarginColor(profitMargin) + '20' }]}>
+                        <Text style={[styles.overallMarginText, { color: getMarginColor(profitMargin) }]}>
+                          {profitMargin.toFixed(1)}%
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <Text style={styles.noCostHint}>
+                    Add cost values to line items to see profit analysis
+                  </Text>
+                )
+              )}
             </View>
           </View>
 

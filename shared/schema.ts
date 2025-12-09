@@ -340,6 +340,7 @@ export const quoteLineItems = pgTable("quote_line_items", {
   description: text("description").notNull(),
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull().default('1.00'),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull().default('0.00'),
+  cost: decimal("cost", { precision: 10, scale: 2 }), // Optional cost per unit for profit margin calculation
   total: decimal("total", { precision: 10, scale: 2 }).notNull().default('0.00'),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -539,6 +540,16 @@ export const updateQuoteSchema = insertQuoteSchema.partial().extend({
 export const insertQuoteLineItemSchema = createInsertSchema(quoteLineItems).omit({
   id: true,
   createdAt: true,
+}).extend({
+  // Coerce decimal fields to handle both string and number inputs from frontend
+  quantity: z.coerce.string().optional(),
+  unitPrice: z.coerce.string().optional(),
+  total: z.coerce.string().optional(),
+  // Cost is nullable - use preprocess to handle null values
+  cost: z.preprocess(
+    (v) => (v === null || v === undefined ? null : v),
+    z.coerce.string().nullable()
+  ).optional(),
 });
 
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({

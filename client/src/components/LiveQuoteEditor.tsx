@@ -45,6 +45,7 @@ const lineItemSchema = z.object({
   description: z.string().min(1, "Description required"),
   quantity: z.string().min(1, "Quantity required"),
   unitPrice: z.string().min(1, "Price required"),
+  cost: z.string().optional(), // Cost for profit margin calculation
 });
 
 const quoteFormSchema = z.object({
@@ -78,8 +79,9 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit');
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState({ description: "", quantity: "1", unitPrice: "" });
+  const [editForm, setEditForm] = useState({ description: "", quantity: "1", unitPrice: "", cost: "" });
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [showMarginMode, setShowMarginMode] = useState(false);
   const [templateSheetOpen, setTemplateSheetOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | undefined>(urlJobId || undefined);
   const [jobAutoLoaded, setJobAutoLoaded] = useState(false);
@@ -232,7 +234,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   };
 
   const handleAddLineItem = () => {
-    setEditForm({ description: "", quantity: "1", unitPrice: "" });
+    setEditForm({ description: "", quantity: "1", unitPrice: "", cost: "" });
     setEditingLineIndex(-1);
   };
 
@@ -241,7 +243,8 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     setEditForm({
       description: item.description || "",
       quantity: String(item.quantity || "1"),
-      unitPrice: String(item.unitPrice || "")
+      unitPrice: String(item.unitPrice || ""),
+      cost: String(item.cost || "")
     });
     setEditingLineIndex(index);
   };
@@ -288,12 +291,32 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     return (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0);
   };
 
+  const calculateItemCost = (quantity: string, cost: string) => {
+    return (parseFloat(quantity) || 0) * (parseFloat(cost) || 0);
+  };
+
+  const calculateItemMargin = (quantity: string, unitPrice: string, cost: string) => {
+    const revenue = calculateTotal(quantity, unitPrice);
+    const totalCost = calculateItemCost(quantity, cost);
+    if (revenue === 0) return 0;
+    return ((revenue - totalCost) / revenue) * 100;
+  };
+
   const subtotal = watchedValues.lineItems?.reduce(
     (sum, item) => sum + calculateTotal(item.quantity, item.unitPrice), 
     0
   ) || 0;
   const gst = subtotal * 0.1;
   const total = subtotal + gst;
+  
+  // Profit margin calculations
+  const totalCost = watchedValues.lineItems?.reduce(
+    (sum, item) => sum + calculateItemCost(item.quantity, item.cost || "0"), 
+    0
+  ) || 0;
+  const grossProfit = subtotal - totalCost;
+  const profitMargin = subtotal > 0 ? (grossProfit / subtotal) * 100 : 0;
+  const hasCostData = watchedValues.lineItems?.some(item => item.cost && parseFloat(item.cost) > 0);
 
   const handleSubmit = async (data: QuoteFormData) => {
     try {
@@ -303,13 +326,18 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
         description: data.description,
         validUntil: new Date(data.validUntil),
         notes: data.notes,
+        subtotal: subtotal.toFixed(2),
+        gstAmount: gst.toFixed(2),
+        total: total.toFixed(2),
         depositRequired: data.depositRequired,
-        depositPercent: data.depositRequired ? data.depositPercent : 0,
-        depositAmount: data.depositRequired ? (total * (data.depositPercent / 100)).toFixed(2) : "0",
+        depositPercent: data.depositRequired ? String(data.depositPercent) : null,
+        depositAmount: data.depositRequired ? (total * (data.depositPercent / 100)).toFixed(2) : null,
         lineItems: data.lineItems.map(item => ({
           description: item.description,
-          quantity: parseFloat(item.quantity),
-          unitPrice: parseFloat(item.unitPrice),
+          quantity: item.quantity, // Already a string
+          unitPrice: item.unitPrice, // Already a string
+          total: (parseFloat(item.quantity || "0") * parseFloat(item.unitPrice || "0")).toFixed(2),
+          cost: item.cost && parseFloat(item.cost) > 0 ? item.cost : null,
         })),
       };
 
@@ -534,6 +562,9 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                   {fields.map((field, index) => {
                     const item = watchedValues.lineItems[index];
                     const itemTotal = calculateTotal(item?.quantity || "0", item?.unitPrice || "0");
+                    const itemMargin = item?.cost && parseFloat(item.cost) > 0 
+                      ? calculateItemMargin(item.quantity, item.unitPrice, item.cost)
+                      : null;
                     
                     return (
                       <div 
@@ -548,6 +579,18 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-sm">{formatCurrency(itemTotal)}</p>
+                          {showMarginMode && itemMargin !== null && (
+                            <Badge 
+                              variant="secondary"
+                              className={`text-xs h-5 mt-1 ${
+                                itemMargin >= 30 ? 'bg-green-100 text-green-700' :
+                                itemMargin >= 15 ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-red-100 text-red-700'
+                              }`}
+                            >
+                              {itemMargin.toFixed(0)}%
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
@@ -617,6 +660,61 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                     <div className="flex justify-between text-base font-bold pt-2 border-t">
                       <span>Total (inc. GST)</span>
                       <span style={{ color: 'hsl(var(--trade))' }}>{formatCurrency(total)}</span>
+                    </div>
+                    
+                    {/* Profit Margin Section */}
+                    <div className="pt-3 mt-3 border-t border-dashed">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                          <DollarSign className="h-3.5 w-3.5" />
+                          Profit Analysis
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setShowMarginMode(!showMarginMode)}
+                        >
+                          {showMarginMode ? 'Hide' : 'Show'}
+                        </Button>
+                      </div>
+                      
+                      {showMarginMode && (
+                        <div className="space-y-1.5 p-3 rounded-lg bg-muted/50">
+                          {hasCostData ? (
+                            <>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Total Costs</span>
+                                <span>{formatCurrency(totalCost)}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Gross Profit</span>
+                                <span className={grossProfit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                  {formatCurrency(grossProfit)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm font-semibold pt-1 border-t border-muted">
+                                <span>Profit Margin</span>
+                                <Badge 
+                                  variant="secondary"
+                                  className={`font-semibold ${
+                                    profitMargin >= 30 ? 'bg-green-100 text-green-700' :
+                                    profitMargin >= 15 ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-red-100 text-red-700'
+                                  }`}
+                                >
+                                  {profitMargin.toFixed(1)}%
+                                </Badge>
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                              Add cost values to line items to see profit analysis
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -772,11 +870,53 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                 />
               </div>
             </div>
-            <div className="pt-2 p-3 rounded-xl bg-muted/50">
+            
+            {/* Cost for profit margin (optional) */}
+            <div>
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                <DollarSign className="h-3 w-3" />
+                Your Cost (optional, for profit analysis)
+              </Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={editForm.cost}
+                onChange={(e) => setEditForm({ ...editForm, cost: e.target.value })}
+                placeholder="0.00"
+                className="h-12 rounded-xl mt-1"
+                data-testid="input-item-cost"
+              />
+            </div>
+            
+            <div className="pt-2 p-3 rounded-xl bg-muted/50 space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Line Total</span>
                 <span className="font-semibold">{formatCurrency(calculateTotal(editForm.quantity, editForm.unitPrice))}</span>
               </div>
+              {editForm.cost && parseFloat(editForm.cost) > 0 && (
+                <>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Cost</span>
+                    <span>{formatCurrency(calculateItemCost(editForm.quantity, editForm.cost))}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Margin</span>
+                    <Badge 
+                      variant="secondary"
+                      className={`text-xs h-5 ${
+                        calculateItemMargin(editForm.quantity, editForm.unitPrice, editForm.cost) >= 30 
+                          ? 'bg-green-100 text-green-700' 
+                          : calculateItemMargin(editForm.quantity, editForm.unitPrice, editForm.cost) >= 15 
+                            ? 'bg-yellow-100 text-yellow-700' 
+                            : 'bg-red-100 text-red-700'
+                      }`}
+                    >
+                      {calculateItemMargin(editForm.quantity, editForm.unitPrice, editForm.cost).toFixed(1)}%
+                    </Badge>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <SheetFooter className="pt-2">
