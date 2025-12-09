@@ -87,7 +87,14 @@ export async function getUserContext(userId: string): Promise<UserContext> {
   
   if (teamMembership && teamMembership.inviteStatus === 'accepted') {
     const role = await storage.getUserRole(teamMembership.roleId);
-    const permissions = (role?.permissions as Permission[]) || [];
+    
+    // Use custom permissions if enabled for this team member, otherwise use role defaults
+    let permissions: Permission[];
+    if (teamMembership.useCustomPermissions && teamMembership.customPermissions) {
+      permissions = teamMembership.customPermissions as Permission[];
+    } else {
+      permissions = (role?.permissions as Permission[]) || [];
+    }
     
     return {
       userId,

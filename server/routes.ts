@@ -6155,33 +6155,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       
-      // Check if this user is a team member (not business owner)
-      const allMembers = await storage.getTeamMembers(userId);
-      const myMembership = allMembers.find(m => m.memberId === userId);
+      // Check if this user is a team member of someone else's business
+      const myMembership = await storage.getTeamMembershipByMemberId(userId);
       
-      if (!myMembership) {
-        // User is not a team member, return null
-        return res.json(null);
+      if (!myMembership || myMembership.inviteStatus !== 'accepted') {
+        // User is not a team member, they are a business owner
+        return res.status(404).json({ error: 'Not a team member' });
       }
       
       // Get role details
-      const roles = await storage.getUserRoles();
-      const role = roles.find(r => r.id === myMembership.roleId);
+      const role = await storage.getUserRole(myMembership.roleId);
       
       if (!role) {
-        return res.json(null);
+        return res.status(404).json({ error: 'Role not found' });
       }
+      
+      // Use custom permissions if enabled, otherwise use role defaults
+      const effectivePermissions = (myMembership.useCustomPermissions && myMembership.customPermissions)
+        ? myMembership.customPermissions
+        : (role.permissions || []);
       
       res.json({
         roleId: role.id,
         roleName: role.name,
-        permissions: role.permissions || []
+        permissions: effectivePermissions,
+        hasCustomPermissions: myMembership.useCustomPermissions || false,
+        customPermissions: myMembership.customPermissions || null
       });
     } catch (error) {
       console.error('Error fetching user role:', error);
       res.status(500).json({ error: 'Failed to fetch user role' });
     }
   });
+  
+  // Update custom permissions for a team member (owner only)
+  app.patch("/api/team/members/:id/permissions", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const memberId = req.params.id;
+      const { permissions, useCustomPermissions } = req.body;
+      
+      // Verify the team member belongs to this owner
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const allMembers = await storage.getTeamMembers(effectiveUserId);
+      const member = allMembers.find(m => m.id === memberId);
+      
+      if (!member) {
+        return res.status(404).json({ error: 'Team member not found' });
+      }
+      
+      // Update the team member's custom permissions
+      const updated = await storage.updateTeamMemberPermissions(memberId, {
+        customPermissions: permissions,
+        useCustomPermissions: useCustomPermissions ?? true
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating team member permissions:', error);
+      res.status(500).json({ error: 'Failed to update permissions' });
+    }
+  });
+  
+  // Get available permissions list
+  app.get("/api/team/permissions", requireAuth, async (req: any, res) => {
+    try {
+      const { PERMISSIONS } = await import('./permissions');
+      
+      // Return permissions with human-readable labels
+      const permissionsList = Object.entries(PERMISSIONS).map(([key, value]) => ({
+        key: value,
+        label: key.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()),
+        category: getCategoryForPermission(value)
+      }));
+      
+      res.json(permissionsList);
+    } catch (error) {
+      console.error('Error fetching permissions:', error);
+      res.status(500).json({ error: 'Failed to fetch permissions' });
+    }
+  });
+  
+  function getCategoryForPermission(permission: string): string {
+    if (permission.includes('job')) return 'Jobs';
+    if (permission.includes('quote')) return 'Quotes';
+    if (permission.includes('invoice')) return 'Invoices';
+    if (permission.includes('client')) return 'Clients';
+    if (permission.includes('team')) return 'Team';
+    if (permission.includes('time') || permission.includes('expense')) return 'Time & Expenses';
+    if (permission.includes('report')) return 'Reports';
+    if (permission.includes('template') || permission.includes('catalog')) return 'Templates & Catalog';
+    if (permission.includes('setting') || permission.includes('payment')) return 'Settings';
+    return 'Other';
+  }
 
   // ===== TIME TRACKING ROUTES =====
   

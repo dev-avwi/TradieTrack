@@ -787,6 +787,9 @@ export const teamMembers = pgTable("team_members", {
   inviteToken: text("invite_token"), // Token for accepting invite
   inviteSentAt: timestamp("invite_sent_at"),
   inviteAcceptedAt: timestamp("invite_accepted_at"),
+  // Custom permissions override - allows per-user permission customization by owner
+  customPermissions: json("custom_permissions"), // null = use role defaults, [] = custom list
+  useCustomPermissions: boolean("use_custom_permissions").default(false), // Whether to use custom or role permissions
   // Employment details
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
   startDate: timestamp("start_date"),

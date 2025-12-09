@@ -20,9 +20,15 @@ import { api } from '../../src/lib/api';
 interface TeamMember {
   id: string;
   userId: string;
+  roleId: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
   role: 'owner' | 'admin' | 'supervisor' | 'staff';
   permissions: string[];
   inviteStatus: 'pending' | 'accepted' | 'rejected';
+  useCustomPermissions?: boolean;
+  customPermissions?: string[];
   user?: {
     id: string;
     firstName: string;
@@ -31,6 +37,18 @@ interface TeamMember {
     phone?: string;
   };
   createdAt: string;
+}
+
+interface PermissionItem {
+  key: string;
+  label: string;
+  category: string;
+}
+
+interface UserRole {
+  id: string;
+  name: string;
+  permissions: string[];
 }
 
 const createStyles = (colors: any) => StyleSheet.create({
@@ -392,6 +410,166 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
   },
+  permissionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary + '10',
+    borderWidth: 1,
+    borderColor: colors.primary + '40',
+  },
+  permissionsButtonText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  customBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary + '20',
+    marginLeft: spacing.xs,
+  },
+  customBadgeText: {
+    ...typography.captionSmall,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  permissionsModalBody: {
+    padding: spacing.lg,
+    maxHeight: '60%',
+  },
+  customToggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.lg,
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  customToggleLabel: {
+    flex: 1,
+  },
+  customToggleLabelTitle: {
+    ...typography.label,
+    color: colors.foreground,
+  },
+  customToggleLabelSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  permissionCategory: {
+    marginBottom: spacing.md,
+  },
+  permissionCategoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+    marginBottom: spacing.sm,
+  },
+  permissionCategoryTitle: {
+    ...typography.label,
+    color: colors.foreground,
+    fontWeight: '600',
+  },
+  selectAllButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  selectAllText: {
+    ...typography.captionSmall,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  permissionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    marginBottom: spacing.xs,
+  },
+  permissionCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  permissionLabel: {
+    flex: 1,
+    ...typography.body,
+    color: colors.foreground,
+  },
+  roleDefaultHint: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginLeft: spacing.xs,
+  },
+  rolePermissionsDisplay: {
+    padding: spacing.lg,
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  rolePermissionsTitle: {
+    ...typography.label,
+    color: colors.foreground,
+    marginBottom: spacing.md,
+  },
+  permissionBadgesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  permissionBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+  },
+  permissionBadgeText: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+  applyDefaultsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  applyDefaultsText: {
+    ...typography.caption,
+    color: colors.foreground,
+  },
+  permissionCount: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginLeft: 'auto',
+  },
 });
 
 export default function TeamManagementScreen() {
@@ -432,18 +610,38 @@ export default function TeamManagementScreen() {
   }), [colors]);
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [roles, setRoles] = useState<UserRole[]>([]);
+  const [availablePermissions, setAvailablePermissions] = useState<PermissionItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('staff');
   const [isSending, setIsSending] = useState(false);
+  
+  // Permissions modal state
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [useCustomPermissions, setUseCustomPermissions] = useState(false);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [isSavingPermissions, setIsSavingPermissions] = useState(false);
 
   const fetchTeam = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await api.get<TeamMember[]>('/api/team/members');
-      if (response.data) {
-        setTeamMembers(response.data);
+      const [membersRes, rolesRes, permissionsRes] = await Promise.all([
+        api.get<TeamMember[]>('/api/team/members'),
+        api.get<UserRole[]>('/api/team/roles'),
+        api.get<PermissionItem[]>('/api/team/permissions'),
+      ]);
+      
+      if (membersRes.data) {
+        setTeamMembers(membersRes.data);
+      }
+      if (rolesRes.data) {
+        setRoles(rolesRes.data);
+      }
+      if (permissionsRes.data) {
+        setAvailablePermissions(permissionsRes.data);
       }
     } catch (error) {
       console.log('Error fetching team:', error);
@@ -454,6 +652,87 @@ export default function TeamManagementScreen() {
   useEffect(() => {
     fetchTeam();
   }, []);
+  
+  // Get role permissions for a member
+  const getRolePermissions = useCallback((roleId: string): string[] => {
+    const role = roles.find(r => r.id === roleId);
+    return (role?.permissions as string[]) || [];
+  }, [roles]);
+  
+  // Group permissions by category
+  const groupedPermissions = useMemo(() => {
+    return availablePermissions.reduce((acc, perm) => {
+      if (!acc[perm.category]) {
+        acc[perm.category] = [];
+      }
+      acc[perm.category].push(perm);
+      return acc;
+    }, {} as Record<string, PermissionItem[]>);
+  }, [availablePermissions]);
+  
+  // Open permissions modal for a member
+  const openPermissionsModal = useCallback((member: TeamMember) => {
+    setSelectedMember(member);
+    setUseCustomPermissions(member.useCustomPermissions || false);
+    setSelectedPermissions((member.customPermissions as string[]) || []);
+    setShowPermissionsModal(true);
+  }, []);
+  
+  // Handle permission toggle
+  const togglePermission = useCallback((permKey: string) => {
+    setSelectedPermissions(prev => 
+      prev.includes(permKey) 
+        ? prev.filter(p => p !== permKey)
+        : [...prev, permKey]
+    );
+  }, []);
+  
+  // Handle select all for a category
+  const toggleCategory = useCallback((category: string) => {
+    const categoryPerms = groupedPermissions[category]?.map(p => p.key) || [];
+    const allSelected = categoryPerms.every(p => selectedPermissions.includes(p));
+    
+    if (allSelected) {
+      setSelectedPermissions(prev => prev.filter(p => !categoryPerms.includes(p)));
+    } else {
+      setSelectedPermissions(prev => [...new Set([...prev, ...categoryPerms])]);
+    }
+  }, [groupedPermissions, selectedPermissions]);
+  
+  // Apply role defaults
+  const applyRoleDefaults = useCallback(() => {
+    if (selectedMember) {
+      const rolePerms = getRolePermissions(selectedMember.roleId);
+      setSelectedPermissions([...rolePerms]);
+    }
+  }, [selectedMember, getRolePermissions]);
+  
+  // Save permissions
+  const savePermissions = useCallback(async () => {
+    if (!selectedMember) return;
+    
+    setIsSavingPermissions(true);
+    try {
+      await api.patch(`/api/team/members/${selectedMember.id}/permissions`, {
+        permissions: selectedPermissions,
+        useCustomPermissions: useCustomPermissions,
+      });
+      
+      // Update local state
+      setTeamMembers(prev => 
+        prev.map(m => m.id === selectedMember.id 
+          ? { ...m, useCustomPermissions, customPermissions: selectedPermissions }
+          : m
+        )
+      );
+      
+      Alert.alert('Success', 'Permissions updated successfully');
+      setShowPermissionsModal(false);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update permissions');
+    }
+    setIsSavingPermissions(false);
+  }, [selectedMember, selectedPermissions, useCustomPermissions]);
 
   const currentUserIsOwner = teamMembers.some(m => m.role === 'owner');
 
@@ -526,11 +805,17 @@ export default function TeamManagementScreen() {
   const renderMemberCard = (member: TeamMember) => {
     const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.staff;
     const statusConfig = STATUS_CONFIG[member.inviteStatus] || STATUS_CONFIG.pending;
-    const userName = member.user 
-      ? `${member.user.firstName} ${member.user.lastName}`
-      : 'Unnamed User';
+    const userName = member.firstName && member.lastName 
+      ? `${member.firstName} ${member.lastName}`
+      : member.user 
+        ? `${member.user.firstName} ${member.user.lastName}`
+        : 'Unnamed User';
+    const memberEmail = member.email || member.user?.email || 'No email';
 
     const getInitials = () => {
+      if (member.firstName && member.lastName) {
+        return (member.firstName[0] + member.lastName[0]).toUpperCase();
+      }
       if (!member.user) return '??';
       const first = member.user.firstName?.[0] || '';
       const last = member.user.lastName?.[0] || '';
@@ -545,7 +830,7 @@ export default function TeamManagementScreen() {
           </View>
           <View style={styles.memberInfo}>
             <Text style={styles.memberName}>{userName}</Text>
-            <Text style={styles.memberEmail}>{member.user?.email || 'No email'}</Text>
+            <Text style={styles.memberEmail}>{memberEmail}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusConfig.color + '20' }]}>
             <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
@@ -560,12 +845,27 @@ export default function TeamManagementScreen() {
               <Feather name={roleConfig.icon as any} size={12} color="#FFFFFF" />
               <Text style={styles.roleBadgeText}>{roleConfig.label}</Text>
             </View>
+            {member.useCustomPermissions && (
+              <View style={styles.customBadge}>
+                <Feather name="key" size={10} color={colors.primary} />
+                <Text style={styles.customBadgeText}>Custom</Text>
+              </View>
+            )}
             <Text style={styles.roleDescription}>{roleConfig.description}</Text>
           </View>
         </View>
 
         {member.role !== 'owner' && currentUserIsOwner && (
           <View style={styles.memberActions}>
+            {member.inviteStatus === 'accepted' && (
+              <TouchableOpacity 
+                style={styles.permissionsButton}
+                onPress={() => openPermissionsModal(member)}
+              >
+                <Feather name="key" size={14} color={colors.primary} />
+                <Text style={styles.permissionsButtonText}>Permissions</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity 
               style={styles.actionButton}
               onPress={() => {
@@ -752,6 +1052,168 @@ export default function TeamManagementScreen() {
                     <>
                       <Feather name="send" size={16} color="#FFFFFF" />
                       <Text style={styles.saveButtonText}>Send Invite</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Permissions Modal */}
+        <Modal visible={showPermissionsModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  Permissions for {selectedMember?.firstName || selectedMember?.user?.firstName || ''}
+                </Text>
+                <TouchableOpacity onPress={() => setShowPermissionsModal(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.permissionsModalBody}>
+                {/* Custom Permissions Toggle */}
+                <View style={styles.customToggleRow}>
+                  <View style={styles.customToggleLabel}>
+                    <Text style={styles.customToggleLabelTitle}>Use Custom Permissions</Text>
+                    <Text style={styles.customToggleLabelSubtitle}>
+                      {useCustomPermissions 
+                        ? 'This member has custom permissions'
+                        : 'Using role default permissions'
+                      }
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={{
+                      width: 50,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: useCustomPermissions ? colors.primary : colors.muted,
+                      padding: 2,
+                    }}
+                    onPress={() => {
+                      const newValue = !useCustomPermissions;
+                      setUseCustomPermissions(newValue);
+                      if (newValue && selectedPermissions.length === 0 && selectedMember) {
+                        const rolePerms = getRolePermissions(selectedMember.roleId);
+                        setSelectedPermissions([...rolePerms]);
+                      }
+                    }}
+                  >
+                    <View style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor: '#FFFFFF',
+                      transform: [{ translateX: useCustomPermissions ? 22 : 0 }],
+                    }} />
+                  </TouchableOpacity>
+                </View>
+
+                {useCustomPermissions ? (
+                  <>
+                    {/* Quick Actions */}
+                    <TouchableOpacity 
+                      style={styles.applyDefaultsButton}
+                      onPress={applyRoleDefaults}
+                    >
+                      <Feather name="refresh-cw" size={14} color={colors.foreground} />
+                      <Text style={styles.applyDefaultsText}>Apply Role Defaults</Text>
+                      <Text style={styles.permissionCount}>{selectedPermissions.length} selected</Text>
+                    </TouchableOpacity>
+
+                    {/* Permission Categories */}
+                    {Object.entries(groupedPermissions).map(([category, perms]) => {
+                      const allSelected = perms.every(p => selectedPermissions.includes(p.key));
+                      const rolePerms = selectedMember ? getRolePermissions(selectedMember.roleId) : [];
+                      
+                      return (
+                        <View key={category} style={styles.permissionCategory}>
+                          <View style={styles.permissionCategoryHeader}>
+                            <Text style={styles.permissionCategoryTitle}>{category}</Text>
+                            <TouchableOpacity 
+                              style={styles.selectAllButton}
+                              onPress={() => toggleCategory(category)}
+                            >
+                              <Text style={styles.selectAllText}>
+                                {allSelected ? 'Deselect All' : 'Select All'}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                          
+                          {perms.map((perm) => {
+                            const isSelected = selectedPermissions.includes(perm.key);
+                            const isRoleDefault = rolePerms.includes(perm.key);
+                            
+                            return (
+                              <TouchableOpacity
+                                key={perm.key}
+                                style={styles.permissionItem}
+                                onPress={() => togglePermission(perm.key)}
+                              >
+                                <View style={[
+                                  styles.permissionCheckbox,
+                                  { 
+                                    borderColor: isSelected ? colors.primary : colors.border,
+                                    backgroundColor: isSelected ? colors.primary : 'transparent',
+                                  }
+                                ]}>
+                                  {isSelected && (
+                                    <Feather name="check" size={14} color="#FFFFFF" />
+                                  )}
+                                </View>
+                                <Text style={styles.permissionLabel}>{perm.label}</Text>
+                                {isRoleDefault && !isSelected && (
+                                  <Text style={styles.roleDefaultHint}>(default)</Text>
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <View style={styles.rolePermissionsDisplay}>
+                    <Text style={styles.rolePermissionsTitle}>
+                      Current Role Permissions ({selectedMember?.role})
+                    </Text>
+                    <View style={styles.permissionBadgesContainer}>
+                      {selectedMember && getRolePermissions(selectedMember.roleId).map((perm) => (
+                        <View key={perm} style={styles.permissionBadge}>
+                          <Text style={styles.permissionBadgeText}>
+                            {perm.replace(/_/g, ' ')}
+                          </Text>
+                        </View>
+                      ))}
+                      {selectedMember && getRolePermissions(selectedMember.roleId).length === 0 && (
+                        <Text style={styles.permissionBadgeText}>No permissions assigned</Text>
+                      )}
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => setShowPermissionsModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.saveButton}
+                  onPress={savePermissions}
+                  disabled={isSavingPermissions}
+                >
+                  {isSavingPermissions ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Feather name="save" size={16} color="#FFFFFF" />
+                      <Text style={styles.saveButtonText}>Save</Text>
                     </>
                   )}
                 </TouchableOpacity>

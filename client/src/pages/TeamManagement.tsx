@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Dialog,
   DialogContent,
@@ -31,11 +33,258 @@ import {
   Edit2,
   Save,
   X,
-  Shield
+  Shield,
+  Key
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TeamMember, UserRole } from "@shared/schema";
+
+// Permission type from API
+interface PermissionItem {
+  key: string;
+  label: string;
+  category: string;
+}
+
+// Permissions Editor Component
+function PermissionsEditorDialog({ 
+  member, 
+  roles,
+  open, 
+  onOpenChange 
+}: { 
+  member: TeamMember; 
+  roles: UserRole[];
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const [useCustom, setUseCustom] = useState(member.useCustomPermissions || false);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(
+    (member.customPermissions as string[]) || []
+  );
+
+  // Fetch available permissions
+  const { data: permissionsList } = useQuery<PermissionItem[]>({
+    queryKey: ['/api/team/permissions'],
+  });
+
+  // Get role's default permissions
+  const memberRole = roles.find(r => r.id === member.roleId);
+  const rolePermissions = (memberRole?.permissions as string[]) || [];
+
+  // Group permissions by category
+  const groupedPermissions = permissionsList?.reduce((acc, perm) => {
+    if (!acc[perm.category]) {
+      acc[perm.category] = [];
+    }
+    acc[perm.category].push(perm);
+    return acc;
+  }, {} as Record<string, PermissionItem[]>) || {};
+
+  const updatePermissionsMutation = useMutation({
+    mutationFn: async (data: { permissions: string[]; useCustomPermissions: boolean }) => {
+      const response = await apiRequest('PATCH', `/api/team/members/${member.id}/permissions`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
+      toast({
+        title: "Permissions updated",
+        description: `${member.firstName}'s permissions have been customized.`,
+      });
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update permissions",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleTogglePermission = (permKey: string) => {
+    setSelectedPermissions(prev => 
+      prev.includes(permKey) 
+        ? prev.filter(p => p !== permKey)
+        : [...prev, permKey]
+    );
+  };
+
+  const handleSelectAll = (category: string) => {
+    const categoryPerms = groupedPermissions[category]?.map(p => p.key) || [];
+    const allSelected = categoryPerms.every(p => selectedPermissions.includes(p));
+    
+    if (allSelected) {
+      setSelectedPermissions(prev => prev.filter(p => !categoryPerms.includes(p)));
+    } else {
+      setSelectedPermissions(prev => [...new Set([...prev, ...categoryPerms])]);
+    }
+  };
+
+  const handleApplyRoleDefaults = () => {
+    setSelectedPermissions([...rolePermissions]);
+  };
+
+  const handleSave = () => {
+    updatePermissionsMutation.mutate({
+      permissions: selectedPermissions,
+      useCustomPermissions: useCustom,
+    });
+  };
+
+  // Initialize with role permissions when switching to custom
+  const handleCustomToggle = (enabled: boolean) => {
+    setUseCustom(enabled);
+    if (enabled && selectedPermissions.length === 0) {
+      setSelectedPermissions([...rolePermissions]);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" data-testid="dialog-permissions-editor">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Key className="h-5 w-5" />
+            Customise Permissions for {member.firstName} {member.lastName}
+          </DialogTitle>
+          <DialogDescription>
+            Override the default role permissions with custom access for this team member.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 flex-1 overflow-y-auto pr-2">
+          {/* Custom Permissions Toggle */}
+          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+            <div className="space-y-0.5">
+              <Label className="text-base font-medium">Use Custom Permissions</Label>
+              <p className="text-sm text-muted-foreground">
+                {useCustom 
+                  ? "This member has custom permissions instead of role defaults"
+                  : `Using ${memberRole?.name || 'role'} default permissions`
+                }
+              </p>
+            </div>
+            <Switch
+              checked={useCustom}
+              onCheckedChange={handleCustomToggle}
+              data-testid="switch-use-custom"
+            />
+          </div>
+
+          {useCustom && (
+            <>
+              {/* Quick Actions */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleApplyRoleDefaults}
+                  data-testid="button-apply-defaults"
+                >
+                  Apply Role Defaults
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {selectedPermissions.length} permissions selected
+                </span>
+              </div>
+
+              {/* Permissions by Category */}
+              <div className="space-y-4">
+                {Object.entries(groupedPermissions).map(([category, perms]) => {
+                  const allSelected = perms.every(p => selectedPermissions.includes(p.key));
+                  const someSelected = perms.some(p => selectedPermissions.includes(p.key));
+                  
+                  return (
+                    <div key={category} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-sm">{category}</h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSelectAll(category)}
+                          className="text-xs h-7"
+                          data-testid={`button-toggle-all-${category.toLowerCase().replace(/\s+/g, '-')}`}
+                        >
+                          {allSelected ? 'Deselect All' : 'Select All'}
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {perms.map((perm) => {
+                          const isSelected = selectedPermissions.includes(perm.key);
+                          const isRoleDefault = rolePermissions.includes(perm.key);
+                          
+                          return (
+                            <div
+                              key={perm.key}
+                              className="flex items-center gap-2 p-2 rounded hover:bg-muted/50"
+                            >
+                              <Checkbox
+                                id={perm.key}
+                                checked={isSelected}
+                                onCheckedChange={() => handleTogglePermission(perm.key)}
+                                data-testid={`checkbox-${perm.key}`}
+                              />
+                              <Label
+                                htmlFor={perm.key}
+                                className="text-sm cursor-pointer flex-1"
+                              >
+                                {perm.label}
+                                {isRoleDefault && !isSelected && (
+                                  <span className="text-xs text-muted-foreground ml-1">(role default)</span>
+                                )}
+                              </Label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {!useCustom && (
+            <div className="p-4 border rounded-lg bg-muted/30">
+              <h4 className="font-medium mb-2">Current Role Permissions ({memberRole?.name})</h4>
+              <div className="flex flex-wrap gap-2">
+                {rolePermissions.map((perm) => (
+                  <Badge key={perm} variant="secondary" className="text-xs">
+                    {perm.replace(/_/g, ' ')}
+                  </Badge>
+                ))}
+                {rolePermissions.length === 0 && (
+                  <span className="text-sm text-muted-foreground">No permissions assigned</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="border-t pt-4">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            data-testid="button-cancel-permissions"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={updatePermissionsMutation.isPending}
+            data-testid="button-save-permissions"
+          >
+            {updatePermissionsMutation.isPending ? "Saving..." : "Save Permissions"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function RoleEditCard({ role, onUpdate }: { role: UserRole; onUpdate: () => void }) {
   const { toast } = useToast();
@@ -168,6 +417,7 @@ export default function TeamManagement() {
   const { toast } = useToast();
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
+  const [permissionsMember, setPermissionsMember] = useState<TeamMember | null>(null);
   
   // Form state for invite
   const [inviteEmail, setInviteEmail] = useState("");
@@ -399,8 +649,14 @@ export default function TeamManagement() {
                           <Mail className="h-3 w-3" />
                           {member.email}
                         </span>
-                        <span>
+                        <span className="flex items-center gap-1">
                           {getRoleName(member.roleId)}
+                          {member.useCustomPermissions && (
+                            <Badge variant="outline" className="text-xs ml-1">
+                              <Key className="h-2 w-2 mr-1" />
+                              Custom
+                            </Badge>
+                          )}
                         </span>
                         {member.hourlyRate && (
                           <span>
@@ -411,6 +667,17 @@ export default function TeamManagement() {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    {member.inviteStatus === 'accepted' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPermissionsMember(member)}
+                        data-testid={`button-permissions-${member.id}`}
+                      >
+                        <Key className="h-3 w-3 mr-1" />
+                        Permissions
+                      </Button>
+                    )}
                     {member.inviteStatus === 'pending' && (
                       <Button
                         variant="outline"
@@ -565,6 +832,16 @@ export default function TeamManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Permissions Editor Dialog */}
+      {permissionsMember && roles && (
+        <PermissionsEditorDialog
+          member={permissionsMember}
+          roles={roles}
+          open={!!permissionsMember}
+          onOpenChange={(open) => !open && setPermissionsMember(null)}
+        />
+      )}
     </div>
   );
 }

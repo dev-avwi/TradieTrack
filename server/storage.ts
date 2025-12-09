@@ -330,6 +330,7 @@ export interface IStorage {
   getUserRole(id: string): Promise<UserRole | undefined>;
   createTeamMember(member: InsertTeamMember): Promise<TeamMember>;
   updateTeamMember(id: string, businessOwnerId: string, member: Partial<InsertTeamMember>): Promise<TeamMember | undefined>;
+  updateTeamMemberPermissions(id: string, permissions: { customPermissions: string[], useCustomPermissions: boolean }): Promise<TeamMember | undefined>;
   deleteTeamMember(id: string, businessOwnerId: string): Promise<boolean>;
   
   getStaffSchedules(userId: string, jobId?: string): Promise<StaffSchedule[]>;
@@ -1842,6 +1843,18 @@ export class PostgresStorage implements IStorage {
     const result = await db.update(teamMembers)
       .set({ ...member, updatedAt: new Date() })
       .where(and(eq(teamMembers.id, id), eq(teamMembers.businessOwnerId, businessOwnerId)))
+      .returning();
+    return result[0];
+  }
+  
+  async updateTeamMemberPermissions(id: string, permissions: { customPermissions: string[], useCustomPermissions: boolean }): Promise<TeamMember | undefined> {
+    const result = await db.update(teamMembers)
+      .set({ 
+        customPermissions: permissions.customPermissions,
+        useCustomPermissions: permissions.useCustomPermissions,
+        updatedAt: new Date() 
+      })
+      .where(eq(teamMembers.id, id))
       .returning();
     return result[0];
   }
