@@ -10,7 +10,6 @@ import { useNotifications, useOfflineStorage, useLocationTracking } from '../src
 import notificationService from '../src/lib/notifications';
 import { router } from 'expo-router';
 import { ThemeProvider, useTheme } from '../src/lib/theme';
-import { BottomNav, getBottomNavHeight } from '../src/components/BottomNav';
 import { Header } from '../src/components/Header';
 import { useNotificationsStore } from '../src/lib/notifications-store';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
@@ -65,8 +64,7 @@ function ServicesInitializer() {
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
-  const bottomNavHeight = getBottomNavHeight(insets.bottom);
-  const { unreadCount, fetchNotifications } = useNotificationsStore();
+  const { fetchNotifications } = useNotificationsStore();
   const { isAuthenticated } = useAuthStore();
   const { colors } = useTheme();
 
@@ -85,11 +83,10 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <Header />
-      <View style={[styles.content, { paddingBottom: bottomNavHeight }]}>
+      <View style={styles.content}>
         {children}
       </View>
       <FloatingActionButton />
-      <BottomNav />
     </View>
   );
 }
