@@ -1840,7 +1840,9 @@ export default function JobDetailScreen() {
             {job.isRecurring && (
               <View style={[styles.recurringBadge, { marginLeft: spacing.sm }]}>
                 <Feather name="repeat" size={12} color={colors.primary} />
-                <Text style={[styles.recurringBadgeText, { color: colors.primary }]}>Recurring</Text>
+                <Text style={[styles.recurringBadgeText, { color: colors.primary }]}>
+                  {job.recurrenceLabel || 'Recurring'}
+                </Text>
               </View>
             )}
             {job.parentJobId && !job.isRecurring && (

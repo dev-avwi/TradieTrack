@@ -501,7 +501,7 @@ export function JobCosting({ jobId }: JobCostingProps) {
           </View>
         </TouchableOpacity>
 
-        {laborEstimate > 0 && (
+        {laborEstimate > 0 ? (
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
               <View style={[
@@ -527,6 +527,12 @@ export function JobCosting({ jobId }: JobCostingProps) {
                 </Text>
               </View>
             )}
+          </View>
+        ) : costingData.costs.labor > 0 && (
+          <View style={{ paddingBottom: spacing.xs }}>
+            <Text style={[styles.estimateValue, { fontStyle: 'italic' }]}>
+              No labour estimate set
+            </Text>
           </View>
         )}
 
@@ -572,7 +578,7 @@ export function JobCosting({ jobId }: JobCostingProps) {
           </View>
         </TouchableOpacity>
 
-        {materialEstimate > 0 && (
+        {materialEstimate > 0 ? (
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
               <View style={[
@@ -598,6 +604,12 @@ export function JobCosting({ jobId }: JobCostingProps) {
                 </Text>
               </View>
             )}
+          </View>
+        ) : costingData.costs.materials > 0 && (
+          <View style={{ paddingBottom: spacing.xs }}>
+            <Text style={[styles.estimateValue, { fontStyle: 'italic' }]}>
+              No material estimate set
+            </Text>
           </View>
         )}
 

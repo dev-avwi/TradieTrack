@@ -168,6 +168,7 @@ export function JobChat({ jobId, currentUserId }: JobChatProps) {
             try {
               await api.delete(`/api/jobs/${jobId}/chat/${messageId}`);
               setMessages(prev => prev.filter(m => m.id !== messageId));
+              Alert.alert('Deleted', 'Message deleted successfully');
             } catch (err) {
               Alert.alert('Error', 'Failed to delete message');
             }
