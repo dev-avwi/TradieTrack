@@ -422,7 +422,7 @@ export default function DashboardScreen() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // RBAC: Role-based access control - staff see limited data
-  const { isOwner, isManager, isStaff, canAccessInvoices, canAccessQuotes, isLoading: roleLoading } = useUserRole();
+  const { isOwner, isManager, isStaff, canAccessClients, canAccessInvoices, canAccessQuotes, isLoading: roleLoading } = useUserRole();
   const canSeeFinancials = isOwner || isManager;
   
   // Staff only see their assigned jobs
@@ -625,11 +625,13 @@ export default function DashboardScreen() {
               variant="primary"
               onPress={() => router.push('/more/create-job')}
             />
-            <QuickActionButton
-              title="Client"
-              icon="user-plus"
-              onPress={() => router.push('/more/client/new')}
-            />
+            {canAccessClients && (
+              <QuickActionButton
+                title="Client"
+                icon="user-plus"
+                onPress={() => router.push('/more/client/new')}
+              />
+            )}
             {canAccessQuotes && (
               <QuickActionButton
                 title="Quote"
