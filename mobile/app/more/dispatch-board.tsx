@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -15,6 +16,24 @@ import { useTheme } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, statusColors } from '../../src/lib/design-tokens';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { api } from '../../src/lib/api';
+
+interface ScheduleSuggestion {
+  jobId: string;
+  jobTitle: string;
+  clientName: string;
+  suggestedDate: string;
+  suggestedTime: string;
+  suggestedAssignee?: string;
+  suggestedAssigneeName?: string;
+  reason: string;
+  priority: number;
+}
+
+interface ScheduleSuggestionsResponse {
+  suggestions: ScheduleSuggestion[];
+  summary: string;
+  optimizationNotes?: string[];
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -286,6 +305,169 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.captionSmall,
     color: colors.foreground,
   },
+  aiSection: {
+    marginTop: spacing.lg,
+    marginHorizontal: spacing.lg,
+  },
+  aiCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    ...shadows.md,
+  },
+  aiCardInactive: {
+    borderColor: colors.border,
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  aiTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    flex: 1,
+  },
+  aiButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  aiButtonText: {
+    ...typography.body,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  aiDescription: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginBottom: spacing.md,
+  },
+  aiSummary: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginBottom: spacing.sm,
+  },
+  aiSuggestionCard: {
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  aiSuggestionApplied: {
+    backgroundColor: colors.successLight,
+    borderColor: colors.success,
+  },
+  aiSuggestionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  aiSuggestionInfo: {
+    flex: 1,
+  },
+  aiSuggestionTitle: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '500',
+  },
+  aiSuggestionClient: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  aiSuggestionDetails: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.xs,
+  },
+  aiSuggestionDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  aiSuggestionDetailText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  aiSuggestionReason: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
+  },
+  aiApplyButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+  },
+  aiApplyButtonText: {
+    ...typography.caption,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  aiAppliedBadge: {
+    backgroundColor: colors.success,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  aiAppliedText: {
+    ...typography.caption,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  aiButtonsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  aiSecondaryButton: {
+    flex: 1,
+    backgroundColor: colors.muted,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+  },
+  aiSecondaryButtonText: {
+    ...typography.caption,
+    color: colors.foreground,
+    fontWeight: '500',
+  },
+  aiBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+  },
+  aiBadgeText: {
+    ...typography.captionSmall,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  loadingCenter: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  loadingText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: spacing.sm,
+  },
 });
 
 export default function DispatchBoardScreen() {
@@ -305,6 +487,13 @@ export default function DispatchBoardScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
+  
+  // AI Scheduling state
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<ScheduleSuggestionsResponse | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [appliedSuggestions, setAppliedSuggestions] = useState<Set<string>>(new Set());
+  const [applyingJobId, setApplyingJobId] = useState<string | null>(null);
 
   const refreshData = useCallback(async () => {
     await Promise.all([
@@ -369,6 +558,53 @@ export default function DispatchBoardScreen() {
       Alert.alert('Error', 'Failed to schedule job');
     }
   };
+
+  // Fetch AI scheduling suggestions
+  const fetchAISuggestions = useCallback(async () => {
+    setAiLoading(true);
+    try {
+      const response = await api.post<ScheduleSuggestionsResponse>('/api/ai/schedule-suggestions', {
+        targetDate: dateStr
+      });
+      if (response.data) {
+        setAiSuggestions(response.data);
+        setShowAISuggestions(true);
+      }
+    } catch (error) {
+      console.error('Error fetching AI suggestions:', error);
+      Alert.alert('Error', 'Failed to get AI scheduling suggestions');
+    } finally {
+      setAiLoading(false);
+    }
+  }, [dateStr]);
+
+  // Apply a single AI suggestion
+  const applyAISuggestion = useCallback(async (suggestion: ScheduleSuggestion) => {
+    setApplyingJobId(suggestion.jobId);
+    try {
+      const scheduledAt = new Date(`${suggestion.suggestedDate}T${suggestion.suggestedTime}:00`);
+      await api.patch(`/api/jobs/${suggestion.jobId}`, {
+        scheduledDate: scheduledAt.toISOString(),
+        scheduledTime: suggestion.suggestedTime,
+        assignedTo: suggestion.suggestedAssignee === 'owner' ? null : suggestion.suggestedAssignee,
+        status: 'scheduled'
+      });
+      setAppliedSuggestions(prev => new Set(prev).add(suggestion.jobId));
+      await fetchJobs();
+      Alert.alert('Scheduled', `${suggestion.jobTitle} scheduled for ${suggestion.suggestedTime}`);
+    } catch (error) {
+      console.error('Error applying suggestion:', error);
+      Alert.alert('Error', 'Failed to apply suggestion');
+    } finally {
+      setApplyingJobId(null);
+    }
+  }, [fetchJobs]);
+
+  const closeAISuggestions = useCallback(() => {
+    setShowAISuggestions(false);
+    setAiSuggestions(null);
+    setAppliedSuggestions(new Set());
+  }, []);
 
   const handleJobPress = (job: any) => {
     router.push(`/job/${job.id}`);
@@ -553,6 +789,147 @@ export default function DispatchBoardScreen() {
                 <Text style={styles.emptyUnscheduledText}>All jobs scheduled!</Text>
               </View>
             )}
+          </View>
+
+          {/* AI Scheduling Section */}
+          <View style={styles.aiSection}>
+            <View style={[styles.aiCard, !showAISuggestions && styles.aiCardInactive]}>
+              <View style={styles.aiHeader}>
+                <Feather name="zap" size={20} color={colors.primary} />
+                <Text style={styles.aiTitle}>AI Scheduling</Text>
+                {unscheduledJobs.length > 0 && !showAISuggestions && (
+                  <View style={styles.aiBadge}>
+                    <Text style={styles.aiBadgeText}>{unscheduledJobs.length}</Text>
+                  </View>
+                )}
+              </View>
+              
+              {!showAISuggestions ? (
+                <>
+                  <Text style={styles.aiDescription}>
+                    Let AI suggest optimal times and assignments for your unscheduled jobs
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.aiButton, unscheduledJobs.length === 0 && { opacity: 0.5 }]}
+                    onPress={fetchAISuggestions}
+                    disabled={unscheduledJobs.length === 0 || aiLoading}
+                    activeOpacity={0.8}
+                  >
+                    {aiLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Feather name="zap" size={16} color="#FFFFFF" />
+                        <Text style={styles.aiButtonText}>Get AI Suggestions</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  {unscheduledJobs.length === 0 && (
+                    <Text style={[styles.aiDescription, { marginTop: spacing.sm, marginBottom: 0 }]}>
+                      No unscheduled jobs to optimize
+                    </Text>
+                  )}
+                </>
+              ) : aiLoading ? (
+                <View style={styles.loadingCenter}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={styles.loadingText}>Analyzing jobs and team availability...</Text>
+                </View>
+              ) : aiSuggestions?.suggestions && aiSuggestions.suggestions.length > 0 ? (
+                <>
+                  <Text style={styles.aiSummary}>{aiSuggestions.summary}</Text>
+                  
+                  {aiSuggestions.suggestions.map((suggestion, index) => {
+                    const isApplied = appliedSuggestions.has(suggestion.jobId);
+                    const isApplying = applyingJobId === suggestion.jobId;
+                    
+                    return (
+                      <View
+                        key={suggestion.jobId}
+                        style={[styles.aiSuggestionCard, isApplied && styles.aiSuggestionApplied]}
+                      >
+                        <View style={styles.aiSuggestionHeader}>
+                          <View style={styles.aiSuggestionInfo}>
+                            <Text style={styles.aiSuggestionTitle}>
+                              #{index + 1} {suggestion.jobTitle}
+                            </Text>
+                            <Text style={styles.aiSuggestionClient}>{suggestion.clientName}</Text>
+                          </View>
+                          
+                          {isApplied ? (
+                            <View style={styles.aiAppliedBadge}>
+                              <Feather name="check" size={12} color="#FFFFFF" />
+                              <Text style={styles.aiAppliedText}>Applied</Text>
+                            </View>
+                          ) : (
+                            <TouchableOpacity
+                              style={styles.aiApplyButton}
+                              onPress={() => applyAISuggestion(suggestion)}
+                              disabled={isApplying}
+                              activeOpacity={0.8}
+                            >
+                              {isApplying ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                              ) : (
+                                <Text style={styles.aiApplyButtonText}>Apply</Text>
+                              )}
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        
+                        <View style={styles.aiSuggestionDetails}>
+                          <View style={styles.aiSuggestionDetail}>
+                            <Feather name="clock" size={12} color={colors.mutedForeground} />
+                            <Text style={styles.aiSuggestionDetailText}>{suggestion.suggestedTime}</Text>
+                          </View>
+                          {suggestion.suggestedAssigneeName && (
+                            <View style={styles.aiSuggestionDetail}>
+                              <Feather name="user" size={12} color={colors.mutedForeground} />
+                              <Text style={styles.aiSuggestionDetailText}>{suggestion.suggestedAssigneeName}</Text>
+                            </View>
+                          )}
+                        </View>
+                        
+                        <Text style={styles.aiSuggestionReason}>{suggestion.reason}</Text>
+                      </View>
+                    );
+                  })}
+                  
+                  <View style={styles.aiButtonsRow}>
+                    <TouchableOpacity
+                      style={styles.aiSecondaryButton}
+                      onPress={closeAISuggestions}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.aiSecondaryButtonText}>Close</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.aiSecondaryButton}
+                      onPress={fetchAISuggestions}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.aiSecondaryButtonText}>Refresh</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.emptyUnscheduled}>
+                    <Feather name="check-circle" size={24} color={colors.success} />
+                    <Text style={styles.emptyUnscheduledText}>
+                      {aiSuggestions?.summary || 'All jobs are scheduled!'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.aiSecondaryButton, { marginTop: spacing.sm }]}
+                    onPress={closeAISuggestions}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.aiSecondaryButtonText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </View>
 
           {teamMembers.length > 0 && (

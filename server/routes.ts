@@ -1707,6 +1707,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Schedule Suggestions endpoint - generates optimal job scheduling recommendations
+  app.post("/api/ai/schedule-suggestions", requireAuth, async (req: any, res) => {
+    try {
+      const { targetDate } = req.body;
+      
+      if (!targetDate) {
+        return res.status(400).json({ error: "targetDate is required (YYYY-MM-DD format)" });
+      }
+      
+      // Get business settings for context
+      const businessSettings = await storage.getBusinessSettings(req.userId);
+      const businessName = businessSettings?.businessName || 'My Business';
+      const tradeName = businessSettings?.tradeName || 'Trade';
+      
+      // Get all jobs
+      const allJobs = await storage.getJobs(req.userId);
+      
+      // Get clients for name lookup
+      const clients = await storage.getClients(req.userId);
+      const clientsMap = new Map(clients.map(c => [c.id, c]));
+      
+      // Get team members
+      const teamMembers = await storage.getTeamMembers(req.userId);
+      
+      // Filter unscheduled jobs (pending status, no scheduledAt)
+      const unscheduledJobs = allJobs
+        .filter(job => !job.scheduledAt && ['pending', 'scheduled'].includes(job.status.toLowerCase()))
+        .map(job => ({
+          id: job.id,
+          title: job.title,
+          clientName: clientsMap.get(job.clientId)?.name || 'Unknown Client',
+          clientId: job.clientId,
+          address: job.address || undefined,
+          estimatedDuration: job.estimatedDuration || 60,
+          priority: undefined,
+          latitude: job.latitude ? parseFloat(job.latitude) : undefined,
+          longitude: job.longitude ? parseFloat(job.longitude) : undefined,
+        }));
+      
+      // Get jobs scheduled for the target date
+      const existingJobsForDate = allJobs
+        .filter(job => {
+          if (!job.scheduledAt) return false;
+          const jobDateStr = new Date(job.scheduledAt).toISOString().split('T')[0];
+          return jobDateStr === targetDate;
+        })
+        .map(job => ({
+          id: job.id,
+          title: job.title,
+          time: job.scheduledTime || '09:00',
+          assignedTo: job.assignedTo || undefined,
+          address: job.address || undefined,
+        }));
+      
+      // Build team availability
+      const ownerMember = {
+        id: 'owner',
+        name: 'Owner',
+        scheduledMinutes: 0,
+        capacity: 480, // 8 hours
+        scheduledJobs: [] as Array<{ time: string; title: string }>,
+      };
+      
+      // Calculate owner's scheduled minutes
+      const ownerJobs = existingJobsForDate.filter(j => !j.assignedTo);
+      ownerMember.scheduledMinutes = ownerJobs.reduce((sum, j) => {
+        const fullJob = allJobs.find(fj => fj.id === j.id);
+        return sum + (fullJob?.estimatedDuration || 60);
+      }, 0);
+      ownerMember.scheduledJobs = ownerJobs.map(j => ({ time: j.time, title: j.title }));
+      
+      const teamAvailability = [ownerMember];
+      
+      // Add team members
+      for (const member of teamMembers.filter(m => m.isActive)) {
+        const memberJobs = existingJobsForDate.filter(j => j.assignedTo === member.memberId);
+        const scheduledMinutes = memberJobs.reduce((sum, j) => {
+          const fullJob = allJobs.find(fj => fj.id === j.id);
+          return sum + (fullJob?.estimatedDuration || 60);
+        }, 0);
+        
+        teamAvailability.push({
+          id: member.memberId,
+          name: `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email,
+          scheduledMinutes,
+          capacity: 480,
+          scheduledJobs: memberJobs.map(j => ({ time: j.time, title: j.title })),
+        });
+      }
+      
+      // Import and call the AI scheduling function
+      const { generateScheduleSuggestions } = await import('./ai');
+      
+      const suggestions = await generateScheduleSuggestions({
+        businessName,
+        tradeName,
+        unscheduledJobs,
+        teamAvailability,
+        targetDate,
+        existingJobsForDate,
+      });
+      
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error generating schedule suggestions:", error);
+      res.status(500).json({ error: "Failed to generate schedule suggestions" });
+    }
+  });
+
   // Business Settings Routes
   app.get("/api/business-settings", requireAuth, async (req: any, res) => {
     try {

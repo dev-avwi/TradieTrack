@@ -70,6 +70,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  headerButtons: {
+    flexDirection: 'column',
+    gap: spacing.sm,
+  },
+  aiButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    gap: spacing.xs,
+  },
+  aiButtonText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '500',
+  },
   viewToggle: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -493,14 +513,24 @@ export default function CalendarScreen() {
               <Text style={styles.pageTitle}>Calendar</Text>
               <Text style={styles.pageSubtitle}>Schedule and track your jobs</Text>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.scheduleButton}
-              onPress={handleScheduleJob}
-            >
-              <Feather name="plus" size={18} color={colors.primaryForeground} />
-              <Text style={styles.scheduleButtonText}>Schedule Job</Text>
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.scheduleButton}
+                onPress={handleScheduleJob}
+              >
+                <Feather name="plus" size={18} color={colors.primaryForeground} />
+                <Text style={styles.scheduleButtonText}>Schedule Job</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.aiButton}
+                onPress={() => router.push('/more/dispatch-board')}
+              >
+                <Feather name="zap" size={14} color={colors.primary} />
+                <Text style={styles.aiButtonText}>AI Schedule</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.viewToggle}>

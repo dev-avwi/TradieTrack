@@ -1041,3 +1041,175 @@ Your response must be valid JSON with these fields:
     return defaultMessages[type];
   }
 }
+
+// AI Scheduling Types
+export interface ScheduleJob {
+  id: string;
+  title: string;
+  clientName: string;
+  clientId: string;
+  address?: string;
+  estimatedDuration?: number; // minutes
+  priority?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface TeamMemberAvailability {
+  id: string;
+  name: string;
+  scheduledMinutes: number; // minutes already scheduled for the day
+  capacity: number; // max minutes (default 480 = 8 hours)
+  scheduledJobs: Array<{ time: string; title: string }>;
+}
+
+export interface ScheduleSuggestion {
+  jobId: string;
+  jobTitle: string;
+  clientName: string;
+  suggestedDate: string; // YYYY-MM-DD
+  suggestedTime: string; // HH:MM
+  suggestedAssignee?: string; // team member id
+  suggestedAssigneeName?: string;
+  reason: string;
+  priority: number; // 1 = highest
+}
+
+export interface ScheduleContext {
+  businessName: string;
+  tradeName: string;
+  unscheduledJobs: ScheduleJob[];
+  teamAvailability: TeamMemberAvailability[];
+  targetDate: string; // YYYY-MM-DD - date to schedule for
+  existingJobsForDate: Array<{ 
+    id: string; 
+    title: string; 
+    time: string; 
+    assignedTo?: string;
+    address?: string;
+  }>;
+}
+
+export interface ScheduleSuggestionsResponse {
+  suggestions: ScheduleSuggestion[];
+  summary: string;
+  optimizationNotes?: string[];
+}
+
+// Generate AI-powered scheduling suggestions
+export async function generateScheduleSuggestions(
+  context: ScheduleContext
+): Promise<ScheduleSuggestionsResponse> {
+  const { businessName, tradeName, unscheduledJobs, teamAvailability, targetDate, existingJobsForDate } = context;
+
+  // If no unscheduled jobs, return empty
+  if (unscheduledJobs.length === 0) {
+    return {
+      suggestions: [],
+      summary: "All jobs are already scheduled. Nice one!",
+      optimizationNotes: []
+    };
+  }
+
+  const systemPrompt = `You are an AI scheduling assistant for ${businessName}, an Australian ${tradeName} business.
+
+Your task is to suggest optimal scheduling for unscheduled jobs based on:
+1. Team member availability and current workload
+2. Job locations (group nearby jobs together to minimize travel)
+3. Job duration and priority
+4. Existing scheduled jobs for the day
+
+Guidelines:
+- Prefer scheduling high-priority jobs earlier in the day
+- Group jobs in similar locations for the same team member
+- Leave buffer time between jobs (don't schedule back-to-back tight)
+- Consider travel time between job sites
+- Balance workload across team members
+- Standard work hours are 6:00 AM to 8:00 PM
+- Use Australian time format (24-hour or AM/PM)
+
+Return a JSON response with this exact structure:
+{
+  "suggestions": [
+    {
+      "jobId": "job-id-here",
+      "jobTitle": "Job Title",
+      "clientName": "Client Name",
+      "suggestedDate": "YYYY-MM-DD",
+      "suggestedTime": "HH:MM",
+      "suggestedAssignee": "member-id or null for owner",
+      "suggestedAssigneeName": "Team Member Name",
+      "reason": "Brief explanation of why this time/person was suggested",
+      "priority": 1
+    }
+  ],
+  "summary": "Brief summary of the scheduling recommendations",
+  "optimizationNotes": ["Note about route optimization", "Note about workload balancing"]
+}`;
+
+  const userPrompt = `Please suggest optimal scheduling for these unscheduled jobs for ${targetDate}:
+
+UNSCHEDULED JOBS (${unscheduledJobs.length}):
+${unscheduledJobs.map((job, i) => `${i + 1}. [ID: ${job.id}] "${job.title}" for ${job.clientName}
+   - Duration: ${job.estimatedDuration || 60} minutes
+   - Address: ${job.address || 'Not specified'}
+   - Priority: ${job.priority || 'normal'}
+   ${job.latitude && job.longitude ? `- Location: ${job.latitude}, ${job.longitude}` : ''}`).join('\n\n')}
+
+TEAM AVAILABILITY FOR ${targetDate}:
+${teamAvailability.map(tm => `- ${tm.name}: ${tm.scheduledMinutes}/${tm.capacity} minutes used
+  Already has: ${tm.scheduledJobs.length > 0 ? tm.scheduledJobs.map(j => `${j.time} - ${j.title}`).join(', ') : 'No jobs scheduled'}`).join('\n')}
+
+EXISTING SCHEDULED JOBS FOR ${targetDate}:
+${existingJobsForDate.length > 0 
+  ? existingJobsForDate.map(j => `- ${j.time}: "${j.title}" ${j.assignedTo ? `(assigned to ${j.assignedTo})` : '(owner)'} at ${j.address || 'no address'}`).join('\n')
+  : 'No jobs currently scheduled for this date'}
+
+Suggest the best times and team members for each unscheduled job. Consider location clustering, workload balance, and travel efficiency.`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1500,
+      response_format: { type: "json_object" }
+    });
+
+    const responseText = completion.choices[0]?.message?.content || '';
+    const parsed = JSON.parse(responseText);
+    
+    return {
+      suggestions: parsed.suggestions || [],
+      summary: parsed.summary || 'AI scheduling suggestions generated',
+      optimizationNotes: parsed.optimizationNotes || []
+    };
+  } catch (error) {
+    console.error('AI scheduling suggestion error:', error);
+    
+    // Fallback: simple sequential scheduling
+    const fallbackSuggestions: ScheduleSuggestion[] = unscheduledJobs.slice(0, 5).map((job, index) => {
+      const hour = 8 + (index * 2); // Start at 8 AM, 2-hour gaps
+      return {
+        jobId: job.id,
+        jobTitle: job.title,
+        clientName: job.clientName,
+        suggestedDate: targetDate,
+        suggestedTime: `${hour.toString().padStart(2, '0')}:00`,
+        suggestedAssignee: teamAvailability[0]?.id,
+        suggestedAssigneeName: teamAvailability[0]?.name || 'Owner',
+        reason: 'Scheduled based on available time slot',
+        priority: index + 1
+      };
+    });
+
+    return {
+      suggestions: fallbackSuggestions,
+      summary: 'Generated basic schedule suggestions (AI unavailable)',
+      optimizationNotes: ['Consider grouping nearby jobs together']
+    };
+  }
+}

@@ -34,7 +34,10 @@ import {
   Pause,
   LayoutGrid,
   List,
-  Timer
+  Timer,
+  Sparkles,
+  Loader2,
+  Check
 } from "lucide-react";
 import {
   format,
@@ -114,11 +117,31 @@ interface DraggedJob {
   originMemberId: string | null;
 }
 
+interface ScheduleSuggestion {
+  jobId: string;
+  jobTitle: string;
+  clientName: string;
+  suggestedDate: string;
+  suggestedTime: string;
+  suggestedAssignee?: string;
+  suggestedAssigneeName?: string;
+  reason: string;
+  priority: number;
+}
+
+interface ScheduleSuggestionsResponse {
+  suggestions: ScheduleSuggestion[];
+  summary: string;
+  optimizationNotes?: string[];
+}
+
 export default function DispatchBoard() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [draggedJob, setDraggedJob] = useState<DraggedJob | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
+  const [appliedSuggestions, setAppliedSuggestions] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<Job[]>({
@@ -131,6 +154,51 @@ export default function DispatchBoard() {
 
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
     queryKey: ['/api/team/members'],
+  });
+
+  // AI Scheduling Suggestions
+  const { 
+    data: aiSuggestions, 
+    isLoading: suggestionsLoading,
+    refetch: refetchSuggestions 
+  } = useQuery<ScheduleSuggestionsResponse>({
+    queryKey: ['/api/ai/schedule-suggestions', format(currentDate, 'yyyy-MM-dd')],
+    queryFn: async () => {
+      const response = await apiRequest('POST', '/api/ai/schedule-suggestions', {
+        targetDate: format(currentDate, 'yyyy-MM-dd')
+      });
+      return response.json();
+    },
+    enabled: showAISuggestions,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  // Apply AI suggestion mutation
+  const applySuggestionMutation = useMutation({
+    mutationFn: async (suggestion: ScheduleSuggestion) => {
+      const scheduledAt = new Date(`${suggestion.suggestedDate}T${suggestion.suggestedTime}:00`);
+      return apiRequest('PATCH', `/api/jobs/${suggestion.jobId}`, {
+        scheduledAt: scheduledAt.toISOString(),
+        scheduledTime: suggestion.suggestedTime,
+        assignedTo: suggestion.suggestedAssignee === 'owner' ? null : suggestion.suggestedAssignee,
+        status: 'scheduled'
+      });
+    },
+    onSuccess: (_, suggestion) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      setAppliedSuggestions(prev => new Set(prev).add(suggestion.jobId));
+      toast({
+        title: "Job scheduled",
+        description: `${suggestion.jobTitle} scheduled for ${suggestion.suggestedTime}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to schedule",
+        description: error.message || "Could not apply the suggestion",
+        variant: "destructive",
+      });
+    },
   });
 
   const clientsMap = useMemo(() => 
@@ -623,6 +691,168 @@ export default function DispatchBoard() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Scheduling Suggestions */}
+          <Card className="border-2" style={{ borderColor: showAISuggestions ? 'hsl(var(--trade))' : undefined }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                AI Scheduling
+                {unscheduledJobs.length > 0 && (
+                  <Badge variant="secondary" className="ml-auto">{unscheduledJobs.length}</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3">
+              {!showAISuggestions ? (
+                <div className="text-center py-4">
+                  <Sparkles className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Let AI suggest optimal times and assignments for your unscheduled jobs
+                  </p>
+                  <Button 
+                    onClick={() => setShowAISuggestions(true)}
+                    disabled={unscheduledJobs.length === 0}
+                    className="w-full"
+                    data-testid="button-get-ai-suggestions"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Get AI Suggestions
+                  </Button>
+                  {unscheduledJobs.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      No unscheduled jobs to optimize
+                    </p>
+                  )}
+                </div>
+              ) : suggestionsLoading ? (
+                <div className="text-center py-6">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: 'hsl(var(--trade))' }} />
+                  <p className="text-sm text-muted-foreground">
+                    Analyzing jobs and team availability...
+                  </p>
+                </div>
+              ) : aiSuggestions?.suggestions && aiSuggestions.suggestions.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">{aiSuggestions.summary}</p>
+                  <ScrollArea className="h-[250px]">
+                    <div className="space-y-2 pr-2">
+                      {aiSuggestions.suggestions.map((suggestion, index) => {
+                        const isApplied = appliedSuggestions.has(suggestion.jobId);
+                        return (
+                          <div
+                            key={suggestion.jobId}
+                            className={`p-3 rounded-lg border transition-all ${
+                              isApplied 
+                                ? 'bg-green-50 dark:bg-green-900/20 border-green-300' 
+                                : 'bg-muted/30 hover:bg-muted/50'
+                            }`}
+                            data-testid={`ai-suggestion-${suggestion.jobId}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">#{index + 1}</Badge>
+                                  <h4 className="font-medium text-sm truncate">{suggestion.jobTitle}</h4>
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                  {suggestion.clientName}
+                                </p>
+                              </div>
+                              {isApplied ? (
+                                <Badge variant="default" className="bg-green-500 text-white">
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Applied
+                                </Badge>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => applySuggestionMutation.mutate(suggestion)}
+                                  disabled={applySuggestionMutation.isPending}
+                                  data-testid={`button-apply-suggestion-${suggestion.jobId}`}
+                                >
+                                  {applySuggestionMutation.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <>Apply</>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 mt-2 text-xs">
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 text-muted-foreground" />
+                                <span>{suggestion.suggestedTime}</span>
+                              </div>
+                              {suggestion.suggestedAssigneeName && (
+                                <div className="flex items-center gap-1">
+                                  <User className="h-3 w-3 text-muted-foreground" />
+                                  <span>{suggestion.suggestedAssigneeName}</span>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1.5 italic">
+                              {suggestion.reason}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                  
+                  {aiSuggestions.optimizationNotes && aiSuggestions.optimizationNotes.length > 0 && (
+                    <div className="pt-2 border-t">
+                      <p className="text-xs font-medium mb-1">Optimization notes:</p>
+                      {aiSuggestions.optimizationNotes.map((note, i) => (
+                        <p key={i} className="text-xs text-muted-foreground">• {note}</p>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => {
+                        setShowAISuggestions(false);
+                        setAppliedSuggestions(new Set());
+                      }}
+                      data-testid="button-close-ai-suggestions"
+                    >
+                      Close
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => refetchSuggestions()}
+                      data-testid="button-refresh-ai-suggestions"
+                    >
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      Refresh
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {aiSuggestions?.summary || 'No suggestions needed - all jobs are scheduled!'}
+                  </p>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => setShowAISuggestions(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
