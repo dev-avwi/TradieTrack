@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useJobsStore, useInvoicesStore, useQuotesStore } from '../../src/lib/store';
+import { useJobsStore, useInvoicesStore, useQuotesStore, useClientsStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -295,6 +295,165 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 8,
     lineHeight: 20,
   },
+  jobStatusSection: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  jobStatusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  pieChartContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  pieChartWrapper: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  pieSlice: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  pieCenterDot: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  pieCenterText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  pieCenterLabel: {
+    fontSize: 10,
+    color: colors.mutedForeground,
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  jobMetricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 16,
+  },
+  jobMetricItem: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: colors.muted,
+    borderRadius: 10,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  jobMetricValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  jobMetricLabel: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+  },
+  clientsSection: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  clientsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  clientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  clientRowLast: {
+    borderBottomWidth: 0,
+  },
+  clientRank: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  clientRankText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  clientInfo: {
+    flex: 1,
+  },
+  clientName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  clientEmail: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 1,
+  },
+  clientRevenue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.success,
+  },
+  emptyClients: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyClientsText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+  },
 });
 
 export default function ReportsScreen() {
@@ -304,12 +463,13 @@ export default function ReportsScreen() {
   const { jobs, fetchJobs, isLoading: jobsLoading } = useJobsStore();
   const { invoices, fetchInvoices, isLoading: invoicesLoading } = useInvoicesStore();
   const { quotes, fetchQuotes, isLoading: quotesLoading } = useQuotesStore();
+  const { clients, fetchClients, isLoading: clientsLoading } = useClientsStore();
   const [period, setPeriod] = useState<ReportPeriod>('month');
   const [showPeriodPicker, setShowPeriodPicker] = useState(false);
 
   const refreshData = useCallback(async () => {
-    await Promise.all([fetchJobs(), fetchInvoices(), fetchQuotes()]);
-  }, [fetchJobs, fetchInvoices, fetchQuotes]);
+    await Promise.all([fetchJobs(), fetchInvoices(), fetchQuotes(), fetchClients()]);
+  }, [fetchJobs, fetchInvoices, fetchQuotes, fetchClients]);
 
   useEffect(() => {
     refreshData();
@@ -327,7 +487,10 @@ export default function ReportsScreen() {
     .filter(i => i.status === 'sent' || i.status === 'overdue')
     .reduce((sum, i) => sum + ((i.total || 0) - (i.amountPaid || 0)), 0);
 
-  const completedJobs = jobs.filter(j => j.status === 'done' || j.status === 'invoiced').length;
+  const doneJobs = jobs.filter(j => j.status === 'done').length;
+  const invoicedJobs = jobs.filter(j => j.status === 'invoiced').length;
+  const completedJobs = doneJobs + invoicedJobs;
+  const inProgressJobs = jobs.filter(j => j.status === 'in_progress').length;
   const acceptedQuotes = quotes.filter(q => q.status === 'accepted').length;
   const conversionRate = quotes.length > 0 ? Math.round((acceptedQuotes / quotes.length) * 100) : 0;
 
@@ -353,7 +516,39 @@ export default function ReportsScreen() {
   const monthlyData = generateMonthlyData();
   const maxValue = Math.max(...monthlyData.map(d => d.value), 1);
 
-  const isLoading = jobsLoading || invoicesLoading || quotesLoading;
+  const isLoading = jobsLoading || invoicesLoading || quotesLoading || clientsLoading;
+
+  const JOB_STATUS_COLORS = {
+    pending: colors.warning,
+    scheduled: colors.info,
+    in_progress: colors.primary,
+    done: colors.success,
+    invoiced: '#8b5cf6',
+  };
+
+  const jobStatusData = [
+    { name: 'Pending', count: jobs.filter(j => j.status === 'pending').length, color: JOB_STATUS_COLORS.pending },
+    { name: 'Scheduled', count: jobs.filter(j => j.status === 'scheduled').length, color: JOB_STATUS_COLORS.scheduled },
+    { name: 'In Progress', count: jobs.filter(j => j.status === 'in_progress').length, color: JOB_STATUS_COLORS.in_progress },
+    { name: 'Done', count: jobs.filter(j => j.status === 'done').length, color: JOB_STATUS_COLORS.done },
+    { name: 'Invoiced', count: jobs.filter(j => j.status === 'invoiced').length, color: JOB_STATUS_COLORS.invoiced },
+  ].filter(s => s.count > 0);
+
+  const topClientsByRevenue = useMemo(() => {
+    const clientRevenue: Record<string, { client: typeof clients[0], revenue: number }> = {};
+    invoices.filter(i => i.status === 'paid' && i.clientId).forEach(inv => {
+      const client = clients.find(c => c.id === inv.clientId);
+      if (client) {
+        if (!clientRevenue[client.id]) {
+          clientRevenue[client.id] = { client, revenue: 0 };
+        }
+        clientRevenue[client.id].revenue += inv.total || 0;
+      }
+    });
+    return Object.values(clientRevenue)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  }, [invoices, clients]);
 
   const handleExport = async () => {
     const reportText = `TradieTrack Report - ${PERIODS.find(p => p.key === period)?.label}
@@ -590,6 +785,82 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
               </View>
               <Feather name="share" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
+          </View>
+
+          {/* Job Status Section */}
+          <View style={styles.jobStatusSection}>
+            <View style={styles.jobStatusHeader}>
+              <Feather name="pie-chart" size={20} color={colors.foreground} />
+              <Text style={styles.chartTitle}>Job Status</Text>
+            </View>
+            
+            <View style={styles.pieChartContainer}>
+              <View style={styles.pieChartWrapper}>
+                <View style={styles.pieCenterDot}>
+                  <Text style={styles.pieCenterText}>{jobs.length}</Text>
+                  <Text style={styles.pieCenterLabel}>TOTAL</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.legendContainer}>
+              {jobStatusData.map((status, index) => (
+                <View key={status.name} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: status.color }]} />
+                  <Text style={styles.legendText}>{status.name}: {status.count}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.jobMetricsGrid}>
+              <View style={styles.jobMetricItem}>
+                <Feather name="check-circle" size={20} color={colors.success} />
+                <View>
+                  <Text style={styles.jobMetricValue}>{completedJobs}</Text>
+                  <Text style={styles.jobMetricLabel}>COMPLETED</Text>
+                </View>
+              </View>
+              <View style={styles.jobMetricItem}>
+                <Feather name="play-circle" size={20} color={colors.primary} />
+                <View>
+                  <Text style={styles.jobMetricValue}>{inProgressJobs}</Text>
+                  <Text style={styles.jobMetricLabel}>IN PROGRESS</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Top Clients Section */}
+          <View style={styles.clientsSection}>
+            <View style={styles.clientsHeader}>
+              <Feather name="users" size={20} color={colors.foreground} />
+              <Text style={styles.chartTitle}>Top Clients by Revenue</Text>
+            </View>
+            
+            {topClientsByRevenue.length === 0 ? (
+              <View style={styles.emptyClients}>
+                <Text style={styles.emptyClientsText}>No client revenue data yet</Text>
+              </View>
+            ) : (
+              topClientsByRevenue.map((item, index) => (
+                <View 
+                  key={item.client.id} 
+                  style={[
+                    styles.clientRow,
+                    index === topClientsByRevenue.length - 1 && styles.clientRowLast
+                  ]}
+                >
+                  <View style={styles.clientRank}>
+                    <Text style={styles.clientRankText}>{index + 1}</Text>
+                  </View>
+                  <View style={styles.clientInfo}>
+                    <Text style={styles.clientName} numberOfLines={1}>{item.client.name}</Text>
+                    <Text style={styles.clientEmail} numberOfLines={1}>{item.client.email}</Text>
+                  </View>
+                  <Text style={styles.clientRevenue}>{formatCurrency(item.revenue)}</Text>
+                </View>
+              ))
+            )}
           </View>
 
           <View style={styles.insightsCard}>

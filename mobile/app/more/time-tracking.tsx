@@ -692,19 +692,19 @@ export default function TimeTrackingScreen() {
     setTimerSeconds(0);
     setIsTimerRunning(true);
     
-    captureGPSLocation().then(location => {
-      if (location) {
-        console.log('[TimeTracking] Start location captured:', location.latitude, location.longitude);
-      }
-    });
+    captureGPSLocation()
+      .then(location => {
+        if (location) {
+          console.log('[TimeTracking] Start location captured:', location.latitude, location.longitude);
+        }
+      })
+      .catch(() => {});
     
-    try {
-      const response = await api.post<TimeEntry>('/api/time-entries', {
-        jobId: selectedJob,
-        startTime,
-        description: `Time tracked for job`
-      });
-      
+    api.post<TimeEntry>('/api/time-entries', {
+      jobId: selectedJob,
+      startTime,
+      description: `Time tracked for job`
+    }).then(response => {
       if (response.error) {
         setIsTimerRunning(false);
         setTimerSeconds(0);
@@ -716,15 +716,15 @@ export default function TimeTrackingScreen() {
       if (response.data) {
         setActiveTimeEntry(response.data);
       }
-    } catch (error) {
+    }).catch(error => {
       console.error('[TimeTracking] Failed to start timer:', error);
       setIsTimerRunning(false);
       setTimerSeconds(0);
       timerStartRef.current = null;
       Alert.alert('Error', 'Failed to start timer. Please try again.');
-    } finally {
+    }).finally(() => {
       setIsSaving(false);
-    }
+    });
   };
 
   const handlePauseTimer = () => {
