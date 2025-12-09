@@ -20,11 +20,14 @@ import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path } from 'react-native-svg';
 import api from '../../src/lib/api';
-import { useJobsStore, useTimeTrackingStore } from '../../src/lib/store';
+import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
+import { VoiceNotes } from '../../src/components/VoiceNotes';
+import { JobCosting } from '../../src/components/JobCosting';
+import { JobChat } from '../../src/components/JobChat';
 
 interface Job {
   id: string;
@@ -40,6 +43,10 @@ interface Job {
   estimatedCost?: number;
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   completedAt?: string;
+  isRecurring?: boolean;
+  recurrencePattern?: string;
+  recurrenceLabel?: string;
+  parentJobId?: string;
 }
 
 interface Invoice {
@@ -179,7 +186,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.xl,
   },
   statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
     marginBottom: spacing.sm,
+  },
+  recurringBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  recurringBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   title: {
     fontSize: 26,
@@ -1084,6 +1108,7 @@ export default function JobDetailScreen() {
     getElapsedMinutes,
     error: timerError 
   } = useTimeTrackingStore();
+  const { user } = useAuthStore();
 
   const isTimerForThisJob = activeTimer?.jobId === id;
 
@@ -1812,6 +1837,18 @@ export default function JobDetailScreen() {
         <View style={styles.header}>
           <View style={styles.statusRow}>
             <StatusBadge status={job.status} />
+            {job.isRecurring && (
+              <View style={[styles.recurringBadge, { marginLeft: spacing.sm }]}>
+                <Feather name="repeat" size={12} color={colors.primary} />
+                <Text style={[styles.recurringBadgeText, { color: colors.primary }]}>Recurring</Text>
+              </View>
+            )}
+            {job.parentJobId && !job.isRecurring && (
+              <View style={[styles.recurringBadge, { marginLeft: spacing.sm, backgroundColor: `${colors.border}80` }]}>
+                <Feather name="repeat" size={12} color={colors.foreground} style={{ opacity: 0.7 }} />
+                <Text style={[styles.recurringBadgeText, { color: colors.foreground, opacity: 0.8 }]}>Part of series</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.title}>{job.title}</Text>
           {job.description && (
@@ -2063,6 +2100,17 @@ export default function JobDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Voice Notes - Hands-free recording for on-site updates */}
+        {(job.status === 'in_progress' || job.status === 'done') && (
+          <VoiceNotes jobId={job.id} canRecord={job.status === 'in_progress'} />
+        )}
+
+        {/* Job Costing - Budget vs Actual comparison */}
+        <JobCosting jobId={job.id} />
+
+        {/* Job Chat - Team discussion for this job */}
+        <JobChat jobId={job.id} currentUserId={user?.id || ''} />
 
         {/* Invoice Card - Show if job has an invoice */}
         {invoice && (
