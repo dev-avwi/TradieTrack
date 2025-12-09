@@ -112,11 +112,11 @@ export function Button({
         };
       case 'xl':
         return { 
-          minHeight: 44, 
-          paddingHorizontal: 20, 
-          paddingVertical: 10, 
-          fontSize: 14, 
-          borderRadius: 6 
+          minHeight: 56, 
+          paddingHorizontal: 24, 
+          paddingVertical: 14, 
+          fontSize: 17, 
+          borderRadius: 12 
         };
       case 'icon':
         return { 
@@ -218,10 +218,9 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   icon: {
-    marginRight: 4,
+    marginRight: 8,
   },
   text: {
     fontWeight: '500',

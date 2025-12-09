@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -9,20 +9,38 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
-  Image
+  Image,
+  ActivityIndicator,
+  Linking
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link, router, useLocalSearchParams } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../../src/lib/store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { API_URL } from '../../src/lib/api';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { login, checkAuth, isLoading, error, clearError } = useAuthStore();
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const params = useLocalSearchParams();
+
+  // Handle Google OAuth callback via deep link
+  useEffect(() => {
+    if (params.auth === 'google_success' || params.auth === 'success') {
+      // Refresh auth state after Google login
+      checkAuth().then((isLoggedIn) => {
+        if (isLoggedIn) {
+          router.replace('/(tabs)');
+        }
+      });
+    }
+  }, [params.auth]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -34,6 +52,46 @@ export default function LoginScreen() {
     
     if (success) {
       router.replace('/(tabs)');
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setGoogleLoading(true);
+      
+      // Open Google OAuth in system browser
+      // The backend will handle the OAuth flow and redirect back to the app
+      const googleAuthUrl = `${API_URL}/api/auth/google`;
+      
+      const result = await WebBrowser.openAuthSessionAsync(
+        googleAuthUrl,
+        'tradietrack://',
+        { showInRecents: true }
+      );
+      
+      if (result.type === 'success' && result.url) {
+        // Parse the callback URL for auth status
+        const url = new URL(result.url);
+        const auth = url.searchParams.get('auth');
+        const error = url.searchParams.get('error');
+        
+        if (auth === 'success' || auth === 'google_success') {
+          // Check auth state from server
+          const isLoggedIn = await checkAuth();
+          if (isLoggedIn) {
+            router.replace('/(tabs)');
+          } else {
+            Alert.alert('Error', 'Failed to complete sign-in. Please try again.');
+          }
+        } else if (error) {
+          Alert.alert('Error', 'Google sign-in failed. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('Google Sign-In error:', error);
+      Alert.alert('Error', 'Failed to sign in with Google. Please try again.');
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -84,6 +142,7 @@ export default function LoginScreen() {
                   autoCapitalize="none"
                   keyboardType="email-address"
                   autoComplete="email"
+                  testID="input-email"
                 />
               </View>
 
@@ -100,6 +159,7 @@ export default function LoginScreen() {
                   }}
                   secureTextEntry
                   autoComplete="password"
+                  testID="input-password"
                 />
               </View>
 
@@ -122,8 +182,34 @@ export default function LoginScreen() {
               <TouchableOpacity 
                 style={styles.forgotPassword}
                 onPress={() => Alert.alert('Forgot Password', 'Password reset functionality coming soon!')}
+                testID="link-forgot-password"
               >
                 <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              </TouchableOpacity>
+
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <TouchableOpacity
+                style={styles.googleButton}
+                onPress={handleGoogleSignIn}
+                disabled={googleLoading}
+                testID="button-google-signin"
+                activeOpacity={0.7}
+              >
+                {googleLoading ? (
+                  <ActivityIndicator size="small" color={colors.foreground} />
+                ) : (
+                  <>
+                    <View style={styles.googleIconContainer}>
+                      <Text style={styles.googleIconText}>G</Text>
+                    </View>
+                    <Text style={styles.googleButtonText}>Continue with Google</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </CardContent>
           </Card>
@@ -133,7 +219,7 @@ export default function LoginScreen() {
           <View style={styles.signUpContainer}>
             <Text style={styles.signUpText}>Don't have an account? </Text>
             <Link href="/(auth)/register" asChild>
-              <TouchableOpacity>
+              <TouchableOpacity testID="link-signup">
                 <Text style={styles.signUpLink}>Sign Up</Text>
               </TouchableOpacity>
             </Link>
@@ -142,6 +228,7 @@ export default function LoginScreen() {
           <TouchableOpacity 
             onPress={fillTestAccount}
             style={styles.testAccountButton}
+            testID="button-test-account"
           >
             <Text style={styles.testAccountText}>
               Tap to use test account: luke@harriselectrical.com.au
@@ -213,12 +300,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    height: 48,
+    height: 52,
     paddingHorizontal: 16,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    borderRadius: 10,
+    borderRadius: 12,
     color: colors.foreground,
     fontSize: 16,
   },
@@ -235,10 +322,59 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   forgotPassword: {
     alignItems: 'center',
     marginTop: 16,
+    paddingVertical: 8,
   },
   forgotPasswordText: {
     color: colors.primary,
+    fontSize: 15,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.cardBorder,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    color: colors.mutedForeground,
     fontSize: 14,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 12,
+    height: 56,
+    paddingHorizontal: 24,
+  },
+  googleIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  googleIconText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4285F4',
+  },
+  googleButtonText: {
+    color: colors.foreground,
+    fontSize: 16,
+    fontWeight: '500',
   },
   spacer: {
     flex: 1,
@@ -251,22 +387,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   signUpText: {
     color: colors.mutedForeground,
+    fontSize: 15,
   },
   signUpLink: {
     color: colors.primary,
     fontWeight: '600',
+    fontSize: 15,
   },
   testAccountButton: {
     marginTop: 16,
-    padding: 12,
+    padding: 14,
     backgroundColor: colors.card,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.cardBorder,
   },
   testAccountText: {
     textAlign: 'center',
     color: colors.mutedForeground,
-    fontSize: 12,
+    fontSize: 13,
   },
 });

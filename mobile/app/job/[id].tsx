@@ -75,6 +75,22 @@ interface JobPhoto {
   createdAt: string;
 }
 
+interface TimeEntry {
+  id: string;
+  hours: number;
+  description?: string;
+  createdAt: string;
+}
+
+interface ActivityItem {
+  id: string;
+  type: string;
+  description: string;
+  createdAt: string;
+  userId?: string;
+  userName?: string;
+}
+
 const STATUS_ACTIONS = {
   pending: { next: 'scheduled', label: 'Schedule Job', icon: 'calendar' as const, iconSize: 20 },
   scheduled: { next: 'in_progress', label: 'Start Job', icon: 'play' as const, iconSize: 20 },
@@ -609,6 +625,129 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  costingCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  costingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  costingIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  costingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  costingGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -spacing.xs,
+  },
+  costingItem: {
+    width: '50%',
+    paddingHorizontal: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  costingLabel: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginBottom: 4,
+  },
+  costingValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  activityCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  activityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  activityIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  activityTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  activityCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    backgroundColor: colors.muted,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  activityList: {
+    borderLeftWidth: 2,
+    borderLeftColor: colors.border,
+    marginLeft: 8,
+    paddingLeft: spacing.md,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+  },
+  activityDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.inProgress,
+    marginRight: spacing.sm,
+    marginTop: 5,
+    marginLeft: -spacing.md - 6,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityDescription: {
+    fontSize: 14,
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  activityTime: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  activityMore: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '500',
+    marginTop: spacing.xs,
+  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -808,6 +947,10 @@ export default function JobDetailScreen() {
   const [selectedPhoto, setSelectedPhoto] = useState<JobPhoto | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
+  const [isConvertingToInvoice, setIsConvertingToInvoice] = useState(false);
+  
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { 
     activeTimer, 
@@ -826,6 +969,8 @@ export default function JobDetailScreen() {
     fetchActiveTimer();
     loadPhotos();
     loadRelatedDocuments();
+    loadTimeEntries();
+    loadActivityLog();
   }, [id]);
 
   useEffect(() => {
@@ -919,11 +1064,65 @@ export default function JobDetailScreen() {
     }
   };
 
+  const loadTimeEntries = async () => {
+    try {
+      const response = await api.get<TimeEntry[]>(`/api/time-entries?jobId=${id}`);
+      if (response.data) {
+        setTimeEntries(response.data);
+      }
+    } catch (error) {
+      console.log('Error loading time entries:', error);
+      setTimeEntries([]);
+    }
+  };
+
+  const loadActivityLog = async () => {
+    // Note: Timeline endpoint may not exist yet - fail gracefully
+    try {
+      const response = await api.get<ActivityItem[]>(`/api/jobs/${id}/activity`);
+      if (response.data && Array.isArray(response.data)) {
+        setActivityLog(response.data);
+      }
+    } catch (error) {
+      // Activity log is optional - fail gracefully
+      setActivityLog([]);
+    }
+  };
+
+  const handleConvertToInvoice = async () => {
+    if (!quote?.id) return;
+    
+    setIsConvertingToInvoice(true);
+    try {
+      const response = await api.post(`/api/quotes/${quote.id}/convert-to-invoice`, {});
+      if (response.data) {
+        Alert.alert('Success', 'Quote converted to invoice successfully');
+        router.push(`/more/invoice/${response.data.id}`);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to convert quote to invoice');
+    } finally {
+      setIsConvertingToInvoice(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadJob(), loadPhotos(), loadRelatedDocuments()]);
+    await Promise.all([
+      loadJob(), 
+      loadPhotos(), 
+      loadRelatedDocuments(),
+      loadTimeEntries(),
+      loadActivityLog()
+    ]);
     setRefreshing(false);
   };
+
+  // Calculate actual hours from time entries
+  const actualHours = timeEntries.reduce((sum, entry) => sum + (entry.hours || 0), 0);
+  const estimatedHours = job?.estimatedHours || 0;
+  const hoursVariance = actualHours - estimatedHours;
+  const estimatedCost = job?.estimatedCost || 0;
 
   const handleViewInvoice = () => {
     if (invoice?.id) {
@@ -1597,14 +1796,116 @@ export default function JobDetailScreen() {
             </View>
             <View style={styles.documentDetails}>
               <Text style={styles.documentAmount}>{formatCurrency(quote.total)}</Text>
-              <TouchableOpacity 
-                style={[styles.documentViewButton, { backgroundColor: colors.scheduled }]}
-                onPress={handleViewQuote}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.documentViewButtonText}>View Quote</Text>
-                <Feather name="chevron-right" size={16} color={colors.primaryForeground} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row' }}>
+                {/* Quote-to-Invoice action for accepted quotes */}
+                {quote.status === 'accepted' && !invoice && (
+                  <TouchableOpacity 
+                    style={[styles.documentViewButton, { backgroundColor: colors.success, marginRight: 8 }]}
+                    onPress={handleConvertToInvoice}
+                    disabled={isConvertingToInvoice}
+                    activeOpacity={0.7}
+                  >
+                    {isConvertingToInvoice ? (
+                      <ActivityIndicator size="small" color={colors.primaryForeground} />
+                    ) : (
+                      <>
+                        <Text style={styles.documentViewButtonText}>Create Invoice</Text>
+                        <Feather name="arrow-right" size={16} color={colors.primaryForeground} />
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity 
+                  style={[styles.documentViewButton, { backgroundColor: colors.scheduled }]}
+                  onPress={handleViewQuote}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.documentViewButtonText}>View Quote</Text>
+                  <Feather name="chevron-right" size={16} color={colors.primaryForeground} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Job Costing Section */}
+        {(estimatedHours > 0 || estimatedCost > 0 || actualHours > 0) && (
+          <View style={styles.costingCard}>
+            <View style={styles.costingHeader}>
+              <View style={[styles.costingIconContainer, { backgroundColor: `${colors.warning}15` }]}>
+                <Feather name="dollar-sign" size={iconSizes.lg} color={colors.warning} />
+              </View>
+              <Text style={styles.costingTitle}>Job Costing</Text>
+            </View>
+            <View style={styles.costingGrid}>
+              {estimatedHours > 0 && (
+                <View style={styles.costingItem}>
+                  <Text style={styles.costingLabel}>Estimated Hours</Text>
+                  <Text style={styles.costingValue}>{estimatedHours.toFixed(1)}h</Text>
+                </View>
+              )}
+              {actualHours > 0 && (
+                <View style={styles.costingItem}>
+                  <Text style={styles.costingLabel}>Actual Hours</Text>
+                  <Text style={[
+                    styles.costingValue,
+                    hoursVariance > 0 && { color: colors.destructive },
+                    hoursVariance < 0 && { color: colors.success }
+                  ]}>{actualHours.toFixed(1)}h</Text>
+                </View>
+              )}
+              {estimatedCost > 0 && (
+                <View style={styles.costingItem}>
+                  <Text style={styles.costingLabel}>Estimated Cost</Text>
+                  <Text style={styles.costingValue}>{formatCurrency(estimatedCost)}</Text>
+                </View>
+              )}
+              {estimatedHours > 0 && actualHours > 0 && (
+                <View style={styles.costingItem}>
+                  <Text style={styles.costingLabel}>Hours Variance</Text>
+                  <Text style={[
+                    styles.costingValue,
+                    hoursVariance > 0 && { color: colors.destructive },
+                    hoursVariance < 0 && { color: colors.success }
+                  ]}>
+                    {hoursVariance > 0 ? '+' : ''}{hoursVariance.toFixed(1)}h
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Activity Log Section */}
+        {activityLog.length > 0 && (
+          <View style={styles.activityCard}>
+            <View style={styles.activityHeader}>
+              <View style={[styles.activityIconContainer, { backgroundColor: `${colors.inProgress}15` }]}>
+                <Feather name="activity" size={iconSizes.lg} color={colors.inProgress} />
+              </View>
+              <Text style={styles.activityTitle}>Activity Log</Text>
+              <Text style={styles.activityCount}>{activityLog.length}</Text>
+            </View>
+            <View style={styles.activityList}>
+              {activityLog.slice(0, 5).map((item, index) => (
+                <View key={item.id || index} style={styles.activityItem}>
+                  <View style={styles.activityDot} />
+                  <View style={styles.activityContent}>
+                    <Text style={styles.activityDescription}>{item.description}</Text>
+                    <Text style={styles.activityTime}>
+                      {new Date(item.createdAt).toLocaleDateString('en-AU', { 
+                        day: 'numeric', 
+                        month: 'short',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      })}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              {activityLog.length > 5 && (
+                <Text style={styles.activityMore}>+{activityLog.length - 5} more activities</Text>
+              )}
             </View>
           </View>
         )}

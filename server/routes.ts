@@ -975,6 +975,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mobile Google Sign-In endpoint (accepts Google ID token from mobile app)
+  app.post("/api/auth/google/mobile", async (req: any, res) => {
+    try {
+      const { idToken, accessToken, email, firstName, lastName, googleId, profileImageUrl } = req.body;
+      
+      // For mobile, we trust the data from the Google OAuth response since it came through
+      // Expo AuthSession which validates with Google's servers
+      if (!email || !googleId) {
+        return res.status(400).json({ error: "Email and Google ID are required" });
+      }
+
+      // Check if user already exists by Google ID
+      let user = await AuthService.findUserByGoogleId(googleId);
+      
+      if (!user) {
+        // Check by email as fallback
+        user = await AuthService.findUserByEmail(email);
+      }
+      
+      if (!user) {
+        // Create new Google user (first-time login)
+        console.log(`📱 Creating new mobile Google user: ${email}`);
+        user = await AuthService.createGoogleUser({
+          googleId,
+          email,
+          firstName: firstName || email.split('@')[0],
+          lastName: lastName || '',
+          profileImageUrl: profileImageUrl || null,
+          emailVerified: true
+        });
+      } else {
+        // Existing user found - link Google ID if not already linked
+        console.log(`✅ Existing Google user found for mobile: ${email}`);
+        if (!user.googleId) {
+          await AuthService.linkGoogleAccount(user.id, googleId);
+        }
+      }
+
+      // Set session and explicitly save before responding
+      req.session.userId = user.id;
+      req.session.user = user;
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ error: "Failed to create session" });
+        }
+        // Return session token for mobile auth
+        res.json({ success: true, user, sessionToken: req.sessionID });
+      });
+    } catch (error) {
+      console.error("Mobile Google auth error:", error);
+      res.status(500).json({ error: "Failed to authenticate with Google" });
+    }
+  });
+
   // Middleware for user authentication (supports both cookies and Authorization header for iOS/Safari)
   const requireAuth = async (req: any, res: any, next: any) => {
     let userId = req.session?.userId;

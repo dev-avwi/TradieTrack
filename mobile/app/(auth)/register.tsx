@@ -9,10 +9,12 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
-  Image
+  Image,
+  ActivityIndicator
 } from 'react-native';
 import { Link, router } from 'expo-router';
-import api from '../../src/lib/api';
+import * as WebBrowser from 'expo-web-browser';
+import api, { API_URL } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { Card, CardContent } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
@@ -25,9 +27,11 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const login = useAuthStore((state) => state.login);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
   const { colors } = useTheme();
   const styles = createStyles(colors);
 
@@ -68,6 +72,42 @@ export default function RegisterScreen() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      setGoogleLoading(true);
+      
+      const googleAuthUrl = `${API_URL}/api/auth/google`;
+      
+      const result = await WebBrowser.openAuthSessionAsync(
+        googleAuthUrl,
+        'tradietrack://',
+        { showInRecents: true }
+      );
+      
+      if (result.type === 'success' && result.url) {
+        const url = new URL(result.url);
+        const auth = url.searchParams.get('auth');
+        const error = url.searchParams.get('error');
+        
+        if (auth === 'success' || auth === 'google_success') {
+          const isLoggedIn = await checkAuth();
+          if (isLoggedIn) {
+            router.replace('/(tabs)');
+          } else {
+            Alert.alert('Error', 'Failed to complete sign-up. Please try again.');
+          }
+        } else if (error) {
+          Alert.alert('Error', 'Google sign-up failed. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('Google Sign-Up error:', error);
+      Alert.alert('Error', 'Failed to sign up with Google. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -92,8 +132,34 @@ export default function RegisterScreen() {
 
           <Card>
             <CardContent style={styles.cardContent}>
+              {/* Google Sign-Up Button First */}
+              <TouchableOpacity
+                style={styles.googleButton}
+                onPress={handleGoogleSignIn}
+                disabled={googleLoading}
+                testID="button-google-signup"
+                activeOpacity={0.7}
+              >
+                {googleLoading ? (
+                  <ActivityIndicator size="small" color={colors.foreground} />
+                ) : (
+                  <>
+                    <View style={styles.googleIconContainer}>
+                      <Text style={styles.googleIconText}>G</Text>
+                    </View>
+                    <Text style={styles.googleButtonText}>Sign up with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or sign up with email</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
               <View style={styles.nameRow}>
-                <View style={styles.nameField}>
+                <View style={[styles.nameField, { marginRight: 8 }]}>
                   <Text style={styles.inputLabel}>First Name</Text>
                   <TextInput
                     style={styles.input}
@@ -105,9 +171,10 @@ export default function RegisterScreen() {
                       setError(null);
                     }}
                     autoCapitalize="words"
+                    testID="input-firstname"
                   />
                 </View>
-                <View style={styles.nameField}>
+                <View style={[styles.nameField, { marginLeft: 8 }]}>
                   <Text style={styles.inputLabel}>Last Name</Text>
                   <TextInput
                     style={styles.input}
@@ -119,6 +186,7 @@ export default function RegisterScreen() {
                       setError(null);
                     }}
                     autoCapitalize="words"
+                    testID="input-lastname"
                   />
                 </View>
               </View>
@@ -135,6 +203,7 @@ export default function RegisterScreen() {
                     setError(null);
                   }}
                   autoCapitalize="words"
+                  testID="input-business"
                 />
               </View>
 
@@ -152,6 +221,7 @@ export default function RegisterScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
+                  testID="input-email"
                 />
               </View>
 
@@ -168,6 +238,7 @@ export default function RegisterScreen() {
                   }}
                   secureTextEntry
                   autoComplete="password-new"
+                  testID="input-password"
                 />
               </View>
 
@@ -195,7 +266,7 @@ export default function RegisterScreen() {
           <View style={styles.signInContainer}>
             <Text style={styles.signInText}>Already have an account? </Text>
             <Link href="/(auth)/login" asChild>
-              <TouchableOpacity>
+              <TouchableOpacity testID="link-signin">
                 <Text style={styles.signInLink}>Sign In</Text>
               </TouchableOpacity>
             </Link>
@@ -258,9 +329,57 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   cardContent: {
     paddingTop: 20,
   },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 12,
+    height: 56,
+    paddingHorizontal: 24,
+    marginBottom: 4,
+  },
+  googleIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  googleIconText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4285F4',
+  },
+  googleButtonText: {
+    color: colors.foreground,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.cardBorder,
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: colors.mutedForeground,
+    fontSize: 13,
+  },
   nameRow: {
     flexDirection: 'row',
-    gap: 16,
     marginBottom: 16,
   },
   nameField: {
@@ -276,12 +395,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    height: 48,
+    height: 52,
     paddingHorizontal: 16,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    borderRadius: 10,
+    borderRadius: 12,
     color: colors.foreground,
     fontSize: 16,
   },
@@ -306,9 +425,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   signInText: {
     color: colors.mutedForeground,
+    fontSize: 15,
   },
   signInLink: {
     color: colors.primary,
     fontWeight: '600',
+    fontSize: 15,
   },
 });
