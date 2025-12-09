@@ -7282,26 +7282,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Store geofence event (job site arrival/departure)
+  // Store geofence event (job site arrival/departure) with auto clock-in/out
   app.post("/api/geofence-events", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const { identifier, action, timestamp } = req.body;
+      const { identifier, action, timestamp, latitude, longitude, accuracy, address } = req.body;
       
       // Parse job ID from identifier (format: job_<jobId>)
       const jobId = identifier?.startsWith('job_') ? identifier.substring(4) : null;
       
-      if (jobId) {
-        console.log(`[Geofence] User ${userId} ${action}ed job site ${jobId}`);
-        
-        // Could create a time entry or update job status here
-        // For now, just log it
+      if (!jobId) {
+        return res.json({ success: true, message: 'No job ID in identifier' });
       }
       
-      res.json({ success: true });
+      console.log(`[Geofence] User ${userId} ${action}ed job site ${jobId}`);
+      
+      // Get job details to check geofence settings
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const job = await storage.getJob(jobId, effectiveUserId);
+      
+      if (!job) {
+        console.log(`[Geofence] Job ${jobId} not found`);
+        return res.json({ success: true, message: 'Job not found' });
+      }
+      
+      // Create geofence alert for owner/manager visibility
+      const alertData = {
+        userId,
+        jobId,
+        businessOwnerId: effectiveUserId,
+        alertType: action === 'enter' ? 'arrival' : 'departure',
+        latitude: latitude?.toString() || job.latitude || '0',
+        longitude: longitude?.toString() || job.longitude || '0',
+        address: address || job.address || '',
+        distanceFromSite: accuracy?.toString() || null,
+        isRead: false,
+      };
+      
+      const alert = await storage.createGeofenceAlert(alertData);
+      console.log(`[Geofence] Created alert ${alert.id} for ${action}`);
+      
+      let timeEntryAction = null;
+      
+      // Handle auto clock-in on arrival
+      if (action === 'enter' && job.geofenceEnabled && job.geofenceAutoClockIn) {
+        // Check if user already has an active time entry for this job
+        const activeEntry = await storage.getActiveTimeEntry(userId);
+        
+        if (!activeEntry || activeEntry.jobId !== jobId) {
+          // Stop any existing active timer first
+          if (activeEntry) {
+            await storage.stopTimeEntry(activeEntry.id, userId);
+            console.log(`[Geofence] Stopped existing timer ${activeEntry.id}`);
+          }
+          
+          // Start new time entry for this job
+          const newEntry = await storage.createTimeEntry({
+            userId,
+            jobId,
+            startTime: new Date(timestamp || Date.now()),
+            description: 'Auto-started by geofence arrival',
+            origin: 'geofence',
+            geofenceEventId: alert.id,
+          });
+          console.log(`[Geofence] Auto clock-in: Created time entry ${newEntry.id}`);
+          timeEntryAction = { type: 'clock_in', entryId: newEntry.id };
+        }
+      }
+      
+      // Handle auto clock-out on departure
+      if (action === 'exit' && job.geofenceEnabled && job.geofenceAutoClockOut) {
+        // Find active time entry for this job
+        const activeEntry = await storage.getActiveTimeEntry(userId);
+        
+        if (activeEntry && activeEntry.jobId === jobId) {
+          // Stop the timer
+          const stoppedEntry = await storage.stopTimeEntry(activeEntry.id, userId);
+          console.log(`[Geofence] Auto clock-out: Stopped time entry ${activeEntry.id}`);
+          timeEntryAction = { type: 'clock_out', entryId: activeEntry.id, duration: stoppedEntry?.duration };
+        }
+      }
+      
+      res.json({ 
+        success: true, 
+        alertId: alert.id,
+        timeEntryAction,
+        geofenceSettings: {
+          enabled: job.geofenceEnabled,
+          autoClockIn: job.geofenceAutoClockIn,
+          autoClockOut: job.geofenceAutoClockOut,
+          radius: job.geofenceRadius,
+        }
+      });
     } catch (error: any) {
       console.error('Error handling geofence event:', error);
       res.status(500).json({ error: 'Failed to process geofence event' });
+    }
+  });
+  
+  // Get jobs with geofence settings for registering geofences on mobile
+  app.get("/api/jobs/geofence-enabled", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      
+      const allJobs = await storage.getJobs(effectiveUserId);
+      
+      // Filter jobs with geofence enabled and valid coordinates
+      const geofenceJobs = allJobs
+        .filter(job => job.geofenceEnabled && job.latitude && job.longitude)
+        .map(job => ({
+          id: job.id,
+          title: job.title,
+          address: job.address,
+          latitude: parseFloat(job.latitude as string),
+          longitude: parseFloat(job.longitude as string),
+          radius: job.geofenceRadius || 100,
+          autoClockIn: job.geofenceAutoClockIn,
+          autoClockOut: job.geofenceAutoClockOut,
+          identifier: `job_${job.id}`,
+        }));
+      
+      res.json(geofenceJobs);
+    } catch (error: any) {
+      console.error('Error fetching geofence-enabled jobs:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Update job geofence settings
+  app.patch("/api/jobs/:id/geofence", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { id } = req.params;
+      const { geofenceEnabled, geofenceRadius, geofenceAutoClockIn, geofenceAutoClockOut } = req.body;
+      
+      const updateData: any = {};
+      if (geofenceEnabled !== undefined) updateData.geofenceEnabled = geofenceEnabled;
+      if (geofenceRadius !== undefined) updateData.geofenceRadius = geofenceRadius;
+      if (geofenceAutoClockIn !== undefined) updateData.geofenceAutoClockIn = geofenceAutoClockIn;
+      if (geofenceAutoClockOut !== undefined) updateData.geofenceAutoClockOut = geofenceAutoClockOut;
+      
+      const updatedJob = await storage.updateJob(id, effectiveUserId, updateData);
+      
+      if (!updatedJob) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      console.log(`[Geofence] Updated settings for job ${id}:`, updateData);
+      
+      res.json({
+        id: updatedJob.id,
+        geofenceEnabled: updatedJob.geofenceEnabled,
+        geofenceRadius: updatedJob.geofenceRadius,
+        geofenceAutoClockIn: updatedJob.geofenceAutoClockIn,
+        geofenceAutoClockOut: updatedJob.geofenceAutoClockOut,
+      });
+    } catch (error: any) {
+      console.error('Error updating geofence settings:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 

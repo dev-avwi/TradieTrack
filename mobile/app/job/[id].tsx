@@ -14,7 +14,9 @@ import {
   TextInput,
   Image,
   FlatList,
+  Switch,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -30,6 +32,8 @@ interface Job {
   title: string;
   description?: string;
   address?: string;
+  latitude?: string;
+  longitude?: string;
   status: 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
   scheduledAt?: string;
   clientId?: string;
@@ -39,6 +43,10 @@ interface Job {
   estimatedCost?: number;
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   completedAt?: string;
+  geofenceEnabled?: boolean;
+  geofenceRadius?: number;
+  geofenceAutoClockIn?: boolean;
+  geofenceAutoClockOut?: boolean;
 }
 
 interface Invoice {
@@ -396,6 +404,107 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     color: colors.mutedForeground,
     fontStyle: 'italic',
+  },
+  geofenceCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  geofenceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  geofenceHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  geofenceIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: `${colors.primary}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  geofenceLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  geofenceBadge: {
+    backgroundColor: `${colors.success}20`,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  geofenceBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.success,
+  },
+  geofenceSettingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.muted,
+  },
+  geofenceSettingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  geofenceSettingIcon: {
+    marginRight: spacing.sm,
+  },
+  geofenceSettingLabel: {
+    fontSize: 14,
+    color: colors.foreground,
+  },
+  geofenceSettingDescription: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  geofenceRadiusRow: {
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.muted,
+  },
+  geofenceRadiusLabel: {
+    fontSize: 14,
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  geofenceRadiusValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  geofenceSlider: {
+    marginTop: spacing.xs,
+  },
+  geofenceNoLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  geofenceNoLocationText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginLeft: spacing.sm,
+    flex: 1,
   },
   photosCard: {
     backgroundColor: colors.card,
@@ -947,6 +1056,8 @@ export default function JobDetailScreen() {
   const [selectedPhoto, setSelectedPhoto] = useState<JobPhoto | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   
+  const [sliderRadius, setSliderRadius] = useState(100);
+  
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
   const [isConvertingToInvoice, setIsConvertingToInvoice] = useState(false);
@@ -1002,6 +1113,7 @@ export default function JobDetailScreen() {
     if (response.data) {
       setJob(response.data);
       setEditedNotes(response.data.notes || '');
+      setSliderRadius(response.data.geofenceRadius || 100);
       if (response.data.clientId) {
         const clientResponse = await api.get<Client>(`/api/clients/${response.data.clientId}`);
         if (clientResponse.data) {
@@ -1658,6 +1770,135 @@ export default function JobDetailScreen() {
             </View>
           )}
         </TouchableOpacity>
+
+        {/* Geofence Settings Section */}
+        <View style={styles.geofenceCard}>
+          <View style={styles.geofenceHeader}>
+            <View style={styles.geofenceHeaderLeft}>
+              <View style={styles.geofenceIconContainer}>
+                <Feather name="map-pin" size={iconSizes.lg} color={colors.primary} />
+              </View>
+              <Text style={styles.geofenceLabel}>Geofence Settings</Text>
+            </View>
+            {job.geofenceEnabled && (
+              <View style={styles.geofenceBadge}>
+                <Text style={styles.geofenceBadgeText}>Active</Text>
+              </View>
+            )}
+          </View>
+          
+          {job.latitude && job.longitude ? (
+            <>
+              {/* Enable Geofence Toggle */}
+              <View style={styles.geofenceSettingRow}>
+                <View style={styles.geofenceSettingLeft}>
+                  <Feather name="circle" size={iconSizes.md} color={colors.mutedForeground} style={styles.geofenceSettingIcon} />
+                  <View>
+                    <Text style={styles.geofenceSettingLabel}>Enable Geofence</Text>
+                    <Text style={styles.geofenceSettingDescription}>Track arrival and departure from job site</Text>
+                  </View>
+                </View>
+                <Switch
+                  value={job.geofenceEnabled || false}
+                  onValueChange={async (value) => {
+                    try {
+                      await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceEnabled: value });
+                      setJob({ ...job, geofenceEnabled: value });
+                    } catch (e) {
+                      Alert.alert('Error', 'Failed to update geofence settings');
+                    }
+                  }}
+                  trackColor={{ false: colors.muted, true: colors.primary }}
+                  thumbColor={colors.white}
+                />
+              </View>
+              
+              {job.geofenceEnabled && (
+                <>
+                  {/* Radius Slider */}
+                  <View style={styles.geofenceRadiusRow}>
+                    <Text style={styles.geofenceRadiusLabel}>Detection Radius</Text>
+                    <Text style={styles.geofenceRadiusValue}>{sliderRadius}m</Text>
+                    <Slider
+                      style={styles.geofenceSlider}
+                      minimumValue={50}
+                      maximumValue={500}
+                      step={10}
+                      value={sliderRadius}
+                      onValueChange={(value) => setSliderRadius(value)}
+                      onSlidingComplete={async (value) => {
+                        try {
+                          await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceRadius: value });
+                          setJob({ ...job, geofenceRadius: value });
+                        } catch (e) {
+                          Alert.alert('Error', 'Failed to update radius');
+                        }
+                      }}
+                      minimumTrackTintColor={colors.primary}
+                      maximumTrackTintColor={colors.muted}
+                      thumbTintColor={colors.primary}
+                    />
+                  </View>
+                  
+                  {/* Auto Clock-In Toggle */}
+                  <View style={styles.geofenceSettingRow}>
+                    <View style={styles.geofenceSettingLeft}>
+                      <Feather name="log-in" size={iconSizes.md} color={colors.success} style={styles.geofenceSettingIcon} />
+                      <View>
+                        <Text style={styles.geofenceSettingLabel}>Auto Clock-In</Text>
+                        <Text style={styles.geofenceSettingDescription}>Start timer when arriving at job</Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={job.geofenceAutoClockIn || false}
+                      onValueChange={async (value) => {
+                        try {
+                          await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceAutoClockIn: value });
+                          setJob({ ...job, geofenceAutoClockIn: value });
+                        } catch (e) {
+                          Alert.alert('Error', 'Failed to update setting');
+                        }
+                      }}
+                      trackColor={{ false: colors.muted, true: colors.success }}
+                      thumbColor={colors.white}
+                    />
+                  </View>
+                  
+                  {/* Auto Clock-Out Toggle */}
+                  <View style={styles.geofenceSettingRow}>
+                    <View style={styles.geofenceSettingLeft}>
+                      <Feather name="log-out" size={iconSizes.md} color={colors.warning} style={styles.geofenceSettingIcon} />
+                      <View>
+                        <Text style={styles.geofenceSettingLabel}>Auto Clock-Out</Text>
+                        <Text style={styles.geofenceSettingDescription}>Stop timer when leaving job site</Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={job.geofenceAutoClockOut || false}
+                      onValueChange={async (value) => {
+                        try {
+                          await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceAutoClockOut: value });
+                          setJob({ ...job, geofenceAutoClockOut: value });
+                        } catch (e) {
+                          Alert.alert('Error', 'Failed to update setting');
+                        }
+                      }}
+                      trackColor={{ false: colors.muted, true: colors.warning }}
+                      thumbColor={colors.white}
+                    />
+                  </View>
+                </>
+              )}
+            </>
+          ) : (
+            <View style={styles.geofenceNoLocation}>
+              <Feather name="alert-circle" size={iconSizes.lg} color={colors.mutedForeground} />
+              <Text style={styles.geofenceNoLocationText}>
+                Add a job address to enable geofence tracking. The address will be geocoded automatically.
+              </Text>
+            </View>
+          )}
+        </View>
 
         {/* Photos Section - Always visible */}
         <View style={styles.photosCard}>

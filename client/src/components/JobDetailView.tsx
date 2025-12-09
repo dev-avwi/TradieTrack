@@ -6,6 +6,7 @@ import JobPhotoGallery from "./JobPhotoGallery";
 import { JobChat } from "./JobChat";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
+import GeofenceSettingsCard from "./GeofenceSettingsCard";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +36,8 @@ interface Job {
   description?: string;
   clientId?: string;
   address?: string;
+  latitude?: string;
+  longitude?: string;
   scheduledAt?: string;
   assignedTo?: string;
   status: JobStatus;
@@ -42,6 +45,10 @@ interface Job {
   notes?: string;
   estimatedHours?: number;
   estimatedCost?: number;
+  geofenceEnabled?: boolean;
+  geofenceRadius?: number;
+  geofenceAutoClockIn?: boolean;
+  geofenceAutoClockOut?: boolean;
 }
 
 interface Client {
@@ -468,6 +475,18 @@ export default function JobDetailView({
               <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Geofence Time Tracking Settings - Only show for owners/managers */}
+        {!isTradie && (
+          <GeofenceSettingsCard
+            jobId={jobId}
+            hasLocation={!!(job.latitude && job.longitude)}
+            geofenceEnabled={job.geofenceEnabled}
+            geofenceRadius={job.geofenceRadius}
+            geofenceAutoClockIn={job.geofenceAutoClockIn}
+            geofenceAutoClockOut={job.geofenceAutoClockOut}
+          />
         )}
 
         {/* Linked Documents Section - Shows quote/invoice status */}

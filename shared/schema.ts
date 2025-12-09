@@ -263,6 +263,11 @@ export const jobs = pgTable("jobs", {
   recurrenceEndDate: timestamp("recurrence_end_date"), // When to stop recurring
   parentJobId: varchar("parent_job_id"), // Links to original recurring job
   nextRecurrenceDate: timestamp("next_recurrence_date"), // When to create next occurrence
+  // Geofence settings for automatic time tracking
+  geofenceEnabled: boolean("geofence_enabled").default(false),
+  geofenceRadius: integer("geofence_radius").default(100), // Radius in meters (default 100m)
+  geofenceAutoClockIn: boolean("geofence_auto_clock_in").default(false), // Auto-start timer on entry
+  geofenceAutoClockOut: boolean("geofence_auto_clock_out").default(false), // Auto-stop timer on exit
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -724,6 +729,9 @@ export const timeEntries = pgTable("time_entries", {
   isOvertime: boolean("is_overtime").default(false),
   approved: boolean("approved").default(false),
   approvedBy: varchar("approved_by").references(() => users.id),
+  // Origin tracking for geofence-triggered entries
+  origin: text("origin").default('manual'), // manual, geofence
+  geofenceEventId: varchar("geofence_event_id"), // Link to triggering geofence event
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
