@@ -5613,6 +5613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       const { id } = req.params;
+      const { endLatitude, endLongitude, endAddress } = req.body || {};
       
       // Verify ownership and current active status (with team/supervisor context)
       const existingEntry = await storage.getTimeEntry(id, userId);
@@ -5639,8 +5640,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Access denied - not your time entry or team member' });
       }
       
-      // Server-side timestamp for integrity
-      const stoppedEntry = await storage.stopTimeEntry(id, userId);
+      // Build update data with server-side timestamp and GPS location
+      const updateData: any = {
+        endTime: new Date(),
+      };
+      
+      // Add GPS location data if provided (mobile clock-out verification)
+      if (endLatitude !== undefined && endLongitude !== undefined) {
+        updateData.endLatitude = String(endLatitude);
+        updateData.endLongitude = String(endLongitude);
+        if (endAddress) {
+          updateData.endAddress = endAddress;
+        }
+      }
+      
+      const stoppedEntry = await storage.updateTimeEntry(id, userId, updateData);
       if (!stoppedEntry) {
         return res.status(500).json({ error: 'Failed to stop time entry' });
       }

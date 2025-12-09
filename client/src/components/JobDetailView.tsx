@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Phone, MessageSquare, Navigation, Play, DollarSign, Mic, MicOff, Repeat } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Phone, MessageSquare, Navigation, Play, DollarSign, Mic, MicOff, Repeat, Square, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { VoiceNotes } from "./VoiceNotes";
@@ -9,6 +9,7 @@ import { SignatureCapture } from "./SignatureCapture";
 import { JobFormResponse } from "./JobFormResponse";
 import { JobDiary } from "./JobDiary";
 import { JobCosting } from "./JobCosting";
+import { TimerWidget } from "./TimeTracking";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
@@ -597,6 +598,16 @@ export default function JobDetailView({
           <Receipt className="h-6 w-6 mr-2" />
           Create Invoice
         </Button>
+      )}
+
+      {/* Time Tracking Section - Show for in_progress and done jobs */}
+      {(job.status === 'in_progress' || job.status === 'done') && (
+        <div className="mb-4" data-testid="section-time-tracking">
+          <TimerWidget 
+            jobId={jobId} 
+            jobTitle={job.title}
+          />
+        </div>
       )}
 
       <div className="space-y-4">
