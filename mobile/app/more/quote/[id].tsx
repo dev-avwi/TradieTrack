@@ -275,6 +275,27 @@ export default function QuoteDetailScreen() {
             )}
           </View>
 
+          {/* Linked Job */}
+          {quote && quote.jobId && (
+            <>
+              <Text style={styles.sectionTitle}>Linked Job</Text>
+              <TouchableOpacity 
+                style={styles.card}
+                onPress={() => router.push(`/job/${quote.jobId}`)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.infoRow}>
+                  <Feather name="briefcase" size={18} color={colors.primary} />
+                  <View style={[styles.infoContent, { flex: 1 }]}>
+                    <Text style={styles.infoLabel}>View Job</Text>
+                    <Text style={styles.infoText}>Tap to open linked job</Text>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                </View>
+              </TouchableOpacity>
+            </>
+          )}
+
           {/* Dates */}
           <Text style={styles.sectionTitle}>Details</Text>
           <View style={styles.card}>

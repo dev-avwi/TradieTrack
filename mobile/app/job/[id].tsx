@@ -1982,7 +1982,7 @@ export default function JobDetailScreen() {
         )}
 
         {/* Linked Documents Section */}
-        {(linkedQuote || linkedInvoice || job.status === 'done' || isLoadingLinkedDocs) && (
+        {(linkedQuote || linkedInvoice || job.status === 'done' || job.status === 'invoiced' || isLoadingLinkedDocs) && (
           <View style={[styles.card, { paddingVertical: spacing.lg }]} data-testid="section-linked-documents">
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
               <View style={[styles.cardIconContainer, { backgroundColor: `${colors.invoiced}15`, marginRight: spacing.md }]}>
