@@ -334,23 +334,23 @@ export default function DispatchBoardScreen() {
 
   const scheduledJobsForDate = useMemo(() => {
     return jobs.filter(job => {
-      if (!job.scheduledAt) return false;
-      const jobDate = job.scheduledAt.split('T')[0];
+      if (!job.scheduledDate) return false;
+      const jobDate = job.scheduledDate.split('T')[0];
       return jobDate === dateStr;
     });
   }, [jobs, dateStr]);
 
   const unscheduledJobs = useMemo(() => {
     return jobs.filter(job => 
-      !job.scheduledAt && 
+      !job.scheduledDate && 
       ['pending', 'scheduled'].includes(job.status)
     );
   }, [jobs]);
 
   const getJobsForHour = (hour: number) => {
     return scheduledJobsForDate.filter(job => {
-      if (!job.scheduledAt) return false;
-      const jobHour = new Date(job.scheduledAt).getHours();
+      if (!job.scheduledTime) return false;
+      const jobHour = parseInt(job.scheduledTime.split(':')[0]);
       return jobHour === hour;
     });
   };
@@ -449,13 +449,10 @@ export default function DispatchBoardScreen() {
               Alert.alert(
                 'Schedule Job',
                 'Select time slot',
-                [
-                  ...HOURS.slice(0, 5).map(h => ({
-                    text: `${h}:00`,
-                    onPress: () => onSchedule(h)
-                  })),
-                  { text: 'Cancel', onPress: () => {} }
-                ]
+                HOURS.map(h => ({
+                  text: `${h}:00`,
+                  onPress: () => onSchedule(h)
+                })).concat([{ text: 'Cancel', style: 'cancel', onPress: () => {} }])
               );
             }}
           >

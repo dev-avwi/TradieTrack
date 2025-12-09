@@ -10,11 +10,10 @@ import {
   Share,
   Alert
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useJobsStore, useInvoicesStore, useQuotesStore, useClientsStore, useAuthStore } from '../../src/lib/store';
+import { useJobsStore, useInvoicesStore, useQuotesStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
-import { useUserRole } from '../../src/hooks/use-user-role';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -296,165 +295,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 8,
     lineHeight: 20,
   },
-  jobStatusSection: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  jobStatusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  pieChartContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  pieChartWrapper: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: colors.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  pieSlice: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-  },
-  pieCenterDot: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  pieCenterText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.foreground,
-  },
-  pieCenterLabel: {
-    fontSize: 10,
-    color: colors.mutedForeground,
-  },
-  legendContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  legendText: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-  },
-  jobMetricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 16,
-  },
-  jobMetricItem: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: colors.muted,
-    borderRadius: 10,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  jobMetricValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.foreground,
-  },
-  jobMetricLabel: {
-    fontSize: 11,
-    color: colors.mutedForeground,
-  },
-  clientsSection: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  clientsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  clientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  clientRowLast: {
-    borderBottomWidth: 0,
-  },
-  clientRank: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  clientRankText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  clientInfo: {
-    flex: 1,
-  },
-  clientName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.foreground,
-  },
-  clientEmail: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginTop: 1,
-  },
-  clientRevenue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.success,
-  },
-  emptyClients: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  emptyClientsText: {
-    fontSize: 14,
-    color: colors.mutedForeground,
-  },
 });
 
 export default function ReportsScreen() {
@@ -464,25 +304,12 @@ export default function ReportsScreen() {
   const { jobs, fetchJobs, isLoading: jobsLoading } = useJobsStore();
   const { invoices, fetchInvoices, isLoading: invoicesLoading } = useInvoicesStore();
   const { quotes, fetchQuotes, isLoading: quotesLoading } = useQuotesStore();
-  const { clients, fetchClients, isLoading: clientsLoading } = useClientsStore();
-  const { user } = useAuthStore();
   const [period, setPeriod] = useState<ReportPeriod>('month');
   const [showPeriodPicker, setShowPeriodPicker] = useState(false);
-  
-  // RBAC: Role-based access control - staff see limited data
-  const { isOwner, isManager, canAccessReports, isLoading: roleLoading } = useUserRole();
-  const canSeeFinancials = isOwner || isManager;
-  
-  // Staff only see their job metrics (no financial data)
-  const filteredJobs = useMemo(() => {
-    if (isOwner || isManager) return jobs;
-    // Staff: filter to only their assigned jobs
-    return jobs.filter(job => job.assignedToId === user?.id);
-  }, [jobs, isOwner, isManager, user?.id]);
 
   const refreshData = useCallback(async () => {
-    await Promise.all([fetchJobs(), fetchInvoices(), fetchQuotes(), fetchClients()]);
-  }, [fetchJobs, fetchInvoices, fetchQuotes, fetchClients]);
+    await Promise.all([fetchJobs(), fetchInvoices(), fetchQuotes()]);
+  }, [fetchJobs, fetchInvoices, fetchQuotes]);
 
   useEffect(() => {
     refreshData();
@@ -492,23 +319,17 @@ export default function ReportsScreen() {
     return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 0 })}`;
   };
 
-  // RBAC: Financial data only visible to owners/managers
-  const totalRevenue = canSeeFinancials 
-    ? invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + (i.total || 0), 0)
-    : 0;
+  const totalRevenue = invoices
+    .filter(i => i.status === 'paid')
+    .reduce((sum, i) => sum + (i.total || 0), 0);
 
-  const outstandingAmount = canSeeFinancials 
-    ? invoices.filter(i => i.status === 'sent' || i.status === 'overdue').reduce((sum, i) => sum + ((i.total || 0) - (i.amountPaid || 0)), 0)
-    : 0;
+  const outstandingAmount = invoices
+    .filter(i => i.status === 'sent' || i.status === 'overdue')
+    .reduce((sum, i) => sum + ((i.total || 0) - (i.amountPaid || 0)), 0);
 
-  // RBAC: Use filtered jobs for staff, all jobs for owners/managers
-  const jobsToUse = canSeeFinancials ? jobs : filteredJobs;
-  const doneJobs = jobsToUse.filter(j => j.status === 'done').length;
-  const invoicedJobs = jobsToUse.filter(j => j.status === 'invoiced').length;
-  const completedJobs = doneJobs + invoicedJobs;
-  const inProgressJobs = jobsToUse.filter(j => j.status === 'in_progress').length;
-  const acceptedQuotes = canSeeFinancials ? quotes.filter(q => q.status === 'accepted').length : 0;
-  const conversionRate = canSeeFinancials && quotes.length > 0 ? Math.round((acceptedQuotes / quotes.length) * 100) : 0;
+  const completedJobs = jobs.filter(j => j.status === 'done' || j.status === 'invoiced').length;
+  const acceptedQuotes = quotes.filter(q => q.status === 'accepted').length;
+  const conversionRate = quotes.length > 0 ? Math.round((acceptedQuotes / quotes.length) * 100) : 0;
 
   const generateMonthlyData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
@@ -532,42 +353,7 @@ export default function ReportsScreen() {
   const monthlyData = generateMonthlyData();
   const maxValue = Math.max(...monthlyData.map(d => d.value), 1);
 
-  const isLoading = jobsLoading || invoicesLoading || quotesLoading || clientsLoading || roleLoading;
-
-  const JOB_STATUS_COLORS = {
-    pending: colors.warning,
-    scheduled: colors.info,
-    in_progress: colors.primary,
-    done: colors.success,
-    invoiced: '#8b5cf6',
-  };
-
-  // RBAC: Job status data uses filtered jobs for staff
-  const jobStatusData = [
-    { name: 'Pending', count: jobsToUse.filter(j => j.status === 'pending').length, color: JOB_STATUS_COLORS.pending },
-    { name: 'Scheduled', count: jobsToUse.filter(j => j.status === 'scheduled').length, color: JOB_STATUS_COLORS.scheduled },
-    { name: 'In Progress', count: jobsToUse.filter(j => j.status === 'in_progress').length, color: JOB_STATUS_COLORS.in_progress },
-    { name: 'Done', count: jobsToUse.filter(j => j.status === 'done').length, color: JOB_STATUS_COLORS.done },
-    { name: 'Invoiced', count: jobsToUse.filter(j => j.status === 'invoiced').length, color: JOB_STATUS_COLORS.invoiced },
-  ].filter(s => s.count > 0);
-
-  // RBAC: Top clients by revenue only visible to owners/managers
-  const topClientsByRevenue = useMemo(() => {
-    if (!canSeeFinancials) return [];
-    const clientRevenue: Record<string, { client: typeof clients[0], revenue: number }> = {};
-    invoices.filter(i => i.status === 'paid' && i.clientId).forEach(inv => {
-      const client = clients.find(c => c.id === inv.clientId);
-      if (client) {
-        if (!clientRevenue[client.id]) {
-          clientRevenue[client.id] = { client, revenue: 0 };
-        }
-        clientRevenue[client.id].revenue += inv.total || 0;
-      }
-    });
-    return Object.values(clientRevenue)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
-  }, [invoices, clients, canSeeFinancials]);
+  const isLoading = jobsLoading || invoicesLoading || quotesLoading;
 
   const handleExport = async () => {
     const reportText = `TradieTrack Report - ${PERIODS.find(p => p.key === period)?.label}
@@ -601,7 +387,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
         reportData = `Jobs Report\n\nTotal Jobs: ${jobs.length}\nCompleted: ${completedJobs}\nIn Progress: ${jobs.filter(j => j.status === 'in_progress').length}\nPending: ${jobs.filter(j => j.status === 'pending').length}`;
         break;
       case 'time':
-        reportData = `Time Tracking Report\n\nTotal Jobs: ${jobs.length}\nCompleted Jobs: ${completedJobs}`;
+        reportData = `Time Tracking Report\n\nTotal Jobs with Time: ${jobs.filter(j => j.totalHours).length}\nTotal Hours: ${jobs.reduce((sum, j) => sum + (j.totalHours || 0), 0).toFixed(1)}`;
         break;
       case 'tax':
         const gstCollected = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + (i.gstAmount || 0), 0);
@@ -634,17 +420,12 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={styles.pageTitle}>Reports</Text>
-              <Text style={styles.pageSubtitle}>
-                {canSeeFinancials ? 'Business analytics and insights' : 'Your job performance'}
-              </Text>
+              <Text style={styles.pageSubtitle}>Business analytics and insights</Text>
             </View>
-            {/* RBAC: Export button only visible to owners/managers */}
-            {canSeeFinancials && (
-              <TouchableOpacity style={styles.exportButton} onPress={handleExport}>
-                <Feather name="share" size={18} color={colors.foreground} />
-                <Text style={styles.exportButtonText}>Share</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.exportButton} onPress={handleExport}>
+              <Feather name="share" size={18} color={colors.foreground} />
+              <Text style={styles.exportButtonText}>Share</Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
@@ -685,149 +466,109 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
 
           <Text style={styles.sectionTitle}>KEY METRICS</Text>
           <View style={styles.statsGrid}>
-            {/* RBAC: Financial metrics only visible to owners/managers */}
-            {canSeeFinancials && (
-              <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <View style={styles.statHeader}>
-                    <View style={styles.statIconContainer}>
-                      <Feather name="dollar-sign" size={22} color={colors.success} />
-                    </View>
-                    <View style={[styles.trendBadge, styles.trendBadgeUp]}>
-                      <Feather name="trending-up" size={12} color={colors.success} />
-                    </View>
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <View style={styles.statHeader}>
+                  <View style={styles.statIconContainer}>
+                    <Feather name="dollar-sign" size={22} color={colors.success} />
                   </View>
-                  <Text style={styles.statValue}>{formatCurrency(totalRevenue)}</Text>
-                  <Text style={styles.statTitle}>TOTAL REVENUE</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <View style={styles.statHeader}>
-                    <View style={styles.statIconContainer}>
-                      <Feather name="clock" size={22} color={colors.warning} />
-                    </View>
-                    <View style={styles.trendBadge}>
-                      <Feather name="minus" size={12} color={colors.mutedForeground} />
-                    </View>
+                  <View style={[styles.trendBadge, styles.trendBadgeUp]}>
+                    <Feather name="trending-up" size={12} color={colors.success} />
                   </View>
-                  <Text style={styles.statValue}>{formatCurrency(outstandingAmount)}</Text>
-                  <Text style={styles.statTitle}>OUTSTANDING</Text>
                 </View>
+                <Text style={styles.statValue}>{formatCurrency(totalRevenue)}</Text>
+                <Text style={styles.statTitle}>TOTAL REVENUE</Text>
               </View>
-            )}
-            {canSeeFinancials && (
-              <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <View style={styles.statHeader}>
-                    <View style={styles.statIconContainer}>
-                      <Feather name="briefcase" size={22} color={colors.primary} />
-                    </View>
-                    <View style={[styles.trendBadge, styles.trendBadgeUp]}>
-                      <Feather name="trending-up" size={12} color={colors.success} />
-                    </View>
+              <View style={styles.statCard}>
+                <View style={styles.statHeader}>
+                  <View style={styles.statIconContainer}>
+                    <Feather name="clock" size={22} color={colors.warning} />
                   </View>
-                  <Text style={styles.statValue}>{completedJobs}</Text>
-                  <Text style={styles.statTitle}>JOBS COMPLETED</Text>
+                  <View style={styles.trendBadge}>
+                    <Feather name="minus" size={12} color={colors.mutedForeground} />
+                  </View>
                 </View>
-                <View style={styles.statCard}>
-                  <View style={styles.statHeader}>
-                    <View style={styles.statIconContainer}>
-                      <Feather name="file-text" size={22} color={colors.info} />
-                    </View>
-                    <View style={[styles.trendBadge, conversionRate >= 50 ? styles.trendBadgeUp : styles.trendBadgeDown]}>
-                      <Feather 
-                        name="trending-up" 
-                        size={12} 
-                        color={conversionRate >= 50 ? colors.success : colors.destructive}
-                        style={conversionRate < 50 ? { transform: [{ rotate: '180deg' }] } : undefined}
-                      />
-                    </View>
-                  </View>
-                  <Text style={styles.statValue}>{conversionRate}%</Text>
-                  <Text style={styles.statTitle}>QUOTE CONVERSION</Text>
-                  <Text style={styles.statSubValue}>{acceptedQuotes} of {quotes.length}</Text>
-                </View>
-              </View>
-            )}
-            
-            {/* RBAC: Staff-only job metrics view */}
-            {!canSeeFinancials && (
-              <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <View style={styles.statHeader}>
-                    <View style={styles.statIconContainer}>
-                      <Feather name="briefcase" size={22} color={colors.primary} />
-                    </View>
-                    <View style={[styles.trendBadge, styles.trendBadgeUp]}>
-                      <Feather name="trending-up" size={12} color={colors.success} />
-                    </View>
-                  </View>
-                  <Text style={styles.statValue}>{filteredJobs.length}</Text>
-                  <Text style={styles.statTitle}>MY JOBS</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <View style={styles.statHeader}>
-                    <View style={styles.statIconContainer}>
-                      <Feather name="check-circle" size={22} color={colors.success} />
-                    </View>
-                  </View>
-                  <Text style={styles.statValue}>{completedJobs}</Text>
-                  <Text style={styles.statTitle}>COMPLETED</Text>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* RBAC: Revenue chart only visible to owners/managers */}
-          {canSeeFinancials && (
-            <View style={styles.chartSection}>
-              <View style={styles.chartHeader}>
-                <Feather name="bar-chart-2" size={20} color={colors.foreground} />
-                <Text style={styles.chartTitle}>Revenue Overview</Text>
-              </View>
-              <View style={styles.chartContainer}>
-                {monthlyData.map((data, index) => (
-                  <View key={index} style={styles.chartBarContainer}>
-                    <View style={styles.chartBarWrapper}>
-                      <View style={[styles.chartBar, { height: `${maxValue > 0 ? (data.value / maxValue) * 100 : 0}%` }]} />
-                    </View>
-                    <Text style={styles.chartBarLabel}>{data.label}</Text>
-                    <Text style={styles.chartBarAmount}>{data.amount}</Text>
-                  </View>
-                ))}
+                <Text style={styles.statValue}>{formatCurrency(outstandingAmount)}</Text>
+                <Text style={styles.statTitle}>OUTSTANDING</Text>
               </View>
             </View>
-          )}
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <View style={styles.statHeader}>
+                  <View style={styles.statIconContainer}>
+                    <Feather name="briefcase" size={22} color={colors.primary} />
+                  </View>
+                  <View style={[styles.trendBadge, styles.trendBadgeUp]}>
+                    <Feather name="trending-up" size={12} color={colors.success} />
+                  </View>
+                </View>
+                <Text style={styles.statValue}>{completedJobs}</Text>
+                <Text style={styles.statTitle}>JOBS COMPLETED</Text>
+              </View>
+              <View style={styles.statCard}>
+                <View style={styles.statHeader}>
+                  <View style={styles.statIconContainer}>
+                    <Feather name="file-text" size={22} color={colors.info} />
+                  </View>
+                  <View style={[styles.trendBadge, conversionRate >= 50 ? styles.trendBadgeUp : styles.trendBadgeDown]}>
+                    <Feather 
+                      name="trending-up" 
+                      size={12} 
+                      color={conversionRate >= 50 ? colors.success : colors.destructive}
+                      style={conversionRate < 50 ? { transform: [{ rotate: '180deg' }] } : undefined}
+                    />
+                  </View>
+                </View>
+                <Text style={styles.statValue}>{conversionRate}%</Text>
+                <Text style={styles.statTitle}>QUOTE CONVERSION</Text>
+                <Text style={styles.statSubValue}>{acceptedQuotes} of {quotes.length}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.chartSection}>
+            <View style={styles.chartHeader}>
+              <Feather name="bar-chart-2" size={20} color={colors.foreground} />
+              <Text style={styles.chartTitle}>Revenue Overview</Text>
+            </View>
+            <View style={styles.chartContainer}>
+              {monthlyData.map((data, index) => (
+                <View key={index} style={styles.chartBarContainer}>
+                  <View style={styles.chartBarWrapper}>
+                    <View style={[styles.chartBar, { height: `${maxValue > 0 ? (data.value / maxValue) * 100 : 0}%` }]} />
+                  </View>
+                  <Text style={styles.chartBarLabel}>{data.label}</Text>
+                  <Text style={styles.chartBarAmount}>{data.amount}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
 
           <View style={styles.quickReportsSection}>
             <Text style={styles.sectionTitle}>QUICK REPORTS</Text>
             
-            {/* RBAC: Income Report only visible to owners/managers */}
-            {canSeeFinancials && (
-              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('income')}>
-                <View style={[styles.reportCardIcon, { backgroundColor: colors.successLight }]}>
-                  <Feather name="dollar-sign" size={20} color={colors.success} />
-                </View>
-                <View style={styles.reportCardContent}>
-                  <Text style={styles.reportCardTitle}>Income Report</Text>
-                  <Text style={styles.reportCardSubtitle}>Detailed breakdown of all income</Text>
-                </View>
-                <Feather name="share" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('income')}>
+              <View style={[styles.reportCardIcon, { backgroundColor: colors.successLight }]}>
+                <Feather name="dollar-sign" size={20} color={colors.success} />
+              </View>
+              <View style={styles.reportCardContent}>
+                <Text style={styles.reportCardTitle}>Income Report</Text>
+                <Text style={styles.reportCardSubtitle}>Detailed breakdown of all income</Text>
+              </View>
+              <Feather name="share" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
 
-            {/* Jobs Report visible to everyone */}
             <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('jobs')}>
               <View style={styles.reportCardIcon}>
                 <Feather name="briefcase" size={20} color={colors.primary} />
               </View>
               <View style={styles.reportCardContent}>
                 <Text style={styles.reportCardTitle}>Jobs Report</Text>
-                <Text style={styles.reportCardSubtitle}>{canSeeFinancials ? 'Jobs by status and completion rate' : 'My jobs by status and completion'}</Text>
+                <Text style={styles.reportCardSubtitle}>Jobs by status and completion rate</Text>
               </View>
               <Feather name="share" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
 
-            {/* Time Tracking Report visible to everyone */}
             <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('time')}>
               <View style={[styles.reportCardIcon, { backgroundColor: colors.warningLight }]}>
                 <Feather name="clock" size={20} color={colors.warning} />
@@ -839,98 +580,17 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
               <Feather name="share" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
 
-            {/* RBAC: Tax Summary only visible to owners/managers */}
-            {canSeeFinancials && (
-              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('tax')}>
-                <View style={[styles.reportCardIcon, { backgroundColor: colors.infoLight }]}>
-                  <Feather name="file-text" size={20} color={colors.info} />
-                </View>
-                <View style={styles.reportCardContent}>
-                  <Text style={styles.reportCardTitle}>Tax Summary</Text>
-                  <Text style={styles.reportCardSubtitle}>GST collected and payable</Text>
-                </View>
-                <Feather name="share" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('tax')}>
+              <View style={[styles.reportCardIcon, { backgroundColor: colors.infoLight }]}>
+                <Feather name="file-text" size={20} color={colors.info} />
+              </View>
+              <View style={styles.reportCardContent}>
+                <Text style={styles.reportCardTitle}>Tax Summary</Text>
+                <Text style={styles.reportCardSubtitle}>GST collected and payable</Text>
+              </View>
+              <Feather name="share" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
           </View>
-
-          {/* Job Status Section */}
-          <View style={styles.jobStatusSection}>
-            <View style={styles.jobStatusHeader}>
-              <Feather name="pie-chart" size={20} color={colors.foreground} />
-              <Text style={styles.chartTitle}>Job Status</Text>
-            </View>
-            
-            <View style={styles.pieChartContainer}>
-              <View style={styles.pieChartWrapper}>
-                <View style={styles.pieCenterDot}>
-                  <Text style={styles.pieCenterText}>{jobsToUse.length}</Text>
-                  <Text style={styles.pieCenterLabel}>{canSeeFinancials ? 'TOTAL' : 'MY JOBS'}</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.legendContainer}>
-              {jobStatusData.map((status, index) => (
-                <View key={status.name} style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: status.color }]} />
-                  <Text style={styles.legendText}>{status.name}: {status.count}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.jobMetricsGrid}>
-              <View style={styles.jobMetricItem}>
-                <Feather name="check-circle" size={20} color={colors.success} />
-                <View>
-                  <Text style={styles.jobMetricValue}>{completedJobs}</Text>
-                  <Text style={styles.jobMetricLabel}>COMPLETED</Text>
-                </View>
-              </View>
-              <View style={styles.jobMetricItem}>
-                <Feather name="play-circle" size={20} color={colors.primary} />
-                <View>
-                  <Text style={styles.jobMetricValue}>{inProgressJobs}</Text>
-                  <Text style={styles.jobMetricLabel}>IN PROGRESS</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* RBAC: Top Clients Section only visible to owners/managers */}
-          {canSeeFinancials && (
-            <View style={styles.clientsSection}>
-              <View style={styles.clientsHeader}>
-                <Feather name="users" size={20} color={colors.foreground} />
-                <Text style={styles.chartTitle}>Top Clients by Revenue</Text>
-              </View>
-              
-              {topClientsByRevenue.length === 0 ? (
-                <View style={styles.emptyClients}>
-                  <Text style={styles.emptyClientsText}>No client revenue data yet</Text>
-                </View>
-              ) : (
-                topClientsByRevenue.map((item, index) => (
-                  <View 
-                    key={item.client.id} 
-                    style={[
-                      styles.clientRow,
-                      index === topClientsByRevenue.length - 1 && styles.clientRowLast
-                    ]}
-                  >
-                    <View style={styles.clientRank}>
-                      <Text style={styles.clientRankText}>{index + 1}</Text>
-                    </View>
-                    <View style={styles.clientInfo}>
-                      <Text style={styles.clientName} numberOfLines={1}>{item.client.name}</Text>
-                      <Text style={styles.clientEmail} numberOfLines={1}>{item.client.email}</Text>
-                    </View>
-                    <Text style={styles.clientRevenue}>{formatCurrency(item.revenue)}</Text>
-                  </View>
-                ))
-              )}
-            </View>
-          )}
 
           <View style={styles.insightsCard}>
             <Feather name="zap" size={32} color={colors.primary} />

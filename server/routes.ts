@@ -49,15 +49,6 @@ import {
   // Location tracking tables
   locationTracking,
   tradieStatus,
-  // ServiceM8 parity feature schemas
-  insertJobSignatureSchema,
-  insertQuoteRevisionSchema,
-  insertAssetSchema,
-  insertJobAssetSchema,
-  insertStaffAvailabilitySchema,
-  insertStaffTimeOffSchema,
-  insertJobFormTemplateSchema,
-  insertJobFormResponseSchema,
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { 
@@ -940,11 +931,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await AuthService.createPasswordResetToken(email);
       
       if (result.success && result.token) {
-        // Send password reset email with both token (for web link) and code (for mobile)
+        // Send password reset email
         const user = await storage.getUserByEmail(email);
         if (user) {
           try {
-            await sendPasswordResetEmail(user, result.token, result.code);
+            await sendPasswordResetEmail(user, result.token);
           } catch (emailError) {
             console.error('Failed to send password reset email:', emailError);
             // Don't reveal email sending failure for security
@@ -960,27 +951,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Forgot password error:", error);
       res.status(500).json({ error: "Failed to process password reset request" });
-    }
-  });
-
-  // Password Reset - Verify 6-digit code (for mobile)
-  app.post("/api/auth/verify-reset-code", async (req: any, res) => {
-    try {
-      const { email, code } = req.body;
-      if (!email || !code) {
-        return res.status(400).json({ error: "Email and code are required" });
-      }
-
-      const result = await AuthService.verifyResetCode(email, code);
-      
-      if (result.success) {
-        res.json({ valid: true, token: result.token });
-      } else {
-        res.status(400).json({ valid: false, error: result.error });
-      }
-    } catch (error) {
-      console.error("Verify reset code error:", error);
-      res.status(500).json({ error: "Failed to verify reset code" });
     }
   });
 
@@ -1685,9 +1655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Business Settings Routes
   app.get("/api/business-settings", requireAuth, async (req: any, res) => {
     try {
-      // Use effectiveUserId for staff members to get their business owner's settings
-      const userContext = await getUserContext(req.userId);
-      const settings = await storage.getBusinessSettings(userContext.effectiveUserId);
+      const settings = await storage.getBusinessSettings(req.userId);
       if (!settings) {
         return res.status(404).json({ error: "Business settings not found" });
       }
@@ -1793,146 +1761,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error updating integration settings:", error);
       res.status(500).json({ error: "Failed to update integration settings" });
-    }
-  });
-
-  // Calendar Sync Routes
-  app.get("/api/calendar/status", requireAuth, async (req: any, res) => {
-    try {
-      const { getGoogleCalendarStatus } = await import("./calendarService");
-      const status = await getGoogleCalendarStatus(req.userId);
-      res.json(status);
-    } catch (error) {
-      console.error("Error getting calendar status:", error);
-      res.json({ provider: 'google', connected: false, syncDirection: 'both' });
-    }
-  });
-
-  app.get("/api/calendar/google/auth", requireAuth, async (req: any, res) => {
-    try {
-      const { getGoogleCalendarAuthUrl } = await import("./calendarService");
-      const authUrl = await getGoogleCalendarAuthUrl(req.userId);
-      res.json({ authUrl });
-    } catch (error: any) {
-      console.error("Error generating auth URL:", error);
-      res.status(500).json({ error: error.message || "Failed to generate auth URL" });
-    }
-  });
-
-  app.get("/api/calendar/google/callback", async (req: any, res) => {
-    try {
-      const { code, state } = req.query;
-      if (!code || !state) {
-        return res.redirect('/settings/calendar?error=missing_params');
-      }
-
-      const { verifyOAuthState, handleGoogleCalendarCallback } = await import("./calendarService");
-      
-      const userId = verifyOAuthState(state as string);
-      if (!userId) {
-        console.error("[Calendar] Invalid or expired OAuth state token");
-        return res.redirect('/settings/calendar?error=invalid_state');
-      }
-
-      const result = await handleGoogleCalendarCallback(code as string, userId);
-      
-      if (result.success) {
-        res.redirect('/settings/calendar?connected=true');
-      } else {
-        res.redirect(`/settings/calendar?error=${encodeURIComponent(result.error || 'unknown')}`);
-      }
-    } catch (error: any) {
-      console.error("Calendar callback error:", error);
-      res.redirect(`/settings/calendar?error=${encodeURIComponent(error.message || 'callback_error')}`);
-    }
-  });
-
-  app.get("/api/calendar/google/calendars", requireAuth, async (req: any, res) => {
-    try {
-      const { getGoogleCalendarList } = await import("./calendarService");
-      const calendars = await getGoogleCalendarList(req.userId);
-      res.json(calendars);
-    } catch (error) {
-      console.error("Error listing calendars:", error);
-      res.json([]);
-    }
-  });
-
-  app.post("/api/calendar/google/sync", requireAuth, async (req: any, res) => {
-    try {
-      const { syncAllJobsToGoogleCalendar } = await import("./calendarService");
-      const result = await syncAllJobsToGoogleCalendar(req.userId);
-      res.json(result);
-    } catch (error: any) {
-      console.error("Error syncing to calendar:", error);
-      res.status(500).json({ 
-        success: false, 
-        created: 0, 
-        updated: 0, 
-        deleted: 0, 
-        errors: [error.message] 
-      });
-    }
-  });
-
-  app.post("/api/calendar/google/sync-job/:jobId", requireAuth, async (req: any, res) => {
-    try {
-      const { jobId } = req.params;
-      const job = await storage.getJob(jobId, req.userId);
-      if (!job) {
-        return res.status(404).json({ error: "Job not found" });
-      }
-
-      let client = undefined;
-      if (job.clientId) {
-        client = await storage.getClient(job.clientId, req.userId) || undefined;
-      }
-
-      const { syncJobToGoogleCalendar } = await import("./calendarService");
-      const result = await syncJobToGoogleCalendar(req.userId, job, client);
-      res.json(result);
-    } catch (error: any) {
-      console.error("Error syncing job to calendar:", error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.get("/api/calendar/google/events", requireAuth, async (req: any, res) => {
-    try {
-      const { timeMin, timeMax } = req.query;
-      const { importEventsFromGoogleCalendar } = await import("./calendarService");
-      const events = await importEventsFromGoogleCalendar(
-        req.userId,
-        timeMin ? new Date(timeMin as string) : undefined,
-        timeMax ? new Date(timeMax as string) : undefined
-      );
-      res.json(events);
-    } catch (error) {
-      console.error("Error importing events:", error);
-      res.json([]);
-    }
-  });
-
-  app.post("/api/calendar/google/disconnect", requireAuth, async (req: any, res) => {
-    try {
-      const { disconnectGoogleCalendar } = await import("./calendarService");
-      await disconnectGoogleCalendar(req.userId);
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("Error disconnecting calendar:", error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.patch("/api/calendar/settings", requireAuth, async (req: any, res) => {
-    try {
-      const { calendarId, syncDirection } = req.body;
-      const { updateCalendarSyncSettings } = await import("./calendarService");
-      await updateCalendarSyncSettings(req.userId, { calendarId, syncDirection });
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("Error updating calendar settings:", error);
-      res.status(500).json({ success: false, error: error.message });
     }
   });
 
@@ -3127,69 +2955,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get linked documents (quote/invoice) for a specific job - always returns linked documents
-  app.get("/api/jobs/:id/linked-documents", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
-    try {
-      const effectiveUserId = req.effectiveUserId || req.userId;
-      const jobId = req.params.id;
-      
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: "Job not found" });
-      }
-      
-      // Get all quotes and invoices for this user
-      const [quotes, invoices] = await Promise.all([
-        storage.getQuotes(effectiveUserId),
-        storage.getInvoices(effectiveUserId)
-      ]);
-      
-      // Find quote and invoice linked to this specific job
-      const linkedQuote = quotes.find((q: any) => q.jobId === jobId);
-      const linkedInvoice = invoices.find((i: any) => i.jobId === jobId);
-      
-      res.json({
-        jobId,
-        linkedQuote: linkedQuote ? {
-          id: linkedQuote.id,
-          quoteNumber: linkedQuote.number,
-          title: linkedQuote.title,
-          description: linkedQuote.description,
-          lineItems: linkedQuote.lineItems,
-          subtotal: linkedQuote.subtotal,
-          gstAmount: linkedQuote.gstAmount,
-          total: linkedQuote.total,
-          status: linkedQuote.status,
-          notes: linkedQuote.notes,
-          terms: linkedQuote.terms,
-          depositPercent: linkedQuote.depositPercent,
-          createdAt: linkedQuote.createdAt,
-          sentAt: linkedQuote.sentAt,
-        } : null,
-        linkedInvoice: linkedInvoice ? {
-          id: linkedInvoice.id,
-          invoiceNumber: linkedInvoice.number,
-          title: linkedInvoice.title,
-          description: linkedInvoice.description,
-          lineItems: linkedInvoice.lineItems,
-          subtotal: linkedInvoice.subtotal,
-          gstAmount: linkedInvoice.gstAmount,
-          total: linkedInvoice.total,
-          status: linkedInvoice.status,
-          notes: linkedInvoice.notes,
-          dueDate: linkedInvoice.dueDate,
-          paidAt: linkedInvoice.paidAt,
-          amountPaid: linkedInvoice.amountPaid,
-          createdAt: linkedInvoice.createdAt,
-          sentAt: linkedInvoice.sentAt,
-        } : null,
-      });
-    } catch (error) {
-      console.error("Error fetching linked documents:", error);
-      res.status(500).json({ error: "Failed to fetch linked documents" });
-    }
-  });
-
   app.post("/api/jobs", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       // Use effectiveUserId (business owner's ID) for multi-tenant data scoping
@@ -3269,24 +3034,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (data.status === 'done') {
           await notifyJobCompleted(storage, effectiveUserId, job, { firstName: 'You', username: 'You' });
         }
-
-        // Auto-create job diary entry for status change
-        const statusLabels: Record<string, string> = {
-          pending: 'Pending',
-          scheduled: 'Scheduled',
-          in_progress: 'In Progress',
-          done: 'Completed',
-          invoiced: 'Invoiced'
-        };
-        await storage.createJobActivity({
-          jobId: job.id,
-          userId: req.userId,
-          activityType: 'status_change',
-          title: `Job status changed to ${statusLabels[data.status] || data.status}`,
-          description: `Status changed from ${statusLabels[existingJob.status] || existingJob.status} to ${statusLabels[data.status] || data.status}`,
-          metadata: { oldStatus: existingJob.status, newStatus: data.status },
-          isSystemGenerated: true,
-        });
       }
 
       res.json(job);
@@ -3366,24 +3113,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Notify business owner that staff completed the job
           await notifyJobCompleted(storage, effectiveUserId, job, { firstName: userName, username: userName });
         }
-
-        // Auto-create job diary entry for status change
-        const statusLabels: Record<string, string> = {
-          pending: 'Pending',
-          scheduled: 'Scheduled',
-          in_progress: 'In Progress',
-          done: 'Completed',
-          invoiced: 'Invoiced'
-        };
-        await storage.createJobActivity({
-          jobId: job.id,
-          userId: req.userId,
-          activityType: 'status_change',
-          title: `Job status changed to ${statusLabels[status] || status}`,
-          description: `${userName} changed status from ${statusLabels[existingJob.status] || existingJob.status} to ${statusLabels[status] || status}`,
-          metadata: { oldStatus: existingJob.status, newStatus: status, changedBy: userName },
-          isSystemGenerated: true,
-        });
       }
       
       res.json(job);
@@ -3508,110 +3237,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting job:", error);
       res.status(500).json({ error: "Failed to delete job" });
-    }
-  });
-
-  // ==================== Recurring Jobs Routes ====================
-  
-  // Get all recurring jobs for the user
-  app.get("/api/recurring-jobs", requireAuth, async (req: any, res) => {
-    try {
-      const effectiveUserId = req.effectiveUserId || req.userId;
-      const recurringJobs = await storage.getRecurringJobs(effectiveUserId);
-      res.json(recurringJobs);
-    } catch (error: any) {
-      console.error("Error fetching recurring jobs:", error);
-      res.status(500).json({ error: error.message || "Failed to fetch recurring jobs" });
-    }
-  });
-
-  // Get recurring jobs for a specific client
-  app.get("/api/clients/:clientId/recurring-jobs", requireAuth, async (req: any, res) => {
-    try {
-      const effectiveUserId = req.effectiveUserId || req.userId;
-      const { clientId } = req.params;
-      const recurringJobs = await storage.getRecurringJobsForClient(clientId, effectiveUserId);
-      res.json(recurringJobs);
-    } catch (error: any) {
-      console.error("Error fetching client recurring jobs:", error);
-      res.status(500).json({ error: error.message || "Failed to fetch recurring jobs" });
-    }
-  });
-
-  // Get child jobs generated from a recurring job
-  app.get("/api/recurring-jobs/:id/jobs", requireAuth, async (req: any, res) => {
-    try {
-      const effectiveUserId = req.effectiveUserId || req.userId;
-      const { id } = req.params;
-      const childJobs = await storage.getChildJobs(id, effectiveUserId);
-      res.json(childJobs);
-    } catch (error: any) {
-      console.error("Error fetching child jobs:", error);
-      res.status(500).json({ error: error.message || "Failed to fetch child jobs" });
-    }
-  });
-
-  // Pause a recurring job
-  app.post("/api/recurring-jobs/:id/pause", requireAuth, async (req: any, res) => {
-    try {
-      const effectiveUserId = req.effectiveUserId || req.userId;
-      const { id } = req.params;
-      const updated = await storage.pauseRecurringJob(id, effectiveUserId);
-      if (!updated) {
-        return res.status(404).json({ error: "Recurring job not found" });
-      }
-      res.json(updated);
-    } catch (error: any) {
-      console.error("Error pausing recurring job:", error);
-      res.status(500).json({ error: error.message || "Failed to pause recurring job" });
-    }
-  });
-
-  // Resume a recurring job
-  app.post("/api/recurring-jobs/:id/resume", requireAuth, async (req: any, res) => {
-    try {
-      const effectiveUserId = req.effectiveUserId || req.userId;
-      const { id } = req.params;
-      const updated = await storage.resumeRecurringJob(id, effectiveUserId);
-      if (!updated) {
-        return res.status(404).json({ error: "Recurring job not found" });
-      }
-      res.json(updated);
-    } catch (error: any) {
-      console.error("Error resuming recurring job:", error);
-      res.status(500).json({ error: error.message || "Failed to resume recurring job" });
-    }
-  });
-
-  // End a recurring job series
-  app.post("/api/recurring-jobs/:id/end", requireAuth, async (req: any, res) => {
-    try {
-      const effectiveUserId = req.effectiveUserId || req.userId;
-      const { id } = req.params;
-      const updated = await storage.endRecurringJob(id, effectiveUserId);
-      if (!updated) {
-        return res.status(404).json({ error: "Recurring job not found" });
-      }
-      res.json(updated);
-    } catch (error: any) {
-      console.error("Error ending recurring job:", error);
-      res.status(500).json({ error: error.message || "Failed to end recurring job" });
-    }
-  });
-
-  // Skip the next occurrence
-  app.post("/api/recurring-jobs/:id/skip", requireAuth, async (req: any, res) => {
-    try {
-      const effectiveUserId = req.effectiveUserId || req.userId;
-      const { id } = req.params;
-      const updated = await storage.skipNextOccurrence(id, effectiveUserId);
-      if (!updated) {
-        return res.status(404).json({ error: "Recurring job not found or cannot skip" });
-      }
-      res.json(updated);
-    } catch (error: any) {
-      console.error("Error skipping next occurrence:", error);
-      res.status(500).json({ error: error.message || "Failed to skip next occurrence" });
     }
   });
 
@@ -5240,50 +4865,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to create catalog item" });
     }
   });
-  
-  app.put("/api/catalog/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      // Verify the item belongs to this user before updating
-      const existingItem = await storage.getLineItemCatalogItem(id);
-      if (!existingItem || (existingItem.userId !== req.userId && existingItem.userId !== 'shared')) {
-        return res.status(404).json({ error: "Catalog item not found" });
-      }
-      // Only allow updating user's own items, not shared ones
-      if (existingItem.userId === 'shared') {
-        return res.status(403).json({ error: "Cannot modify shared catalog items" });
-      }
-      const data = insertLineItemCatalogSchema.partial().parse(req.body);
-      const item = await storage.updateLineItemCatalogItem(id, data);
-      res.json(item);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid input", details: error.errors });
-      }
-      console.error("Error updating catalog item:", error);
-      res.status(500).json({ error: "Failed to update catalog item" });
-    }
-  });
-  
-  app.delete("/api/catalog/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      // Verify the item belongs to this user before deleting
-      const existingItem = await storage.getLineItemCatalogItem(id);
-      if (!existingItem || (existingItem.userId !== req.userId && existingItem.userId !== 'shared')) {
-        return res.status(404).json({ error: "Catalog item not found" });
-      }
-      // Only allow deleting user's own items, not shared ones
-      if (existingItem.userId === 'shared') {
-        return res.status(403).json({ error: "Cannot delete shared catalog items" });
-      }
-      await storage.deleteLineItemCatalogItem(id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting catalog item:", error);
-      res.status(500).json({ error: "Failed to delete catalog item" });
-    }
-  });
 
   // Rate Cards Routes
   app.get("/api/rate-cards", requireAuth, async (req: any, res) => {
@@ -5461,19 +5042,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get active timer - MUST be defined BEFORE /:id route to avoid matching "active" as an ID
-  app.get("/api/time-entries/active", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const activeEntry = await storage.getActiveTimeEntry(userId);
-      // Return null explicitly when no active entry exists (not 404 or undefined)
-      res.json(activeEntry || null);
-    } catch (error) {
-      console.error('Error fetching active timer:', error);
-      res.status(500).json({ error: 'Failed to fetch active timer' });
-    }
-  });
-
   app.get("/api/time-entries/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
@@ -5613,7 +5181,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       const { id } = req.params;
-      const { endLatitude, endLongitude, endAddress } = req.body || {};
       
       // Verify ownership and current active status (with team/supervisor context)
       const existingEntry = await storage.getTimeEntry(id, userId);
@@ -5640,21 +5207,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Access denied - not your time entry or team member' });
       }
       
-      // Build update data with server-side timestamp and GPS location
-      const updateData: any = {
-        endTime: new Date(),
-      };
-      
-      // Add GPS location data if provided (mobile clock-out verification)
-      if (endLatitude !== undefined && endLongitude !== undefined) {
-        updateData.endLatitude = String(endLatitude);
-        updateData.endLongitude = String(endLongitude);
-        if (endAddress) {
-          updateData.endAddress = endAddress;
-        }
-      }
-      
-      const stoppedEntry = await storage.updateTimeEntry(id, userId, updateData);
+      // Server-side timestamp for integrity
+      const stoppedEntry = await storage.stopTimeEntry(id, userId);
       if (!stoppedEntry) {
         return res.status(500).json({ error: 'Failed to stop time entry' });
       }
@@ -5675,133 +5229,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching active time entry:', error);
       res.status(500).json({ error: 'Failed to fetch active time entry' });
-    }
-  });
-
-  // Trip Tracking Routes - ServiceM8-style travel time tracking
-  app.get("/api/trips", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const { jobId } = req.query;
-      const trips = await storage.getTrips(userId, jobId as string);
-      res.json(trips);
-    } catch (error) {
-      console.error('Error fetching trips:', error);
-      res.status(500).json({ error: 'Failed to fetch trips' });
-    }
-  });
-
-  app.get("/api/trips/active", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const activeTrip = await storage.getActiveTrip(userId);
-      res.json(activeTrip || null);
-    } catch (error) {
-      console.error('Error fetching active trip:', error);
-      res.status(500).json({ error: 'Failed to fetch active trip' });
-    }
-  });
-
-  app.get("/api/trips/:id", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const { id } = req.params;
-      const trip = await storage.getTrip(id, userId);
-      if (!trip) {
-        return res.status(404).json({ error: 'Trip not found' });
-      }
-      res.json(trip);
-    } catch (error) {
-      console.error('Error fetching trip:', error);
-      res.status(500).json({ error: 'Failed to fetch trip' });
-    }
-  });
-
-  app.post("/api/trips", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const tripData = req.body;
-      
-      // Check if there's already an active trip
-      const activeTrip = await storage.getActiveTrip(userId);
-      if (activeTrip) {
-        return res.status(400).json({ 
-          error: 'You already have an active trip. Stop it before starting a new one.',
-          activeTrip
-        });
-      }
-      
-      const trip = await storage.createTrip({
-        ...tripData,
-        userId,
-        startTime: new Date(),
-        status: 'in_progress',
-      });
-      res.status(201).json(trip);
-    } catch (error) {
-      console.error('Error creating trip:', error);
-      res.status(500).json({ error: 'Failed to create trip' });
-    }
-  });
-
-  app.put("/api/trips/:id", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const { id } = req.params;
-      const tripData = req.body;
-      
-      const trip = await storage.updateTrip(id, userId, tripData);
-      if (!trip) {
-        return res.status(404).json({ error: 'Trip not found' });
-      }
-      res.json(trip);
-    } catch (error) {
-      console.error('Error updating trip:', error);
-      res.status(500).json({ error: 'Failed to update trip' });
-    }
-  });
-
-  app.post("/api/trips/:id/stop", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const { id } = req.params;
-      const { endLatitude, endLongitude, endAddress, distanceKm, notes } = req.body;
-      
-      // First update with location data if provided
-      if (endLatitude || endLongitude || endAddress || distanceKm) {
-        await storage.updateTrip(id, userId, {
-          endLatitude,
-          endLongitude,
-          endAddress,
-          distanceKm,
-          notes,
-        });
-      }
-      
-      const stoppedTrip = await storage.stopTrip(id, userId);
-      if (!stoppedTrip) {
-        return res.status(404).json({ error: 'Trip not found or already stopped' });
-      }
-      res.json(stoppedTrip);
-    } catch (error) {
-      console.error('Error stopping trip:', error);
-      res.status(500).json({ error: 'Failed to stop trip' });
-    }
-  });
-
-  app.delete("/api/trips/:id", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const { id } = req.params;
-      
-      const deleted = await storage.deleteTrip(id, userId);
-      if (!deleted) {
-        return res.status(404).json({ error: 'Trip not found' });
-      }
-      res.status(204).send();
-    } catch (error) {
-      console.error('Error deleting trip:', error);
-      res.status(500).json({ error: 'Failed to delete trip' });
     }
   });
 
@@ -6138,10 +5565,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const profit = totalRevenue - totalCosts;
       const profitMargin = totalRevenue > 0 ? ((profit / totalRevenue) * 100) : 0;
 
-      const estimatedLaborCost = parseFloat(job.estimatedLaborCost?.toString() || '0');
-      const estimatedMaterialCost = parseFloat(job.estimatedMaterialCost?.toString() || '0');
-      const estimatedTotalCost = parseFloat(job.estimatedTotalCost?.toString() || '0');
-
       res.json({
         jobId,
         jobTitle: job.title,
@@ -6157,11 +5580,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profit: {
           amount: profit,
           margin: profitMargin
-        },
-        estimates: {
-          laborCost: estimatedLaborCost,
-          materialCost: estimatedMaterialCost,
-          totalCost: estimatedTotalCost
         },
         expenses: expenses.map(expense => ({
           id: expense.id,
@@ -6183,77 +5601,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get job profitability error:", error);
       res.status(500).json({ error: "Failed to fetch job profitability" });
-    }
-  });
-
-  // Job Profitability Report - Summary across all jobs
-  app.get("/api/reports/job-profitability", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const userContext = await getUserContext(userId);
-      const effectiveUserId = userContext.effectiveUserId;
-      
-      const jobs = await storage.getJobs(effectiveUserId);
-      const invoices = await storage.getInvoices(effectiveUserId);
-      
-      const profitabilityData = await Promise.all(
-        jobs.map(async (job) => {
-          const jobInvoices = invoices.filter(inv => inv.jobId === job.id);
-          const totalRevenue = jobInvoices.reduce((sum, inv) => 
-            sum + (inv.status === 'paid' ? parseFloat(inv.total || '0') : 0), 0);
-          const pendingRevenue = jobInvoices.filter(inv => inv.status === 'sent')
-            .reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
-          
-          const expenses = await storage.getExpenses(effectiveUserId, { jobId: job.id });
-          const totalExpenses = expenses.reduce((sum, exp) => 
-            sum + parseFloat(exp.amount || '0'), 0);
-          
-          const timeEntries = await storage.getTimeEntries(effectiveUserId, job.id);
-          const totalLaborCost = timeEntries
-            .filter(entry => entry.endTime)
-            .reduce((sum, entry) => {
-              const start = new Date(entry.startTime);
-              const end = new Date(entry.endTime!);
-              const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-              const rate = parseFloat(entry.hourlyRate?.toString() || '0');
-              return sum + (hours * rate);
-            }, 0);
-          
-          const totalCosts = totalExpenses + totalLaborCost;
-          const profit = totalRevenue - totalCosts;
-          const profitMargin = totalRevenue > 0 ? ((profit / totalRevenue) * 100) : 0;
-          
-          return {
-            jobId: job.id,
-            jobTitle: job.title,
-            clientName: job.clientName,
-            status: job.status,
-            revenue: {
-              invoiced: totalRevenue,
-              pending: pendingRevenue
-            },
-            costs: {
-              materials: totalExpenses,
-              labor: totalLaborCost,
-              total: totalCosts
-            },
-            profit: {
-              amount: profit,
-              margin: profitMargin
-            },
-            estimates: {
-              laborCost: parseFloat(job.estimatedLaborCost?.toString() || '0'),
-              materialCost: parseFloat(job.estimatedMaterialCost?.toString() || '0'),
-              totalCost: parseFloat(job.estimatedTotalCost?.toString() || '0')
-            }
-          };
-        })
-      );
-      
-      res.json(profitabilityData);
-    } catch (error) {
-      console.error("Get job profitability report error:", error);
-      res.status(500).json({ error: "Failed to fetch job profitability report" });
     }
   });
 
@@ -6841,6 +6188,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting time entry:', error);
       res.status(500).json({ error: 'Failed to delete time entry' });
+    }
+  });
+  
+  // Get active timer (running time entry without end time)
+  app.get("/api/time-entries/active", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const activeEntry = await storage.getActiveTimeEntry(userId);
+      res.json(activeEntry);
+    } catch (error) {
+      console.error('Error fetching active timer:', error);
+      res.status(500).json({ error: 'Failed to fetch active timer' });
     }
   });
   
@@ -7663,11 +7022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const settings = await storage.getBusinessSettings(userId);
       
       if (!settings?.stripeConnectAccountId) {
-        return res.status(400).json({ 
-          error: 'Stripe Connect account not set up',
-          code: 'STRIPE_NOT_CONNECTED',
-          message: 'Please connect your Stripe account in Settings > Payments before using Tap to Pay'
-        });
+        return res.status(400).json({ error: 'Stripe Connect account not set up' });
       }
 
       // Create connection token using the connected account
@@ -7679,19 +7034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ secret: connectionToken.secret });
     } catch (error: any) {
       console.error('Error creating Terminal connection token:', error);
-      // Provide more helpful error messages
-      if (error.code === 'resource_missing') {
-        return res.status(400).json({ 
-          error: 'Stripe Terminal not enabled for this account',
-          code: 'TERMINAL_NOT_ENABLED',
-          message: 'Tap to Pay requires Stripe Terminal to be enabled. Please contact support.'
-        });
-      }
-      res.status(500).json({ 
-        error: 'Failed to create connection token',
-        code: 'TERMINAL_ERROR',
-        message: 'Unable to initialize Tap to Pay. Please try again later.'
-      });
+      res.status(500).json({ error: 'Failed to create connection token' });
     }
   });
 
@@ -7702,20 +7045,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { amount, description, currency = 'aud', invoiceId, jobId } = req.body;
       
       if (!amount || amount < 500) {
-        return res.status(400).json({ 
-          error: 'Minimum amount is $5.00 (500 cents)',
-          code: 'AMOUNT_TOO_LOW'
-        });
+        return res.status(400).json({ error: 'Minimum amount is $5.00 (500 cents)' });
       }
 
       const settings = await storage.getBusinessSettings(userId);
       
       if (!settings?.stripeConnectAccountId) {
-        return res.status(400).json({ 
-          error: 'Stripe Connect account not set up',
-          code: 'STRIPE_NOT_CONNECTED',
-          message: 'Please connect your Stripe account in Settings > Payments before accepting payments'
-        });
+        return res.status(400).json({ error: 'Stripe Connect account not set up' });
       }
 
       // Calculate platform fee (2.5%)
@@ -7746,26 +7082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error creating Terminal payment intent:', error);
-      // Provide more helpful error messages
-      if (error.code === 'resource_missing') {
-        return res.status(400).json({ 
-          error: 'Stripe Terminal not enabled',
-          code: 'TERMINAL_NOT_ENABLED',
-          message: 'Tap to Pay requires Stripe Terminal to be enabled. Please contact support.'
-        });
-      }
-      if (error.type === 'StripeInvalidRequestError') {
-        return res.status(400).json({ 
-          error: 'Invalid payment request',
-          code: 'INVALID_REQUEST',
-          message: error.message || 'Unable to create payment. Please check your settings.'
-        });
-      }
-      res.status(500).json({ 
-        error: 'Failed to create payment intent',
-        code: 'PAYMENT_ERROR',
-        message: 'Unable to create payment. Please try again later.'
-      });
+      res.status(500).json({ error: 'Failed to create payment intent' });
     }
   });
 
@@ -7786,64 +7103,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error registering push token:', error);
       res.status(500).json({ error: 'Failed to register push token' });
-    }
-  });
-
-  // Register device for push notifications (mobile app compatible)
-  app.post("/api/notifications/register-device", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const { pushToken, platform, deviceId } = req.body;
-      
-      if (!pushToken || !platform) {
-        return res.status(400).json({ error: 'Push token and platform required' });
-      }
-
-      console.log(`[Push] Device registered for user ${userId}: ${pushToken.substring(0, 30)}... (${platform})`);
-      
-      res.json({ 
-        success: true,
-        message: 'Device registered for push notifications',
-      });
-    } catch (error: any) {
-      console.error('Error registering device:', error);
-      res.status(500).json({ error: 'Failed to register device' });
-    }
-  });
-
-  // Send test push notification (for verification)
-  app.post("/api/notifications/test-push", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const { token } = req.body;
-      
-      if (!token) {
-        return res.status(400).json({ error: 'Push token required' });
-      }
-
-      // In production, this would use Expo's push notification API
-      // For now, we log and return success
-      console.log(`[Push] Test notification requested for user ${userId}`);
-      
-      // Simulate sending to Expo push API
-      // const response = await fetch('https://exp.host/--/api/v2/push/send', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     to: token,
-      //     title: 'TradieTrack Test',
-      //     body: 'Push notifications are working!',
-      //     data: { type: 'test' },
-      //   }),
-      // });
-      
-      res.json({ 
-        success: true,
-        message: 'Test notification sent',
-      });
-    } catch (error: any) {
-      console.error('Error sending test push:', error);
-      res.status(500).json({ error: 'Failed to send test notification' });
     }
   });
 
@@ -8015,122 +7274,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error: any) {
       console.error('Error deleting photo:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ===== VOICE NOTES ROUTES =====
-  
-  // Get voice notes for a job
-  app.get("/api/jobs/:jobId/voice-notes", requireAuth, async (req: any, res) => {
-    try {
-      const effectiveUserId = req.effectiveUserId || req.userId;
-      const { jobId } = req.params;
-      
-      const notes = await storage.getVoiceNotes(jobId, effectiveUserId);
-      
-      // Generate signed URLs for playback
-      const { getSignedPhotoUrl } = await import('./photoService');
-      const notesWithUrls = await Promise.all(
-        notes.map(async (note) => {
-          const { url } = await getSignedPhotoUrl(note.objectStorageKey, 60);
-          return {
-            ...note,
-            audioUrl: url || '',
-          };
-        })
-      );
-      
-      res.json(notesWithUrls);
-    } catch (error: any) {
-      console.error('Error getting voice notes:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-  
-  // Upload voice note for a job (base64 encoded like photos)
-  app.post("/api/jobs/:jobId/voice-notes", requireAuth, async (req: any, res) => {
-    try {
-      const effectiveUserId = req.effectiveUserId || req.userId;
-      const { jobId } = req.params;
-      const { audioBase64, duration, mimeType } = req.body;
-      
-      if (!audioBase64) {
-        return res.status(400).json({ error: 'audioBase64 is required' });
-      }
-      
-      // Verify job exists
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-      
-      // Decode base64 audio
-      const buffer = Buffer.from(audioBase64, 'base64');
-      
-      // Use object storage to save audio
-      const crypto = await import('crypto');
-      const uniqueId = crypto.randomBytes(8).toString('hex');
-      const audioMimeType = mimeType || 'audio/webm';
-      const extension = audioMimeType.includes('webm') ? 'webm' : 'ogg';
-      const objectKey = `.private/voice-notes/${jobId}/${uniqueId}.${extension}`;
-      
-      const { ObjectStorageService } = await import('./objectStorage');
-      const objectStorageService = new ObjectStorageService();
-      
-      try {
-        await objectStorageService.uploadFile(objectKey, buffer, audioMimeType);
-      } catch (uploadError) {
-        console.error('Voice note upload error:', uploadError);
-        return res.status(500).json({ error: 'Failed to upload voice note. Object storage may not be configured.' });
-      }
-      
-      // Save to database
-      const voiceNote = await storage.createVoiceNote({
-        userId: effectiveUserId,
-        jobId,
-        objectStorageKey: objectKey,
-        fileName: `voice-note-${uniqueId}.${extension}`,
-        fileSize: buffer.length,
-        mimeType: audioMimeType,
-        duration: parseInt(duration || '0') || 0,
-        recordedBy: req.userId,
-      });
-      
-      res.status(201).json(voiceNote);
-    } catch (error: any) {
-      console.error('Error uploading voice note:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-  
-  // Delete voice note
-  app.delete("/api/jobs/:jobId/voice-notes/:noteId", requireAuth, async (req: any, res) => {
-    try {
-      const effectiveUserId = req.effectiveUserId || req.userId;
-      const { noteId } = req.params;
-      
-      const note = await storage.getVoiceNote(noteId, effectiveUserId);
-      if (!note) {
-        return res.status(404).json({ error: 'Voice note not found' });
-      }
-      
-      // Delete from object storage
-      const { ObjectStorageService } = await import('./objectStorage');
-      const objectStorageService = new ObjectStorageService();
-      
-      try {
-        await objectStorageService.deleteFile(note.objectStorageKey);
-      } catch (e) {
-        console.warn('Voice note file may not exist in storage:', e);
-      }
-      
-      // Delete from database
-      await storage.deleteVoiceNote(noteId, effectiveUserId);
-      
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error('Error deleting voice note:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -8336,267 +7479,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error: any) {
       console.error('Error deleting job chat message:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ===== JOB ACTIVITIES (JOB DIARY) ROUTES =====
-
-  // Get job activities/diary entries for a specific job
-  app.get("/api/jobs/:jobId/activities", requireAuth, async (req: any, res) => {
-    try {
-      const userContext = await getUserContext(req.userId);
-      const effectiveUserId = userContext.effectiveUserId;
-      const { jobId } = req.params;
-
-      // Verify job access
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-
-      const activities = await storage.getJobActivities(jobId);
-      
-      // Enrich activities with user info
-      const enrichedActivities = await Promise.all(activities.map(async (activity) => {
-        let userName = 'System';
-        if (activity.userId) {
-          const user = await storage.getUser(activity.userId);
-          if (user) {
-            userName = user.firstName && user.lastName 
-              ? `${user.firstName} ${user.lastName}`
-              : user.email || 'Unknown User';
-          }
-        }
-        return { ...activity, userName };
-      }));
-
-      res.json(enrichedActivities);
-    } catch (error: any) {
-      console.error('Error fetching job activities:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Add a new activity/diary entry to a job
-  app.post("/api/jobs/:jobId/activities", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const userContext = await getUserContext(userId);
-      const effectiveUserId = userContext.effectiveUserId;
-      const { jobId } = req.params;
-
-      // Verify job access
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-
-      const { activityType, title, description, metadata, relatedEntityType, relatedEntityId } = req.body;
-
-      if (!activityType || !title) {
-        return res.status(400).json({ error: 'Activity type and title are required' });
-      }
-
-      const activity = await storage.createJobActivity({
-        jobId,
-        userId,
-        activityType,
-        title,
-        description: description || null,
-        metadata: metadata || {},
-        relatedEntityType: relatedEntityType || null,
-        relatedEntityId: relatedEntityId || null,
-        isSystemGenerated: false,
-      });
-
-      // Get user info for the response
-      const user = await storage.getUser(userId);
-      const userName = user?.firstName && user?.lastName 
-        ? `${user.firstName} ${user.lastName}`
-        : user?.email || 'Unknown User';
-
-      res.status(201).json({ ...activity, userName });
-    } catch (error: any) {
-      console.error('Error creating job activity:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Delete a job activity entry
-  app.delete("/api/jobs/:jobId/activities/:activityId", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const userContext = await getUserContext(userId);
-      const effectiveUserId = userContext.effectiveUserId;
-      const { jobId, activityId } = req.params;
-
-      // Verify job access
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-
-      await storage.deleteJobActivity(activityId);
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error('Error deleting job activity:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ===== FORM STORE ROUTES =====
-
-  // Get all form store templates (public browsing)
-  app.get("/api/form-store/templates", requireAuth, async (req: any, res) => {
-    try {
-      const { category, tradeType } = req.query;
-      const templates = await storage.getFormStoreTemplates(
-        category as string | undefined, 
-        tradeType as string | undefined
-      );
-      res.json(templates);
-    } catch (error: any) {
-      console.error('Error fetching form store templates:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get a single form store template
-  app.get("/api/form-store/templates/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const template = await storage.getFormStoreTemplate(id);
-      if (!template) {
-        return res.status(404).json({ error: 'Template not found' });
-      }
-      res.json(template);
-    } catch (error: any) {
-      console.error('Error fetching form store template:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get user's installed forms
-  app.get("/api/form-store/installations", requireAuth, async (req: any, res) => {
-    try {
-      const userContext = await getUserContext(req.userId);
-      const effectiveUserId = userContext.effectiveUserId;
-      const installations = await storage.getFormStoreInstallations(effectiveUserId);
-      res.json(installations);
-    } catch (error: any) {
-      console.error('Error fetching form store installations:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Install a form from the store
-  app.post("/api/form-store/templates/:id/install", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const userContext = await getUserContext(userId);
-      const effectiveUserId = userContext.effectiveUserId;
-      const { id } = req.params;
-
-      // Check if already installed
-      const alreadyInstalled = await storage.hasUserInstalledForm(effectiveUserId, id);
-      if (alreadyInstalled) {
-        return res.status(400).json({ error: 'Form already installed' });
-      }
-
-      // Get the store template
-      const storeTemplate = await storage.getFormStoreTemplate(id);
-      if (!storeTemplate) {
-        return res.status(404).json({ error: 'Template not found' });
-      }
-
-      // Create a copy as a user template
-      const userTemplate = await storage.createJobFormTemplate({
-        userId: effectiveUserId,
-        name: storeTemplate.name,
-        description: storeTemplate.description || `Installed from Form Store`,
-        category: storeTemplate.category,
-        fields: storeTemplate.fields,
-        isActive: true,
-        isDefault: false,
-      });
-
-      // Record the installation
-      const installation = await storage.installFormFromStore(
-        effectiveUserId, 
-        id, 
-        userTemplate.id
-      );
-
-      // Increment download count
-      await storage.incrementFormDownloadCount(id);
-
-      res.status(201).json({ 
-        installation, 
-        userTemplate,
-        message: 'Form installed successfully' 
-      });
-    } catch (error: any) {
-      console.error('Error installing form from store:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Rate an installed form
-  app.post("/api/form-store/installations/:installationId/rate", requireAuth, async (req: any, res) => {
-    try {
-      const { installationId } = req.params;
-      const { rating } = req.body;
-
-      if (!rating || rating < 1 || rating > 5) {
-        return res.status(400).json({ error: 'Rating must be between 1 and 5' });
-      }
-
-      const installation = await storage.rateStoreForm(installationId, rating);
-      res.json({ installation, message: 'Rating submitted successfully' });
-    } catch (error: any) {
-      console.error('Error rating form:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get form store categories
-  app.get("/api/form-store/categories", requireAuth, async (req: any, res) => {
-    try {
-      const categories = [
-        { id: 'electrical', name: 'Electrical', icon: 'Zap' },
-        { id: 'plumbing', name: 'Plumbing', icon: 'Droplet' },
-        { id: 'hvac', name: 'HVAC', icon: 'Wind' },
-        { id: 'carpentry', name: 'Carpentry', icon: 'Hammer' },
-        { id: 'roofing', name: 'Roofing', icon: 'Home' },
-        { id: 'landscaping', name: 'Landscaping', icon: 'Trees' },
-        { id: 'painting', name: 'Painting', icon: 'Paintbrush' },
-        { id: 'cleaning', name: 'Cleaning', icon: 'Sparkles' },
-        { id: 'general', name: 'General', icon: 'FileText' },
-      ];
-      res.json(categories);
-    } catch (error: any) {
-      console.error('Error fetching categories:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get form store trade types
-  app.get("/api/form-store/trade-types", requireAuth, async (req: any, res) => {
-    try {
-      const tradeTypes = [
-        { id: 'safety', name: 'Safety', icon: 'ShieldCheck' },
-        { id: 'compliance', name: 'Compliance', icon: 'ClipboardCheck' },
-        { id: 'inspection', name: 'Inspection', icon: 'Search' },
-        { id: 'checklist', name: 'Checklist', icon: 'CheckSquare' },
-        { id: 'quote', name: 'Quote Template', icon: 'FileText' },
-        { id: 'report', name: 'Report', icon: 'FileSpreadsheet' },
-        { id: 'maintenance', name: 'Maintenance', icon: 'Wrench' },
-        { id: 'installation', name: 'Installation', icon: 'Package' },
-      ];
-      res.json(tradeTypes);
-    } catch (error: any) {
-      console.error('Error fetching trade types:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -9299,11 +8181,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       const { recipientId } = req.params;
-      // Accept both 'message' and 'content' for backwards compatibility
-      const messageText = req.body.message || req.body.content;
+      const { content, attachmentUrl, attachmentType } = req.body;
       
-      if (!messageText?.trim()) {
-        return res.status(400).json({ error: 'Message content is required' });
+      if (!content?.trim() && !attachmentUrl) {
+        return res.status(400).json({ error: 'Message content or attachment is required' });
       }
       
       // Verify both users exist and can message each other
@@ -9317,7 +8198,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const message = await storage.createDirectMessage({
         senderId: userId,
         recipientId,
-        message: messageText.trim(),
+        content: content?.trim() || '',
+        attachmentUrl,
+        attachmentType,
       });
       
       // Enrich with sender info
@@ -9665,122 +8548,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success });
     } catch (error: any) {
       console.error('Error stopping recurring invoice:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ===== SMS / QUICK MESSAGES ROUTES =====
-  
-  // Send SMS to a client (for "I'm on my way" type messages)
-  app.post("/api/sms/send", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const { to, message, clientId, jobId } = req.body;
-      
-      if (!to || !message) {
-        return res.status(400).json({ error: 'Phone number and message are required' });
-      }
-      
-      // Check if Twilio is configured
-      if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
-        // Simulate success for development without Twilio
-        console.log(`[SMS Simulated] To: ${to}, Message: ${message}`);
-        return res.json({ 
-          success: true, 
-          simulated: true,
-          message: 'SMS simulated (Twilio not configured)'
-        });
-      }
-      
-      // Import Twilio and send SMS
-      const twilio = await import('twilio');
-      const client = twilio.default(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-      
-      const smsResult = await client.messages.create({
-        body: message,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: to.startsWith('+') ? to : `+${to}`
-      });
-      
-      console.log(`[SMS Sent] SID: ${smsResult.sid}, To: ${to}`);
-      
-      res.json({ 
-        success: true, 
-        sid: smsResult.sid,
-        message: 'SMS sent successfully'
-      });
-    } catch (error: any) {
-      console.error('Error sending SMS:', error);
-      res.status(500).json({ 
-        error: error.message || 'Failed to send SMS',
-        details: process.env.NODE_ENV === 'development' ? error.toString() : undefined
-      });
-    }
-  });
-  
-  // Get quick message templates
-  app.get("/api/sms/templates", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const businessSettings = await storage.getBusinessSettings(userId);
-      const businessName = businessSettings?.businessName || 'Your Tradie';
-      
-      // Default quick message templates
-      const templates = [
-        {
-          id: 'on-my-way',
-          title: "I'm On My Way",
-          message: `G'day! Just letting you know I'm on my way now. Should be there in about {eta} minutes. - ${businessName}`,
-          icon: 'navigation',
-          category: 'arrival'
-        },
-        {
-          id: 'running-late',
-          title: "Running Late",
-          message: `Hi there, I'm running a bit behind schedule. I'll be there in about {eta} minutes. Apologies for any inconvenience. - ${businessName}`,
-          icon: 'clock',
-          category: 'arrival'
-        },
-        {
-          id: 'arrived',
-          title: "I've Arrived",
-          message: `Hi, I've just arrived. I'm outside now. - ${businessName}`,
-          icon: 'map-pin',
-          category: 'arrival'
-        },
-        {
-          id: 'job-complete',
-          title: "Job Complete",
-          message: `Good news! The job is all done. Everything's looking great. I'll send through the invoice shortly. Cheers! - ${businessName}`,
-          icon: 'check-circle',
-          category: 'completion'
-        },
-        {
-          id: 'quote-follow-up',
-          title: "Quote Follow-up",
-          message: `Hi, just following up on the quote I sent through. Let me know if you have any questions or if you'd like to go ahead. - ${businessName}`,
-          icon: 'file-text',
-          category: 'follow-up'
-        },
-        {
-          id: 'reschedule',
-          title: "Need to Reschedule",
-          message: `Hi, unfortunately I need to reschedule our appointment. Please let me know what other times work for you. Sorry for any inconvenience. - ${businessName}`,
-          icon: 'calendar',
-          category: 'scheduling'
-        },
-        {
-          id: 'payment-reminder',
-          title: "Payment Reminder",
-          message: `Hi, just a friendly reminder about the outstanding invoice. Please let me know if you have any questions. - ${businessName}`,
-          icon: 'dollar-sign',
-          category: 'payment'
-        }
-      ];
-      
-      res.json(templates);
-    } catch (error: any) {
-      console.error('Error getting SMS templates:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -10385,631 +9152,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error: any) {
       console.error('Error clearing data:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ============================================
-  // SERVICEM8 PARITY FEATURES
-  // ============================================
-
-  // ----- JOB SIGNATURES -----
-  
-  // Get all signatures for a job
-  app.get("/api/jobs/:jobId/signatures", requireAuth, async (req: any, res) => {
-    try {
-      const { jobId } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-      
-      const signatures = await storage.getJobSignatures(jobId);
-      res.json(signatures);
-    } catch (error: any) {
-      console.error('Error fetching job signatures:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Create a new signature for a job
-  app.post("/api/jobs/:jobId/signatures", requireAuth, async (req: any, res) => {
-    try {
-      const { jobId } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-      
-      const validatedData = insertJobSignatureSchema.parse({
-        ...req.body,
-        jobId,
-        capturedBy: userId,
-      });
-      
-      const signature = await storage.createJobSignature(validatedData);
-      res.status(201).json(signature);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
-      }
-      console.error('Error creating job signature:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Delete a signature
-  app.delete("/api/jobs/:jobId/signatures/:signatureId", requireAuth, async (req: any, res) => {
-    try {
-      const { jobId, signatureId } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-      
-      await storage.deleteJobSignature(signatureId, effectiveUserId);
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error('Error deleting job signature:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ----- QUOTE REVISIONS -----
-  
-  // Get all revisions for a quote
-  app.get("/api/quotes/:quoteId/revisions", requireAuth, async (req: any, res) => {
-    try {
-      const { quoteId } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const quote = await storage.getQuote(quoteId, effectiveUserId);
-      if (!quote) {
-        return res.status(404).json({ error: 'Quote not found' });
-      }
-      
-      const revisions = await storage.getQuoteRevisions(quoteId);
-      res.json(revisions);
-    } catch (error: any) {
-      console.error('Error fetching quote revisions:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Create a revision snapshot for a quote
-  app.post("/api/quotes/:quoteId/revisions", requireAuth, async (req: any, res) => {
-    try {
-      const { quoteId } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const quote = await storage.getQuoteWithLineItems(quoteId, effectiveUserId);
-      if (!quote) {
-        return res.status(404).json({ error: 'Quote not found' });
-      }
-      
-      const existingRevisions = await storage.getQuoteRevisions(quoteId);
-      const revisionNumber = existingRevisions.length + 1;
-      
-      const validatedData = insertQuoteRevisionSchema.parse({
-        quoteId,
-        revisionNumber,
-        snapshotData: {
-          quote: {
-            total: quote.total,
-            subtotal: quote.subtotal,
-            gstAmount: quote.gstAmount,
-            notes: quote.notes,
-            status: quote.status,
-          },
-          lineItems: quote.lineItems,
-        },
-        createdBy: userId,
-        notes: req.body.notes,
-      });
-      
-      const revision = await storage.createQuoteRevision(validatedData);
-      res.status(201).json(revision);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
-      }
-      console.error('Error creating quote revision:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ----- ASSETS -----
-  
-  // Get all assets for user
-  app.get("/api/assets", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const assets = await storage.getAssets(effectiveUserId);
-      res.json(assets);
-    } catch (error: any) {
-      console.error('Error fetching assets:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get single asset
-  app.get("/api/assets/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const asset = await storage.getAsset(id, effectiveUserId);
-      if (!asset) {
-        return res.status(404).json({ error: 'Asset not found' });
-      }
-      
-      res.json(asset);
-    } catch (error: any) {
-      console.error('Error fetching asset:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Create new asset
-  app.post("/api/assets", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const validatedData = insertAssetSchema.parse({
-        ...req.body,
-        userId: effectiveUserId,
-      });
-      
-      const asset = await storage.createAsset(validatedData);
-      res.status(201).json(asset);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
-      }
-      console.error('Error creating asset:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Update asset
-  app.patch("/api/assets/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const asset = await storage.updateAsset(id, effectiveUserId, req.body);
-      res.json(asset);
-    } catch (error: any) {
-      console.error('Error updating asset:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Delete asset
-  app.delete("/api/assets/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      await storage.deleteAsset(id, effectiveUserId);
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error('Error deleting asset:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ----- JOB ASSETS -----
-  
-  // Get assets assigned to job
-  app.get("/api/jobs/:jobId/assets", requireAuth, async (req: any, res) => {
-    try {
-      const { jobId } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-      
-      const jobAssets = await storage.getJobAssets(jobId);
-      res.json(jobAssets);
-    } catch (error: any) {
-      console.error('Error fetching job assets:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Add asset to job
-  app.post("/api/jobs/:jobId/assets", requireAuth, async (req: any, res) => {
-    try {
-      const { jobId } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-      
-      const validatedData = insertJobAssetSchema.parse({
-        ...req.body,
-        jobId,
-      });
-      
-      const jobAsset = await storage.addJobAsset(validatedData);
-      res.status(201).json(jobAsset);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
-      }
-      console.error('Error adding asset to job:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Update job asset
-  app.patch("/api/jobs/:jobId/assets/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { jobId, id } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-      
-      const jobAsset = await storage.updateJobAsset(id, req.body);
-      res.json(jobAsset);
-    } catch (error: any) {
-      console.error('Error updating job asset:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Remove asset from job
-  app.delete("/api/jobs/:jobId/assets/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { jobId, id } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-      
-      await storage.removeJobAsset(id);
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error('Error removing asset from job:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ----- STAFF AVAILABILITY -----
-  
-  // Get availability for all staff (owner view)
-  app.get("/api/staff/availability", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const availability = await storage.getStaffAvailability(userId, effectiveUserId);
-      res.json(availability);
-    } catch (error: any) {
-      console.error('Error fetching staff availability:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get availability for specific staff member
-  app.get("/api/staff/availability/:staffUserId", requireAuth, async (req: any, res) => {
-    try {
-      const { staffUserId } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const availability = await storage.getStaffAvailability(staffUserId, effectiveUserId);
-      res.json(availability);
-    } catch (error: any) {
-      console.error('Error fetching staff availability:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Set availability
-  app.post("/api/staff/availability", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const validatedData = insertStaffAvailabilitySchema.parse({
-        ...req.body,
-        userId: req.body.userId || userId,
-        businessOwnerId: effectiveUserId,
-      });
-      
-      const availability = await storage.setStaffAvailability(validatedData);
-      res.status(201).json(availability);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
-      }
-      console.error('Error setting staff availability:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Update availability
-  app.patch("/api/staff/availability/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      
-      const availability = await storage.updateStaffAvailability(id, req.body);
-      res.json(availability);
-    } catch (error: any) {
-      console.error('Error updating staff availability:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ----- STAFF TIME OFF -----
-  
-  // Get all time off requests
-  app.get("/api/staff/time-off", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const timeOffRequests = await storage.getStaffTimeOff(effectiveUserId);
-      res.json(timeOffRequests);
-    } catch (error: any) {
-      console.error('Error fetching time off requests:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Create time off request
-  app.post("/api/staff/time-off", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const validatedData = insertStaffTimeOffSchema.parse({
-        ...req.body,
-        userId: req.body.userId || userId,
-        businessOwnerId: effectiveUserId,
-      });
-      
-      const timeOff = await storage.createTimeOffRequest(validatedData);
-      res.status(201).json(timeOff);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
-      }
-      console.error('Error creating time off request:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Update time off request (approve/reject)
-  app.patch("/api/staff/time-off/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const userId = req.userId!;
-      
-      const updateData = {
-        ...req.body,
-        ...(req.body.status && { reviewedBy: userId, reviewedAt: new Date() }),
-      };
-      
-      const timeOff = await storage.updateTimeOffRequest(id, updateData);
-      res.json(timeOff);
-    } catch (error: any) {
-      console.error('Error updating time off request:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ----- JOB FORMS -----
-  
-  // Get all form templates
-  app.get("/api/job-forms/templates", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const templates = await storage.getJobFormTemplates(effectiveUserId);
-      res.json(templates);
-    } catch (error: any) {
-      console.error('Error fetching form templates:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get single form template
-  app.get("/api/job-forms/templates/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const template = await storage.getJobFormTemplate(id, effectiveUserId);
-      if (!template) {
-        return res.status(404).json({ error: 'Form template not found' });
-      }
-      
-      res.json(template);
-    } catch (error: any) {
-      console.error('Error fetching form template:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Create form template
-  app.post("/api/job-forms/templates", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const validatedData = insertJobFormTemplateSchema.parse({
-        ...req.body,
-        userId: effectiveUserId,
-      });
-      
-      const template = await storage.createJobFormTemplate(validatedData);
-      res.status(201).json(template);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
-      }
-      console.error('Error creating form template:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Update form template
-  app.patch("/api/job-forms/templates/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const template = await storage.updateJobFormTemplate(id, effectiveUserId, req.body);
-      res.json(template);
-    } catch (error: any) {
-      console.error('Error updating form template:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Delete form template
-  app.delete("/api/job-forms/templates/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      await storage.deleteJobFormTemplate(id, effectiveUserId);
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error('Error deleting form template:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get form responses for job
-  app.get("/api/jobs/:jobId/forms", requireAuth, async (req: any, res) => {
-    try {
-      const { jobId } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-      
-      const responses = await storage.getJobFormResponses(jobId);
-      res.json(responses);
-    } catch (error: any) {
-      console.error('Error fetching job form responses:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Submit form response for job
-  app.post("/api/jobs/:jobId/forms", requireAuth, async (req: any, res) => {
-    try {
-      const { jobId } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-      
-      const validatedData = insertJobFormResponseSchema.parse({
-        ...req.body,
-        jobId,
-        userId: userId,
-      });
-      
-      const response = await storage.createJobFormResponse(validatedData);
-      res.status(201).json(response);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
-      }
-      console.error('Error submitting form response:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Update form response
-  app.patch("/api/jobs/:jobId/forms/:id", requireAuth, async (req: any, res) => {
-    try {
-      const { jobId, id } = req.params;
-      const userId = req.userId!;
-      const context = await getUserContext(userId);
-      const effectiveUserId = context.businessOwnerId || userId;
-      
-      const job = await storage.getJob(jobId, effectiveUserId);
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
-      }
-      
-      const response = await storage.updateJobFormResponse(id, req.body);
-      res.json(response);
-    } catch (error: any) {
-      console.error('Error updating form response:', error);
       res.status(500).json({ error: error.message });
     }
   });

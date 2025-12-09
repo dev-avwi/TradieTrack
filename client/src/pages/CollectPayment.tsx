@@ -864,7 +864,7 @@ export default function CollectPayment() {
                 </SelectTrigger>
                 <SelectContent>
                   {unpaidInvoices.length === 0 ? (
-                    <SelectItem value="__none__" disabled>No unpaid invoices</SelectItem>
+                    <SelectItem value="" disabled>No unpaid invoices</SelectItem>
                   ) : (
                     unpaidInvoices.map((invoice) => (
                       <SelectItem key={invoice.id} value={invoice.id}>

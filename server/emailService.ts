@@ -881,7 +881,7 @@ export const sendEmailVerificationEmail = async (user: any, verificationToken: s
 };
 
 // Send password reset email
-export const sendPasswordResetEmail = async (user: any, resetToken: string, resetCode?: string) => {
+export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
   if (!initializeSendGrid()) {
     throw new Error('SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.');
   }
@@ -917,16 +917,7 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string, rese
         <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 20px;">
           <h2 style="color: #333; margin-top: 0;">Hi ${user.firstName || 'there'},</h2>
           <p>We received a request to reset the password for your TradieTrack account.</p>
-          
-          ${resetCode ? `
-          <div style="text-align: center; margin: 30px 0; padding: 20px; background: #f0f9ff; border-radius: 8px; border: 2px dashed #3b82f6;">
-            <p style="margin: 0 0 10px 0; color: #1e40af; font-weight: 600;">Your Reset Code (for Mobile App)</p>
-            <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1d4ed8; font-family: monospace;">${resetCode}</div>
-            <p style="margin: 10px 0 0 0; color: #666; font-size: 12px;">Enter this code in the TradieTrack app</p>
-          </div>
-          ` : ''}
-          
-          <p>Or click the button below to reset your password on the web:</p>
+          <p>Click the button below to create a new password:</p>
           
           <div style="text-align: center; margin: 30px 0;">
             <a href="${resetUrl}" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Reset Password</a>
@@ -939,7 +930,7 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string, rese
         <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; color: #666; font-size: 14px;">
           <p><strong>Important security information:</strong></p>
           <ul>
-            <li>This password reset link and code will expire in 1 hour</li>
+            <li>This password reset link will expire in 1 hour</li>
             <li>If you didn't request this reset, you can safely ignore this email</li>
             <li>Your password won't change until you create a new one</li>
           </ul>
@@ -952,7 +943,7 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string, rese
       </body>
       </html>
     `,
-    text: `Password Reset Request\n\nHi ${user.firstName || 'there'},\n\nWe received a request to reset the password for your TradieTrack account.\n\n${resetCode ? `Your reset code (for mobile app): ${resetCode}\n\n` : ''}Click this link to reset your password: ${resetUrl}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this reset, you can safely ignore this email.\n\n- The TradieTrack Team`
+    text: `Password Reset Request\n\nHi ${user.firstName || 'there'},\n\nWe received a request to reset the password for your TradieTrack account.\n\nClick this link to reset your password: ${resetUrl}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this reset, you can safely ignore this email.\n\n- The TradieTrack Team`
   };
 
   try {

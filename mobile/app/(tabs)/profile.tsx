@@ -351,32 +351,12 @@ export default function MoreScreen() {
         />
         {!isStaff && (
           <MenuItem
-            icon="repeat"
-            iconBg={colors.primaryLight}
-            iconColor={colors.primary}
-            title="Recurring Jobs"
-            subtitle="Set up jobs that repeat automatically"
-            onPress={() => router.push('/more/recurring-jobs')}
-          />
-        )}
-        {!isStaff && (
-          <MenuItem
             icon="file"
             iconBg={colors.infoLight}
             iconColor={colors.info}
             title="Templates"
             subtitle="Quote and invoice templates"
             onPress={() => router.push('/more/templates')}
-          />
-        )}
-        {!isStaff && (
-          <MenuItem
-            icon="package"
-            iconBg={colors.warningLight}
-            iconColor={colors.warning}
-            title="Price Book"
-            subtitle="Materials, services & rates"
-            onPress={() => router.push('/more/materials-catalog')}
           />
         )}
         {!isStaff && (
@@ -417,16 +397,6 @@ export default function MoreScreen() {
             title="Expense Tracking"
             subtitle="Monitor business expenses"
             onPress={() => router.push('/more/expense-tracking')}
-          />
-        )}
-        {!isStaff && (
-          <MenuItem
-            icon="tool"
-            iconBg={colors.muted}
-            iconColor={colors.foreground}
-            title="Assets"
-            subtitle="Tools, equipment & vehicles"
-            onPress={() => router.push('/more/assets')}
             isLast
           />
         )}
@@ -488,18 +458,9 @@ export default function MoreScreen() {
       <Text style={styles.sectionTitle}>Communication</Text>
       <View style={styles.section}>
         <MenuItem
-          icon="navigation"
+          icon="message-circle"
           iconBg={colors.primaryLight}
           iconColor={colors.primary}
-          title="Quick Messages"
-          subtitle="I'm on my way & SMS templates"
-          badge="New"
-          onPress={() => router.push('/more/quick-messages')}
-        />
-        <MenuItem
-          icon="message-circle"
-          iconBg={colors.muted}
-          iconColor={colors.foreground}
           title="Chat Hub"
           subtitle="All your conversations"
           onPress={() => router.push('/more/chat-hub')}
@@ -538,7 +499,7 @@ export default function MoreScreen() {
         )}
         {!isStaff && (
           <MenuItem
-            icon="edit-3"
+            icon="palette"
             iconBg={colors.primaryLight}
             iconColor={colors.primary}
             title="Branding"

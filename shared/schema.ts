@@ -202,37 +202,6 @@ export const integrationSettings = pgTable("integration_settings", {
   notifyPaymentConfirmations: boolean("notify_payment_confirmations").default(true),
   notifyOverdueInvoices: boolean("notify_overdue_invoices").default(true),
   notifyWeeklySummary: boolean("notify_weekly_summary").default(false),
-  // Google Calendar Sync Settings
-  googleCalendarSyncEnabled: boolean("google_calendar_sync_enabled").default(false),
-  googleCalendarId: text("google_calendar_id"), // Which calendar to sync with
-  googleCalendarAccessToken: text("google_calendar_access_token"), // OAuth token
-  googleCalendarRefreshToken: text("google_calendar_refresh_token"), // OAuth refresh token
-  googleCalendarTokenExpiry: timestamp("google_calendar_token_expiry"), // Token expiration
-  googleCalendarSyncDirection: text("google_calendar_sync_direction").default('both'), // 'to_google', 'from_google', 'both'
-  googleCalendarLastSyncAt: timestamp("google_calendar_last_sync_at"),
-  // Outlook Calendar Sync Settings  
-  outlookCalendarSyncEnabled: boolean("outlook_calendar_sync_enabled").default(false),
-  outlookCalendarId: text("outlook_calendar_id"),
-  outlookCalendarAccessToken: text("outlook_calendar_access_token"),
-  outlookCalendarRefreshToken: text("outlook_calendar_refresh_token"),
-  outlookCalendarTokenExpiry: timestamp("outlook_calendar_token_expiry"),
-  outlookCalendarSyncDirection: text("outlook_calendar_sync_direction").default('both'),
-  outlookCalendarLastSyncAt: timestamp("outlook_calendar_last_sync_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Calendar Sync Events - Maps TradieTrack jobs to external calendar events
-export const calendarSyncEvents = pgTable("calendar_sync_events", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'cascade' }),
-  calendarProvider: text("calendar_provider").notNull(), // 'google' | 'outlook'
-  externalEventId: text("external_event_id").notNull(), // ID in Google/Outlook
-  externalCalendarId: text("external_calendar_id").notNull(),
-  syncStatus: text("sync_status").default('synced'), // 'synced', 'pending', 'error'
-  lastSyncError: text("last_sync_error"),
-  eventData: json("event_data").default({}), // Cached event details
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -294,13 +263,6 @@ export const jobs = pgTable("jobs", {
   recurrenceEndDate: timestamp("recurrence_end_date"), // When to stop recurring
   parentJobId: varchar("parent_job_id"), // Links to original recurring job
   nextRecurrenceDate: timestamp("next_recurrence_date"), // When to create next occurrence
-  recurrenceStatus: text("recurrence_status").default('active'), // active, paused, ended - status of recurring series
-  recurrenceLabel: text("recurrence_label"), // Tradie-friendly label like "Mrs. Smith - Lawn Mowing"
-  // Job Costing - Estimates for budget comparison
-  estimatedLaborCost: decimal("estimated_labor_cost", { precision: 10, scale: 2 }).default('0.00'),
-  estimatedMaterialCost: decimal("estimated_material_cost", { precision: 10, scale: 2 }).default('0.00'),
-  estimatedTotalCost: decimal("estimated_total_cost", { precision: 10, scale: 2 }).default('0.00'),
-  laborHourlyRate: decimal("labor_hourly_rate", { precision: 10, scale: 2 }), // Override default rate for this job
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -586,8 +548,6 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   updatedAt: true,
 }).extend({
   number: z.string().optional(), // Auto-generate if not provided
-  // Coerce date fields to handle string inputs from frontend
-  dueDate: z.coerce.date().optional(),
   // Coerce decimal fields to handle both string and number inputs from frontend
   subtotal: z.coerce.string().optional(),
   gstAmount: z.coerce.string().optional(),
@@ -689,15 +649,6 @@ export const insertIntegrationSettingsSchema = createInsertSchema(integrationSet
 export type InsertIntegrationSettings = z.infer<typeof insertIntegrationSettingsSchema>;
 export type IntegrationSettings = typeof integrationSettings.$inferSelect;
 
-// Calendar Sync Events
-export const insertCalendarSyncEventSchema = createInsertSchema(calendarSyncEvents).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertCalendarSyncEvent = z.infer<typeof insertCalendarSyncEventSchema>;
-export type CalendarSyncEvent = typeof calendarSyncEvents.$inferSelect;
-
 // ===== ADVANCED FEATURES SCHEMAS =====
 
 // Inventory Management
@@ -753,26 +704,15 @@ export const timeEntries = pgTable("time_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'cascade' }),
-  teamMemberId: varchar("team_member_id").references(() => teamMembers.id, { onDelete: 'set null' }),
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time"),
   duration: integer("duration"), // in minutes
-  breakMinutes: integer("break_minutes").default(0),
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
-  totalCost: decimal("total_cost", { precision: 10, scale: 2 }),
   description: text("description"),
-  startLatitude: decimal("start_latitude", { precision: 10, scale: 7 }),
-  startLongitude: decimal("start_longitude", { precision: 10, scale: 7 }),
-  startAddress: text("start_address"),
-  endLatitude: decimal("end_latitude", { precision: 10, scale: 7 }),
-  endLongitude: decimal("end_longitude", { precision: 10, scale: 7 }),
-  endAddress: text("end_address"),
   isBreak: boolean("is_break").default(false),
   isOvertime: boolean("is_overtime").default(false),
-  status: text("status").default('active'), // active, completed, approved, rejected
   approved: boolean("approved").default(false),
   approvedBy: varchar("approved_by").references(() => users.id),
-  approvedAt: timestamp("approved_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -789,31 +729,6 @@ export const timesheets = pgTable("timesheets", {
   submittedAt: timestamp("submitted_at"),
   approvedAt: timestamp("approved_at"),
   approvedBy: varchar("approved_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Trip Tracking - ServiceM8-style travel time tracking
-export const trips = pgTable("trips", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'cascade' }),
-  tripType: text("trip_type").notNull().default('travel'), // 'travel', 'supply_run', 'site_visit'
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time"),
-  duration: integer("duration"), // in minutes
-  distanceKm: decimal("distance_km", { precision: 10, scale: 2 }),
-  startLatitude: decimal("start_latitude", { precision: 10, scale: 7 }),
-  startLongitude: decimal("start_longitude", { precision: 10, scale: 7 }),
-  endLatitude: decimal("end_latitude", { precision: 10, scale: 7 }),
-  endLongitude: decimal("end_longitude", { precision: 10, scale: 7 }),
-  startAddress: text("start_address"),
-  endAddress: text("end_address"),
-  isBillable: boolean("is_billable").default(true),
-  billableRate: decimal("billable_rate", { precision: 10, scale: 2 }),
-  notes: text("notes"),
-  status: text("status").default('in_progress'), // 'in_progress', 'completed', 'cancelled'
-  autoDetected: boolean("auto_detected").default(false), // Was this trip auto-detected via GPS
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1300,29 +1215,6 @@ export const insertTimesheetSchema = createInsertSchema(timesheets).omit({
   updatedAt: true,
 });
 
-// Trip Tracking Schema
-export const insertTripSchema = createInsertSchema(trips).omit({
-  id: true,
-  userId: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  startTime: z.preprocess(
-    (val) => val ? new Date(val as string | number | Date) : undefined,
-    z.date().optional()
-  ),
-  endTime: z.preprocess(
-    (val) => val ? new Date(val as string | number | Date) : undefined,
-    z.date().optional()
-  ),
-  distanceKm: z.string().optional(),
-  startLatitude: z.string().optional(),
-  startLongitude: z.string().optional(),
-  endLatitude: z.string().optional(),
-  endLongitude: z.string().optional(),
-  billableRate: z.string().optional(),
-});
-
 // Expense Tracking Schemas
 export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).omit({
   id: true,
@@ -1507,10 +1399,6 @@ export type TimeEntry = typeof timeEntries.$inferSelect;
 export type InsertTimesheet = z.infer<typeof insertTimesheetSchema>;
 export type Timesheet = typeof timesheets.$inferSelect;
 
-// Trip Tracking Types
-export type InsertTrip = z.infer<typeof insertTripSchema>;
-export type Trip = typeof trips.$inferSelect;
-
 // Expense Tracking Types
 export type InsertExpenseCategory = z.infer<typeof insertExpenseCategorySchema>;
 export type ExpenseCategory = typeof expenseCategories.$inferSelect;
@@ -1689,28 +1577,6 @@ export const insertJobPhotoSchema = createInsertSchema(jobPhotos).omit({
 export type InsertJobPhoto = z.infer<typeof insertJobPhotoSchema>;
 export type JobPhoto = typeof jobPhotos.$inferSelect;
 
-// Voice Notes - Audio recordings for jobs (mobile-first feature)
-export const voiceNotes = pgTable("voice_notes", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
-  objectStorageKey: text("object_storage_key").notNull(),
-  fileName: text("file_name").notNull(),
-  fileSize: integer("file_size"),
-  mimeType: text("mime_type").default('audio/webm'),
-  duration: integer("duration"), // Duration in seconds
-  transcription: text("transcription"), // AI-generated transcription (future feature)
-  recordedBy: varchar("recorded_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertVoiceNoteSchema = createInsertSchema(voiceNotes).omit({
-  id: true,
-  createdAt: true,
-});
-export type InsertVoiceNote = z.infer<typeof insertVoiceNoteSchema>;
-export type VoiceNote = typeof voiceNotes.$inferSelect;
-
 // Invoice Reminder Logs - Track sent reminders to avoid duplicates
 export const invoiceReminderLogs = pgTable("invoice_reminder_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1805,19 +1671,18 @@ export type TeamChat = typeof teamChat.$inferSelect;
 // Direct Messages - Private conversations between team members
 export const directMessages = pgTable("direct_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  businessOwnerId: varchar("business_owner_id").references(() => users.id, { onDelete: 'cascade' }),
   senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   recipientId: varchar("recipient_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  message: text("message").notNull(),
+  content: text("content").notNull(),
+  attachmentUrl: text("attachment_url"),
+  attachmentType: text("attachment_type"), // image, file, etc.
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertDirectMessageSchema = createInsertSchema(directMessages).omit({
   id: true,
   createdAt: true,
-  updatedAt: true,
 });
 export type InsertDirectMessage = z.infer<typeof insertDirectMessageSchema>;
 export type DirectMessage = typeof directMessages.$inferSelect;
@@ -1862,372 +1727,3 @@ export const insertAutomationLogSchema = createInsertSchema(automationLogs).omit
 });
 export type InsertAutomationLog = z.infer<typeof insertAutomationLogSchema>;
 export type AutomationLog = typeof automationLogs.$inferSelect;
-
-// ============================================
-// SERVICEM8 PARITY FEATURES
-// ============================================
-
-// Job Signatures - Digital signature capture on job completion
-export const jobSignatures = pgTable("job_signatures", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  signatureType: text("signature_type").notNull().default('customer'), // customer, technician
-  signatureData: text("signature_data").notNull(), // Base64 encoded signature image
-  signatureImageUrl: text("signature_image_url"), // URL if stored in object storage
-  signerName: text("signer_name").notNull(),
-  signerRole: text("signer_role"), // e.g., "Property Manager", "Home Owner"
-  ipAddress: text("ip_address"),
-  deviceInfo: text("device_info"), // Browser/device info for audit
-  latitude: decimal("latitude", { precision: 10, scale: 7 }),
-  longitude: decimal("longitude", { precision: 10, scale: 7 }),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertJobSignatureSchema = createInsertSchema(jobSignatures).omit({
-  id: true,
-  createdAt: true,
-});
-export type InsertJobSignature = z.infer<typeof insertJobSignatureSchema>;
-export type JobSignature = typeof jobSignatures.$inferSelect;
-
-// Quote Revisions - Track quote version history
-export const quoteRevisions = pgTable("quote_revisions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  quoteId: varchar("quote_id").notNull().references(() => quotes.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  revisionNumber: integer("revision_number").notNull().default(1),
-  // Snapshot of quote data at this revision
-  title: text("title").notNull(),
-  description: text("description"),
-  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
-  gstAmount: decimal("gst_amount", { precision: 10, scale: 2 }).notNull(),
-  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
-  lineItems: jsonb("line_items").notNull().default([]), // Snapshot of line items
-  notes: text("notes"),
-  changeReason: text("change_reason"), // Why was this revision made
-  changedBy: text("changed_by"), // Name of person who made changes
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertQuoteRevisionSchema = createInsertSchema(quoteRevisions).omit({
-  id: true,
-  createdAt: true,
-});
-export type InsertQuoteRevision = z.infer<typeof insertQuoteRevisionSchema>;
-export type QuoteRevision = typeof quoteRevisions.$inferSelect;
-
-// Assets/Equipment - Track tools and equipment per job
-export const assets = pgTable("assets", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  name: text("name").notNull(),
-  description: text("description"),
-  category: text("category"), // tool, vehicle, equipment, material
-  serialNumber: text("serial_number"),
-  purchaseDate: timestamp("purchase_date"),
-  purchasePrice: decimal("purchase_price", { precision: 10, scale: 2 }),
-  currentValue: decimal("current_value", { precision: 10, scale: 2 }),
-  condition: text("condition").default('good'), // new, good, fair, poor, retired
-  location: text("location"), // Where is it stored/located
-  assignedTo: varchar("assigned_to"), // Team member ID
-  photoUrl: text("photo_url"),
-  notes: text("notes"),
-  isActive: boolean("is_active").default(true),
-  lastMaintenanceDate: timestamp("last_maintenance_date"),
-  nextMaintenanceDate: timestamp("next_maintenance_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertAssetSchema = createInsertSchema(assets).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertAsset = z.infer<typeof insertAssetSchema>;
-export type Asset = typeof assets.$inferSelect;
-
-// Job Assets - Track which assets were used on a job
-export const jobAssets = pgTable("job_assets", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
-  assetId: varchar("asset_id").notNull().references(() => assets.id, { onDelete: 'cascade' }),
-  quantity: integer("quantity").default(1),
-  notes: text("notes"),
-  checkedOutAt: timestamp("checked_out_at").defaultNow(),
-  checkedInAt: timestamp("checked_in_at"),
-  checkedOutBy: varchar("checked_out_by").references(() => users.id),
-  checkedInBy: varchar("checked_in_by").references(() => users.id),
-});
-
-export const insertJobAssetSchema = createInsertSchema(jobAssets).omit({
-  id: true,
-});
-export type InsertJobAsset = z.infer<typeof insertJobAssetSchema>;
-export type JobAsset = typeof jobAssets.$inferSelect;
-
-// Staff Availability/Rostering - Track staff schedules and availability
-export const staffAvailability = pgTable("staff_availability", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  dayOfWeek: integer("day_of_week").notNull(), // 0 = Sunday, 6 = Saturday
-  startTime: text("start_time").notNull(), // HH:MM format
-  endTime: text("end_time").notNull(), // HH:MM format
-  isAvailable: boolean("is_available").default(true),
-  breakStartTime: text("break_start_time"), // Optional break
-  breakEndTime: text("break_end_time"),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertStaffAvailabilitySchema = createInsertSchema(staffAvailability).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertStaffAvailability = z.infer<typeof insertStaffAvailabilitySchema>;
-export type StaffAvailability = typeof staffAvailability.$inferSelect;
-
-// Staff Time Off - Track leave and time off requests
-export const staffTimeOff = pgTable("staff_time_off", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
-  type: text("type").notNull().default('leave'), // leave, sick, holiday, personal
-  status: text("status").notNull().default('pending'), // pending, approved, rejected
-  reason: text("reason"),
-  approvedBy: varchar("approved_by").references(() => users.id),
-  approvedAt: timestamp("approved_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertStaffTimeOffSchema = createInsertSchema(staffTimeOff).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertStaffTimeOff = z.infer<typeof insertStaffTimeOffSchema>;
-export type StaffTimeOff = typeof staffTimeOff.$inferSelect;
-
-// Custom Job Forms - Dynamic form templates for different job types
-export const jobFormTemplates = pgTable("job_form_templates", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  name: text("name").notNull(),
-  description: text("description"),
-  category: text("category"), // electrical, plumbing, hvac, general
-  fields: jsonb("fields").notNull().default([]), // Array of field definitions
-  isActive: boolean("is_active").default(true),
-  isDefault: boolean("is_default").default(false), // Use for all new jobs of this category
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertJobFormTemplateSchema = createInsertSchema(jobFormTemplates).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertJobFormTemplate = z.infer<typeof insertJobFormTemplateSchema>;
-export type JobFormTemplate = typeof jobFormTemplates.$inferSelect;
-
-// Job Form Responses - Submitted form data for jobs
-export const jobFormResponses = pgTable("job_form_responses", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
-  templateId: varchar("template_id").notNull().references(() => jobFormTemplates.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  responses: jsonb("responses").notNull().default({}), // Field ID -> value mapping
-  submittedAt: timestamp("submitted_at").defaultNow(),
-  latitude: decimal("latitude", { precision: 10, scale: 7 }),
-  longitude: decimal("longitude", { precision: 10, scale: 7 }),
-  photos: jsonb("photos").default([]), // Photos attached to form
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertJobFormResponseSchema = createInsertSchema(jobFormResponses).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertJobFormResponse = z.infer<typeof insertJobFormResponseSchema>;
-export type JobFormResponse = typeof jobFormResponses.$inferSelect;
-
-// Job Activities - Unified activity log for complete job history (Job Diary)
-export const jobActivities = pgTable("job_activities", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
-  activityType: text("activity_type").notNull(), // status_change, note, photo, email_sent, sms_sent, payment, checkin, checkout, form_submitted, signature, quote_sent, invoice_sent, call, material_added
-  title: text("title").notNull(),
-  description: text("description"),
-  metadata: jsonb("metadata").default({}), // Flexible data storage (old/new status, payment amount, email recipient, etc.)
-  relatedEntityType: text("related_entity_type"), // quote, invoice, photo, form, signature, etc.
-  relatedEntityId: varchar("related_entity_id"), // ID of the related entity
-  isSystemGenerated: boolean("is_system_generated").default(false), // Auto-generated vs manual entry
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertJobActivitySchema = createInsertSchema(jobActivities).omit({
-  id: true,
-  createdAt: true,
-});
-export type InsertJobActivity = z.infer<typeof insertJobActivitySchema>;
-export type JobActivity = typeof jobActivities.$inferSelect;
-
-// Form Store Templates - Pre-made global form templates for all users to download
-export const formStoreTemplates = pgTable("form_store_templates", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  description: text("description"),
-  category: text("category").notNull(), // electrical, plumbing, hvac, carpentry, roofing, landscaping, painting, cleaning, general
-  tradeType: text("trade_type").notNull(), // safety, compliance, inspection, checklist, quote, report, maintenance, installation
-  fields: jsonb("fields").notNull().default([]), // Array of field definitions matching jobFormTemplates format
-  icon: text("icon"), // Lucide icon name for display
-  isPremium: boolean("is_premium").default(false), // Future: paid templates
-  downloadCount: integer("download_count").default(0),
-  rating: decimal("rating", { precision: 3, scale: 2 }).default('0'),
-  ratingCount: integer("rating_count").default(0),
-  version: text("version").default('1.0'),
-  author: text("author").default('TradieTrack'),
-  tags: text("tags").array(), // Searchable tags
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertFormStoreTemplateSchema = createInsertSchema(formStoreTemplates).omit({
-  id: true,
-  downloadCount: true,
-  rating: true,
-  ratingCount: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertFormStoreTemplate = z.infer<typeof insertFormStoreTemplateSchema>;
-export type FormStoreTemplate = typeof formStoreTemplates.$inferSelect;
-
-// User Form Store Installations - Track which store templates users have installed
-export const formStoreInstallations = pgTable("form_store_installations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  storeTemplateId: varchar("store_template_id").notNull().references(() => formStoreTemplates.id, { onDelete: 'cascade' }),
-  userTemplateId: varchar("user_template_id").references(() => jobFormTemplates.id, { onDelete: 'set null' }), // The created user template
-  installedAt: timestamp("installed_at").defaultNow(),
-  rating: integer("rating"), // User's rating 1-5
-  ratedAt: timestamp("rated_at"),
-});
-
-export const insertFormStoreInstallationSchema = createInsertSchema(formStoreInstallations).omit({
-  id: true,
-  installedAt: true,
-});
-export type InsertFormStoreInstallation = z.infer<typeof insertFormStoreInstallationSchema>;
-export type FormStoreInstallation = typeof formStoreInstallations.$inferSelect;
-
-// Online Booking Portal - Public booking page configuration
-export const bookingPortalSettings = pgTable("booking_portal_settings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  isEnabled: boolean("is_enabled").default(false),
-  urlSlug: text("url_slug").unique(), // public booking URL: /book/{slug}
-  welcomeMessage: text("welcome_message").default('Welcome! Book a service with us.'),
-  businessDescription: text("business_description"),
-  coverImageUrl: text("cover_image_url"),
-  allowInstantBooking: boolean("allow_instant_booking").default(false), // true = auto-confirm, false = request only
-  requirePhone: boolean("require_phone").default(true),
-  requireAddress: boolean("require_address").default(true),
-  minLeadTimeHours: integer("min_lead_time_hours").default(24), // Minimum hours before appointment
-  maxAdvanceBookingDays: integer("max_advance_booking_days").default(30), // How far in advance can book
-  defaultJobDurationMinutes: integer("default_job_duration_minutes").default(60),
-  confirmationEmailEnabled: boolean("confirmation_email_enabled").default(true),
-  notifyOnBookingEmail: text("notify_on_booking_email"), // Email to notify for new bookings
-  availableDays: json("available_days").default(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']),
-  workingHoursStart: text("working_hours_start").default('08:00'),
-  workingHoursEnd: text("working_hours_end").default('17:00'),
-  slotDurationMinutes: integer("slot_duration_minutes").default(60),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertBookingPortalSettingsSchema = createInsertSchema(bookingPortalSettings).omit({
-  id: true,
-  userId: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertBookingPortalSettings = z.infer<typeof insertBookingPortalSettingsSchema>;
-export type BookingPortalSettings = typeof bookingPortalSettings.$inferSelect;
-
-// Booking Services - Services available for public booking
-export const bookingServices = pgTable("booking_services", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  name: text("name").notNull(),
-  description: text("description"),
-  durationMinutes: integer("duration_minutes").default(60),
-  price: decimal("price", { precision: 10, scale: 2 }),
-  priceType: text("price_type").default('fixed'), // fixed, from, hourly, quote
-  category: text("category"), // plumbing, electrical, hvac, etc.
-  isActive: boolean("is_active").default(true),
-  sortOrder: integer("sort_order").default(0),
-  catalogItemId: varchar("catalog_item_id").references(() => lineItemCatalog.id, { onDelete: 'set null' }),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertBookingServiceSchema = createInsertSchema(bookingServices).omit({
-  id: true,
-  userId: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertBookingService = z.infer<typeof insertBookingServiceSchema>;
-export type BookingService = typeof bookingServices.$inferSelect;
-
-// Booking Requests - Client booking submissions
-export const bookingRequests = pgTable("booking_requests", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }), // Business owner
-  serviceId: varchar("service_id").references(() => bookingServices.id, { onDelete: 'set null' }),
-  status: text("status").default('pending'), // pending, confirmed, declined, cancelled, completed
-  clientName: text("client_name").notNull(),
-  clientEmail: text("client_email").notNull(),
-  clientPhone: text("client_phone"),
-  clientAddress: text("client_address"),
-  preferredDate: timestamp("preferred_date"),
-  preferredTimeSlot: text("preferred_time_slot"), // e.g., "09:00-10:00"
-  alternateDate: timestamp("alternate_date"),
-  notes: text("notes"),
-  serviceName: text("service_name"), // Denormalized for display
-  estimatedPrice: decimal("estimated_price", { precision: 10, scale: 2 }),
-  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }), // Created job when confirmed
-  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }), // Created/matched client
-  confirmedAt: timestamp("confirmed_at"),
-  declinedAt: timestamp("declined_at"),
-  declineReason: text("decline_reason"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertBookingRequestSchema = createInsertSchema(bookingRequests).omit({
-  id: true,
-  userId: true,
-  status: true,
-  jobId: true,
-  clientId: true,
-  confirmedAt: true,
-  declinedAt: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertBookingRequest = z.infer<typeof insertBookingRequestSchema>;
-export type BookingRequest = typeof bookingRequests.$inferSelect;

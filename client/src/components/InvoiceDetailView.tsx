@@ -6,8 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Mail, Phone, User, MapPin, Download, Copy, ExternalLink, Loader2, Briefcase, ChevronRight } from "lucide-react";
-import { useLocation } from "wouter";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Mail, Phone, User, MapPin, Download, Copy, ExternalLink, Loader2 } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +26,6 @@ export default function InvoiceDetailView({
   onMarkPaid 
 }: InvoiceDetailViewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
-  const [, setLocation] = useLocation();
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
 
@@ -376,26 +374,6 @@ export default function InvoiceDetailView({
                     Connect your Stripe account in Settings to enable online payments for invoices.
                   </p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* View Linked Job */}
-        {invoice?.jobId && (
-          <Card className="mb-6 no-print hover-elevate cursor-pointer" onClick={() => setLocation(`/jobs/${invoice.jobId}`)}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Briefcase className="h-5 w-5 text-primary" />
-                  <div>
-                    <h3 className="font-semibold">Linked Job</h3>
-                    <p className="text-sm text-muted-foreground">
-                      View the job associated with this invoice
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </div>
             </CardContent>
           </Card>

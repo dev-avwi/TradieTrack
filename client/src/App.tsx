@@ -7,7 +7,6 @@ import AuthFlow from "@/components/AuthFlow";
 import OnboardingWizard, { type OnboardingData } from "@/components/OnboardingWizard";
 import { useCompleteOnboarding } from "@/hooks/useCompleteOnboarding";
 import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/hooks/use-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider, useTheme } from "@/components/ThemeProvider";
@@ -60,13 +59,6 @@ import JobMapPage from "@/pages/JobMap";
 import DirectMessagesPage from "@/pages/DirectMessages";
 import DispatchBoard from "@/pages/DispatchBoard";
 import Automations from "@/pages/Automations";
-import Assets from "@/pages/Assets";
-import JobForms from "@/pages/JobForms";
-import FormStore from "@/pages/FormStore";
-import StaffRostering from "@/pages/StaffRostering";
-import RouteOptimization from "@/pages/RouteOptimization";
-import JobProfitability from "@/pages/JobProfitability";
-import CalendarSync from "@/pages/CalendarSync";
 
 // Types for job completion
 interface JobPhoto {
@@ -382,10 +374,6 @@ function Router({
         <TemplateManagement />
       )} />
       
-      <Route path="/settings/calendar" component={() => (
-        <CalendarSync />
-      )} />
-      
       <Route path="/settings" component={SettingsWrapper} />
       
       <Route path="/email-setup" component={() => (
@@ -432,29 +420,6 @@ function Router({
       
       <Route path="/automations" component={() => (
         <Automations />
-      )} />
-      
-      <Route path="/assets" component={() => (
-        <Assets />
-      )} />
-      
-      <Route path="/staff-rostering" component={() => (
-        <StaffRostering />
-      )} />
-      
-      <Route path="/job-forms" component={() => (
-        <JobForms />
-      )} />
-      
-      <Route path="/form-store" component={() => (
-        <FormStore />
-      )} />
-      <Route path="/job-profitability" component={() => (
-        <JobProfitability />
-      )} />
-      
-      <Route path="/route-optimize" component={() => (
-        <RouteOptimization />
       )} />
       
       <Route path="/collect-payment" component={() => (
@@ -506,7 +471,6 @@ function AppLayout() {
   const { theme, setTheme } = useTheme();
   const [location, setLocation] = useLocation();
   const [authKey, setAuthKey] = useState(0);
-  const { toast } = useToast();
   
   // Modal state for quotes and invoices
   const [quoteModal, setQuoteModal] = useState<{ isOpen: boolean; quoteId: string | null }>({ isOpen: false, quoteId: null });
@@ -701,30 +665,11 @@ function AppLayout() {
 
   const handleOnboardingComplete = async (onboardingData: OnboardingData) => {
     try {
-      const result = await completeOnboarding(onboardingData);
-      
+      await completeOnboarding(onboardingData);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/business-settings"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/team/members"] }),
       ]);
-      
-      if (result.inviteResults && result.inviteResults.failed.length > 0) {
-        const { successful, failed, total } = result.inviteResults;
-        if (successful > 0) {
-          toast({
-            title: "Team invitations partially sent",
-            description: `${successful} of ${total} invitations sent. ${failed.length} failed: ${failed.join(', ')}`,
-            variant: "default",
-          });
-        }
-      } else if (result.inviteResults && result.inviteResults.successful > 0) {
-        toast({
-          title: "Team invitations sent",
-          description: `${result.inviteResults.successful} team member(s) invited successfully.`,
-        });
-      }
-      
       handleLoginSuccess();
     } catch (error) {
       throw error;

@@ -21,16 +21,8 @@ import {
   TrendingUp,
   History,
   MessageSquare,
-  Star,
-  Repeat,
-  Pause,
-  Play,
-  SkipForward,
-  StopCircle
+  Star
 } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import StatusBadge from "./StatusBadge";
 import KPIBox from "./KPIBox";
@@ -58,7 +50,6 @@ export default function ClientDetailView({
 }: ClientDetailViewProps) {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
-  const { toast } = useToast();
 
   const { data: client, isLoading: clientLoading } = useQuery({
     queryKey: ['/api/clients', clientId],
@@ -119,64 +110,6 @@ export default function ClientDetailView({
       return allJobPhotos;
     },
     enabled: jobs.length > 0
-  });
-
-  // Fetch recurring jobs for this client
-  const { data: recurringJobs = [] } = useQuery({
-    queryKey: ['/api/clients', clientId, 'recurring-jobs'],
-    queryFn: async () => {
-      const response = await fetch(`/api/clients/${clientId}/recurring-jobs`, { credentials: 'include' });
-      if (!response.ok) return [];
-      return response.json();
-    },
-    enabled: !!clientId
-  });
-
-  // Mutations for recurring job actions
-  const updateRecurringStatusMutation = useMutation({
-    mutationFn: async ({ jobId, action }: { jobId: string; action: 'pause' | 'resume' | 'end' }) => {
-      return apiRequest(`/api/recurring-jobs/${jobId}/${action}`, {
-        method: 'POST'
-      });
-    },
-    onSuccess: (_, { action }) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/clients', clientId, 'recurring-jobs'] });
-      toast({
-        title: action === 'pause' ? 'Recurring job paused' : 
-               action === 'resume' ? 'Recurring job resumed' : 
-               'Recurring job ended',
-        description: action === 'end' ? 'No more jobs will be generated from this series.' : undefined
-      });
-    },
-    onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to update recurring job status',
-        variant: 'destructive'
-      });
-    }
-  });
-
-  const skipNextRecurrenceMutation = useMutation({
-    mutationFn: async (jobId: string) => {
-      return apiRequest(`/api/recurring-jobs/${jobId}/skip`, {
-        method: 'POST'
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/clients', clientId, 'recurring-jobs'] });
-      toast({
-        title: 'Next occurrence skipped',
-        description: 'The next scheduled job has been skipped.'
-      });
-    },
-    onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to skip next occurrence',
-        variant: 'destructive'
-      });
-    }
   });
 
   const formatDate = (dateString: string) => {
@@ -450,110 +383,6 @@ export default function ClientDetailView({
           </Button>
         )}
       </div>
-
-      {/* Recurring Jobs Section */}
-      {recurringJobs.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Repeat className="h-4 w-4" />
-              Recurring Jobs
-              <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0">
-                {recurringJobs.length}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recurringJobs.map((rj: any) => (
-              <div 
-                key={rj.id}
-                className="border rounded-lg p-4 space-y-3"
-                data-testid={`recurring-job-${rj.id}`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">
-                      {rj.recurrenceLabel || rj.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {rj.recurrencePattern === 'fortnightly' ? 'Every fortnight' :
-                       `Every ${rj.recurrenceInterval > 1 ? rj.recurrenceInterval + ' ' : ''}${rj.recurrencePattern}${rj.recurrenceInterval > 1 ? 's' : ''}`}
-                    </p>
-                  </div>
-                  <Badge 
-                    variant={rj.recurrenceStatus === 'active' ? 'default' : 
-                             rj.recurrenceStatus === 'paused' ? 'secondary' : 'outline'}
-                    className={rj.recurrenceStatus === 'active' ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' :
-                               rj.recurrenceStatus === 'paused' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20' :
-                               'text-muted-foreground'}
-                  >
-                    {rj.recurrenceStatus === 'active' ? 'Active' :
-                     rj.recurrenceStatus === 'paused' ? 'Paused' : 'Ended'}
-                  </Badge>
-                </div>
-                
-                {rj.nextRecurrenceDate && rj.recurrenceStatus === 'active' && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>Next: {formatDate(rj.nextRecurrenceDate)}</span>
-                  </div>
-                )}
-                
-                {rj.recurrenceStatus !== 'ended' && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {rj.recurrenceStatus === 'active' ? (
-                      <>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => updateRecurringStatusMutation.mutate({ jobId: rj.id, action: 'pause' })}
-                          disabled={updateRecurringStatusMutation.isPending}
-                          data-testid={`button-pause-recurring-${rj.id}`}
-                        >
-                          <Pause className="h-3.5 w-3.5 mr-1.5" />
-                          Pause
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => skipNextRecurrenceMutation.mutate(rj.id)}
-                          disabled={skipNextRecurrenceMutation.isPending}
-                          data-testid={`button-skip-recurring-${rj.id}`}
-                        >
-                          <SkipForward className="h-3.5 w-3.5 mr-1.5" />
-                          Skip Next
-                        </Button>
-                      </>
-                    ) : (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => updateRecurringStatusMutation.mutate({ jobId: rj.id, action: 'resume' })}
-                        disabled={updateRecurringStatusMutation.isPending}
-                        data-testid={`button-resume-recurring-${rj.id}`}
-                      >
-                        <Play className="h-3.5 w-3.5 mr-1.5" />
-                        Resume
-                      </Button>
-                    )}
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => updateRecurringStatusMutation.mutate({ jobId: rj.id, action: 'end' })}
-                      disabled={updateRecurringStatusMutation.isPending}
-                      data-testid={`button-end-recurring-${rj.id}`}
-                    >
-                      <StopCircle className="h-3.5 w-3.5 mr-1.5" />
-                      End
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full grid grid-cols-5 h-auto">

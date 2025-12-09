@@ -17,8 +17,62 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
-import { DashboardSkeleton } from '../../src/components/ui/Skeleton';
-import { useUserRole } from '../../src/hooks/use-user-role';
+
+// Trust Banner Component - compact modern design
+function TrustBanner() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  return (
+    <View style={styles.trustBanner}>
+      <View style={styles.trustBannerTop}>
+        <View style={styles.trustBannerIcon}>
+          <Feather name="star" size={14} color={colors.primary} />
+        </View>
+        <View style={styles.trustBannerContent}>
+          <View style={styles.trustBannerTitleRow}>
+            <Text style={styles.trustBannerTitle}>TradieTrack</Text>
+            <View style={styles.betaBadge}>
+              <Text style={styles.betaBadgeText}>Free During Beta</Text>
+            </View>
+          </View>
+          <Text style={styles.trustBannerSubtitle}>Built for Australian tradies</Text>
+        </View>
+      </View>
+      <View style={styles.trustBannerFeatures}>
+        <View style={styles.trustFeature}>
+          <Feather name="check-circle" size={10} color={colors.success} />
+          <Text style={styles.trustFeatureText}>GST compliant</Text>
+        </View>
+        <View style={styles.trustFeature}>
+          <Feather name="check-circle" size={10} color={colors.success} />
+          <Text style={styles.trustFeatureText}>Secure payments</Text>
+        </View>
+        <View style={styles.trustFeature}>
+          <Feather name="check-circle" size={10} color={colors.success} />
+          <Text style={styles.trustFeatureText}>Encrypted</Text>
+        </View>
+      </View>
+      {/* Security & Privacy Rows */}
+      <View style={styles.trustSecuritySection}>
+        <View style={styles.trustSecurityRow}>
+          <Feather name="shield" size={14} color={colors.primary} />
+          <View style={styles.trustSecurityContent}>
+            <Text style={styles.trustSecurityTitle}>Bank-grade security</Text>
+            <Text style={styles.trustSecurityDesc}>256-bit encryption for all data</Text>
+          </View>
+        </View>
+        <View style={styles.trustSecurityRow}>
+          <Feather name="lock" size={14} color={colors.primary} />
+          <View style={styles.trustSecurityContent}>
+            <Text style={styles.trustSecurityTitle}>Your data stays private</Text>
+            <Text style={styles.trustSecurityDesc}>We never share your information</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 // Activity Feed Component - matches web Recent Activity section
 function ActivityFeed({ activities }: { activities: any[] }) {
@@ -419,18 +473,6 @@ export default function DashboardScreen() {
   const { clients, fetchClients } = useClientsStore();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
-  // RBAC: Role-based access control - staff see limited data
-  const { isOwner, isManager, isStaff, canAccessClients, canAccessInvoices, canAccessQuotes, isLoading: roleLoading } = useUserRole();
-  const canSeeFinancials = isOwner || isManager;
-  
-  // Staff only see their assigned jobs
-  const filteredTodaysJobs = useMemo(() => {
-    if (isOwner || isManager) return todaysJobs;
-    // Staff: filter to only their assigned jobs
-    return todaysJobs.filter(job => job.assignedToId === user?.id);
-  }, [todaysJobs, isOwner, isManager, user?.id]);
   
   const handleNavigateToItem = (type: string, id: string) => {
     switch (type) {
@@ -460,7 +502,7 @@ export default function DashboardScreen() {
   }, [fetchTodaysJobs, fetchStats, fetchClients]);
 
   useEffect(() => {
-    refreshData().finally(() => setIsInitialLoad(false));
+    refreshData();
   }, []);
 
   const getGreeting = () => {
@@ -499,32 +541,12 @@ export default function DashboardScreen() {
   };
 
   const userName = user?.firstName || 'there';
-  // RBAC: Use filtered jobs for staff, all jobs for owners/managers
-  const jobsToday = canSeeFinancials 
-    ? (stats.jobsToday || todaysJobs.length)
-    : filteredTodaysJobs.length;
-  const overdueCount = canSeeFinancials ? (stats.overdueJobs || 0) : 0;
-  const quotesCount = canSeeFinancials ? (stats.pendingQuotes || 0) : 0;
-  const monthRevenue = canSeeFinancials ? formatCurrency(stats.thisMonthRevenue || 0) : '--';
+  const jobsToday = stats.jobsToday || todaysJobs.length;
+  const overdueCount = stats.overdueJobs || 0;
+  const quotesCount = stats.pendingQuotes || 0;
+  const monthRevenue = formatCurrency(stats.thisMonthRevenue || 0);
 
-  const isLoading = jobsLoading || statsLoading || roleLoading;
-  const showSkeleton = isInitialLoad && isLoading;
-
-  if (showSkeleton) {
-    return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.headerTitle}>{getGreeting()}, {user?.firstName || 'there'}</Text>
-              <Text style={styles.headerSubtitle}>Loading your dashboard...</Text>
-            </View>
-          </View>
-        </View>
-        <DashboardSkeleton />
-      </ScrollView>
-    );
-  }
+  const isLoading = jobsLoading || statsLoading;
 
   return (
     <ScrollView 
@@ -546,8 +568,8 @@ export default function DashboardScreen() {
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>{getGreeting()}, {userName}</Text>
             <Text style={styles.headerSubtitle}>
-              {filteredTodaysJobs.length > 0 
-                ? `You have ${filteredTodaysJobs.length} job${filteredTodaysJobs.length > 1 ? 's' : ''} scheduled today`
+              {todaysJobs.length > 0 
+                ? `You have ${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} scheduled today`
                 : businessSettings?.businessName || "Welcome back"}
             </Text>
           </View>
@@ -562,7 +584,10 @@ export default function DashboardScreen() {
         onNavigateToItem={handleNavigateToItem}
       />
 
-      {/* Quick Stats - RBAC: Staff see limited stats */}
+      {/* Trust Banner */}
+      <TrustBanner />
+
+      {/* Quick Stats */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Quick Stats</Text>
         <View style={styles.kpiGrid}>
@@ -574,47 +599,34 @@ export default function DashboardScreen() {
             iconColor={colors.primary}
             onPress={() => router.push('/(tabs)/jobs')}
           />
-          {canSeeFinancials ? (
-            <>
-              <KPICard
-                title="Overdue"
-                value={overdueCount}
-                icon="alert-circle"
-                iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
-                iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
-                onPress={() => router.push('/more/invoices')}
-              />
-              <KPICard
-                title="Quotes Pending"
-                value={quotesCount}
-                icon="clock"
-                iconBg={colors.muted}
-                iconColor={colors.mutedForeground}
-                onPress={() => router.push('/more/quotes')}
-              />
-              <KPICard
-                title="This Month"
-                value={monthRevenue}
-                icon="trending-up"
-                iconBg={colors.successLight}
-                iconColor={colors.success}
-                onPress={() => router.push('/more/invoices')}
-              />
-            </>
-          ) : (
-            <KPICard
-              title="My Jobs"
-              value={filteredTodaysJobs.filter(j => j.status === 'in_progress' || j.status === 'scheduled').length}
-              icon="clock"
-              iconBg={colors.muted}
-              iconColor={colors.mutedForeground}
-              onPress={() => router.push('/(tabs)/jobs')}
-            />
-          )}
+          <KPICard
+            title="Overdue"
+            value={overdueCount}
+            icon="alert-circle"
+            iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
+            iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
+            onPress={() => router.push('/more/invoices')}
+          />
+          <KPICard
+            title="Quotes Pending"
+            value={quotesCount}
+            icon="clock"
+            iconBg={colors.muted}
+            iconColor={colors.mutedForeground}
+            onPress={() => router.push('/more/quotes')}
+          />
+          <KPICard
+            title="This Month"
+            value={monthRevenue}
+            icon="trending-up"
+            iconBg={colors.successLight}
+            iconColor={colors.success}
+            onPress={() => router.push('/more/invoices')}
+          />
         </View>
       </View>
 
-      {/* Quick Actions - RBAC: Staff only see job-related actions */}
+      {/* Quick Actions */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Quick Actions</Text>
         <View style={styles.quickActionsCard}>
@@ -625,32 +637,21 @@ export default function DashboardScreen() {
               variant="primary"
               onPress={() => router.push('/more/create-job')}
             />
-            {canAccessClients && (
-              <QuickActionButton
-                title="Client"
-                icon="user-plus"
-                onPress={() => router.push('/more/client/new')}
-              />
-            )}
-            {canAccessQuotes && (
-              <QuickActionButton
-                title="Quote"
-                icon="file-text"
-                onPress={() => router.push('/more/quote/new')}
-              />
-            )}
-            {canAccessInvoices && (
-              <QuickActionButton
-                title="Invoice"
-                icon="dollar-sign"
-                onPress={() => router.push('/more/invoice/new')}
-              />
-            )}
+            <QuickActionButton
+              title="Quote"
+              icon="file-text"
+              onPress={() => router.push('/more/quote/new')}
+            />
+            <QuickActionButton
+              title="Invoice"
+              icon="dollar-sign"
+              onPress={() => router.push('/more/invoice/new')}
+            />
           </View>
         </View>
       </View>
 
-      {/* Today's Schedule - RBAC: Staff only see their assigned jobs */}
+      {/* Today's Schedule */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
@@ -659,7 +660,7 @@ export default function DashboardScreen() {
             </View>
             <Text style={styles.sectionTitle}>Today</Text>
           </View>
-          {filteredTodaysJobs.length > 0 && (
+          {todaysJobs.length > 0 && (
             <TouchableOpacity 
               style={styles.viewAllButton}
               onPress={() => router.push('/(tabs)/jobs')}
@@ -671,11 +672,11 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        {filteredTodaysJobs.length === 0 ? (
+        {todaysJobs.length === 0 ? (
           <EmptyTodayState onCreateJob={() => router.push('/more/create-job')} />
         ) : (
           <View style={styles.jobsList}>
-            {filteredTodaysJobs.map((job: any, index: number) => (
+            {todaysJobs.map((job: any, index: number) => (
               <TodayJobCard
                 key={job.id}
                 job={job}
@@ -691,7 +692,7 @@ export default function DashboardScreen() {
         )}
       </View>
 
-      {/* Recent Activity - RBAC: Staff only see their own activity */}
+      {/* Recent Activity */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
@@ -704,7 +705,7 @@ export default function DashboardScreen() {
         <ActivityFeed 
           activities={[
             // Generate sample activity from today's jobs for visual consistency
-            ...filteredTodaysJobs.slice(0, 3).map((job: any) => ({
+            ...todaysJobs.slice(0, 3).map((job: any) => ({
               id: job.id,
               type: 'job',
               title: `Job: ${job.title}`,
@@ -750,6 +751,100 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
     marginTop: spacing.xs,
+  },
+
+  // Trust Banner - compact
+  trustBanner: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: `${colors.primary}25`,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
+    backgroundColor: `${colors.primary}06`,
+  },
+  trustBannerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  trustBannerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: `${colors.primary}12`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trustBannerContent: {
+    flex: 1,
+  },
+  trustBannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  trustBannerTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+  },
+  betaBadge: {
+    backgroundColor: colors.successLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  betaBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.success,
+  },
+  trustBannerSubtitle: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  trustBannerFeatures: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  trustFeature: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  trustFeatureText: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+  trustSecuritySection: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.md,
+  },
+  trustSecurityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  trustSecurityContent: {
+    flex: 1,
+  },
+  trustSecurityTitle: {
+    ...typography.body,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  trustSecurityDesc: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
   },
 
   // Activity Feed - compact

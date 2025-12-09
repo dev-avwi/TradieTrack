@@ -39,8 +39,6 @@ import {
   type InsertTimeEntry,
   type Timesheet,
   type InsertTimesheet,
-  type Trip,
-  type InsertTrip,
   type ExpenseCategory,
   type InsertExpenseCategory,
   type Expense,
@@ -95,7 +93,6 @@ import {
   paymentRequests,
   timeEntries,
   timesheets,
-  trips,
   expenseCategories,
   expenses,
   inventoryCategories,
@@ -124,55 +121,6 @@ import {
   type Automation,
   type InsertAutomation,
   type AutomationLog,
-  // ServiceM8 parity features
-  jobSignatures,
-  type JobSignature,
-  type InsertJobSignature,
-  quoteRevisions,
-  type QuoteRevision,
-  type InsertQuoteRevision,
-  assets,
-  type Asset,
-  type InsertAsset,
-  jobAssets,
-  type JobAsset,
-  type InsertJobAsset,
-  staffAvailability,
-  type StaffAvailability,
-  type InsertStaffAvailability,
-  staffTimeOff,
-  type StaffTimeOff,
-  type InsertStaffTimeOff,
-  jobFormTemplates,
-  type JobFormTemplate,
-  type InsertJobFormTemplate,
-  jobFormResponses,
-  type JobFormResponse,
-  type InsertJobFormResponse,
-  jobActivities,
-  type JobActivity,
-  type InsertJobActivity,
-  formStoreTemplates,
-  type FormStoreTemplate,
-  type InsertFormStoreTemplate,
-  formStoreInstallations,
-  type FormStoreInstallation,
-  type InsertFormStoreInstallation,
-  calendarSyncEvents,
-  type CalendarSyncEvent,
-  type InsertCalendarSyncEvent,
-  bookingPortalSettings,
-  type BookingPortalSettings,
-  type InsertBookingPortalSettings,
-  bookingServices,
-  type BookingService,
-  type InsertBookingService,
-  bookingRequests,
-  type BookingRequest,
-  type InsertBookingRequest,
-  voiceNotes,
-  type VoiceNote,
-  type InsertVoiceNote,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -190,7 +138,6 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByVerificationToken(token: string): Promise<User | undefined>;
   getUserByPasswordResetToken(token: string): Promise<User | undefined>;
-  getUserByPasswordResetTokenSuffix(token: string): Promise<User | undefined>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
@@ -214,13 +161,6 @@ export interface IStorage {
   getIntegrationSettings(userId: string): Promise<IntegrationSettings | undefined>;
   createIntegrationSettings(settings: InsertIntegrationSettings & { userId: string }): Promise<IntegrationSettings>;
   updateIntegrationSettings(userId: string, settings: Partial<InsertIntegrationSettings>): Promise<IntegrationSettings | undefined>;
-
-  // Calendar Sync Events
-  getCalendarSyncEvents(userId: string): Promise<CalendarSyncEvent[]>;
-  getCalendarSyncEventByJobId(jobId: string, provider: string): Promise<CalendarSyncEvent | undefined>;
-  createCalendarSyncEvent(event: InsertCalendarSyncEvent): Promise<CalendarSyncEvent>;
-  updateCalendarSyncEvent(id: string, event: Partial<InsertCalendarSyncEvent>): Promise<CalendarSyncEvent | undefined>;
-  deleteCalendarSyncEvent(id: string): Promise<boolean>;
 
   // Notifications
   getNotifications(userId: string): Promise<Notification[]>;
@@ -247,16 +187,6 @@ export interface IStorage {
   updateJob(id: string, userId: string, job: Partial<InsertJob>): Promise<Job | undefined>;
   deleteJob(id: string, userId: string): Promise<boolean>;
   getJobsForClient(clientId: string, userId: string): Promise<Job[]>;
-  
-  // Recurring Jobs
-  getRecurringJobs(userId: string): Promise<Job[]>;
-  getRecurringJobsForClient(clientId: string, userId: string): Promise<Job[]>;
-  getActiveRecurringJobs(userId: string): Promise<Job[]>;
-  getChildJobs(parentJobId: string, userId: string): Promise<Job[]>;
-  pauseRecurringJob(id: string, userId: string): Promise<Job | undefined>;
-  resumeRecurringJob(id: string, userId: string): Promise<Job | undefined>;
-  endRecurringJob(id: string, userId: string): Promise<Job | undefined>;
-  skipNextOccurrence(id: string, userId: string): Promise<Job | undefined>;
 
   // Checklist Items
   getChecklistItems(jobId: string, userId: string): Promise<ChecklistItem[]>;
@@ -360,15 +290,6 @@ export interface IStorage {
   createTimesheet(timesheet: InsertTimesheet & { userId: string }): Promise<Timesheet>;
   updateTimesheet(id: string, userId: string, timesheet: Partial<InsertTimesheet>): Promise<Timesheet | undefined>;
   
-  // Trip Tracking
-  getTrips(userId: string, jobId?: string): Promise<Trip[]>;
-  getTrip(id: string, userId: string): Promise<Trip | undefined>;
-  getActiveTrip(userId: string): Promise<Trip | undefined>;
-  createTrip(trip: InsertTrip & { userId: string }): Promise<Trip>;
-  updateTrip(id: string, userId: string, trip: Partial<InsertTrip>): Promise<Trip | undefined>;
-  deleteTrip(id: string, userId: string): Promise<boolean>;
-  stopTrip(id: string, userId: string): Promise<Trip | undefined>;
-  
   // Expense Tracking
   getExpenseCategories(userId: string): Promise<ExpenseCategory[]>;
   createExpenseCategory(category: InsertExpenseCategory & { userId: string }): Promise<ExpenseCategory>;
@@ -460,84 +381,6 @@ export interface IStorage {
   // Automation Logs
   hasAutomationProcessed(automationId: string, entityType: string, entityId: string): Promise<boolean>;
   logAutomationProcessed(automationId: string, entityType: string, entityId: string, result: string, errorMessage?: string): Promise<void>;
-
-  // ===== SERVICEM8 PARITY FEATURES =====
-
-  // Job Signatures
-  getJobSignatures(jobId: string): Promise<JobSignature[]>;
-  createJobSignature(data: InsertJobSignature): Promise<JobSignature>;
-  deleteJobSignature(id: string, userId: string): Promise<void>;
-
-  // Quote Revisions
-  getQuoteRevisions(quoteId: string): Promise<QuoteRevision[]>;
-  createQuoteRevision(data: InsertQuoteRevision): Promise<QuoteRevision>;
-
-  // Assets
-  getAssets(userId: string): Promise<Asset[]>;
-  getAsset(id: string, userId: string): Promise<Asset | undefined>;
-  createAsset(data: InsertAsset): Promise<Asset>;
-  updateAsset(id: string, userId: string, data: Partial<InsertAsset>): Promise<Asset>;
-  deleteAsset(id: string, userId: string): Promise<void>;
-
-  // Job Assets
-  getJobAssets(jobId: string): Promise<JobAsset[]>;
-  addJobAsset(data: InsertJobAsset): Promise<JobAsset>;
-  updateJobAsset(id: string, data: Partial<InsertJobAsset>): Promise<JobAsset>;
-  removeJobAsset(id: string): Promise<void>;
-
-  // Staff Availability
-  getStaffAvailability(userId: string, businessOwnerId: string): Promise<StaffAvailability[]>;
-  setStaffAvailability(data: InsertStaffAvailability): Promise<StaffAvailability>;
-  updateStaffAvailability(id: string, data: Partial<InsertStaffAvailability>): Promise<StaffAvailability>;
-
-  // Staff Time Off
-  getStaffTimeOff(businessOwnerId: string): Promise<StaffTimeOff[]>;
-  createTimeOffRequest(data: InsertStaffTimeOff): Promise<StaffTimeOff>;
-  updateTimeOffRequest(id: string, data: Partial<InsertStaffTimeOff>): Promise<StaffTimeOff>;
-
-  // Job Forms
-  getJobFormTemplates(userId: string): Promise<JobFormTemplate[]>;
-  getJobFormTemplate(id: string, userId: string): Promise<JobFormTemplate | undefined>;
-  createJobFormTemplate(data: InsertJobFormTemplate): Promise<JobFormTemplate>;
-  updateJobFormTemplate(id: string, userId: string, data: Partial<InsertJobFormTemplate>): Promise<JobFormTemplate>;
-  deleteJobFormTemplate(id: string, userId: string): Promise<void>;
-  getJobFormResponses(jobId: string): Promise<JobFormResponse[]>;
-  createJobFormResponse(data: InsertJobFormResponse): Promise<JobFormResponse>;
-  updateJobFormResponse(id: string, data: Partial<InsertJobFormResponse>): Promise<JobFormResponse>;
-
-  // Job Activities (Job Diary)
-  getJobActivities(jobId: string): Promise<JobActivity[]>;
-  createJobActivity(data: InsertJobActivity): Promise<JobActivity>;
-  deleteJobActivity(id: string): Promise<void>;
-
-  // Form Store
-  getFormStoreTemplates(category?: string, tradeType?: string): Promise<FormStoreTemplate[]>;
-  getFormStoreTemplate(id: string): Promise<FormStoreTemplate | undefined>;
-  getFormStoreInstallations(userId: string): Promise<FormStoreInstallation[]>;
-  hasUserInstalledForm(userId: string, storeTemplateId: string): Promise<boolean>;
-  installFormFromStore(userId: string, storeTemplateId: string, userTemplateId: string): Promise<FormStoreInstallation>;
-  rateStoreForm(installationId: string, rating: number): Promise<FormStoreInstallation>;
-  incrementFormDownloadCount(storeTemplateId: string): Promise<void>;
-
-  // Booking Portal Settings
-  getBookingPortalSettings(userId: string): Promise<BookingPortalSettings | undefined>;
-  getBookingPortalBySlug(slug: string): Promise<BookingPortalSettings | undefined>;
-  createBookingPortalSettings(userId: string, settings: InsertBookingPortalSettings): Promise<BookingPortalSettings>;
-  updateBookingPortalSettings(userId: string, settings: Partial<InsertBookingPortalSettings>): Promise<BookingPortalSettings | undefined>;
-
-  // Booking Services
-  getBookingServices(userId: string): Promise<BookingService[]>;
-  getActiveBookingServices(userId: string): Promise<BookingService[]>;
-  getBookingService(id: string): Promise<BookingService | undefined>;
-  createBookingService(userId: string, service: InsertBookingService): Promise<BookingService>;
-  updateBookingService(id: string, userId: string, service: Partial<InsertBookingService>): Promise<BookingService | undefined>;
-  deleteBookingService(id: string, userId: string): Promise<boolean>;
-
-  // Booking Requests
-  getBookingRequests(userId: string): Promise<BookingRequest[]>;
-  getBookingRequest(id: string): Promise<BookingRequest | undefined>;
-  createBookingRequest(request: InsertBookingRequest & { userId: string }): Promise<BookingRequest>;
-  updateBookingRequest(id: string, updates: Partial<BookingRequest>): Promise<BookingRequest | undefined>;
 }
 
 // Initialize database connection
@@ -638,16 +481,6 @@ export class PostgresStorage implements IStorage {
       .select()
       .from(users)
       .where(eq(users.passwordResetToken, token))
-      .limit(1);
-    return result[0];
-  }
-
-  async getUserByPasswordResetTokenSuffix(token: string): Promise<User | undefined> {
-    // Find user whose passwordResetToken ends with "|<token>" (combined format: code|token)
-    const result = await db
-      .select()
-      .from(users)
-      .where(sql`${users.passwordResetToken} LIKE ${'%|' + token}`)
       .limit(1);
     return result[0];
   }
@@ -838,48 +671,6 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
-  // Calendar Sync Events
-  async getCalendarSyncEvents(userId: string): Promise<CalendarSyncEvent[]> {
-    return await db
-      .select()
-      .from(calendarSyncEvents)
-      .where(eq(calendarSyncEvents.userId, userId))
-      .orderBy(desc(calendarSyncEvents.createdAt));
-  }
-
-  async getCalendarSyncEventByJobId(jobId: string, provider: string): Promise<CalendarSyncEvent | undefined> {
-    const result = await db
-      .select()
-      .from(calendarSyncEvents)
-      .where(and(
-        eq(calendarSyncEvents.jobId, jobId),
-        eq(calendarSyncEvents.calendarProvider, provider)
-      ))
-      .limit(1);
-    return result[0];
-  }
-
-  async createCalendarSyncEvent(event: InsertCalendarSyncEvent): Promise<CalendarSyncEvent> {
-    const result = await db.insert(calendarSyncEvents).values(event).returning();
-    return result[0];
-  }
-
-  async updateCalendarSyncEvent(id: string, event: Partial<InsertCalendarSyncEvent>): Promise<CalendarSyncEvent | undefined> {
-    const result = await db
-      .update(calendarSyncEvents)
-      .set({ ...event, updatedAt: new Date() })
-      .where(eq(calendarSyncEvents.id, id))
-      .returning();
-    return result[0];
-  }
-
-  async deleteCalendarSyncEvent(id: string): Promise<boolean> {
-    const result = await db
-      .delete(calendarSyncEvents)
-      .where(eq(calendarSyncEvents.id, id));
-    return result.rowCount > 0;
-  }
-
   // Notifications
   async getNotifications(userId: string): Promise<Notification[]> {
     return await db
@@ -1030,143 +821,6 @@ export class PostgresStorage implements IStorage {
       .from(jobs)
       .where(and(eq(jobs.clientId, clientId), eq(jobs.userId, userId)))
       .orderBy(desc(jobs.createdAt));
-  }
-
-  // Recurring Jobs
-  async getRecurringJobs(userId: string): Promise<Job[]> {
-    return await db
-      .select()
-      .from(jobs)
-      .where(and(
-        eq(jobs.userId, userId),
-        eq(jobs.isRecurring, true)
-      ))
-      .orderBy(desc(jobs.createdAt));
-  }
-
-  async getRecurringJobsForClient(clientId: string, userId: string): Promise<Job[]> {
-    return await db
-      .select()
-      .from(jobs)
-      .where(and(
-        eq(jobs.userId, userId),
-        eq(jobs.clientId, clientId),
-        eq(jobs.isRecurring, true)
-      ))
-      .orderBy(desc(jobs.createdAt));
-  }
-
-  async getActiveRecurringJobs(userId: string): Promise<Job[]> {
-    return await db
-      .select()
-      .from(jobs)
-      .where(and(
-        eq(jobs.userId, userId),
-        eq(jobs.isRecurring, true),
-        eq(jobs.recurrenceStatus, 'active')
-      ))
-      .orderBy(desc(jobs.createdAt));
-  }
-
-  async getChildJobs(parentJobId: string, userId: string): Promise<Job[]> {
-    return await db
-      .select()
-      .from(jobs)
-      .where(and(
-        eq(jobs.userId, userId),
-        eq(jobs.parentJobId, parentJobId)
-      ))
-      .orderBy(desc(jobs.scheduledAt));
-  }
-
-  async pauseRecurringJob(id: string, userId: string): Promise<Job | undefined> {
-    const result = await db
-      .update(jobs)
-      .set({ recurrenceStatus: 'paused', updatedAt: new Date() })
-      .where(and(
-        eq(jobs.id, id),
-        eq(jobs.userId, userId),
-        eq(jobs.isRecurring, true)
-      ))
-      .returning();
-    return result[0];
-  }
-
-  async resumeRecurringJob(id: string, userId: string): Promise<Job | undefined> {
-    const result = await db
-      .update(jobs)
-      .set({ recurrenceStatus: 'active', updatedAt: new Date() })
-      .where(and(
-        eq(jobs.id, id),
-        eq(jobs.userId, userId),
-        eq(jobs.isRecurring, true)
-      ))
-      .returning();
-    return result[0];
-  }
-
-  async endRecurringJob(id: string, userId: string): Promise<Job | undefined> {
-    const result = await db
-      .update(jobs)
-      .set({ recurrenceStatus: 'ended', updatedAt: new Date() })
-      .where(and(
-        eq(jobs.id, id),
-        eq(jobs.userId, userId),
-        eq(jobs.isRecurring, true)
-      ))
-      .returning();
-    return result[0];
-  }
-
-  async skipNextOccurrence(id: string, userId: string): Promise<Job | undefined> {
-    const recurringJob = await this.getJob(id, userId);
-    if (!recurringJob || !recurringJob.isRecurring || !recurringJob.nextRecurrenceDate) {
-      return undefined;
-    }
-
-    const nextDate = this.calculateNextRecurrenceDate(
-      new Date(recurringJob.nextRecurrenceDate),
-      recurringJob.recurrencePattern || 'weekly',
-      recurringJob.recurrenceInterval || 1
-    );
-
-    const result = await db
-      .update(jobs)
-      .set({ nextRecurrenceDate: nextDate, updatedAt: new Date() })
-      .where(and(
-        eq(jobs.id, id),
-        eq(jobs.userId, userId),
-        eq(jobs.isRecurring, true)
-      ))
-      .returning();
-    return result[0];
-  }
-
-  private calculateNextRecurrenceDate(currentDate: Date, pattern: string, interval: number): Date {
-    const next = new Date(currentDate);
-    switch (pattern) {
-      case 'daily':
-        next.setDate(next.getDate() + interval);
-        break;
-      case 'weekly':
-        next.setDate(next.getDate() + (7 * interval));
-        break;
-      case 'fortnightly':
-        next.setDate(next.getDate() + (14 * interval));
-        break;
-      case 'monthly':
-        next.setMonth(next.getMonth() + interval);
-        break;
-      case 'quarterly':
-        next.setMonth(next.getMonth() + (3 * interval));
-        break;
-      case 'yearly':
-        next.setFullYear(next.getFullYear() + interval);
-        break;
-      default:
-        next.setDate(next.getDate() + (7 * interval));
-    }
-    return next;
   }
 
   // Checklist Items
@@ -1935,81 +1589,6 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
-  // Trip Tracking
-  async getTrips(userId: string, jobId?: string): Promise<Trip[]> {
-    if (jobId) {
-      return await db.select().from(trips)
-        .where(and(eq(trips.userId, userId), eq(trips.jobId, jobId)))
-        .orderBy(desc(trips.startTime));
-    }
-    return await db.select().from(trips)
-      .where(eq(trips.userId, userId))
-      .orderBy(desc(trips.startTime));
-  }
-
-  async getTrip(id: string, userId: string): Promise<Trip | undefined> {
-    const result = await db.select().from(trips)
-      .where(and(eq(trips.id, id), eq(trips.userId, userId)))
-      .limit(1);
-    return result[0];
-  }
-
-  async getActiveTrip(userId: string): Promise<Trip | undefined> {
-    const result = await db.select().from(trips)
-      .where(and(
-        eq(trips.userId, userId),
-        eq(trips.status, 'in_progress')
-      ))
-      .orderBy(desc(trips.startTime))
-      .limit(1);
-    return result[0];
-  }
-
-  async createTrip(trip: InsertTrip & { userId: string }): Promise<Trip> {
-    const result = await db.insert(trips).values({
-      ...trip,
-      startTime: trip.startTime || new Date(),
-    }).returning();
-    return result[0];
-  }
-
-  async updateTrip(id: string, userId: string, trip: Partial<InsertTrip>): Promise<Trip | undefined> {
-    const result = await db.update(trips)
-      .set({ ...trip, updatedAt: new Date() })
-      .where(and(eq(trips.id, id), eq(trips.userId, userId)))
-      .returning();
-    return result[0];
-  }
-
-  async deleteTrip(id: string, userId: string): Promise<boolean> {
-    const result = await db.delete(trips)
-      .where(and(eq(trips.id, id), eq(trips.userId, userId)))
-      .returning();
-    return result.length > 0;
-  }
-
-  async stopTrip(id: string, userId: string): Promise<Trip | undefined> {
-    const existingTrip = await this.getTrip(id, userId);
-    if (!existingTrip || existingTrip.status !== 'in_progress') {
-      return undefined;
-    }
-
-    const endTime = new Date();
-    const startTime = existingTrip.startTime;
-    const duration = Math.round((endTime.getTime() - new Date(startTime).getTime()) / 60000); // minutes
-
-    const result = await db.update(trips)
-      .set({
-        endTime,
-        duration,
-        status: 'completed',
-        updatedAt: new Date(),
-      })
-      .where(and(eq(trips.id, id), eq(trips.userId, userId)))
-      .returning();
-    return result[0];
-  }
-
   // Expense Tracking
   async getExpenseCategories(userId: string): Promise<ExpenseCategory[]> {
     return await db.select().from(expenseCategories)
@@ -2406,31 +1985,6 @@ export class PostgresStorage implements IStorage {
     return result.rowCount > 0;
   }
 
-  // Voice Notes - Mobile-first audio recordings for jobs
-  async getVoiceNotes(jobId: string, userId: string): Promise<VoiceNote[]> {
-    return await db.select().from(voiceNotes)
-      .where(and(eq(voiceNotes.jobId, jobId), eq(voiceNotes.userId, userId)))
-      .orderBy(desc(voiceNotes.createdAt));
-  }
-
-  async getVoiceNote(id: string, userId: string): Promise<VoiceNote | undefined> {
-    const result = await db.select().from(voiceNotes)
-      .where(and(eq(voiceNotes.id, id), eq(voiceNotes.userId, userId)))
-      .limit(1);
-    return result[0];
-  }
-
-  async createVoiceNote(voiceNote: InsertVoiceNote): Promise<VoiceNote> {
-    const result = await db.insert(voiceNotes).values(voiceNote).returning();
-    return result[0];
-  }
-
-  async deleteVoiceNote(id: string, userId: string): Promise<boolean> {
-    const result = await db.delete(voiceNotes)
-      .where(and(eq(voiceNotes.id, id), eq(voiceNotes.userId, userId)));
-    return result.rowCount > 0;
-  }
-
   // Invoice Reminder Logs
   async getInvoiceReminderLogs(invoiceId: string, userId: string): Promise<InvoiceReminderLog[]> {
     return await db.select().from(invoiceReminderLogs)
@@ -2483,7 +2037,6 @@ export class PostgresStorage implements IStorage {
     return await db.select().from(jobs)
       .where(and(
         eq(jobs.isRecurring, true),
-        eq(jobs.recurrenceStatus, 'active'),
         lte(jobs.nextRecurrenceDate, now)
       ));
   }
@@ -2503,7 +2056,6 @@ export class PostgresStorage implements IStorage {
       .where(and(
         eq(jobs.userId, userId),
         eq(jobs.isRecurring, true),
-        eq(jobs.recurrenceStatus, 'active'),
         lte(jobs.nextRecurrenceDate, now)
       ));
   }
@@ -2790,7 +2342,7 @@ export class PostgresStorage implements IStorage {
           partnerId,
           partnerName: partner ? `${partner.firstName || ''} ${partner.lastName || ''}`.trim() || partner.email : 'Unknown',
           partnerAvatar: partner?.profileImageUrl,
-          lastMessage: msg.message,
+          lastMessage: msg.content,
           lastMessageAt: msg.createdAt,
           unreadCount: received.filter(m => m.senderId === partnerId && !m.isRead).length,
         });
@@ -2918,390 +2470,6 @@ export class PostgresStorage implements IStorage {
     } catch (error) {
       console.error(`[Storage] Error logging automation:`, error);
     }
-  }
-
-  // ===== SERVICEM8 PARITY FEATURES =====
-
-  // Job Signatures
-  async getJobSignatures(jobId: string): Promise<JobSignature[]> {
-    return await db.select().from(jobSignatures)
-      .where(eq(jobSignatures.jobId, jobId))
-      .orderBy(desc(jobSignatures.createdAt));
-  }
-
-  async createJobSignature(data: InsertJobSignature): Promise<JobSignature> {
-    const [result] = await db.insert(jobSignatures).values(data).returning();
-    return result;
-  }
-
-  async deleteJobSignature(id: string, userId: string): Promise<void> {
-    await db.delete(jobSignatures)
-      .where(and(eq(jobSignatures.id, id), eq(jobSignatures.userId, userId)));
-  }
-
-  // Quote Revisions
-  async getQuoteRevisions(quoteId: string): Promise<QuoteRevision[]> {
-    return await db.select().from(quoteRevisions)
-      .where(eq(quoteRevisions.quoteId, quoteId))
-      .orderBy(desc(quoteRevisions.revisionNumber));
-  }
-
-  async createQuoteRevision(data: InsertQuoteRevision): Promise<QuoteRevision> {
-    const [result] = await db.insert(quoteRevisions).values(data).returning();
-    return result;
-  }
-
-  // Assets
-  async getAssets(userId: string): Promise<Asset[]> {
-    return await db.select().from(assets)
-      .where(eq(assets.userId, userId))
-      .orderBy(desc(assets.createdAt));
-  }
-
-  async getAsset(id: string, userId: string): Promise<Asset | undefined> {
-    const result = await db.select().from(assets)
-      .where(and(eq(assets.id, id), eq(assets.userId, userId)))
-      .limit(1);
-    return result[0];
-  }
-
-  async createAsset(data: InsertAsset): Promise<Asset> {
-    const [result] = await db.insert(assets).values(data).returning();
-    return result;
-  }
-
-  async updateAsset(id: string, userId: string, data: Partial<InsertAsset>): Promise<Asset> {
-    const [result] = await db.update(assets)
-      .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(assets.id, id), eq(assets.userId, userId)))
-      .returning();
-    return result;
-  }
-
-  async deleteAsset(id: string, userId: string): Promise<void> {
-    await db.delete(assets)
-      .where(and(eq(assets.id, id), eq(assets.userId, userId)));
-  }
-
-  // Job Assets
-  async getJobAssets(jobId: string): Promise<JobAsset[]> {
-    return await db.select().from(jobAssets)
-      .where(eq(jobAssets.jobId, jobId));
-  }
-
-  async addJobAsset(data: InsertJobAsset): Promise<JobAsset> {
-    const [result] = await db.insert(jobAssets).values(data).returning();
-    return result;
-  }
-
-  async updateJobAsset(id: string, data: Partial<InsertJobAsset>): Promise<JobAsset> {
-    const [result] = await db.update(jobAssets)
-      .set(data)
-      .where(eq(jobAssets.id, id))
-      .returning();
-    return result;
-  }
-
-  async removeJobAsset(id: string): Promise<void> {
-    await db.delete(jobAssets).where(eq(jobAssets.id, id));
-  }
-
-  // Staff Availability
-  async getStaffAvailability(userId: string, businessOwnerId: string): Promise<StaffAvailability[]> {
-    return await db.select().from(staffAvailability)
-      .where(and(
-        eq(staffAvailability.userId, userId),
-        eq(staffAvailability.businessOwnerId, businessOwnerId)
-      ))
-      .orderBy(asc(staffAvailability.dayOfWeek));
-  }
-
-  async setStaffAvailability(data: InsertStaffAvailability): Promise<StaffAvailability> {
-    const [result] = await db.insert(staffAvailability).values(data).returning();
-    return result;
-  }
-
-  async updateStaffAvailability(id: string, data: Partial<InsertStaffAvailability>): Promise<StaffAvailability> {
-    const [result] = await db.update(staffAvailability)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(staffAvailability.id, id))
-      .returning();
-    return result;
-  }
-
-  // Staff Time Off
-  async getStaffTimeOff(businessOwnerId: string): Promise<StaffTimeOff[]> {
-    return await db.select().from(staffTimeOff)
-      .where(eq(staffTimeOff.businessOwnerId, businessOwnerId))
-      .orderBy(desc(staffTimeOff.startDate));
-  }
-
-  async createTimeOffRequest(data: InsertStaffTimeOff): Promise<StaffTimeOff> {
-    const [result] = await db.insert(staffTimeOff).values(data).returning();
-    return result;
-  }
-
-  async updateTimeOffRequest(id: string, data: Partial<InsertStaffTimeOff>): Promise<StaffTimeOff> {
-    const [result] = await db.update(staffTimeOff)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(staffTimeOff.id, id))
-      .returning();
-    return result;
-  }
-
-  // Job Form Templates
-  async getJobFormTemplates(userId: string): Promise<JobFormTemplate[]> {
-    return await db.select().from(jobFormTemplates)
-      .where(eq(jobFormTemplates.userId, userId))
-      .orderBy(desc(jobFormTemplates.createdAt));
-  }
-
-  async getJobFormTemplate(id: string, userId: string): Promise<JobFormTemplate | undefined> {
-    const result = await db.select().from(jobFormTemplates)
-      .where(and(eq(jobFormTemplates.id, id), eq(jobFormTemplates.userId, userId)))
-      .limit(1);
-    return result[0];
-  }
-
-  async createJobFormTemplate(data: InsertJobFormTemplate): Promise<JobFormTemplate> {
-    const [result] = await db.insert(jobFormTemplates).values(data).returning();
-    return result;
-  }
-
-  async updateJobFormTemplate(id: string, userId: string, data: Partial<InsertJobFormTemplate>): Promise<JobFormTemplate> {
-    const [result] = await db.update(jobFormTemplates)
-      .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(jobFormTemplates.id, id), eq(jobFormTemplates.userId, userId)))
-      .returning();
-    return result;
-  }
-
-  async deleteJobFormTemplate(id: string, userId: string): Promise<void> {
-    await db.delete(jobFormTemplates)
-      .where(and(eq(jobFormTemplates.id, id), eq(jobFormTemplates.userId, userId)));
-  }
-
-  // Job Form Responses
-  async getJobFormResponses(jobId: string): Promise<JobFormResponse[]> {
-    return await db.select().from(jobFormResponses)
-      .where(eq(jobFormResponses.jobId, jobId))
-      .orderBy(desc(jobFormResponses.createdAt));
-  }
-
-  async createJobFormResponse(data: InsertJobFormResponse): Promise<JobFormResponse> {
-    const [result] = await db.insert(jobFormResponses).values(data).returning();
-    return result;
-  }
-
-  async updateJobFormResponse(id: string, data: Partial<InsertJobFormResponse>): Promise<JobFormResponse> {
-    const [result] = await db.update(jobFormResponses)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(jobFormResponses.id, id))
-      .returning();
-    return result;
-  }
-
-  // Job Activities (Job Diary)
-  async getJobActivities(jobId: string): Promise<JobActivity[]> {
-    return await db.select().from(jobActivities)
-      .where(eq(jobActivities.jobId, jobId))
-      .orderBy(desc(jobActivities.createdAt));
-  }
-
-  async createJobActivity(data: InsertJobActivity): Promise<JobActivity> {
-    const [result] = await db.insert(jobActivities).values(data).returning();
-    return result;
-  }
-
-  async deleteJobActivity(id: string): Promise<void> {
-    await db.delete(jobActivities).where(eq(jobActivities.id, id));
-  }
-
-  // Form Store Methods
-  async getFormStoreTemplates(category?: string, tradeType?: string): Promise<FormStoreTemplate[]> {
-    const conditions = [eq(formStoreTemplates.isActive, true)];
-    if (category) conditions.push(eq(formStoreTemplates.category, category));
-    if (tradeType) conditions.push(eq(formStoreTemplates.tradeType, tradeType));
-    
-    return await db.select().from(formStoreTemplates)
-      .where(and(...conditions))
-      .orderBy(desc(formStoreTemplates.downloadCount), asc(formStoreTemplates.name));
-  }
-
-  async getFormStoreTemplate(id: string): Promise<FormStoreTemplate | undefined> {
-    const result = await db.select().from(formStoreTemplates)
-      .where(eq(formStoreTemplates.id, id))
-      .limit(1);
-    return result[0];
-  }
-
-  async getFormStoreInstallations(userId: string): Promise<FormStoreInstallation[]> {
-    return await db.select().from(formStoreInstallations)
-      .where(eq(formStoreInstallations.userId, userId))
-      .orderBy(desc(formStoreInstallations.installedAt));
-  }
-
-  async hasUserInstalledForm(userId: string, storeTemplateId: string): Promise<boolean> {
-    const result = await db.select().from(formStoreInstallations)
-      .where(and(
-        eq(formStoreInstallations.userId, userId),
-        eq(formStoreInstallations.storeTemplateId, storeTemplateId)
-      ))
-      .limit(1);
-    return result.length > 0;
-  }
-
-  async installFormFromStore(userId: string, storeTemplateId: string, userTemplateId: string): Promise<FormStoreInstallation> {
-    const [result] = await db.insert(formStoreInstallations).values({
-      userId,
-      storeTemplateId,
-      userTemplateId,
-    }).returning();
-    return result;
-  }
-
-  async rateStoreForm(installationId: string, rating: number): Promise<FormStoreInstallation> {
-    const [result] = await db.update(formStoreInstallations)
-      .set({ rating, ratedAt: new Date() })
-      .where(eq(formStoreInstallations.id, installationId))
-      .returning();
-    
-    // Update the store template's average rating
-    const installation = result;
-    if (installation) {
-      const allRatings = await db.select({ rating: formStoreInstallations.rating })
-        .from(formStoreInstallations)
-        .where(and(
-          eq(formStoreInstallations.storeTemplateId, installation.storeTemplateId),
-          isNotNull(formStoreInstallations.rating)
-        ));
-      
-      const validRatings = allRatings.filter(r => r.rating !== null).map(r => r.rating!);
-      if (validRatings.length > 0) {
-        const avgRating = validRatings.reduce((a, b) => a + b, 0) / validRatings.length;
-        await db.update(formStoreTemplates)
-          .set({ rating: avgRating.toFixed(2), ratingCount: validRatings.length })
-          .where(eq(formStoreTemplates.id, installation.storeTemplateId));
-      }
-    }
-    
-    return result;
-  }
-
-  async incrementFormDownloadCount(storeTemplateId: string): Promise<void> {
-    await db.update(formStoreTemplates)
-      .set({ downloadCount: sql`${formStoreTemplates.downloadCount} + 1` })
-      .where(eq(formStoreTemplates.id, storeTemplateId));
-  }
-
-  // Booking Portal Settings
-  async getBookingPortalSettings(userId: string): Promise<BookingPortalSettings | undefined> {
-    const result = await db.select().from(bookingPortalSettings)
-      .where(eq(bookingPortalSettings.userId, userId))
-      .limit(1);
-    return result[0];
-  }
-
-  async getBookingPortalBySlug(slug: string): Promise<BookingPortalSettings | undefined> {
-    const result = await db.select().from(bookingPortalSettings)
-      .where(eq(bookingPortalSettings.urlSlug, slug))
-      .limit(1);
-    return result[0];
-  }
-
-  async createBookingPortalSettings(userId: string, settings: InsertBookingPortalSettings): Promise<BookingPortalSettings> {
-    const [result] = await db.insert(bookingPortalSettings).values({
-      ...settings,
-      userId,
-    }).returning();
-    return result;
-  }
-
-  async updateBookingPortalSettings(userId: string, settings: Partial<InsertBookingPortalSettings>): Promise<BookingPortalSettings | undefined> {
-    const [result] = await db.update(bookingPortalSettings)
-      .set({ ...settings, updatedAt: new Date() })
-      .where(eq(bookingPortalSettings.userId, userId))
-      .returning();
-    return result;
-  }
-
-  // Booking Services
-  async getBookingServices(userId: string): Promise<BookingService[]> {
-    return await db.select().from(bookingServices)
-      .where(eq(bookingServices.userId, userId))
-      .orderBy(asc(bookingServices.sortOrder));
-  }
-
-  async getActiveBookingServices(userId: string): Promise<BookingService[]> {
-    return await db.select().from(bookingServices)
-      .where(and(
-        eq(bookingServices.userId, userId),
-        eq(bookingServices.isActive, true)
-      ))
-      .orderBy(asc(bookingServices.sortOrder));
-  }
-
-  async getBookingService(id: string): Promise<BookingService | undefined> {
-    const result = await db.select().from(bookingServices)
-      .where(eq(bookingServices.id, id))
-      .limit(1);
-    return result[0];
-  }
-
-  async createBookingService(userId: string, service: InsertBookingService): Promise<BookingService> {
-    const [result] = await db.insert(bookingServices).values({
-      ...service,
-      userId,
-    }).returning();
-    return result;
-  }
-
-  async updateBookingService(id: string, userId: string, service: Partial<InsertBookingService>): Promise<BookingService | undefined> {
-    const [result] = await db.update(bookingServices)
-      .set({ ...service, updatedAt: new Date() })
-      .where(and(
-        eq(bookingServices.id, id),
-        eq(bookingServices.userId, userId)
-      ))
-      .returning();
-    return result;
-  }
-
-  async deleteBookingService(id: string, userId: string): Promise<boolean> {
-    const result = await db.delete(bookingServices)
-      .where(and(
-        eq(bookingServices.id, id),
-        eq(bookingServices.userId, userId)
-      ))
-      .returning();
-    return result.length > 0;
-  }
-
-  // Booking Requests
-  async getBookingRequests(userId: string): Promise<BookingRequest[]> {
-    return await db.select().from(bookingRequests)
-      .where(eq(bookingRequests.userId, userId))
-      .orderBy(desc(bookingRequests.createdAt));
-  }
-
-  async getBookingRequest(id: string): Promise<BookingRequest | undefined> {
-    const result = await db.select().from(bookingRequests)
-      .where(eq(bookingRequests.id, id))
-      .limit(1);
-    return result[0];
-  }
-
-  async createBookingRequest(request: InsertBookingRequest & { userId: string }): Promise<BookingRequest> {
-    const [result] = await db.insert(bookingRequests).values(request).returning();
-    return result;
-  }
-
-  async updateBookingRequest(id: string, updates: Partial<BookingRequest>): Promise<BookingRequest | undefined> {
-    const [result] = await db.update(bookingRequests)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(bookingRequests.id, id))
-      .returning();
-    return result;
   }
 }
 

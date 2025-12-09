@@ -111,26 +111,26 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   filterContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 6,
+    paddingVertical: 12,
+    gap: 8,
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: 4,
+    gap: 6,
   },
   filterChipActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   filterChipText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
     color: colors.foreground,
   },
@@ -139,18 +139,18 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   filterBadge: {
     backgroundColor: colors.muted,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
   },
   filterBadgeActive: {
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
   filterBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.foreground,
   },
@@ -277,10 +277,10 @@ export default function ChatHubScreen() {
         api.get('/api/team/members').catch(() => ({ data: [] }))
       ]);
       
-      setTeamMessages(Array.isArray(teamRes.data) ? teamRes.data : []);
-      setDmConversations(Array.isArray(dmRes.data) ? dmRes.data : []);
-      setJobs(Array.isArray(jobsRes.data) ? jobsRes.data : []);
-      setTeamMembers(Array.isArray(membersRes.data) ? membersRes.data : []);
+      setTeamMessages(teamRes.data || []);
+      setDmConversations(dmRes.data || []);
+      setJobs(jobsRes.data || []);
+      setTeamMembers(membersRes.data || []);
     } catch (error) {
       console.log('Failed to fetch chat data:', error);
     } finally {

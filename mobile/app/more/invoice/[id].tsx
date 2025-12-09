@@ -8,17 +8,14 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
-  Modal,
-  Switch,
-  Share,
-  Linking
+  Modal
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useInvoicesStore, useClientsStore, useAuthStore } from '../../../src/lib/store';
 import { colors } from '../../../src/lib/colors';
 import { DocumentPreview } from '../../../src/components/DocumentPreview';
-import { API_URL, WEB_URL } from '../../../src/lib/api';
+import { API_URL } from '../../../src/lib/api';
 
 const STATUS_CONFIG = {
   draft: { label: 'Draft', color: colors.mutedForeground, bg: colors.cardHover },
@@ -39,7 +36,6 @@ export default function InvoiceDetailScreen() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendMessage, setSendMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [isTogglingPayment, setIsTogglingPayment] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -68,19 +64,6 @@ export default function InvoiceDetailScreen() {
       month: 'long',
       year: 'numeric',
     });
-  };
-
-  const safeOpenURL = async (url: string, errorMessage: string) => {
-    try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert('Unable to Open', errorMessage);
-      }
-    } catch (error) {
-      Alert.alert('Error', errorMessage);
-    }
   };
 
   const handleSend = () => {
@@ -137,33 +120,10 @@ export default function InvoiceDetailScreen() {
         { 
           text: 'Confirm',
           onPress: async () => {
-            try {
-              const response = await fetch(`${API_URL}/api/invoices/${id}/mark-paid`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`,
-                },
-              });
-
-              if (response.ok) {
-                await loadData();
-                Alert.alert('Success', 'Invoice marked as paid and job status updated');
-              } else {
-                const success = await updateInvoiceStatus(id!, 'paid');
-                if (success) {
-                  await loadData();
-                  Alert.alert('Invoice Updated', 'Invoice marked as paid locally');
-                } else {
-                  Alert.alert('Error', 'Failed to mark invoice as paid');
-                }
-              }
-            } catch (error) {
-              const success = await updateInvoiceStatus(id!, 'paid');
-              if (success) {
-                await loadData();
-                Alert.alert('Invoice Updated', 'Invoice marked as paid locally');
-              }
+            const success = await updateInvoiceStatus(id!, 'paid');
+            if (success) {
+              await loadData();
+              Alert.alert('Success', 'Invoice marked as paid');
             }
           }
         }
@@ -173,48 +133,6 @@ export default function InvoiceDetailScreen() {
 
   const handleCollectPayment = () => {
     router.push('/(tabs)/collect');
-  };
-
-  const handleToggleOnlinePayment = async (enabled: boolean) => {
-    setIsTogglingPayment(true);
-    try {
-      const response = await fetch(`${API_URL}/api/invoices/${id}/online-payment`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ allowOnlinePayment: enabled }),
-      });
-
-      if (response.ok) {
-        await loadData();
-        Alert.alert(
-          'Success',
-          enabled ? 'Online payment enabled for this invoice' : 'Online payment disabled'
-        );
-      } else {
-        Alert.alert('Error', 'Failed to update online payment setting');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update online payment setting');
-    } finally {
-      setIsTogglingPayment(false);
-    }
-  };
-
-  const handleCopyPaymentLink = async () => {
-    if (invoice?.paymentToken) {
-      const paymentUrl = `${WEB_URL}/pay/${invoice.paymentToken}`;
-      try {
-        await Share.share({
-          message: paymentUrl,
-          title: 'Payment Link',
-        });
-      } catch (error) {
-        Alert.alert('Error', 'Failed to share payment link');
-      }
-    }
   };
 
   if (isLoading) {
@@ -342,69 +260,31 @@ export default function InvoiceDetailScreen() {
           {/* Client Info */}
           <Text style={styles.sectionTitle}>Client</Text>
           <View style={styles.card}>
-            <TouchableOpacity 
-              style={styles.infoRow}
-              onPress={() => client && router.push(`/more/client/${client.id}`)}
-              activeOpacity={0.7}
-            >
+            <View style={styles.infoRow}>
               <Feather name="user" size={18} color={colors.primary} />
-              <View style={[styles.infoContent, { flex: 1 }]}>
+              <View style={styles.infoContent}>
                 <Text style={styles.clientName}>{client?.name || 'Unknown Client'}</Text>
               </View>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </View>
             {client?.email && (
-              <TouchableOpacity 
-                style={styles.infoRow}
-                onPress={() => safeOpenURL(`mailto:${client.email}`, 'Unable to open email app')}
-                activeOpacity={0.7}
-              >
-                <Feather name="mail" size={16} color={colors.primary} />
-                <Text style={[styles.infoText, styles.contactLink]}>{client.email}</Text>
-              </TouchableOpacity>
+              <View style={styles.infoRow}>
+                <Feather name="mail" size={16} color={colors.mutedForeground} />
+                <Text style={styles.infoText}>{client.email}</Text>
+              </View>
             )}
             {client?.phone && (
-              <TouchableOpacity 
-                style={styles.infoRow}
-                onPress={() => safeOpenURL(`tel:${client.phone}`, 'Unable to make phone call')}
-                activeOpacity={0.7}
-              >
-                <Feather name="phone" size={16} color={colors.primary} />
-                <Text style={[styles.infoText, styles.contactLink]}>{client.phone}</Text>
-              </TouchableOpacity>
+              <View style={styles.infoRow}>
+                <Feather name="phone" size={16} color={colors.mutedForeground} />
+                <Text style={styles.infoText}>{client.phone}</Text>
+              </View>
             )}
             {client?.address && (
-              <TouchableOpacity 
-                style={styles.infoRow}
-                onPress={() => safeOpenURL(`https://maps.google.com/?q=${encodeURIComponent(client.address || '')}`, 'Unable to open maps')}
-                activeOpacity={0.7}
-              >
-                <Feather name="map-pin" size={16} color={colors.primary} />
-                <Text style={[styles.infoText, styles.contactLink]}>{client.address}</Text>
-              </TouchableOpacity>
+              <View style={styles.infoRow}>
+                <Feather name="map-pin" size={16} color={colors.mutedForeground} />
+                <Text style={styles.infoText}>{client.address}</Text>
+              </View>
             )}
           </View>
-
-          {/* Linked Job */}
-          {invoice && invoice.jobId && (
-            <>
-              <Text style={styles.sectionTitle}>Linked Job</Text>
-              <TouchableOpacity 
-                style={styles.card}
-                onPress={() => router.push(`/job/${invoice.jobId}`)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.infoRow}>
-                  <Feather name="briefcase" size={18} color={colors.primary} />
-                  <View style={[styles.infoContent, { flex: 1 }]}>
-                    <Text style={styles.infoLabel}>View Job</Text>
-                    <Text style={styles.infoText}>Tap to open linked job</Text>
-                  </View>
-                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-                </View>
-              </TouchableOpacity>
-            </>
-          )}
 
           {/* Dates */}
           <Text style={styles.sectionTitle}>Details</Text>
@@ -509,50 +389,6 @@ export default function InvoiceDetailScreen() {
               <Text style={styles.sectionTitle}>Notes</Text>
               <View style={styles.card}>
                 <Text style={styles.notesText}>{invoice.notes}</Text>
-              </View>
-            </>
-          )}
-
-          {/* Online Payment Section */}
-          {invoice.status !== 'paid' && (
-            <>
-              <Text style={styles.sectionTitle}>Online Payment</Text>
-              <View style={styles.card}>
-                <View style={styles.switchRow}>
-                  <View style={styles.switchInfo}>
-                    <Feather name="credit-card" size={20} color={colors.primary} />
-                    <View style={styles.switchText}>
-                      <Text style={styles.switchLabel}>Allow Online Payment</Text>
-                      <Text style={styles.switchDescription}>
-                        Let customers pay via card
-                      </Text>
-                    </View>
-                  </View>
-                  <Switch
-                    value={invoice.allowOnlinePayment || false}
-                    onValueChange={handleToggleOnlinePayment}
-                    disabled={isTogglingPayment}
-                    trackColor={{ false: colors.muted, true: colors.primary }}
-                    thumbColor={colors.white}
-                  />
-                </View>
-                
-                {invoice.allowOnlinePayment && invoice.paymentToken && (
-                  <View style={styles.paymentLinkContainer}>
-                    <Text style={styles.paymentLinkLabel}>Payment Link:</Text>
-                    <View style={styles.paymentLinkRow}>
-                      <Text style={styles.paymentLinkUrl} numberOfLines={1}>
-                        {`${WEB_URL}/pay/${invoice.paymentToken}`}
-                      </Text>
-                      <TouchableOpacity 
-                        style={styles.copyButton}
-                        onPress={handleCopyPaymentLink}
-                      >
-                        <Feather name="share-2" size={16} color={colors.primary} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
               </View>
             </>
           )}
@@ -1041,63 +877,5 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  switchInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  switchText: {
-    flex: 1,
-  },
-  switchLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.foreground,
-  },
-  switchDescription: {
-    fontSize: 13,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  paymentLinkContainer: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  paymentLinkLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-    marginBottom: 8,
-  },
-  paymentLinkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.muted,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  paymentLinkUrl: {
-    flex: 1,
-    fontSize: 12,
-    color: colors.foreground,
-    fontFamily: 'monospace',
-  },
-  copyButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  contactLink: {
-    color: colors.primary,
-    textDecorationLine: 'underline' as const,
   },
 });

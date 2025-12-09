@@ -4,8 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Printer, ArrowLeft, Send, FileText, Mail, Phone, User, MapPin, DollarSign, Download, Briefcase, ChevronRight } from "lucide-react";
-import { useLocation } from "wouter";
+import { Printer, ArrowLeft, Send, FileText, Mail, Phone, User, MapPin, DollarSign, Download } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import StatusBadge from "./StatusBadge";
 
@@ -17,7 +16,6 @@ interface QuoteDetailViewProps {
 
 export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetailViewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
-  const [, setLocation] = useLocation();
   const { data: businessSettings } = useBusinessSettings();
 
   // Fetch quote with line items
@@ -237,26 +235,6 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             </Button>
           </div>
         </div>
-
-        {/* View Linked Job */}
-        {quote?.jobId && (
-          <Card className="mb-6 no-print hover-elevate cursor-pointer" onClick={() => setLocation(`/jobs/${quote.jobId}`)}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Briefcase className="h-5 w-5 text-primary" />
-                  <div>
-                    <h3 className="font-semibold">Linked Job</h3>
-                    <p className="text-sm text-muted-foreground">
-                      View the job associated with this quote
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Printable Content */}
         <div className={`print-content ${isPrinting ? 'print-page' : ''}`}>

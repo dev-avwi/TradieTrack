@@ -106,7 +106,6 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   
   // Settings - owner/solo full, manager limited, staff profile only
   { path: '/settings', label: 'Settings', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
-  { path: '/settings/calendar', label: 'Calendar Sync', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   
   // Billing - owner only
   { path: '/billing', label: 'Billing', allowedRoles: ['owner', 'solo_owner'], showInNav: false },
@@ -115,24 +114,6 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   
   // More page - all roles
   { path: '/more', label: 'More', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
-  
-  // Staff Rostering - owner/solo_owner/manager (team scheduling)
-  { path: '/staff-rostering', label: 'Staff Rostering', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  
-  // Route Optimization - all roles except staff
-  { path: '/route-optimize', label: 'Route Optimization', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  
-  // Assets/Equipment - owner/solo/manager
-  { path: '/assets', label: 'Assets', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  
-  // Job Forms - owner/solo/manager for template management
-  { path: '/job-forms', label: 'Job Forms', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  
-  // Form Store - browse and install pre-made forms
-  { path: '/form-store', label: 'Form Store', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  
-  // Job Profitability - view profit margins across all jobs
-  { path: '/job-profitability', label: 'Job Profitability', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
 ];
 
 // Check if a role can access a specific path

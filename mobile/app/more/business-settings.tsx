@@ -206,7 +206,7 @@ export default function BusinessSettingsScreen() {
           >
             <View style={styles.brandingLinkContent}>
               <View style={styles.brandingIconContainer}>
-                <Feather name="edit-3" size={22} color={colors.primary} />
+                <Feather name="palette" size={22} color={colors.primary} />
               </View>
               <View style={styles.brandingLinkText}>
                 <Text style={styles.brandingLinkTitle}>Logo & Brand Color</Text>

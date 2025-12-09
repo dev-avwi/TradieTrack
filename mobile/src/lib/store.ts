@@ -1,10 +1,5 @@
 import { create } from 'zustand';
 import api from './api';
-import { offlineStore } from './offlineStore';
-import { notificationService } from './notifications';
-import { locationTrackingService } from './locationTracking';
-import { cacheUserSession, getCachedSession, clearCachedSession } from './database';
-import NetInfo from '@react-native-community/netinfo';
 
 // ============ TYPES ============
 
@@ -160,9 +155,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return false;
     }
 
-    const user = response.data.user;
     set({ 
-      user, 
+      user: response.data.user, 
       isAuthenticated: true, 
       isLoading: false,
       isInitialized: true,
@@ -170,16 +164,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
 
     const settingsResponse = await api.get<BusinessSettings>('/api/business-settings');
-    const businessSettings = settingsResponse.data || null;
-    if (businessSettings) {
-      set({ businessSettings });
-    }
-
-    // Cache user session for offline auth
-    try {
-      await cacheUserSession(user, businessSettings);
-    } catch (e) {
-      console.warn('[AuthStore] Failed to cache session:', e);
+    if (settingsResponse.data) {
+      set({ businessSettings: settingsResponse.data });
     }
 
     return true;
@@ -188,14 +174,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     set({ isLoading: true });
     await api.logout();
-    
-    // Clear cached session
-    try {
-      await clearCachedSession();
-    } catch (e) {
-      console.warn('[AuthStore] Failed to clear cached session:', e);
-    }
-    
     set({ 
       user: null, 
       businessSettings: null,
@@ -220,64 +198,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
-    // Check if we're online
-    const networkState = await NetInfo.fetch();
-    const isOnline = networkState.isConnected && networkState.isInternetReachable;
-
-    if (!isOnline) {
-      // Offline - try to use cached session
-      console.log('[AuthStore] Offline - checking cached session');
-      try {
-        const cached = await getCachedSession();
-        if (cached?.user) {
-          console.log('[AuthStore] Using cached session for offline mode');
-          set({ 
-            user: cached.user, 
-            businessSettings: cached.businessSettings,
-            isAuthenticated: true, 
-            isLoading: false,
-            isInitialized: true 
-          });
-          return;
-        }
-      } catch (e) {
-        console.warn('[AuthStore] Failed to get cached session:', e);
-      }
-      
-      // No cached session available offline
-      set({ 
-        user: null, 
-        isAuthenticated: false, 
-        isLoading: false,
-        isInitialized: true,
-        error: 'No internet connection. Please connect to log in.' 
-      });
-      return;
-    }
-
-    // Online - validate with server
     const response = await api.getCurrentUser();
     
     if (response.error) {
-      // Server error - try cached session as fallback
-      console.log('[AuthStore] Server error - trying cached session');
-      try {
-        const cached = await getCachedSession();
-        if (cached?.user) {
-          console.log('[AuthStore] Using cached session as fallback');
-          set({ 
-            user: cached.user, 
-            businessSettings: cached.businessSettings,
-            isAuthenticated: true, 
-            isLoading: false,
-            isInitialized: true 
-          });
-          return;
-        }
-      } catch (e) {
-        console.warn('[AuthStore] Failed to get cached session:', e);
-      }
-      
       await api.setToken(null);
       set({ 
         user: null, 
@@ -288,25 +211,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
-    const user = response.data;
     set({ 
-      user, 
+      user: response.data, 
       isAuthenticated: true, 
       isLoading: false,
       isInitialized: true 
     });
 
     const settingsResponse = await api.get<BusinessSettings>('/api/business-settings');
-    const businessSettings = settingsResponse.data || null;
-    if (businessSettings) {
-      set({ businessSettings });
-    }
-
-    // Update cached session with fresh data
-    try {
-      await cacheUserSession(user, businessSettings);
-    } catch (e) {
-      console.warn('[AuthStore] Failed to update cached session:', e);
+    if (settingsResponse.data) {
+      set({ businessSettings: settingsResponse.data });
     }
   },
 
@@ -319,93 +233,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return true;
     }
     return false;
-  },
-}));
-
-// ============ APP INITIALIZATION STORE ============
-
-interface AppState {
-  isOnline: boolean;
-  pendingChanges: number;
-  isInitialized: boolean;
-  
-  initializeApp: (userId: string) => Promise<void>;
-  cleanupApp: () => Promise<void>;
-  setOnlineStatus: (isOnline: boolean) => void;
-  syncData: () => Promise<void>;
-}
-
-export const useAppStore = create<AppState>((set, get) => ({
-  isOnline: true,
-  pendingChanges: 0,
-  isInitialized: false,
-
-  initializeApp: async (userId: string) => {
-    try {
-      await offlineStore.initialize().catch(e => {
-        console.warn('[AppStore] Offline store init warning:', e);
-      });
-      
-      await notificationService.initialize().catch(e => {
-        console.warn('[AppStore] Notifications init warning:', e);
-      });
-      
-      await locationTrackingService.initialize(userId).catch(e => {
-        console.warn('[AppStore] Location tracking init warning:', e);
-      });
-      
-      locationTrackingService.requestPermissions().then(granted => {
-        if (granted) {
-          locationTrackingService.startBackgroundTracking().catch(e => {
-            console.warn('[AppStore] Background tracking start warning:', e);
-          });
-        }
-      }).catch(e => {
-        console.warn('[AppStore] Location permission warning:', e);
-      });
-      
-      NetInfo.addEventListener(state => {
-        const isOnline = state.isConnected ?? false;
-        set({ isOnline });
-        
-        if (isOnline) {
-          offlineStore.syncAll().catch(e => {
-            console.warn('[AppStore] Sync warning:', e);
-          });
-        }
-      });
-      
-      offlineStore.syncAll().catch(e => {
-        console.warn('[AppStore] Initial sync warning:', e);
-      });
-      
-      set({ isInitialized: true });
-      console.log('[AppStore] App initialized successfully');
-    } catch (error) {
-      console.error('[AppStore] Initialization failed:', error);
-      set({ isInitialized: true });
-    }
-  },
-
-  cleanupApp: async () => {
-    try {
-      notificationService.cleanup();
-      await locationTrackingService.cleanup();
-      offlineStore.destroy();
-      set({ isInitialized: false });
-    } catch (error) {
-      console.error('[AppStore] Cleanup failed:', error);
-    }
-  },
-
-  setOnlineStatus: (isOnline: boolean) => {
-    set({ isOnline });
-  },
-
-  syncData: async () => {
-    await offlineStore.syncAll();
-    const mutations = await offlineStore.getPendingMutations();
-    set({ pendingChanges: mutations.length });
   },
 }));
 
@@ -422,7 +249,6 @@ interface JobsState {
   getJob: (id: string) => Promise<Job | null>;
   updateJobStatus: (jobId: string, status: Job['status']) => Promise<boolean>;
   createJob: (job: Partial<Job>) => Promise<Job | null>;
-  loadFromOffline: () => Promise<void>;
 }
 
 export const useJobsStore = create<JobsState>((set, get) => ({
@@ -437,18 +263,11 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     const response = await api.get<Job[]>('/api/jobs');
     
     if (response.error) {
-      const cachedJobs = await offlineStore.getJobs();
-      if (cachedJobs.length > 0) {
-        set({ jobs: cachedJobs as Job[], isLoading: false, error: 'Using cached data' });
-        return;
-      }
       set({ isLoading: false, error: response.error });
       return;
     }
 
-    const jobs = response.data || [];
-    await offlineStore.saveJobs(jobs);
-    set({ jobs, isLoading: false });
+    set({ jobs: response.data || [], isLoading: false });
   },
 
   fetchTodaysJobs: async () => {
@@ -457,12 +276,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     const response = await api.get<Job[]>('/api/jobs/today');
     
     if (response.error) {
-      const allJobs = await offlineStore.getJobs();
-      const today = new Date().toDateString();
-      const todaysJobs = allJobs.filter((j: any) => 
-        j.scheduled_at && new Date(j.scheduled_at).toDateString() === today
-      );
-      set({ todaysJobs: todaysJobs as Job[], isLoading: false, error: 'Using cached data' });
+      set({ isLoading: false, error: response.error });
       return;
     }
 
@@ -471,71 +285,34 @@ export const useJobsStore = create<JobsState>((set, get) => ({
 
   getJob: async (id: string) => {
     const response = await api.get<Job>(`/api/jobs/${id}`);
-    if (response.data) return response.data;
-    
-    const cachedJob = await offlineStore.getJob(id);
-    return cachedJob as Job | null;
+    return response.data || null;
   },
 
   updateJobStatus: async (jobId: string, status: Job['status']) => {
+    const response = await api.patch<Job>(`/api/jobs/${jobId}`, { status });
+    
+    if (response.error) {
+      return false;
+    }
+
     const { jobs, todaysJobs } = get();
     
     set({
       jobs: jobs.map(j => j.id === jobId ? { ...j, status } : j),
       todaysJobs: todaysJobs.map(j => j.id === jobId ? { ...j, status } : j),
     });
-    
-    const cachedJob = await offlineStore.getJob(jobId);
-    if (cachedJob) {
-      await offlineStore.saveJob({ ...cachedJob, status, isDirty: 1 });
-    }
-    await offlineStore.addToMutationQueue('jobs', jobId, 'update', { status });
-    
-    const isOnline = await offlineStore.isNetworkAvailable();
-    if (isOnline) {
-      try {
-        await api.patch<Job>(`/api/jobs/${jobId}`, { status });
-      } catch (e) {
-        console.log('[JobsStore] Status update saved offline, will sync later');
-      }
-    }
 
     return true;
   },
 
   createJob: async (job: Partial<Job>) => {
-    const isOnline = await offlineStore.isNetworkAvailable();
-    
-    if (isOnline) {
-      try {
-        const response = await api.post<Job>('/api/jobs', job);
-        if (response.data) {
-          const { jobs } = get();
-          set({ jobs: [...jobs, response.data] });
-          await offlineStore.saveJob(response.data);
-          return response.data;
-        }
-      } catch (e) {
-        console.log('[JobsStore] API call failed, saving offline');
-      }
+    const response = await api.post<Job>('/api/jobs', job);
+    if (response.data) {
+      const { jobs } = get();
+      set({ jobs: [...jobs, response.data] });
+      return response.data;
     }
-    
-    const tempId = `temp-${Date.now()}`;
-    const tempJob = { ...job, id: tempId, status: job.status || 'pending' } as Job;
-    const { jobs } = get();
-    set({ jobs: [...jobs, tempJob] });
-    
-    await offlineStore.saveJob({ ...tempJob, isDirty: 1 });
-    await offlineStore.addToMutationQueue('jobs', tempId, 'create', job);
-    
-    return tempJob;
-  },
-
-  loadFromOffline: async () => {
-    const cachedJobs = await offlineStore.getJobs();
-    if (cachedJobs.length > 0) {
-      set({ jobs: cachedJobs as Job[] });
-    }
+    return null;
   },
 }));
 
@@ -551,7 +328,6 @@ interface ClientsState {
   createClient: (client: Partial<Client>) => Promise<Client | null>;
   updateClient: (id: string, client: Partial<Client>) => Promise<boolean>;
   deleteClient: (id: string) => Promise<boolean>;
-  loadFromOffline: () => Promise<void>;
 }
 
 export const useClientsStore = create<ClientsState>((set, get) => ({
@@ -565,99 +341,46 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
     const response = await api.get<Client[]>('/api/clients');
     
     if (response.error) {
-      const cachedClients = await offlineStore.getClients();
-      if (cachedClients.length > 0) {
-        set({ clients: cachedClients as Client[], isLoading: false, error: 'Using cached data' });
-        return;
-      }
       set({ isLoading: false, error: response.error });
       return;
     }
 
-    const clients = response.data || [];
-    await offlineStore.saveClients(clients);
-    set({ clients, isLoading: false });
+    set({ clients: response.data || [], isLoading: false });
   },
 
   getClient: async (id: string) => {
     const response = await api.get<Client>(`/api/clients/${id}`);
-    if (response.data) return response.data;
-    
-    const cachedClient = await offlineStore.getClient(id);
-    return cachedClient as Client | null;
+    return response.data || null;
   },
 
   createClient: async (client: Partial<Client>) => {
-    const isOnline = await offlineStore.isNetworkAvailable();
-    
-    if (isOnline) {
-      try {
-        const response = await api.post<Client>('/api/clients', client);
-        if (response.data) {
-          const { clients } = get();
-          set({ clients: [...clients, response.data] });
-          await offlineStore.saveClient(response.data);
-          return response.data;
-        }
-      } catch (e) {
-        console.log('[ClientsStore] API call failed, saving offline');
-      }
+    const response = await api.post<Client>('/api/clients', client);
+    if (response.data) {
+      const { clients } = get();
+      set({ clients: [...clients, response.data] });
+      return response.data;
     }
-    
-    const tempId = `temp-${Date.now()}`;
-    const tempClient = { ...client, id: tempId } as Client;
-    const { clients } = get();
-    set({ clients: [...clients, tempClient] });
-    
-    await offlineStore.saveClient({ ...tempClient, isDirty: 1 });
-    await offlineStore.addToMutationQueue('clients', tempId, 'create', client);
-    
-    return tempClient;
+    return null;
   },
 
   updateClient: async (id: string, client: Partial<Client>) => {
-    const { clients } = get();
-    set({ clients: clients.map(c => c.id === id ? { ...c, ...client } : c) });
-    
-    const cachedClient = await offlineStore.getClient(id);
-    if (cachedClient) {
-      await offlineStore.saveClient({ ...cachedClient, ...client, isDirty: 1 });
+    const response = await api.patch<Client>(`/api/clients/${id}`, client);
+    if (response.data) {
+      const { clients } = get();
+      set({ clients: clients.map(c => c.id === id ? response.data! : c) });
+      return true;
     }
-    await offlineStore.addToMutationQueue('clients', id, 'update', client);
-    
-    const isOnline = await offlineStore.isNetworkAvailable();
-    if (isOnline) {
-      try {
-        await api.patch<Client>(`/api/clients/${id}`, client);
-      } catch (e) {
-        console.log('[ClientsStore] Client update saved offline, will sync later');
-      }
-    }
-    return true;
+    return false;
   },
 
   deleteClient: async (id: string) => {
-    const { clients } = get();
-    set({ clients: clients.filter(c => c.id !== id) });
-    
-    await offlineStore.addToMutationQueue('clients', id, 'delete', { id });
-    
-    const isOnline = await offlineStore.isNetworkAvailable();
-    if (isOnline) {
-      try {
-        await api.delete(`/api/clients/${id}`);
-      } catch (e) {
-        console.log('[ClientsStore] Client delete saved offline, will sync later');
-      }
+    const response = await api.delete(`/api/clients/${id}`);
+    if (!response.error) {
+      const { clients } = get();
+      set({ clients: clients.filter(c => c.id !== id) });
+      return true;
     }
-    return true;
-  },
-
-  loadFromOffline: async () => {
-    const cachedClients = await offlineStore.getClients();
-    if (cachedClients.length > 0) {
-      set({ clients: cachedClients as Client[] });
-    }
+    return false;
   },
 }));
 

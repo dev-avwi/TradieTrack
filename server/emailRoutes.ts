@@ -599,19 +599,6 @@ export const handleInvoiceMarkPaid = async (req: any, res: any, storage: any) =>
       });
     }
 
-    // 5b. ServiceM8-style workflow: Auto-update linked job status to 'invoiced' when invoice is paid
-    if (invoiceWithItems.jobId) {
-      try {
-        await storage.updateJob(invoiceWithItems.jobId, req.userId, {
-          status: 'invoiced'
-        });
-        console.log(`Job ${invoiceWithItems.jobId} auto-transitioned to 'invoiced' status after payment`);
-      } catch (jobUpdateError) {
-        // Log but don't fail the payment - job update is secondary
-        console.error("Failed to auto-update job status after payment:", jobUpdateError);
-      }
-    }
-
     // 6. Send receipt email (optional - don't fail if email issues)
     // Always use sendEmailViaIntegration which handles:
     // 1. User's SMTP integration (if connected)

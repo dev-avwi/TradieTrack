@@ -8,8 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
-  Modal,
-  Linking
+  Modal
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -67,19 +66,6 @@ export default function QuoteDetailScreen() {
     });
   };
 
-  const safeOpenURL = async (url: string, errorMessage: string) => {
-    try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert('Unable to Open', errorMessage);
-      }
-    } catch (error) {
-      Alert.alert('Error', errorMessage);
-    }
-  };
-
   const handleSend = async () => {
     if (!quote) return;
     setShowSendModal(true);
@@ -135,33 +121,10 @@ export default function QuoteDetailScreen() {
         {
           text: 'Accept',
           onPress: async () => {
-            try {
-              const response = await fetch(`${API_URL}/api/quotes/${id}/accept`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`,
-                },
-              });
-
-              if (response.ok) {
-                await loadData();
-                Alert.alert('Success', 'Quote marked as accepted');
-              } else {
-                const success = await updateQuoteStatus(id!, 'accepted');
-                if (success) {
-                  await loadData();
-                  Alert.alert('Quote Updated', 'Quote marked as accepted locally');
-                } else {
-                  Alert.alert('Error', 'Failed to accept quote');
-                }
-              }
-            } catch (error) {
-              const success = await updateQuoteStatus(id!, 'accepted');
-              if (success) {
-                await loadData();
-                Alert.alert('Quote Updated', 'Quote marked as accepted locally');
-              }
+            const success = await updateQuoteStatus(id!, 'accepted');
+            if (success) {
+              await loadData();
+              Alert.alert('Success', 'Quote marked as accepted');
             }
           }
         }
@@ -169,59 +132,11 @@ export default function QuoteDetailScreen() {
     );
   };
 
-  const handleConvertToInvoice = async () => {
-    if (quote?.status !== 'accepted') {
-      Alert.alert(
-        'Quote Not Accepted', 
-        'Only accepted quotes can be converted to invoices. Please accept the quote first.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Convert to Invoice',
-      'Create an invoice from this quote?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Convert',
-          onPress: async () => {
-            try {
-              const response = await fetch(`${API_URL}/api/quotes/${id}/convert-to-invoice`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`,
-                },
-              });
-
-              if (response.ok) {
-                const data = await response.json();
-                const invoiceId = data.invoiceId || data.id;
-                const invoiceNumber = data.invoiceNumber || data.number || 'New Invoice';
-                Alert.alert(
-                  'Invoice Created', 
-                  `Invoice ${invoiceNumber} has been created from this quote.`,
-                  [
-                    { 
-                      text: 'View Invoice', 
-                      onPress: () => invoiceId && router.push(`/more/invoice/${invoiceId}`)
-                    },
-                    { text: 'OK' }
-                  ]
-                );
-              } else {
-                const errorData = await response.json().catch(() => ({}));
-                Alert.alert('Error', errorData.error || 'Failed to convert quote to invoice');
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to connect to server');
-            }
-          }
-        }
-      ]
-    );
+  const handleConvertToInvoice = () => {
+    router.push({
+      pathname: '/more/invoice/new',
+      params: { quoteId: id }
+    });
   };
 
   if (isLoading) {
@@ -334,69 +249,31 @@ export default function QuoteDetailScreen() {
           {/* Client Info */}
           <Text style={styles.sectionTitle}>Client</Text>
           <View style={styles.card}>
-            <TouchableOpacity 
-              style={styles.infoRow}
-              onPress={() => client && router.push(`/more/client/${client.id}`)}
-              activeOpacity={0.7}
-            >
+            <View style={styles.infoRow}>
               <Feather name="user" size={18} color={colors.primary} />
-              <View style={[styles.infoContent, { flex: 1 }]}>
+              <View style={styles.infoContent}>
                 <Text style={styles.clientName}>{client?.name || 'Unknown Client'}</Text>
               </View>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </View>
             {client?.email && (
-              <TouchableOpacity 
-                style={styles.infoRow}
-                onPress={() => safeOpenURL(`mailto:${client.email}`, 'Unable to open email app')}
-                activeOpacity={0.7}
-              >
-                <Feather name="mail" size={16} color={colors.primary} />
-                <Text style={[styles.infoText, styles.contactLink]}>{client.email}</Text>
-              </TouchableOpacity>
+              <View style={styles.infoRow}>
+                <Feather name="mail" size={16} color={colors.mutedForeground} />
+                <Text style={styles.infoText}>{client.email}</Text>
+              </View>
             )}
             {client?.phone && (
-              <TouchableOpacity 
-                style={styles.infoRow}
-                onPress={() => safeOpenURL(`tel:${client.phone}`, 'Unable to make phone call')}
-                activeOpacity={0.7}
-              >
-                <Feather name="phone" size={16} color={colors.primary} />
-                <Text style={[styles.infoText, styles.contactLink]}>{client.phone}</Text>
-              </TouchableOpacity>
+              <View style={styles.infoRow}>
+                <Feather name="phone" size={16} color={colors.mutedForeground} />
+                <Text style={styles.infoText}>{client.phone}</Text>
+              </View>
             )}
             {client?.address && (
-              <TouchableOpacity 
-                style={styles.infoRow}
-                onPress={() => safeOpenURL(`https://maps.google.com/?q=${encodeURIComponent(client.address || '')}`, 'Unable to open maps')}
-                activeOpacity={0.7}
-              >
-                <Feather name="map-pin" size={16} color={colors.primary} />
-                <Text style={[styles.infoText, styles.contactLink]}>{client.address}</Text>
-              </TouchableOpacity>
+              <View style={styles.infoRow}>
+                <Feather name="map-pin" size={16} color={colors.mutedForeground} />
+                <Text style={styles.infoText}>{client.address}</Text>
+              </View>
             )}
           </View>
-
-          {/* Linked Job */}
-          {quote && quote.jobId && (
-            <>
-              <Text style={styles.sectionTitle}>Linked Job</Text>
-              <TouchableOpacity 
-                style={styles.card}
-                onPress={() => router.push(`/job/${quote.jobId}`)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.infoRow}>
-                  <Feather name="briefcase" size={18} color={colors.primary} />
-                  <View style={[styles.infoContent, { flex: 1 }]}>
-                    <Text style={styles.infoLabel}>View Job</Text>
-                    <Text style={styles.infoText}>Tap to open linked job</Text>
-                  </View>
-                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-                </View>
-              </TouchableOpacity>
-            </>
-          )}
 
           {/* Dates */}
           <Text style={styles.sectionTitle}>Details</Text>
@@ -940,9 +817,5 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
-  },
-  contactLink: {
-    color: colors.primary,
-    textDecorationLine: 'underline' as const,
   },
 });
