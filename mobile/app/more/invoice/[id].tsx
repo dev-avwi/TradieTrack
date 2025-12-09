@@ -10,7 +10,8 @@ import {
   TextInput,
   Modal,
   Switch,
-  Share
+  Share,
+  Linking
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -67,6 +68,19 @@ export default function InvoiceDetailScreen() {
       month: 'long',
       year: 'numeric',
     });
+  };
+
+  const safeOpenURL = async (url: string, errorMessage: string) => {
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Unable to Open', errorMessage);
+      }
+    } catch (error) {
+      Alert.alert('Error', errorMessage);
+    }
   };
 
   const handleSend = () => {
@@ -328,29 +342,46 @@ export default function InvoiceDetailScreen() {
           {/* Client Info */}
           <Text style={styles.sectionTitle}>Client</Text>
           <View style={styles.card}>
-            <View style={styles.infoRow}>
+            <TouchableOpacity 
+              style={styles.infoRow}
+              onPress={() => client && router.push(`/more/client/${client.id}`)}
+              activeOpacity={0.7}
+            >
               <Feather name="user" size={18} color={colors.primary} />
-              <View style={styles.infoContent}>
+              <View style={[styles.infoContent, { flex: 1 }]}>
                 <Text style={styles.clientName}>{client?.name || 'Unknown Client'}</Text>
               </View>
-            </View>
+              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
             {client?.email && (
-              <View style={styles.infoRow}>
-                <Feather name="mail" size={16} color={colors.mutedForeground} />
-                <Text style={styles.infoText}>{client.email}</Text>
-              </View>
+              <TouchableOpacity 
+                style={styles.infoRow}
+                onPress={() => safeOpenURL(`mailto:${client.email}`, 'Unable to open email app')}
+                activeOpacity={0.7}
+              >
+                <Feather name="mail" size={16} color={colors.primary} />
+                <Text style={[styles.infoText, styles.contactLink]}>{client.email}</Text>
+              </TouchableOpacity>
             )}
             {client?.phone && (
-              <View style={styles.infoRow}>
-                <Feather name="phone" size={16} color={colors.mutedForeground} />
-                <Text style={styles.infoText}>{client.phone}</Text>
-              </View>
+              <TouchableOpacity 
+                style={styles.infoRow}
+                onPress={() => safeOpenURL(`tel:${client.phone}`, 'Unable to make phone call')}
+                activeOpacity={0.7}
+              >
+                <Feather name="phone" size={16} color={colors.primary} />
+                <Text style={[styles.infoText, styles.contactLink]}>{client.phone}</Text>
+              </TouchableOpacity>
             )}
             {client?.address && (
-              <View style={styles.infoRow}>
-                <Feather name="map-pin" size={16} color={colors.mutedForeground} />
-                <Text style={styles.infoText}>{client.address}</Text>
-              </View>
+              <TouchableOpacity 
+                style={styles.infoRow}
+                onPress={() => safeOpenURL(`https://maps.google.com/?q=${encodeURIComponent(client.address || '')}`, 'Unable to open maps')}
+                activeOpacity={0.7}
+              >
+                <Feather name="map-pin" size={16} color={colors.primary} />
+                <Text style={[styles.infoText, styles.contactLink]}>{client.address}</Text>
+              </TouchableOpacity>
             )}
           </View>
 
@@ -1064,5 +1095,9 @@ const styles = StyleSheet.create({
   copyButton: {
     padding: 8,
     marginLeft: 8,
+  },
+  contactLink: {
+    color: colors.primary,
+    textDecorationLine: 'underline' as const,
   },
 });
