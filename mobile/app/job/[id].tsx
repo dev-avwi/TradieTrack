@@ -1098,6 +1098,12 @@ export default function JobDetailScreen() {
   const [newDiaryEntry, setNewDiaryEntry] = useState({ activityType: 'note', title: '', description: '' });
   const [isSubmittingDiaryEntry, setIsSubmittingDiaryEntry] = useState(false);
   
+  const [linkedQuote, setLinkedQuote] = useState<Quote | null>(null);
+  const [linkedInvoice, setLinkedInvoice] = useState<Invoice | null>(null);
+  const [isLoadingLinkedDocs, setIsLoadingLinkedDocs] = useState(true);
+  const [linkedDocsError, setLinkedDocsError] = useState<string | null>(null);
+  const [isDiaryExpanded, setIsDiaryExpanded] = useState(false);
+  
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { 
     activeTimer, 
@@ -1422,42 +1428,67 @@ export default function JobDetailScreen() {
   };
 
   const loadRelatedDocuments = async () => {
+    setIsLoadingLinkedDocs(true);
+    setLinkedDocsError(null);
     try {
-      const invoiceResponse = await api.get<any[]>(`/api/invoices`);
-      if (invoiceResponse.data) {
-        const jobInvoice = invoiceResponse.data.find((inv: any) => inv.jobId === id);
-        if (jobInvoice) {
-          setInvoice({
-            id: jobInvoice.id,
-            number: jobInvoice.number,
-            title: jobInvoice.title,
-            total: parseFloat(jobInvoice.total) || 0,
-            status: jobInvoice.status,
-            dueDate: jobInvoice.dueDate,
-            paidAmount: parseFloat(jobInvoice.paidAmount) || 0,
+      const response = await api.get<{
+        jobId: string;
+        linkedQuote: { id: string; quoteNumber?: string; title?: string; status: string; total: string } | null;
+        linkedInvoice: { id: string; invoiceNumber?: string; title?: string; status: string; total: string; dueDate?: string } | null;
+      }>(`/api/jobs/${id}/linked-documents`);
+      
+      if (response.data) {
+        if (response.data.linkedQuote) {
+          const q = response.data.linkedQuote;
+          setLinkedQuote({
+            id: q.id,
+            number: q.quoteNumber || '',
+            title: q.title || '',
+            total: parseFloat(q.total) || 0,
+            status: q.status as Quote['status'],
           });
-        }
-      }
-    } catch (error) {
-      console.log('Error loading invoices:', error);
-    }
-    
-    try {
-      const quoteResponse = await api.get<any[]>(`/api/quotes`);
-      if (quoteResponse.data) {
-        const jobQuote = quoteResponse.data.find((q: any) => q.jobId === id);
-        if (jobQuote) {
           setQuote({
-            id: jobQuote.id,
-            number: jobQuote.number,
-            title: jobQuote.title,
-            total: parseFloat(jobQuote.total) || 0,
-            status: jobQuote.status,
+            id: q.id,
+            number: q.quoteNumber || '',
+            title: q.title || '',
+            total: parseFloat(q.total) || 0,
+            status: q.status as Quote['status'],
           });
+        } else {
+          setLinkedQuote(null);
+          setQuote(null);
+        }
+        
+        if (response.data.linkedInvoice) {
+          const inv = response.data.linkedInvoice;
+          setLinkedInvoice({
+            id: inv.id,
+            number: inv.invoiceNumber || '',
+            title: inv.title || '',
+            total: parseFloat(inv.total) || 0,
+            status: inv.status as Invoice['status'],
+            dueDate: inv.dueDate,
+          });
+          setInvoice({
+            id: inv.id,
+            number: inv.invoiceNumber || '',
+            title: inv.title || '',
+            total: parseFloat(inv.total) || 0,
+            status: inv.status as Invoice['status'],
+            dueDate: inv.dueDate,
+          });
+        } else {
+          setLinkedInvoice(null);
+          setInvoice(null);
         }
       }
     } catch (error) {
-      console.log('Error loading quotes:', error);
+      console.error('Error loading linked documents:', error);
+      setLinkedDocsError('Failed to load linked documents');
+      setLinkedQuote(null);
+      setLinkedInvoice(null);
+    } finally {
+      setIsLoadingLinkedDocs(false);
     }
   };
 
@@ -1950,6 +1981,178 @@ export default function JobDetailScreen() {
           </View>
         )}
 
+        {/* Linked Documents Section */}
+        {(linkedQuote || linkedInvoice || job.status === 'done' || isLoadingLinkedDocs) && (
+          <View style={[styles.card, { paddingVertical: spacing.lg }]} data-testid="section-linked-documents">
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+              <View style={[styles.cardIconContainer, { backgroundColor: `${colors.invoiced}15`, marginRight: spacing.md }]}>
+                <Feather name="link" size={iconSizes.lg} color={colors.invoiced} />
+              </View>
+              <Text style={{ ...typography.subtitle, color: colors.foreground, flex: 1 }}>Linked Documents</Text>
+            </View>
+            
+            {isLoadingLinkedDocs ? (
+              <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.sm }}>
+                  Loading linked documents...
+                </Text>
+              </View>
+            ) : linkedDocsError ? (
+              <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+                <Feather name="alert-circle" size={24} color={colors.destructive} />
+                <Text style={{ ...typography.caption, color: colors.destructive, marginTop: spacing.sm }}>
+                  {linkedDocsError}
+                </Text>
+                <TouchableOpacity 
+                  style={{ marginTop: spacing.sm, paddingVertical: spacing.xs, paddingHorizontal: spacing.md }}
+                  onPress={loadRelatedDocuments}
+                >
+                  <Text style={{ color: colors.primary, fontWeight: '600' }}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : linkedQuote ? (
+              <TouchableOpacity 
+                style={{
+                  backgroundColor: colors.card,
+                  borderRadius: radius.lg,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: spacing.md,
+                  marginBottom: spacing.sm,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+                onPress={handleViewQuote}
+                activeOpacity={0.7}
+                data-testid="card-linked-quote"
+              >
+                <View style={{ 
+                  width: 36, 
+                  height: 36, 
+                  borderRadius: radius.md, 
+                  backgroundColor: `${colors.scheduled}15`,
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  marginRight: spacing.md,
+                }}>
+                  <Feather name="file" size={18} color={colors.scheduled} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '600' }}>
+                    Quote #{linkedQuote.number}
+                  </Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                    {formatCurrency(linkedQuote.total)}
+                  </Text>
+                </View>
+                <View style={[
+                  styles.documentStatusBadge, 
+                  { backgroundColor: `${linkedQuote.status === 'accepted' ? colors.success : colors.scheduled}20` }
+                ]}>
+                  <Text style={[
+                    styles.documentStatusText, 
+                    { color: linkedQuote.status === 'accepted' ? colors.success : colors.scheduled }
+                  ]}>
+                    {linkedQuote.status}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} style={{ marginLeft: spacing.sm }} />
+              </TouchableOpacity>
+            ) : job.status !== 'invoiced' && (
+              <TouchableOpacity 
+                style={{
+                  backgroundColor: `${colors.scheduled}10`,
+                  borderRadius: radius.lg,
+                  borderWidth: 1,
+                  borderColor: `${colors.scheduled}30`,
+                  borderStyle: 'dashed',
+                  padding: spacing.md,
+                  marginBottom: spacing.sm,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onPress={() => router.push(`/quotes/create?jobId=${id}`)}
+                activeOpacity={0.7}
+                data-testid="button-create-quote"
+              >
+                <Feather name="plus" size={16} color={colors.scheduled} style={{ marginRight: spacing.xs }} />
+                <Text style={{ color: colors.scheduled, fontWeight: '600' }}>Create Quote</Text>
+              </TouchableOpacity>
+            )}
+            
+            {linkedInvoice ? (
+              <TouchableOpacity 
+                style={{
+                  backgroundColor: colors.card,
+                  borderRadius: radius.lg,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: spacing.md,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+                onPress={handleViewInvoice}
+                activeOpacity={0.7}
+                data-testid="card-linked-invoice"
+              >
+                <View style={{ 
+                  width: 36, 
+                  height: 36, 
+                  borderRadius: radius.md, 
+                  backgroundColor: `${colors.invoiced}15`,
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  marginRight: spacing.md,
+                }}>
+                  <Feather name="file-text" size={18} color={colors.invoiced} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '600' }}>
+                    Invoice #{linkedInvoice.number}
+                  </Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                    {formatCurrency(linkedInvoice.total)}
+                  </Text>
+                </View>
+                <View style={[
+                  styles.documentStatusBadge, 
+                  { backgroundColor: `${getInvoiceStatusColor(linkedInvoice.status)}20` }
+                ]}>
+                  <Text style={[
+                    styles.documentStatusText, 
+                    { color: getInvoiceStatusColor(linkedInvoice.status) }
+                  ]}>
+                    {linkedInvoice.status}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} style={{ marginLeft: spacing.sm }} />
+              </TouchableOpacity>
+            ) : job.status === 'done' && (
+              <TouchableOpacity 
+                style={{
+                  backgroundColor: `${colors.invoiced}10`,
+                  borderRadius: radius.lg,
+                  borderWidth: 1,
+                  borderColor: `${colors.invoiced}30`,
+                  borderStyle: 'dashed',
+                  padding: spacing.md,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onPress={() => router.push(`/invoices/create?jobId=${id}`)}
+                activeOpacity={0.7}
+                data-testid="button-create-invoice"
+              >
+                <Feather name="plus" size={16} color={colors.invoiced} style={{ marginRight: spacing.xs }} />
+                <Text style={{ color: colors.invoiced, fontWeight: '600' }}>Create Invoice</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* Time Tracking Card */}
         {(job.status === 'scheduled' || job.status === 'in_progress') && (
           <View style={[styles.timerCard, isTimerForThisJob && styles.timerActiveCard]}>
@@ -2100,6 +2303,140 @@ export default function JobDetailScreen() {
                 <Text style={styles.galleryInlineText}>Gallery</Text>
               </TouchableOpacity>
             </View>
+          )}
+        </View>
+
+        {/* Inline Job Diary Section - Activity Timeline */}
+        <View style={styles.photosCard} data-testid="section-job-diary">
+          <TouchableOpacity 
+            style={styles.photosHeader}
+            onPress={() => setIsDiaryExpanded(!isDiaryExpanded)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.photosIconContainer}>
+              <Feather name="book-open" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <Text style={styles.photosHeaderLabel}>Job Diary</Text>
+            {activities.length > 0 && (
+              <View style={styles.photosCountBadge}>
+                <Text style={styles.photosCountText}>{activities.length}</Text>
+              </View>
+            )}
+            <Feather 
+              name={isDiaryExpanded ? "chevron-up" : "chevron-down"} 
+              size={iconSizes.md} 
+              color={colors.mutedForeground} 
+              style={{ marginLeft: 'auto' }}
+            />
+          </TouchableOpacity>
+          
+          {isDiaryExpanded && (
+            <View style={{ marginTop: spacing.sm }}>
+              {activities.length > 0 ? (
+                <>
+                  {activities.slice(0, 5).map((activity, index) => (
+                    <View 
+                      key={activity.id}
+                      style={{
+                        flexDirection: 'row',
+                        paddingVertical: spacing.sm,
+                        borderTopWidth: index > 0 ? 1 : 0,
+                        borderTopColor: colors.border,
+                      }}
+                    >
+                      <View style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: activity.activityType === 'issue' ? `${colors.destructive}15` : 
+                                        activity.activityType === 'call' ? `${colors.success}15` : 
+                                        activity.activityType === 'material_added' ? `${colors.invoiced}15` :
+                                        `${colors.primary}15`,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: spacing.sm,
+                      }}>
+                        <Feather 
+                          name={activity.activityType === 'issue' ? 'alert-triangle' : 
+                                activity.activityType === 'call' ? 'phone' : 
+                                activity.activityType === 'material_added' ? 'package' :
+                                'file-text'} 
+                          size={14} 
+                          color={activity.activityType === 'issue' ? colors.destructive : 
+                                 activity.activityType === 'call' ? colors.success : 
+                                 activity.activityType === 'material_added' ? colors.invoiced :
+                                 colors.primary} 
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ ...typography.body, color: colors.foreground, fontSize: 13 }} numberOfLines={1}>
+                          {activity.title}
+                        </Text>
+                        <Text style={{ ...typography.caption, color: colors.mutedForeground, fontSize: 11 }}>
+                          {new Date(activity.timestamp).toLocaleDateString('en-AU', { 
+                            day: 'numeric', 
+                            month: 'short',
+                            hour: 'numeric',
+                            minute: '2-digit'
+                          })}
+                          {activity.performedBy && ` • ${activity.performedBy}`}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                  {activities.length > 5 && (
+                    <TouchableOpacity 
+                      style={{
+                        paddingVertical: spacing.sm,
+                        alignItems: 'center',
+                        borderTopWidth: 1,
+                        borderTopColor: colors.border,
+                      }}
+                      onPress={() => setShowDiaryModal(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ color: colors.primary, fontWeight: '500', fontSize: 13 }}>
+                        View all {activities.length} entries
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              ) : (
+                <View style={{ paddingVertical: spacing.md, alignItems: 'center' }}>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                    No diary entries yet
+                  </Text>
+                </View>
+              )}
+              
+              <TouchableOpacity 
+                style={{
+                  backgroundColor: colors.primary,
+                  borderRadius: radius.md,
+                  paddingVertical: spacing.sm,
+                  paddingHorizontal: spacing.md,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginTop: spacing.sm,
+                }}
+                onPress={() => {
+                  setShowAddDiaryEntry(true);
+                  setShowDiaryModal(true);
+                }}
+                activeOpacity={0.7}
+                data-testid="button-add-diary-entry"
+              >
+                <Feather name="plus" size={16} color={colors.primaryForeground} style={{ marginRight: spacing.xs }} />
+                <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>Add Entry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {!isDiaryExpanded && activities.length > 0 && (
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs }}>
+              {activities.length} {activities.length === 1 ? 'entry' : 'entries'} • Tap to expand
+            </Text>
           )}
         </View>
 

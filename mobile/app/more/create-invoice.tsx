@@ -15,6 +15,7 @@ import {
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { DatePicker } from '../../src/components/ui/DatePicker';
+import LiveDocumentPreview from '../../src/components/LiveDocumentPreview';
 import { useClientsStore, useInvoicesStore, useJobsStore, useQuotesStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
@@ -24,6 +25,33 @@ interface LineItem {
   description: string;
   quantity: number;
   unitPrice: number;
+}
+
+interface DocumentTemplate {
+  id: string;
+  name: string;
+  type: string;
+  defaults?: {
+    title?: string;
+    description?: string;
+    terms?: string;
+    depositPct?: number;
+  };
+  defaultLineItems?: Array<{
+    description: string;
+    qty?: number;
+    unitPrice?: number;
+  }>;
+}
+
+interface CatalogItem {
+  id: string;
+  name: string;
+  description?: string;
+  unitPrice: string;
+  unit: string;
+  tradeType?: string;
+  defaultQuantity?: number;
 }
 
 function generateId() {
@@ -100,6 +128,182 @@ function ClientSelector({
               <View style={styles.emptyList}>
                 <Text style={styles.emptyListText}>No clients found</Text>
               </View>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function TemplateSelector({
+  templates,
+  visible,
+  onClose,
+  onSelect,
+  colors,
+  styles,
+  isLoading,
+}: {
+  templates: DocumentTemplate[];
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (template: DocumentTemplate) => void;
+  colors: any;
+  styles: any;
+  isLoading: boolean;
+}) {
+  const [search, setSearch] = useState('');
+
+  const filteredTemplates = templates.filter(
+    (t) =>
+      t.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Apply Template</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+
+          <TextInput
+            style={styles.modalSearch}
+            placeholder="Search templates..."
+            placeholderTextColor={colors.mutedForeground}
+            value={search}
+            onChangeText={setSearch}
+          />
+
+          <ScrollView style={styles.modalList}>
+            {isLoading ? (
+              <View style={styles.emptyList}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.emptyListText, { marginTop: 8 }]}>Loading templates...</Text>
+              </View>
+            ) : filteredTemplates.length === 0 ? (
+              <View style={styles.emptyList}>
+                <Text style={styles.emptyListText}>No templates found</Text>
+              </View>
+            ) : (
+              filteredTemplates.map((template) => (
+                <TouchableOpacity
+                  key={template.id}
+                  style={styles.clientItem}
+                  onPress={() => {
+                    onSelect(template);
+                    onClose();
+                  }}
+                >
+                  <View style={styles.clientItemContent}>
+                    <Text style={styles.clientItemName}>{template.name}</Text>
+                    <Text style={styles.clientItemEmail}>
+                      {template.defaultLineItems?.length || 0} line items
+                    </Text>
+                  </View>
+                  <Feather name="file-text" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function CatalogPicker({
+  catalogItems,
+  visible,
+  onClose,
+  onSelect,
+  colors,
+  styles,
+  isLoading,
+}: {
+  catalogItems: CatalogItem[];
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (item: CatalogItem) => void;
+  colors: any;
+  styles: any;
+  isLoading: boolean;
+}) {
+  const [search, setSearch] = useState('');
+
+  const filteredItems = catalogItems.filter(
+    (item) =>
+      item.name?.toLowerCase().includes(search.toLowerCase()) ||
+      item.description?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const formatCurrency = (amount: string | number) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return `$${(num || 0).toFixed(2)}`;
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add from Catalog</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+
+          <TextInput
+            style={styles.modalSearch}
+            placeholder="Search catalog items..."
+            placeholderTextColor={colors.mutedForeground}
+            value={search}
+            onChangeText={setSearch}
+          />
+
+          <ScrollView style={styles.modalList}>
+            {isLoading ? (
+              <View style={styles.emptyList}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.emptyListText, { marginTop: 8 }]}>Loading catalog...</Text>
+              </View>
+            ) : filteredItems.length === 0 ? (
+              <View style={styles.emptyList}>
+                <Text style={styles.emptyListText}>No catalog items found</Text>
+              </View>
+            ) : (
+              filteredItems.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.catalogItem}
+                  onPress={() => {
+                    onSelect(item);
+                    onClose();
+                  }}
+                >
+                  <View style={styles.clientItemContent}>
+                    <Text style={styles.clientItemName}>{item.name}</Text>
+                    {item.description && (
+                      <Text style={styles.clientItemEmail} numberOfLines={1}>{item.description}</Text>
+                    )}
+                    <View style={styles.catalogItemMeta}>
+                      <Text style={styles.catalogItemPrice}>
+                        {formatCurrency(item.unitPrice)}/{item.unit}
+                      </Text>
+                      {item.tradeType && (
+                        <View style={[styles.tradeBadge, { backgroundColor: `${colors.primary}15` }]}>
+                          <Text style={[styles.tradeBadgeText, { color: colors.primary }]}>{item.tradeType}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  <Feather name="plus-circle" size={20} color={colors.primary} />
+                </TouchableOpacity>
+              ))
             )}
           </ScrollView>
         </View>
@@ -236,21 +440,38 @@ const createStyles = (colors: any) => StyleSheet.create({
   clientItemEmail: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
   emptyList: { alignItems: 'center', paddingVertical: 32 },
   emptyListText: { fontSize: 14, color: colors.mutedForeground },
+  catalogItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 10, marginBottom: 8, backgroundColor: colors.background },
+  catalogItemMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  catalogItemPrice: { fontSize: 13, fontWeight: '600', color: colors.primary },
+  tradeBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  tradeBadgeText: { fontSize: 11, fontWeight: '500' },
+  viewModeContainer: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 10, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
+  viewModeButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8 },
+  viewModeButtonActive: { backgroundColor: colors.primary },
+  viewModeText: { fontSize: 14, fontWeight: '500', color: colors.mutedForeground },
+  viewModeTextActive: { color: '#FFFFFF' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: `${colors.primary}15` },
+  headerButtonText: { fontSize: 13, fontWeight: '500', color: colors.primary },
+  lineItemsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  lineItemButtons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 });
 
 export default function CreateInvoiceScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
-  const params = useLocalSearchParams<{ quoteId?: string; jobId?: string }>();
+  const params = useLocalSearchParams<{ quoteId?: string; jobId?: string; clientId?: string }>();
   const { clients, fetchClients } = useClientsStore();
   const { jobs, fetchJobs } = useJobsStore();
   const { quotes, fetchQuotes } = useQuotesStore();
   const { fetchInvoices } = useInvoicesStore();
 
-  const [clientId, setClientId] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(params.clientId || null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [quoteId, setQuoteId] = useState<string | null>(params.quoteId || null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: generateId(), description: '', quantity: 1, unitPrice: 0 },
   ]);
@@ -261,9 +482,17 @@ export default function CreateInvoiceScreen() {
   const [depositPaid, setDepositPaid] = useState(0);
 
   const [showClientPicker, setShowClientPicker] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showCatalogPicker, setShowCatalogPicker] = useState(false);
+  const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit');
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -304,6 +533,74 @@ export default function CreateInvoiceScreen() {
       }
     }
   }, [params.quoteId, quotes]);
+
+  const fetchTemplates = async () => {
+    setIsLoadingTemplates(true);
+    try {
+      const response = await api.get<DocumentTemplate[]>('/api/templates?type=invoice');
+      if (response.data) {
+        setTemplates(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch templates:', error);
+      Alert.alert('Error', 'Failed to load templates. Please try again.');
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
+
+  const fetchCatalog = async () => {
+    setIsLoadingCatalog(true);
+    try {
+      const response = await api.get<CatalogItem[]>('/api/catalog');
+      if (response.data) {
+        setCatalogItems(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch catalog:', error);
+      Alert.alert('Error', 'Failed to load catalog items. Please try again.');
+    } finally {
+      setIsLoadingCatalog(false);
+    }
+  };
+
+  const handleOpenTemplates = () => {
+    fetchTemplates();
+    setShowTemplatePicker(true);
+  };
+
+  const handleOpenCatalog = () => {
+    fetchCatalog();
+    setShowCatalogPicker(true);
+  };
+
+  const handleApplyTemplate = (template: DocumentTemplate) => {
+    if (template.defaults?.title) setTitle(template.defaults.title);
+    if (template.defaults?.description) setDescription(template.defaults.description);
+    
+    if (template.defaultLineItems && template.defaultLineItems.length > 0) {
+      const newItems = template.defaultLineItems.map((item) => ({
+        id: generateId(),
+        description: item.description || '',
+        quantity: item.qty || 1,
+        unitPrice: Math.round((item.unitPrice || 0) * 100),
+      }));
+      setLineItems(newItems);
+    }
+
+    Alert.alert('Template Applied', `"${template.name}" has been applied to your invoice.`);
+  };
+
+  const handleAddFromCatalog = (item: CatalogItem) => {
+    const newItem: LineItem = {
+      id: generateId(),
+      description: item.description || item.name,
+      quantity: item.defaultQuantity || 1,
+      unitPrice: Math.round(parseFloat(item.unitPrice || '0') * 100),
+    };
+    setLineItems([...lineItems, newItem]);
+    Alert.alert('Item Added', `"${item.name}" has been added to your invoice.`);
+  };
 
   const selectedClient = clients.find((c) => c.id === clientId);
 
@@ -375,6 +672,8 @@ export default function CreateInvoiceScreen() {
         jobId,
         quoteId,
         status,
+        title: title.trim() || undefined,
+        description: description.trim() || undefined,
         lineItems: lineItems
           .filter((item) => item.description.trim())
           .map((item) => ({
@@ -433,6 +732,28 @@ export default function CreateInvoiceScreen() {
     }
   };
 
+  const previewLineItems = lineItems
+    .filter((item) => item.description.trim())
+    .map((item) => ({
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice / 100,
+    }));
+
+  const businessInfo = {
+    businessName: 'Your Business',
+    gstEnabled: true,
+  };
+
+  const clientInfo = selectedClient
+    ? {
+        name: selectedClient.name,
+        email: selectedClient.email,
+        phone: selectedClient.phone,
+        address: selectedClient.address,
+      }
+    : null;
+
   if (isLoadingQuote) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -450,6 +771,14 @@ export default function CreateInvoiceScreen() {
           headerTitleStyle: { fontWeight: '600', color: colors.foreground },
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
+          headerRight: () => (
+            <View style={styles.headerActions}>
+              <TouchableOpacity style={styles.headerButton} onPress={handleOpenTemplates}>
+                <Feather name="file-text" size={16} color={colors.primary} />
+                <Text style={styles.headerButtonText}>Template</Text>
+              </TouchableOpacity>
+            </View>
+          ),
         }}
       />
 
@@ -457,114 +786,161 @@ export default function CreateInvoiceScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}
       >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {quoteId && (
-            <View style={styles.quoteNotice}>
-              <Text style={styles.quoteNoticeText}>
-                Creating invoice from quote. Client and items have been pre-filled.
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Client *</Text>
+        {/* View Mode Toggle */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+          <View style={styles.viewModeContainer}>
             <TouchableOpacity
-              style={styles.selector}
-              onPress={() => setShowClientPicker(true)}
+              style={[styles.viewModeButton, viewMode === 'edit' && styles.viewModeButtonActive]}
+              onPress={() => setViewMode('edit')}
             >
-              {selectedClient ? (
-                <View style={styles.selectedItem}>
-                  <View style={styles.clientAvatar}>
-                    <Feather name="user" size={18} color={colors.primary} />
-                  </View>
-                  <View style={styles.selectedItemText}>
-                    <Text style={styles.selectedItemName}>{selectedClient.name}</Text>
-                    <Text style={styles.selectedItemDetail}>{selectedClient.email}</Text>
-                  </View>
-                </View>
-              ) : (
-                <Text style={styles.selectorPlaceholder}>Select a client</Text>
-              )}
-              <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
+              <Feather name="edit-2" size={16} color={viewMode === 'edit' ? '#FFFFFF' : colors.mutedForeground} />
+              <Text style={[styles.viewModeText, viewMode === 'edit' && styles.viewModeTextActive]}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewModeButton, viewMode === 'preview' && styles.viewModeButtonActive]}
+              onPress={() => setViewMode('preview')}
+            >
+              <Feather name="eye" size={16} color={viewMode === 'preview' ? '#FFFFFF' : colors.mutedForeground} />
+              <Text style={[styles.viewModeText, viewMode === 'preview' && styles.viewModeTextActive]}>Preview</Text>
             </TouchableOpacity>
           </View>
+        </View>
 
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Line Items</Text>
-              <TouchableOpacity style={styles.addButton} onPress={addLineItem}>
-                <Feather name="plus" size={16} color={colors.primary} />
-                <Text style={styles.addButtonText}>Add Item</Text>
+        {viewMode === 'preview' ? (
+          <LiveDocumentPreview
+            type="invoice"
+            title={title || 'New Invoice'}
+            description={description}
+            date={new Date().toISOString()}
+            dueDate={dueDate.toISOString()}
+            lineItems={previewLineItems}
+            notes={notes}
+            business={businessInfo}
+            client={clientInfo}
+            gstEnabled={true}
+          />
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {quoteId && (
+              <View style={styles.quoteNotice}>
+                <Text style={styles.quoteNoticeText}>
+                  Creating invoice from quote. Client and items have been pre-filled.
+                </Text>
+              </View>
+            )}
+
+            {/* Client Selection */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Client *</Text>
+              <TouchableOpacity
+                style={styles.selector}
+                onPress={() => setShowClientPicker(true)}
+              >
+                {selectedClient ? (
+                  <View style={styles.selectedItem}>
+                    <View style={styles.clientAvatar}>
+                      <Feather name="user" size={18} color={colors.primary} />
+                    </View>
+                    <View style={styles.selectedItemText}>
+                      <Text style={styles.selectedItemName}>{selectedClient.name}</Text>
+                      <Text style={styles.selectedItemDetail}>{selectedClient.email}</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={styles.selectorPlaceholder}>Select a client</Text>
+                )}
+                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
               </TouchableOpacity>
             </View>
 
-            {lineItems.map((item) => (
-              <LineItemRow
-                key={item.id}
-                item={item}
-                onUpdate={(updates) => updateLineItem(item.id, updates)}
-                onDelete={() => deleteLineItem(item.id)}
-                colors={colors}
-                styles={styles}
-              />
-            ))}
-          </View>
-
-          <View style={styles.totalsCard}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Subtotal (ex. GST)</Text>
-              <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
-            </View>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>GST (10%)</Text>
-              <Text style={styles.totalValue}>{formatCurrency(gstAmount)}</Text>
-            </View>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total (inc. GST)</Text>
-              <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
-            </View>
-            {depositPaid > 0 && (
-              <View style={styles.totalRow}>
-                <Text style={[styles.totalLabel, { color: colors.success }]}>Deposit Paid</Text>
-                <Text style={[styles.totalValue, { color: colors.success }]}>-{formatCurrency(depositPaid)}</Text>
+            {/* Line Items */}
+            <View style={styles.section}>
+              <View style={styles.lineItemsHeader}>
+                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Line Items</Text>
+                <View style={styles.lineItemButtons}>
+                  <TouchableOpacity style={styles.addButton} onPress={handleOpenCatalog}>
+                    <Feather name="package" size={16} color={colors.primary} />
+                    <Text style={styles.addButtonText}>Catalog</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.addButton} onPress={addLineItem}>
+                    <Feather name="plus" size={16} color={colors.primary} />
+                    <Text style={styles.addButtonText}>Add Item</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            )}
-            <View style={[styles.totalRow, styles.grandTotalRow]}>
-              <Text style={styles.grandTotalLabel}>Amount Due</Text>
-              <Text style={styles.grandTotalValue}>{formatCurrency(amountDue)}</Text>
+
+              {lineItems.map((item) => (
+                <LineItemRow
+                  key={item.id}
+                  item={item}
+                  onUpdate={(updates) => updateLineItem(item.id, updates)}
+                  onDelete={() => deleteLineItem(item.id)}
+                  colors={colors}
+                  styles={styles}
+                />
+              ))}
             </View>
-          </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Due Date</Text>
-            <DatePicker
-              value={dueDate}
-              onChange={setDueDate}
-              minimumDate={new Date()}
-            />
-          </View>
+            {/* Totals */}
+            <View style={styles.totalsCard}>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Subtotal (ex. GST)</Text>
+                <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>GST (10%)</Text>
+                <Text style={styles.totalValue}>{formatCurrency(gstAmount)}</Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total (inc. GST)</Text>
+                <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
+              </View>
+              {depositPaid > 0 && (
+                <View style={styles.totalRow}>
+                  <Text style={[styles.totalLabel, { color: colors.success }]}>Deposit Paid</Text>
+                  <Text style={[styles.totalValue, { color: colors.success }]}>-{formatCurrency(depositPaid)}</Text>
+                </View>
+              )}
+              <View style={[styles.totalRow, styles.grandTotalRow]}>
+                <Text style={styles.grandTotalLabel}>Amount Due</Text>
+                <Text style={styles.grandTotalValue}>{formatCurrency(amountDue)}</Text>
+              </View>
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Notes (Optional)</Text>
-            <TextInput
-              style={styles.textArea}
-              placeholder="Any additional notes for the client..."
-              placeholderTextColor={colors.mutedForeground}
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              numberOfLines={3}
-            />
-          </View>
+            {/* Due Date */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Due Date</Text>
+              <DatePicker
+                value={dueDate}
+                onChange={setDueDate}
+                minimumDate={new Date()}
+              />
+            </View>
 
-          <View style={{ height: 100 }} />
-        </ScrollView>
+            {/* Notes */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Notes (Optional)</Text>
+              <TextInput
+                style={styles.textArea}
+                placeholder="Any additional notes for the client..."
+                placeholderTextColor={colors.mutedForeground}
+                value={notes}
+                onChangeText={setNotes}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
 
+            <View style={{ height: 100 }} />
+          </ScrollView>
+        )}
+
+        {/* Bottom Action Buttons */}
         <View style={styles.actions}>
           <TouchableOpacity
             style={[styles.actionButton, styles.saveDraftButton]}
@@ -598,6 +974,7 @@ export default function CreateInvoiceScreen() {
         </View>
       </KeyboardAvoidingView>
 
+      {/* Modals */}
       <ClientSelector
         clients={clients}
         selectedId={clientId}
@@ -606,6 +983,26 @@ export default function CreateInvoiceScreen() {
         onClose={() => setShowClientPicker(false)}
         colors={colors}
         styles={styles}
+      />
+
+      <TemplateSelector
+        templates={templates}
+        visible={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        onSelect={handleApplyTemplate}
+        colors={colors}
+        styles={styles}
+        isLoading={isLoadingTemplates}
+      />
+
+      <CatalogPicker
+        catalogItems={catalogItems}
+        visible={showCatalogPicker}
+        onClose={() => setShowCatalogPicker(false)}
+        onSelect={handleAddFromCatalog}
+        colors={colors}
+        styles={styles}
+        isLoading={isLoadingCatalog}
       />
     </>
   );

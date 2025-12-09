@@ -13,12 +13,15 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useJobsStore, useClientsStore } from '../../src/lib/store';
+import { useJobsStore, useClientsStore, useQuotesStore } from '../../src/lib/store';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
 import { JobsListSkeleton, SkeletonStatCard } from '../../src/components/ui/Skeleton';
 import { EmptyState } from '../../src/components/ui/EmptyState';
+import api from '../../src/lib/api';
+
+type ViewMode = 'cards' | 'table';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
@@ -110,15 +113,57 @@ function RecentActivityItem({
   );
 }
 
+function JobTableRow({ 
+  job, 
+  onPress 
+}: { 
+  job: any;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString('en-AU');
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={styles.tableRow}
+    >
+      <View style={styles.tableCell}>
+        <Text style={styles.tableCellTitle} numberOfLines={1}>{job.title || 'Untitled'}</Text>
+      </View>
+      <View style={styles.tableCellClient}>
+        <Text style={styles.tableCellText} numberOfLines={1}>{job.clientName || '—'}</Text>
+      </View>
+      <View style={styles.tableCellStatus}>
+        <StatusBadge status={job.status} size="sm" />
+      </View>
+      <View style={styles.tableCellDate}>
+        <Text style={styles.tableCellText}>{formatDate(job.scheduledAt)}</Text>
+      </View>
+      <View style={styles.tableCellChevron}>
+        <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 function JobCard({ 
   job, 
   onPress,
   onUpdateStatus,
+  onGenerateQuote,
   clientPhone
 }: { 
   job: any;
   onPress: () => void;
   onUpdateStatus?: (status: string) => void;
+  onGenerateQuote?: () => void;
   clientPhone?: string;
 }) {
   const { colors } = useTheme();
@@ -263,6 +308,15 @@ function JobCard({
                 <Feather name="navigation" size={iconSizes.sm} color={colors.primary} />
               </TouchableOpacity>
             )}
+            {onGenerateQuote && (
+              <TouchableOpacity 
+                style={styles.quickActionBtn} 
+                onPress={onGenerateQuote}
+                activeOpacity={0.7}
+              >
+                <Feather name="file-text" size={iconSizes.sm} color={colors.primary} />
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Status Action Button */}
@@ -292,9 +346,12 @@ export default function JobsScreen() {
   
   const { jobs, fetchJobs, updateJobStatus, isLoading } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
+  const { fetchQuotes } = useQuotesStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [isGeneratingQuote, setIsGeneratingQuote] = useState(false);
 
   const refreshData = useCallback(async () => {
     await Promise.all([fetchJobs(), fetchClients()]);
@@ -303,6 +360,31 @@ export default function JobsScreen() {
   useEffect(() => {
     refreshData().finally(() => setIsInitialLoad(false));
   }, []);
+
+  const handleGenerateQuote = async (jobId: string) => {
+    try {
+      setIsGeneratingQuote(true);
+      const response = await api.post<any>(`/api/quotes/from-job/${jobId}`);
+      
+      if (response.data) {
+        Alert.alert(
+          'Quote Generated',
+          `Quote ${response.data.number || response.data.quoteNumber || ''} has been created successfully.`,
+          [
+            { text: 'View Quote', onPress: () => router.push(`/more/quote/${response.data.id}`) },
+            { text: 'OK', style: 'cancel' }
+          ]
+        );
+        await fetchQuotes();
+      } else if (response.error) {
+        Alert.alert('Error', response.error || 'Failed to generate quote');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to generate quote from job');
+    } finally {
+      setIsGeneratingQuote(false);
+    }
+  };
 
   const getClientName = (clientId?: string) => {
     if (!clientId) return undefined;
@@ -387,14 +469,47 @@ export default function JobsScreen() {
             <Text style={styles.pageTitle}>Jobs</Text>
             <Text style={styles.pageSubtitle}>{jobs.length} total</Text>
           </View>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.newJobButton}
-            onPress={navigateToCreateJob}
-          >
-            <Feather name="plus" size={iconSizes.lg} color={colors.white} />
-            <Text style={styles.newJobButtonText}>New Job</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {/* View Mode Toggle */}
+            <View style={styles.viewModeToggle}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[
+                  styles.viewModeBtn,
+                  viewMode === 'cards' && styles.viewModeBtnActive
+                ]}
+                onPress={() => setViewMode('cards')}
+              >
+                <Feather 
+                  name="grid" 
+                  size={iconSizes.md} 
+                  color={viewMode === 'cards' ? colors.foreground : colors.mutedForeground} 
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[
+                  styles.viewModeBtn,
+                  viewMode === 'table' && styles.viewModeBtnActive
+                ]}
+                onPress={() => setViewMode('table')}
+              >
+                <Feather 
+                  name="list" 
+                  size={iconSizes.md} 
+                  color={viewMode === 'table' ? colors.foreground : colors.mutedForeground} 
+                />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.newJobButton}
+              onPress={navigateToCreateJob}
+            >
+              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
+              <Text style={styles.newJobButtonText}>New Job</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Search Bar */}
@@ -569,6 +684,25 @@ export default function JobsScreen() {
                 onAction={navigateToCreateJob}
               />
             )
+          ) : viewMode === 'table' ? (
+            <View style={styles.tableContainer}>
+              {/* Table Header */}
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Job</Text>
+                <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Client</Text>
+                <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Status</Text>
+                <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Scheduled</Text>
+                <View style={{ width: 24 }} />
+              </View>
+              {/* Table Rows */}
+              {sortedJobs.map((job) => (
+                <JobTableRow
+                  key={job.id}
+                  job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
+                  onPress={() => router.push(`/job/${job.id}`)}
+                />
+              ))}
+            </View>
           ) : (
             <View style={styles.jobsList}>
               {sortedJobs.map((job) => (
@@ -577,6 +711,7 @@ export default function JobsScreen() {
                   job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
                   onPress={() => router.push(`/job/${job.id}`)}
                   onUpdateStatus={(status) => handleUpdateStatus(job.id, status)}
+                  onGenerateQuote={() => handleGenerateQuote(job.id)}
                   clientPhone={getClientPhone(job.clientId)}
                 />
               ))}
@@ -621,6 +756,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.lg,
   },
   headerLeft: {},
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   pageTitle: {
     ...typography.largeTitle,
     color: colors.foreground,
@@ -629,6 +769,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
     marginTop: spacing.xs / 2,
+  },
+  viewModeToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  viewModeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.md,
+  },
+  viewModeBtnActive: {
+    backgroundColor: colors.card,
+    ...shadows.xs,
   },
   newJobButton: {
     flexDirection: 'row',
@@ -962,5 +1119,63 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.lg,
+  },
+
+  // Table View Styles
+  tableContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.muted,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tableHeaderCell: {
+    ...typography.captionSmall,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tableCell: {
+    flex: 2,
+  },
+  tableCellClient: {
+    flex: 1.5,
+  },
+  tableCellStatus: {
+    flex: 1,
+  },
+  tableCellDate: {
+    flex: 1,
+  },
+  tableCellChevron: {
+    width: 24,
+    alignItems: 'flex-end',
+  },
+  tableCellTitle: {
+    ...typography.bodySemibold,
+    color: colors.foreground,
+  },
+  tableCellText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
   },
 });
