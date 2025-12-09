@@ -11,7 +11,7 @@ import {
   Linking,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '../lib/theme';
 import { api } from '../lib/api';
 
 interface VoiceNote {
