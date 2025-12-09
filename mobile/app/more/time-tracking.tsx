@@ -11,10 +11,13 @@ import {
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useJobsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius } from '../../src/lib/design-tokens';
 import api from '../../src/lib/api';
+
+const GPS_TIMEOUT_MS = 3000;
 
 interface TimeEntry {
   id: string;
@@ -617,6 +620,32 @@ export default function TimeTrackingScreen() {
     await Promise.all([fetchJobs(), fetchTimeEntries(), checkActiveTimer()]);
   }, [fetchJobs, fetchTimeEntries, checkActiveTimer]);
 
+  const captureGPSLocation = useCallback(async (): Promise<{ latitude: number; longitude: number } | null> => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('[TimeTracking] Location permission not granted');
+        return null;
+      }
+      const location = await Promise.race([
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), GPS_TIMEOUT_MS))
+      ]);
+      if (location && 'coords' in location) {
+        return {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+      }
+      return null;
+    } catch (error) {
+      console.log('[TimeTracking] GPS capture failed:', error);
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     refreshData();
   }, []);
@@ -657,26 +686,41 @@ export default function TimeTrackingScreen() {
     }
     
     setIsSaving(true);
+    const startTime = new Date().toISOString();
+    
+    timerStartRef.current = new Date();
+    setTimerSeconds(0);
+    setIsTimerRunning(true);
+    
+    captureGPSLocation().then(location => {
+      if (location) {
+        console.log('[TimeTracking] Start location captured:', location.latitude, location.longitude);
+      }
+    });
+    
     try {
       const response = await api.post<TimeEntry>('/api/time-entries', {
         jobId: selectedJob,
-        startTime: new Date().toISOString(),
+        startTime,
         description: `Time tracked for job`
       });
       
       if (response.error) {
+        setIsTimerRunning(false);
+        setTimerSeconds(0);
+        timerStartRef.current = null;
         Alert.alert('Error', response.error);
         return;
       }
       
       if (response.data) {
         setActiveTimeEntry(response.data);
-        timerStartRef.current = new Date();
-        setTimerSeconds(0);
-        setIsTimerRunning(true);
       }
     } catch (error) {
       console.error('[TimeTracking] Failed to start timer:', error);
+      setIsTimerRunning(false);
+      setTimerSeconds(0);
+      timerStartRef.current = null;
       Alert.alert('Error', 'Failed to start timer. Please try again.');
     } finally {
       setIsSaving(false);
@@ -704,9 +748,17 @@ export default function TimeTrackingScreen() {
               }
               
               setIsSaving(true);
+              const endTime = new Date().toISOString();
+              
+              captureGPSLocation().then(location => {
+                if (location) {
+                  console.log('[TimeTracking] End location captured:', location.latitude, location.longitude);
+                }
+              });
+              
               try {
                 const response = await api.patch<TimeEntry>(`/api/time-entries/${activeTimeEntry.id}`, {
-                  endTime: new Date().toISOString(),
+                  endTime,
                   durationMinutes: Math.ceil(timerSeconds / 60)
                 });
                 
