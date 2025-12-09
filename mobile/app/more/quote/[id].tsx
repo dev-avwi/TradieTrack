@@ -121,10 +121,33 @@ export default function QuoteDetailScreen() {
         {
           text: 'Accept',
           onPress: async () => {
-            const success = await updateQuoteStatus(id!, 'accepted');
-            if (success) {
-              await loadData();
-              Alert.alert('Success', 'Quote marked as accepted');
+            try {
+              const response = await fetch(`${API_URL}/api/quotes/${id}/accept`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                },
+              });
+
+              if (response.ok) {
+                await loadData();
+                Alert.alert('Success', 'Quote marked as accepted');
+              } else {
+                const success = await updateQuoteStatus(id!, 'accepted');
+                if (success) {
+                  await loadData();
+                  Alert.alert('Quote Updated', 'Quote marked as accepted locally');
+                } else {
+                  Alert.alert('Error', 'Failed to accept quote');
+                }
+              }
+            } catch (error) {
+              const success = await updateQuoteStatus(id!, 'accepted');
+              if (success) {
+                await loadData();
+                Alert.alert('Quote Updated', 'Quote marked as accepted locally');
+              }
             }
           }
         }

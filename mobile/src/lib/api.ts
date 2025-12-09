@@ -6,6 +6,7 @@ const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl ||
   'https://ff735932-1a5e-42dc-89e5-b025f7feea5d-00-3hwzylsjthmgp.worf.replit.dev';
 
 export const API_URL = API_BASE_URL;
+export const WEB_URL = API_BASE_URL;
 
 interface ApiResponse<T> {
   data?: T;

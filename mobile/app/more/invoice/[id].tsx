@@ -8,14 +8,16 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
-  Modal
+  Modal,
+  Switch,
+  Share
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useInvoicesStore, useClientsStore, useAuthStore } from '../../../src/lib/store';
 import { colors } from '../../../src/lib/colors';
 import { DocumentPreview } from '../../../src/components/DocumentPreview';
-import { API_URL } from '../../../src/lib/api';
+import { API_URL, WEB_URL } from '../../../src/lib/api';
 
 const STATUS_CONFIG = {
   draft: { label: 'Draft', color: colors.mutedForeground, bg: colors.cardHover },
@@ -36,6 +38,7 @@ export default function InvoiceDetailScreen() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendMessage, setSendMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isTogglingPayment, setIsTogglingPayment] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -120,10 +123,33 @@ export default function InvoiceDetailScreen() {
         { 
           text: 'Confirm',
           onPress: async () => {
-            const success = await updateInvoiceStatus(id!, 'paid');
-            if (success) {
-              await loadData();
-              Alert.alert('Success', 'Invoice marked as paid');
+            try {
+              const response = await fetch(`${API_URL}/api/invoices/${id}/mark-paid`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                },
+              });
+
+              if (response.ok) {
+                await loadData();
+                Alert.alert('Success', 'Invoice marked as paid and job status updated');
+              } else {
+                const success = await updateInvoiceStatus(id!, 'paid');
+                if (success) {
+                  await loadData();
+                  Alert.alert('Invoice Updated', 'Invoice marked as paid locally');
+                } else {
+                  Alert.alert('Error', 'Failed to mark invoice as paid');
+                }
+              }
+            } catch (error) {
+              const success = await updateInvoiceStatus(id!, 'paid');
+              if (success) {
+                await loadData();
+                Alert.alert('Invoice Updated', 'Invoice marked as paid locally');
+              }
             }
           }
         }
@@ -133,6 +159,48 @@ export default function InvoiceDetailScreen() {
 
   const handleCollectPayment = () => {
     router.push('/(tabs)/collect');
+  };
+
+  const handleToggleOnlinePayment = async (enabled: boolean) => {
+    setIsTogglingPayment(true);
+    try {
+      const response = await fetch(`${API_URL}/api/invoices/${id}/online-payment`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ allowOnlinePayment: enabled }),
+      });
+
+      if (response.ok) {
+        await loadData();
+        Alert.alert(
+          'Success',
+          enabled ? 'Online payment enabled for this invoice' : 'Online payment disabled'
+        );
+      } else {
+        Alert.alert('Error', 'Failed to update online payment setting');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update online payment setting');
+    } finally {
+      setIsTogglingPayment(false);
+    }
+  };
+
+  const handleCopyPaymentLink = async () => {
+    if (invoice?.paymentToken) {
+      const paymentUrl = `${WEB_URL}/pay/${invoice.paymentToken}`;
+      try {
+        await Share.share({
+          message: paymentUrl,
+          title: 'Payment Link',
+        });
+      } catch (error) {
+        Alert.alert('Error', 'Failed to share payment link');
+      }
+    }
   };
 
   if (isLoading) {
@@ -410,6 +478,50 @@ export default function InvoiceDetailScreen() {
               <Text style={styles.sectionTitle}>Notes</Text>
               <View style={styles.card}>
                 <Text style={styles.notesText}>{invoice.notes}</Text>
+              </View>
+            </>
+          )}
+
+          {/* Online Payment Section */}
+          {invoice.status !== 'paid' && (
+            <>
+              <Text style={styles.sectionTitle}>Online Payment</Text>
+              <View style={styles.card}>
+                <View style={styles.switchRow}>
+                  <View style={styles.switchInfo}>
+                    <Feather name="credit-card" size={20} color={colors.primary} />
+                    <View style={styles.switchText}>
+                      <Text style={styles.switchLabel}>Allow Online Payment</Text>
+                      <Text style={styles.switchDescription}>
+                        Let customers pay via card
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={invoice.allowOnlinePayment || false}
+                    onValueChange={handleToggleOnlinePayment}
+                    disabled={isTogglingPayment}
+                    trackColor={{ false: colors.muted, true: colors.primary }}
+                    thumbColor={colors.white}
+                  />
+                </View>
+                
+                {invoice.allowOnlinePayment && invoice.paymentToken && (
+                  <View style={styles.paymentLinkContainer}>
+                    <Text style={styles.paymentLinkLabel}>Payment Link:</Text>
+                    <View style={styles.paymentLinkRow}>
+                      <Text style={styles.paymentLinkUrl} numberOfLines={1}>
+                        {`${WEB_URL}/pay/${invoice.paymentToken}`}
+                      </Text>
+                      <TouchableOpacity 
+                        style={styles.copyButton}
+                        onPress={handleCopyPaymentLink}
+                      >
+                        <Feather name="share-2" size={16} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
               </View>
             </>
           )}
@@ -898,5 +1010,59 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  switchInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  switchText: {
+    flex: 1,
+  },
+  switchLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  switchDescription: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  paymentLinkContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  paymentLinkLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+    marginBottom: 8,
+  },
+  paymentLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.muted,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  paymentLinkUrl: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.foreground,
+    fontFamily: 'monospace',
+  },
+  copyButton: {
+    padding: 8,
+    marginLeft: 8,
   },
 });
