@@ -23,13 +23,29 @@ interface TeamMemberInfo {
   permissions: string[];
 }
 
+// Custom fetch function that returns null for 404 (expected for business owners)
+async function fetchTeamRole(): Promise<TeamMemberInfo | null> {
+  const res = await fetch("/api/team/my-role", { credentials: "include" });
+  if (res.status === 404) {
+    return null; // Expected for business owners - not an error
+  }
+  if (!res.ok) {
+    throw new Error(`Error fetching team role: ${res.status}`);
+  }
+  return res.json();
+}
+
 export function useUserRole() {
   const { data: user, isLoading: userLoading } = useQuery<User>({ queryKey: ["/api/auth/me"] });
   const { data: businessSettings, isLoading: settingsLoading } = useQuery<BusinessSettings>({ queryKey: ["/api/business-settings"] });
   
-  // Always fetch team role info - don't gate it behind user existence
+  // Fetch team role info - 404 is expected for business owners (not team members)
+  // Use custom queryFn that returns null for 404 instead of throwing
   const { data: teamMemberInfo, isLoading: teamRoleLoading } = useQuery<TeamMemberInfo | null>({
     queryKey: ["/api/team/my-role"],
+    queryFn: fetchTeamRole,
+    retry: false,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
   // Combined loading state - must wait for all queries to complete
