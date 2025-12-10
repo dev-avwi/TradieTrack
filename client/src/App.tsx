@@ -538,6 +538,30 @@ function AppLayout() {
     }
   });
 
+  // Check if user is a team member (staff users should skip onboarding)
+  const { 
+    data: teamRoleInfo, 
+    isLoading: teamRoleLoading 
+  } = useQuery({
+    queryKey: ['/api/team/my-role'],
+    enabled: !!userCheck && !isLoading && !error,
+    retry: false,
+    queryFn: async () => {
+      const res = await fetch('/api/team/my-role', { credentials: 'include' });
+      if (res.status === 404) {
+        // Not a team member - this is expected for business owners
+        return null;
+      }
+      if (!res.ok) {
+        throw new Error('Failed to fetch team role');
+      }
+      return res.json();
+    }
+  });
+
+  // Staff users (team members) should skip onboarding entirely
+  const isTeamMember = !!teamRoleInfo;
+
   // Initialize and update trade colors based on theme and trade selection
   // IMPORTANT: All useEffect hooks must be called before any conditional returns
   // NOTE: Trade type colors are ONLY applied when custom brand theme is NOT enabled
@@ -727,9 +751,9 @@ function AppLayout() {
     );
   }
 
-  // If authenticated but still loading business settings, show loading state
-  if (userCheck && businessSettingsLoading) {
-    // Still loading business settings
+  // If authenticated but still loading business settings or team role, show loading state
+  if (userCheck && (businessSettingsLoading || teamRoleLoading)) {
+    // Still loading business settings or team role
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -740,8 +764,9 @@ function AppLayout() {
     );
   }
 
-  if (userCheck && businessSettings === null) {
-    // User exists but no business settings - show onboarding wizard
+  if (userCheck && businessSettings === null && !isTeamMember) {
+    // User exists but no business settings AND not a team member - show onboarding wizard
+    // Staff users (team members) skip onboarding - they use their employer's business settings
     return <OnboardingWizard onComplete={handleOnboardingComplete} />;
   }
 
