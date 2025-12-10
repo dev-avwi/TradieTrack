@@ -118,9 +118,18 @@ interface TimeEntry {
 
 // ============ AUTH STORE ============
 
+interface RoleInfo {
+  roleId: string;
+  roleName: string;
+  permissions: string[];
+  hasCustomPermissions: boolean;
+  isOwner: boolean;
+}
+
 interface AuthState {
   user: User | null;
   businessSettings: BusinessSettings | null;
+  roleInfo: RoleInfo | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   isInitialized: boolean;
@@ -129,13 +138,18 @@ interface AuthState {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  fetchRoleInfo: () => Promise<void>;
   clearError: () => void;
   updateBusinessSettings: (settings: Partial<BusinessSettings>) => Promise<boolean>;
+  hasPermission: (permission: string) => boolean;
+  isOwner: () => boolean;
+  isStaff: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   businessSettings: null,
+  roleInfo: null,
   isLoading: false,
   isAuthenticated: false,
   isInitialized: false,
@@ -168,6 +182,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (settingsResponse.data) {
       set({ businessSettings: settingsResponse.data });
     }
+    
+    // Fetch role info for permissions
+    await get().fetchRoleInfo();
 
     return true;
   },
@@ -178,6 +195,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ 
       user: null, 
       businessSettings: null,
+      roleInfo: null,
       isAuthenticated: false,
       isLoading: false,
       error: null 
@@ -223,6 +241,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (settingsResponse.data) {
       set({ businessSettings: settingsResponse.data });
     }
+    
+    // Fetch role info for permissions
+    await get().fetchRoleInfo();
+  },
+
+  fetchRoleInfo: async () => {
+    // Try to fetch role info (for team members)
+    const roleResponse = await api.get<{
+      roleId: string;
+      roleName: string;
+      permissions: string[];
+      hasCustomPermissions: boolean;
+    }>('/api/team/my-role');
+    
+    if (roleResponse.data) {
+      // User is a team member with specific role
+      set({
+        roleInfo: {
+          roleId: roleResponse.data.roleId,
+          roleName: roleResponse.data.roleName,
+          permissions: roleResponse.data.permissions,
+          hasCustomPermissions: roleResponse.data.hasCustomPermissions,
+          isOwner: false,
+        }
+      });
+    } else {
+      // User is an owner (not a team member of another business)
+      set({
+        roleInfo: {
+          roleId: 'owner',
+          roleName: 'OWNER',
+          permissions: ['*'], // Owners have all permissions
+          hasCustomPermissions: false,
+          isOwner: true,
+        }
+      });
+    }
   },
 
   clearError: () => set({ error: null }),
@@ -234,6 +289,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return true;
     }
     return false;
+  },
+  
+  hasPermission: (permission: string) => {
+    const { roleInfo } = get();
+    if (!roleInfo) return false;
+    if (roleInfo.isOwner) return true;
+    if (roleInfo.permissions.includes('*')) return true;
+    return roleInfo.permissions.includes(permission);
+  },
+  
+  isOwner: () => {
+    const { roleInfo } = get();
+    return roleInfo?.isOwner ?? false;
+  },
+  
+  isStaff: () => {
+    const { roleInfo } = get();
+    return roleInfo !== null && !roleInfo.isOwner;
   },
 }));
 

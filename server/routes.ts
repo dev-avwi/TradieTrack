@@ -2709,11 +2709,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Jobs assigned to the current user (for staff tradie dashboard)
+  app.get("/api/jobs/my-jobs", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const jobs = await storage.getJobs(userContext.effectiveUserId);
+      const clients = await storage.getClients(userContext.effectiveUserId);
+      
+      // Filter to only jobs assigned to this user
+      const myJobs = jobs
+        .filter(job => job.assignedTo === req.userId)
+        .map(job => {
+          const client = clients.find((c: any) => c.id === job.clientId);
+          return {
+            ...job,
+            clientName: client?.name || 'Unknown Client',
+            clientPhone: client?.phone || null,
+            clientEmail: client?.email || null,
+          };
+        })
+        .sort((a, b) => {
+          // Sort by scheduled date, then by status
+          if (a.scheduledAt && b.scheduledAt) {
+            return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+          }
+          if (a.scheduledAt) return -1;
+          if (b.scheduledAt) return 1;
+          return 0;
+        });
+      
+      res.json(myJobs);
+    } catch (error) {
+      console.error("Error fetching my jobs:", error);
+      res.status(500).json({ error: "Failed to fetch my jobs" });
+    }
+  });
+
   // Today's jobs endpoint - Must come BEFORE the :id route
   app.get("/api/jobs/today", requireAuth, async (req: any, res) => {
     try {
-      const jobs = await storage.getJobs(req.userId);
-      const clients = await storage.getClients(req.userId);
+      const userContext = await getUserContext(req.userId);
+      let jobs = await storage.getJobs(userContext.effectiveUserId);
+      const clients = await storage.getClients(userContext.effectiveUserId);
+      
+      // Staff tradies only see their assigned jobs
+      const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
+      if (!hasViewAll && userContext.teamMemberId) {
+        jobs = jobs.filter(job => job.assignedTo === req.userId);
+      }
       
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -4482,11 +4525,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats
   app.get("/api/dashboard/stats", requireAuth, async (req: any, res) => {
     try {
-      const [jobs, quotes, invoices] = await Promise.all([
-        storage.getJobs(req.userId),
-        storage.getQuotes(req.userId),
-        storage.getInvoices(req.userId)
+      const userContext = await getUserContext(req.userId);
+      let [jobs, quotes, invoices] = await Promise.all([
+        storage.getJobs(userContext.effectiveUserId),
+        storage.getQuotes(userContext.effectiveUserId),
+        storage.getInvoices(userContext.effectiveUserId)
       ]);
+      
+      // Staff tradies only see stats for their assigned jobs
+      const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
+      if (!hasViewAll && userContext.teamMemberId) {
+        jobs = jobs.filter(job => job.assignedTo === req.userId);
+        // For staff, don't show financial stats - they only see job stats
+        quotes = [];
+        invoices = [];
+      }
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -4517,7 +4570,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         unpaidInvoicesCount: unpaidInvoices.length,
         unpaidInvoicesTotal: unpaidTotal,
         quotesAwaiting,
-        monthlyEarnings
+        monthlyEarnings,
+        isStaffView: !hasViewAll && userContext.teamMemberId ? true : false,
       });
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
@@ -9714,6 +9768,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error getting client report:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get team performance report (Owner/Admin only)
+  app.get("/api/reports/team", requireAuth, createPermissionMiddleware(PERMISSIONS.VIEW_TEAM), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { startDate, endDate } = req.query;
+      
+      const start = startDate ? new Date(startDate as string) : new Date(new Date().getFullYear(), 0, 1);
+      const end = endDate ? new Date(endDate as string) : new Date();
+      
+      // Get team members and their activity
+      const [teamMembers, allJobs, timeEntries] = await Promise.all([
+        storage.getTeamMembers(userId),
+        storage.getJobs(userId),
+        storage.getTimeEntries(userId),
+      ]);
+      
+      // Filter by date range
+      const filteredJobs = allJobs.filter(j => {
+        const date = j.createdAt ? new Date(j.createdAt) : null;
+        return date && date >= start && date <= end;
+      });
+      
+      const filteredTimeEntries = timeEntries.filter(t => {
+        const date = t.startTime ? new Date(t.startTime) : null;
+        return date && date >= start && date <= end;
+      });
+      
+      // Calculate per-member performance
+      const memberPerformance = await Promise.all(teamMembers.map(async member => {
+        const memberJobs = filteredJobs.filter(j => j.assignedTo === member.userId);
+        const memberTimeEntries = filteredTimeEntries.filter(t => t.userId === member.userId);
+        
+        // Calculate total hours worked
+        const totalMinutes = memberTimeEntries.reduce((sum, entry) => {
+          if (!entry.startTime) return sum;
+          const start = new Date(entry.startTime);
+          const end = entry.endTime ? new Date(entry.endTime) : new Date();
+          return sum + (end.getTime() - start.getTime()) / 60000;
+        }, 0);
+        
+        const hoursWorked = Math.round(totalMinutes / 60 * 10) / 10; // Round to 1 decimal
+        
+        return {
+          id: member.userId,
+          name: member.name || member.email,
+          email: member.email,
+          role: member.role,
+          jobsAssigned: memberJobs.length,
+          jobsCompleted: memberJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length,
+          jobsInProgress: memberJobs.filter(j => j.status === 'in_progress').length,
+          hoursWorked,
+          timeEntryCount: memberTimeEntries.length,
+          avgHoursPerJob: memberJobs.length > 0 ? Math.round(hoursWorked / memberJobs.length * 10) / 10 : 0,
+        };
+      }));
+      
+      // Sort by jobs completed
+      memberPerformance.sort((a, b) => b.jobsCompleted - a.jobsCompleted);
+      
+      // Calculate totals
+      const totals = {
+        totalMembers: memberPerformance.length,
+        totalJobsAssigned: memberPerformance.reduce((sum, m) => sum + m.jobsAssigned, 0),
+        totalJobsCompleted: memberPerformance.reduce((sum, m) => sum + m.jobsCompleted, 0),
+        totalHoursWorked: Math.round(memberPerformance.reduce((sum, m) => sum + m.hoursWorked, 0) * 10) / 10,
+        avgJobsPerMember: memberPerformance.length > 0 
+          ? Math.round(memberPerformance.reduce((sum, m) => sum + m.jobsAssigned, 0) / memberPerformance.length * 10) / 10 
+          : 0,
+      };
+      
+      res.json({
+        period: { start, end },
+        members: memberPerformance,
+        totals,
+      });
+    } catch (error: any) {
+      console.error('Error getting team report:', error);
       res.status(500).json({ error: error.message });
     }
   });

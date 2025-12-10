@@ -15,6 +15,7 @@ import * as Location from 'expo-location';
 import { useJobsStore, useClientsStore, useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useUserRole } from '../../src/hooks/use-user-role';
 import { api } from '../../src/lib/api';
 import { statusColors, spacing, radius, shadows } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
@@ -408,6 +409,10 @@ export default function MapScreen() {
   const { jobs, fetchJobs, isLoading: jobsLoading } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
   const { user } = useAuthStore();
+  const { isStaff, canAccessMap, isLoading: roleLoading } = useUserRole();
+  
+  // Staff users without map access should see a restricted view
+  const hasMapAccess = !isStaff || canAccessMap;
   
   const [viewMode, setViewMode] = useState<ViewMode>('jobs');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -560,6 +565,45 @@ export default function MapScreen() {
     const date = new Date(dateStr);
     return date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
+
+  // Show restricted view for staff without map access
+  if (!hasMapAccess && !roleLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: spacing.xl }]}>
+        <View style={{ alignItems: 'center', gap: spacing.md }}>
+          <View style={{ 
+            width: 80, 
+            height: 80, 
+            borderRadius: 40, 
+            backgroundColor: colors.muted, 
+            alignItems: 'center', 
+            justifyContent: 'center' 
+          }}>
+            <Feather name="map" size={40} color={colors.mutedForeground} />
+          </View>
+          <Text style={{ fontSize: 20, fontWeight: '600', color: colors.foreground, textAlign: 'center' }}>
+            Map Access Restricted
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: 'center', lineHeight: 20 }}>
+            Team tracking is available for managers and owners.{'\n'}You can view your assigned jobs on the Jobs screen.
+          </Text>
+          <TouchableOpacity
+            style={{ 
+              backgroundColor: colors.primary, 
+              paddingHorizontal: spacing.xl, 
+              paddingVertical: spacing.md, 
+              borderRadius: radius.md,
+              marginTop: spacing.md
+            }}
+            onPress={() => router.push('/(tabs)/jobs')}
+            activeOpacity={0.8}
+          >
+            <Text style={{ color: colors.white, fontWeight: '600' }}>View My Jobs</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

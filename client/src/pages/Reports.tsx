@@ -147,6 +147,31 @@ interface StripePaymentsReport {
   };
 }
 
+interface TeamMemberPerformance {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  jobsAssigned: number;
+  jobsCompleted: number;
+  jobsInProgress: number;
+  hoursWorked: number;
+  timeEntryCount: number;
+  avgHoursPerJob: number;
+}
+
+interface TeamReport {
+  period: { start: string; end: string };
+  members: TeamMemberPerformance[];
+  totals: {
+    totalMembers: number;
+    totalJobsAssigned: number;
+    totalJobsCompleted: number;
+    totalHoursWorked: number;
+    avgJobsPerMember: number;
+  };
+}
+
 const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
 export default function Reports() {
@@ -223,6 +248,22 @@ export default function Reports() {
         credentials: 'include'
       });
       if (!res.ok) throw new Error('Failed to fetch Stripe payments');
+      return res.json();
+    },
+    retry: 1,
+  });
+
+  const { data: teamData, isLoading: teamLoading } = useQuery<TeamReport>({
+    queryKey: ['/api/reports/team', dateRange],
+    queryFn: async () => {
+      const range = getDateRange();
+      const res = await fetch(`/api/reports/team?startDate=${range.startDate}&endDate=${range.endDate}`, {
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        if (res.status === 403) return null;
+        throw new Error('Failed to fetch team report');
+      }
       return res.json();
     },
     retry: 1,
@@ -349,11 +390,12 @@ export default function Reports() {
         </div>
 
         <Tabs defaultValue="revenue" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 max-w-lg">
+          <TabsList className="grid w-full grid-cols-5 max-w-xl">
             <TabsTrigger value="revenue" data-testid="tab-revenue">Revenue</TabsTrigger>
             <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
             <TabsTrigger value="jobs" data-testid="tab-jobs">Jobs</TabsTrigger>
             <TabsTrigger value="clients" data-testid="tab-clients">Clients</TabsTrigger>
+            {teamData !== null && <TabsTrigger value="team" data-testid="tab-team">Team</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="revenue" className="mt-6">
@@ -773,6 +815,146 @@ export default function Reports() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {teamData && (
+            <TabsContent value="team" className="mt-6">
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Team Members</p>
+                          <p className="text-2xl font-bold" data-testid="text-team-members">
+                            {teamLoading ? '...' : teamData.totals.totalMembers}
+                          </p>
+                        </div>
+                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Jobs Completed</p>
+                          <p className="text-2xl font-bold text-green-600" data-testid="text-team-jobs-completed">
+                            {teamLoading ? '...' : teamData.totals.totalJobsCompleted}
+                          </p>
+                        </div>
+                        <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {teamData.totals.totalJobsAssigned} assigned
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Hours Worked</p>
+                          <p className="text-2xl font-bold" data-testid="text-team-hours">
+                            {teamLoading ? '...' : teamData.totals.totalHoursWorked}
+                          </p>
+                        </div>
+                        <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                          <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Total tracked hours
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Avg Jobs/Member</p>
+                          <p className="text-2xl font-bold" data-testid="text-team-avg-jobs">
+                            {teamLoading ? '...' : teamData.totals.avgJobsPerMember}
+                          </p>
+                        </div>
+                        <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                          <BarChart3 className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Team Performance</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-3 px-2 font-medium text-muted-foreground">Team Member</th>
+                            <th className="text-center py-3 px-2 font-medium text-muted-foreground">Role</th>
+                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Completed</th>
+                            <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden sm:table-cell">In Progress</th>
+                            <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden md:table-cell">Hours</th>
+                            <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden lg:table-cell">Avg Hrs/Job</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {teamData.members.map((member) => (
+                            <tr 
+                              key={member.id} 
+                              className="border-b"
+                              data-testid={`row-team-member-${member.id}`}
+                            >
+                              <td className="py-3 px-2">
+                                <div>
+                                  <p className="font-medium">{member.name}</p>
+                                  <p className="text-xs text-muted-foreground">{member.email}</p>
+                                </div>
+                              </td>
+                              <td className="text-center py-3 px-2">
+                                <Badge variant={member.role === 'OWNER' ? 'default' : member.role === 'ADMIN' ? 'secondary' : 'outline'}>
+                                  {member.role}
+                                </Badge>
+                              </td>
+                              <td className="text-right py-3 px-2 font-medium text-green-600">
+                                {member.jobsCompleted}
+                              </td>
+                              <td className="text-right py-3 px-2 hidden sm:table-cell text-blue-600">
+                                {member.jobsInProgress}
+                              </td>
+                              <td className="text-right py-3 px-2 hidden md:table-cell">
+                                {member.hoursWorked}h
+                              </td>
+                              <td className="text-right py-3 px-2 hidden lg:table-cell text-muted-foreground">
+                                {member.avgHoursPerJob}h
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {teamData.members.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No team members yet</p>
+                        <p className="text-sm">Add team members to see performance data</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </PageShell>

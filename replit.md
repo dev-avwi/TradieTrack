@@ -160,7 +160,7 @@ A React Native mobile app is built in `mobile/` directory with full API integrat
 - Connection status indicator and pending changes display
 
 **Data Stores (mobile/src/lib/store.ts):**
-- `useAuthStore` - User auth, session, business settings
+- `useAuthStore` - User auth, session, business settings, roleInfo with permissions, `isOwner()`, `isStaff()`, `hasPermission()` helpers
 - `useJobsStore` - Jobs CRUD, today's jobs, offline cache fallback
 - `useClientsStore` - Clients CRUD, offline cache fallback
 - `useQuotesStore` - Quotes CRUD, status updates, offline cache fallback
@@ -168,6 +168,14 @@ A React Native mobile app is built in `mobile/` directory with full API integrat
 - `useDashboardStore` - Aggregated stats from API
 - `useLocationStore` - Background location tracking state (mobile/src/lib/location-store.ts)
 - `useOfflineStore` - Connection status, sync state, pending changes (mobile/src/lib/offline-storage.ts)
+
+**Permission-Aware Mobile Navigation:**
+- Auth store fetches role/permissions from `/api/team/my-role` on login
+- Dashboard shows different stats for staff vs owners (staff see job-focused stats, owners see financial stats)
+- Quick Actions adapt based on user role (staff get My Jobs/Time/Chat, owners get Job/Quote/Invoice creation)
+- Map screen shows restricted view for staff without `view_map` permission
+- More menu items conditionally rendered based on role permissions via `useUserRole` hook
+- Staff users only see jobs assigned to them via server-side filtering (`/api/jobs/my-jobs`)
 
 **Navigation Structure:**
 - Bottom Tabs: Dashboard, Jobs, Map, More

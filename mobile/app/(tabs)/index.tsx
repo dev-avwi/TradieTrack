@@ -467,12 +467,16 @@ export default function DashboardScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
-  const { user, businessSettings } = useAuthStore();
+  const { user, businessSettings, roleInfo, isOwner, isStaff } = useAuthStore();
   const { todaysJobs, fetchTodaysJobs, isLoading: jobsLoading, updateJobStatus } = useJobsStore();
   const { stats, fetchStats, isLoading: statsLoading } = useDashboardStore();
   const { clients, fetchClients } = useClientsStore();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  
+  // Determine if user is staff (team member with limited permissions)
+  const isStaffUser = isStaff();
+  const isOwnerUser = isOwner();
   
   const handleNavigateToItem = (type: string, id: string) => {
     switch (type) {
@@ -587,66 +591,122 @@ export default function DashboardScreen() {
       {/* Trust Banner */}
       <TrustBanner />
 
-      {/* Quick Stats */}
+      {/* Quick Stats - Different for staff vs owner */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Quick Stats</Text>
+        <Text style={styles.sectionLabel}>
+          {isStaffUser ? 'My Stats' : 'Quick Stats'}
+        </Text>
         <View style={styles.kpiGrid}>
           <KPICard
-            title="Jobs Today"
+            title={isStaffUser ? "My Jobs Today" : "Jobs Today"}
             value={jobsToday}
             icon="briefcase"
             iconBg={colors.primaryLight}
             iconColor={colors.primary}
             onPress={() => router.push('/(tabs)/jobs')}
           />
-          <KPICard
-            title="Overdue"
-            value={overdueCount}
-            icon="alert-circle"
-            iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
-            iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
-            onPress={() => router.push('/more/invoices')}
-          />
-          <KPICard
-            title="Quotes Pending"
-            value={quotesCount}
-            icon="clock"
-            iconBg={colors.muted}
-            iconColor={colors.mutedForeground}
-            onPress={() => router.push('/more/quotes')}
-          />
-          <KPICard
-            title="This Month"
-            value={monthRevenue}
-            icon="trending-up"
-            iconBg={colors.successLight}
-            iconColor={colors.success}
-            onPress={() => router.push('/more/invoices')}
-          />
+          {isStaffUser ? (
+            <>
+              <KPICard
+                title="Assigned"
+                value={todaysJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
+                icon="clipboard"
+                iconBg={colors.muted}
+                iconColor={colors.mutedForeground}
+                onPress={() => router.push('/(tabs)/jobs')}
+              />
+              <KPICard
+                title="In Progress"
+                value={todaysJobs.filter(j => j.status === 'in_progress').length}
+                icon="clock"
+                iconBg={colors.warningLight}
+                iconColor={colors.warning}
+                onPress={() => router.push('/(tabs)/jobs')}
+              />
+              <KPICard
+                title="Completed"
+                value={todaysJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length}
+                icon="check-circle"
+                iconBg={colors.successLight}
+                iconColor={colors.success}
+                onPress={() => router.push('/(tabs)/jobs')}
+              />
+            </>
+          ) : (
+            <>
+              <KPICard
+                title="Overdue"
+                value={overdueCount}
+                icon="alert-circle"
+                iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
+                iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
+                onPress={() => router.push('/more/invoices')}
+              />
+              <KPICard
+                title="Quotes Pending"
+                value={quotesCount}
+                icon="clock"
+                iconBg={colors.muted}
+                iconColor={colors.mutedForeground}
+                onPress={() => router.push('/more/quotes')}
+              />
+              <KPICard
+                title="This Month"
+                value={monthRevenue}
+                icon="trending-up"
+                iconBg={colors.successLight}
+                iconColor={colors.success}
+                onPress={() => router.push('/more/invoices')}
+              />
+            </>
+          )}
         </View>
       </View>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Different for staff vs owner */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Quick Actions</Text>
         <View style={styles.quickActionsCard}>
           <View style={styles.quickActionsRow}>
-            <QuickActionButton
-              title="Job"
-              icon="briefcase"
-              variant="primary"
-              onPress={() => router.push('/more/create-job')}
-            />
-            <QuickActionButton
-              title="Quote"
-              icon="file-text"
-              onPress={() => router.push('/more/quote/new')}
-            />
-            <QuickActionButton
-              title="Invoice"
-              icon="dollar-sign"
-              onPress={() => router.push('/more/invoice/new')}
-            />
+            {isStaffUser ? (
+              <>
+                <QuickActionButton
+                  title="My Jobs"
+                  icon="briefcase"
+                  variant="primary"
+                  onPress={() => router.push('/(tabs)/jobs')}
+                />
+                <QuickActionButton
+                  title="Time"
+                  icon="clock"
+                  onPress={() => router.push('/more/time-tracking')}
+                />
+                <QuickActionButton
+                  title="Team Chat"
+                  icon="message-circle"
+                  onPress={() => router.push('/more/team-chat')}
+                />
+              </>
+            ) : (
+              <>
+                <QuickActionButton
+                  title="Job"
+                  icon="briefcase"
+                  variant="primary"
+                  onPress={() => router.push('/more/create-job')}
+                />
+                <QuickActionButton
+                  title="Quote"
+                  icon="file-text"
+                  onPress={() => router.push('/more/quote/new')}
+                />
+                <QuickActionButton
+                  title="Invoice"
+                  icon="dollar-sign"
+                  onPress={() => router.push('/more/invoice/new')}
+                />
+              </>
+            )}
           </View>
         </View>
       </View>
