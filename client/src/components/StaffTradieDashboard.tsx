@@ -127,8 +127,8 @@ export default function StaffTradieDashboard({
         throw new Error(error.error || 'Failed to start timer');
       }
       
-      // Update job status
-      const statusResponse = await fetch(`/api/jobs/${job.id}`, {
+      // Update job status (use staff-specific status endpoint)
+      const statusResponse = await fetch(`/api/jobs/${job.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -136,7 +136,8 @@ export default function StaffTradieDashboard({
       });
       
       if (!statusResponse.ok) {
-        throw new Error('Failed to update job status');
+        const error = await statusResponse.json().catch(() => ({}));
+        throw new Error(error.error || 'Failed to update job status');
       }
       
       return job;
@@ -155,8 +156,8 @@ export default function StaffTradieDashboard({
   // Complete job mutation
   const completeJob = useMutation({
     mutationFn: async (job: Job) => {
-      // Update job status
-      const statusResponse = await fetch(`/api/jobs/${job.id}`, {
+      // Update job status (use staff-specific status endpoint)
+      const statusResponse = await fetch(`/api/jobs/${job.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -164,7 +165,8 @@ export default function StaffTradieDashboard({
       });
       
       if (!statusResponse.ok) {
-        throw new Error('Failed to complete job');
+        const error = await statusResponse.json().catch(() => ({}));
+        throw new Error(error.error || 'Failed to complete job');
       }
       
       // Stop timer if running
