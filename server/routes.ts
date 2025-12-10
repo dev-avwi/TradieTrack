@@ -1098,6 +1098,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Comprehensive profile endpoint - returns user info, team membership, role, and permissions
+  app.get("/api/profile/me", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const user = await AuthService.getUserById(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Check if this user is a team member
+      const myMembership = await storage.getTeamMembershipByMemberId(userId);
+      
+      let profileData: any = {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phone: (user as any).phone || null,
+          profileImageUrl: user.profileImageUrl,
+          tradeType: user.tradeType,
+          emailVerified: user.emailVerified,
+          createdAt: user.createdAt,
+        },
+        isOwner: true,
+        isTeamMember: false,
+        teamInfo: null,
+        roleInfo: null,
+        permissions: Object.values(PERMISSIONS), // Owners have all permissions
+      };
+      
+      if (myMembership && myMembership.inviteStatus === 'accepted') {
+        // User is a team member
+        const role = await storage.getUserRole(myMembership.roleId);
+        const businessOwner = await AuthService.getUserById(myMembership.businessOwnerId);
+        const businessSettings = await storage.getBusinessSettings(myMembership.businessOwnerId);
+        
+        // Get effective permissions
+        const effectivePermissions = (myMembership.useCustomPermissions && myMembership.customPermissions)
+          ? myMembership.customPermissions
+          : (role?.permissions || []);
+        
+        profileData = {
+          ...profileData,
+          isOwner: false,
+          isTeamMember: true,
+          teamInfo: {
+            businessOwnerId: myMembership.businessOwnerId,
+            businessName: businessSettings?.businessName || businessOwner?.firstName + "'s Business",
+            businessEmail: businessSettings?.email || businessOwner?.email,
+            businessPhone: businessSettings?.phone || null,
+            joinedAt: myMembership.createdAt,
+          },
+          roleInfo: {
+            roleId: role?.id,
+            roleName: role?.name || 'Team Member',
+            roleDescription: role?.description || '',
+            hasCustomPermissions: myMembership.useCustomPermissions || false,
+          },
+          permissions: effectivePermissions,
+        };
+      } else {
+        // User is a business owner - check if they have a team
+        const teamMembers = await storage.getTeamMembers(userId);
+        const businessSettings = await storage.getBusinessSettings(userId);
+        
+        profileData.teamInfo = {
+          isBusinessOwner: true,
+          businessName: businessSettings?.businessName || 'My Business',
+          businessEmail: businessSettings?.email || user.email,
+          businessPhone: businessSettings?.phone || null,
+          teamSize: teamMembers.filter(m => m.inviteStatus === 'accepted').length,
+        };
+        profileData.roleInfo = {
+          roleId: 'owner',
+          roleName: 'Owner',
+          roleDescription: 'Full access to all features',
+          hasCustomPermissions: false,
+        };
+      }
+      
+      res.json(profileData);
+    } catch (error) {
+      console.error("Profile fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+  
+  // Update user profile (personal details)
+  app.patch("/api/profile/me", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { firstName, lastName, phone } = req.body;
+      
+      // Update user record
+      const updatedUser = await storage.updateUser(userId, {
+        firstName,
+        lastName,
+        phone,
+      });
+      
+      res.json({ success: true, user: updatedUser });
+    } catch (error) {
+      console.error("Profile update error:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
   // Global Search Endpoint
   app.get("/api/search", requireAuth, async (req: any, res) => {
     try {
