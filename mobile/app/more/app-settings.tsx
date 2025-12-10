@@ -1,8 +1,9 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Animated } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Animated, Switch, Alert } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeMode } from '../../src/lib/theme';
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import { useLocationStore, getActivityStatus, formatAccuracy } from '../../src/lib/location-store';
 
 function ThemeModeButton({ 
   mode, 
@@ -68,6 +69,53 @@ function ThemeModeButton({
 
 export default function AppSettingsScreen() {
   const { colors, themeMode, setThemeMode, isDark, brandColor } = useTheme();
+  const { 
+    isEnabled: locationEnabled, 
+    status: locationStatus,
+    lastLocation,
+    lastGeofenceEvent,
+    isMoving,
+    permissionGranted,
+    batteryLevel,
+    errorMessage: locationError,
+    enableTracking, 
+    disableTracking,
+    initializeTracking 
+  } = useLocationStore();
+  
+  const [isToggling, setIsToggling] = useState(false);
+
+  useEffect(() => {
+    initializeTracking();
+  }, []);
+
+  const handleLocationToggle = async (value: boolean) => {
+    setIsToggling(true);
+    try {
+      if (value) {
+        const success = await enableTracking();
+        if (!success) {
+          Alert.alert(
+            'Location Permission Required',
+            'To enable team location tracking, please allow location access in your device settings. This helps your team see where you are on the map.',
+            [{ text: 'OK' }]
+          );
+        }
+      } else {
+        await disableTracking();
+      }
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  const getLocationStatusText = () => {
+    if (!locationEnabled) return 'Off';
+    if (locationStatus === 'tracking') return 'Active';
+    if (locationStatus === 'starting') return 'Starting...';
+    if (locationStatus === 'error') return 'Error';
+    return 'Stopped';
+  };
 
   return (
     <>
@@ -136,6 +184,83 @@ export default function AppSettingsScreen() {
               </View>
             </>
           )}
+
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Location Tracking</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingRow}>
+              <View style={[styles.settingIcon, { backgroundColor: locationEnabled ? colors.successLight || '#dcfce7' : colors.primaryLight }]}>
+                <Feather 
+                  name="map-pin" 
+                  size={20} 
+                  color={locationEnabled ? colors.success || '#16a34a' : colors.primary} 
+                />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingTitle, { color: colors.foreground }]}>Share My Location</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
+                  {getLocationStatusText()} - Let your team see where you are
+                </Text>
+              </View>
+              <Switch
+                value={locationEnabled}
+                onValueChange={handleLocationToggle}
+                disabled={isToggling}
+                trackColor={{ false: colors.muted, true: colors.primary }}
+                thumbColor={colors.white}
+              />
+            </View>
+            
+            {locationEnabled && lastLocation && (
+              <>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={styles.locationInfo}>
+                  <View style={styles.locationInfoRow}>
+                    <Feather name="activity" size={14} color={colors.mutedForeground} />
+                    <Text style={[styles.locationInfoText, { color: colors.mutedForeground }]}>
+                      Status: {getActivityStatus({ 
+                        isEnabled: locationEnabled, 
+                        status: locationStatus, 
+                        lastLocation, 
+                        lastGeofenceEvent,
+                        batteryLevel,
+                        isMoving,
+                        permissionGranted,
+                        errorMessage: locationError
+                      })}
+                    </Text>
+                  </View>
+                  <View style={styles.locationInfoRow}>
+                    <Feather name="crosshair" size={14} color={colors.mutedForeground} />
+                    <Text style={[styles.locationInfoText, { color: colors.mutedForeground }]}>
+                      Accuracy: {formatAccuracy(lastLocation.accuracy)}
+                    </Text>
+                  </View>
+                  <View style={styles.locationInfoRow}>
+                    <Feather name="clock" size={14} color={colors.mutedForeground} />
+                    <Text style={[styles.locationInfoText, { color: colors.mutedForeground }]}>
+                      Last update: {new Date(lastLocation.timestamp).toLocaleTimeString()}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
+            
+            {locationError && (
+              <View style={[styles.locationNote, { backgroundColor: colors.destructiveLight || '#fee2e2' }]}>
+                <Feather name="alert-circle" size={14} color={colors.destructive || '#dc2626'} />
+                <Text style={[styles.locationNoteText, { color: colors.destructive || '#dc2626' }]}>
+                  {locationError}
+                </Text>
+              </View>
+            )}
+            
+            <View style={[styles.locationNote, { backgroundColor: colors.muted }]}>
+              <Feather name="info" size={14} color={colors.mutedForeground} />
+              <Text style={[styles.locationNoteText, { color: colors.mutedForeground }]}>
+                Location is shared with your team's map view. Updates every 30 seconds to save battery.
+              </Text>
+            </View>
+          </View>
 
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Regional</Text>
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -293,6 +418,31 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     marginHorizontal: 12,
+  },
+  locationInfo: {
+    padding: 12,
+    gap: 8,
+  },
+  locationInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  locationInfoText: {
+    fontSize: 13,
+  },
+  locationNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  locationNoteText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
   },
   footer: {
     alignItems: 'center',

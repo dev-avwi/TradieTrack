@@ -147,7 +147,8 @@ A React Native mobile app is built in `mobile/` directory with full API integrat
 | Business Settings | ✅ Complete | Edit business details via API |
 | Payments | ✅ Info | Stripe connection status (managed via web) |
 | Notifications | ✅ Settings | Preference toggles (local state) |
-| App Settings | ✅ Settings | Theme/region preferences |
+| App Settings | ✅ Settings | Theme/region preferences, location tracking |
+| Background Location | ✅ Complete | Life360-style tracking, 30s updates, geofencing |
 
 **Data Stores (mobile/src/lib/store.ts):**
 - `useAuthStore` - User auth, session, business settings
@@ -156,6 +157,7 @@ A React Native mobile app is built in `mobile/` directory with full API integrat
 - `useQuotesStore` - Quotes CRUD, status updates
 - `useInvoicesStore` - Invoices CRUD, status updates
 - `useDashboardStore` - Aggregated stats from API
+- `useLocationStore` - Background location tracking state (mobile/src/lib/location-store.ts)
 
 **Navigation Structure:**
 - Bottom Tabs: Dashboard, Jobs, Map, More
@@ -169,9 +171,8 @@ A React Native mobile app is built in `mobile/` directory with full API integrat
 4. Scan QR code with Expo Go app on your phone
 
 **Upcoming Features:**
-- **Tap to Pay** - Stripe Terminal SDK for NFC contactless payments
-- **Push Notifications** - Real-time job and payment alerts  
-- **Background Location** - Life360-style team tracking
+- **Tap to Pay** - Stripe Terminal SDK for NFC contactless payments (infrastructure complete)
+- **Push Notifications** - Real-time job and payment alerts (backend complete, mobile integration pending)
 - **Offline Mode** - SQLite cache for poor connectivity areas
 
 **App Store Requirements:**

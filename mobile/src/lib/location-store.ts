@@ -94,24 +94,26 @@ export const useLocationStore = create<LocationStore>()(
           }
         }
 
+        // Register callbacks BEFORE starting tracking so we receive status updates
+        locationTracking.onLocation((location) => {
+          get().updateLocation(location);
+        });
+
+        locationTracking.onGeofence((event) => {
+          get().updateGeofenceEvent(event);
+        });
+
+        locationTracking.onStatus((status) => {
+          get().updateStatus(status);
+        });
+
+        // Set status to starting immediately
+        set({ status: 'starting', isEnabled: true, errorMessage: null });
+
         const success = await locationTracking.startTracking();
         
-        if (success) {
-          set({ isEnabled: true, errorMessage: null });
-          
-          locationTracking.onLocation((location) => {
-            get().updateLocation(location);
-          });
-
-          locationTracking.onGeofence((event) => {
-            get().updateGeofenceEvent(event);
-          });
-
-          locationTracking.onStatus((status) => {
-            get().updateStatus(status);
-          });
-        } else {
-          set({ errorMessage: 'Failed to start location tracking' });
+        if (!success) {
+          set({ isEnabled: false, status: 'error', errorMessage: 'Failed to start location tracking' });
         }
 
         return success;
