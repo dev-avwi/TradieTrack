@@ -80,6 +80,7 @@ interface TeamMemberLocation {
   name: string;
   email: string;
   profileImageUrl?: string | null;
+  themeColor?: string | null;
   latitude: number;
   longitude: number;
   lastSeenAt?: string;
@@ -203,7 +204,12 @@ function createJobIcon(status: string, isDark: boolean) {
 
 function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
   const initials = member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  const color = member.isActive 
+  
+  const memberColor = member.themeColor || (member.isActive 
+    ? (member.isDriving ? ACTIVITY_COLORS.driving : member.activityStatus === 'working' ? ACTIVITY_COLORS.working : ACTIVITY_COLORS.online)
+    : ACTIVITY_COLORS.offline);
+  
+  const activityColor = member.isActive 
     ? (member.isDriving ? ACTIVITY_COLORS.driving : member.activityStatus === 'working' ? ACTIVITY_COLORS.working : ACTIVITY_COLORS.online)
     : ACTIVITY_COLORS.offline;
   
@@ -218,11 +224,25 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
       top: -4px;
       left: -4px;
       border-radius: 50%;
-      background: ${color};
+      background: ${memberColor};
       opacity: 0.3;
       animation: life360-pulse 2s ease-out infinite;
     "></div>
   ` : '';
+  
+  const activityDot = `
+    <div style="
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: ${activityColor};
+      border: 2px solid ${borderColor};
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    "></div>
+  `;
   
   const batteryIndicator = member.batteryLevel !== null && member.batteryLevel !== undefined && member.batteryLevel <= 30 ? `
     <div style="
@@ -251,7 +271,7 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
       bottom: -8px;
       left: 50%;
       transform: translateX(-50%);
-      background: #3B82F6;
+      background: ${memberColor};
       color: white;
       font-size: 9px;
       font-weight: 700;
@@ -266,7 +286,7 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
   
   const avatarContent = member.profileImageUrl 
     ? `background-image: url('${member.profileImageUrl}'); background-size: cover; background-position: center;`
-    : `background: linear-gradient(135deg, ${color} 0%, ${color}dd 100%);`;
+    : `background: linear-gradient(135deg, ${memberColor} 0%, ${memberColor}dd 100%);`;
   
   return L.divIcon({
     className: 'custom-team-marker',
@@ -278,8 +298,8 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
           width: 52px;
           height: 52px;
           border-radius: 50%;
-          border: 4px solid ${color};
-          box-shadow: 0 4px 20px ${shadowColor}, 0 0 25px ${color}40;
+          border: 4px solid ${memberColor};
+          box-shadow: 0 4px 20px ${shadowColor}, 0 0 25px ${memberColor}40;
           ${avatarContent}
           display: flex;
           align-items: center;
@@ -288,9 +308,11 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
           font-weight: 700;
           font-size: 16px;
           text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+          letter-spacing: 0.5px;
         ">
           ${!member.profileImageUrl ? initials : ''}
         </div>
+        ${activityDot}
         ${batteryIndicator}
         ${speedBadge}
       </div>

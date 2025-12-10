@@ -8995,6 +8995,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: `${member.firstName || user?.firstName || ''} ${member.lastName || user?.lastName || ''}`.trim() || member.email,
             email: member.email,
             profileImageUrl: user?.profileImageUrl || null,
+            themeColor: user?.themeColor || null,
             latitude: lat,
             longitude: lng,
             // Life360-style enhancements

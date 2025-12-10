@@ -19,11 +19,27 @@ import {
   X,
   Users,
   Crown,
-  CheckCircle2
+  CheckCircle2,
+  Palette,
+  Check,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+
+interface ColorOption {
+  color: string;
+  available: boolean;
+  isCurrentUser: boolean;
+}
+
+interface ColorAvailability {
+  colors: ColorOption[];
+  currentColor: string | null;
+  usedCount: number;
+  availableCount: number;
+}
 
 interface ProfileData {
   user: {
@@ -92,6 +108,34 @@ export default function MyAccount() {
   const { data: profile, isLoading } = useQuery<ProfileData>({
     queryKey: ['/api/profile/me'],
     staleTime: 30000,
+  });
+
+  const { data: colorAvailability, isLoading: isLoadingColors } = useQuery<ColorAvailability>({
+    queryKey: ['/api/team/colors/available'],
+    staleTime: 10000,
+  });
+
+  const updateThemeColorMutation = useMutation({
+    mutationFn: async (themeColor: string) => {
+      const response = await apiRequest('PATCH', '/api/user/theme-color', { themeColor });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/team/colors/available'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/profile/me'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/team/members/colors'] });
+      toast({
+        title: "Theme colour updated",
+        description: "Your unique colour has been saved.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update colour",
+        description: error.message || "This colour may already be taken by another team member.",
+        variant: "destructive",
+      });
+    },
   });
 
   const updateProfileMutation = useMutation({
@@ -279,6 +323,97 @@ export default function MyAccount() {
                 : "Unknown"}
             </span>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5" />
+            Your Colour
+          </CardTitle>
+          <CardDescription>
+            Choose your unique colour for map tracking and app theme. Each team member has a different colour so you're easy to spot on the map.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoadingColors ? (
+            <div className="flex gap-2">
+              {[...Array(8)].map((_, i) => (
+                <Skeleton key={i} className="h-10 w-10 rounded-full" />
+              ))}
+            </div>
+          ) : colorAvailability ? (
+            <>
+              <div className="grid grid-cols-5 sm:grid-cols-8 gap-3">
+                {colorAvailability.colors.map((colorOption) => (
+                  <button
+                    key={colorOption.color}
+                    type="button"
+                    disabled={!colorOption.available && !colorOption.isCurrentUser || updateThemeColorMutation.isPending}
+                    onClick={() => {
+                      if (colorOption.available || colorOption.isCurrentUser) {
+                        updateThemeColorMutation.mutate(colorOption.color);
+                      }
+                    }}
+                    className={`
+                      relative h-10 w-10 rounded-full border-2 transition-all
+                      ${colorOption.isCurrentUser 
+                        ? 'ring-2 ring-offset-2 ring-primary border-primary scale-110' 
+                        : colorOption.available 
+                          ? 'border-transparent hover:scale-110 hover-elevate cursor-pointer' 
+                          : 'opacity-40 cursor-not-allowed border-muted'
+                      }
+                    `}
+                    style={{ backgroundColor: colorOption.color }}
+                    data-testid={`color-swatch-${colorOption.color.replace('#', '')}`}
+                    title={
+                      colorOption.isCurrentUser 
+                        ? 'Your current colour' 
+                        : colorOption.available 
+                          ? 'Available - click to select' 
+                          : 'Already taken by a team member'
+                    }
+                  >
+                    {colorOption.isCurrentUser && (
+                      <Check className="absolute inset-0 m-auto h-5 w-5 text-white drop-shadow-md" />
+                    )}
+                    {updateThemeColorMutation.isPending && colorOption.color === colorAvailability.currentColor && (
+                      <Loader2 className="absolute inset-0 m-auto h-5 w-5 text-white animate-spin" />
+                    )}
+                  </button>
+                ))}
+              </div>
+              
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-primary ring-2 ring-primary ring-offset-1"></div>
+                  <span>Your colour</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-muted-foreground/40"></div>
+                  <span>Taken</span>
+                </div>
+              </div>
+
+              {colorAvailability.currentColor && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <div 
+                    className="h-8 w-8 rounded-full border-2 border-primary" 
+                    style={{ backgroundColor: colorAvailability.currentColor }}
+                  />
+                  <div>
+                    <p className="font-medium text-sm">Current colour</p>
+                    <p className="text-xs text-muted-foreground">
+                      This colour will be shown on the team map and in your profile
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-muted-foreground">Unable to load colour options</p>
+          )}
         </CardContent>
       </Card>
 
