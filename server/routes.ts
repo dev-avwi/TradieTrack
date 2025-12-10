@@ -7270,6 +7270,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get or create Terminal location for Tap to Pay
+  app.get("/api/stripe/terminal-location", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const settings = await storage.getBusinessSettings(userId);
+      
+      if (!settings?.stripeConnectAccountId) {
+        return res.status(400).json({ error: 'Stripe Connect account not set up' });
+      }
+
+      // Try to get existing locations first
+      const locations = await stripe.terminal.locations.list(
+        { limit: 1 },
+        { stripeAccount: settings.stripeConnectAccountId }
+      );
+
+      if (locations.data.length > 0) {
+        return res.json({ locationId: locations.data[0].id });
+      }
+
+      // Create a new location if none exists
+      const location = await stripe.terminal.locations.create(
+        {
+          display_name: settings.businessName || 'TradieTrack Business',
+          address: {
+            line1: settings.businessAddress || '123 Main Street',
+            city: 'Sydney',
+            state: 'NSW',
+            postal_code: '2000',
+            country: 'AU',
+          },
+        },
+        { stripeAccount: settings.stripeConnectAccountId }
+      );
+      
+      res.json({ locationId: location.id });
+    } catch (error: any) {
+      console.error('Error getting/creating Terminal location:', error);
+      res.status(500).json({ error: 'Failed to get Terminal location' });
+    }
+  });
+
   // Create payment intent for Terminal (Tap to Pay)
   app.post("/api/stripe/create-terminal-payment-intent", requireAuth, async (req: any, res) => {
     try {
