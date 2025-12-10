@@ -6697,6 +6697,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return 'Other';
   }
 
+  // ===== THEME COLOR ROUTES =====
+  
+  // Predefined color palette for team members (professional tradie colors)
+  const TEAM_COLOR_PALETTE = [
+    '#3B82F6', // Blue
+    '#10B981', // Emerald
+    '#F59E0B', // Amber
+    '#EF4444', // Red
+    '#8B5CF6', // Violet
+    '#EC4899', // Pink
+    '#06B6D4', // Cyan
+    '#84CC16', // Lime
+    '#F97316', // Orange
+    '#6366F1', // Indigo
+    '#14B8A6', // Teal
+    '#A855F7', // Purple
+    '#22C55E', // Green
+    '#FACC15', // Yellow
+    '#FB7185', // Rose
+  ];
+  
+  // Get available colors for a team (colors not used by other members)
+  app.get("/api/team/colors/available", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const effectiveUserId = req.effectiveUserId || userId;
+      
+      // Get all team members for this business
+      const teamMembers = await storage.getTeamMembers(effectiveUserId);
+      
+      // Get the owner's color too
+      const owner = await storage.getUser(effectiveUserId);
+      
+      // Collect all used colors (excluding current user)
+      const usedColors = new Set<string>();
+      
+      if (owner && owner.themeColor && owner.id !== userId) {
+        usedColors.add(owner.themeColor.toUpperCase());
+      }
+      
+      for (const member of teamMembers) {
+        if (member.memberId && member.memberId !== userId) {
+          const memberUser = await storage.getUser(member.memberId);
+          if (memberUser?.themeColor) {
+            usedColors.add(memberUser.themeColor.toUpperCase());
+          }
+        }
+      }
+      
+      // Get current user's color
+      const currentUser = await storage.getUser(userId);
+      const currentColor = currentUser?.themeColor || null;
+      
+      // Return palette with availability status
+      const colorOptions = TEAM_COLOR_PALETTE.map(color => ({
+        color,
+        available: !usedColors.has(color.toUpperCase()),
+        isCurrentUser: currentColor?.toUpperCase() === color.toUpperCase(),
+      }));
+      
+      res.json({
+        colors: colorOptions,
+        currentColor,
+        usedCount: usedColors.size,
+        availableCount: TEAM_COLOR_PALETTE.length - usedColors.size,
+      });
+    } catch (error) {
+      console.error('Error fetching available colors:', error);
+      res.status(500).json({ error: 'Failed to fetch available colors' });
+    }
+  });
+  
+  // Set current user's theme color
+  app.patch("/api/user/theme-color", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { themeColor } = req.body;
+      
+      if (!themeColor || !/^#[0-9A-Fa-f]{6}$/.test(themeColor)) {
+        return res.status(400).json({ error: 'Invalid color format. Use hex format (e.g. #FF5733)' });
+      }
+      
+      // Get effective user ID (owner of the business)
+      const effectiveUserId = req.effectiveUserId || userId;
+      
+      // Check if color is already used by another team member
+      const teamMembers = await storage.getTeamMembers(effectiveUserId);
+      const owner = await storage.getUser(effectiveUserId);
+      
+      // Check owner's color (if not the current user)
+      if (owner && owner.id !== userId && owner.themeColor?.toUpperCase() === themeColor.toUpperCase()) {
+        return res.status(400).json({ error: 'This color is already used by the business owner' });
+      }
+      
+      // Check team members' colors
+      for (const member of teamMembers) {
+        if (member.memberId && member.memberId !== userId) {
+          const memberUser = await storage.getUser(member.memberId);
+          if (memberUser?.themeColor?.toUpperCase() === themeColor.toUpperCase()) {
+            return res.status(400).json({ error: 'This color is already used by another team member' });
+          }
+        }
+      }
+      
+      // Update user's theme color
+      const updated = await storage.updateUser(userId, { themeColor });
+      
+      res.json({ 
+        success: true, 
+        themeColor: updated.themeColor,
+        message: 'Theme color updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating theme color:', error);
+      res.status(500).json({ error: 'Failed to update theme color' });
+    }
+  });
+  
+  // Get all team members with their colors and initials (for map display)
+  app.get("/api/team/members/colors", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const effectiveUserId = req.effectiveUserId || userId;
+      
+      // Get all team members
+      const teamMembers = await storage.getTeamMembers(effectiveUserId);
+      const owner = await storage.getUser(effectiveUserId);
+      
+      const memberColors: Array<{
+        userId: string;
+        firstName: string;
+        lastName: string;
+        initials: string;
+        themeColor: string;
+        isOwner: boolean;
+      }> = [];
+      
+      // Add owner
+      if (owner) {
+        const initials = `${owner.firstName?.charAt(0) || ''}${owner.lastName?.charAt(0) || ''}`.toUpperCase() || 'OW';
+        memberColors.push({
+          userId: owner.id,
+          firstName: owner.firstName || 'Owner',
+          lastName: owner.lastName || '',
+          initials,
+          themeColor: owner.themeColor || '#3B82F6',
+          isOwner: true,
+        });
+      }
+      
+      // Add team members
+      for (const member of teamMembers) {
+        if (member.memberId && member.inviteStatus === 'accepted') {
+          const memberUser = await storage.getUser(member.memberId);
+          if (memberUser) {
+            const initials = `${memberUser.firstName?.charAt(0) || member.firstName?.charAt(0) || ''}${memberUser.lastName?.charAt(0) || member.lastName?.charAt(0) || ''}`.toUpperCase() || 'TM';
+            memberColors.push({
+              userId: memberUser.id,
+              firstName: memberUser.firstName || member.firstName || 'Team',
+              lastName: memberUser.lastName || member.lastName || 'Member',
+              initials,
+              themeColor: memberUser.themeColor || '#6366F1',
+              isOwner: false,
+            });
+          }
+        }
+      }
+      
+      res.json(memberColors);
+    } catch (error) {
+      console.error('Error fetching team member colors:', error);
+      res.status(500).json({ error: 'Failed to fetch team member colors' });
+    }
+  });
+
   // ===== TIME TRACKING ROUTES =====
   
   // Get time entries for a user (with optional filters)

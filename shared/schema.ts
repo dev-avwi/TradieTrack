@@ -52,6 +52,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"), // From Replit Auth claims
   lastName: varchar("last_name"), // From Replit Auth claims
   profileImageUrl: varchar("profile_image_url"), // From Replit Auth claims
+  themeColor: varchar("theme_color"), // Custom color for map markers and theme (hex format e.g. #FF5733)
   tradeType: text("trade_type"), // 'plumbing', 'electrical', etc.
   isActive: boolean("is_active").default(true),
   emailVerified: boolean("email_verified").default(false),
