@@ -60,6 +60,7 @@ import DirectMessagesPage from "@/pages/DirectMessages";
 import DispatchBoard from "@/pages/DispatchBoard";
 import Automations from "@/pages/Automations";
 import CustomForms from "@/pages/CustomForms";
+import MyAccount from "@/pages/MyAccount";
 
 // Types for job completion
 interface JobPhoto {
@@ -204,18 +205,6 @@ function Router({
 
   return (
     <Switch>
-      <Route path="/" component={() => (
-        <Dashboard 
-          onCreateJob={() => onNavigate('/jobs')}
-          onCreateQuote={() => onNavigate('/quotes')}
-          onCreateInvoice={() => onNavigate('/invoices')}
-          onViewJobs={() => onNavigate('/jobs')}
-          onViewInvoices={() => onNavigate('/invoices')}
-          onViewQuotes={() => onNavigate('/quotes')}
-          onNavigate={onNavigate}
-        />
-      )} />
-      
       <Route path="/jobs" component={() => (
         <JobsList 
           onCreateJob={() => onNavigate('/jobs/new')}
@@ -431,10 +420,27 @@ function Router({
         <CollectPayment />
       )} />
       
+      <Route path="/my-account" component={() => (
+        <MyAccount />
+      )} />
+      
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/reset-password" component={ResetPassword} />
       
       <Route path="/more" component={More} />
+      
+      {/* Root route must be near the end to avoid prefix matching issues */}
+      <Route path="/" component={() => (
+        <Dashboard 
+          onCreateJob={() => onNavigate('/jobs')}
+          onCreateQuote={() => onNavigate('/quotes')}
+          onCreateInvoice={() => onNavigate('/invoices')}
+          onViewJobs={() => onNavigate('/jobs')}
+          onViewInvoices={() => onNavigate('/invoices')}
+          onViewQuotes={() => onNavigate('/quotes')}
+          onNavigate={onNavigate}
+        />
+      )} />
       
       <Route component={NotFound} />
     </Switch>

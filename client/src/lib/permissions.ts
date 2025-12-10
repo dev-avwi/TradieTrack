@@ -46,6 +46,7 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Always accessible
   { path: '/', label: 'Dashboard', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   { path: '/profile', label: 'Profile', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
+  { path: '/my-account', label: 'My Account', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   
   // Jobs - all roles can see, but staff only sees assigned
   { path: '/jobs', label: 'Jobs', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
