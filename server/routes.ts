@@ -7647,6 +7647,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== VOICE NOTES ROUTES =====
+  
+  // Get voice notes for a job
+  app.get("/api/jobs/:jobId/voice-notes", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      const { getJobVoiceNotes } = await import('./voiceNoteService');
+      const voiceNotes = await getJobVoiceNotes(jobId, userId);
+      
+      res.json(voiceNotes);
+    } catch (error: any) {
+      console.error('Error getting voice notes:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Upload a voice note
+  app.post("/api/jobs/:jobId/voice-notes", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      const { audioData, fileName, mimeType, duration, title } = req.body;
+      
+      if (!audioData) {
+        return res.status(400).json({ error: 'Audio data is required' });
+      }
+      
+      // Remove base64 prefix if present
+      const base64Data = audioData.replace(/^data:audio\/[^;]+;base64,/, '');
+      const fileBuffer = Buffer.from(base64Data, 'base64');
+      
+      const { uploadVoiceNote } = await import('./voiceNoteService');
+      const result = await uploadVoiceNote(userId, jobId, fileBuffer, {
+        fileName: fileName || `voice-note-${Date.now()}.webm`,
+        fileSize: fileBuffer.length,
+        mimeType: mimeType || 'audio/webm',
+        duration,
+        title,
+      });
+      
+      if (!result.success) {
+        return res.status(500).json({ error: result.error });
+      }
+      
+      res.json({ 
+        success: true, 
+        voiceNoteId: result.voiceNoteId,
+        objectStorageKey: result.objectStorageKey 
+      });
+    } catch (error: any) {
+      console.error('Error uploading voice note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Update voice note title
+  app.patch("/api/jobs/:jobId/voice-notes/:voiceNoteId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { voiceNoteId } = req.params;
+      const { title } = req.body;
+      
+      const { updateVoiceNoteTitle } = await import('./voiceNoteService');
+      const result = await updateVoiceNoteTitle(voiceNoteId, userId, title);
+      
+      if (!result.success) {
+        return res.status(500).json({ error: result.error });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error updating voice note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Delete voice note
+  app.delete("/api/jobs/:jobId/voice-notes/:voiceNoteId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { voiceNoteId } = req.params;
+      
+      const { deleteVoiceNote } = await import('./voiceNoteService');
+      const result = await deleteVoiceNote(voiceNoteId, userId);
+      
+      if (!result.success) {
+        return res.status(500).json({ error: result.error });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting voice note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ===== JOB CHAT ROUTES =====
   
   // Helper function to verify user has access to a job's chat

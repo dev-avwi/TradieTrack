@@ -67,6 +67,8 @@ import {
   type InsertNotification,
   type JobPhoto,
   type InsertJobPhoto,
+  type VoiceNote,
+  type InsertVoiceNote,
   type InvoiceReminderLog,
   type InsertInvoiceReminderLog,
   type DigitalSignature,
@@ -106,6 +108,7 @@ import {
   geofenceAlerts,
   routes,
   jobPhotos,
+  voiceNotes,
   invoiceReminderLogs,
   jobChat,
   teamChat,
@@ -1995,6 +1998,39 @@ export class PostgresStorage implements IStorage {
   async deleteJobPhoto(id: string, userId: string): Promise<boolean> {
     const result = await db.delete(jobPhotos)
       .where(and(eq(jobPhotos.id, id), eq(jobPhotos.userId, userId)));
+    return result.rowCount > 0;
+  }
+
+  // Voice Notes
+  async getJobVoiceNotes(jobId: string, userId: string): Promise<VoiceNote[]> {
+    return await db.select().from(voiceNotes)
+      .where(and(eq(voiceNotes.jobId, jobId), eq(voiceNotes.userId, userId)))
+      .orderBy(desc(voiceNotes.createdAt));
+  }
+
+  async getVoiceNote(id: string, userId: string): Promise<VoiceNote | undefined> {
+    const result = await db.select().from(voiceNotes)
+      .where(and(eq(voiceNotes.id, id), eq(voiceNotes.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createVoiceNote(note: InsertVoiceNote): Promise<VoiceNote> {
+    const result = await db.insert(voiceNotes).values(note).returning();
+    return result[0];
+  }
+
+  async updateVoiceNote(id: string, userId: string, updates: Partial<InsertVoiceNote>): Promise<VoiceNote | undefined> {
+    const result = await db.update(voiceNotes)
+      .set(updates)
+      .where(and(eq(voiceNotes.id, id), eq(voiceNotes.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async deleteVoiceNote(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(voiceNotes)
+      .where(and(eq(voiceNotes.id, id), eq(voiceNotes.userId, userId)));
     return result.rowCount > 0;
   }
 
