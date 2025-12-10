@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Mic } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList } from "lucide-react";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { JobVoiceNotes } from "./JobVoiceNotes";
 import { JobSignature } from "./JobSignature";
+import { JobForms } from "./CustomFormRenderer";
 import { JobChat } from "./JobChat";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
@@ -614,6 +615,26 @@ export default function JobDetailView({
                 <Mic className="h-8 w-8 mx-auto mb-2 opacity-40" />
                 <p className="text-sm">
                   Voice notes can be added once the job is started
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Custom Forms - available for in_progress, done, invoiced jobs */}
+        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (
+          <Card>
+            <CardContent className="pt-4">
+              <JobForms jobId={jobId} />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-6">
+              <div className="text-center text-muted-foreground">
+                <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">
+                  Forms can be filled once the job is started
                 </p>
               </div>
             </CardContent>

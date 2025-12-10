@@ -59,6 +59,7 @@ import JobMapPage from "@/pages/JobMap";
 import DirectMessagesPage from "@/pages/DirectMessages";
 import DispatchBoard from "@/pages/DispatchBoard";
 import Automations from "@/pages/Automations";
+import CustomForms from "@/pages/CustomForms";
 
 // Types for job completion
 interface JobPhoto {
@@ -420,6 +421,10 @@ function Router({
       
       <Route path="/automations" component={() => (
         <Automations />
+      )} />
+      
+      <Route path="/custom-forms" component={() => (
+        <CustomForms />
       )} />
       
       <Route path="/collect-payment" component={() => (
