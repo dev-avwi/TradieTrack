@@ -502,14 +502,30 @@ function StatCard({
   );
 }
 
+interface SelectedInvoice {
+  id: string;
+  invoiceNumber: string;
+  clientId: string;
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  total: number;
+  amountPaid: number;
+  amountDue: number;
+}
+
 export default function CollectScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [showTapToPayModal, setShowTapToPayModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'ready' | 'connecting' | 'waiting' | 'processing' | 'success' | 'error'>('ready');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<SelectedInvoice | null>(null);
+  const [lastPaymentAmount, setLastPaymentAmount] = useState(0);
+  const [sendingReceipt, setSendingReceipt] = useState(false);
   
   const { invoices, fetchInvoices } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
@@ -529,9 +545,42 @@ export default function CollectScreen() {
     }
   }, []);
 
+  const getClient = (clientId: string) => {
+    return clients.find(c => c.id === clientId);
+  };
+
   const getClientName = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
+    const client = getClient(clientId);
     return client?.name || 'Unknown Client';
+  };
+
+  // Handle collecting payment for a specific invoice
+  const handleCollectForInvoice = (invoice: any) => {
+    const client = getClient(invoice.clientId);
+    const amountDue = (invoice.total || 0) - (invoice.amountPaid || 0);
+    
+    setSelectedInvoice({
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      clientId: invoice.clientId,
+      clientName: client?.name || 'Unknown Client',
+      clientEmail: client?.email,
+      clientPhone: client?.phone,
+      total: invoice.total || 0,
+      amountPaid: invoice.amountPaid || 0,
+      amountDue,
+    });
+    
+    // Pre-fill the amount and description
+    setAmount((amountDue / 100).toFixed(2));
+    setDescription(`Payment for ${invoice.invoiceNumber}`);
+  };
+
+  // Clear invoice selection
+  const clearInvoiceSelection = () => {
+    setSelectedInvoice(null);
+    setAmount('');
+    setDescription('');
   };
 
   const formatCurrency = (amount: number) => {
@@ -572,12 +621,29 @@ export default function CollectScreen() {
       
       if (result) {
         setPaymentStep('success');
+        setLastPaymentAmount(amountCents);
+        
+        // If paying an invoice, update the invoice payment status
+        if (selectedInvoice) {
+          try {
+            await api.post(`/api/invoices/${selectedInvoice.id}/record-payment`, {
+              amount: amountCents,
+              method: 'tap_to_pay',
+              notes: 'Tap to Pay payment',
+            });
+            // Refresh invoices
+            fetchInvoices();
+          } catch (err) {
+            console.error('Failed to record invoice payment:', err);
+          }
+        }
+        
+        // Show receipt modal after brief success display
         setTimeout(() => {
           setShowTapToPayModal(false);
           setPaymentStep('ready');
-          setAmount('');
-          setDescription('');
-        }, 2000);
+          setShowReceiptModal(true);
+        }, 1500);
       } else {
         setPaymentStep('error');
       }
@@ -585,6 +651,81 @@ export default function CollectScreen() {
       console.error('Tap to Pay error:', error);
       setPaymentStep('error');
     }
+  };
+
+  // Send receipt via email
+  const sendReceiptEmail = async () => {
+    setSendingReceipt(true);
+    try {
+      const recipientEmail = selectedInvoice?.clientEmail;
+      if (!recipientEmail) {
+        Alert.alert('No Email', 'This client does not have an email address on file. Please add one in client settings.');
+        setSendingReceipt(false);
+        return;
+      }
+
+      await api.post('/api/payments/send-receipt', {
+        email: recipientEmail,
+        amount: lastPaymentAmount,
+        description: description || 'Payment received',
+        invoiceId: selectedInvoice?.id,
+        invoiceNumber: selectedInvoice?.invoiceNumber,
+        clientName: selectedInvoice?.clientName,
+        method: 'email',
+      });
+
+      Alert.alert('Receipt Sent', `Receipt emailed to ${recipientEmail}`);
+      handleCloseReceiptModal();
+    } catch (error) {
+      console.error('Failed to send receipt:', error);
+      Alert.alert('Error', 'Failed to send receipt. Please try again.');
+    } finally {
+      setSendingReceipt(false);
+    }
+  };
+
+  // Send receipt via SMS
+  const sendReceiptSMS = async () => {
+    setSendingReceipt(true);
+    try {
+      const recipientPhone = selectedInvoice?.clientPhone;
+      if (!recipientPhone) {
+        Alert.alert('No Phone', 'This client does not have a phone number on file. Please add one in client settings.');
+        setSendingReceipt(false);
+        return;
+      }
+
+      await api.post('/api/payments/send-receipt', {
+        phone: recipientPhone,
+        amount: lastPaymentAmount,
+        description: description || 'Payment received',
+        invoiceId: selectedInvoice?.id,
+        invoiceNumber: selectedInvoice?.invoiceNumber,
+        clientName: selectedInvoice?.clientName,
+        method: 'sms',
+      });
+
+      Alert.alert('Receipt Sent', `Receipt SMS sent to ${recipientPhone}`);
+      handleCloseReceiptModal();
+    } catch (error: any) {
+      console.error('Failed to send SMS receipt:', error);
+      if (error?.message?.includes('disabled')) {
+        Alert.alert('SMS Disabled', 'SMS is disabled during beta. Use email instead.');
+      } else {
+        Alert.alert('Error', 'Failed to send SMS. Please try again.');
+      }
+    } finally {
+      setSendingReceipt(false);
+    }
+  };
+
+  // Close receipt modal and reset state
+  const handleCloseReceiptModal = () => {
+    setShowReceiptModal(false);
+    setAmount('');
+    setDescription('');
+    setSelectedInvoice(null);
+    setLastPaymentAmount(0);
   };
 
   const handleCancelPayment = async () => {
@@ -803,7 +944,45 @@ export default function CollectScreen() {
           </View>
 
           <View style={styles.amountSection}>
-            <Text style={styles.sectionLabel}>Payment Amount</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+              <Text style={styles.sectionLabel}>Payment Amount</Text>
+              {selectedInvoice && (
+                <TouchableOpacity 
+                  onPress={clearInvoiceSelection}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+                  <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {selectedInvoice && (
+              <View style={{
+                backgroundColor: colors.primaryLight,
+                borderRadius: radius.lg,
+                padding: spacing.md,
+                marginBottom: spacing.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                borderWidth: 1,
+                borderColor: colors.promoBorder,
+              }}>
+                <Feather name="file-text" size={18} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>
+                    {selectedInvoice.invoiceNumber}
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                    {selectedInvoice.clientName} • Due: {formatCurrency(selectedInvoice.amountDue)}
+                  </Text>
+                </View>
+                <Badge variant="success">Invoice</Badge>
+              </View>
+            )}
+            
             <View style={styles.amountInputContainer}>
               <Text style={styles.currencySymbol}>$</Text>
               <TextInput
@@ -869,21 +1048,50 @@ export default function CollectScreen() {
                 <Text style={styles.emptyPendingText}>All caught up!</Text>
               </View>
             ) : (
-              pendingInvoices.slice(0, 3).map(invoice => (
-                <View key={invoice.id} style={styles.pendingItem}>
-                  <View style={styles.pendingItemContent}>
-                    <Text style={styles.pendingItemTitle}>{invoice.invoiceNumber}</Text>
-                    <Text style={styles.pendingItemClient}>{getClientName(invoice.clientId)}</Text>
-                  </View>
-                  <View style={styles.pendingItemRight}>
-                    <Text style={styles.pendingItemAmount}>{formatCurrency(invoice.total || 0)}</Text>
-                    <TouchableOpacity style={styles.collectButton} activeOpacity={0.7}>
-                      <Feather name="send" size={14} color={colors.primaryForeground} />
-                      <Text style={styles.collectButtonText}>Collect</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
+              pendingInvoices.slice(0, 5).map(invoice => {
+                const isSelected = selectedInvoice?.id === invoice.id;
+                const amountDue = (invoice.total || 0) - (invoice.amountPaid || 0);
+                return (
+                  <TouchableOpacity 
+                    key={invoice.id} 
+                    style={[
+                      styles.pendingItem,
+                      isSelected && { borderColor: colors.primary, borderWidth: 2 }
+                    ]}
+                    onPress={() => handleCollectForInvoice(invoice)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.pendingItemContent}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.pendingItemTitle}>{invoice.invoiceNumber}</Text>
+                        {isSelected && (
+                          <Badge variant="success">Selected</Badge>
+                        )}
+                        {invoice.status === 'overdue' && !isSelected && (
+                          <Badge variant="destructive">Overdue</Badge>
+                        )}
+                      </View>
+                      <Text style={styles.pendingItemClient}>{getClientName(invoice.clientId)}</Text>
+                    </View>
+                    <View style={styles.pendingItemRight}>
+                      <Text style={styles.pendingItemAmount}>{formatCurrency(amountDue)}</Text>
+                      <View style={[
+                        styles.collectButton,
+                        isSelected && { backgroundColor: colors.success }
+                      ]}>
+                        <Feather 
+                          name={isSelected ? "check" : "credit-card"} 
+                          size={14} 
+                          color={colors.primaryForeground} 
+                        />
+                        <Text style={styles.collectButtonText}>
+                          {isSelected ? 'Ready' : 'Collect'}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
             )}
           </View>
 
@@ -911,7 +1119,102 @@ export default function CollectScreen() {
         </ScrollView>
 
         {renderTapToPayModal()}
+        {renderReceiptModal()}
       </View>
     </>
   );
+
+  function renderReceiptModal() {
+    return (
+      <Modal
+        visible={showReceiptModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCloseReceiptModal}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Send Receipt</Text>
+            <TouchableOpacity onPress={handleCloseReceiptModal} activeOpacity={0.7}>
+              <Feather name="x" size={24} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalContent}>
+            <View style={styles.successIcon}>
+              <Feather name="check-circle" size={48} color={colors.success} />
+            </View>
+            <Text style={styles.successTitle}>Payment Complete!</Text>
+            <Text style={styles.successAmount}>
+              ${(lastPaymentAmount / 100).toFixed(2)} received
+            </Text>
+            
+            {selectedInvoice && (
+              <Text style={[styles.modalStepSubtitle, { marginTop: spacing.sm }]}>
+                {selectedInvoice.invoiceNumber} • {selectedInvoice.clientName}
+              </Text>
+            )}
+
+            <View style={{ marginTop: spacing.xl, width: '100%', gap: spacing.md }}>
+              <TouchableOpacity
+                style={[
+                  styles.paymentMethodCard,
+                  sendingReceipt && styles.paymentMethodCardDisabled
+                ]}
+                onPress={sendReceiptEmail}
+                disabled={sendingReceipt}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.paymentMethodIcon, { backgroundColor: colors.infoLight }]}>
+                  <Feather name="mail" size={24} color={colors.info} />
+                </View>
+                <View style={styles.paymentMethodContent}>
+                  <Text style={styles.paymentMethodTitle}>Email Receipt</Text>
+                  <Text style={styles.paymentMethodDescription}>
+                    {selectedInvoice?.clientEmail || 'No email on file'}
+                  </Text>
+                </View>
+                {sendingReceipt ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Feather name="send" size={20} color={colors.mutedForeground} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.paymentMethodCard,
+                  sendingReceipt && styles.paymentMethodCardDisabled
+                ]}
+                onPress={sendReceiptSMS}
+                disabled={sendingReceipt}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.paymentMethodIcon, { backgroundColor: colors.successLight }]}>
+                  <Feather name="message-circle" size={24} color={colors.success} />
+                </View>
+                <View style={styles.paymentMethodContent}>
+                  <Text style={styles.paymentMethodTitle}>SMS Receipt</Text>
+                  <Text style={styles.paymentMethodDescription}>
+                    {selectedInvoice?.clientPhone || 'No phone on file'}
+                  </Text>
+                </View>
+                {sendingReceipt ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Feather name="send" size={20} color={colors.mutedForeground} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.modalFooter}>
+            <Button variant="outline" onPress={handleCloseReceiptModal} fullWidth>
+              Skip - No Receipt Needed
+            </Button>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 }

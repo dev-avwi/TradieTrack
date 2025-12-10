@@ -7429,6 +7429,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send payment receipt via email or SMS
+  const sendReceiptSchema = z.object({
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+    amount: z.number().min(100, 'Minimum amount is $1.00'),
+    description: z.string().optional(),
+    invoiceId: z.string().optional(),
+    invoiceNumber: z.string().optional(),
+    clientName: z.string().optional(),
+    method: z.enum(['email', 'sms']),
+  });
+
+  app.post("/api/payments/send-receipt", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      
+      // Validate request body
+      const parseResult = sendReceiptSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: parseResult.error.errors[0]?.message || 'Invalid request' });
+      }
+      
+      const { email, phone, amount, description, invoiceId, invoiceNumber, clientName, method } = parseResult.data;
+      
+      const settings = await storage.getBusinessSettings(userId);
+      const businessName = settings?.businessName || 'TradieTrack Business';
+      const businessEmail = settings?.businessEmail || settings?.email;
+      const formattedAmount = `$${(amount / 100).toFixed(2)}`;
+      const receiptDate = new Date().toLocaleDateString('en-AU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      if (method === 'email' && email) {
+        // Send email receipt
+        const emailHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+              .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+              .header { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 32px; text-align: center; }
+              .header h1 { margin: 0; font-size: 28px; }
+              .header p { margin: 8px 0 0; opacity: 0.9; }
+              .content { padding: 32px; }
+              .success-icon { width: 64px; height: 64px; background: #dcfce7; border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
+              .success-icon svg { width: 32px; height: 32px; color: #16a34a; }
+              .amount { font-size: 48px; font-weight: bold; color: #1f2937; text-align: center; margin: 24px 0; }
+              .details { background: #f9fafb; border-radius: 8px; padding: 20px; margin: 24px 0; }
+              .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+              .detail-row:last-child { border-bottom: none; }
+              .detail-label { color: #6b7280; }
+              .detail-value { color: #1f2937; font-weight: 500; }
+              .footer { background: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>Payment Receipt</h1>
+                <p>from ${businessName}</p>
+              </div>
+              <div class="content">
+                <div style="text-align: center; margin-bottom: 24px;">
+                  <div style="width: 64px; height: 64px; background: #dcfce7; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 32px;">✓</span>
+                  </div>
+                </div>
+                <div class="amount">${formattedAmount}</div>
+                <p style="text-align: center; color: #6b7280;">Payment received successfully</p>
+                <div class="details">
+                  <div class="detail-row">
+                    <span class="detail-label">Date</span>
+                    <span class="detail-value">${receiptDate}</span>
+                  </div>
+                  ${invoiceNumber ? `
+                  <div class="detail-row">
+                    <span class="detail-label">Invoice</span>
+                    <span class="detail-value">${invoiceNumber}</span>
+                  </div>
+                  ` : ''}
+                  <div class="detail-row">
+                    <span class="detail-label">Description</span>
+                    <span class="detail-value">${description || 'Payment'}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Payment Method</span>
+                    <span class="detail-value">Contactless Card</span>
+                  </div>
+                </div>
+              </div>
+              <div class="footer">
+                <p>Thank you for your payment!</p>
+                <p>${businessName}${businessEmail ? ` • ${businessEmail}` : ''}</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+
+        // Try SendGrid first
+        const sgMail = require('@sendgrid/mail');
+        if (process.env.SENDGRID_API_KEY) {
+          sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+          await sgMail.send({
+            to: email,
+            from: businessEmail || 'noreply@tradietrack.com.au',
+            subject: `Payment Receipt - ${formattedAmount} from ${businessName}`,
+            html: emailHtml,
+          });
+        } else {
+          return res.status(400).json({ error: 'Email service not configured' });
+        }
+
+        return res.json({ success: true, method: 'email', recipient: email });
+      }
+
+      if (method === 'sms' && phone) {
+        // SMS is disabled during beta
+        return res.status(400).json({ 
+          error: 'SMS notifications are disabled during beta. Please use email instead.',
+          disabled: true
+        });
+      }
+
+      return res.status(400).json({ error: 'Invalid method or missing recipient' });
+    } catch (error: any) {
+      console.error('Error sending receipt:', error);
+      res.status(500).json({ error: 'Failed to send receipt' });
+    }
+  });
+
   // Register push notification token
   app.post("/api/push-tokens", requireAuth, async (req: any, res) => {
     try {
