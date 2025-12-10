@@ -684,21 +684,25 @@ export default function DispatchBoardScreen() {
     }
   };
 
-  // Apply single AI suggestion
-  const applySuggestion = async (suggestion: ScheduleSuggestion, skipRefetch = false) => {
+  // Apply single AI suggestion (internal helper for batch)
+  const applySingleSuggestion = async (suggestion: ScheduleSuggestion): Promise<string> => {
+    const scheduledAt = new Date(`${suggestion.suggestedDate}T${suggestion.suggestedTime}:00`);
+    await api.patch(`/api/jobs/${suggestion.jobId}`, {
+      scheduledAt: scheduledAt.toISOString(),
+      scheduledTime: suggestion.suggestedTime,
+      assignedTo: suggestion.suggestedAssignee || undefined,
+      status: 'scheduled'
+    });
+    return suggestion.jobId;
+  };
+
+  // Apply single AI suggestion with UI feedback
+  const applySuggestion = async (suggestion: ScheduleSuggestion) => {
     setApplyingJobId(suggestion.jobId);
     try {
-      const scheduledAt = new Date(`${suggestion.suggestedDate}T${suggestion.suggestedTime}:00`);
-      await api.patch(`/api/jobs/${suggestion.jobId}`, {
-        scheduledAt: scheduledAt.toISOString(),
-        scheduledTime: suggestion.suggestedTime,
-        assignedTo: suggestion.suggestedAssignee || undefined,
-        status: 'scheduled'
-      });
+      await applySingleSuggestion(suggestion);
       setAppliedSuggestions(prev => new Set(prev).add(suggestion.jobId));
-      if (!skipRefetch) {
-        await fetchJobs();
-      }
+      await fetchJobs();
     } catch (error) {
       Alert.alert('Error', 'Failed to apply suggestion');
     } finally {
@@ -706,7 +710,7 @@ export default function DispatchBoardScreen() {
     }
   };
 
-  // Apply all AI suggestions - batch mode with single refetch
+  // Apply all AI suggestions - serialized with single refetch at end
   const applyAllSuggestions = async () => {
     if (!aiSuggestions?.suggestions) return;
     
@@ -714,25 +718,31 @@ export default function DispatchBoardScreen() {
     if (unapplied.length === 0) return;
     
     setApplyingJobId('batch');
+    const appliedIds: string[] = [];
     
     try {
-      // Apply all in parallel, skip individual refetches
-      await Promise.all(unapplied.map(async (suggestion) => {
-        const scheduledAt = new Date(`${suggestion.suggestedDate}T${suggestion.suggestedTime}:00`);
-        await api.patch(`/api/jobs/${suggestion.jobId}`, {
-          scheduledAt: scheduledAt.toISOString(),
-          scheduledTime: suggestion.suggestedTime,
-          assignedTo: suggestion.suggestedAssignee || undefined,
-          status: 'scheduled'
-        });
-        setAppliedSuggestions(prev => new Set(prev).add(suggestion.jobId));
-      }));
+      // Apply each serially to avoid race conditions
+      for (const suggestion of unapplied) {
+        try {
+          const jobId = await applySingleSuggestion(suggestion);
+          appliedIds.push(jobId);
+        } catch {
+          // Continue with remaining suggestions
+        }
+      }
       
-      // Single refetch after all applied
-      await fetchJobs();
-      Alert.alert('Done', `Applied ${unapplied.length} scheduling suggestions`);
+      // Update state once with all applied IDs
+      if (appliedIds.length > 0) {
+        setAppliedSuggestions(prev => {
+          const newSet = new Set(prev);
+          appliedIds.forEach(id => newSet.add(id));
+          return newSet;
+        });
+        await fetchJobs();
+        Alert.alert('Done', `Applied ${appliedIds.length} scheduling suggestions`);
+      }
     } catch (error) {
-      Alert.alert('Error', 'Some suggestions failed to apply');
+      Alert.alert('Error', 'Failed to apply suggestions');
     } finally {
       setApplyingJobId(null);
     }
