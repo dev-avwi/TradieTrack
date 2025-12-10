@@ -132,7 +132,7 @@ export default function InvoiceDetailScreen() {
   };
 
   const handleCollectPayment = () => {
-    router.push('/(tabs)/collect');
+    router.push(`/(tabs)/collect?invoiceId=${id}`);
   };
 
   if (isLoading) {

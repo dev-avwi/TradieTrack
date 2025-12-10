@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -11,7 +11,7 @@ import {
   StyleSheet,
   RefreshControl
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useStripeTerminal } from '../../src/hooks/useServices';
 import { isTapToPayAvailable } from '../../src/lib/stripe-terminal';
@@ -517,6 +517,7 @@ interface SelectedInvoice {
 export default function CollectScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { invoiceId } = useLocalSearchParams<{ invoiceId?: string }>();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [showTapToPayModal, setShowTapToPayModal] = useState(false);
@@ -526,6 +527,7 @@ export default function CollectScreen() {
   const [selectedInvoice, setSelectedInvoice] = useState<SelectedInvoice | null>(null);
   const [lastPaymentAmount, setLastPaymentAmount] = useState(0);
   const [sendingReceipt, setSendingReceipt] = useState(false);
+  const hasAutoSelectedInvoice = useRef(false);
   
   const { invoices, fetchInvoices } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
@@ -544,6 +546,33 @@ export default function CollectScreen() {
       terminal.initialize();
     }
   }, []);
+
+  // Auto-select invoice when navigated from invoice detail with invoiceId param
+  useEffect(() => {
+    if (invoiceId && invoices.length > 0 && clients.length > 0 && !hasAutoSelectedInvoice.current) {
+      const invoice = invoices.find(i => i.id === invoiceId);
+      if (invoice) {
+        const client = clients.find(c => c.id === invoice.clientId);
+        const amountDue = (invoice.total || 0) - (invoice.amountPaid || 0);
+        
+        setSelectedInvoice({
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          clientId: invoice.clientId,
+          clientName: client?.name || 'Unknown Client',
+          clientEmail: client?.email,
+          clientPhone: client?.phone,
+          total: invoice.total || 0,
+          amountPaid: invoice.amountPaid || 0,
+          amountDue,
+        });
+        
+        setAmount((amountDue / 100).toFixed(2));
+        setDescription(`Payment for ${invoice.invoiceNumber}`);
+        hasAutoSelectedInvoice.current = true;
+      }
+    }
+  }, [invoiceId, invoices, clients]);
 
   const getClient = (clientId: string) => {
     return clients.find(c => c.id === clientId);
