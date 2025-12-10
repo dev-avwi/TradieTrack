@@ -181,7 +181,7 @@ A React Native mobile app is built in `mobile/` directory with full API integrat
 4. Scan QR code with Expo Go app on your phone
 
 **Upcoming Features:**
-- **Tap to Pay** - Stripe Terminal SDK for NFC contactless payments (infrastructure complete)
+- **Tap to Pay** - Stripe Terminal SDK for NFC contactless payments with invoice-specific collection and receipt generation (COMPLETE)
 - **Push Notifications** - Complete with backend and mobile integration (requires EAS Build for device testing)
 
 **App Store Requirements:**
