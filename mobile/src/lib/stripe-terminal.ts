@@ -6,12 +6,13 @@
  * 
  * IMPORTANT: Tap to Pay requires:
  * 1. A native build (not Expo Go) - run `eas build`
- * 2. Apple Developer Program membership ($99/year)
- * 3. Tap to Pay entitlement from Apple
+ * 2. Apple Developer Program membership ($99/year) for iOS
+ * 3. Tap to Pay entitlement from Apple for iOS
  * 4. Stripe account with Terminal enabled
+ * 5. Location services enabled
  * 
- * The @stripe/stripe-terminal-react-native package must be installed
- * and linked in a native build.
+ * The @stripe/stripe-terminal-react-native package is used for actual payments.
+ * In Expo Go, this module provides a simulation/fallback mode for testing UI.
  */
 
 import { Platform } from 'react-native';
@@ -21,15 +22,17 @@ export interface PaymentIntent {
   id: string;
   amount: number;
   currency: string;
-  status: 'requires_payment_method' | 'requires_confirmation' | 'succeeded' | 'canceled';
+  status: 'requires_payment_method' | 'requires_confirmation' | 'requires_capture' | 'succeeded' | 'canceled';
+  clientSecret?: string;
 }
 
 export interface Reader {
   id: string;
-  deviceType: 'tapToPay' | 'chipper' | 'wisepad' | 'stripeM2';
+  deviceType: 'tapToPay' | 'localMobile' | 'chipper' | 'wisepad' | 'stripeM2';
   serialNumber: string;
   status: 'online' | 'offline';
   batteryLevel?: number;
+  label?: string;
 }
 
 export type TerminalStatus = 
@@ -50,193 +53,197 @@ export interface TerminalState {
   paymentIntent: PaymentIntent | null;
 }
 
-// Check if Tap to Pay is available on this device
+export interface CollectPaymentResult {
+  paymentIntent: PaymentIntent;
+  error?: string;
+}
+
+// Try to import the real SDK
+let StripeTerminalSDK: any = null;
+let sdkAvailable = false;
+
+try {
+  StripeTerminalSDK = require('@stripe/stripe-terminal-react-native');
+  sdkAvailable = true;
+} catch (e) {
+  console.log('[StripeTerminal] SDK not available - using simulation mode');
+}
+
+/**
+ * Check if Stripe Terminal SDK is available (native build)
+ */
+export const isSDKAvailable = (): boolean => {
+  return sdkAvailable;
+};
+
+/**
+ * Check if Tap to Pay is available on this device
+ * Requires: iOS 16+ or Android 8+ with NFC
+ */
 export const isTapToPayAvailable = (): boolean => {
-  // Tap to Pay requires:
-  // - iOS 15.4+ on iPhone XS or newer
-  // - Android with NFC capability
   if (Platform.OS === 'ios') {
     const version = parseInt(Platform.Version as string, 10);
-    return version >= 15;
+    // iOS 16.4+ for Tap to Pay on iPhone
+    return version >= 16;
   }
   if (Platform.OS === 'android') {
-    // Android Tap to Pay is available on NFC-enabled devices
-    return true;
+    // Android 8.0 (API 26) minimum for Tap to Pay
+    return Platform.Version >= 26;
   }
   return false;
 };
 
-// Placeholder class for Stripe Terminal functionality
-// The actual implementation requires @stripe/stripe-terminal-react-native
-// which needs a native build (EAS Build, not Expo Go)
-class StripeTerminalService {
-  private initialized = false;
-  private status: TerminalStatus = 'not_initialized';
-  private onStatusChange?: (status: TerminalStatus) => void;
+/**
+ * Get the useStripeTerminal hook from SDK if available
+ * This is the primary hook for Terminal operations in native builds
+ */
+export const getUseStripeTerminal = () => {
+  if (StripeTerminalSDK?.useStripeTerminal) {
+    return StripeTerminalSDK.useStripeTerminal;
+  }
+  return null;
+};
 
-  /**
-   * Initialize Stripe Terminal
-   * This connects to Stripe's servers and prepares for payment collection
-   */
-  async initialize(connectionToken: string): Promise<boolean> {
+/**
+ * Request Android permissions for Stripe Terminal
+ */
+export const requestAndroidPermissions = async (): Promise<boolean> => {
+  if (Platform.OS !== 'android') {
+    return true;
+  }
+
+  if (StripeTerminalSDK?.requestNeededAndroidPermissions) {
     try {
-      this.updateStatus('initializing');
-      
-      // In a real implementation, this would:
-      // 1. Call StripeTerminal.initialize() with the connection token
-      // 2. Set up event listeners for reader connection changes
-      // 3. Configure the SDK for the appropriate country (AU)
-      
-      console.log('[StripeTerminal] Initializing with connection token');
-      
-      // Simulate initialization delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      this.initialized = true;
-      this.updateStatus('ready');
-      return true;
+      const result = await StripeTerminalSDK.requestNeededAndroidPermissions({
+        accessFineLocation: {
+          title: 'Location Permission',
+          message: 'TradieTrack needs location access to process Tap to Pay payments.',
+          buttonPositive: 'Allow',
+          buttonNegative: 'Deny',
+        },
+      });
+      return result === 'granted';
     } catch (error) {
-      console.error('[StripeTerminal] Initialization failed:', error);
-      this.updateStatus('error');
+      console.error('[StripeTerminal] Permission request failed:', error);
       return false;
     }
   }
+  
+  return true;
+};
 
-  /**
-   * Discover and connect to the built-in Tap to Pay reader
-   * On iPhone, this uses the device's own NFC chip
-   */
-  async connectToLocalMobileReader(): Promise<Reader | null> {
-    if (!this.initialized) {
-      throw new Error('Stripe Terminal not initialized');
-    }
+/**
+ * Simulation service for Expo Go / testing
+ * Provides the same interface as the real SDK for UI development
+ */
+class StripeTerminalSimulator {
+  private status: TerminalStatus = 'not_initialized';
+  private statusCallback?: (status: TerminalStatus) => void;
+  private reader: Reader | null = null;
 
-    try {
-      this.updateStatus('discovering');
-      
-      // In a real implementation, this would:
-      // 1. Call StripeTerminal.discoverReaders({ simulated: false })
-      // 2. Filter for the local mobile reader (Tap to Pay)
-      // 3. Connect to it
-      
-      console.log('[StripeTerminal] Discovering Tap to Pay reader...');
-      
-      // Simulate discovery
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      this.updateStatus('connecting');
-      
-      // Simulate connection
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const reader: Reader = {
-        id: 'local_mobile_reader',
-        deviceType: 'tapToPay',
-        serialNumber: 'LOCAL_MOBILE',
-        status: 'online',
-        batteryLevel: 100,
-      };
-      
-      this.updateStatus('connected');
-      return reader;
-    } catch (error) {
-      console.error('[StripeTerminal] Reader connection failed:', error);
-      this.updateStatus('error');
-      return null;
-    }
+  async initialize(): Promise<boolean> {
+    console.log('[StripeTerminal Simulator] Initializing...');
+    this.updateStatus('initializing');
+    await this.delay(800);
+    this.updateStatus('ready');
+    return true;
   }
 
-  /**
-   * Collect a payment using Tap to Pay
-   * Customer taps their card on the back of the phone
-   */
-  async collectPayment(
-    paymentIntentClientSecret: string,
-    onCardPresented?: () => void
-  ): Promise<PaymentIntent | null> {
-    if (!this.initialized) {
-      throw new Error('Stripe Terminal not initialized');
-    }
-
-    try {
-      this.updateStatus('collecting');
-      
-      // In a real implementation, this would:
-      // 1. Call StripeTerminal.retrievePaymentIntent(clientSecret)
-      // 2. Call StripeTerminal.collectPaymentMethod(paymentIntent)
-      // 3. Wait for customer to tap their card
-      // 4. Call StripeTerminal.processPayment(paymentIntent)
-      
-      console.log('[StripeTerminal] Waiting for card tap...');
-      
-      // Simulate waiting for card tap (in real app, NFC prompt appears)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      if (onCardPresented) {
-        onCardPresented();
-      }
-      
-      this.updateStatus('processing');
-      
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const paymentIntent: PaymentIntent = {
-        id: 'pi_simulated_' + Date.now(),
-        amount: 0, // Would come from actual payment intent
-        currency: 'aud',
-        status: 'succeeded',
-      };
-      
-      this.updateStatus('connected');
-      return paymentIntent;
-    } catch (error) {
-      console.error('[StripeTerminal] Payment collection failed:', error);
-      this.updateStatus('error');
-      return null;
-    }
+  async discoverReaders(): Promise<Reader[]> {
+    this.updateStatus('discovering');
+    await this.delay(1500);
+    
+    const reader: Reader = {
+      id: 'simulated_tap_to_pay',
+      deviceType: 'localMobile',
+      serialNumber: 'SIMULATED_DEVICE',
+      status: 'online',
+      batteryLevel: 100,
+      label: 'Tap to Pay (Simulated)',
+    };
+    
+    return [reader];
   }
 
-  /**
-   * Cancel an in-progress payment collection
-   */
-  async cancelCollectPayment(): Promise<void> {
-    // In a real implementation, call StripeTerminal.cancelCollectPaymentMethod()
-    console.log('[StripeTerminal] Canceling payment collection');
+  async connectReader(readerId: string, locationId: string): Promise<Reader | null> {
+    this.updateStatus('connecting');
+    await this.delay(1000);
+    
+    this.reader = {
+      id: readerId,
+      deviceType: 'localMobile',
+      serialNumber: 'SIMULATED_DEVICE',
+      status: 'online',
+      batteryLevel: 100,
+    };
+    
+    this.updateStatus('connected');
+    return this.reader;
+  }
+
+  async collectPaymentMethod(clientSecret: string): Promise<CollectPaymentResult> {
+    this.updateStatus('collecting');
+    console.log('[StripeTerminal Simulator] Waiting for card tap...');
+    
+    // Simulate waiting for card tap (3 seconds)
+    await this.delay(3000);
+    
+    this.updateStatus('processing');
+    await this.delay(1500);
+    
+    const paymentIntent: PaymentIntent = {
+      id: 'pi_simulated_' + Date.now(),
+      amount: 0,
+      currency: 'aud',
+      status: 'succeeded',
+      clientSecret,
+    };
+    
+    this.updateStatus('connected');
+    
+    return { paymentIntent };
+  }
+
+  async cancelCollecting(): Promise<void> {
+    console.log('[StripeTerminal Simulator] Canceling collection');
     this.updateStatus('connected');
   }
 
-  /**
-   * Disconnect from the reader
-   */
   async disconnect(): Promise<void> {
-    // In a real implementation, call StripeTerminal.disconnectReader()
-    console.log('[StripeTerminal] Disconnecting reader');
+    console.log('[StripeTerminal Simulator] Disconnecting');
+    this.reader = null;
     this.updateStatus('ready');
   }
 
-  /**
-   * Set a callback for status changes
-   */
-  onStatusUpdate(callback: (status: TerminalStatus) => void): void {
-    this.onStatusChange = callback;
-  }
-
-  private updateStatus(status: TerminalStatus): void {
-    this.status = status;
-    if (this.onStatusChange) {
-      this.onStatusChange(status);
-    }
+  onStatusChange(callback: (status: TerminalStatus) => void): void {
+    this.statusCallback = callback;
   }
 
   getStatus(): TerminalStatus {
     return this.status;
   }
 
-  isInitialized(): boolean {
-    return this.initialized;
+  getReader(): Reader | null {
+    return this.reader;
+  }
+
+  isConnected(): boolean {
+    return this.status === 'connected' && this.reader !== null;
+  }
+
+  private updateStatus(status: TerminalStatus): void {
+    this.status = status;
+    if (this.statusCallback) {
+      this.statusCallback(status);
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
-export const stripeTerminal = new StripeTerminalService();
-export default stripeTerminal;
+// Export singleton simulator for fallback mode
+export const terminalSimulator = new StripeTerminalSimulator();
+
+export default terminalSimulator;

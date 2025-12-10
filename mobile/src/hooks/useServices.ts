@@ -8,61 +8,166 @@
  * - Location Tracking
  */
 
-import { useEffect, useState, useCallback } from 'react';
-import { Alert } from 'react-native';
-import stripeTerminal, { TerminalStatus, Reader, PaymentIntent } from '../lib/stripe-terminal';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Alert, Platform } from 'react-native';
+import { 
+  terminalSimulator, 
+  isSDKAvailable, 
+  isTapToPayAvailable,
+  requestAndroidPermissions,
+  TerminalStatus, 
+  Reader, 
+  PaymentIntent 
+} from '../lib/stripe-terminal';
 import notificationService, { NotificationPayload } from '../lib/notifications';
 import offlineStorage, { OfflineStorageState, CachedJob } from '../lib/offline-storage';
 import locationTracking, { TrackingStatus, LocationUpdate, GeofenceEvent } from '../lib/location-tracking';
 import api from '../lib/api';
 
+// Try to get the real SDK hook
+let useStripeTerminalSDK: any = null;
+try {
+  const sdk = require('@stripe/stripe-terminal-react-native');
+  useStripeTerminalSDK = sdk.useStripeTerminal;
+} catch (e) {
+  console.log('[useStripeTerminal] SDK not available, using simulator');
+}
+
 /**
  * Hook for Stripe Terminal (Tap to Pay)
+ * Uses real SDK in native builds, simulator in Expo Go
  */
 export function useStripeTerminal() {
   const [status, setStatus] = useState<TerminalStatus>('not_initialized');
   const [reader, setReader] = useState<Reader | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const locationIdRef = useRef<string | null>(null);
 
+  // Get SDK hook if available
+  const sdkHook = useStripeTerminalSDK ? useStripeTerminalSDK() : null;
+
+  // Setup simulator status listener
   useEffect(() => {
-    stripeTerminal.onStatusUpdate(setStatus);
-  }, []);
+    if (!sdkHook) {
+      terminalSimulator.onStatusChange(setStatus);
+    }
+  }, [sdkHook]);
 
-  const initialize = useCallback(async () => {
+  // Initialize Terminal (SDK or simulator)
+  const initialize = useCallback(async (): Promise<boolean> => {
     try {
       setError(null);
-      // Get connection token from backend
-      const response = await api.post<{ secret: string }>('/api/stripe/terminal-connection-token');
-      
-      if (response.error || !response.data?.secret) {
-        setError('Failed to get connection token');
-        return false;
+      setStatus('initializing');
+
+      // Request Android permissions first
+      if (Platform.OS === 'android') {
+        const granted = await requestAndroidPermissions();
+        if (!granted) {
+          setError('Location permission required for Tap to Pay');
+          setStatus('error');
+          return false;
+        }
       }
 
-      const success = await stripeTerminal.initialize(response.data.secret);
-      if (!success) {
-        setError('Failed to initialize Stripe Terminal');
+      // Get location ID from backend (required for Stripe Terminal)
+      const locationResponse = await api.get<{ locationId: string }>('/api/stripe/terminal-location');
+      if (locationResponse.data?.locationId) {
+        locationIdRef.current = locationResponse.data.locationId;
       }
-      return success;
-    } catch (err) {
-      setError('Failed to initialize Stripe Terminal');
+
+      if (sdkHook) {
+        // Real SDK initialization
+        await sdkHook.initialize();
+        setIsInitialized(true);
+        setStatus('ready');
+        return true;
+      } else {
+        // Simulator fallback
+        const success = await terminalSimulator.initialize();
+        setIsInitialized(success);
+        return success;
+      }
+    } catch (err: any) {
+      console.error('[useStripeTerminal] Initialize error:', err);
+      setError(err.message || 'Failed to initialize Stripe Terminal');
+      setStatus('error');
       return false;
     }
-  }, []);
+  }, [sdkHook]);
 
-  const connectReader = useCallback(async () => {
+  // Discover and connect to Tap to Pay reader
+  const connectReader = useCallback(async (): Promise<Reader | null> => {
     try {
       setError(null);
-      const connectedReader = await stripeTerminal.connectToLocalMobileReader();
-      setReader(connectedReader);
-      return connectedReader;
-    } catch (err) {
-      setError('Failed to connect to reader');
+      setStatus('discovering');
+
+      const locationId = locationIdRef.current || 'tml_simulated';
+
+      if (sdkHook) {
+        // Real SDK: Discover readers using localMobile (Tap to Pay)
+        const { error: discoverError } = await sdkHook.discoverReaders({
+          discoveryMethod: 'localMobile',
+          simulated: false,
+        });
+
+        if (discoverError) {
+          throw new Error(discoverError.message);
+        }
+
+        // Wait for readers to be discovered
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const discoveredReaders = sdkHook.discoveredReaders || [];
+        
+        if (discoveredReaders.length === 0) {
+          throw new Error('No Tap to Pay reader found');
+        }
+
+        const targetReader = discoveredReaders[0];
+        setStatus('connecting');
+
+        // Connect to the reader
+        const { reader: connectedReader, error: connectError } = await sdkHook.connectLocalMobileReader({
+          reader: targetReader,
+          locationId,
+        });
+
+        if (connectError) {
+          throw new Error(connectError.message);
+        }
+
+        const readerInfo: Reader = {
+          id: connectedReader.id || 'local_mobile',
+          deviceType: 'localMobile',
+          serialNumber: connectedReader.serialNumber || 'TAP_TO_PAY',
+          status: 'online',
+          batteryLevel: connectedReader.batteryLevel,
+        };
+
+        setReader(readerInfo);
+        setStatus('connected');
+        return readerInfo;
+      } else {
+        // Simulator fallback
+        const readers = await terminalSimulator.discoverReaders();
+        if (readers.length > 0) {
+          const connectedReader = await terminalSimulator.connectReader(readers[0].id, locationId);
+          setReader(connectedReader);
+          return connectedReader;
+        }
+        return null;
+      }
+    } catch (err: any) {
+      console.error('[useStripeTerminal] Connect error:', err);
+      setError(err.message || 'Failed to connect to reader');
+      setStatus('error');
       return null;
     }
-  }, []);
+  }, [sdkHook]);
 
+  // Collect payment using Tap to Pay
   const collectPayment = useCallback(async (
     amountInCents: number,
     description?: string
@@ -70,52 +175,116 @@ export function useStripeTerminal() {
     try {
       setError(null);
       setIsProcessing(true);
+      setStatus('collecting');
 
       // Create payment intent on backend
-      const intentResponse = await api.post<{ clientSecret: string }>('/api/stripe/create-terminal-payment-intent', {
+      const intentResponse = await api.post<{ clientSecret: string; paymentIntentId: string }>('/api/stripe/create-terminal-payment-intent', {
         amount: amountInCents,
-        description,
+        description: description || 'Tap to Pay payment',
         currency: 'aud',
       });
 
       if (intentResponse.error || !intentResponse.data?.clientSecret) {
-        setError('Failed to create payment intent');
-        return null;
+        throw new Error('Failed to create payment intent');
       }
 
-      // Collect payment
-      const result = await stripeTerminal.collectPayment(
-        intentResponse.data.clientSecret,
-        () => {
-          // Card presented callback
-          console.log('Card presented');
-        }
-      );
+      const clientSecret = intentResponse.data.clientSecret;
 
-      return result;
-    } catch (err) {
-      setError('Payment collection failed');
+      if (sdkHook) {
+        // Real SDK: Retrieve and collect payment
+        const { paymentIntent: retrievedPI, error: retrieveError } = await sdkHook.retrievePaymentIntent(clientSecret);
+
+        if (retrieveError) {
+          throw new Error(retrieveError.message);
+        }
+
+        // Collect payment method (customer taps card)
+        const { paymentIntent: collectedPI, error: collectError } = await sdkHook.collectPaymentMethod({
+          paymentIntent: retrievedPI,
+        });
+
+        if (collectError) {
+          throw new Error(collectError.message);
+        }
+
+        setStatus('processing');
+
+        // Process the payment
+        const { paymentIntent: processedPI, error: processError } = await sdkHook.confirmPaymentIntent({
+          paymentIntent: collectedPI,
+        });
+
+        if (processError) {
+          throw new Error(processError.message);
+        }
+
+        const result: PaymentIntent = {
+          id: processedPI.id,
+          amount: processedPI.amount,
+          currency: processedPI.currency,
+          status: processedPI.status === 'succeeded' ? 'succeeded' : 'requires_capture',
+        };
+
+        setStatus('connected');
+        return result;
+      } else {
+        // Simulator fallback
+        const result = await terminalSimulator.collectPaymentMethod(clientSecret);
+        return result.paymentIntent;
+      }
+    } catch (err: any) {
+      console.error('[useStripeTerminal] Collect payment error:', err);
+      setError(err.message || 'Payment collection failed');
+      setStatus('error');
       return null;
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [sdkHook]);
 
+  // Cancel payment collection
   const cancelPayment = useCallback(async () => {
-    await stripeTerminal.cancelCollectPayment();
-    setIsProcessing(false);
-  }, []);
+    try {
+      if (sdkHook) {
+        await sdkHook.cancelCollectPaymentMethod();
+      } else {
+        await terminalSimulator.cancelCollecting();
+      }
+      setIsProcessing(false);
+      setStatus('connected');
+    } catch (err) {
+      console.error('[useStripeTerminal] Cancel error:', err);
+    }
+  }, [sdkHook]);
+
+  // Disconnect reader
+  const disconnect = useCallback(async () => {
+    try {
+      if (sdkHook) {
+        await sdkHook.disconnectReader();
+      } else {
+        await terminalSimulator.disconnect();
+      }
+      setReader(null);
+      setStatus('ready');
+    } catch (err) {
+      console.error('[useStripeTerminal] Disconnect error:', err);
+    }
+  }, [sdkHook]);
 
   return {
     status,
     reader,
     isProcessing,
     error,
+    isInitialized,
+    isAvailable: isTapToPayAvailable(),
+    isSDKAvailable: isSDKAvailable(),
     initialize,
     connectReader,
     collectPayment,
     cancelPayment,
-    isAvailable: stripeTerminal.isInitialized(),
+    disconnect,
   };
 }
 
