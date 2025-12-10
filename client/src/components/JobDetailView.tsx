@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer } from "lucide-react";
+import { TimerWidget } from "./TimeTracking";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { JobVoiceNotes } from "./JobVoiceNotes";
@@ -562,6 +563,24 @@ export default function JobDetailView({
           </Card>
         )}
 
+        {/* Time Tracking Widget - Show for in_progress jobs */}
+        {job.status === 'in_progress' && (
+          <Card data-testid="card-time-tracking">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Timer className="h-4 w-4" />
+                Time Tracking
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TimerWidget 
+                jobId={jobId} 
+                jobTitle={job.title}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Geofence Time Tracking Settings - Only show for owners/managers */}
         {!isTradie && (
           <GeofenceSettingsCard
@@ -723,8 +742,8 @@ export default function JobDetailView({
           </Card>
         )}
 
-        {/* Client Signature - only show for done or invoiced jobs */}
-        {(job.status === 'done' || job.status === 'invoiced') && (
+        {/* Client Signature - show for in_progress (for capturing before completion), done and invoiced jobs */}
+        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
           <JobSignature jobId={jobId} />
         )}
 
