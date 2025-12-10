@@ -547,6 +547,11 @@ export default function CollectScreen() {
     }
   }, []);
 
+  // Reset auto-selection flag when invoiceId changes (allows new invoice selection)
+  useEffect(() => {
+    hasAutoSelectedInvoice.current = false;
+  }, [invoiceId]);
+
   // Auto-select invoice when navigated from invoice detail with invoiceId param
   useEffect(() => {
     if (invoiceId && invoices.length > 0 && clients.length > 0 && !hasAutoSelectedInvoice.current) {
@@ -571,6 +576,9 @@ export default function CollectScreen() {
         setDescription(`Payment for ${invoice.invoiceNumber}`);
         hasAutoSelectedInvoice.current = true;
       }
+    } else if (!invoiceId) {
+      // Clear selection when navigating to collect without an invoice ID
+      hasAutoSelectedInvoice.current = false;
     }
   }, [invoiceId, invoices, clients]);
 
