@@ -147,17 +147,27 @@ A React Native mobile app is built in `mobile/` directory with full API integrat
 | Business Settings | ✅ Complete | Edit business details via API |
 | Payments | ✅ Info | Stripe connection status (managed via web) |
 | Notifications | ✅ Settings | Preference toggles (local state) |
-| App Settings | ✅ Settings | Theme/region preferences, location tracking |
+| App Settings | ✅ Settings | Theme/region preferences, location tracking, offline sync |
 | Background Location | ✅ Complete | Life360-style tracking, 30s updates, geofencing |
+| Offline Mode | ✅ Complete | SQLite cache, background sync, conflict resolution |
+
+**Offline Mode Architecture (mobile/src/lib/offline-storage.ts):**
+- SQLite database for local caching of jobs, clients, quotes, invoices
+- Automatic sync when connectivity is restored
+- Sync queue for changes made offline
+- Timestamp-based conflict resolution (server wins)
+- Manual sync option in App Settings > Data & Sync
+- Connection status indicator and pending changes display
 
 **Data Stores (mobile/src/lib/store.ts):**
 - `useAuthStore` - User auth, session, business settings
-- `useJobsStore` - Jobs CRUD, today's jobs
-- `useClientsStore` - Clients CRUD
-- `useQuotesStore` - Quotes CRUD, status updates
-- `useInvoicesStore` - Invoices CRUD, status updates
+- `useJobsStore` - Jobs CRUD, today's jobs, offline cache fallback
+- `useClientsStore` - Clients CRUD, offline cache fallback
+- `useQuotesStore` - Quotes CRUD, status updates, offline cache fallback
+- `useInvoicesStore` - Invoices CRUD, status updates, offline cache fallback
 - `useDashboardStore` - Aggregated stats from API
 - `useLocationStore` - Background location tracking state (mobile/src/lib/location-store.ts)
+- `useOfflineStore` - Connection status, sync state, pending changes (mobile/src/lib/offline-storage.ts)
 
 **Navigation Structure:**
 - Bottom Tabs: Dashboard, Jobs, Map, More
@@ -173,7 +183,6 @@ A React Native mobile app is built in `mobile/` directory with full API integrat
 **Upcoming Features:**
 - **Tap to Pay** - Stripe Terminal SDK for NFC contactless payments (infrastructure complete)
 - **Push Notifications** - Complete with backend and mobile integration (requires EAS Build for device testing)
-- **Offline Mode** - SQLite cache for poor connectivity areas (next priority)
 
 **App Store Requirements:**
 1. Apple Developer Program ($99/year) + Tap to Pay entitlement

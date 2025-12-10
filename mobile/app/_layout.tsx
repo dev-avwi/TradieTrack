@@ -15,6 +15,9 @@ import { Header } from '../src/components/Header';
 import { useNotificationsStore } from '../src/lib/notifications-store';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
 import { TerminalProvider } from '../src/providers/StripeTerminalProvider';
+import { OfflineBanner, OfflineIndicator } from '../src/components/OfflineIndicator';
+import { useOfflineStore } from '../src/lib/offline-storage';
+import offlineStorage from '../src/lib/offline-storage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -124,6 +127,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { unreadCount, fetchNotifications } = useNotificationsStore();
   const { isAuthenticated } = useAuthStore();
   const { colors } = useTheme();
+  const { isOnline, isInitialized: offlineInitialized } = useOfflineStore();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -133,6 +137,13 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated]);
 
+  // Trigger full sync when coming online or after authentication
+  useEffect(() => {
+    if (isAuthenticated && isOnline && offlineInitialized) {
+      offlineStorage.fullSync();
+    }
+  }, [isAuthenticated, isOnline, offlineInitialized]);
+
   if (!isAuthenticated) {
     return <>{children}</>;
   }
@@ -140,6 +151,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <Header />
+      <OfflineBanner />
+      <OfflineIndicator />
       <View style={[styles.content, { paddingBottom: bottomNavHeight }]}>
         {children}
       </View>

@@ -1,9 +1,174 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Animated, Switch, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Animated, Switch, Alert, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeMode } from '../../src/lib/theme';
 import { useRef, useState, useEffect } from 'react';
 import { useLocationStore, getActivityStatus, formatAccuracy } from '../../src/lib/location-store';
+import { useOfflineStore } from '../../src/lib/offline-storage';
+import offlineStorage from '../../src/lib/offline-storage';
+
+function DataSyncSection({ colors }: { colors: any }) {
+  const { isOnline, isSyncing, pendingSyncCount, lastSyncTime, syncError, isInitialized } = useOfflineStore();
+  const [isFullSyncing, setIsFullSyncing] = useState(false);
+  
+  const formatLastSync = () => {
+    if (!lastSyncTime) return 'Never';
+    const diff = Date.now() - lastSyncTime;
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} hours ago`;
+    return new Date(lastSyncTime).toLocaleDateString();
+  };
+  
+  const handleSync = async () => {
+    if (!isOnline || isSyncing || isFullSyncing) return;
+    setIsFullSyncing(true);
+    try {
+      await offlineStorage.fullSync();
+    } finally {
+      setIsFullSyncing(false);
+    }
+  };
+  
+  const handleClearCache = () => {
+    Alert.alert(
+      'Clear Local Data?',
+      'This will remove cached data from your device. Your data on the server will not be affected. The app will re-download everything when you\'re online.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Clear', 
+          style: 'destructive',
+          onPress: async () => {
+            await offlineStorage.clearCache();
+            Alert.alert('Done', 'Local cache cleared');
+          }
+        },
+      ]
+    );
+  };
+  
+  if (!isInitialized) {
+    return null;
+  }
+  
+  return (
+    <>
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Data & Sync</Text>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.settingRow}>
+          <View style={[styles.settingIcon, { backgroundColor: isOnline ? (colors.successLight || '#dcfce7') : colors.muted }]}>
+            <Feather 
+              name={isOnline ? 'wifi' : 'wifi-off'} 
+              size={20} 
+              color={isOnline ? (colors.success || '#16a34a') : colors.mutedForeground} 
+            />
+          </View>
+          <View style={styles.settingContent}>
+            <Text style={[styles.settingTitle, { color: colors.foreground }]}>Connection</Text>
+            <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
+              {isOnline ? 'Online' : 'Offline - changes will sync when back online'}
+            </Text>
+          </View>
+          <View style={[styles.statusDot, { backgroundColor: isOnline ? (colors.success || '#16a34a') : colors.mutedForeground }]} />
+        </View>
+        
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        
+        <View style={styles.settingRow}>
+          <View style={[styles.settingIcon, { backgroundColor: colors.primaryLight }]}>
+            <Feather name="refresh-cw" size={20} color={colors.primary} />
+          </View>
+          <View style={styles.settingContent}>
+            <Text style={[styles.settingTitle, { color: colors.foreground }]}>Last Synced</Text>
+            <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
+              {formatLastSync()}
+            </Text>
+          </View>
+        </View>
+        
+        {pendingSyncCount > 0 && (
+          <>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={styles.settingRow}>
+              <View style={[styles.settingIcon, { backgroundColor: '#fef3c7' }]}>
+                <Feather name="upload-cloud" size={20} color="#f59e0b" />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingTitle, { color: colors.foreground }]}>Pending Changes</Text>
+                <Text style={[styles.settingSubtitle, { color: '#f59e0b' }]}>
+                  {pendingSyncCount} change{pendingSyncCount !== 1 ? 's' : ''} waiting to sync
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
+        
+        {syncError && (
+          <>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.locationNote, { backgroundColor: colors.destructiveLight || '#fee2e2' }]}>
+              <Feather name="alert-circle" size={14} color={colors.destructive || '#dc2626'} />
+              <Text style={[styles.locationNoteText, { color: colors.destructive || '#dc2626' }]}>
+                {syncError}
+              </Text>
+            </View>
+          </>
+        )}
+        
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        
+        <View style={styles.syncButtonsRow}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.syncButton,
+              { 
+                backgroundColor: (!isOnline || isSyncing || isFullSyncing) 
+                  ? colors.muted 
+                  : pressed ? colors.primaryLight : colors.primary 
+              }
+            ]}
+            onPress={handleSync}
+            disabled={!isOnline || isSyncing || isFullSyncing}
+          >
+            {(isSyncing || isFullSyncing) ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <Feather name="refresh-cw" size={16} color={isOnline ? colors.white : colors.mutedForeground} />
+            )}
+            <Text style={[
+              styles.syncButtonText,
+              { color: isOnline ? colors.white : colors.mutedForeground }
+            ]}>
+              {(isSyncing || isFullSyncing) ? 'Syncing...' : 'Sync Now'}
+            </Text>
+          </Pressable>
+          
+          <Pressable
+            style={({ pressed }) => [
+              styles.clearCacheButton,
+              { 
+                backgroundColor: pressed ? colors.cardHover : 'transparent',
+                borderColor: colors.border 
+              }
+            ]}
+            onPress={handleClearCache}
+          >
+            <Feather name="trash-2" size={16} color={colors.mutedForeground} />
+            <Text style={[styles.clearCacheText, { color: colors.mutedForeground }]}>Clear Cache</Text>
+          </Pressable>
+        </View>
+        
+        <View style={[styles.locationNote, { backgroundColor: colors.muted }]}>
+          <Feather name="info" size={14} color={colors.mutedForeground} />
+          <Text style={[styles.locationNoteText, { color: colors.mutedForeground }]}>
+            Offline mode keeps your jobs, clients, quotes and invoices available even without internet.
+          </Text>
+        </View>
+      </View>
+    </>
+  );
+}
 
 function ThemeModeButton({ 
   mode, 
@@ -299,6 +464,8 @@ export default function AppSettingsScreen() {
             </Pressable>
           </View>
 
+          <DataSyncSection colors={colors} />
+
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>About</Text>
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.settingRow}>
@@ -455,5 +622,42 @@ const styles = StyleSheet.create({
   footerSubtext: {
     fontSize: 13,
     marginTop: 4,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  syncButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 8,
+  },
+  syncButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  syncButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  clearCacheButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  clearCacheText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

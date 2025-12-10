@@ -517,6 +517,29 @@ class OfflineStorageService {
     return { ...client, id, cachedAt: now, pendingSync: true, syncAction: action, localId } as CachedClient;
   }
 
+  async updateClientOffline(clientId: string, updates: Partial<CachedClient>): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    const existing = await this.getCachedClient(clientId);
+    
+    if (existing) {
+      const updated = { ...existing, ...updates, cachedAt: now, pendingSync: true, syncAction: 'update' as const };
+      
+      await this.db.runAsync(
+        `UPDATE clients SET 
+          name = ?, email = ?, phone = ?, address = ?, notes = ?,
+          cached_at = ?, pending_sync = 1, sync_action = ?
+         WHERE id = ?`,
+        [updated.name, updated.email, updated.phone, updated.address, updated.notes,
+         now, 'update', clientId]
+      );
+      
+      await this.addToSyncQueue('client', 'update', { id: clientId, ...updates });
+      await this.updatePendingSyncCount();
+    }
+  }
+
   // ============ QUOTES ============
 
   async cacheQuotes(quotes: any[]): Promise<void> {
@@ -596,6 +619,29 @@ class OfflineStorageService {
       syncAction: row.sync_action,
       localId: row.local_id,
     };
+  }
+
+  async updateQuoteOffline(quoteId: string, updates: Partial<CachedQuote>): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    const existing = await this.getCachedQuote(quoteId);
+    
+    if (existing) {
+      const updated = { ...existing, ...updates, cachedAt: now, pendingSync: true, syncAction: 'update' as const };
+      
+      await this.db.runAsync(
+        `UPDATE quotes SET 
+          status = ?, subtotal = ?, gst_amount = ?, total = ?, valid_until = ?, notes = ?,
+          cached_at = ?, pending_sync = 1, sync_action = ?
+         WHERE id = ?`,
+        [updated.status, updated.subtotal, updated.gstAmount, updated.total, updated.validUntil, updated.notes,
+         now, 'update', quoteId]
+      );
+      
+      await this.addToSyncQueue('quote', 'update', { id: quoteId, ...updates });
+      await this.updatePendingSyncCount();
+    }
   }
 
   // ============ INVOICES ============
@@ -683,6 +729,29 @@ class OfflineStorageService {
       syncAction: row.sync_action,
       localId: row.local_id,
     };
+  }
+
+  async updateInvoiceOffline(invoiceId: string, updates: Partial<CachedInvoice>): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    const existing = await this.getCachedInvoice(invoiceId);
+    
+    if (existing) {
+      const updated = { ...existing, ...updates, cachedAt: now, pendingSync: true, syncAction: 'update' as const };
+      
+      await this.db.runAsync(
+        `UPDATE invoices SET 
+          status = ?, subtotal = ?, gst_amount = ?, total = ?, amount_paid = ?, due_date = ?, paid_at = ?, notes = ?,
+          cached_at = ?, pending_sync = 1, sync_action = ?
+         WHERE id = ?`,
+        [updated.status, updated.subtotal, updated.gstAmount, updated.total, updated.amountPaid, updated.dueDate, updated.paidAt, updated.notes,
+         now, 'update', invoiceId]
+      );
+      
+      await this.addToSyncQueue('invoice', 'update', { id: invoiceId, ...updates });
+      await this.updatePendingSyncCount();
+    }
   }
 
   // ============ TIME ENTRIES ============

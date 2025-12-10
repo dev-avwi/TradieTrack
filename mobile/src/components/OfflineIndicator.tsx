@@ -1,0 +1,313 @@
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useOfflineStore } from '../lib/offline-storage';
+import offlineStorage from '../lib/offline-storage';
+
+export function OfflineIndicator() {
+  const { isOnline, isSyncing, pendingSyncCount, lastSyncTime } = useOfflineStore();
+  const [showSyncMessage, setShowSyncMessage] = useState(false);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  
+  // Pulse animation when syncing
+  useEffect(() => {
+    if (isSyncing) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 0.6,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [isSyncing]);
+  
+  // Show sync success message briefly
+  useEffect(() => {
+    if (lastSyncTime && pendingSyncCount === 0) {
+      setShowSyncMessage(true);
+      const timer = setTimeout(() => setShowSyncMessage(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [lastSyncTime, pendingSyncCount]);
+  
+  const handleManualSync = async () => {
+    if (!isSyncing && isOnline) {
+      await offlineStorage.syncPendingChanges();
+    }
+  };
+  
+  // Don't show anything if online with no pending changes
+  if (isOnline && pendingSyncCount === 0 && !showSyncMessage) {
+    return null;
+  }
+  
+  // Show sync success message
+  if (showSyncMessage && isOnline && pendingSyncCount === 0) {
+    return (
+      <View style={[styles.container, styles.successContainer]}>
+        <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+        <Text style={styles.successText}>All changes synced</Text>
+      </View>
+    );
+  }
+  
+  // Show offline or pending sync indicator
+  return (
+    <TouchableOpacity 
+      style={[
+        styles.container,
+        isOnline ? styles.pendingContainer : styles.offlineContainer
+      ]}
+      onPress={handleManualSync}
+      disabled={!isOnline || isSyncing}
+      activeOpacity={0.7}
+    >
+      <Animated.View style={{ opacity: pulseAnim, flexDirection: 'row', alignItems: 'center' }}>
+        <Ionicons 
+          name={isOnline ? (isSyncing ? 'sync' : 'cloud-upload-outline') : 'cloud-offline-outline'} 
+          size={16} 
+          color={isOnline ? '#f59e0b' : '#6b7280'}
+        />
+        <Text style={[styles.text, isOnline ? styles.pendingText : styles.offlineText]}>
+          {!isOnline 
+            ? 'Offline mode' 
+            : isSyncing 
+              ? 'Syncing...' 
+              : `${pendingSyncCount} change${pendingSyncCount !== 1 ? 's' : ''} to sync`
+          }
+        </Text>
+        {isOnline && !isSyncing && pendingSyncCount > 0 && (
+          <Text style={styles.tapHint}>(tap to sync)</Text>
+        )}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+export function OfflineBanner() {
+  const { isOnline, pendingSyncCount } = useOfflineStore();
+  
+  if (isOnline) return null;
+  
+  return (
+    <View style={styles.banner}>
+      <Ionicons name="cloud-offline" size={18} color="#ffffff" />
+      <View style={styles.bannerTextContainer}>
+        <Text style={styles.bannerTitle}>You're offline</Text>
+        <Text style={styles.bannerSubtitle}>
+          Changes will sync when you're back online
+          {pendingSyncCount > 0 && ` (${pendingSyncCount} pending)`}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+export function SyncStatus() {
+  const { isOnline, isSyncing, pendingSyncCount, lastSyncTime, syncError } = useOfflineStore();
+  
+  const formatLastSync = () => {
+    if (!lastSyncTime) return 'Never';
+    const diff = Date.now() - lastSyncTime;
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    return new Date(lastSyncTime).toLocaleDateString();
+  };
+  
+  return (
+    <View style={styles.syncStatus}>
+      <View style={styles.syncStatusRow}>
+        <Text style={styles.syncLabel}>Connection</Text>
+        <View style={styles.syncValueRow}>
+          <View style={[styles.statusDot, isOnline ? styles.onlineDot : styles.offlineDot]} />
+          <Text style={styles.syncValue}>{isOnline ? 'Online' : 'Offline'}</Text>
+        </View>
+      </View>
+      
+      <View style={styles.syncStatusRow}>
+        <Text style={styles.syncLabel}>Last sync</Text>
+        <Text style={styles.syncValue}>{formatLastSync()}</Text>
+      </View>
+      
+      <View style={styles.syncStatusRow}>
+        <Text style={styles.syncLabel}>Pending changes</Text>
+        <Text style={[styles.syncValue, pendingSyncCount > 0 && styles.pendingValue]}>
+          {pendingSyncCount}
+        </Text>
+      </View>
+      
+      {syncError && (
+        <View style={styles.errorRow}>
+          <Ionicons name="warning" size={14} color="#ef4444" />
+          <Text style={styles.errorText}>{syncError}</Text>
+        </View>
+      )}
+      
+      <TouchableOpacity 
+        style={[
+          styles.syncButton,
+          (!isOnline || isSyncing) && styles.syncButtonDisabled
+        ]}
+        onPress={() => offlineStorage.fullSync()}
+        disabled={!isOnline || isSyncing}
+      >
+        <Ionicons 
+          name={isSyncing ? 'sync' : 'refresh'} 
+          size={18} 
+          color={(!isOnline || isSyncing) ? '#9ca3af' : '#3b82f6'}
+        />
+        <Text style={[
+          styles.syncButtonText,
+          (!isOnline || isSyncing) && styles.syncButtonTextDisabled
+        ]}>
+          {isSyncing ? 'Syncing...' : 'Sync Now'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  offlineContainer: {
+    backgroundColor: '#f3f4f6',
+  },
+  pendingContainer: {
+    backgroundColor: '#fef3c7',
+  },
+  successContainer: {
+    backgroundColor: '#d1fae5',
+  },
+  text: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  offlineText: {
+    color: '#6b7280',
+  },
+  pendingText: {
+    color: '#92400e',
+  },
+  successText: {
+    color: '#065f46',
+    marginLeft: 6,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  tapHint: {
+    fontSize: 11,
+    color: '#b45309',
+    marginLeft: 4,
+  },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6b7280',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 12,
+  },
+  bannerTextContainer: {
+    flex: 1,
+  },
+  bannerTitle: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bannerSubtitle: {
+    color: '#d1d5db',
+    fontSize: 12,
+  },
+  syncStatus: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  syncStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  syncLabel: {
+    color: '#6b7280',
+    fontSize: 14,
+  },
+  syncValue: {
+    color: '#111827',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  syncValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  onlineDot: {
+    backgroundColor: '#10b981',
+  },
+  offlineDot: {
+    backgroundColor: '#6b7280',
+  },
+  pendingValue: {
+    color: '#f59e0b',
+  },
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 4,
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    flex: 1,
+  },
+  syncButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#eff6ff',
+    marginTop: 4,
+  },
+  syncButtonDisabled: {
+    backgroundColor: '#f3f4f6',
+  },
+  syncButtonText: {
+    color: '#3b82f6',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  syncButtonTextDisabled: {
+    color: '#9ca3af',
+  },
+});

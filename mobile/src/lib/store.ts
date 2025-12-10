@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from './api';
+import offlineStorage, { useOfflineStore } from './offline-storage';
 
 // ============ TYPES ============
 
@@ -236,13 +237,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 }));
 
-// ============ JOBS STORE ============
+// ============ JOBS STORE (with offline support) ============
 
 interface JobsState {
   jobs: Job[];
   todaysJobs: Job[];
   isLoading: boolean;
   error: string | null;
+  isOfflineData: boolean;
   
   fetchJobs: () => Promise<void>;
   fetchTodaysJobs: () => Promise<void>;
@@ -256,6 +258,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   todaysJobs: [],
   isLoading: false,
   error: null,
+  isOfflineData: false,
 
   fetchJobs: async () => {
     set({ isLoading: true, error: null });
@@ -263,11 +266,33 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     const response = await api.get<Job[]>('/api/jobs');
     
     if (response.error) {
+      // Fall back to cached data when offline
+      try {
+        const cachedJobs = await offlineStorage.getCachedJobs();
+        if (cachedJobs.length > 0) {
+          set({ 
+            jobs: cachedJobs as Job[], 
+            isLoading: false, 
+            isOfflineData: true,
+            error: null 
+          });
+          return;
+        }
+      } catch (e) {
+        console.log('[JobsStore] Cache fallback failed:', e);
+      }
       set({ isLoading: false, error: response.error });
       return;
     }
 
-    set({ jobs: response.data || [], isLoading: false });
+    // Cache the data for offline use
+    try {
+      await offlineStorage.cacheJobs(response.data || []);
+    } catch (e) {
+      console.log('[JobsStore] Failed to cache jobs:', e);
+    }
+
+    set({ jobs: response.data || [], isLoading: false, isOfflineData: false });
   },
 
   fetchTodaysJobs: async () => {
@@ -276,52 +301,135 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     const response = await api.get<Job[]>('/api/jobs/today');
     
     if (response.error) {
+      // Fall back to cached data filtered for today
+      try {
+        const cachedJobs = await offlineStorage.getCachedJobs();
+        const today = new Date().toDateString();
+        const todaysJobs = cachedJobs.filter(j => 
+          j.scheduledAt && new Date(j.scheduledAt).toDateString() === today
+        );
+        if (cachedJobs.length > 0) {
+          set({ 
+            todaysJobs: todaysJobs as Job[], 
+            isLoading: false,
+            isOfflineData: true,
+            error: null 
+          });
+          return;
+        }
+      } catch (e) {
+        console.log('[JobsStore] Cache fallback failed:', e);
+      }
       set({ isLoading: false, error: response.error });
       return;
     }
 
-    set({ todaysJobs: response.data || [], isLoading: false });
+    set({ todaysJobs: response.data || [], isLoading: false, isOfflineData: false });
   },
 
   getJob: async (id: string) => {
     const response = await api.get<Job>(`/api/jobs/${id}`);
-    return response.data || null;
+    if (response.data) {
+      return response.data;
+    }
+    
+    // Fall back to cache
+    try {
+      const cached = await offlineStorage.getCachedJob(id);
+      return cached as Job | null;
+    } catch (e) {
+      return null;
+    }
   },
 
   updateJobStatus: async (jobId: string, status: Job['status']) => {
-    const response = await api.patch<Job>(`/api/jobs/${jobId}`, { status });
-    
-    if (response.error) {
-      return false;
-    }
-
     const { jobs, todaysJobs } = get();
+    const isOnline = useOfflineStore.getState().isOnline;
     
+    // Update local state immediately (optimistic update)
     set({
       jobs: jobs.map(j => j.id === jobId ? { ...j, status } : j),
       todaysJobs: todaysJobs.map(j => j.id === jobId ? { ...j, status } : j),
     });
+    
+    if (isOnline) {
+      try {
+        const response = await api.patch<Job>(`/api/jobs/${jobId}`, { status });
+        
+        if (response.error) {
+          // Queue for later sync
+          await offlineStorage.updateJobOffline(jobId, { status });
+        }
+      } catch (e) {
+        // Network error - queue for offline sync
+        console.log('[JobsStore] Network error, queueing status update:', e);
+        await offlineStorage.updateJobOffline(jobId, { status });
+      }
+    } else {
+      // Offline - queue the update
+      try {
+        await offlineStorage.updateJobOffline(jobId, { status });
+      } catch (e) {
+        console.log('[JobsStore] Failed to queue offline update:', e);
+      }
+    }
 
     return true;
   },
 
   createJob: async (job: Partial<Job>) => {
-    const response = await api.post<Job>('/api/jobs', job);
-    if (response.data) {
-      const { jobs } = get();
-      set({ jobs: [...jobs, response.data] });
-      return response.data;
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    if (isOnline) {
+      try {
+        const response = await api.post<Job>('/api/jobs', job);
+        if (response.data) {
+          const { jobs } = get();
+          set({ jobs: [...jobs, response.data] });
+          
+          // Cache the new job
+          await offlineStorage.cacheJobs([response.data]);
+          
+          return response.data;
+        }
+        // API error - fall through to offline creation
+      } catch (e) {
+        // Network error - create offline
+        console.log('[JobsStore] Network error, creating job offline:', e);
+      }
+      
+      // Fall back to offline creation
+      try {
+        const offlineJob = await offlineStorage.saveJobOffline(job, 'create');
+        const { jobs } = get();
+        set({ jobs: [...jobs, offlineJob as Job] });
+        return offlineJob as Job;
+      } catch (e) {
+        console.log('[JobsStore] Failed to create offline job:', e);
+        return null;
+      }
+    } else {
+      // Create offline
+      try {
+        const offlineJob = await offlineStorage.saveJobOffline(job, 'create');
+        const { jobs } = get();
+        set({ jobs: [...jobs, offlineJob as Job] });
+        return offlineJob as Job;
+      } catch (e) {
+        console.log('[JobsStore] Failed to create offline job:', e);
+        return null;
+      }
     }
-    return null;
   },
 }));
 
-// ============ CLIENTS STORE ============
+// ============ CLIENTS STORE (with offline support) ============
 
 interface ClientsState {
   clients: Client[];
   isLoading: boolean;
   error: string | null;
+  isOfflineData: boolean;
   
   fetchClients: () => Promise<void>;
   getClient: (id: string) => Promise<Client | null>;
@@ -334,6 +442,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
   clients: [],
   isLoading: false,
   error: null,
+  isOfflineData: false,
 
   fetchClients: async () => {
     set({ isLoading: true, error: null });
@@ -341,55 +450,166 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
     const response = await api.get<Client[]>('/api/clients');
     
     if (response.error) {
+      // Fall back to cached data
+      try {
+        const cachedClients = await offlineStorage.getCachedClients();
+        if (cachedClients.length > 0) {
+          set({ 
+            clients: cachedClients as Client[], 
+            isLoading: false,
+            isOfflineData: true,
+            error: null 
+          });
+          return;
+        }
+      } catch (e) {
+        console.log('[ClientsStore] Cache fallback failed:', e);
+      }
       set({ isLoading: false, error: response.error });
       return;
     }
 
-    set({ clients: response.data || [], isLoading: false });
+    // Cache the data
+    try {
+      await offlineStorage.cacheClients(response.data || []);
+    } catch (e) {
+      console.log('[ClientsStore] Failed to cache clients:', e);
+    }
+
+    set({ clients: response.data || [], isLoading: false, isOfflineData: false });
   },
 
   getClient: async (id: string) => {
     const response = await api.get<Client>(`/api/clients/${id}`);
-    return response.data || null;
+    if (response.data) {
+      return response.data;
+    }
+    
+    // Fall back to cache
+    try {
+      const cached = await offlineStorage.getCachedClient(id);
+      return cached as Client | null;
+    } catch (e) {
+      return null;
+    }
   },
 
   createClient: async (client: Partial<Client>) => {
-    const response = await api.post<Client>('/api/clients', client);
-    if (response.data) {
-      const { clients } = get();
-      set({ clients: [...clients, response.data] });
-      return response.data;
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    if (isOnline) {
+      try {
+        const response = await api.post<Client>('/api/clients', client);
+        if (response.data) {
+          const { clients } = get();
+          set({ clients: [...clients, response.data] });
+          
+          // Cache the new client
+          await offlineStorage.cacheClients([response.data]);
+          
+          return response.data;
+        }
+        // API error - fall through to offline creation
+      } catch (e) {
+        // Network error - create offline
+        console.log('[ClientsStore] Network error, creating client offline:', e);
+      }
+      
+      // Fall back to offline creation
+      try {
+        const offlineClient = await offlineStorage.saveClientOffline(client, 'create');
+        const { clients } = get();
+        set({ clients: [...clients, offlineClient as Client] });
+        return offlineClient as Client;
+      } catch (e) {
+        console.log('[ClientsStore] Failed to create offline client:', e);
+        return null;
+      }
+    } else {
+      // Create offline
+      try {
+        const offlineClient = await offlineStorage.saveClientOffline(client, 'create');
+        const { clients } = get();
+        set({ clients: [...clients, offlineClient as Client] });
+        return offlineClient as Client;
+      } catch (e) {
+        console.log('[ClientsStore] Failed to create offline client:', e);
+        return null;
+      }
     }
-    return null;
   },
 
   updateClient: async (id: string, client: Partial<Client>) => {
-    const response = await api.patch<Client>(`/api/clients/${id}`, client);
-    if (response.data) {
-      const { clients } = get();
-      set({ clients: clients.map(c => c.id === id ? response.data! : c) });
-      return true;
+    const { clients } = get();
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Optimistic update
+    set({ clients: clients.map(c => c.id === id ? { ...c, ...client } : c) });
+    
+    if (isOnline) {
+      try {
+        const response = await api.patch<Client>(`/api/clients/${id}`, client);
+        if (response.error) {
+          // Queue for later sync
+          await offlineStorage.updateClientOffline(id, client);
+        } else if (response.data) {
+          set({ clients: clients.map(c => c.id === id ? response.data! : c) });
+          // Update cache
+          await offlineStorage.cacheClients([response.data]);
+        }
+      } catch (e) {
+        // Network error - queue for offline sync
+        console.log('[ClientsStore] Network error, queueing update:', e);
+        await offlineStorage.updateClientOffline(id, client);
+      }
+    } else {
+      // Offline - queue the update
+      try {
+        await offlineStorage.updateClientOffline(id, client);
+      } catch (e) {
+        console.log('[ClientsStore] Failed to queue offline update:', e);
+      }
     }
-    return false;
+    return true;
   },
 
   deleteClient: async (id: string) => {
-    const response = await api.delete(`/api/clients/${id}`);
-    if (!response.error) {
-      const { clients } = get();
-      set({ clients: clients.filter(c => c.id !== id) });
-      return true;
+    const { clients } = get();
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Optimistic update
+    set({ clients: clients.filter(c => c.id !== id) });
+    
+    if (isOnline) {
+      try {
+        const response = await api.delete(`/api/clients/${id}`);
+        if (response.error) {
+          // Revert optimistic update if delete fails
+          set({ clients });
+          return false;
+        }
+      } catch (e) {
+        // Network error - can't delete offline, revert
+        console.log('[ClientsStore] Network error during delete:', e);
+        set({ clients });
+        return false;
+      }
+    } else {
+      // Can't delete offline - revert
+      set({ clients });
+      return false;
     }
-    return false;
+    return true;
   },
 }));
 
-// ============ QUOTES STORE ============
+// ============ QUOTES STORE (with offline support) ============
 
 interface QuotesState {
   quotes: Quote[];
   isLoading: boolean;
   error: string | null;
+  isOfflineData: boolean;
   
   fetchQuotes: () => Promise<void>;
   getQuote: (id: string) => Promise<Quote | null>;
@@ -403,6 +623,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
   quotes: [],
   isLoading: false,
   error: null,
+  isOfflineData: false,
 
   fetchQuotes: async () => {
     set({ isLoading: true, error: null });
@@ -410,65 +631,189 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
     const response = await api.get<Quote[]>('/api/quotes');
     
     if (response.error) {
+      // Fall back to cached data
+      try {
+        const cachedQuotes = await offlineStorage.getCachedQuotes();
+        if (cachedQuotes.length > 0) {
+          set({ 
+            quotes: cachedQuotes as Quote[], 
+            isLoading: false,
+            isOfflineData: true,
+            error: null 
+          });
+          return;
+        }
+      } catch (e) {
+        console.log('[QuotesStore] Cache fallback failed:', e);
+      }
       set({ isLoading: false, error: response.error });
       return;
     }
 
-    set({ quotes: response.data || [], isLoading: false });
+    // Cache the data
+    try {
+      await offlineStorage.cacheQuotes(response.data || []);
+    } catch (e) {
+      console.log('[QuotesStore] Failed to cache quotes:', e);
+    }
+
+    set({ quotes: response.data || [], isLoading: false, isOfflineData: false });
   },
 
   getQuote: async (id: string) => {
     const response = await api.get<Quote>(`/api/quotes/${id}`);
-    return response.data || null;
+    if (response.data) {
+      return response.data;
+    }
+    
+    // Fall back to cache
+    try {
+      const cached = await offlineStorage.getCachedQuote(id);
+      return cached as Quote | null;
+    } catch (e) {
+      return null;
+    }
   },
 
   createQuote: async (quote: Partial<Quote>) => {
-    const response = await api.post<Quote>('/api/quotes', quote);
-    if (response.data) {
-      const { quotes } = get();
-      set({ quotes: [...quotes, response.data] });
-      return response.data;
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    if (isOnline) {
+      try {
+        const response = await api.post<Quote>('/api/quotes', quote);
+        if (response.data) {
+          const { quotes } = get();
+          set({ quotes: [...quotes, response.data] });
+          
+          // Cache the new quote
+          await offlineStorage.cacheQuotes([response.data]);
+          
+          return response.data;
+        }
+        // API error - fall through to offline creation
+      } catch (e) {
+        // Network error - create offline
+        console.log('[QuotesStore] Network error, creating quote offline:', e);
+      }
+      
+      // Fall back to offline creation
+      try {
+        const offlineQuote = await offlineStorage.saveQuoteOffline(quote, 'create');
+        const { quotes } = get();
+        set({ quotes: [...quotes, offlineQuote as Quote] });
+        return offlineQuote as Quote;
+      } catch (e) {
+        console.log('[QuotesStore] Failed to create offline quote:', e);
+        return null;
+      }
+    } else {
+      // Create offline
+      try {
+        const offlineQuote = await offlineStorage.saveQuoteOffline(quote, 'create');
+        const { quotes } = get();
+        set({ quotes: [...quotes, offlineQuote as Quote] });
+        return offlineQuote as Quote;
+      } catch (e) {
+        console.log('[QuotesStore] Failed to create offline quote:', e);
+        return null;
+      }
     }
-    return null;
   },
 
   updateQuote: async (id: string, quote: Partial<Quote>) => {
-    const response = await api.patch<Quote>(`/api/quotes/${id}`, quote);
-    if (response.data) {
-      const { quotes } = get();
-      set({ quotes: quotes.map(q => q.id === id ? response.data! : q) });
-      return true;
+    const { quotes } = get();
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Optimistic update
+    set({ quotes: quotes.map(q => q.id === id ? { ...q, ...quote } : q) });
+    
+    if (isOnline) {
+      try {
+        const response = await api.patch<Quote>(`/api/quotes/${id}`, quote);
+        if (response.error) {
+          // Queue for later sync
+          await offlineStorage.updateQuoteOffline(id, quote);
+        } else if (response.data) {
+          set({ quotes: quotes.map(q => q.id === id ? response.data! : q) });
+          await offlineStorage.cacheQuotes([response.data]);
+        }
+      } catch (e) {
+        // Network error - queue for offline sync
+        console.log('[QuotesStore] Network error, queueing update:', e);
+        await offlineStorage.updateQuoteOffline(id, quote);
+      }
+    } else {
+      // Offline - queue the update
+      try {
+        await offlineStorage.updateQuoteOffline(id, quote);
+      } catch (e) {
+        console.log('[QuotesStore] Failed to queue offline update:', e);
+      }
     }
-    return false;
+    return true;
   },
 
   updateQuoteStatus: async (id: string, status: Quote['status']) => {
-    const response = await api.patch<Quote>(`/api/quotes/${id}`, { status });
-    if (response.data) {
-      const { quotes } = get();
-      set({ quotes: quotes.map(q => q.id === id ? { ...q, status } : q) });
-      return true;
+    const { quotes } = get();
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Optimistic update
+    set({ quotes: quotes.map(q => q.id === id ? { ...q, status } : q) });
+    
+    if (isOnline) {
+      try {
+        const response = await api.patch<Quote>(`/api/quotes/${id}`, { status });
+        if (response.error) {
+          await offlineStorage.updateQuoteOffline(id, { status });
+        }
+      } catch (e) {
+        console.log('[QuotesStore] Network error, queueing status update:', e);
+        await offlineStorage.updateQuoteOffline(id, { status });
+      }
+    } else {
+      try {
+        await offlineStorage.updateQuoteOffline(id, { status });
+      } catch (e) {
+        console.log('[QuotesStore] Failed to queue offline update:', e);
+      }
     }
-    return false;
+    return true;
   },
 
   deleteQuote: async (id: string) => {
-    const response = await api.delete(`/api/quotes/${id}`);
-    if (!response.error) {
-      const { quotes } = get();
-      set({ quotes: quotes.filter(q => q.id !== id) });
-      return true;
+    const { quotes } = get();
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Optimistic update
+    set({ quotes: quotes.filter(q => q.id !== id) });
+    
+    if (isOnline) {
+      try {
+        const response = await api.delete(`/api/quotes/${id}`);
+        if (response.error) {
+          set({ quotes });
+          return false;
+        }
+      } catch (e) {
+        console.log('[QuotesStore] Network error during delete:', e);
+        set({ quotes });
+        return false;
+      }
+    } else {
+      set({ quotes });
+      return false;
     }
-    return false;
+    return true;
   },
 }));
 
-// ============ INVOICES STORE ============
+// ============ INVOICES STORE (with offline support) ============
 
 interface InvoicesState {
   invoices: Invoice[];
   isLoading: boolean;
   error: string | null;
+  isOfflineData: boolean;
   
   fetchInvoices: () => Promise<void>;
   getInvoice: (id: string) => Promise<Invoice | null>;
@@ -482,6 +827,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
   invoices: [],
   isLoading: false,
   error: null,
+  isOfflineData: false,
 
   fetchInvoices: async () => {
     set({ isLoading: true, error: null });
@@ -489,56 +835,179 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
     const response = await api.get<Invoice[]>('/api/invoices');
     
     if (response.error) {
+      // Fall back to cached data
+      try {
+        const cachedInvoices = await offlineStorage.getCachedInvoices();
+        if (cachedInvoices.length > 0) {
+          set({ 
+            invoices: cachedInvoices as Invoice[], 
+            isLoading: false,
+            isOfflineData: true,
+            error: null 
+          });
+          return;
+        }
+      } catch (e) {
+        console.log('[InvoicesStore] Cache fallback failed:', e);
+      }
       set({ isLoading: false, error: response.error });
       return;
     }
 
-    set({ invoices: response.data || [], isLoading: false });
+    // Cache the data
+    try {
+      await offlineStorage.cacheInvoices(response.data || []);
+    } catch (e) {
+      console.log('[InvoicesStore] Failed to cache invoices:', e);
+    }
+
+    set({ invoices: response.data || [], isLoading: false, isOfflineData: false });
   },
 
   getInvoice: async (id: string) => {
     const response = await api.get<Invoice>(`/api/invoices/${id}`);
-    return response.data || null;
+    if (response.data) {
+      return response.data;
+    }
+    
+    // Fall back to cache
+    try {
+      const cached = await offlineStorage.getCachedInvoice(id);
+      return cached as Invoice | null;
+    } catch (e) {
+      return null;
+    }
   },
 
   createInvoice: async (invoice: Partial<Invoice>) => {
-    const response = await api.post<Invoice>('/api/invoices', invoice);
-    if (response.data) {
-      const { invoices } = get();
-      set({ invoices: [...invoices, response.data] });
-      return response.data;
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    if (isOnline) {
+      try {
+        const response = await api.post<Invoice>('/api/invoices', invoice);
+        if (response.data) {
+          const { invoices } = get();
+          set({ invoices: [...invoices, response.data] });
+          
+          // Cache the new invoice
+          await offlineStorage.cacheInvoices([response.data]);
+          
+          return response.data;
+        }
+        // API error - fall through to offline creation
+      } catch (e) {
+        // Network error - create offline
+        console.log('[InvoicesStore] Network error, creating invoice offline:', e);
+      }
+      
+      // Fall back to offline creation
+      try {
+        const offlineInvoice = await offlineStorage.saveInvoiceOffline(invoice, 'create');
+        const { invoices } = get();
+        set({ invoices: [...invoices, offlineInvoice as Invoice] });
+        return offlineInvoice as Invoice;
+      } catch (e) {
+        console.log('[InvoicesStore] Failed to create offline invoice:', e);
+        return null;
+      }
+    } else {
+      // Create offline
+      try {
+        const offlineInvoice = await offlineStorage.saveInvoiceOffline(invoice, 'create');
+        const { invoices } = get();
+        set({ invoices: [...invoices, offlineInvoice as Invoice] });
+        return offlineInvoice as Invoice;
+      } catch (e) {
+        console.log('[InvoicesStore] Failed to create offline invoice:', e);
+        return null;
+      }
     }
-    return null;
   },
 
   updateInvoice: async (id: string, invoice: Partial<Invoice>) => {
-    const response = await api.patch<Invoice>(`/api/invoices/${id}`, invoice);
-    if (response.data) {
-      const { invoices } = get();
-      set({ invoices: invoices.map(i => i.id === id ? response.data! : i) });
-      return true;
+    const { invoices } = get();
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Optimistic update
+    set({ invoices: invoices.map(i => i.id === id ? { ...i, ...invoice } : i) });
+    
+    if (isOnline) {
+      try {
+        const response = await api.patch<Invoice>(`/api/invoices/${id}`, invoice);
+        if (response.error) {
+          // Queue for later sync
+          await offlineStorage.updateInvoiceOffline(id, invoice);
+        } else if (response.data) {
+          set({ invoices: invoices.map(i => i.id === id ? response.data! : i) });
+          await offlineStorage.cacheInvoices([response.data]);
+        }
+      } catch (e) {
+        // Network error - queue for offline sync
+        console.log('[InvoicesStore] Network error, queueing update:', e);
+        await offlineStorage.updateInvoiceOffline(id, invoice);
+      }
+    } else {
+      // Offline - queue the update
+      try {
+        await offlineStorage.updateInvoiceOffline(id, invoice);
+      } catch (e) {
+        console.log('[InvoicesStore] Failed to queue offline update:', e);
+      }
     }
-    return false;
+    return true;
   },
 
   updateInvoiceStatus: async (id: string, status: Invoice['status']) => {
-    const response = await api.patch<Invoice>(`/api/invoices/${id}`, { status });
-    if (response.data) {
-      const { invoices } = get();
-      set({ invoices: invoices.map(i => i.id === id ? { ...i, status } : i) });
-      return true;
+    const { invoices } = get();
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Optimistic update
+    set({ invoices: invoices.map(i => i.id === id ? { ...i, status } : i) });
+    
+    if (isOnline) {
+      try {
+        const response = await api.patch<Invoice>(`/api/invoices/${id}`, { status });
+        if (response.error) {
+          await offlineStorage.updateInvoiceOffline(id, { status });
+        }
+      } catch (e) {
+        console.log('[InvoicesStore] Network error, queueing status update:', e);
+        await offlineStorage.updateInvoiceOffline(id, { status });
+      }
+    } else {
+      try {
+        await offlineStorage.updateInvoiceOffline(id, { status });
+      } catch (e) {
+        console.log('[InvoicesStore] Failed to queue offline update:', e);
+      }
     }
-    return false;
+    return true;
   },
 
   deleteInvoice: async (id: string) => {
-    const response = await api.delete(`/api/invoices/${id}`);
-    if (!response.error) {
-      const { invoices } = get();
-      set({ invoices: invoices.filter(i => i.id !== id) });
-      return true;
+    const { invoices } = get();
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Optimistic update
+    set({ invoices: invoices.filter(i => i.id !== id) });
+    
+    if (isOnline) {
+      try {
+        const response = await api.delete(`/api/invoices/${id}`);
+        if (response.error) {
+          set({ invoices });
+          return false;
+        }
+      } catch (e) {
+        console.log('[InvoicesStore] Network error during delete:', e);
+        set({ invoices });
+        return false;
+      }
+    } else {
+      set({ invoices });
+      return false;
     }
-    return false;
+    return true;
   },
 }));
 

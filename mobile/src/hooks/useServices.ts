@@ -20,7 +20,7 @@ import {
   PaymentIntent 
 } from '../lib/stripe-terminal';
 import notificationService, { NotificationPayload } from '../lib/notifications';
-import offlineStorage, { OfflineStorageState, CachedJob } from '../lib/offline-storage';
+import offlineStorage, { useOfflineStore, CachedJob, CachedClient, CachedQuote, CachedInvoice } from '../lib/offline-storage';
 import locationTracking, { TrackingStatus, LocationUpdate, GeofenceEvent } from '../lib/location-tracking';
 import api from '../lib/api';
 
@@ -343,22 +343,14 @@ export function useNotifications() {
 
 /**
  * Hook for Offline Storage
+ * Uses Zustand store for reactive state + offlineStorage service for operations
  */
 export function useOfflineStorage() {
-  const [state, setState] = useState<OfflineStorageState>({
-    isOnline: true,
-    lastSyncTime: null,
-    pendingSyncCount: 0,
-    isSyncing: false,
-  });
-  const [isInitialized, setIsInitialized] = useState(false);
+  const offlineState = useOfflineStore();
 
   const initialize = useCallback(async () => {
     try {
       await offlineStorage.initialize();
-      const currentState = await offlineStorage.getState();
-      setState(currentState);
-      setIsInitialized(true);
       return true;
     } catch (error) {
       console.error('Failed to initialize offline storage:', error);
@@ -366,25 +358,77 @@ export function useOfflineStorage() {
     }
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = offlineStorage.subscribe(setState);
-    return unsubscribe;
-  }, []);
-
+  // Jobs
   const getCachedJobs = useCallback(async (status?: string): Promise<CachedJob[]> => {
     return offlineStorage.getCachedJobs(status);
+  }, []);
+
+  const getCachedJob = useCallback(async (id: string): Promise<CachedJob | null> => {
+    return offlineStorage.getCachedJob(id);
   }, []);
 
   const cacheJobs = useCallback(async (jobs: any[]) => {
     await offlineStorage.cacheJobs(jobs);
   }, []);
 
+  const saveJobOffline = useCallback(async (job: Partial<CachedJob>, action: 'create' | 'update') => {
+    return offlineStorage.saveJobOffline(job, action);
+  }, []);
+
   const updateJobOffline = useCallback(async (jobId: string, updates: Partial<CachedJob>) => {
     await offlineStorage.updateJobOffline(jobId, updates);
   }, []);
 
+  // Clients
+  const getCachedClients = useCallback(async (): Promise<CachedClient[]> => {
+    return offlineStorage.getCachedClients();
+  }, []);
+
+  const getCachedClient = useCallback(async (id: string): Promise<CachedClient | null> => {
+    return offlineStorage.getCachedClient(id);
+  }, []);
+
+  const cacheClients = useCallback(async (clients: any[]) => {
+    await offlineStorage.cacheClients(clients);
+  }, []);
+
+  const saveClientOffline = useCallback(async (client: Partial<CachedClient>, action: 'create' | 'update') => {
+    return offlineStorage.saveClientOffline(client, action);
+  }, []);
+
+  // Quotes
+  const getCachedQuotes = useCallback(async (): Promise<CachedQuote[]> => {
+    return offlineStorage.getCachedQuotes();
+  }, []);
+
+  const getCachedQuote = useCallback(async (id: string): Promise<CachedQuote | null> => {
+    return offlineStorage.getCachedQuote(id);
+  }, []);
+
+  const cacheQuotes = useCallback(async (quotes: any[]) => {
+    await offlineStorage.cacheQuotes(quotes);
+  }, []);
+
+  // Invoices
+  const getCachedInvoices = useCallback(async (): Promise<CachedInvoice[]> => {
+    return offlineStorage.getCachedInvoices();
+  }, []);
+
+  const getCachedInvoice = useCallback(async (id: string): Promise<CachedInvoice | null> => {
+    return offlineStorage.getCachedInvoice(id);
+  }, []);
+
+  const cacheInvoices = useCallback(async (invoices: any[]) => {
+    await offlineStorage.cacheInvoices(invoices);
+  }, []);
+
+  // Sync
   const syncNow = useCallback(async () => {
-    await offlineStorage.syncPendingChanges();
+    return offlineStorage.syncPendingChanges();
+  }, []);
+
+  const fullSync = useCallback(async () => {
+    await offlineStorage.fullSync();
   }, []);
 
   const clearCache = useCallback(async () => {
@@ -392,13 +436,30 @@ export function useOfflineStorage() {
   }, []);
 
   return {
-    ...state,
-    isInitialized,
+    ...offlineState,
     initialize,
+    // Jobs
     getCachedJobs,
+    getCachedJob,
     cacheJobs,
+    saveJobOffline,
     updateJobOffline,
+    // Clients
+    getCachedClients,
+    getCachedClient,
+    cacheClients,
+    saveClientOffline,
+    // Quotes
+    getCachedQuotes,
+    getCachedQuote,
+    cacheQuotes,
+    // Invoices
+    getCachedInvoices,
+    getCachedInvoice,
+    cacheInvoices,
+    // Sync
     syncNow,
+    fullSync,
     clearCache,
   };
 }
