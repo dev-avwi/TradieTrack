@@ -7,13 +7,16 @@ import {
   StyleSheet,
   TextInput,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Switch,
+  Image,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
+import { SignaturePad } from '../../src/components/SignaturePad';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -142,7 +145,12 @@ export default function BusinessSettingsScreen() {
     phone: businessSettings?.phone || '',
     email: businessSettings?.email || '',
     address: businessSettings?.address || '',
+    defaultSignature: (businessSettings as any)?.defaultSignature || '',
+    signatureName: (businessSettings as any)?.signatureName || '',
+    includeSignatureOnQuotes: (businessSettings as any)?.includeSignatureOnQuotes || false,
+    includeSignatureOnInvoices: (businessSettings as any)?.includeSignatureOnInvoices || false,
   });
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
 
   useEffect(() => {
     if (businessSettings) {
@@ -152,6 +160,10 @@ export default function BusinessSettingsScreen() {
         phone: businessSettings.phone || '',
         email: businessSettings.email || '',
         address: businessSettings.address || '',
+        defaultSignature: (businessSettings as any)?.defaultSignature || '',
+        signatureName: (businessSettings as any)?.signatureName || '',
+        includeSignatureOnQuotes: (businessSettings as any)?.includeSignatureOnQuotes || false,
+        includeSignatureOnInvoices: (businessSettings as any)?.includeSignatureOnInvoices || false,
       });
     }
   }, [businessSettings]);
@@ -300,6 +312,102 @@ export default function BusinessSettingsScreen() {
               numberOfLines={3}
               textAlignVertical="top"
             />
+          </View>
+
+          <Text style={styles.sectionTitle}>Digital Signature</Text>
+          <Text style={styles.sectionDescription}>
+            Add your signature to quotes and invoices for a professional touch
+          </Text>
+
+          {form.defaultSignature && !showSignaturePad ? (
+            <View style={[styles.inputGroup, { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.border }]}>
+              <View style={{ backgroundColor: '#fff', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md }}>
+                <Image 
+                  source={{ uri: form.defaultSignature }} 
+                  style={{ width: '100%', height: 80, resizeMode: 'contain' }}
+                />
+              </View>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <TouchableOpacity
+                  style={[styles.input, { flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: spacing.sm }]}
+                  onPress={() => setShowSignaturePad(true)}
+                >
+                  <Feather name="edit-2" size={16} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontWeight: '500' }}>Change</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.input, { flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: spacing.sm }]}
+                  onPress={() => setForm({ ...form, defaultSignature: '' })}
+                >
+                  <Feather name="trash-2" size={16} color={colors.destructive} />
+                  <Text style={{ color: colors.destructive, fontWeight: '500' }}>Clear</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.inputGroup}>
+              <SignaturePad
+                onSave={(signature) => {
+                  setForm({ ...form, defaultSignature: signature });
+                  setShowSignaturePad(false);
+                }}
+                onClear={() => setForm({ ...form, defaultSignature: '' })}
+                label="Draw your signature"
+                showControls={true}
+              />
+              {showSignaturePad && (
+                <TouchableOpacity
+                  style={[styles.input, { marginTop: spacing.sm, alignItems: 'center' }]}
+                  onPress={() => setShowSignaturePad(false)}
+                >
+                  <Text style={{ color: colors.mutedForeground }}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <Feather name="user" size={18} color={colors.primary} />
+              <Text style={styles.inputLabelText}>Name Under Signature</Text>
+            </View>
+            <TextInput
+              style={styles.input}
+              value={form.signatureName}
+              onChangeText={(text) => setForm({ ...form, signatureName: text })}
+              placeholder="e.g., John Smith, Director"
+              placeholderTextColor={colors.mutedForeground}
+            />
+            <Text style={styles.inputHint}>
+              This name will appear below your signature on documents
+            </Text>
+          </View>
+
+          <View style={[styles.inputGroup, { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.border }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabelText}>Include on Quotes</Text>
+                <Text style={[styles.inputHint, { marginTop: 2 }]}>Add your signature to all quotes</Text>
+              </View>
+              <Switch
+                value={form.includeSignatureOnQuotes}
+                onValueChange={(value) => setForm({ ...form, includeSignatureOnQuotes: value })}
+                trackColor={{ false: colors.border, true: colors.primary + '66' }}
+                thumbColor={form.includeSignatureOnQuotes ? colors.primary : colors.mutedForeground}
+              />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabelText}>Include on Invoices</Text>
+                <Text style={[styles.inputHint, { marginTop: 2 }]}>Add your signature to all invoices</Text>
+              </View>
+              <Switch
+                value={form.includeSignatureOnInvoices}
+                onValueChange={(value) => setForm({ ...form, includeSignatureOnInvoices: value })}
+                trackColor={{ false: colors.border, true: colors.primary + '66' }}
+                thumbColor={form.includeSignatureOnInvoices ? colors.primary : colors.mutedForeground}
+              />
+            </View>
           </View>
 
           <TouchableOpacity
