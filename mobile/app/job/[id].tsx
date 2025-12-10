@@ -28,6 +28,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
+import { JobForms } from '../../src/components/FormRenderer';
 
 interface Job {
   id: string;
@@ -2198,6 +2199,13 @@ export default function JobDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Custom Forms Section - Only show for in_progress, done, or invoiced jobs */}
+        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
+          <View style={styles.photosCard}>
+            <JobForms jobId={job.id} readOnly={job.status === 'invoiced'} />
+          </View>
+        )}
 
         {/* Client Signature Section - Only show for done or invoiced jobs */}
         {(job.status === 'done' || job.status === 'invoiced') && (
