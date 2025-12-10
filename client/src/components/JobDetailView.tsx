@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Mic } from "lucide-react";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
+import { JobVoiceNotes } from "./JobVoiceNotes";
 import { JobChat } from "./JobChat";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
@@ -596,6 +597,22 @@ export default function JobDetailView({
                 <Camera className="h-8 w-8 mx-auto mb-2 opacity-40" />
                 <p className="text-sm">
                   Photos can be added once the job is started
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Voice Notes - only show for in_progress, done, invoiced jobs */}
+        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (
+          <JobVoiceNotes jobId={jobId} canUpload={job.status !== 'invoiced'} />
+        ) : (
+          <Card>
+            <CardContent className="py-6">
+              <div className="text-center text-muted-foreground">
+                <Mic className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">
+                  Voice notes can be added once the job is started
                 </p>
               </div>
             </CardContent>
