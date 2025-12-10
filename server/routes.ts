@@ -2110,6 +2110,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Push Token Routes (Mobile App)
+  const pushTokenInputSchema = z.object({
+    token: z.string().min(1, "Push token is required"),
+    platform: z.enum(['ios', 'android'], { errorMap: () => ({ message: "Platform must be 'ios' or 'android'" }) }),
+    deviceId: z.string().optional().nullable()
+  });
+
+  app.post("/api/push-tokens/register", requireAuth, async (req: any, res) => {
+    try {
+      const validated = pushTokenInputSchema.parse(req.body);
+      
+      const pushToken = await storage.registerPushToken({
+        userId: req.userId,
+        token: validated.token,
+        platform: validated.platform,
+        deviceId: validated.deviceId || null
+      });
+      
+      res.json({ success: true, tokenId: pushToken.id });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Error registering push token:", error);
+      res.status(500).json({ error: "Failed to register push token" });
+    }
+  });
+
+  app.delete("/api/push-tokens/:tokenId", requireAuth, async (req: any, res) => {
+    try {
+      const success = await storage.deactivatePushToken(req.params.tokenId, req.userId);
+      if (!success) {
+        return res.status(404).json({ error: "Push token not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deactivating push token:", error);
+      res.status(500).json({ error: "Failed to deactivate push token" });
+    }
+  });
+
+  app.delete("/api/push-tokens", requireAuth, async (req: any, res) => {
+    try {
+      const { token } = req.body;
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ error: "Token is required" });
+      }
+      const success = await storage.deactivatePushTokenByValue(token, req.userId);
+      if (!success) {
+        return res.status(404).json({ error: "Push token not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deactivating push token:", error);
+      res.status(500).json({ error: "Failed to deactivate push token" });
+    }
+  });
+
   app.post("/api/integrations/test-stripe", requireAuth, async (req: any, res) => {
     try {
       const stripe = await getUncachableStripeClient();

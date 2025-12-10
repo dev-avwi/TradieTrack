@@ -229,6 +229,22 @@ export type Notification = typeof notifications.$inferSelect;
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 
+// Push Notification Tokens (for mobile app)
+export const pushTokens = pgTable("push_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: text("token").notNull(), // Expo push token
+  platform: text("platform").notNull(), // 'ios' or 'android'
+  deviceId: text("device_id"), // Unique device identifier
+  isActive: boolean("is_active").default(true),
+  lastUsedAt: timestamp("last_used_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type PushToken = typeof pushTokens.$inferSelect;
+export const insertPushTokenSchema = createInsertSchema(pushTokens).omit({ id: true, createdAt: true, lastUsedAt: true });
+export type InsertPushToken = z.infer<typeof insertPushTokenSchema>;
+
 // Clients
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -65,6 +65,8 @@ import {
   type InsertRoute,
   type Notification,
   type InsertNotification,
+  type PushToken,
+  type InsertPushToken,
   type JobPhoto,
   type InsertJobPhoto,
   type VoiceNote,
@@ -89,6 +91,7 @@ import {
   rateCards,
   integrationSettings,
   notifications,
+  pushTokens,
   loginCodes,
   checklistItems,
   jobCheckins,
@@ -177,6 +180,12 @@ export interface IStorage {
   markNotificationAsRead(id: string, userId: string): Promise<Notification | undefined>;
   dismissNotification(id: string, userId: string): Promise<Notification | undefined>;
   deleteNotification(id: string, userId: string): Promise<boolean>;
+
+  // Push Tokens (Mobile App)
+  getPushTokens(userId: string): Promise<PushToken[]>;
+  registerPushToken(token: InsertPushToken): Promise<PushToken>;
+  deactivatePushToken(tokenId: string, userId: string): Promise<boolean>;
+  deactivatePushTokenByValue(token: string, userId: string): Promise<boolean>;
 
   // Platform Stats (for trust signals)
   getPlatformStats(): Promise<{ userCount: number; quotesCount: number; paidInvoicesCount: number }>;
@@ -733,6 +742,59 @@ export class PostgresStorage implements IStorage {
       .delete(notifications)
       .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
     return result.rowCount > 0;
+  }
+
+  // Push Tokens (Mobile App)
+  async getPushTokens(userId: string): Promise<PushToken[]> {
+    return await db
+      .select()
+      .from(pushTokens)
+      .where(and(eq(pushTokens.userId, userId), eq(pushTokens.isActive, true)));
+  }
+
+  async registerPushToken(token: InsertPushToken): Promise<PushToken> {
+    // First, check if this token already exists
+    const existing = await db
+      .select()
+      .from(pushTokens)
+      .where(eq(pushTokens.token, token.token))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      // Update existing token to be active and update lastUsedAt
+      const updated = await db
+        .update(pushTokens)
+        .set({ 
+          isActive: true, 
+          lastUsedAt: new Date(),
+          userId: token.userId // In case user changed
+        })
+        .where(eq(pushTokens.token, token.token))
+        .returning();
+      return updated[0];
+    }
+    
+    // Create new token
+    const result = await db.insert(pushTokens).values(token).returning();
+    return result[0];
+  }
+
+  async deactivatePushToken(tokenId: string, userId: string): Promise<boolean> {
+    const result = await db
+      .update(pushTokens)
+      .set({ isActive: false })
+      .where(and(eq(pushTokens.id, tokenId), eq(pushTokens.userId, userId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async deactivatePushTokenByValue(token: string, userId: string): Promise<boolean> {
+    const result = await db
+      .update(pushTokens)
+      .set({ isActive: false })
+      .where(and(eq(pushTokens.token, token), eq(pushTokens.userId, userId)))
+      .returning();
+    return result.length > 0;
   }
 
   // Platform Stats (for trust signals)
