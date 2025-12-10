@@ -354,6 +354,7 @@ export default function BusinessSettingsScreen() {
                 onClear={() => setForm({ ...form, defaultSignature: '' })}
                 label="Draw your signature"
                 showControls={true}
+                existingSignature={showSignaturePad ? form.defaultSignature : undefined}
               />
               {showSignaturePad && (
                 <TouchableOpacity
