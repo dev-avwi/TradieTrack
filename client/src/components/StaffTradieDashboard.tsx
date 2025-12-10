@@ -261,6 +261,18 @@ export default function StaffTradieDashboard({
     const today = new Date();
     return jobDate.toDateString() === today.toDateString();
   });
+  
+  // This week's jobs (next 7 days, excluding today)
+  const thisWeeksJobs = activeJobs.filter(job => {
+    if (!job.scheduledAt) return false;
+    const jobDate = new Date(job.scheduledAt);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(today);
+    endOfWeek.setDate(endOfWeek.getDate() + 7);
+    return jobDate > today && jobDate <= endOfWeek && jobDate.toDateString() !== today.toDateString();
+  });
+  
   const upcomingJobs = activeJobs.filter(job => {
     if (!job.scheduledAt) return false;
     const jobDate = new Date(job.scheduledAt);
@@ -488,12 +500,11 @@ export default function StaffTradieDashboard({
                   size="lg"
                   className="w-full h-12 text-white font-semibold rounded-xl"
                   style={{ backgroundColor: 'hsl(142.1 76.2% 36.3%)' }}
-                  onClick={() => completeJob.mutate(nextJob)}
-                  disabled={completeJob.isPending}
-                  data-testid="button-complete-job"
+                  onClick={() => onViewJob?.(nextJob.id)}
+                  data-testid="button-go-complete-job"
                 >
                   <CheckCircle2 className="h-5 w-5 mr-2" />
-                  Complete Job
+                  Go Complete Job
                 </Button>
               ) : (
                 <Button
@@ -507,6 +518,30 @@ export default function StaffTradieDashboard({
                   <ChevronRight className="h-5 w-5 ml-2" />
                 </Button>
               )}
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {/* Today's Jobs - Empty State when no jobs today but has upcoming */}
+      {todaysJobs.length === 0 && activeJobs.length > 0 && (
+        <section className="space-y-3" data-testid="today-empty-state">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Today
+          </h2>
+          <Card className="border-dashed bg-muted/30">
+            <CardContent className="py-6 text-center">
+              <div 
+                className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+                style={{ backgroundColor: 'hsl(var(--muted))' }}
+              >
+                <CheckCircle2 className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="font-medium mb-1">No jobs scheduled for today</h3>
+              <p className="text-sm text-muted-foreground">
+                You've got {upcomingJobs.length} job{upcomingJobs.length > 1 ? 's' : ''} coming up. Enjoy your day off!
+              </p>
             </CardContent>
           </Card>
         </section>
@@ -557,18 +592,66 @@ export default function StaffTradieDashboard({
         </section>
       )}
 
-      {/* Upcoming Jobs */}
-      {upcomingJobs.length > 0 && (
+      {/* This Week Overview */}
+      {thisWeeksJobs.length > 0 && (
+        <section className="space-y-3" data-testid="this-week-section">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              This Week
+            </h2>
+            <Badge variant="secondary">{thisWeeksJobs.length} jobs</Badge>
+          </div>
+          
+          <Card className="bg-muted/50">
+            <CardContent className="py-4">
+              <div className="space-y-2">
+                {thisWeeksJobs.slice(0, 5).map((job) => (
+                  <div 
+                    key={job.id}
+                    className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-background/80 cursor-pointer transition-colors"
+                    onClick={() => onViewJob?.(job.id)}
+                    data-testid={`week-job-${job.id}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate text-sm">{job.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {job.scheduledAt && formatDate(job.scheduledAt)}
+                        {job.clientName && ` - ${job.clientName}`}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </div>
+                ))}
+                {thisWeeksJobs.length > 5 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs mt-2"
+                    onClick={onViewJobs}
+                    data-testid="button-view-all-week"
+                  >
+                    View all {thisWeeksJobs.length} jobs this week
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {/* Upcoming Jobs (beyond this week) */}
+      {upcomingJobs.length > thisWeeksJobs.length && (
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Upcoming Jobs
+              Later
             </h2>
-            <Badge variant="secondary">{upcomingJobs.length}</Badge>
+            <Badge variant="secondary">{upcomingJobs.length - thisWeeksJobs.length}</Badge>
           </div>
           
           <div className="space-y-2">
-            {upcomingJobs.slice(0, 3).map((job) => (
+            {upcomingJobs.filter(job => !thisWeeksJobs.some(wj => wj.id === job.id)).slice(0, 3).map((job) => (
               <Card 
                 key={job.id}
                 className="cursor-pointer hover-elevate"
@@ -589,15 +672,6 @@ export default function StaffTradieDashboard({
                 </CardContent>
               </Card>
             ))}
-            {upcomingJobs.length > 3 && (
-              <Button
-                variant="ghost"
-                className="w-full text-sm"
-                onClick={onViewJobs}
-              >
-                View all {upcomingJobs.length} upcoming jobs
-              </Button>
-            )}
           </div>
         </section>
       )}
