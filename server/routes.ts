@@ -9668,6 +9668,210 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
+  // CUSTOM FORMS
+  // ============================================
+
+  // Get all custom forms for user
+  app.get("/api/custom-forms", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const forms = await storage.getCustomForms(userId);
+      res.json(forms);
+    } catch (error: any) {
+      console.error('Error fetching custom forms:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get single custom form
+  app.get("/api/custom-forms/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const form = await storage.getCustomForm(id, userId);
+      
+      if (!form) {
+        return res.status(404).json({ error: 'Form not found' });
+      }
+      
+      res.json(form);
+    } catch (error: any) {
+      console.error('Error fetching custom form:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create custom form
+  app.post("/api/custom-forms", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      
+      const form = await storage.createCustomForm({
+        ...req.body,
+        userId,
+      });
+      
+      res.status(201).json(form);
+    } catch (error: any) {
+      console.error('Error creating custom form:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update custom form
+  app.patch("/api/custom-forms/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const form = await storage.updateCustomForm(id, userId, req.body);
+      
+      if (!form) {
+        return res.status(404).json({ error: 'Form not found' });
+      }
+      
+      res.json(form);
+    } catch (error: any) {
+      console.error('Error updating custom form:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete custom form
+  app.delete("/api/custom-forms/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const deleted = await storage.deleteCustomForm(id, userId);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: 'Form not found' });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting custom form:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // FORM SUBMISSIONS
+  // ============================================
+
+  // Get all submissions for a form
+  app.get("/api/custom-forms/:formId/submissions", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { formId } = req.params;
+      
+      const submissions = await storage.getFormSubmissions(formId, userId);
+      res.json(submissions);
+    } catch (error: any) {
+      console.error('Error fetching form submissions:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get submissions for a job
+  app.get("/api/jobs/:jobId/form-submissions", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      const submissions = await storage.getFormSubmissionsByJob(jobId, userId);
+      res.json(submissions);
+    } catch (error: any) {
+      console.error('Error fetching job form submissions:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get single form submission
+  app.get("/api/form-submissions/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const submission = await storage.getFormSubmission(id, userId);
+      
+      if (!submission) {
+        return res.status(404).json({ error: 'Submission not found' });
+      }
+      
+      res.json(submission);
+    } catch (error: any) {
+      console.error('Error fetching form submission:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create form submission
+  app.post("/api/form-submissions", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      
+      const submission = await storage.createFormSubmission({
+        ...req.body,
+        submittedBy: userId,
+        submittedAt: new Date(),
+      });
+      
+      res.status(201).json(submission);
+    } catch (error: any) {
+      console.error('Error creating form submission:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update form submission (for review status)
+  app.patch("/api/form-submissions/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const updates: any = { ...req.body };
+      
+      if (updates.reviewStatus === 'approved' || updates.reviewStatus === 'rejected') {
+        updates.reviewedBy = userId;
+        updates.reviewedAt = new Date();
+      }
+      
+      const submission = await storage.updateFormSubmission(id, userId, updates);
+      
+      if (!submission) {
+        return res.status(404).json({ error: 'Submission not found' });
+      }
+      
+      res.json(submission);
+    } catch (error: any) {
+      console.error('Error updating form submission:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete form submission
+  app.delete("/api/form-submissions/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const deleted = await storage.deleteFormSubmission(id, userId);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: 'Submission not found' });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting form submission:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
   // MOCK DATA SEEDING (Development/Testing)
   // ============================================
   
