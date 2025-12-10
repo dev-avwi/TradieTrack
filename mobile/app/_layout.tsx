@@ -14,6 +14,7 @@ import { BottomNav, getBottomNavHeight } from '../src/components/BottomNav';
 import { Header } from '../src/components/Header';
 import { useNotificationsStore } from '../src/lib/notifications-store';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
+import { TerminalProvider } from '../src/providers/StripeTerminalProvider';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -138,7 +139,9 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <RootLayoutContent />
+          <TerminalProvider>
+            <RootLayoutContent />
+          </TerminalProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
