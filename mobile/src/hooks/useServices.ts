@@ -79,7 +79,10 @@ export function useStripeTerminal() {
 
       if (sdkHook) {
         // Real SDK initialization
-        await sdkHook.initialize();
+        const { error: initError } = await sdkHook.initialize() || {};
+        if (initError) {
+          throw new Error(initError.message || 'SDK initialization failed');
+        }
         setIsInitialized(true);
         setStatus('ready');
         return true;
