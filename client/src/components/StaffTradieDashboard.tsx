@@ -153,49 +153,6 @@ export default function StaffTradieDashboard({
     },
   });
 
-  // Complete job mutation
-  const completeJob = useMutation({
-    mutationFn: async (job: Job) => {
-      // Update job status (use staff-specific status endpoint)
-      const statusResponse = await fetch(`/api/jobs/${job.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status: 'done' }),
-      });
-      
-      if (!statusResponse.ok) {
-        const error = await statusResponse.json().catch(() => ({}));
-        throw new Error(error.error || 'Failed to complete job');
-      }
-      
-      // Stop timer if running
-      if (activeTimeEntry && activeTimeEntry.jobId === job.id) {
-        const endTime = new Date();
-        const startTime = new Date(activeTimeEntry.startTime);
-        const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
-        
-        await fetch(`/api/time-entries/${activeTimeEntry.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ endTime: endTime.toISOString(), duration: durationMinutes }),
-        });
-      }
-      
-      return job;
-    },
-    onSuccess: (job) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/jobs/my-jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
-      toast({ title: "Job completed!", description: `Great work on: ${job.title}` });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Failed to complete", description: error.message, variant: "destructive" });
-    },
-  });
-
   // Stop timer mutation
   const stopTimer = useMutation({
     mutationFn: async () => {

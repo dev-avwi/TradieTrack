@@ -112,6 +112,29 @@ Workflow-Integrated Smart Actions provide contextual automation suggestions (e.g
 - Loading states with skeleton UI
 - Subscription limit handling with upgrade prompts
 
+#### Email Notification System
+
+- **Team Invite Emails**: Sent when owner/manager invites new team member with invite token link
+- **Job Assignment Emails**: Staff notified when assigned to a job with job details
+- **Job Completion Emails**: Owner notified when staff marks job as complete
+- **Welcome Emails**: Sent for new account registrations
+- Uses SendGrid in production, console logging in development
+
+#### Staff Dashboard Features
+
+- "Today's Jobs" section matching owner dashboard style
+- "Go Complete Job" button navigates to job detail (not direct completion)
+- Weekly overview section showing upcoming 7 days
+- Friendly empty state when no jobs today but has upcoming jobs
+- Time tracking widget with active timer display
+
+#### Job Completion Workflow (Staff)
+
+1. Staff sees job in dashboard → clicks "Go Complete Job"
+2. Navigates to job detail with all features: photos, voice notes, signatures, forms, time tracking
+3. Staff can add artifacts (signature, photos, notes) while job is in_progress
+4. Final completion done from job detail page with validation
+
 #### UX Quality
 
 - Design guidelines documented in `design_guidelines.md`
