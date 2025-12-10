@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users } from "lucide-react";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { JobVoiceNotes } from "./JobVoiceNotes";
@@ -21,6 +21,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PageShell } from "@/components/ui/page-shell";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -81,6 +88,15 @@ interface LinkedDocument {
 interface JobWithLinks {
   linkedQuote?: LinkedDocument | null;
   linkedInvoice?: LinkedDocument | null;
+}
+
+interface TeamMember {
+  id: string;
+  memberId: string;
+  firstName: string;
+  lastName: string;
+  roleName: string;
+  isActive: boolean;
 }
 
 interface JobDetailViewProps {
@@ -147,6 +163,34 @@ export default function JobDetailView({
   const currentJobWithLinks = contextualJobs?.find((j: any) => j.id === jobId);
   const linkedQuote = currentJobWithLinks?.linkedQuote;
   const linkedInvoice = currentJobWithLinks?.linkedInvoice;
+
+  // Fetch team members for assignment (only for owners/managers)
+  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
+    queryKey: ['/api/team/members'],
+    enabled: !isTradie && !isSolo,
+  });
+
+  // Assign worker mutation
+  const assignWorkerMutation = useMutation({
+    mutationFn: async (assignedTo: string | null) => {
+      return await apiRequest("PATCH", `/api/jobs/${jobId}`, { assignedTo });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      toast({
+        title: "Worker Assigned",
+        description: "Job has been assigned successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to assign worker",
+        variant: "destructive",
+      });
+    },
+  });
 
   const updateJobMutation = useMutation({
     mutationFn: async (data: { status: string }) => {
@@ -452,6 +496,44 @@ export default function JobDetailView({
                 <div>{getStatusBadge(job.status)}</div>
               </div>
             </div>
+
+            {/* Assign Worker - Only for team owners/managers */}
+            {!isTradie && !isSolo && teamMembers.length > 0 && (
+              <div className="pt-2 border-t">
+                <div className="flex items-center gap-1 text-muted-foreground text-xs mb-2">
+                  <Users className="h-3 w-3" />
+                  Assign Worker
+                </div>
+                <Select
+                  value={job.assignedTo || "unassigned"}
+                  onValueChange={(value) => {
+                    assignWorkerMutation.mutate(value === "unassigned" ? null : value);
+                  }}
+                  disabled={assignWorkerMutation.isPending}
+                >
+                  <SelectTrigger 
+                    className="w-full" 
+                    data-testid="select-assign-worker"
+                  >
+                    <SelectValue placeholder="Select worker..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">
+                      Unassigned
+                    </SelectItem>
+                    {teamMembers.filter(m => m.isActive).map((member) => (
+                      <SelectItem 
+                        key={member.memberId} 
+                        value={member.memberId}
+                        data-testid={`option-worker-${member.memberId}`}
+                      >
+                        {member.firstName} {member.lastName} ({member.roleName})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {job.estimatedHours && (
               <div>
