@@ -1,0 +1,691 @@
+import { useState, useRef, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Send,
+  Camera,
+  X,
+  Check,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  FileText,
+  CalendarDays,
+} from "lucide-react";
+import { format } from "date-fns";
+import type { CustomForm, FormSubmission, Job } from "@shared/schema";
+import type { FormField } from "./CustomFormBuilder";
+
+interface SignaturePadProps {
+  onSave: (dataUrl: string) => void;
+  onClear: () => void;
+  initialValue?: string;
+}
+
+function SignaturePad({ onSave, onClear, initialValue }: SignaturePadProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasSignature, setHasSignature] = useState(!!initialValue);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = 150;
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (initialValue) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0);
+        };
+        img.src = initialValue;
+      }
+    };
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    return () => window.removeEventListener('resize', resizeCanvas);
+  }, [initialValue]);
+
+  const getCoords = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    
+    if ('touches' in e) {
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top,
+      };
+    }
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    
+    setIsDrawing(true);
+    setHasSignature(true);
+    const coords = getCoords(e);
+    ctx.beginPath();
+    ctx.moveTo(coords.x, coords.y);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    
+    const coords = getCoords(e);
+    ctx.lineTo(coords.x, coords.y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (isDrawing && hasSignature && canvasRef.current) {
+      onSave(canvasRef.current.toDataURL('image/png'));
+    }
+    setIsDrawing(false);
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    setHasSignature(false);
+    onClear();
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="border rounded-lg overflow-hidden bg-white">
+        <canvas
+          ref={canvasRef}
+          className="w-full touch-none cursor-crosshair"
+          style={{ height: 150 }}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+          onTouchStart={startDrawing}
+          onTouchMove={draw}
+          onTouchEnd={stopDrawing}
+        />
+      </div>
+      <div className="flex justify-between">
+        <p className="text-xs text-muted-foreground">Sign above using your finger or mouse</p>
+        <Button type="button" variant="ghost" size="sm" onClick={clearSignature}>
+          Clear
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface FormRendererProps {
+  form: CustomForm;
+  jobId: string;
+  onSubmit?: () => void;
+  onCancel?: () => void;
+  existingSubmission?: FormSubmission;
+  readOnly?: boolean;
+}
+
+export function FormRenderer({ form, jobId, onSubmit, onCancel, existingSubmission, readOnly }: FormRendererProps) {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState<Record<string, any>>(() => {
+    if (existingSubmission?.submissionData) {
+      return existingSubmission.submissionData as Record<string, any>;
+    }
+    return {};
+  });
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const fields = (form.fields as FormField[]) || [];
+
+  const submitMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest('/api/form-submissions', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'form-submissions'] });
+      toast({ title: "Form submitted", description: "Your response has been recorded." });
+      onSubmit?.();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest(`/api/form-submissions/${existingSubmission?.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'form-submissions'] });
+      toast({ title: "Form updated" });
+      onSubmit?.();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateValue = (fieldId: string, value: any) => {
+    setFormData(prev => ({ ...prev, [fieldId]: value }));
+    if (errors[fieldId]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldId];
+        return newErrors;
+      });
+    }
+  };
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    for (const field of fields) {
+      if (field.required && field.type !== 'section') {
+        const value = formData[field.id];
+        if (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)) {
+          newErrors[field.id] = 'This field is required';
+        }
+      }
+    }
+
+    if (form.requiresSignature && !signatureData) {
+      newErrors['_signature'] = 'Signature is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (!validate()) {
+      toast({ title: "Please fill all required fields", variant: "destructive" });
+      return;
+    }
+
+    const submissionData = {
+      ...formData,
+      _signature: signatureData,
+    };
+
+    if (existingSubmission) {
+      updateMutation.mutate({ submissionData });
+    } else {
+      submitMutation.mutate({
+        formId: form.id,
+        jobId,
+        submissionData,
+        status: 'submitted',
+      });
+    }
+  };
+
+  const renderField = (field: FormField) => {
+    const value = formData[field.id];
+    const error = errors[field.id];
+
+    if (field.type === 'section') {
+      return (
+        <div key={field.id} className="space-y-2 pt-4">
+          <h3 className="font-medium text-lg">{field.label}</h3>
+          {field.description && <p className="text-sm text-muted-foreground">{field.description}</p>}
+          <Separator />
+        </div>
+      );
+    }
+
+    const renderInput = () => {
+      switch (field.type) {
+        case 'text':
+        case 'email':
+        case 'phone':
+          return (
+            <Input
+              type={field.type === 'phone' ? 'tel' : field.type}
+              placeholder={field.placeholder}
+              value={value || ''}
+              onChange={(e) => updateValue(field.id, e.target.value)}
+              disabled={readOnly}
+              data-testid={`input-${field.id}`}
+            />
+          );
+
+        case 'number':
+          return (
+            <Input
+              type="number"
+              placeholder={field.placeholder}
+              value={value || ''}
+              onChange={(e) => updateValue(field.id, e.target.value)}
+              disabled={readOnly}
+              data-testid={`input-${field.id}`}
+            />
+          );
+
+        case 'textarea':
+          return (
+            <Textarea
+              placeholder={field.placeholder}
+              value={value || ''}
+              onChange={(e) => updateValue(field.id, e.target.value)}
+              disabled={readOnly}
+              rows={3}
+              data-testid={`textarea-${field.id}`}
+            />
+          );
+
+        case 'checkbox':
+          return (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id={field.id}
+                checked={value || false}
+                onCheckedChange={(checked) => updateValue(field.id, checked)}
+                disabled={readOnly}
+                data-testid={`checkbox-${field.id}`}
+              />
+              <label htmlFor={field.id} className="text-sm cursor-pointer">
+                {field.description || field.label}
+              </label>
+            </div>
+          );
+
+        case 'radio':
+          return (
+            <RadioGroup
+              value={value || ''}
+              onValueChange={(val) => updateValue(field.id, val)}
+              disabled={readOnly}
+              data-testid={`radio-${field.id}`}
+            >
+              {(field.options || []).map((option, idx) => (
+                <div key={idx} className="flex items-center space-x-2">
+                  <RadioGroupItem value={option} id={`${field.id}-${idx}`} />
+                  <Label htmlFor={`${field.id}-${idx}`}>{option}</Label>
+                </div>
+              ))}
+            </RadioGroup>
+          );
+
+        case 'select':
+          return (
+            <Select
+              value={value || ''}
+              onValueChange={(val) => updateValue(field.id, val)}
+              disabled={readOnly}
+            >
+              <SelectTrigger data-testid={`select-${field.id}`}>
+                <SelectValue placeholder="Select an option" />
+              </SelectTrigger>
+              <SelectContent>
+                {(field.options || []).map((option, idx) => (
+                  <SelectItem key={idx} value={option}>{option}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+
+        case 'date':
+          return (
+            <Input
+              type="date"
+              value={value || ''}
+              onChange={(e) => updateValue(field.id, e.target.value)}
+              disabled={readOnly}
+              data-testid={`date-${field.id}`}
+            />
+          );
+
+        case 'time':
+          return (
+            <Input
+              type="time"
+              value={value || ''}
+              onChange={(e) => updateValue(field.id, e.target.value)}
+              disabled={readOnly}
+              data-testid={`time-${field.id}`}
+            />
+          );
+
+        case 'photo':
+          return (
+            <div className="space-y-2">
+              {value && (
+                <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted">
+                  <img src={value} alt="Captured" className="w-full h-full object-cover" />
+                  {!readOnly && (
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2"
+                      onClick={() => updateValue(field.id, null)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+              {!value && !readOnly && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          updateValue(field.id, ev.target?.result);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    data-testid={`photo-${field.id}`}
+                  />
+                </div>
+              )}
+            </div>
+          );
+
+        case 'signature':
+          return (
+            <SignaturePad
+              onSave={(data) => updateValue(field.id, data)}
+              onClear={() => updateValue(field.id, null)}
+              initialValue={value}
+            />
+          );
+
+        default:
+          return <Input value={value || ''} onChange={(e) => updateValue(field.id, e.target.value)} disabled={readOnly} />;
+      }
+    };
+
+    return (
+      <div key={field.id} className="space-y-2">
+        {field.type !== 'checkbox' && (
+          <Label className="flex items-center gap-1">
+            {field.label}
+            {field.required && <span className="text-destructive">*</span>}
+          </Label>
+        )}
+        {field.description && field.type !== 'checkbox' && (
+          <p className="text-sm text-muted-foreground">{field.description}</p>
+        )}
+        {renderInput()}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </div>
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">{form.name}</CardTitle>
+        {form.description && <CardDescription>{form.description}</CardDescription>}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {fields.map(renderField)}
+
+        {form.requiresSignature && (
+          <div className="space-y-2 pt-4">
+            <Label className="flex items-center gap-1">
+              Signature
+              <span className="text-destructive">*</span>
+            </Label>
+            <SignaturePad
+              onSave={setSignatureData}
+              onClear={() => setSignatureData(null)}
+              initialValue={signatureData || undefined}
+            />
+            {errors['_signature'] && (
+              <p className="text-sm text-destructive">{errors['_signature']}</p>
+            )}
+          </div>
+        )}
+      </CardContent>
+      {!readOnly && (
+        <CardFooter className="flex justify-end gap-2">
+          {onCancel && (
+            <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          )}
+          <Button 
+            onClick={handleSubmit} 
+            disabled={submitMutation.isPending || updateMutation.isPending}
+            data-testid="button-submit-form"
+          >
+            <Send className="h-4 w-4 mr-2" />
+            {submitMutation.isPending || updateMutation.isPending ? 'Submitting...' : 'Submit Form'}
+          </Button>
+        </CardFooter>
+      )}
+    </Card>
+  );
+}
+
+interface FormSubmissionListProps {
+  jobId: string;
+  onFillForm: (form: CustomForm) => void;
+}
+
+export function FormSubmissionList({ jobId, onFillForm }: FormSubmissionListProps) {
+  const { data: submissions, isLoading: loadingSubmissions } = useQuery<FormSubmission[]>({
+    queryKey: ['/api/jobs', jobId, 'form-submissions'],
+  });
+
+  const { data: forms, isLoading: loadingForms } = useQuery<CustomForm[]>({
+    queryKey: ['/api/custom-forms'],
+  });
+
+  const [selectedForm, setSelectedForm] = useState<CustomForm | null>(null);
+  const [showFormPicker, setShowFormPicker] = useState(false);
+
+  const isLoading = loadingSubmissions || loadingForms;
+
+  const getFormById = (formId: string) => forms?.find(f => f.id === formId);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'submitted':
+        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Submitted</Badge>;
+      case 'reviewed':
+        return <Badge variant="secondary"><FileText className="h-3 w-3 mr-1" />Reviewed</Badge>;
+      case 'approved':
+        return <Badge className="bg-green-500 hover:bg-green-600"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const activeForms = forms?.filter(f => f.isActive) || [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="font-medium">Forms</h3>
+        {activeForms.length > 0 && (
+          <Button size="sm" onClick={() => setShowFormPicker(true)} data-testid="button-fill-form">
+            Fill Form
+          </Button>
+        )}
+      </div>
+
+      {(!submissions || submissions.length === 0) && (!forms || forms.length === 0) ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No forms available</p>
+          <p className="text-xs">Create forms in Settings to use them on jobs</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {submissions?.map(submission => {
+            const form = getFormById(submission.formId);
+            return (
+              <Card 
+                key={submission.id} 
+                className="p-3 hover-elevate cursor-pointer"
+                data-testid={`submission-${submission.id}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{form?.name || 'Unknown Form'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {submission.submittedAt && format(new Date(submission.submittedAt), 'dd MMM yyyy, h:mm a')}
+                      </p>
+                    </div>
+                  </div>
+                  {getStatusBadge(submission.status || 'submitted')}
+                </div>
+              </Card>
+            );
+          })}
+
+          {(!submissions || submissions.length === 0) && (
+            <p className="text-sm text-muted-foreground text-center py-4">No forms filled yet</p>
+          )}
+        </div>
+      )}
+
+      <Dialog open={showFormPicker} onOpenChange={setShowFormPicker}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select a Form</DialogTitle>
+            <DialogDescription>Choose a form to fill out for this job</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4 max-h-[400px] overflow-y-auto">
+            {activeForms.map(form => (
+              <Card
+                key={form.id}
+                className="p-3 cursor-pointer hover-elevate"
+                onClick={() => {
+                  setShowFormPicker(false);
+                  onFillForm(form);
+                }}
+                data-testid={`form-picker-${form.id}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{form.name}</p>
+                    {form.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-1">{form.description}</p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+interface JobFormsProps {
+  jobId: string;
+}
+
+export function JobForms({ jobId }: JobFormsProps) {
+  const [selectedForm, setSelectedForm] = useState<CustomForm | null>(null);
+  const [showFormDialog, setShowFormDialog] = useState(false);
+
+  const handleFillForm = (form: CustomForm) => {
+    setSelectedForm(form);
+    setShowFormDialog(true);
+  };
+
+  return (
+    <>
+      <FormSubmissionList jobId={jobId} onFillForm={handleFillForm} />
+
+      <Dialog open={showFormDialog} onOpenChange={setShowFormDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {selectedForm && (
+            <FormRenderer
+              form={selectedForm}
+              jobId={jobId}
+              onSubmit={() => setShowFormDialog(false)}
+              onCancel={() => setShowFormDialog(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
