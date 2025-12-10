@@ -65,6 +65,7 @@ import {
 } from "./tradieTemplates";
 import { generateAISuggestions, chatWithAI, type BusinessContext } from "./ai";
 import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted } from "./notifications";
+import { notifyJobAssigned, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected } from "./pushNotifications";
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
 import { geocodeAddress } from "./geocoding";
@@ -444,6 +445,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               relatedId: quote.id,
               relatedType: 'quote'
             });
+            
+            // Send push notification
+            await notifyQuoteAccepted(quote.userId, quote.number, quote.id, accepted_by.trim());
           } catch (e) {
             console.error('Failed to create notification:', e);
           }
@@ -452,6 +456,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const updatedQuote = await storage.declineQuoteByToken(token, decline_reason || undefined);
         
         if (updatedQuote) {
+          // Get client name for notification
+          const client = await storage.getClientById(quote.clientId);
+          const clientName = client?.name || 'Client';
+          
           // Create notification for business owner
           try {
             await storage.createNotification({
@@ -462,6 +470,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               relatedId: quote.id,
               relatedType: 'quote'
             });
+            
+            // Send push notification
+            await notifyQuoteRejected(quote.userId, quote.number, quote.id, clientName);
           } catch (e) {
             console.error('Failed to create notification:', e);
           }
@@ -3416,6 +3427,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         relatedType: 'job',
       });
       
+      // Send push notification to assigned team member
+      await notifyJobAssigned(assignedTo, job.title, job.id);
+      
       res.json(job);
     } catch (error: any) {
       console.error("Error assigning job:", error);
@@ -4130,6 +4144,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log("Job status update skipped:", jobError);
         }
       }
+      
+      // Send push notification for payment received
+      const amountInCents = Math.round(parsedAmount * 100);
+      await notifyPaymentReceived(req.userId, amountInCents, invoice.number || `INV-${invoice.id}`, invoice.id);
       
       res.json({
         ...updatedInvoice,

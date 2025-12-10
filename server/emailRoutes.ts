@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { createQuoteEmailHtml, createInvoiceEmailHtml, createReceiptEmailHtml } from './emailService';
 import { sendEmailViaIntegration } from './emailIntegrationService';
 import { generateQuotePDF, generateInvoicePDF, generatePDFBuffer } from './pdfService';
+import { notifyPaymentReceived } from './pushNotifications';
 
 // Helper to create tradie-friendly error messages with clear fixes
 function getTradieFriendlyEmailError(rawError: string): { title: string; message: string; fix: string } {
@@ -637,6 +638,11 @@ export const handleInvoiceMarkPaid = async (req: any, res: any, storage: any) =>
       emailMessage = 'Payment recorded. Receipt not sent - add email addresses to send receipts.';
     }
 
+    // Send push notification for payment received
+    const invoiceTotal = parseFloat(String(invoiceWithItems.total || '0'));
+    const amountInCents = Math.round(invoiceTotal * 100);
+    await notifyPaymentReceived(req.userId, amountInCents, invoiceWithItems.number || `INV-${invoiceWithItems.id}`, invoiceWithItems.id);
+    
     res.json({ 
       ...updatedInvoice, 
       emailSent: receiptEmailSent, 
