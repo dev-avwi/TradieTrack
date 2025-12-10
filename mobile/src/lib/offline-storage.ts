@@ -1161,6 +1161,23 @@ class OfflineStorageService {
   }
 
   /**
+   * Remove an item from cache by entity type and id
+   */
+  async removeFromCache(entityType: 'jobs' | 'clients' | 'quotes' | 'invoices', id: string): Promise<void> {
+    if (!this.db) return;
+    
+    try {
+      await this.db.runAsync(
+        `DELETE FROM ${entityType} WHERE id = ?`,
+        [id]
+      );
+      console.log(`[OfflineStorage] Removed ${entityType} ${id} from cache`);
+    } catch (error) {
+      console.error(`[OfflineStorage] Failed to remove ${entityType} from cache:`, error);
+    }
+  }
+
+  /**
    * Cleanup - remove network listener
    */
   cleanup(): void {

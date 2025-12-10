@@ -347,6 +347,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     const isOnline = useOfflineStore.getState().isOnline;
     
     // Update local state immediately (optimistic update)
+    const updatedJob = jobs.find(j => j.id === jobId);
     set({
       jobs: jobs.map(j => j.id === jobId ? { ...j, status } : j),
       todaysJobs: todaysJobs.map(j => j.id === jobId ? { ...j, status } : j),
@@ -359,6 +360,9 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         if (response.error) {
           // Queue for later sync
           await offlineStorage.updateJobOffline(jobId, { status });
+        } else if (response.data) {
+          // Update cache with successful response
+          await offlineStorage.cacheJobs([response.data]);
         }
       } catch (e) {
         // Network error - queue for offline sync
@@ -577,29 +581,31 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
     const { clients } = get();
     const isOnline = useOfflineStore.getState().isOnline;
     
+    if (!isOnline) {
+      // Can't delete while offline - inform user
+      console.log('[ClientsStore] Cannot delete while offline');
+      return false;
+    }
+    
     // Optimistic update
     set({ clients: clients.filter(c => c.id !== id) });
     
-    if (isOnline) {
-      try {
-        const response = await api.delete(`/api/clients/${id}`);
-        if (response.error) {
-          // Revert optimistic update if delete fails
-          set({ clients });
-          return false;
-        }
-      } catch (e) {
-        // Network error - can't delete offline, revert
-        console.log('[ClientsStore] Network error during delete:', e);
+    try {
+      const response = await api.delete(`/api/clients/${id}`);
+      if (response.error) {
+        // Revert optimistic update if delete fails
         set({ clients });
         return false;
       }
-    } else {
-      // Can't delete offline - revert
+      // Remove from cache on successful delete
+      await offlineStorage.removeFromCache('clients', id);
+      return true;
+    } catch (e) {
+      // Network error - revert optimistic update
+      console.log('[ClientsStore] Network error during delete:', e);
       set({ clients });
       return false;
     }
-    return true;
   },
 }));
 
@@ -765,6 +771,9 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
         const response = await api.patch<Quote>(`/api/quotes/${id}`, { status });
         if (response.error) {
           await offlineStorage.updateQuoteOffline(id, { status });
+        } else if (response.data) {
+          // Update cache with successful response
+          await offlineStorage.cacheQuotes([response.data]);
         }
       } catch (e) {
         console.log('[QuotesStore] Network error, queueing status update:', e);
@@ -784,26 +793,29 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
     const { quotes } = get();
     const isOnline = useOfflineStore.getState().isOnline;
     
+    if (!isOnline) {
+      // Can't delete while offline - inform user
+      console.log('[QuotesStore] Cannot delete while offline');
+      return false;
+    }
+    
     // Optimistic update
     set({ quotes: quotes.filter(q => q.id !== id) });
     
-    if (isOnline) {
-      try {
-        const response = await api.delete(`/api/quotes/${id}`);
-        if (response.error) {
-          set({ quotes });
-          return false;
-        }
-      } catch (e) {
-        console.log('[QuotesStore] Network error during delete:', e);
+    try {
+      const response = await api.delete(`/api/quotes/${id}`);
+      if (response.error) {
         set({ quotes });
         return false;
       }
-    } else {
+      // Remove from cache on successful delete
+      await offlineStorage.removeFromCache('quotes', id);
+      return true;
+    } catch (e) {
+      console.log('[QuotesStore] Network error during delete:', e);
       set({ quotes });
       return false;
     }
-    return true;
   },
 }));
 
@@ -969,6 +981,9 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
         const response = await api.patch<Invoice>(`/api/invoices/${id}`, { status });
         if (response.error) {
           await offlineStorage.updateInvoiceOffline(id, { status });
+        } else if (response.data) {
+          // Update cache with successful response
+          await offlineStorage.cacheInvoices([response.data]);
         }
       } catch (e) {
         console.log('[InvoicesStore] Network error, queueing status update:', e);
@@ -988,26 +1003,29 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
     const { invoices } = get();
     const isOnline = useOfflineStore.getState().isOnline;
     
+    if (!isOnline) {
+      // Can't delete while offline - inform user
+      console.log('[InvoicesStore] Cannot delete while offline');
+      return false;
+    }
+    
     // Optimistic update
     set({ invoices: invoices.filter(i => i.id !== id) });
     
-    if (isOnline) {
-      try {
-        const response = await api.delete(`/api/invoices/${id}`);
-        if (response.error) {
-          set({ invoices });
-          return false;
-        }
-      } catch (e) {
-        console.log('[InvoicesStore] Network error during delete:', e);
+    try {
+      const response = await api.delete(`/api/invoices/${id}`);
+      if (response.error) {
         set({ invoices });
         return false;
       }
-    } else {
+      // Remove from cache on successful delete
+      await offlineStorage.removeFromCache('invoices', id);
+      return true;
+    } catch (e) {
+      console.log('[InvoicesStore] Network error during delete:', e);
       set({ invoices });
       return false;
     }
-    return true;
   },
 }));
 
