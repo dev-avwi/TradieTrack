@@ -24,17 +24,22 @@ const MAP_COLORS = [
   { name: 'Rose', hex: '#f43f5e' },
 ];
 
-interface TeamMemberColor {
-  userId: string;
-  themeColor: string | null;
-  firstName?: string;
-  lastName?: string;
+interface ColorOption {
+  color: string;
+  available: boolean;
+  isCurrentUser: boolean;
+}
+
+interface ColorAvailabilityResponse {
+  colors: ColorOption[];
+  currentColor: string | null;
+  usedCount: number;
+  availableCount: number;
 }
 
 function MapColorSection({ colors }: { colors: any }) {
   const { user, setUser } = useAuthStore();
-  const [availableColors, setAvailableColors] = useState<string[]>([]);
-  const [takenColors, setTakenColors] = useState<{ [color: string]: string }>({});
+  const [colorOptions, setColorOptions] = useState<ColorOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string | null>(user?.themeColor || null);
@@ -42,43 +47,35 @@ function MapColorSection({ colors }: { colors: any }) {
   const loadAvailableColors = useCallback(async () => {
     try {
       const response = await apiRequest('GET', '/api/team/colors/available');
-      const data = await response.json() as { availableColors: string[], teamColors: TeamMemberColor[] };
+      const data = await response.json() as ColorAvailabilityResponse;
       
-      setAvailableColors(data.availableColors);
-      
-      const taken: { [color: string]: string } = {};
-      data.teamColors.forEach((member: TeamMemberColor) => {
-        if (member.themeColor && member.userId !== user?.id) {
-          const name = member.firstName && member.lastName 
-            ? `${member.firstName} ${member.lastName}` 
-            : 'Team member';
-          taken[member.themeColor.toLowerCase()] = name;
-        }
-      });
-      setTakenColors(taken);
+      setColorOptions(data.colors);
+      if (data.currentColor) {
+        setSelectedColor(data.currentColor);
+      }
     } catch (error) {
       console.error('Failed to load available colors:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, []);
   
   useEffect(() => {
     loadAvailableColors();
   }, [loadAvailableColors]);
   
-  const handleColorSelect = async (color: string) => {
-    if (takenColors[color.toLowerCase()]) return;
+  const handleColorSelect = async (colorHex: string, isAvailable: boolean) => {
+    if (!isAvailable) return;
     
-    setSelectedColor(color);
+    setSelectedColor(colorHex);
     setIsSaving(true);
     
     try {
-      const response = await apiRequest('PATCH', '/api/user/theme-color', { themeColor: color });
+      const response = await apiRequest('PATCH', '/api/user/theme-color', { themeColor: colorHex });
       const data = await response.json();
       
       if (data.success && user) {
-        setUser({ ...user, themeColor: color });
+        setUser({ ...user, themeColor: colorHex });
         await loadAvailableColors();
       }
     } catch (error) {
@@ -88,6 +85,10 @@ function MapColorSection({ colors }: { colors: any }) {
     } finally {
       setIsSaving(false);
     }
+  };
+  
+  const getColorOptionByHex = (hex: string): ColorOption | undefined => {
+    return colorOptions.find(opt => opt.color.toLowerCase() === hex.toLowerCase());
   };
   
   const initials = user 
@@ -122,8 +123,11 @@ function MapColorSection({ colors }: { colors: any }) {
         ) : (
           <View style={styles.colorGrid}>
             {MAP_COLORS.map((color) => {
-              const isTaken = !!takenColors[color.hex.toLowerCase()];
+              const colorOption = getColorOptionByHex(color.hex);
+              const isAvailable = colorOption ? colorOption.available : colorOptions.length === 0;
+              const isCurrentUser = colorOption?.isCurrentUser ?? false;
               const isSelected = selectedColor?.toLowerCase() === color.hex.toLowerCase();
+              const isTaken = colorOptions.length > 0 && !isAvailable && !isCurrentUser;
               
               return (
                 <TouchableOpacity
@@ -134,7 +138,7 @@ function MapColorSection({ colors }: { colors: any }) {
                     isSelected && styles.colorOptionSelected,
                     isTaken && styles.colorOptionTaken,
                   ]}
-                  onPress={() => handleColorSelect(color.hex)}
+                  onPress={() => handleColorSelect(color.hex, isAvailable || isCurrentUser)}
                   disabled={isTaken || isSaving}
                   activeOpacity={0.7}
                 >
@@ -152,7 +156,7 @@ function MapColorSection({ colors }: { colors: any }) {
           </View>
         )}
         
-        {Object.keys(takenColors).length > 0 && (
+        {colorOptions.some(opt => !opt.available && !opt.isCurrentUser) && (
           <View style={[styles.locationNote, { backgroundColor: colors.muted }]}>
             <Feather name="info" size={14} color={colors.mutedForeground} />
             <Text style={[styles.locationNoteText, { color: colors.mutedForeground }]}>
