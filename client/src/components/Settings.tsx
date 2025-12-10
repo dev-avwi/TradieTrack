@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
+import { SignaturePad, SignatureDisplay } from "@/components/ui/signature-pad";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useTheme } from "@/components/ThemeProvider";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -34,7 +35,8 @@ import {
   TrendingUp,
   Headphones,
   Phone,
-  MessageCircle
+  MessageCircle,
+  PenTool
 } from "lucide-react";
 import { LogoUpload } from "./LogoUpload";
 import { useToast } from "@/hooks/use-toast";
@@ -119,6 +121,14 @@ export default function Settings({
     warrantyPeriod: "12 months"
   });
 
+  // Signature settings
+  const [signatureData, setSignatureData] = useState({
+    defaultSignature: "",
+    signatureName: "",
+    includeSignatureOnQuotes: false,
+    includeSignatureOnInvoices: false,
+  });
+
   const [notificationPreferences, setNotificationPreferences] = useState({
     quoteResponses: true,
     paymentConfirmations: true,
@@ -154,6 +164,14 @@ export default function Settings({
         quoteTerms: (businessSettings as any).quoteTerms || "",
         invoiceTerms: (businessSettings as any).invoiceTerms || "",
         warrantyPeriod: businessSettings.warrantyPeriod || "12 months"
+      });
+      
+      // Load signature settings
+      setSignatureData({
+        defaultSignature: (businessSettings as any).defaultSignature || "",
+        signatureName: (businessSettings as any).signatureName || "",
+        includeSignatureOnQuotes: (businessSettings as any).includeSignatureOnQuotes || false,
+        includeSignatureOnInvoices: (businessSettings as any).includeSignatureOnInvoices || false,
       });
       
       // Get server values - check both primaryColor and brandColor fields
@@ -286,7 +304,12 @@ export default function Settings({
       defaultPaymentTermsDays: paymentData.defaultPaymentTermsDays,
       quoteTerms: paymentData.quoteTerms,
       invoiceTerms: paymentData.invoiceTerms,
-      warrantyPeriod: paymentData.warrantyPeriod
+      warrantyPeriod: paymentData.warrantyPeriod,
+      // Signature settings
+      defaultSignature: signatureData.defaultSignature,
+      signatureName: signatureData.signatureName,
+      includeSignatureOnQuotes: signatureData.includeSignatureOnQuotes,
+      includeSignatureOnInvoices: signatureData.includeSignatureOnInvoices,
     };
     
     saveSettingsMutation.mutate(updateData);
@@ -1040,6 +1063,122 @@ export default function Settings({
                   common Australian trade business requirements including acceptance, payment, variations, and warranty.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Digital Signature Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PenTool className="h-5 w-5" />
+                Digital Signature
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Add your signature to quotes and invoices for a professional touch
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Your Signature</Label>
+                  {signatureData.defaultSignature ? (
+                    <div className="space-y-3">
+                      <div className="border-2 border-primary rounded-lg p-4 bg-white dark:bg-gray-900">
+                        <img 
+                          src={signatureData.defaultSignature} 
+                          alt="Your signature" 
+                          className="max-h-24 w-auto"
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSignatureData(prev => ({ ...prev, defaultSignature: "" }))}
+                        data-testid="button-clear-signature"
+                      >
+                        Clear Signature
+                      </Button>
+                    </div>
+                  ) : (
+                    <SignaturePad
+                      onSave={(data) => setSignatureData(prev => ({ ...prev, defaultSignature: data }))}
+                      onClear={() => setSignatureData(prev => ({ ...prev, defaultSignature: "" }))}
+                      width={400}
+                      height={150}
+                      showControls={true}
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signature-name">Name Under Signature</Label>
+                  <Input
+                    id="signature-name"
+                    value={signatureData.signatureName}
+                    onChange={(e) => setSignatureData(prev => ({ ...prev, signatureName: e.target.value }))}
+                    placeholder="e.g., John Smith, Director"
+                    data-testid="input-signature-name"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This name will appear below your signature on documents
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <Label className="text-base">Automatically Include Signature On:</Label>
+                
+                <div className="flex items-center justify-between p-3 rounded-lg border">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="signature-quotes" className="font-medium">Quotes</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Add your signature to all quotes automatically
+                    </p>
+                  </div>
+                  <Switch
+                    id="signature-quotes"
+                    checked={signatureData.includeSignatureOnQuotes}
+                    onCheckedChange={(checked) => 
+                      setSignatureData(prev => ({ ...prev, includeSignatureOnQuotes: checked }))
+                    }
+                    data-testid="switch-signature-quotes"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg border">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="signature-invoices" className="font-medium">Invoices</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Add your signature to all invoices automatically
+                    </p>
+                  </div>
+                  <Switch
+                    id="signature-invoices"
+                    checked={signatureData.includeSignatureOnInvoices}
+                    onCheckedChange={(checked) => 
+                      setSignatureData(prev => ({ ...prev, includeSignatureOnInvoices: checked }))
+                    }
+                    data-testid="switch-signature-invoices"
+                  />
+                </div>
+              </div>
+
+              {!signatureData.defaultSignature && (
+                <div 
+                  className="p-4 rounded-lg border"
+                  style={{ 
+                    backgroundColor: 'hsl(var(--trade) / 0.05)',
+                    borderColor: 'hsl(var(--trade) / 0.2)'
+                  }}
+                >
+                  <p className="text-sm" style={{ color: 'hsl(var(--trade) / 0.9)' }}>
+                    <strong>Tip:</strong> Draw your signature above and click "Save Signature" to store it.
+                    Your signature adds a professional touch to quotes and invoices and can help with client trust.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

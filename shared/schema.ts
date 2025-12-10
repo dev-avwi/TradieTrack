@@ -183,6 +183,11 @@ export const businessSettings = pgTable("business_settings", {
   stripeSubscriptionId: text("stripe_subscription_id"), // Active subscription ID
   subscriptionStatus: text("subscription_status").default('none'), // none, active, past_due, canceled
   currentPeriodEnd: timestamp("current_period_end"), // When current billing period ends
+  // Digital Signature Settings
+  defaultSignature: text("default_signature"), // Base64 encoded signature image for quotes/invoices
+  signatureName: text("signature_name"), // Name displayed under signature
+  includeSignatureOnQuotes: boolean("include_signature_on_quotes").default(false),
+  includeSignatureOnInvoices: boolean("include_signature_on_invoices").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
