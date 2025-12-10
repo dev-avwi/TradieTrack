@@ -3233,7 +3233,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Staff tradies can only view their assigned jobs
       const hasViewAll = userContext?.permissions?.includes('view_all') || userContext?.isOwner;
       if (!hasViewAll && userContext?.teamMemberId) {
-        if (job.assignedTo !== req.userId) {
+        // Check if job is assigned to this team member (by member ID or user ID)
+        const isAssigned = job.assignedTo === userContext.teamMemberId || 
+                          job.assignedTo === req.userId ||
+                          job.assignedTeamMemberId === userContext.teamMemberId;
+        if (!isAssigned) {
           return res.status(403).json({ error: "You can only view your assigned jobs" });
         }
       }
