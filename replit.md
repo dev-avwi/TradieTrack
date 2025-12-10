@@ -172,8 +172,8 @@ A React Native mobile app is built in `mobile/` directory with full API integrat
 
 **Upcoming Features:**
 - **Tap to Pay** - Stripe Terminal SDK for NFC contactless payments (infrastructure complete)
-- **Push Notifications** - Real-time job and payment alerts (backend complete, mobile integration pending)
-- **Offline Mode** - SQLite cache for poor connectivity areas
+- **Push Notifications** - Complete with backend and mobile integration (requires EAS Build for device testing)
+- **Offline Mode** - SQLite cache for poor connectivity areas (next priority)
 
 **App Store Requirements:**
 1. Apple Developer Program ($99/year) + Tap to Pay entitlement

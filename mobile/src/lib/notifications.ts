@@ -26,7 +26,16 @@ export interface PushToken {
 }
 
 export interface NotificationPayload {
-  type: 'job_update' | 'payment_received' | 'team_message' | 'job_assigned' | 'quote_accepted';
+  type: 
+    | 'job_assigned'
+    | 'job_update'
+    | 'job_reminder'
+    | 'payment_received'
+    | 'quote_accepted'
+    | 'quote_rejected'
+    | 'team_message'
+    | 'invoice_overdue'
+    | 'general';
   title: string;
   body: string;
   data?: {
@@ -34,7 +43,10 @@ export interface NotificationPayload {
     invoiceId?: string;
     quoteId?: string;
     messageId?: string;
+    conversationId?: string;
     amount?: number;
+    chatType?: 'job' | 'team' | 'direct';
+    relatedType?: 'job' | 'quote' | 'invoice';
   };
 }
 
@@ -123,6 +135,22 @@ class NotificationService {
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 250],
       lightColor: '#3b82f6',
+      sound: 'default',
+    });
+
+    await Notifications.setNotificationChannelAsync('quotes', {
+      name: 'Quotes',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#8b5cf6',
+      sound: 'default',
+    });
+    
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'General',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      vibrationPattern: [0, 250],
+      lightColor: '#6b7280',
       sound: 'default',
     });
   }

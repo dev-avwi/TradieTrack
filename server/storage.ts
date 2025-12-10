@@ -178,6 +178,7 @@ export interface IStorage {
   getNotifications(userId: string): Promise<Notification[]>;
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationAsRead(id: string, userId: string): Promise<Notification | undefined>;
+  markAllNotificationsAsRead(userId: string): Promise<number>;
   dismissNotification(id: string, userId: string): Promise<Notification | undefined>;
   deleteNotification(id: string, userId: string): Promise<boolean>;
 
@@ -726,6 +727,14 @@ export class PostgresStorage implements IStorage {
       .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
       .returning();
     return result[0];
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<number> {
+    const result = await db
+      .update(notifications)
+      .set({ read: true })
+      .where(and(eq(notifications.userId, userId), eq(notifications.read, false)));
+    return result.rowCount || 0;
   }
 
   async dismissNotification(id: string, userId: string): Promise<Notification | undefined> {

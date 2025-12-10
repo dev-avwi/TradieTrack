@@ -29,16 +29,70 @@ function ServicesInitializer() {
   const notifications = useNotifications();
   const offline = useOfflineStorage();
   const location = useLocationTracking();
+  const { fetchNotifications } = useNotificationsStore();
 
   useEffect(() => {
     async function initServices() {
       try {
-        await notifications.initialize();
+        const token = await notifications.initialize();
         
+        // Sync push token with store
+        const { setPushToken } = useNotificationsStore.getState();
+        setPushToken(token);
+        
+        // Handle notification received while app is open
+        notificationService.onReceived((notification) => {
+          console.log('[App] Notification received:', notification);
+          // Refresh in-app notifications when push arrives
+          fetchNotifications();
+        });
+        
+        // Handle notification tapped - navigate to relevant screen
         notificationService.onTapped((notification, action) => {
           console.log('[App] Notification tapped:', notification);
-          if (notification.data?.jobId) {
-            router.push(`/job/${notification.data.jobId}`);
+          
+          // Navigate based on notification type
+          const { type, data } = notification;
+          
+          switch (type) {
+            case 'job_assigned':
+            case 'job_update':
+            case 'job_reminder':
+              if (data?.jobId) {
+                router.push(`/job/${data.jobId}`);
+              }
+              break;
+              
+            case 'quote_accepted':
+            case 'quote_rejected':
+              if (data?.quoteId) {
+                router.push(`/more/quote/${data.quoteId}`);
+              }
+              break;
+              
+            case 'payment_received':
+            case 'invoice_overdue':
+              if (data?.invoiceId) {
+                router.push(`/more/invoice/${data.invoiceId}`);
+              }
+              break;
+              
+            case 'team_message':
+              // Navigate to appropriate chat based on chatType or conversationId
+              if (data?.chatType === 'team') {
+                router.push('/more/team-chat');
+              } else if (data?.chatType === 'direct' || data?.conversationId) {
+                router.push('/more/direct-messages');
+              } else {
+                router.push('/more/chat-hub');
+              }
+              break;
+              
+            case 'general':
+            default:
+              // Default to notifications inbox and refresh
+              fetchNotifications();
+              router.push('/more/notifications-inbox');
           }
         });
       } catch (error) {

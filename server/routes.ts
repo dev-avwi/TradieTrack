@@ -2110,6 +2110,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mark all notifications as read (batch operation)
+  app.post("/api/notifications/mark-all-read", requireAuth, async (req: any, res) => {
+    try {
+      const count = await storage.markAllNotificationsAsRead(req.userId);
+      res.json({ success: true, count });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ error: "Failed to mark all notifications as read" });
+    }
+  });
+
   // Push Token Routes (Mobile App)
   const pushTokenInputSchema = z.object({
     token: z.string().min(1, "Push token is required"),
