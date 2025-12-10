@@ -448,30 +448,51 @@ export default function Integrations() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-100 dark:bg-blue-900/50">
-                  <SiGmail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-100 dark:bg-green-900/50">
+                  <SiGmail className="w-5 h-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <CardTitle className="text-base">Email via Gmail</CardTitle>
-                  <p className="text-xs text-muted-foreground">Send quotes and invoices via your Gmail</p>
+                  <CardTitle className="text-base">Email - Ready to Go!</CardTitle>
+                  <p className="text-xs text-muted-foreground">Send quotes and invoices from your Gmail</p>
                 </div>
               </div>
-              <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0">
+              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
                 <CheckCircle className="w-3 h-3 mr-1" />
-                Built-in
+                Working
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="pt-0">
-            <p className="text-sm text-muted-foreground mb-3">
-              When you send a quote or invoice, it opens your Gmail with a professional 
-              email ready to send. Emails come from your address and appear in your Sent folder.
-            </p>
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                <Info className="w-3 h-3" />
-                No setup required - works with any Gmail account
+          <CardContent className="pt-0 space-y-4">
+            <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+              <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+                No setup needed - it just works!
               </p>
+              <p className="text-sm text-green-700 dark:text-green-300">
+                When you click "Send" on a quote or invoice, Gmail opens with everything ready. 
+                Just hit send - emails come from your address and replies go to your inbox.
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-foreground">How it works:</p>
+              <ol className="text-xs text-muted-foreground space-y-1.5">
+                <li className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-[10px] font-medium">1</span>
+                  Click "Send" on any quote or invoice
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-[10px] font-medium">2</span>
+                  Gmail opens with a professional email + PDF attached
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-[10px] font-medium">3</span>
+                  Review and hit "Send" in Gmail
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-[10px] font-medium">4</span>
+                  Done! The email appears in your Sent folder
+                </li>
+              </ol>
             </div>
           </CardContent>
         </Card>
@@ -479,9 +500,10 @@ export default function Integrations() {
 
       {/* Optional Email Provider Integration */}
       <div className="pt-4">
-        <h3 className="text-sm font-medium mb-3">Optional: Automatic Email Sending</h3>
+        <h3 className="text-sm font-medium mb-3">Optional: Send Emails Automatically</h3>
         <p className="text-xs text-muted-foreground mb-3">
-          Connect your email provider to send emails automatically without opening Gmail each time.
+          Want emails to send instantly without opening Gmail? Connect your email account below. 
+          This is optional - the Gmail method above works great for most tradies.
         </p>
         <EmailIntegration />
       </div>
@@ -489,20 +511,35 @@ export default function Integrations() {
       {/* How it works */}
       <Card className="border-dashed">
         <CardContent className="p-6">
-          <h4 className="font-medium mb-2">How payments work</h4>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              <strong className="text-foreground">1. Connect Stripe:</strong> Set up your Stripe account 
-              to receive payments. You'll need to verify your identity and add your bank details.
-            </p>
-            <p>
-              <strong className="text-foreground">2. Send invoices:</strong> When you send an invoice, 
-              your client gets a secure payment link they can use to pay online.
-            </p>
-            <p>
-              <strong className="text-foreground">3. Get paid:</strong> Payments go directly to your 
-              bank account, typically within 2-3 business days.
-            </p>
+          <h4 className="font-medium mb-3">Quick Guide: Getting Paid</h4>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="text-center p-3 rounded-lg bg-muted/30">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                <span className="text-primary font-bold">1</span>
+              </div>
+              <p className="text-sm font-medium">Connect Stripe</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Add your bank details so you can receive payments
+              </p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-muted/30">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                <span className="text-primary font-bold">2</span>
+              </div>
+              <p className="text-sm font-medium">Send Invoice</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Your client gets an email with a "Pay Now" button
+              </p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-muted/30">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                <span className="text-primary font-bold">3</span>
+              </div>
+              <p className="text-sm font-medium">Get Paid</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Money goes to your bank in 2-3 business days
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
