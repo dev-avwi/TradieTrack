@@ -634,6 +634,19 @@ ${(quote as any).acceptanceIp ? `IP Address: ${(quote as any).acceptanceIp}` : '
       </div>
     ` : ''}
     
+    ${(business as any).includeSignatureOnQuotes && (business as any).defaultSignature ? `
+      <div style="margin-top: 24px; padding: 20px; border-top: 1px solid #e5e7eb;">
+        <div style="display: flex; justify-content: flex-end;">
+          <div style="text-align: center;">
+            <div style="font-size: 10px; color: #666; margin-bottom: 8px;">Prepared by:</div>
+            <img src="${(business as any).defaultSignature}" alt="Signature" style="max-height: 60px; width: auto; margin-bottom: 4px;" />
+            ${(business as any).signatureName ? `<div style="font-size: 11px; font-weight: 500; color: #333;">${(business as any).signatureName}</div>` : ''}
+            <div style="font-size: 10px; color: #666;">${business.businessName}</div>
+          </div>
+        </div>
+      </div>
+    ` : ''}
+    
     <div class="footer">
       <p>Thank you for your business!</p>
       ${business.abn ? `<p style="margin-top: 4px;">ABN: ${business.abn}</p>` : ''}
@@ -870,6 +883,19 @@ Amount: ${formatCurrency(total)}
 ${business.licenseNumber ? `Licence: ${business.licenseNumber}` : ''}
 ${(business as any).insuranceProvider ? `Insurer: ${(business as any).insuranceProvider}` : ''}
 ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAmount}` : ''}
+        </div>
+      </div>
+    ` : ''}
+    
+    ${(business as any).includeSignatureOnInvoices && (business as any).defaultSignature ? `
+      <div style="margin-top: 24px; padding: 20px; border-top: 1px solid #e5e7eb;">
+        <div style="display: flex; justify-content: flex-end;">
+          <div style="text-align: center;">
+            <div style="font-size: 10px; color: #666; margin-bottom: 8px;">Issued by:</div>
+            <img src="${(business as any).defaultSignature}" alt="Signature" style="max-height: 60px; width: auto; margin-bottom: 4px;" />
+            ${(business as any).signatureName ? `<div style="font-size: 11px; font-weight: 500; color: #333;">${(business as any).signatureName}</div>` : ''}
+            <div style="font-size: 10px; color: #666;">${business.businessName}</div>
+          </div>
         </div>
       </div>
     ` : ''}
