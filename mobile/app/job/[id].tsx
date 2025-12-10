@@ -26,6 +26,7 @@ import { Button } from '../../src/components/ui/Button';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
+import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 
 interface Job {
   id: string;
@@ -97,6 +98,16 @@ interface ActivityItem {
   createdAt: string;
   userId?: string;
   userName?: string;
+}
+
+interface VoiceNote {
+  id: string;
+  fileName: string;
+  duration: number | null;
+  title: string | null;
+  transcription: string | null;
+  createdAt: string | null;
+  signedUrl?: string;
 }
 
 const STATUS_ACTIONS = {
@@ -1056,6 +1067,10 @@ export default function JobDetailScreen() {
   const [selectedPhoto, setSelectedPhoto] = useState<JobPhoto | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   
+  const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [isUploadingVoiceNote, setIsUploadingVoiceNote] = useState(false);
+  
   const [sliderRadius, setSliderRadius] = useState(100);
   
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
@@ -1079,6 +1094,7 @@ export default function JobDetailScreen() {
     loadJob();
     fetchActiveTimer();
     loadPhotos();
+    loadVoiceNotes();
     loadRelatedDocuments();
     loadTimeEntries();
     loadActivityLog();
@@ -1134,6 +1150,76 @@ export default function JobDetailScreen() {
       console.log('No photos or error loading:', error);
       setPhotos([]);
     }
+  };
+
+  const loadVoiceNotes = async () => {
+    try {
+      const response = await api.get<VoiceNote[]>(`/api/jobs/${id}/voice-notes`);
+      if (response.data) {
+        setVoiceNotes(response.data);
+      }
+    } catch (error) {
+      console.log('No voice notes or error loading:', error);
+      setVoiceNotes([]);
+    }
+  };
+
+  const handleUploadVoiceNote = async (uri: string, duration: number) => {
+    if (!job) return;
+    
+    setIsUploadingVoiceNote(true);
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+      const audioData = await base64Promise;
+      
+      await api.post(`/api/jobs/${job.id}/voice-notes`, {
+        audioData,
+        fileName: `voice-note-${Date.now()}.m4a`,
+        mimeType: 'audio/m4a',
+        duration,
+      });
+      
+      await loadVoiceNotes();
+      setShowVoiceRecorder(false);
+      Alert.alert('Success', 'Voice note saved');
+    } catch (error) {
+      console.error('Error uploading voice note:', error);
+      Alert.alert('Error', 'Failed to upload voice note');
+    } finally {
+      setIsUploadingVoiceNote(false);
+    }
+  };
+
+  const handleDeleteVoiceNote = async (voiceNoteId: string) => {
+    if (!job) return;
+    
+    Alert.alert(
+      'Delete Voice Note',
+      'Are you sure you want to delete this voice note?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/jobs/${job.id}/voice-notes/${voiceNoteId}`);
+              setVoiceNotes(voiceNotes.filter(v => v.id !== voiceNoteId));
+            } catch (error) {
+              console.error('Error deleting voice note:', error);
+              Alert.alert('Error', 'Failed to delete voice note');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const loadRelatedDocuments = async () => {
@@ -1223,6 +1309,7 @@ export default function JobDetailScreen() {
     await Promise.all([
       loadJob(), 
       loadPhotos(), 
+      loadVoiceNotes(),
       loadRelatedDocuments(),
       loadTimeEntries(),
       loadActivityLog()
@@ -1982,6 +2069,61 @@ export default function JobDetailScreen() {
                   <Feather name="image" size={18} color={colors.foreground} />
                 </View>
                 <Text style={styles.galleryInlineText}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* Voice Notes Section */}
+        <View style={styles.photosCard}>
+          <View style={styles.photosHeader}>
+            <View style={[styles.photosIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+              <Feather name="mic" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <Text style={styles.photosHeaderLabel}>Voice Notes</Text>
+            {voiceNotes.length > 0 && (
+              <View style={styles.photosCountBadge}>
+                <Text style={styles.photosCountText}>{voiceNotes.length}</Text>
+              </View>
+            )}
+          </View>
+          
+          {showVoiceRecorder ? (
+            <VoiceRecorder
+              onSave={handleUploadVoiceNote}
+              onCancel={() => setShowVoiceRecorder(false)}
+              isUploading={isUploadingVoiceNote}
+            />
+          ) : voiceNotes.length > 0 ? (
+            <View style={{ gap: spacing.sm }}>
+              {voiceNotes.map((note) => (
+                <VoiceNotePlayer
+                  key={note.id}
+                  uri={note.signedUrl || ''}
+                  title={note.title || undefined}
+                  duration={note.duration || undefined}
+                  createdAt={note.createdAt || undefined}
+                  onDelete={() => handleDeleteVoiceNote(note.id)}
+                />
+              ))}
+              <TouchableOpacity
+                style={styles.takePhotoInlineButton}
+                onPress={() => setShowVoiceRecorder(true)}
+                activeOpacity={0.7}
+              >
+                <Feather name="mic" size={18} color={colors.primaryForeground} />
+                <Text style={styles.takePhotoInlineText}>Record Voice Note</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.emptyPhotosContainer}>
+              <TouchableOpacity 
+                style={styles.takePhotoInlineButton}
+                onPress={() => setShowVoiceRecorder(true)}
+                activeOpacity={0.7}
+              >
+                <Feather name="mic" size={18} color={colors.primaryForeground} />
+                <Text style={styles.takePhotoInlineText}>Record Voice Note</Text>
               </TouchableOpacity>
             </View>
           )}
