@@ -4,6 +4,7 @@ import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit,
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { JobVoiceNotes } from "./JobVoiceNotes";
+import { JobSignature } from "./JobSignature";
 import { JobChat } from "./JobChat";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
@@ -617,6 +618,11 @@ export default function JobDetailView({
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Client Signature - only show for done or invoiced jobs */}
+        {(job.status === 'done' || job.status === 'invoiced') && (
+          <JobSignature jobId={jobId} />
         )}
 
         {/* Job Discussion - only show for team mode (not solo owners) */}

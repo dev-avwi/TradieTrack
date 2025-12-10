@@ -27,6 +27,7 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
+import { SignaturePad } from '../../src/components/SignaturePad';
 
 interface Job {
   id: string;
@@ -108,6 +109,15 @@ interface VoiceNote {
   transcription: string | null;
   createdAt: string | null;
   signedUrl?: string;
+}
+
+interface DigitalSignature {
+  id: string;
+  signerName: string;
+  signerEmail?: string;
+  signatureData: string;
+  signedAt: string;
+  documentType: string;
 }
 
 const STATUS_ACTIONS = {
@@ -1071,6 +1081,10 @@ export default function JobDetailScreen() {
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [isUploadingVoiceNote, setIsUploadingVoiceNote] = useState(false);
   
+  const [signatures, setSignatures] = useState<DigitalSignature[]>([]);
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [isSavingSignature, setIsSavingSignature] = useState(false);
+  
   const [sliderRadius, setSliderRadius] = useState(100);
   
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
@@ -1095,6 +1109,7 @@ export default function JobDetailScreen() {
     fetchActiveTimer();
     loadPhotos();
     loadVoiceNotes();
+    loadSignatures();
     loadRelatedDocuments();
     loadTimeEntries();
     loadActivityLog();
@@ -1222,6 +1237,60 @@ export default function JobDetailScreen() {
     );
   };
 
+  const loadSignatures = async () => {
+    try {
+      const response = await api.get<DigitalSignature[]>(`/api/jobs/${id}/signatures`);
+      if (response.data) {
+        setSignatures(response.data);
+      }
+    } catch (error) {
+      console.log('No signatures or error loading:', error);
+      setSignatures([]);
+    }
+  };
+
+  const handleSaveSignature = async (data: { signerName: string; signerEmail?: string; signatureData: string }) => {
+    if (!job) return;
+    
+    setIsSavingSignature(true);
+    try {
+      await api.post(`/api/jobs/${job.id}/signatures`, data);
+      await loadSignatures();
+      setShowSignaturePad(false);
+      Alert.alert('Success', 'Signature captured successfully');
+    } catch (error) {
+      console.error('Error saving signature:', error);
+      Alert.alert('Error', 'Failed to save signature');
+    } finally {
+      setIsSavingSignature(false);
+    }
+  };
+
+  const handleDeleteSignature = async (signatureId: string) => {
+    if (!job) return;
+    
+    Alert.alert(
+      'Delete Signature',
+      'Are you sure you want to delete this signature?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/jobs/${job.id}/signatures/${signatureId}`);
+              setSignatures(signatures.filter(s => s.id !== signatureId));
+            } catch (error) {
+              console.error('Error deleting signature:', error);
+              Alert.alert('Error', 'Failed to delete signature');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const loadRelatedDocuments = async () => {
     try {
       const invoiceResponse = await api.get<any[]>(`/api/invoices`);
@@ -1310,6 +1379,7 @@ export default function JobDetailScreen() {
       loadJob(), 
       loadPhotos(), 
       loadVoiceNotes(),
+      loadSignatures(),
       loadRelatedDocuments(),
       loadTimeEntries(),
       loadActivityLog()
@@ -2128,6 +2198,114 @@ export default function JobDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Client Signature Section - Only show for done or invoiced jobs */}
+        {(job.status === 'done' || job.status === 'invoiced') && (
+          <View style={styles.photosCard}>
+            <View style={styles.photosHeader}>
+              <View style={[styles.photosIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+                <Feather name="edit-3" size={iconSizes.lg} color={colors.primary} />
+              </View>
+              <Text style={styles.photosHeaderLabel}>Client Signature</Text>
+            </View>
+            
+            {showSignaturePad ? (
+              <View style={{ gap: spacing.md }}>
+                <TextInput
+                  style={{
+                    backgroundColor: colors.background,
+                    borderRadius: 8,
+                    padding: spacing.sm,
+                    fontSize: 16,
+                    color: colors.foreground,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                  placeholder="Client's name *"
+                  placeholderTextColor={colors.mutedForeground}
+                  onChangeText={(text) => {}}
+                />
+                <SignaturePad
+                  onSave={(signatureData) => {
+                    handleSaveSignature({
+                      signerName: 'Client',
+                      signatureData,
+                    });
+                  }}
+                  onClear={() => {}}
+                  showControls={true}
+                />
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  <TouchableOpacity
+                    style={[styles.takePhotoInlineButton, { flex: 1, backgroundColor: colors.muted }]}
+                    onPress={() => setShowSignaturePad(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.takePhotoInlineText, { color: colors.foreground }]}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : signatures.length > 0 ? (
+              <View style={{ gap: spacing.sm }}>
+                {signatures.filter(s => s.documentType === 'job_completion').map((sig) => (
+                  <View key={sig.id} style={{ 
+                    backgroundColor: colors.background, 
+                    borderRadius: 8, 
+                    padding: spacing.md,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View>
+                        <Text style={{ color: colors.foreground, fontWeight: '600' }}>
+                          Signed by {sig.signerName}
+                        </Text>
+                        <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                          {new Date(sig.signedAt).toLocaleDateString('en-AU', { 
+                            day: 'numeric', 
+                            month: 'short', 
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </Text>
+                      </View>
+                      <TouchableOpacity 
+                        onPress={() => handleDeleteSignature(sig.id)}
+                        style={{ padding: spacing.xs }}
+                      >
+                        <Feather name="trash-2" size={18} color={colors.destructive} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={{ 
+                      marginTop: spacing.sm, 
+                      backgroundColor: colors.card, 
+                      borderRadius: 8, 
+                      padding: spacing.sm,
+                      alignItems: 'center',
+                    }}>
+                      <Feather name="check-circle" size={24} color={colors.success} />
+                      <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 4 }}>
+                        Signature captured
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyPhotosContainer}>
+                <TouchableOpacity 
+                  style={styles.takePhotoInlineButton}
+                  onPress={() => setShowSignaturePad(true)}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="edit-3" size={18} color={colors.primaryForeground} />
+                  <Text style={styles.takePhotoInlineText}>Capture Client Signature</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Invoice Card - Show if job has an invoice */}
         {invoice && (

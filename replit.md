@@ -63,6 +63,8 @@ Workflow-Integrated Smart Actions provide contextual automation suggestions (e.g
 | Calendar | ✅ Ready | Week/month views, job grouping, KPI stats |
 | Chat | ✅ Ready | Job chat, team chat, direct messages, unread counts |
 | Map Tracking | ✅ Ready | Life360-style team tracking, job pins, geofence alerts, route planning |
+| Voice Notes | ✅ Ready | Audio recording on jobs, object storage, playback with duration tracking |
+| Digital Signatures | ✅ Ready | Canvas-based signature capture, client name/email, stored per job |
 
 #### Integrations (All Verified Working)
 

@@ -49,7 +49,10 @@ import {
   // Location tracking tables
   locationTracking,
   tradieStatus,
+  // Digital signatures
+  digitalSignatures,
 } from "@shared/schema";
+import { db } from "./storage";
 import { eq } from "drizzle-orm";
 import { 
   ObjectStorageService, 
@@ -7741,6 +7744,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error: any) {
       console.error('Error deleting voice note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== JOB SIGNATURE ROUTES =====
+  
+  // Get signatures for a job
+  app.get("/api/jobs/:jobId/signatures", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      // Verify job access
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, jobId));
+      res.json(signatures);
+    } catch (error: any) {
+      console.error('Error getting signatures:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Add signature to a job
+  app.post("/api/jobs/:jobId/signatures", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      const { signerName, signerEmail, signatureData } = req.body;
+      
+      if (!signerName || !signatureData) {
+        return res.status(400).json({ error: 'Signer name and signature data are required' });
+      }
+      
+      // Verify job access
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const [signature] = await db.insert(digitalSignatures).values({
+        jobId,
+        signerName,
+        signerEmail: signerEmail || null,
+        signatureData,
+        signedAt: new Date(),
+        documentType: 'job_completion',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      }).returning();
+      
+      res.json(signature);
+    } catch (error: any) {
+      console.error('Error saving signature:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Delete a signature
+  app.delete("/api/jobs/:jobId/signatures/:signatureId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, signatureId } = req.params;
+      
+      // Verify job access
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      await db.delete(digitalSignatures).where(eq(digitalSignatures.id, signatureId));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting signature:', error);
       res.status(500).json({ error: error.message });
     }
   });
