@@ -138,7 +138,7 @@ export default function MyAccount() {
 
   if (isLoading) {
     return (
-      <div className="container max-w-4xl py-6 space-y-6">
+      <div className="container max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <div className="space-y-2">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72" />
@@ -152,7 +152,7 @@ export default function MyAccount() {
 
   if (!profile) {
     return (
-      <div className="container max-w-4xl py-6">
+      <div className="container max-w-3xl mx-auto px-4 sm:px-6 py-6">
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
             Unable to load profile information. Please try again.
@@ -163,7 +163,7 @@ export default function MyAccount() {
   }
 
   return (
-    <div className="container max-w-4xl py-6 space-y-6">
+    <div className="container max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold" data-testid="text-page-title">My Account</h1>
         <p className="text-muted-foreground">

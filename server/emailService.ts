@@ -1288,3 +1288,267 @@ export async function sendTestEmail(
     };
   }
 }
+
+// Team invite email - sent when business owner invites a team member
+export async function sendTeamInviteEmail(
+  inviteeEmail: string,
+  inviteeName: string | null,
+  inviterName: string,
+  businessName: string,
+  roleName: string,
+  inviteToken: string,
+  baseUrl: string
+): Promise<{ success: boolean; error?: string; mock?: boolean }> {
+  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+  const displayName = inviteeName || inviteeEmail.split('@')[0];
+  const acceptUrl = `${baseUrl}/accept-invite/${inviteToken}`;
+
+  const emailData = {
+    to: inviteeEmail,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: PLATFORM_FROM_NAME
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: `You've been invited to join ${businessName} on TradieTrack`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Team Invitation</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+        <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">You're Invited to Join ${businessName}</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">on TradieTrack</p>
+        </div>
+        
+        <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <p style="font-size: 18px; margin-bottom: 20px;">G'day ${displayName}!</p>
+          
+          <p><strong>${inviterName}</strong> has invited you to join <strong>${businessName}</strong> as a <strong>${roleName}</strong>.</p>
+          
+          <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2563eb;">
+            <h3 style="margin: 0 0 15px 0; color: #1d4ed8;">What you'll be able to do:</h3>
+            <ul style="margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;">View and manage your assigned jobs</li>
+              <li style="margin-bottom: 8px;">Track your time on jobs</li>
+              <li style="margin-bottom: 8px;">Communicate with the team</li>
+              <li>Access job details on your mobile</li>
+            </ul>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${acceptUrl}" style="background-color: #22c55e; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
+              Accept Invitation
+            </a>
+          </div>
+          
+          <p style="color: #666; font-size: 14px; margin-top: 20px; text-align: center;">
+            This invitation link will expire in 7 days.
+          </p>
+          
+          <p style="margin-top: 25px;">
+            Cheers,<br>
+            <strong>The TradieTrack Team</strong>
+          </p>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">TradieTrack - The business management platform for Australian tradies</p>
+          <p style="margin: 5px 0 0 0;">If you didn't expect this invitation, you can ignore this email.</p>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await emailService.send(emailData);
+    console.log('✅ Team invite email sent to:', inviteeEmail);
+    return { success: true, mock: !isSendGridConfigured };
+  } catch (error: any) {
+    console.error('❌ Failed to send team invite email:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Failed to send invite email',
+      mock: !isSendGridConfigured
+    };
+  }
+}
+
+// Job assignment notification email - sent when tradie is assigned to a job
+export async function sendJobAssignmentEmail(
+  assigneeEmail: string,
+  assigneeName: string | null,
+  assignerName: string,
+  businessName: string,
+  jobTitle: string,
+  jobAddress: string | null,
+  scheduledDate: string | null,
+  baseUrl: string,
+  jobId: string
+): Promise<{ success: boolean; error?: string; mock?: boolean }> {
+  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+  const displayName = assigneeName || assigneeEmail.split('@')[0];
+  const jobUrl = `${baseUrl}/jobs/${jobId}`;
+  const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleDateString('en-AU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }) : 'Not scheduled yet';
+
+  const emailData = {
+    to: assigneeEmail,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: businessName
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: `New Job Assigned: ${jobTitle}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>New Job Assignment</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 22px;">New Job Assigned to You</h1>
+        </div>
+        
+        <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <p style="font-size: 16px; margin-bottom: 20px;">Hey ${displayName},</p>
+          
+          <p><strong>${assignerName}</strong> has assigned you a new job.</p>
+          
+          <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #f59e0b;">
+            <h3 style="margin: 0 0 15px 0; color: #b45309;">${jobTitle}</h3>
+            ${jobAddress ? `<p style="margin: 0 0 8px 0;"><strong>Address:</strong> ${jobAddress}</p>` : ''}
+            <p style="margin: 0;"><strong>Scheduled:</strong> ${formattedDate}</p>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${jobUrl}" style="background-color: #f59e0b; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
+              View Job Details
+            </a>
+          </div>
+          
+          <p style="color: #666; font-size: 14px;">
+            Open TradieTrack to see the full job details and get started.
+          </p>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">Powered by TradieTrack</p>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await emailService.send(emailData);
+    console.log('✅ Job assignment email sent to:', assigneeEmail);
+    return { success: true, mock: !isSendGridConfigured };
+  } catch (error: any) {
+    console.error('❌ Failed to send job assignment email:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Failed to send job assignment email',
+      mock: !isSendGridConfigured
+    };
+  }
+}
+
+// Job completion notification email - sent to owner when staff completes a job
+export async function sendJobCompletionNotificationEmail(
+  ownerEmail: string,
+  ownerName: string | null,
+  staffName: string,
+  jobTitle: string,
+  clientName: string | null,
+  completedAt: Date,
+  baseUrl: string,
+  jobId: string
+): Promise<{ success: boolean; error?: string; mock?: boolean }> {
+  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+  const displayName = ownerName || ownerEmail.split('@')[0];
+  const jobUrl = `${baseUrl}/jobs/${jobId}`;
+  const formattedDate = completedAt.toLocaleDateString('en-AU', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const emailData = {
+    to: ownerEmail,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: PLATFORM_FROM_NAME
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: `Job Completed: ${jobTitle}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Job Completed</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+        <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 22px;">Job Completed</h1>
+        </div>
+        
+        <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <p style="font-size: 16px; margin-bottom: 20px;">Hey ${displayName},</p>
+          
+          <p><strong>${staffName}</strong> has marked a job as complete.</p>
+          
+          <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #22c55e;">
+            <h3 style="margin: 0 0 15px 0; color: #166534;">${jobTitle}</h3>
+            ${clientName ? `<p style="margin: 0 0 8px 0;"><strong>Client:</strong> ${clientName}</p>` : ''}
+            <p style="margin: 0;"><strong>Completed:</strong> ${formattedDate}</p>
+          </div>
+          
+          <p style="font-size: 14px; color: #666;">
+            The job includes photos, signatures, and time tracking data. Review the details and create an invoice.
+          </p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${jobUrl}" style="background-color: #22c55e; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
+              View Job & Create Invoice
+            </a>
+          </div>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">Powered by TradieTrack</p>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await emailService.send(emailData);
+    console.log('✅ Job completion notification sent to:', ownerEmail);
+    return { success: true, mock: !isSendGridConfigured };
+  } catch (error: any) {
+    console.error('❌ Failed to send job completion notification:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Failed to send notification',
+      mock: !isSendGridConfigured
+    };
+  }
+}

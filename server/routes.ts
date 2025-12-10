@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { AuthService } from "./auth";
 import { setupGoogleAuth } from "./googleAuth";
 import { loginSchema, insertUserSchema, type SafeUser, requestLoginCodeSchema, verifyLoginCodeSchema } from "@shared/schema";
-import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail } from "./emailService";
+import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail, sendTeamInviteEmail, sendJobAssignmentEmail, sendJobCompletionNotificationEmail, sendWelcomeEmail } from "./emailService";
 import { FreemiumService } from "./freemiumService";
 import { DEMO_USER } from "./demoData";
 import { ownerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission } from "./permissions";
@@ -3515,6 +3515,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (status === 'done') {
           // Notify business owner that staff completed the job
           await notifyJobCompleted(storage, effectiveUserId, job, { firstName: userName, username: userName });
+          
+          // Send email to owner when staff completes job
+          try {
+            const owner = await storage.getUser(effectiveUserId);
+            const baseUrl = `${req.protocol}://${req.get('host')}`;
+            
+            if (owner?.email && req.userId !== effectiveUserId) {
+              // Only send email if staff (not owner) completed the job
+              await sendJobCompletionNotificationEmail(
+                owner.email,
+                owner.firstName || null,
+                userName,
+                job.title,
+                clientName,
+                new Date(),
+                baseUrl,
+                job.id
+              );
+            }
+          } catch (emailError) {
+            console.error('Failed to send job completion email:', emailError);
+          }
         }
       }
       
@@ -3585,6 +3607,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Send push notification to assigned team member
       await notifyJobAssigned(assignedTo, job.title, job.id);
+      
+      // Send email notification to assigned team member
+      try {
+        const assigneeUser = await storage.getUser(assignedTo);
+        const assigner = await storage.getUser(req.userId);
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        
+        if (assigneeUser?.email) {
+          await sendJobAssignmentEmail(
+            assigneeUser.email,
+            assigneeUser.firstName || null,
+            assigner?.firstName || 'Your manager',
+            businessSettings?.businessName || 'TradieTrack',
+            job.title,
+            (job as any).address || null,
+            (job as any).scheduledDate || null,
+            baseUrl,
+            job.id
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send job assignment email:', emailError);
+        // Don't fail if email fails
+      }
       
       res.json(job);
     } catch (error: any) {
@@ -6402,7 +6448,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inviteStatus: 'pending',
       });
       
-      // TODO: Send invitation email
+      // Send invitation email
+      try {
+        const owner = await AuthService.getUserById(userId);
+        const businessSettings = await storage.getBusinessSettings(userId);
+        const role = await storage.getUserRole(inviteData.roleId);
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        
+        await sendTeamInviteEmail(
+          inviteData.email,
+          inviteData.name || null,
+          owner?.firstName || 'The business owner',
+          businessSettings?.businessName || 'A TradieTrack business',
+          role?.name || 'Team Member',
+          inviteToken,
+          baseUrl
+        );
+      } catch (emailError) {
+        console.error('Failed to send team invite email:', emailError);
+        // Don't fail the invite if email fails
+      }
       
       res.json(newMember);
     } catch (error) {
@@ -6431,7 +6496,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inviteSentAt: new Date(),
       });
       
-      // TODO: Send invitation email
+      // Resend invitation email
+      try {
+        const owner = await AuthService.getUserById(userId);
+        const businessSettings = await storage.getBusinessSettings(userId);
+        const role = await storage.getUserRole(member.roleId);
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        
+        await sendTeamInviteEmail(
+          member.email,
+          member.name || null,
+          owner?.firstName || 'The business owner',
+          businessSettings?.businessName || 'A TradieTrack business',
+          role?.name || 'Team Member',
+          member.inviteToken!,
+          baseUrl
+        );
+      } catch (emailError) {
+        console.error('Failed to resend team invite email:', emailError);
+      }
       
       res.json(updated);
     } catch (error) {
