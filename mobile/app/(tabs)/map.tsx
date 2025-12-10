@@ -74,6 +74,7 @@ interface TeamMember {
   id: string;
   userId: string;
   role: string;
+  themeColor?: string | null;
   user?: {
     firstName: string;
     lastName: string;
@@ -305,10 +306,33 @@ const createStyles = (colors: ThemeColors) => {
         borderWidth: 3,
         ...shadows.md,
       },
+      teamMarkerOuter: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 3,
+        borderColor: colors.white,
+        ...shadows.lg,
+      },
+      activityDot: {
+        position: 'absolute',
+        top: -2,
+        left: -2,
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        borderWidth: 2,
+        borderColor: colors.white,
+      },
       teamMarkerText: {
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '700',
-        color: colors.foreground,
+        color: '#ffffff',
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
       },
       callout: {
         backgroundColor: colors.card,
@@ -650,8 +674,12 @@ export default function MapScreen() {
           )
         ))}
 
-        {viewMode === 'team' && teamMembers.map((member) => (
-          member.lastLocation && (
+        {viewMode === 'team' && teamMembers.map((member) => {
+          const memberColor = member.themeColor || getActivityColor(member.activityStatus);
+          const activityColor = getActivityColor(member.activityStatus);
+          const initials = `${member.user?.firstName?.[0] || '?'}${member.user?.lastName?.[0] || '?'}`;
+          
+          return member.lastLocation && (
             <Marker
               key={member.id}
               coordinate={{
@@ -659,10 +687,11 @@ export default function MapScreen() {
                 longitude: member.lastLocation.longitude,
               }}
             >
-              <View style={[styles.teamMarker, { borderColor: getActivityColor(member.activityStatus) }]}>
-                <Text style={styles.teamMarkerText}>
-                  {member.user?.firstName?.[0] || '?'}{member.user?.lastName?.[0] || '?'}
-                </Text>
+              <View style={[styles.teamMarkerOuter, { borderColor: memberColor, backgroundColor: memberColor }]}>
+                <Text style={styles.teamMarkerText}>{initials}</Text>
+                {member.themeColor && (
+                  <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
+                )}
               </View>
               <Callout tooltip>
                 <View style={styles.callout}>
@@ -700,8 +729,8 @@ export default function MapScreen() {
                 </View>
               </Callout>
             </Marker>
-          )
-        ))}
+          );
+        })}
       </MapView>
 
       {/* Floating Header Card - positioned higher */}

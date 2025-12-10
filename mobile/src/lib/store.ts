@@ -17,6 +17,7 @@ interface User {
   address?: string;
   logoUrl?: string;
   brandColor?: string;
+  themeColor?: string;
   gstEnabled?: boolean;
 }
 

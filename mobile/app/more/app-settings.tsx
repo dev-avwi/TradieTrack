@@ -1,11 +1,169 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Animated, Switch, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Animated, Switch, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeMode } from '../../src/lib/theme';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useLocationStore, getActivityStatus, formatAccuracy } from '../../src/lib/location-store';
 import { useOfflineStore } from '../../src/lib/offline-storage';
 import offlineStorage from '../../src/lib/offline-storage';
+import { useAuthStore } from '../../src/lib/store';
+import { apiRequest } from '../../src/lib/api';
+
+const MAP_COLORS = [
+  { name: 'Blue', hex: '#3b82f6' },
+  { name: 'Green', hex: '#22c55e' },
+  { name: 'Red', hex: '#ef4444' },
+  { name: 'Purple', hex: '#8b5cf6' },
+  { name: 'Orange', hex: '#f97316' },
+  { name: 'Pink', hex: '#ec4899' },
+  { name: 'Yellow', hex: '#eab308' },
+  { name: 'Teal', hex: '#14b8a6' },
+  { name: 'Indigo', hex: '#6366f1' },
+  { name: 'Lime', hex: '#84cc16' },
+  { name: 'Cyan', hex: '#06b6d4' },
+  { name: 'Rose', hex: '#f43f5e' },
+];
+
+interface TeamMemberColor {
+  userId: string;
+  themeColor: string | null;
+  firstName?: string;
+  lastName?: string;
+}
+
+function MapColorSection({ colors }: { colors: any }) {
+  const { user, setUser } = useAuthStore();
+  const [availableColors, setAvailableColors] = useState<string[]>([]);
+  const [takenColors, setTakenColors] = useState<{ [color: string]: string }>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedColor, setSelectedColor] = useState<string | null>(user?.themeColor || null);
+  
+  const loadAvailableColors = useCallback(async () => {
+    try {
+      const response = await apiRequest('GET', '/api/team/colors/available');
+      const data = await response.json() as { availableColors: string[], teamColors: TeamMemberColor[] };
+      
+      setAvailableColors(data.availableColors);
+      
+      const taken: { [color: string]: string } = {};
+      data.teamColors.forEach((member: TeamMemberColor) => {
+        if (member.themeColor && member.userId !== user?.id) {
+          const name = member.firstName && member.lastName 
+            ? `${member.firstName} ${member.lastName}` 
+            : 'Team member';
+          taken[member.themeColor.toLowerCase()] = name;
+        }
+      });
+      setTakenColors(taken);
+    } catch (error) {
+      console.error('Failed to load available colors:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id]);
+  
+  useEffect(() => {
+    loadAvailableColors();
+  }, [loadAvailableColors]);
+  
+  const handleColorSelect = async (color: string) => {
+    if (takenColors[color.toLowerCase()]) return;
+    
+    setSelectedColor(color);
+    setIsSaving(true);
+    
+    try {
+      const response = await apiRequest('PATCH', '/api/user/theme-color', { themeColor: color });
+      const data = await response.json();
+      
+      if (data.success && user) {
+        setUser({ ...user, themeColor: color });
+        await loadAvailableColors();
+      }
+    } catch (error) {
+      console.error('Failed to save theme color:', error);
+      setSelectedColor(user?.themeColor || null);
+      Alert.alert('Error', 'Failed to save your map color. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  const initials = user 
+    ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'
+    : 'U';
+  
+  return (
+    <>
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Map Identity</Text>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.cardTitle, { color: colors.foreground }]}>Your Map Color</Text>
+        <Text style={[styles.cardSubtitle, { color: colors.mutedForeground }]}>
+          Choose a unique color to identify yourself on the team map
+        </Text>
+        
+        <View style={styles.previewContainer}>
+          <View style={[styles.mapPreview, { backgroundColor: selectedColor || colors.primary }]}>
+            <Text style={styles.mapPreviewInitials}>{initials}</Text>
+          </View>
+          <View style={styles.previewInfo}>
+            <Text style={[styles.previewName, { color: colors.foreground }]}>
+              {user?.firstName} {user?.lastName}
+            </Text>
+            <Text style={[styles.previewSubtext, { color: colors.mutedForeground }]}>
+              {selectedColor ? `${MAP_COLORS.find(c => c.hex.toLowerCase() === selectedColor.toLowerCase())?.name || 'Custom'}` : 'No color selected'}
+            </Text>
+          </View>
+        </View>
+        
+        {isLoading ? (
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 16 }} />
+        ) : (
+          <View style={styles.colorGrid}>
+            {MAP_COLORS.map((color) => {
+              const isTaken = !!takenColors[color.hex.toLowerCase()];
+              const isSelected = selectedColor?.toLowerCase() === color.hex.toLowerCase();
+              
+              return (
+                <TouchableOpacity
+                  key={color.hex}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: color.hex },
+                    isSelected && styles.colorOptionSelected,
+                    isTaken && styles.colorOptionTaken,
+                  ]}
+                  onPress={() => handleColorSelect(color.hex)}
+                  disabled={isTaken || isSaving}
+                  activeOpacity={0.7}
+                >
+                  {isSelected && (
+                    <Feather name="check" size={20} color="#fff" />
+                  )}
+                  {isTaken && (
+                    <View style={styles.takenOverlay}>
+                      <Feather name="x" size={16} color="#fff" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+        
+        {Object.keys(takenColors).length > 0 && (
+          <View style={[styles.locationNote, { backgroundColor: colors.muted }]}>
+            <Feather name="info" size={14} color={colors.mutedForeground} />
+            <Text style={[styles.locationNoteText, { color: colors.mutedForeground }]}>
+              Greyed out colors are already taken by other team members.
+            </Text>
+          </View>
+        )}
+      </View>
+    </>
+  );
+}
 
 function DataSyncSection({ colors }: { colors: any }) {
   const { isOnline, isSyncing, pendingSyncCount, lastSyncTime, syncError, isInitialized } = useOfflineStore();
@@ -350,6 +508,8 @@ export default function AppSettingsScreen() {
             </>
           )}
 
+          <MapColorSection colors={colors} />
+
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Location Tracking</Text>
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.settingRow}>
@@ -659,5 +819,80 @@ const styles = StyleSheet.create({
   clearCacheText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  previewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  mapPreview: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mapPreviewInitials: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  previewInfo: {
+    flex: 1,
+  },
+  previewName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  previewSubtext: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  colorOption: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colorOptionSelected: {
+    borderWidth: 3,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  colorOptionTaken: {
+    opacity: 0.35,
+  },
+  takenOverlay: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
