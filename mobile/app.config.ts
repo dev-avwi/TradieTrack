@@ -18,6 +18,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.tradietrack.app',
+    newArchEnabled: false,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription: 'TradieTrack needs camera access to take job photos',
@@ -33,6 +34,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: '#0f172a',
     },
     package: 'com.tradietrack.app',
+    newArchEnabled: false,
     permissions: [
       'CAMERA',
       'READ_EXTERNAL_STORAGE',
