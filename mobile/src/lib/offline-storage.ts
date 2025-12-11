@@ -99,9 +99,28 @@ export interface CachedTimeEntry {
   localId?: string;
 }
 
+export interface CachedAttachment {
+  id: string;
+  jobId?: string;
+  quoteId?: string;
+  invoiceId?: string;
+  clientId?: string;
+  type: 'photo' | 'signature' | 'document';
+  filename: string;
+  mimeType: string;
+  localUri?: string; // Local file path on device (nullable for server-fetched attachments)
+  remoteUrl?: string; // Server URL once synced
+  fileSize?: number;
+  description?: string;
+  cachedAt: number;
+  pendingSync: boolean;
+  syncAction?: 'create' | 'delete';
+  localId?: string;
+}
+
 export interface PendingSyncItem {
   id: string;
-  type: 'job' | 'client' | 'quote' | 'invoice' | 'timeEntry';
+  type: 'job' | 'client' | 'quote' | 'invoice' | 'timeEntry' | 'attachment';
   action: 'create' | 'update' | 'delete';
   data: string; // JSON stringified
   createdAt: number;
@@ -277,6 +296,27 @@ class OfflineStorageService {
           role_info TEXT,
           cached_at INTEGER NOT NULL
         );
+        
+        -- Attachments table for photos, signatures, documents
+        -- local_uri is nullable for server-fetched attachments that don't have local copies yet
+        CREATE TABLE IF NOT EXISTS attachments (
+          id TEXT PRIMARY KEY,
+          job_id TEXT,
+          quote_id TEXT,
+          invoice_id TEXT,
+          client_id TEXT,
+          type TEXT NOT NULL,
+          filename TEXT NOT NULL,
+          mime_type TEXT NOT NULL,
+          local_uri TEXT,
+          remote_url TEXT,
+          file_size INTEGER,
+          description TEXT,
+          cached_at INTEGER NOT NULL,
+          pending_sync INTEGER DEFAULT 0,
+          sync_action TEXT,
+          local_id TEXT
+        );
       `);
       
       // Run migrations to fix old schemas with NOT NULL constraints
@@ -399,6 +439,47 @@ class OfflineStorageService {
           COMMIT;
         `);
         console.log('[OfflineStorage] Invoices table migrated successfully');
+      }
+      
+      // Check if we need to migrate attachments table (local_uri should be nullable)
+      const attachmentsInfo = await this.db.getAllAsync("PRAGMA table_info(attachments)");
+      const localUriCol = (attachmentsInfo as any[]).find((c: any) => c.name === 'local_uri');
+      
+      if (localUriCol && localUriCol.notnull === 1) {
+        console.log('[OfflineStorage] Migrating attachments table to allow NULL local_uri...');
+        await this.db.execAsync(`
+          BEGIN TRANSACTION;
+          
+          -- Create new attachments table with correct schema (local_uri nullable)
+          CREATE TABLE IF NOT EXISTS attachments_new (
+            id TEXT PRIMARY KEY,
+            job_id TEXT,
+            quote_id TEXT,
+            invoice_id TEXT,
+            client_id TEXT,
+            type TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            mime_type TEXT NOT NULL,
+            local_uri TEXT,
+            remote_url TEXT,
+            file_size INTEGER,
+            description TEXT,
+            cached_at INTEGER NOT NULL,
+            pending_sync INTEGER DEFAULT 0,
+            sync_action TEXT,
+            local_id TEXT
+          );
+          
+          -- Copy data from old table
+          INSERT INTO attachments_new SELECT * FROM attachments;
+          
+          -- Drop old table and rename new one
+          DROP TABLE attachments;
+          ALTER TABLE attachments_new RENAME TO attachments;
+          
+          COMMIT;
+        `);
+        console.log('[OfflineStorage] Attachments table migrated successfully');
       }
       
     } catch (error) {
@@ -940,10 +1021,169 @@ class OfflineStorageService {
     return { ...entry, id, cachedAt: now, pendingSync: true, syncAction: action, localId } as CachedTimeEntry;
   }
 
+  // ============ ATTACHMENTS ============
+
+  async cacheAttachments(attachments: any[]): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    
+    for (const attachment of attachments) {
+      await this.db.runAsync(
+        `INSERT OR REPLACE INTO attachments 
+         (id, job_id, quote_id, invoice_id, client_id, type, filename, mime_type, local_uri, remote_url, file_size, description, cached_at, pending_sync, sync_action)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+           COALESCE((SELECT pending_sync FROM attachments WHERE id = ?), 0),
+           (SELECT sync_action FROM attachments WHERE id = ?))`,
+        [attachment.id, attachment.jobId, attachment.quoteId, attachment.invoiceId, attachment.clientId,
+         attachment.type, attachment.filename, attachment.mimeType, attachment.localUri,
+         attachment.remoteUrl, attachment.fileSize, attachment.description, now,
+         attachment.id, attachment.id]
+      );
+    }
+    
+    await this.setMetadata('last_attachments_sync', now.toString());
+    console.log(`[OfflineStorage] Cached ${attachments.length} attachments`);
+  }
+
+  async getCachedAttachments(filter?: { jobId?: string; quoteId?: string; invoiceId?: string; clientId?: string; type?: string }): Promise<CachedAttachment[]> {
+    if (!this.db) return [];
+    
+    let query = 'SELECT * FROM attachments WHERE (sync_action != "delete" OR sync_action IS NULL)';
+    const params: any[] = [];
+    
+    if (filter?.jobId) {
+      query += ' AND job_id = ?';
+      params.push(filter.jobId);
+    }
+    if (filter?.quoteId) {
+      query += ' AND quote_id = ?';
+      params.push(filter.quoteId);
+    }
+    if (filter?.invoiceId) {
+      query += ' AND invoice_id = ?';
+      params.push(filter.invoiceId);
+    }
+    if (filter?.clientId) {
+      query += ' AND client_id = ?';
+      params.push(filter.clientId);
+    }
+    if (filter?.type) {
+      query += ' AND type = ?';
+      params.push(filter.type);
+    }
+    
+    query += ' ORDER BY cached_at DESC';
+    
+    const rows = await this.db.getAllAsync(query, params);
+    
+    return rows.map((row: any) => ({
+      id: row.id,
+      jobId: row.job_id,
+      quoteId: row.quote_id,
+      invoiceId: row.invoice_id,
+      clientId: row.client_id,
+      type: row.type,
+      filename: row.filename,
+      mimeType: row.mime_type,
+      localUri: row.local_uri,
+      remoteUrl: row.remote_url,
+      fileSize: row.file_size,
+      description: row.description,
+      cachedAt: row.cached_at,
+      pendingSync: row.pending_sync === 1,
+      syncAction: row.sync_action,
+      localId: row.local_id,
+    }));
+  }
+
+  async getCachedAttachment(id: string): Promise<CachedAttachment | null> {
+    if (!this.db) return null;
+    
+    const row = await this.db.getFirstAsync(
+      'SELECT * FROM attachments WHERE id = ?',
+      [id]
+    ) as any;
+    
+    if (!row) return null;
+    
+    return {
+      id: row.id,
+      jobId: row.job_id,
+      quoteId: row.quote_id,
+      invoiceId: row.invoice_id,
+      clientId: row.client_id,
+      type: row.type,
+      filename: row.filename,
+      mimeType: row.mime_type,
+      localUri: row.local_uri,
+      remoteUrl: row.remote_url,
+      fileSize: row.file_size,
+      description: row.description,
+      cachedAt: row.cached_at,
+      pendingSync: row.pending_sync === 1,
+      syncAction: row.sync_action,
+      localId: row.local_id,
+    };
+  }
+
+  /**
+   * Save an attachment offline for later sync
+   * The attachment file is stored locally and will be uploaded when online
+   */
+  async saveAttachmentOffline(attachment: Partial<CachedAttachment>): Promise<CachedAttachment> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    const localId = `local_${now}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = attachment.id || localId;
+    
+    await this.db.runAsync(
+      `INSERT OR REPLACE INTO attachments 
+       (id, job_id, quote_id, invoice_id, client_id, type, filename, mime_type, local_uri, remote_url, file_size, description, cached_at, pending_sync, sync_action, local_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'create', ?)`,
+      [id, attachment.jobId, attachment.quoteId, attachment.invoiceId, attachment.clientId,
+       attachment.type, attachment.filename, attachment.mimeType, attachment.localUri,
+       attachment.remoteUrl, attachment.fileSize, attachment.description, now, localId]
+    );
+    
+    // Add to sync queue - attachment upload handled specially
+    await this.addToSyncQueue('attachment', 'create', { ...attachment, id, localId });
+    await this.updatePendingSyncCount();
+    
+    console.log(`[OfflineStorage] Saved attachment offline: ${attachment.filename}`);
+    return { ...attachment, id, cachedAt: now, pendingSync: true, syncAction: 'create', localId } as CachedAttachment;
+  }
+
+  /**
+   * Delete an attachment (mark for deletion on sync)
+   */
+  async deleteAttachmentOffline(attachmentId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const existing = await this.getCachedAttachment(attachmentId);
+    if (!existing) return;
+    
+    // If it's a local-only attachment, just delete it
+    if (existing.localId && !existing.remoteUrl) {
+      await this.db.runAsync('DELETE FROM attachments WHERE id = ?', [attachmentId]);
+      await this.db.runAsync('DELETE FROM sync_queue WHERE data LIKE ?', [`%"id":"${attachmentId}"%`]);
+    } else {
+      // Mark for deletion on next sync
+      await this.db.runAsync(
+        'UPDATE attachments SET pending_sync = 1, sync_action = ? WHERE id = ?',
+        ['delete', attachmentId]
+      );
+      await this.addToSyncQueue('attachment', 'delete', { id: attachmentId });
+    }
+    
+    await this.updatePendingSyncCount();
+  }
+
   // ============ SYNC QUEUE ============
 
   private async addToSyncQueue(
-    type: 'job' | 'client' | 'quote' | 'invoice' | 'timeEntry',
+    type: 'job' | 'client' | 'quote' | 'invoice' | 'timeEntry' | 'attachment',
     action: 'create' | 'update' | 'delete',
     data: any
   ): Promise<void> {
@@ -1090,7 +1330,11 @@ class OfflineStorageService {
             await this.db!.runAsync('DELETE FROM sync_queue WHERE id = ?', [item.id]);
             
             // Update the cached item to mark as synced
-            await this.markItemSynced(item.type, data.id);
+            // Skip for attachments since syncAttachment handles its own pending_sync updates
+            // (via updateLocalIdWithServerId for ID changes or direct UPDATE for same ID)
+            if (item.type !== 'attachment') {
+              await this.markItemSynced(item.type, data.id);
+            }
             synced++;
           } else {
             // Increment retry count and record attempt time (backoff applies on next attempt)
@@ -1140,6 +1384,11 @@ class OfflineStorageService {
     action: string,
     data: any
   ): Promise<boolean> {
+    // Handle attachments separately (they require file upload)
+    if (type === 'attachment') {
+      return this.syncAttachment(action, data);
+    }
+    
     const endpoints: Record<string, string> = {
       job: '/api/jobs',
       client: '/api/clients',
@@ -1208,6 +1457,114 @@ class OfflineStorageService {
     }
   }
 
+  /**
+   * Sync an attachment - handles file upload via multipart form data
+   * Returns true on success - processSyncQueue handles queue cleanup for all cases
+   */
+  private async syncAttachment(action: string, data: any): Promise<boolean> {
+    try {
+      if (action === 'delete') {
+        // Delete attachment from server
+        const response = await api.delete(`/api/attachments/${data.id}`);
+        if (response.error) {
+          console.error('[OfflineStorage] Failed to delete attachment:', response.error);
+          return false;
+        }
+        // Remove from local cache - processSyncQueue will handle sync_queue cleanup
+        await this.db?.runAsync('DELETE FROM attachments WHERE id = ?', [data.id]);
+        return true;
+      }
+      
+      if (action === 'create') {
+        // For photo uploads, we need to use FormData
+        // The localUri is the file path on device
+        const formData = new FormData();
+        
+        // Build the file object for upload
+        const file = {
+          uri: data.localUri,
+          type: data.mimeType || 'application/octet-stream',
+          name: data.filename || 'attachment',
+        };
+        
+        formData.append('file', file as any);
+        
+        if (data.jobId) formData.append('jobId', data.jobId);
+        if (data.quoteId) formData.append('quoteId', data.quoteId);
+        if (data.invoiceId) formData.append('invoiceId', data.invoiceId);
+        if (data.clientId) formData.append('clientId', data.clientId);
+        if (data.type) formData.append('type', data.type);
+        if (data.description) formData.append('description', data.description);
+        
+        // Determine upload endpoint based on attachment type
+        let endpoint = '/api/attachments';
+        if (data.jobId) {
+          endpoint = `/api/jobs/${data.jobId}/photos`;
+        }
+        
+        const response = await api.uploadFile(endpoint, formData);
+        
+        if (response.error || !response.data) {
+          console.error('[OfflineStorage] Failed to upload attachment:', response.error);
+          return false;
+        }
+        
+        // Update local record with server data and proper ID reconciliation
+        const serverData = response.data as any;
+        const serverId = serverData.id || data.id;
+        const remoteUrl = serverData.url || serverData.signedUrl;
+        
+        if (serverId !== data.id && data.localId) {
+          // Server returned a different ID - update the local record
+          // updateLocalIdWithServerId sets id, clears local_id, and sets pending_sync=0
+          const idUpdated = await this.updateLocalIdWithServerId('attachment', data.localId, serverId);
+          if (!idUpdated) {
+            console.error('[OfflineStorage] Failed to reconcile attachment ID');
+            return false;
+          }
+          
+          // Also update the remote URL on the new record
+          const urlResult = await this.db?.runAsync(
+            'UPDATE attachments SET remote_url = ? WHERE id = ?',
+            [remoteUrl, serverId]
+          );
+          
+          // Verify the URL update succeeded
+          if ((urlResult as any)?.changes === 0) {
+            console.error('[OfflineStorage] Failed to update remote_url after ID reconciliation');
+            return false;
+          }
+        } else {
+          // Same ID or no local ID - just update the record
+          const result = await this.db?.runAsync(
+            `UPDATE attachments SET 
+              remote_url = ?,
+              pending_sync = 0,
+              sync_action = NULL
+             WHERE id = ?`,
+            [remoteUrl, data.id]
+          );
+          
+          // Verify the update succeeded
+          if ((result as any)?.changes === 0) {
+            console.error('[OfflineStorage] Failed to update attachment record');
+            return false;
+          }
+        }
+        
+        // processSyncQueue will handle sync_queue cleanup
+        console.log('[OfflineStorage] Successfully uploaded attachment:', data.filename);
+        return true;
+      }
+      
+      console.error('[OfflineStorage] Unknown attachment action:', action);
+      return false;
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to sync attachment:', error);
+      return false;
+    }
+  }
+
   private async markItemSynced(type: string, id: string): Promise<void> {
     if (!this.db) return;
     
@@ -1217,6 +1574,7 @@ class OfflineStorageService {
       quote: 'quotes',
       invoice: 'invoices',
       timeEntry: 'time_entries',
+      attachment: 'attachments',
     };
     
     const table = tableMap[type];
@@ -1228,8 +1586,8 @@ class OfflineStorageService {
     }
   }
 
-  private async updateLocalIdWithServerId(type: string, localId: string, serverId: string): Promise<void> {
-    if (!this.db) return;
+  private async updateLocalIdWithServerId(type: string, localId: string, serverId: string): Promise<boolean> {
+    if (!this.db) return false;
     
     const tableMap: Record<string, string> = {
       job: 'jobs',
@@ -1237,15 +1595,36 @@ class OfflineStorageService {
       quote: 'quotes',
       invoice: 'invoices',
       timeEntry: 'time_entries',
+      attachment: 'attachments',
     };
     
     const table = tableMap[type];
-    if (table) {
-      await this.db.runAsync(
-        `UPDATE ${table} SET id = ?, local_id = NULL, pending_sync = 0, sync_action = NULL WHERE id = ?`,
-        [serverId, localId]
-      );
+    if (!table) return false;
+    
+    // Find row by local_id (more reliable than id since id might already be the server id)
+    const result = await this.db.runAsync(
+      `UPDATE ${table} SET id = ?, local_id = NULL, pending_sync = 0, sync_action = NULL WHERE local_id = ?`,
+      [serverId, localId]
+    );
+    
+    if ((result as any).changes > 0) {
+      console.log(`[OfflineStorage] Updated ${type} ID from ${localId} to ${serverId}`);
+      return true;
     }
+    
+    // Fall back to id if local_id match fails (for backwards compatibility)
+    const fallbackResult = await this.db.runAsync(
+      `UPDATE ${table} SET id = ?, local_id = NULL, pending_sync = 0, sync_action = NULL WHERE id = ?`,
+      [serverId, localId]
+    );
+    
+    if ((fallbackResult as any).changes > 0) {
+      console.log(`[OfflineStorage] Updated ${type} ID from ${localId} to ${serverId} (fallback)`);
+      return true;
+    }
+    
+    console.error(`[OfflineStorage] Failed to update ${type} ID: row not found for localId=${localId}`);
+    return false;
   }
 
   // ============ METADATA & UTILITIES ============
@@ -1285,6 +1664,7 @@ class OfflineStorageService {
       DELETE FROM quotes;
       DELETE FROM invoices;
       DELETE FROM time_entries;
+      DELETE FROM attachments;
       DELETE FROM sync_queue;
       DELETE FROM metadata;
     `);

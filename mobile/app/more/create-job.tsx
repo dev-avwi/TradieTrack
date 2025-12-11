@@ -456,6 +456,8 @@ export default function CreateJobScreen() {
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [prefillSuggestions, setPrefillSuggestions] = useState<any>(null);
+  const [loadingPrefill, setLoadingPrefill] = useState(false);
 
   const STATUS_OPTIONS: { value: JobStatus; label: string; color: string }[] = [
     { value: 'pending', label: 'Pending', color: colors.pending },
@@ -472,13 +474,38 @@ export default function CreateJobScreen() {
   const selectedClient = clients.find((c) => c.id === clientId);
   const selectedStatusOption = STATUS_OPTIONS.find((s) => s.value === status);
 
-  const handleClientSelect = (id: string | null) => {
+  const handleClientSelect = async (id: string | null) => {
     setClientId(id);
-    if (id) {
-      const client = clients.find((c) => c.id === id);
-      if (client?.address && !address) {
-        setAddress(client.address);
+    setPrefillSuggestions(null);
+    setLoadingPrefill(false);
+    
+    if (!id) {
+      // Client deselected - reset state and exit early
+      return;
+    }
+    
+    const client = clients.find((c) => c.id === id);
+    // Auto-fill address from client if empty
+    if (client?.address && !address) {
+      setAddress(client.address);
+    }
+    
+    // Fetch smart pre-fill suggestions
+    setLoadingPrefill(true);
+    try {
+      const response = await api.get<any>(`/api/clients/${id}/prefill-suggestions`);
+      if (response.data) {
+        setPrefillSuggestions(response.data);
+        // Auto-apply address suggestion if we haven't set one yet
+        if (response.data.address && !address && !client?.address) {
+          setAddress(response.data.address);
+        }
       }
+    } catch (error) {
+      console.log('Pre-fill suggestions not available:', error);
+      setPrefillSuggestions(null);
+    } finally {
+      setLoadingPrefill(false);
     }
   };
 
@@ -649,6 +676,53 @@ export default function CreateJobScreen() {
                 />
               </View>
             </View>
+
+            {/* Smart Pre-fill Suggestions */}
+            {loadingPrefill && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={{ fontSize: 13, color: colors.mutedForeground }}>Loading suggestions...</Text>
+              </View>
+            )}
+            
+            {prefillSuggestions && (prefillSuggestions.frequentItems?.length > 0 || prefillSuggestions.jobHistory?.length > 0) && (
+              <View style={[styles.section, { backgroundColor: colors.primaryLight, borderRadius: 12, padding: 12 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Feather name="zap" size={16} color={colors.primary} />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Smart Suggestions</Text>
+                </View>
+                
+                {prefillSuggestions.frequentItems?.length > 0 && (
+                  <View style={{ marginBottom: 8 }}>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 4 }}>
+                      Frequently used for this client:
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {prefillSuggestions.frequentItems.slice(0, 5).map((item: any, idx: number) => (
+                        <View key={idx} style={{ 
+                          backgroundColor: colors.card, 
+                          paddingHorizontal: 10, 
+                          paddingVertical: 4, 
+                          borderRadius: 6,
+                          borderWidth: 1,
+                          borderColor: colors.border 
+                        }}>
+                          <Text style={{ fontSize: 12, color: colors.foreground }}>{item.name}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+                
+                {prefillSuggestions.jobHistory?.length > 0 && (
+                  <View>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 4 }}>
+                      Recent jobs: {prefillSuggestions.jobHistory.slice(0, 2).map((j: any) => j.title).join(', ')}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
 
             {/* Status */}
             <View style={styles.section}>

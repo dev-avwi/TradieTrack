@@ -152,6 +152,55 @@ class ApiClient {
     return this.request<T>('DELETE', endpoint);
   }
 
+  /**
+   * Upload a file using FormData
+   * @param endpoint The API endpoint to upload to
+   * @param formData FormData containing the file and metadata
+   */
+  async uploadFile<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+    try {
+      const token = await this.getToken();
+      const headers: HeadersInit = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      // Note: Don't set Content-Type for FormData - let fetch set it with boundary
+      
+      const url = `${this.baseUrl}${endpoint}`;
+      console.log(`[API] POST (upload) ${endpoint}`);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+      
+      const contentType = response.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+      
+      if (!response.ok) {
+        if (isJson) {
+          const errorData = await response.json().catch(() => ({}));
+          console.log(`[API] Upload Error ${response.status}:`, errorData);
+          return { error: errorData.error || errorData.message || `Upload failed: ${response.status}` };
+        } else {
+          return { error: `Upload failed (${response.status})` };
+        }
+      }
+      
+      if (!isJson) {
+        return { data: {} as T };
+      }
+      
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error(`[API] Upload Error [${endpoint}]:`, error);
+      return { error: error instanceof Error ? error.message : 'Upload failed' };
+    }
+  }
+
   async login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
     const response = await this.post<LoginResponse>('/api/auth/login', { email, password });
     
