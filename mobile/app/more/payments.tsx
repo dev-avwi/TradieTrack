@@ -324,8 +324,28 @@ export default function PaymentsScreen() {
     }).format(amount);
   };
 
-  const handleConnectStripe = () => {
-    Linking.openURL('https://tradietrack.com/settings/payments');
+  const handleConnectStripe = async () => {
+    try {
+      // Try to get the Stripe Connect onboarding/dashboard link from the backend
+      const response = await api.post<{ url: string; isOnboarding?: boolean }>('/api/stripe-connect/account-link', {
+        type: 'account_onboarding'
+      });
+      
+      if (response.data?.url) {
+        Linking.openURL(response.data.url);
+      } else if (response.error) {
+        // If account doesn't exist yet, try dashboard-link which creates one if needed
+        const dashboardResponse = await api.get<{ url: string; isOnboarding?: boolean }>('/api/stripe-connect/dashboard-link');
+        if (dashboardResponse.data?.url) {
+          Linking.openURL(dashboardResponse.data.url);
+        } else {
+          // Fallback to status check which may have more info
+          console.log('No Stripe Connect URL available:', response.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error getting Stripe Connect link:', error);
+    }
   };
 
   return (

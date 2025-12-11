@@ -38,6 +38,7 @@ function ClientSelector({
   onClose,
   colors,
   styles,
+  onQuickAdd,
 }: {
   clients: any[];
   selectedId: string | null;
@@ -46,6 +47,7 @@ function ClientSelector({
   onClose: () => void;
   colors: any;
   styles: any;
+  onQuickAdd?: () => void;
 }) {
   const [search, setSearch] = useState('');
 
@@ -73,6 +75,19 @@ function ClientSelector({
             value={search}
             onChangeText={setSearch}
           />
+          
+          {/* Quick Add Client Button */}
+          {onQuickAdd && (
+            <TouchableOpacity
+              style={[styles.clientItem, { backgroundColor: colors.primary + '10', borderColor: colors.primary, marginBottom: 8, marginHorizontal: 16 }]}
+              onPress={onQuickAdd}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Feather name="plus-circle" size={20} color={colors.primary} />
+                <Text style={[styles.clientItemName, { color: colors.primary }]}>Quick Add New Client</Text>
+              </View>
+            </TouchableOpacity>
+          )}
 
           <ScrollView style={styles.modalList}>
             {filteredClients.map((client) => (
@@ -264,6 +279,13 @@ export default function CreateInvoiceScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  
+  // Quick Add Client state
+  const [showQuickAddClient, setShowQuickAddClient] = useState(false);
+  const [quickClientName, setQuickClientName] = useState('');
+  const [quickClientEmail, setQuickClientEmail] = useState('');
+  const [quickClientPhone, setQuickClientPhone] = useState('');
+  const [isAddingClient, setIsAddingClient] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -361,6 +383,41 @@ export default function CreateInvoiceScreen() {
     }
 
     return true;
+  };
+
+  const handleQuickAddClient = async () => {
+    if (!quickClientName.trim()) {
+      Alert.alert('Name Required', 'Please enter a client name');
+      return;
+    }
+    
+    setIsAddingClient(true);
+    try {
+      const response = await api.post<{ id: string; name: string; email?: string; phone?: string }>('/api/clients', {
+        name: quickClientName.trim(),
+        email: quickClientEmail.trim() || undefined,
+        phone: quickClientPhone.trim() || undefined,
+      });
+      
+      if (response.data?.id) {
+        // Refresh clients list and select the new client
+        await fetchClients();
+        setClientId(response.data.id);
+        setShowQuickAddClient(false);
+        setShowClientPicker(false);
+        // Reset form
+        setQuickClientName('');
+        setQuickClientEmail('');
+        setQuickClientPhone('');
+        Alert.alert('Success', `Client "${quickClientName}" added!`);
+      } else {
+        Alert.alert('Error', response.error || 'Failed to create client');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to create client');
+    } finally {
+      setIsAddingClient(false);
+    }
   };
 
   const saveInvoice = async (status: 'draft' | 'sent' = 'draft') => {
@@ -606,7 +663,79 @@ export default function CreateInvoiceScreen() {
         onClose={() => setShowClientPicker(false)}
         colors={colors}
         styles={styles}
+        onQuickAdd={() => setShowQuickAddClient(true)}
       />
+      
+      {/* Quick Add Client Modal */}
+      <Modal visible={showQuickAddClient} animationType="slide" transparent>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Quick Add Client</Text>
+                <TouchableOpacity onPress={() => setShowQuickAddClient(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={{ padding: 16, gap: 12 }}>
+                <View>
+                  <Text style={styles.fieldLabel}>Name *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Client name"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={quickClientName}
+                    onChangeText={setQuickClientName}
+                    autoFocus
+                  />
+                </View>
+                <View>
+                  <Text style={styles.fieldLabel}>Email</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="client@email.com"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={quickClientEmail}
+                    onChangeText={setQuickClientEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+                <View>
+                  <Text style={styles.fieldLabel}>Phone</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0400 000 000"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={quickClientPhone}
+                    onChangeText={setQuickClientPhone}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+                
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.primaryButton, { marginTop: 8 }]}
+                  onPress={handleQuickAddClient}
+                  disabled={isAddingClient}
+                >
+                  {isAddingClient ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <>
+                      <Feather name="plus" size={18} color={colors.primaryForeground} />
+                      <Text style={styles.primaryButtonText}>Add Client</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </>
   );
 }

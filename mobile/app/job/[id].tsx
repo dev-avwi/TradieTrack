@@ -15,6 +15,7 @@ import {
   Image,
   FlatList,
   Switch,
+  KeyboardAvoidingView,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
@@ -81,17 +82,24 @@ interface Client {
 
 interface JobPhoto {
   id: string;
-  url: string;
+  url?: string;
+  signedUrl?: string;
   thumbnailUrl?: string;
   caption?: string;
-  createdAt: string;
+  createdAt?: string;
+  fileName?: string;
+  category?: string;
+  takenAt?: string;
 }
 
-interface TimeEntry {
+interface CompletedTimeEntry {
   id: string;
-  hours: number;
+  userId: string;
+  jobId?: string;
   description?: string;
-  createdAt: string;
+  startTime: string;
+  endTime?: string;
+  notes?: string;
 }
 
 interface ActivityItem {
@@ -1089,7 +1097,7 @@ export default function JobDetailScreen() {
   
   const [sliderRadius, setSliderRadius] = useState(100);
   
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [timeEntries, setTimeEntries] = useState<CompletedTimeEntry[]>([]);
   const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
   const [isConvertingToInvoice, setIsConvertingToInvoice] = useState(false);
   
@@ -1540,7 +1548,7 @@ export default function JobDetailScreen() {
 
   const loadTimeEntries = async () => {
     try {
-      const response = await api.get<TimeEntry[]>(`/api/time-entries?jobId=${id}`);
+      const response = await api.get<CompletedTimeEntry[]>(`/api/time-entries?jobId=${id}`);
       if (response.data) {
         setTimeEntries(response.data);
       }
@@ -1549,6 +1557,31 @@ export default function JobDetailScreen() {
       setTimeEntries([]);
     }
   };
+  
+  // Calculate total hours from completed time entries (startTime and endTime)
+  const calculateTotalTrackedHours = (): number => {
+    let totalMinutes = 0;
+    timeEntries.forEach(entry => {
+      // Only count entries that have a valid endTime (completed entries)
+      // Skip active timers (no endTime) and entries with null/empty endTime
+      if (entry.startTime && entry.endTime && entry.endTime !== 'null' && entry.endTime !== '') {
+        try {
+          const start = new Date(entry.startTime);
+          const end = new Date(entry.endTime);
+          // Validate dates are valid
+          if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
+            const durationMs = end.getTime() - start.getTime();
+            totalMinutes += durationMs / (1000 * 60);
+          }
+        } catch {
+          // Skip invalid entries
+        }
+      }
+    });
+    return totalMinutes / 60;
+  };
+  
+  const totalTrackedHours = calculateTotalTrackedHours();
 
   const loadActivityLog = async () => {
     // Note: Timeline endpoint may not exist yet - fail gracefully
@@ -1594,8 +1627,8 @@ export default function JobDetailScreen() {
     setRefreshing(false);
   };
 
-  // Calculate actual hours from time entries
-  const actualHours = timeEntries.reduce((sum, entry) => sum + (entry.hours || 0), 0);
+  // Use pre-calculated total tracked hours from completed time entries
+  const actualHours = totalTrackedHours;
   const estimatedHours = job?.estimatedHours || 0;
   const hoursVariance = actualHours - estimatedHours;
   const estimatedCost = job?.estimatedCost || 0;
@@ -1731,7 +1764,10 @@ export default function JobDetailScreen() {
           text: 'Stop',
           onPress: async () => {
             const success = await stopTimer();
-            if (!success) {
+            if (success) {
+              // Reload time entries to show updated total - await to ensure state updates
+              await loadTimeEntries();
+            } else {
               Alert.alert('Error', 'Failed to stop timer. Please try again.');
             }
           }
@@ -2087,6 +2123,8 @@ export default function JobDetailScreen() {
                 </Text>
               ) : activeTimer ? (
                 <Text style={styles.timerValue}>Timer on another job</Text>
+              ) : totalTrackedHours > 0 ? (
+                <Text style={styles.timerValue}>Total: {totalTrackedHours.toFixed(1)}h tracked</Text>
               ) : (
                 <Text style={styles.timerValue}>Not started</Text>
               )}
@@ -2293,7 +2331,7 @@ export default function JobDetailScreen() {
                   activeOpacity={0.8}
                 >
                   <Image 
-                    source={{ uri: photo.thumbnailUrl || photo.url }} 
+                    source={{ uri: photo.signedUrl || photo.thumbnailUrl || photo.url || '' }} 
                     style={styles.inlinePhotoImage}
                     resizeMode="cover"
                   />
@@ -2768,38 +2806,43 @@ export default function JobDetailScreen() {
 
       {/* Notes Modal */}
       <Modal visible={showNotesModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Job Notes</Text>
-              <TouchableOpacity onPress={() => setShowNotesModal(false)}>
-                <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalContent}>
-              <TextInput
-                style={styles.notesInput}
-                value={editedNotes}
-                onChangeText={setEditedNotes}
-                placeholder="Add notes about this job..."
-                placeholderTextColor={colors.mutedForeground}
-                multiline
-                autoFocus
-              />
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={handleSaveNotes}
-                disabled={isSavingNotes}
-              >
-                {isSavingNotes ? (
-                  <ActivityIndicator size="small" color={colors.primaryForeground} />
-                ) : (
-                  <Text style={styles.saveButtonText}>Save Notes</Text>
-                )}
-              </TouchableOpacity>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Job Notes</Text>
+                <TouchableOpacity onPress={() => setShowNotesModal(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalContent}>
+                <TextInput
+                  style={styles.notesInput}
+                  value={editedNotes}
+                  onChangeText={setEditedNotes}
+                  placeholder="Add notes about this job..."
+                  placeholderTextColor={colors.mutedForeground}
+                  multiline
+                  autoFocus
+                />
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={handleSaveNotes}
+                  disabled={isSavingNotes}
+                >
+                  {isSavingNotes ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save Notes</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Photos Modal */}
@@ -2827,7 +2870,7 @@ export default function JobDetailScreen() {
                       onPress={() => setSelectedPhoto(photo)}
                     >
                       <Image 
-                        source={{ uri: photo.url || photo.thumbnailUrl }} 
+                        source={{ uri: photo.signedUrl || photo.url || photo.thumbnailUrl || '' }} 
                         style={styles.photoImage}
                         resizeMode="cover"
                       />
@@ -2870,7 +2913,7 @@ export default function JobDetailScreen() {
           {selectedPhoto && (
             <>
               <Image 
-                source={{ uri: selectedPhoto.url }} 
+                source={{ uri: selectedPhoto.signedUrl || selectedPhoto.url || '' }} 
                 style={styles.fullPhoto}
                 resizeMode="contain"
               />
