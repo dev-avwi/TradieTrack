@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from './api';
 import offlineStorage, { useOfflineStore } from './offline-storage';
+import { clearRoleCache } from '../hooks/use-user-role';
 
 // ============ TYPES ============
 
@@ -158,6 +159,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (email: string, password: string) => {
     set({ isLoading: true, error: null });
+    // Note: Don't clear role cache on login - per-user cache is keyed by userId
+    // Each user has their own cache entry, so no cross-user leakage possible
     
     const response = await api.login(email, password);
     
@@ -192,6 +195,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     set({ isLoading: true });
+    // Clear role cache BEFORE logout to prevent permission leakage
+    clearRoleCache();
     await api.logout();
     set({ 
       user: null, 

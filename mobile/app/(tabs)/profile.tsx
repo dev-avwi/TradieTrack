@@ -222,6 +222,7 @@ export default function MoreScreen() {
   const { 
     isStaff, 
     isSolo,
+    hasTeamAccess,
     canAccessClients, 
     canAccessQuotes, 
     canAccessInvoices, 
@@ -229,7 +230,9 @@ export default function MoreScreen() {
     canAccessBilling,
     canAccessReports,
     canAccessDispatch,
-    hasTeamAccess
+    canAccessSettings,
+    canManageTemplates,
+    canCollectPayments,
   } = useUserRole();
 
   const handleLogout = () => {
@@ -349,7 +352,7 @@ export default function MoreScreen() {
           subtitle="Track work hours and timesheets"
           onPress={() => router.push('/more/time-tracking')}
         />
-        {!isStaff && (
+        {canManageTemplates && (
           <MenuItem
             icon="file"
             iconBg={colors.infoLight}
@@ -359,7 +362,7 @@ export default function MoreScreen() {
             onPress={() => router.push('/more/templates')}
           />
         )}
-        {!isStaff && (
+        {canManageTemplates && (
           <MenuItem
             icon="clipboard"
             iconBg={colors.warningLight}
@@ -369,7 +372,7 @@ export default function MoreScreen() {
             onPress={() => router.push('/more/custom-forms')}
           />
         )}
-        {!isStaff && (
+        {canCollectPayments && (
           <MenuItem
             icon="credit-card"
             iconBg={colors.primaryLight}
@@ -407,7 +410,7 @@ export default function MoreScreen() {
             title="Expense Tracking"
             subtitle="Monitor business expenses"
             onPress={() => router.push('/more/expense-tracking')}
-            isLast
+            isLast={!isStaff}
           />
         )}
         {isStaff && (
@@ -497,7 +500,7 @@ export default function MoreScreen() {
       {/* Settings Section */}
       <Text style={styles.sectionTitle}>Settings</Text>
       <View style={styles.section}>
-        {!isStaff && (
+        {canAccessSettings && (
           <MenuItem
             icon="briefcase"
             iconBg={colors.primaryLight}
@@ -507,7 +510,7 @@ export default function MoreScreen() {
             onPress={() => router.push('/more/business-settings')}
           />
         )}
-        {!isStaff && (
+        {canAccessSettings && (
           <MenuItem
             icon="palette"
             iconBg={colors.primaryLight}
@@ -527,7 +530,7 @@ export default function MoreScreen() {
             onPress={() => router.push('/more/payments')}
           />
         )}
-        {!isStaff && (
+        {canAccessSettings && (
           <MenuItem
             icon="link"
             iconBg={colors.infoLight}
