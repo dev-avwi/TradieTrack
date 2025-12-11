@@ -29,8 +29,12 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Chrome
+  Chrome,
+  SkipForward,
+  Users,
+  Link2
 } from "lucide-react";
+import { SiStripe } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import appIconUrl from '@assets/Photo 1-12-2025, 6 03 07 pm (1)_1764576362665.png';
 
@@ -38,7 +42,7 @@ interface AuthAndOnboardingFlowProps {
   onComplete: () => void;
 }
 
-type FlowStep = 'auth' | 'business' | 'complete';
+type FlowStep = 'auth' | 'business' | 'integrations' | 'team' | 'complete';
 
 export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>('auth');
@@ -102,6 +106,16 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
     calloutFee: '90'
   });
 
+  // Integration setup state
+  const [stripeConnecting, setStripeConnecting] = useState(false);
+  const [stripeConnected, setStripeConnected] = useState(false);
+
+  // Team invite state (for team mode)
+  const [teamInvites, setTeamInvites] = useState<{ email: string; role: string }[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('staff');
+  const [sendingInvites, setSendingInvites] = useState(false);
+
   const tradeTypes = [
     { value: 'plumbing', label: 'Plumbing' },
     { value: 'electrical', label: 'Electrical' },
@@ -112,11 +126,17 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
     { value: 'other', label: 'Other' }
   ];
 
+  // Check if user is in team mode (not solo)
+  const isTeamMode = businessData.teamSize && businessData.teamSize !== 'solo';
+
   const getStepProgress = () => {
-    const stepOrder = ['auth', 'business', 'complete'];
-    const currentIndex = stepOrder.indexOf(currentStep);
-    if (currentStep === 'auth') return authMode === 'login' ? 100 : 25;
-    return Math.max(0, ((currentIndex + 1) / stepOrder.length) * 100);
+    // Different step counts for solo vs team
+    const steps = isTeamMode 
+      ? ['auth', 'business', 'integrations', 'team', 'complete']
+      : ['auth', 'business', 'integrations', 'complete'];
+    const currentIndex = steps.indexOf(currentStep);
+    if (currentStep === 'auth') return authMode === 'login' ? 100 : 20;
+    return Math.max(0, ((currentIndex + 1) / steps.length) * 100);
   };
 
   const getStepTitle = () => {
@@ -124,7 +144,11 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
       case 'auth':
         return authMode === 'login' ? 'Welcome Back' : 'Create Account';
       case 'business':
-        return 'Business Setup';
+        return 'Your Business';
+      case 'integrations':
+        return 'Get Paid Faster';
+      case 'team':
+        return 'Invite Your Team';
       case 'complete':
         return 'All Set!';
       default:
@@ -139,7 +163,11 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
           ? 'Sign in to your TradieTrack account'
           : 'Create your professional trade business account';
       case 'business':
-        return 'Set up your business details and trade information';
+        return 'Tell us about your business';
+      case 'integrations':
+        return 'Set up payment collection (optional - you can do this later)';
+      case 'team':
+        return 'Add team members to get them set up (optional)';
       case 'complete':
         return 'Your TradieTrack account is ready to use';
       default:
@@ -307,18 +335,110 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         description: "Your business information has been saved."
       });
 
-      // Skip integrations step - go straight to complete (integrations are platform-level)
-      setCurrentStep('complete');
-      
-      // Auto-complete after showing success
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
+      // Move to integrations step
+      setCurrentStep('integrations');
     } catch (error: any) {
       setError(error.message || 'Failed to save business settings');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Handle Stripe Connect onboarding
+  const handleConnectStripe = async () => {
+    setStripeConnecting(true);
+    try {
+      const response = await apiRequest('POST', '/api/stripe-connect/onboard');
+      const data = await response.json();
+      if (data.onboardingUrl) {
+        window.location.href = data.onboardingUrl;
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Connection Failed",
+        description: error.message || "Failed to start Stripe Connect setup"
+      });
+    } finally {
+      setStripeConnecting(false);
+    }
+  };
+
+  // Handle skipping integrations step
+  const handleSkipIntegrations = () => {
+    if (isTeamMode) {
+      setCurrentStep('team');
+    } else {
+      setCurrentStep('complete');
+      setTimeout(() => onComplete(), 2000);
+    }
+  };
+
+  // Handle continuing from integrations
+  const handleContinueFromIntegrations = () => {
+    if (isTeamMode) {
+      setCurrentStep('team');
+    } else {
+      setCurrentStep('complete');
+      setTimeout(() => onComplete(), 2000);
+    }
+  };
+
+  // Add team member to invite list
+  const handleAddInvite = () => {
+    if (!inviteEmail.trim()) return;
+    if (teamInvites.some(i => i.email === inviteEmail.trim())) {
+      toast({ title: "Already added", description: "This email is already in the invite list" });
+      return;
+    }
+    setTeamInvites(prev => [...prev, { email: inviteEmail.trim(), role: inviteRole }]);
+    setInviteEmail('');
+    setInviteRole('staff');
+  };
+
+  // Remove from invite list
+  const handleRemoveInvite = (email: string) => {
+    setTeamInvites(prev => prev.filter(i => i.email !== email));
+  };
+
+  // Send all pending invites
+  const handleSendInvites = async () => {
+    if (teamInvites.length === 0) {
+      setCurrentStep('complete');
+      setTimeout(() => onComplete(), 2000);
+      return;
+    }
+
+    setSendingInvites(true);
+    try {
+      // Send invites one by one
+      for (const invite of teamInvites) {
+        await apiRequest('POST', '/api/team/invite', {
+          email: invite.email,
+          roleId: invite.role
+        });
+      }
+      toast({
+        title: "Invites Sent!",
+        description: `${teamInvites.length} team member${teamInvites.length > 1 ? 's' : ''} invited`
+      });
+      setCurrentStep('complete');
+      setTimeout(() => onComplete(), 2000);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Invite Failed",
+        description: error.message || "Failed to send some invites"
+      });
+    } finally {
+      setSendingInvites(false);
+    }
+  };
+
+  // Skip team step
+  const handleSkipTeam = () => {
+    setCurrentStep('complete');
+    setTimeout(() => onComplete(), 2000);
   };
 
 
@@ -780,6 +900,189 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
     </div>
   );
 
+  const renderIntegrationsStep = () => (
+    <div className="space-y-6">
+      <div className="text-center mb-4">
+        <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CreditCard className="w-7 h-7 text-white" />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Connect Stripe to accept card payments directly to your bank account. 
+          Takes just 2 minutes to set up.
+        </p>
+      </div>
+
+      <Card className="border-2 border-dashed">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+              <SiStripe className="w-6 h-6 text-purple-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-base">Stripe Payments</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Accept credit card, debit card, and bank transfers. Get paid in 2-3 business days.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Badge variant="outline" className="text-xs">2.9% + 30c per transaction</Badge>
+                <Badge variant="outline" className="text-xs">Instant setup</Badge>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            onClick={handleConnectStripe}
+            disabled={stripeConnecting}
+            className="w-full mt-4 bg-purple-600 hover:bg-purple-700"
+            data-testid="button-connect-stripe"
+          >
+            {stripeConnecting ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Link2 className="w-4 h-4 mr-2" />
+            )}
+            Connect Stripe Account
+          </Button>
+        </CardContent>
+      </Card>
+
+      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-4">
+        <div className="flex items-start gap-2">
+          <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-blue-900 dark:text-blue-100">You can always do this later</p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+              Go to Settings → Integrations anytime to connect payment services.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-between gap-3">
+        <Button variant="outline" onClick={() => setCurrentStep('business')} data-testid="button-back-integrations">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={handleSkipIntegrations}
+          data-testid="button-skip-integrations"
+        >
+          Skip for now
+          <SkipForward className="w-4 h-4 ml-2" />
+        </Button>
+        <Button
+          onClick={handleContinueFromIntegrations}
+          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+          data-testid="button-continue-integrations"
+        >
+          Continue
+          <ArrowRight className="w-4 h-4 ml-2" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderTeamStep = () => (
+    <div className="space-y-6">
+      <div className="text-center mb-4">
+        <div className="w-14 h-14 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Users className="w-7 h-7 text-white" />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Invite your team members so they can start using TradieTrack right away.
+        </p>
+      </div>
+
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="team@example.com"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="flex-1"
+              data-testid="input-invite-email"
+            />
+            <Select value={inviteRole} onValueChange={setInviteRole}>
+              <SelectTrigger className="w-28" data-testid="select-invite-role">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="staff">Staff</SelectItem>
+                <SelectItem value="supervisor">Supervisor</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={handleAddInvite} size="icon" data-testid="button-add-invite">
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {teamInvites.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium">Pending Invites</p>
+              {teamInvites.map((invite, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">{invite.email}</span>
+                    <Badge variant="outline" className="text-xs capitalize">{invite.role}</Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveInvite(invite.email)}
+                    data-testid={`button-remove-invite-${idx}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg p-4">
+        <div className="flex items-start gap-2">
+          <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-green-900 dark:text-green-100">Team members get their own login</p>
+            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+              They'll receive an email with instructions to join your business.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-between gap-3">
+        <Button variant="outline" onClick={() => setCurrentStep('integrations')} data-testid="button-back-team">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={handleSkipTeam}
+          data-testid="button-skip-team"
+        >
+          Skip for now
+          <SkipForward className="w-4 h-4 ml-2" />
+        </Button>
+        <Button
+          onClick={handleSendInvites}
+          disabled={sendingInvites}
+          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+          data-testid="button-send-invites"
+        >
+          {sendingInvites && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          {teamInvites.length > 0 ? `Send ${teamInvites.length} Invite${teamInvites.length > 1 ? 's' : ''}` : 'Continue'}
+          <ArrowRight className="w-4 h-4 ml-2" />
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderCompleteStep = () => (
     <div className="space-y-6 text-center">
       <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto">
@@ -789,7 +1092,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
       <div>
         <h2 className="text-2xl font-bold text-green-600 mb-2">Welcome to TradieTrack!</h2>
         <p className="text-muted-foreground">
-          Your account is now set up and ready to help you manage your trade business efficiently.
+          Your account is ready. Let's get you some jobs!
         </p>
       </div>
 
@@ -800,12 +1103,14 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         </div>
         <div className="flex items-center gap-2">
           <CheckCircle className="w-4 h-4 text-green-600" />
-          <span className="text-sm">Account ready for jobs and quotes</span>
+          <span className="text-sm">Ready to create jobs, quotes & invoices</span>
         </div>
-        <div className="flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-green-600" />
-          <span className="text-sm">Integration preferences saved</span>
-        </div>
+        {isTeamMode && teamInvites.length > 0 && (
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <span className="text-sm">{teamInvites.length} team invite{teamInvites.length > 1 ? 's' : ''} sent</span>
+          </div>
+        )}
       </div>
 
       <Button
@@ -813,7 +1118,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
         data-testid="button-get-started"
       >
-        Get Started
+        Start Using TradieTrack
         <ArrowRight className="w-4 h-4 ml-2" />
       </Button>
     </div>
@@ -841,6 +1146,8 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
           <CardContent>
             {currentStep === 'auth' && renderAuthStep()}
             {currentStep === 'business' && renderBusinessStep()}
+            {currentStep === 'integrations' && renderIntegrationsStep()}
+            {currentStep === 'team' && renderTeamStep()}
             {currentStep === 'complete' && renderCompleteStep()}
           </CardContent>
         </Card>
