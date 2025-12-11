@@ -137,7 +137,7 @@ interface ScheduleSuggestionsResponse {
 
 export default function DispatchBoard() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
+  const [viewMode, setViewMode] = useState<'day' | '3day' | 'week'>('day');
   const [draggedJob, setDraggedJob] = useState<DraggedJob | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
   const [showAISuggestions, setShowAISuggestions] = useState(false);
@@ -415,21 +415,32 @@ export default function DispatchBoard() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
                   <Button
-                    variant={viewMode === 'day' ? 'default' : 'outline'}
+                    variant={viewMode === 'day' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setViewMode('day')}
+                    className="h-8"
+                    data-testid="button-view-day"
                   >
-                    <LayoutGrid className="h-4 w-4 mr-1" />
                     Day
                   </Button>
                   <Button
-                    variant={viewMode === 'week' ? 'default' : 'outline'}
+                    variant={viewMode === '3day' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('3day')}
+                    className="h-8"
+                    data-testid="button-view-3day"
+                  >
+                    3 Day
+                  </Button>
+                  <Button
+                    variant={viewMode === 'week' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setViewMode('week')}
+                    className="h-8"
+                    data-testid="button-view-week"
                   >
-                    <List className="h-4 w-4 mr-1" />
                     Week
                   </Button>
                 </div>

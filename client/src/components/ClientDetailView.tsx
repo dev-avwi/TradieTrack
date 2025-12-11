@@ -21,13 +21,19 @@ import {
   TrendingUp,
   History,
   MessageSquare,
-  Star
+  Star,
+  FolderOpen,
+  PenTool,
+  File,
+  Copy,
+  CheckCircle
 } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import StatusBadge from "./StatusBadge";
 import KPIBox from "./KPIBox";
 import { useLocation } from "wouter";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface ClientDetailViewProps {
   clientId: string;
@@ -50,6 +56,7 @@ export default function ClientDetailView({
 }: ClientDetailViewProps) {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
+  const { toast } = useToast();
 
   const { data: client, isLoading: clientLoading } = useQuery({
     queryKey: ['/api/clients', clientId],
@@ -111,6 +118,57 @@ export default function ClientDetailView({
     },
     enabled: jobs.length > 0
   });
+
+  const { data: clientAssets, isLoading: assetsLoading } = useQuery({
+    queryKey: ['/api/clients', clientId, 'assets'],
+    queryFn: async () => {
+      const response = await fetch(`/api/clients/${clientId}/assets`);
+      if (!response.ok) throw new Error('Failed to fetch assets');
+      return response.json();
+    },
+    enabled: !!clientId
+  });
+
+  const [copiedAssetId, setCopiedAssetId] = useState<string | null>(null);
+  
+  const handleCopyAsset = async (asset: any, type: 'photo' | 'signature') => {
+    try {
+      if (type === 'signature' && asset.signatureData) {
+        // For signatures, copy the data URL to clipboard
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(asset.signatureData);
+          setCopiedAssetId(asset.id);
+          toast({
+            title: "Signature copied",
+            description: "Signature data copied to clipboard for reuse",
+          });
+          setTimeout(() => setCopiedAssetId(null), 2000);
+        } else {
+          toast({
+            title: "Unable to copy",
+            description: "Clipboard not available in this browser",
+            variant: "destructive",
+          });
+        }
+      } else if (type === 'photo' && asset.signedUrl) {
+        // For photos, open in new tab for download/save
+        window.open(asset.signedUrl, '_blank');
+        setCopiedAssetId(asset.id);
+        toast({
+          title: "Photo opened",
+          description: "Photo opened in new tab for download",
+        });
+        setTimeout(() => setCopiedAssetId(null), 1500);
+      }
+    } catch (error) {
+      console.error('Failed to copy asset:', error);
+      toast({
+        title: "Action failed",
+        description: "Could not complete the action. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-AU', {
@@ -385,32 +443,33 @@ export default function ClientDetailView({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-5 h-auto">
+        <TabsList className="w-full grid grid-cols-6 h-auto">
           <TabsTrigger value="overview" className="text-xs py-2.5" data-testid="tab-overview">
-            <History className="h-3.5 w-3.5 mr-1.5" />
+            <History className="h-3.5 w-3.5 mr-1" />
             <span className="hidden sm:inline">Activity</span>
           </TabsTrigger>
           <TabsTrigger value="jobs" className="text-xs py-2.5" data-testid="tab-jobs">
-            <Briefcase className="h-3.5 w-3.5 mr-1.5" />
+            <Briefcase className="h-3.5 w-3.5 mr-1" />
             <span className="hidden sm:inline">Jobs</span>
-            <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">{jobs.length}</Badge>
+            <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{jobs.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="quotes" className="text-xs py-2.5" data-testid="tab-quotes">
-            <FileText className="h-3.5 w-3.5 mr-1.5" />
+            <FileText className="h-3.5 w-3.5 mr-1" />
             <span className="hidden sm:inline">Quotes</span>
-            <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">{quotes.length}</Badge>
+            <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{quotes.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="invoices" className="text-xs py-2.5" data-testid="tab-invoices">
-            <Receipt className="h-3.5 w-3.5 mr-1.5" />
+            <Receipt className="h-3.5 w-3.5 mr-1" />
             <span className="hidden sm:inline">Invoices</span>
-            <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">{invoices.length}</Badge>
+            <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{invoices.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="photos" className="text-xs py-2.5" data-testid="tab-photos">
-            <Camera className="h-3.5 w-3.5 mr-1.5" />
+            <Camera className="h-3.5 w-3.5 mr-1" />
             <span className="hidden sm:inline">Photos</span>
-            {allPhotos.length > 0 && (
-              <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">{allPhotos.length}</Badge>
-            )}
+          </TabsTrigger>
+          <TabsTrigger value="assets" className="text-xs py-2.5" data-testid="tab-assets">
+            <FolderOpen className="h-3.5 w-3.5 mr-1" />
+            <span className="hidden sm:inline">Assets</span>
           </TabsTrigger>
         </TabsList>
 
@@ -791,6 +850,182 @@ export default function ClientDetailView({
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="assets" className="mt-4 space-y-4">
+          {assetsLoading ? (
+            <Card>
+              <CardContent className="py-8">
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : !clientAssets || (clientAssets.photos?.length === 0 && clientAssets.signatures?.length === 0) ? (
+            <Card>
+              <CardContent className="py-8">
+                <div className="text-center">
+                  <FolderOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">No reusable assets yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Photos, signatures, and documents from jobs will appear here for easy reuse
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {clientAssets.latestSignature && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <PenTool className="h-4 w-4" />
+                      Latest Signature
+                      <Badge variant="secondary" className="ml-auto text-xs">Reusable</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4 p-3 rounded-lg border bg-muted/30">
+                      <div className="w-24 h-16 rounded border bg-white flex items-center justify-center overflow-hidden">
+                        {clientAssets.latestSignature.signatureData ? (
+                          <img 
+                            src={clientAssets.latestSignature.signatureData} 
+                            alt="Signature" 
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        ) : (
+                          <PenTool className="h-6 w-6 text-muted-foreground/30" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{clientAssets.latestSignature.signerName || 'Client Signature'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Signed on {formatDate(clientAssets.latestSignature.signedAt)}
+                        </p>
+                        {clientAssets.latestSignature.quoteNumber && (
+                          <p className="text-xs text-muted-foreground">
+                            From Quote #{clientAssets.latestSignature.quoteNumber}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleCopyAsset(clientAssets.latestSignature, 'signature')}
+                        data-testid="button-copy-signature"
+                      >
+                        {copiedAssetId === clientAssets.latestSignature.id ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-1 text-green-500" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 mr-1" />
+                            Use
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {clientAssets.photos?.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <Camera className="h-4 w-4" />
+                      Reusable Photos
+                      <Badge variant="secondary" className="text-xs">{clientAssets.photos.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {clientAssets.photos.slice(0, 8).map((photo: any) => (
+                        <div 
+                          key={photo.id}
+                          className="relative group aspect-square rounded-lg overflow-hidden border hover-elevate"
+                        >
+                          {photo.signedUrl ? (
+                            <img 
+                              src={photo.signedUrl} 
+                              alt={photo.caption || 'Photo'}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-muted flex items-center justify-center">
+                              <Camera className="h-6 w-6 text-muted-foreground/30" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleCopyAsset(photo, 'photo')}
+                              data-testid={`button-copy-photo-${photo.id}`}
+                            >
+                              {copiedAssetId === photo.id ? (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                            <p className="text-white text-[10px] truncate">{photo.jobTitle || 'Job Photo'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {clientAssets.photos.length > 8 && (
+                      <p className="text-center text-xs text-muted-foreground mt-3">
+                        +{clientAssets.photos.length - 8} more photos available
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {clientAssets.signatures?.length > 1 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <PenTool className="h-4 w-4" />
+                      Signature History
+                      <Badge variant="secondary" className="text-xs">{clientAssets.signatures.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {clientAssets.signatures.slice(1, 5).map((sig: any) => (
+                      <div 
+                        key={sig.id}
+                        className="flex items-center gap-3 p-2 rounded-lg border hover-elevate"
+                      >
+                        <div className="w-16 h-10 rounded border bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {sig.signatureData ? (
+                            <img 
+                              src={sig.signatureData} 
+                              alt="Signature" 
+                              className="max-w-full max-h-full object-contain"
+                            />
+                          ) : (
+                            <PenTool className="h-4 w-4 text-muted-foreground/30" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{sig.signerName || 'Signature'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(sig.signedAt)} - {sig.quoteNumber ? `Quote #${sig.quoteNumber}` : 'Unknown'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </PageShell>

@@ -174,6 +174,32 @@ interface TeamReport {
 
 const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
+const downloadCSV = (data: any[], filename: string) => {
+  if (data.length === 0) return;
+  
+  const headers = Object.keys(data[0]);
+  const csvContent = [
+    headers.join(','),
+    ...data.map(row => 
+      headers.map(h => {
+        const value = row[h];
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      }).join(',')
+    )
+  ].join('\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
 export default function Reports() {
   const [, navigate] = useLocation();
   const [dateRange, setDateRange] = useState<'ytd' | 'month' | 'quarter' | 'year'>('ytd');
@@ -305,9 +331,24 @@ export default function Reports() {
             </SelectContent>
           </Select>
           
-          <Button variant="outline" data-testid="button-export-report">
+          <Button 
+            variant="outline" 
+            data-testid="button-export-report"
+            disabled={!revenueData?.months || revenueData.months.length === 0}
+            onClick={() => {
+              if (revenueData?.months && revenueData.months.length > 0) {
+                const exportData = revenueData.months.map(m => ({
+                  Month: m.month,
+                  'Revenue (AUD)': m.revenue,
+                  'GST (AUD)': m.gst,
+                  'Invoices Paid': m.invoicesPaid
+                }));
+                downloadCSV(exportData, `revenue_report_${selectedYear}`);
+              }
+            }}
+          >
             <Download className="h-4 w-4 mr-2" />
-            Export Report
+            Export Revenue
           </Button>
         </div>
 
@@ -750,8 +791,30 @@ export default function Reports() {
 
           <TabsContent value="clients" className="mt-6">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
                 <CardTitle>Top Clients by Revenue</CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  data-testid="button-export-clients"
+                  disabled={!clientData?.clients || clientData.clients.length === 0}
+                  onClick={() => {
+                    if (clientData?.clients && clientData.clients.length > 0) {
+                      const exportData = clientData.clients.map(c => ({
+                        Name: c.name,
+                        Email: c.email,
+                        Phone: c.phone || '',
+                        'Revenue (AUD)': c.totalRevenue,
+                        'Outstanding (AUD)': c.outstandingBalance,
+                        'Jobs Completed': c.jobsCompleted
+                      }));
+                      downloadCSV(exportData, 'client_report');
+                    }
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">

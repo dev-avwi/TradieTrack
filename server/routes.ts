@@ -2853,6 +2853,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Client Assets - Photos, signatures, documents across all jobs for a client
+  app.get("/api/clients/:clientId/assets", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
+    try {
+      const { clientId } = req.params;
+      const userContext = await getUserContext(req.userId);
+      
+      // Verify client belongs to user's organization before returning assets
+      const client = await storage.getClient(clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found or access denied" });
+      }
+      
+      // Get all jobs for this client
+      const allJobs = await storage.getJobs(userContext.effectiveUserId);
+      const clientJobs = allJobs.filter(j => j.clientId === clientId);
+      const jobIds = clientJobs.map(j => j.id);
+      
+      // Get all photos for these jobs
+      const photos: any[] = [];
+      for (const jobId of jobIds) {
+        const jobPhotos = await storage.getJobPhotos(jobId, userContext.effectiveUserId);
+        const job = clientJobs.find(j => j.id === jobId);
+        photos.push(...jobPhotos.map(p => ({ ...p, jobTitle: job?.title, jobId })));
+      }
+      
+      // Get all signatures for client's quotes and invoices
+      const allQuotes = await storage.getQuotes(userContext.effectiveUserId);
+      const allInvoices = await storage.getInvoices(userContext.effectiveUserId);
+      const clientQuotes = allQuotes.filter(q => q.clientId === clientId);
+      const clientInvoices = allInvoices.filter(i => i.clientId === clientId);
+      
+      const signatures: any[] = [];
+      for (const quote of clientQuotes) {
+        const sig = await storage.getDigitalSignatureByQuoteId(quote.id);
+        if (sig) signatures.push({ ...sig, relatedType: 'quote', relatedId: quote.id, quoteNumber: quote.quoteNumber });
+      }
+      // Note: Invoice signatures would use a similar method if available
+      
+      // Get most recent signature for quick reuse
+      const latestSignature = signatures.length > 0 
+        ? signatures.sort((a, b) => new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime())[0]
+        : null;
+      
+      res.json({
+        photos,
+        signatures,
+        latestSignature,
+        summary: {
+          totalPhotos: photos.length,
+          totalSignatures: signatures.length,
+          jobCount: clientJobs.length,
+          quoteCount: clientQuotes.length,
+          invoiceCount: clientInvoices.length
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching client assets:", error);
+      res.status(500).json({ error: "Failed to fetch client assets" });
+    }
+  });
+
+  // Smart Pre-fill - Suggest data based on client history
+  app.get("/api/clients/:clientId/prefill-suggestions", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
+    try {
+      const { clientId } = req.params;
+      const { type } = req.query; // 'job', 'quote', 'invoice'
+      const userContext = await getUserContext(req.userId);
+      
+      // Get client details
+      const client = await storage.getClient(clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Get client's previous jobs, quotes, invoices
+      const allJobs = await storage.getJobs(userContext.effectiveUserId);
+      const clientJobs = allJobs.filter(j => j.clientId === clientId).sort((a, b) => 
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
+      
+      const allQuotes = await storage.getQuotes(userContext.effectiveUserId);
+      const clientQuotes = allQuotes.filter(q => q.clientId === clientId).sort((a, b) =>
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
+      
+      // Get catalog items frequently used for this client
+      const catalogItems = await storage.getLineItemCatalog(userContext.effectiveUserId);
+      const usedItemIds: Record<string, number> = {};
+      
+      for (const quote of clientQuotes) {
+        const lineItems = (quote.lineItems as any[]) || [];
+        for (const item of lineItems) {
+          if (item.catalogItemId) {
+            usedItemIds[item.catalogItemId] = (usedItemIds[item.catalogItemId] || 0) + 1;
+          }
+        }
+      }
+      
+      // Get frequently used items
+      const frequentItems = Object.entries(usedItemIds)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([id]) => catalogItems.find(c => c.id === id))
+        .filter(Boolean);
+      
+      // Get most recent photos
+      const recentPhotos: any[] = [];
+      for (const job of clientJobs.slice(0, 3)) {
+        const photos = await storage.getJobPhotos(job.id, userContext.effectiveUserId);
+        recentPhotos.push(...photos.slice(0, 3).map(p => ({ ...p, jobTitle: job.title })));
+      }
+      
+      // Get latest signature
+      let latestSignature = null;
+      for (const quote of clientQuotes.slice(0, 5)) {
+        const sig = await storage.getDigitalSignatureByQuoteId(quote.id);
+        if (sig) {
+          latestSignature = sig;
+          break;
+        }
+      }
+      
+      // Build suggestions
+      const suggestions = {
+        client: {
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          phone: client.phone,
+          address: client.address,
+        },
+        prefillData: {
+          address: client.address,
+          contactName: client.name,
+          contactEmail: client.email,
+          contactPhone: client.phone,
+        },
+        recentJobs: clientJobs.slice(0, 3).map(j => ({
+          id: j.id,
+          title: j.title,
+          status: j.status,
+          address: j.address,
+        })),
+        frequentCatalogItems: frequentItems,
+        recentPhotos: recentPhotos.slice(0, 6),
+        savedSignature: latestSignature ? {
+          signerName: latestSignature.signerName,
+          signatureData: latestSignature.signatureData,
+          signedAt: latestSignature.signedAt,
+        } : null,
+        lastJobAddress: clientJobs[0]?.address || client.address,
+        lastQuoteTemplate: clientQuotes[0]?.templateId,
+      };
+      
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error fetching prefill suggestions:", error);
+      res.status(500).json({ error: "Failed to fetch suggestions" });
+    }
+  });
+
   // Jobs Routes
   app.get("/api/jobs", requireAuth, async (req: any, res) => {
     try {
