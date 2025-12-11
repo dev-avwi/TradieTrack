@@ -10505,6 +10505,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
+  // AUTOMATION TEMPLATES (Pre-built workflows)
+  // ============================================
+
+  // Get all automation templates
+  app.get("/api/automation-templates", requireAuth, async (req: any, res) => {
+    try {
+      const { getAllTemplates, getPopularTemplates, getTemplatesByCategory } = await import('./automationTemplates');
+      
+      const category = req.query.category as string | undefined;
+      const popularOnly = req.query.popular === 'true';
+      
+      let templates;
+      if (popularOnly) {
+        templates = getPopularTemplates();
+      } else if (category) {
+        templates = getTemplatesByCategory(category);
+      } else {
+        templates = getAllTemplates();
+      }
+      
+      res.json(templates);
+    } catch (error: any) {
+      console.error('Error fetching automation templates:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get a specific template by ID
+  app.get("/api/automation-templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { getTemplateById } = await import('./automationTemplates');
+      const { id } = req.params;
+      
+      const template = getTemplateById(id);
+      
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      
+      res.json(template);
+    } catch (error: any) {
+      console.error('Error fetching automation template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Enable a template (create automation from template)
+  app.post("/api/automation-templates/:id/enable", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const { getTemplateById, templateToAutomation } = await import('./automationTemplates');
+      const template = getTemplateById(id);
+      
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      
+      // Check if user already has this automation
+      const existingAutomations = await storage.getAutomations(userId);
+      const alreadyExists = existingAutomations.some((a: any) => a.name === template.name);
+      
+      if (alreadyExists) {
+        return res.status(400).json({ error: 'You already have this automation enabled' });
+      }
+      
+      // Create automation from template
+      const automationData = templateToAutomation(template, userId);
+      const automation = await storage.createAutomation(automationData);
+      
+      res.json({
+        success: true,
+        message: `Automation "${template.name}" enabled successfully`,
+        automation,
+      });
+    } catch (error: any) {
+      console.error('Error enabling automation template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
   // CUSTOM FORMS
   // ============================================
 

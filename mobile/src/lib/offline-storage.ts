@@ -107,6 +107,7 @@ export interface PendingSyncItem {
   createdAt: number;
   retryCount: number;
   lastError?: string;
+  lastAttemptedAt?: number; // For exponential backoff
 }
 
 // ============ OFFLINE STATE STORE ============
@@ -250,7 +251,7 @@ class OfflineStorageService {
           local_id TEXT
         );
         
-        -- Sync queue for pending changes
+        -- Sync queue for pending changes with exponential backoff support
         CREATE TABLE IF NOT EXISTS sync_queue (
           id TEXT PRIMARY KEY,
           type TEXT NOT NULL,
@@ -258,13 +259,23 @@ class OfflineStorageService {
           data TEXT NOT NULL,
           created_at INTEGER NOT NULL,
           retry_count INTEGER DEFAULT 0,
-          last_error TEXT
+          last_error TEXT,
+          last_attempted_at INTEGER
         );
         
         -- Metadata for sync timestamps
         CREATE TABLE IF NOT EXISTS metadata (
           key TEXT PRIMARY KEY,
           value TEXT
+        );
+        
+        -- Cached auth data for offline access
+        CREATE TABLE IF NOT EXISTS cached_auth (
+          id TEXT PRIMARY KEY DEFAULT 'current_user',
+          user_data TEXT,
+          business_settings TEXT,
+          role_info TEXT,
+          cached_at INTEGER NOT NULL
         );
       `);
       
@@ -965,6 +976,28 @@ class OfflineStorageService {
     console.log(`[OfflineStorage] Added to sync queue: ${type} ${action}`);
   }
 
+  /**
+   * Calculate backoff delay in milliseconds based on retry count
+   * Product spec: 30s → 2m → 5m → 15m → 30m (then capped at 30m)
+   */
+  private getBackoffDelay(retryCount: number): number {
+    // First attempt has no delay
+    if (retryCount === 0) return 0;
+    
+    // Specific delay sequence per product spec
+    const delays = [
+      30 * 1000,       // 30 seconds (retry 1)
+      2 * 60 * 1000,   // 2 minutes (retry 2)
+      5 * 60 * 1000,   // 5 minutes (retry 3)
+      15 * 60 * 1000,  // 15 minutes (retry 4)
+      30 * 60 * 1000,  // 30 minutes (retry 5+)
+    ];
+    
+    // Use the delay for the retry count, capping at the maximum delay
+    const index = Math.min(retryCount - 1, delays.length - 1);
+    return delays[index];
+  }
+
   async getPendingSyncItems(): Promise<PendingSyncItem[]> {
     if (!this.db) return [];
     
@@ -972,15 +1005,31 @@ class OfflineStorageService {
       'SELECT * FROM sync_queue ORDER BY created_at ASC'
     );
     
-    return rows.map((row: any) => ({
-      id: row.id,
-      type: row.type,
-      action: row.action,
-      data: row.data,
-      createdAt: row.created_at,
-      retryCount: row.retry_count,
-      lastError: row.last_error,
-    }));
+    const now = Date.now();
+    
+    // Filter items that are ready for retry based on exponential backoff
+    return rows
+      .map((row: any) => ({
+        id: row.id,
+        type: row.type,
+        action: row.action,
+        data: row.data,
+        createdAt: row.created_at,
+        retryCount: row.retry_count,
+        lastError: row.last_error,
+        lastAttemptedAt: row.last_attempted_at,
+      }))
+      .filter((item) => {
+        // First attempt - always ready
+        if (!item.lastAttemptedAt || item.retryCount === 0) return true;
+        
+        // Calculate backoff delay
+        const delay = this.getBackoffDelay(item.retryCount);
+        const nextRetryTime = item.lastAttemptedAt + delay;
+        
+        // Check if enough time has passed
+        return now >= nextRetryTime;
+      });
   }
 
   private async updatePendingSyncCount(): Promise<void> {
@@ -1029,32 +1078,45 @@ class OfflineStorageService {
       for (const item of items) {
         try {
           const data = JSON.parse(item.data);
+          
+          // Attempt the actual sync (API call)
           const success = await this.syncItem(item.type, item.action, data);
           
+          // Only record attempt time AFTER actual network attempt
+          const attemptTime = Date.now();
+          
           if (success) {
-            // Remove from queue
+            // Remove from queue on success
             await this.db!.runAsync('DELETE FROM sync_queue WHERE id = ?', [item.id]);
             
             // Update the cached item to mark as synced
             await this.markItemSynced(item.type, data.id);
             synced++;
           } else {
-            // Increment retry count
+            // Increment retry count and record attempt time (backoff applies on next attempt)
             await this.db!.runAsync(
-              'UPDATE sync_queue SET retry_count = retry_count + 1 WHERE id = ?',
-              [item.id]
+              'UPDATE sync_queue SET retry_count = retry_count + 1, last_attempted_at = ? WHERE id = ?',
+              [attemptTime, item.id]
             );
             failed++;
+            
+            // Log backoff info
+            const nextDelay = this.getBackoffDelay(item.retryCount + 1);
+            console.log(`[OfflineStorage] Sync failed, retry #${item.retryCount + 1} in ${nextDelay / 1000}s`);
           }
         } catch (error: any) {
           console.error(`[OfflineStorage] Failed to sync item ${item.id}:`, error);
           
-          // Update with error
+          // Update with error, increment retry count, and record attempt time
           await this.db!.runAsync(
-            'UPDATE sync_queue SET retry_count = retry_count + 1, last_error = ? WHERE id = ?',
-            [error.message || 'Unknown error', item.id]
+            'UPDATE sync_queue SET retry_count = retry_count + 1, last_error = ?, last_attempted_at = ? WHERE id = ?',
+            [error.message || 'Unknown error', Date.now(), item.id]
           );
           failed++;
+          
+          // Log backoff info
+          const nextDelay = this.getBackoffDelay(item.retryCount + 1);
+          console.log(`[OfflineStorage] Sync error, retry #${item.retryCount + 1} in ${nextDelay / 1000}s`);
         }
       }
       
@@ -1295,6 +1357,95 @@ class OfflineStorageService {
       this.networkUnsubscribe();
       this.networkUnsubscribe = null;
     }
+  }
+
+  // ============ CACHED AUTH DATA ============
+  // Note: NO passwords or credentials are stored - only user profile data and settings
+  // Session tokens are handled separately by SecureStore in api.ts
+
+  /**
+   * Cache user and business settings for offline access
+   * This enables the app to work offline with cached user data
+   */
+  async cacheAuthData(userData: any, businessSettings: any, roleInfo?: any): Promise<void> {
+    if (!this.db) return;
+    
+    try {
+      await this.db.runAsync(
+        `INSERT OR REPLACE INTO cached_auth (id, user_data, business_settings, role_info, cached_at)
+         VALUES ('current_user', ?, ?, ?, ?)`,
+        [
+          JSON.stringify(userData),
+          JSON.stringify(businessSettings),
+          roleInfo ? JSON.stringify(roleInfo) : null,
+          Date.now()
+        ]
+      );
+      console.log('[OfflineStorage] Cached auth data for offline access');
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to cache auth data:', error);
+    }
+  }
+
+  /**
+   * Get cached auth data for offline login
+   * Returns null if no cached data or cache is too old (7 days)
+   */
+  async getCachedAuthData(): Promise<{
+    userData: any;
+    businessSettings: any;
+    roleInfo: any;
+    cachedAt: number;
+  } | null> {
+    if (!this.db) return null;
+    
+    try {
+      const result = await this.db.getFirstAsync(
+        'SELECT user_data, business_settings, role_info, cached_at FROM cached_auth WHERE id = ?',
+        ['current_user']
+      ) as any;
+      
+      if (!result) return null;
+      
+      // Check if cache is too old (7 days)
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      if (Date.now() - result.cached_at > sevenDaysMs) {
+        console.log('[OfflineStorage] Cached auth data expired (>7 days old)');
+        return null;
+      }
+      
+      return {
+        userData: result.user_data ? JSON.parse(result.user_data) : null,
+        businessSettings: result.business_settings ? JSON.parse(result.business_settings) : null,
+        roleInfo: result.role_info ? JSON.parse(result.role_info) : null,
+        cachedAt: result.cached_at,
+      };
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to get cached auth data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear cached auth data (on logout)
+   */
+  async clearCachedAuthData(): Promise<void> {
+    if (!this.db) return;
+    
+    try {
+      await this.db.runAsync('DELETE FROM cached_auth');
+      console.log('[OfflineStorage] Cleared cached auth data');
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to clear cached auth data:', error);
+    }
+  }
+
+  /**
+   * Check if we have valid cached auth data for offline use
+   */
+  async hasCachedAuth(): Promise<boolean> {
+    const cached = await this.getCachedAuthData();
+    return cached !== null && cached.userData !== null;
   }
 }
 

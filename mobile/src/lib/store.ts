@@ -165,6 +165,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Note: Don't clear role cache on login - per-user cache is keyed by userId
     // Each user has their own cache entry, so no cross-user leakage possible
     
+    // Check if we're offline
+    const { isOnline } = useOfflineStore.getState();
+    
+    if (!isOnline) {
+      // Can't login when offline - need server authentication
+      set({ 
+        isLoading: false, 
+        error: 'No internet connection. Please connect to sign in.' 
+      });
+      return false;
+    }
+    
     const response = await api.login(email, password);
     
     if (response.error) {
@@ -192,6 +204,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     // Fetch role info for permissions
     await get().fetchRoleInfo();
+    
+    // Cache auth data for offline access
+    const state = get();
+    await offlineStorage.cacheAuthData(state.user, state.businessSettings, state.roleInfo);
+    
+    // Trigger full data sync for offline access
+    await offlineStorage.fullSync();
 
     return true;
   },
@@ -200,6 +219,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     // Clear role cache BEFORE logout to prevent permission leakage
     clearRoleCache();
+    // Clear cached auth data for offline access
+    await offlineStorage.clearCachedAuthData();
+    // Clear all cached data
+    await offlineStorage.clearCache();
     await api.logout();
     set({ 
       user: null, 
@@ -226,9 +249,59 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
+    // Check if we're online
+    const { isOnline } = useOfflineStore.getState();
+    
+    if (!isOnline) {
+      // We're offline - try to use cached auth data
+      console.log('[Auth] Offline mode - attempting to use cached auth data');
+      const cachedAuth = await offlineStorage.getCachedAuthData();
+      
+      if (cachedAuth && cachedAuth.userData) {
+        // Use cached data for offline access
+        set({ 
+          user: cachedAuth.userData, 
+          businessSettings: cachedAuth.businessSettings,
+          roleInfo: cachedAuth.roleInfo,
+          isAuthenticated: true, 
+          isLoading: false,
+          isInitialized: true 
+        });
+        console.log('[Auth] Using cached auth data for offline access');
+        return;
+      } else {
+        // No cached data and offline - can't authenticate
+        set({ 
+          user: null, 
+          isAuthenticated: false, 
+          isLoading: false,
+          isInitialized: true 
+        });
+        return;
+      }
+    }
+
+    // Online - verify with server
     const response = await api.getCurrentUser();
     
     if (response.error) {
+      // Server auth failed - check if we have cached data as fallback
+      // This handles cases where the server is unreachable but we have cached data
+      const cachedAuth = await offlineStorage.getCachedAuthData();
+      
+      if (cachedAuth && cachedAuth.userData) {
+        console.log('[Auth] Server auth failed, using cached auth data');
+        set({ 
+          user: cachedAuth.userData, 
+          businessSettings: cachedAuth.businessSettings,
+          roleInfo: cachedAuth.roleInfo,
+          isAuthenticated: true, 
+          isLoading: false,
+          isInitialized: true 
+        });
+        return;
+      }
+      
       await api.setToken(null);
       set({ 
         user: null, 
@@ -253,6 +326,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     // Fetch role info for permissions
     await get().fetchRoleInfo();
+    
+    // Update cached auth data
+    const state = get();
+    await offlineStorage.cacheAuthData(state.user, state.businessSettings, state.roleInfo);
   },
 
   fetchRoleInfo: async () => {
