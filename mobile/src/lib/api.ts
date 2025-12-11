@@ -189,6 +189,19 @@ class ApiClient {
   async getCurrentUser(): Promise<ApiResponse<any>> {
     return this.get<any>('/api/auth/me');
   }
+
+  async updateBusinessSettings(data: {
+    businessName?: string;
+    tradeType?: string;
+    abn?: string;
+    phone?: string;
+    address?: string;
+    gstEnabled?: boolean;
+    defaultHourlyRate?: number;
+    calloutFee?: number;
+  }): Promise<ApiResponse<any>> {
+    return this.patch<any>('/api/business-settings', data);
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL);

@@ -68,7 +68,7 @@ export default function RegisterScreen() {
     const loginSuccess = await login(email.trim(), password);
     
     if (loginSuccess) {
-      router.replace('/(tabs)');
+      router.replace('/(onboarding)/setup');
     }
   };
 
@@ -92,7 +92,7 @@ export default function RegisterScreen() {
         if (auth === 'success' || auth === 'google_success') {
           const isLoggedIn = await checkAuth();
           if (isLoggedIn) {
-            router.replace('/(tabs)');
+            router.replace('/(onboarding)/setup');
           } else {
             Alert.alert('Error', 'Failed to complete sign-up. Please try again.');
           }

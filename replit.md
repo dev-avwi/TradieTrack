@@ -1,37 +1,29 @@
 ### Overview
-TradieTrack is a mobile-first web application designed for Australian tradespeople. Its primary purpose is to streamline business operations, from job creation and management to quoting, invoicing, and payment collection, including Australian GST handling and AUD currency. The platform aims to provide a comprehensive, efficient, and user-friendly solution for solo tradies and small businesses to effectively manage their operations.
+TradieTrack is a mobile-first web application for Australian tradespeople, designed to streamline business operations from job creation and management to quoting, invoicing, and payment collection. It includes Australian GST handling and AUD currency, aiming to provide a comprehensive, efficient, and user-friendly solution for solo tradies and small businesses to manage their operations effectively. The project's ambition is to empower tradies with tools that simplify their daily tasks, improve financial management, and enhance client communication, ultimately boosting productivity and profitability.
 
 ### User Preferences
 Preferred communication style: Simple, everyday language.
 
 ### System Architecture
-TradieTrack is built with an event-driven architecture using TypeScript. The frontend is a mobile-first React 18 application, leveraging shadcn/ui (Radix UI) for components, TailwindCSS for styling, Wouter for routing, and TanStack Query for state management. The backend is an Express.js and TypeScript REST API with Zod for request validation. Data is stored in PostgreSQL, managed by Drizzle ORM, and supports Australian-specific features like GST.
+TradieTrack utilizes an event-driven architecture with TypeScript. The frontend is a mobile-first React 18 application, using shadcn/ui (Radix UI) for components, TailwindCSS for styling, Wouter for routing, and TanStack Query for state management. The backend is an Express.js and TypeScript REST API with Zod for validation, storing data in PostgreSQL managed by Drizzle ORM.
 
-Authentication includes email/password, Google OAuth 2.0, session management, and a secure token-based password reset. An integrated AI Assistant (GPT-4o-mini) provides business-aware suggestions, and server-side PDF generation via Puppeteer creates professional quotes and invoices. The system features robust role-based team management.
-
-The application includes a comprehensive theming and branding system for custom brand colors, persisting across sessions and syncing with backend settings. UI/UX focuses on a native mobile app feel with card-based layouts, touch-optimized components, and a dashboard prioritizing "Today's Schedule."
-
-Key "Smart Tradie Features" enhance workflow efficiency:
--   **Quick Add Client**: Inline client creation within job forms.
--   **Enhanced Template Selector**: Card-based template selection with previews.
--   **Smart Address Auto-fill**: Populates job addresses from client data.
--   **Contextual Quote/Invoice Creation**: Allows direct creation from jobs based on status.
-
-An Adaptive Solo/Team Mode dynamically adjusts the interface based on team size, offering prominent time tracking, GPS check-in (team mode), and simplified navigation for staff. A 5-stage ServiceM8-style job status workflow (`pending` → `scheduled` → `in_progress` → `done` → `invoiced`) with visual indicators is implemented, alongside professional job confirmation emails.
-
-A ServiceM8-style live quote/invoice editor provides real-time preview, integrating templates, catalog items, and deposit settings. The quote-to-invoice workflow enables seamless conversion of accepted quotes, supporting configurable deposit payments via Stripe Elements and digital signature capture.
-
-Customisable Email Templates allow previewing and editing email content before sending. AI-powered suggestions (GPT-4o-mini) offer Australian English phrasing and quick tone adjustments (Formal, Friendly, Brief). An Automated Gmail with PDF Workflow allows one-click generation and attachment of PDFs to Gmail drafts.
-
-Developer tools (dev mode only) facilitate mock data management. The application provides PWA support with a web manifest and service worker for offline capabilities.
-
-Real-time communication features include Job Chat (per-job messaging with file attachments), Team Chat (business-wide communication), and Direct Messages (1-on-1 chat), all secured with role-based access.
-
-A Life360-Style Interactive Map (Owner/Manager only) displays color-coded job pins and circular avatar markers for team members with real-time location tracking (30-second refresh), activity status (Online, Driving, Working, Offline), speed, battery levels, and geofence alerts for job site arrivals/departures (100m radius).
-
-A comprehensive Role-Based Access Control (RBAC) system (`server/permissions.ts`) defines granular permissions and role templates (OWNER, ADMIN, SUPERVISOR, STAFF), enforced by middleware.
-
-Workflow-Integrated Smart Actions provide contextual automation suggestions (e.g., "Create Invoice" after job completion) with user approval. These actions show previews, missing requirements, and toggle controls, ensuring no blind background execution.
+Key architectural features include:
+- **Authentication**: Email/password, Google OAuth 2.0, session management, and secure token-based password reset.
+- **AI Assistant**: An integrated GPT-4o-mini AI provides business-aware suggestions and Australian English phrasing.
+- **PDF Generation**: Server-side PDF generation via Puppeteer for quotes and invoices.
+- **Theming & Branding**: Comprehensive system for custom brand colors, persisting across sessions.
+- **UI/UX**: Mobile-first design with a native app feel, card-based layouts, touch-optimized components, and a "Today's Schedule" dashboard.
+- **Smart Tradie Features**: Includes Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation.
+- **Adaptive Solo/Team Mode**: Adjusts interface based on team size, featuring time tracking and GPS check-in (team mode).
+- **Job Workflow**: A 5-stage ServiceM8-style job status workflow (`pending` → `scheduled` → `in_progress` → `done` → `invoiced`) with visual indicators and professional job confirmation emails.
+- **Live Quote/Invoice Editor**: Real-time preview with templates, catalog items, and deposit settings, supporting quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
+- **Customisable Email Templates**: Preview and edit email content with AI-powered suggestions and Automated Gmail with PDF Workflow.
+- **PWA Support**: Web manifest and service worker for offline capabilities.
+- **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and role-based access.
+- **Life360-Style Interactive Map**: (Owner/Manager only) Displays job pins and real-time location tracking for team members with activity status, speed, battery, and geofence alerts.
+- **Role-Based Access Control (RBAC)**: Granular permissions and role templates (OWNER, ADMIN, SUPERVISOR, STAFF) enforced by middleware.
+- **Workflow-Integrated Smart Actions**: Contextual automation suggestions with user approval, previews, and toggle controls.
+- **Mobile App**: A React Native mobile app (Expo SDK 52) with full API integration, Zustand for state management, and an SQLite-based offline mode with background sync and conflict resolution. It features permission-aware navigation and dedicated stores for auth, jobs, clients, quotes, and invoices.
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)
@@ -45,178 +37,3 @@ Workflow-Integrated Smart Actions provide contextual automation suggestions (e.g
 -   **SMS Notifications**: Twilio
 -   **Object Storage**: Google Cloud Storage (GCS)
 -   **Maps**: Leaflet with react-leaflet (CartoDB dark tiles)
-
-### Beta Readiness Audit (December 2025)
-
-**Overall Status: READY FOR BETA**
-
-#### Core Business Modules (All Verified Working)
-
-| Module | Status | Notes |
-|--------|--------|-------|
-| Authentication | ✅ Ready | Email/password, Google OAuth 2.0, password reset, session management |
-| Clients | ✅ Ready | Full CRUD, validation, linking to jobs/quotes/invoices |
-| Jobs | ✅ Ready | 5-stage pipeline (pending→scheduled→in_progress→done→invoiced), geocoding |
-| Quotes | ✅ Ready | Line items, 10% GST, auto-numbering, PDF preview, live editor |
-| Invoices | ✅ Ready | Quote-to-invoice conversion, Stripe Connect payments, deposit handling |
-| Time Tracking | ✅ Ready | Start/stop timer, hours per job, supervisor access, overlap prevention |
-| Calendar | ✅ Ready | Week/month views, job grouping, KPI stats |
-| Chat | ✅ Ready | Job chat, team chat, direct messages, unread counts |
-| Map Tracking | ✅ Ready | Life360-style team tracking, job pins, geofence alerts, route planning |
-| Voice Notes | ✅ Ready | Audio recording on jobs, object storage, playback with duration tracking |
-| Digital Signatures | ✅ Ready | Canvas-based signature capture, client name/email, stored per job |
-
-#### Integrations (All Verified Working)
-
-| Integration | Status | Configuration |
-|-------------|--------|---------------|
-| Stripe Connect | ✅ Ready | Express accounts (AU), 2.5% platform fee, AUD currency, min $5 payment |
-| SendGrid | ✅ Ready | Email fallback after SMTP and Gmail |
-| Puppeteer PDF | ✅ Ready | Branded quotes/invoices with ABN/GST |
-| Object Storage | ✅ Ready | GCS integration, logo upload with color detection |
-| OpenAI | ✅ Ready | GPT-4o-mini for AI suggestions |
-| Google OAuth | ✅ Ready | Login and Gmail connector |
-
-#### Role-Based Access Control
-
-| Role | Dashboard | Permissions |
-|------|-----------|-------------|
-| OWNER | owner | Full access, team management, billing, settings |
-| ADMIN | manager | Team management, all operations except billing |
-| SUPERVISOR | manager | Manage assigned workers, view team data |
-| STAFF | staff_tradie | Own jobs, time tracking, limited views |
-| Solo Owner | solo_tradie | Full access, no team features |
-
-#### Feature Gating (useFeatureAccess)
-
-- **Free Tier**: 5 jobs/month limit, basic branding
-- **Pro Tier**: Unlimited jobs, custom branding, AI features
-- **Business Tier**: Team members, advanced reporting
-- **Beta Mode**: All features unlocked (UpgradePrompt shows "Free During Beta")
-
-#### Known Considerations for Beta
-
-1. **Google OAuth Callback**: Users need to add the callback URL to their Google Cloud Console
-2. **Gmail Profile Read**: Permission might need refresh for profile reads (send works)
-3. **SMS Disabled**: Twilio integration available but disabled for beta to reduce complexity
-4. **Test Accounts Available**:
-   - luke@harriselectrical.com.au (solo owner)
-   - mike@northqldplumbing.com.au (team owner)
-   - tom@northqldplumbing.com.au (staff)
-   - All use password: Test123!
-
-#### Error Handling
-
-- User-friendly error messages via `parseTradieFriendlyError`
-- Toast notifications for all API operations
-- Loading states with skeleton UI
-- Subscription limit handling with upgrade prompts
-
-#### Email Notification System
-
-- **Team Invite Emails**: Sent when owner/manager invites new team member with invite token link
-- **Job Assignment Emails**: Staff notified when assigned to a job with job details
-- **Job Completion Emails**: Owner notified when staff marks job as complete
-- **Welcome Emails**: Sent for new account registrations
-- Uses SendGrid in production, console logging in development
-
-#### Staff Dashboard Features
-
-- "Today's Jobs" section matching owner dashboard style
-- "Go Complete Job" button navigates to job detail (not direct completion)
-- Weekly overview section showing upcoming 7 days
-- Friendly empty state when no jobs today but has upcoming jobs
-- Time tracking widget with active timer display
-
-#### Job Completion Workflow (Staff)
-
-1. Staff sees job in dashboard → clicks "Go Complete Job"
-2. Navigates to job detail with all features: photos, voice notes, signatures, forms, time tracking
-3. Staff can add artifacts (signature, photos, notes) while job is in_progress
-4. Final completion done from job detail page with validation
-
-#### UX Quality
-
-- Design guidelines documented in `design_guidelines.md`
-- Mobile-first responsive layout
-- Inter font, consistent spacing (gap-4, space-y-6)
-- Dark/light mode with brand color theming
-
-### Mobile App (Real API Integration Complete)
-
-A React Native mobile app is built in `mobile/` directory with full API integration to the backend.
-
-**Architecture:**
-- Expo SDK 52 with TypeScript
-- Zustand stores for state management (single source of truth)
-- API client with bearer token authentication
-- Light theme with blue accents (#3b82f6 primary, #ffffff background) matching web
-
-**Implemented Features:**
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Authentication | ✅ Complete | Login/register with session persistence |
-| Dashboard | ✅ Complete | Real stats (jobs today, overdue, pending quotes, revenue) |
-| Jobs List | ✅ Complete | Search, filters, client names, status workflow |
-| Job Detail | ✅ Complete | Full details, status updates, navigation |
-| Clients List | ✅ Complete | Search, real data from API |
-| Client Detail | ✅ Complete | Contact info, stats, call/email actions |
-| Create Client | ✅ Complete | Full form with validation |
-| Quotes List | ✅ Complete | Search, filters, amount summaries |
-| Quote Detail | ✅ Complete | Amounts, dates, send/accept actions |
-| Invoices List | ✅ Complete | Summary card, search, filters |
-| Invoice Detail | ✅ Complete | Payment status, collect payment actions |
-| Business Settings | ✅ Complete | Edit business details via API |
-| Payments | ✅ Info | Stripe connection status (managed via web) |
-| Notifications | ✅ Settings | Preference toggles (local state) |
-| App Settings | ✅ Settings | Theme/region preferences, location tracking, offline sync |
-| Background Location | ✅ Complete | Life360-style tracking, 30s updates, geofencing |
-| Offline Mode | ✅ Complete | SQLite cache, background sync, conflict resolution |
-
-**Offline Mode Architecture (mobile/src/lib/offline-storage.ts):**
-- SQLite database for local caching of jobs, clients, quotes, invoices
-- Automatic sync when connectivity is restored
-- Sync queue for changes made offline
-- Timestamp-based conflict resolution (server wins)
-- Manual sync option in App Settings > Data & Sync
-- Connection status indicator and pending changes display
-
-**Data Stores (mobile/src/lib/store.ts):**
-- `useAuthStore` - User auth, session, business settings, roleInfo with permissions, `isOwner()`, `isStaff()`, `hasPermission()` helpers
-- `useJobsStore` - Jobs CRUD, today's jobs, offline cache fallback
-- `useClientsStore` - Clients CRUD, offline cache fallback
-- `useQuotesStore` - Quotes CRUD, status updates, offline cache fallback
-- `useInvoicesStore` - Invoices CRUD, status updates, offline cache fallback
-- `useDashboardStore` - Aggregated stats from API
-- `useLocationStore` - Background location tracking state (mobile/src/lib/location-store.ts)
-- `useOfflineStore` - Connection status, sync state, pending changes (mobile/src/lib/offline-storage.ts)
-
-**Permission-Aware Mobile Navigation:**
-- Auth store fetches role/permissions from `/api/team/my-role` on login
-- Dashboard shows different stats for staff vs owners (staff see job-focused stats, owners see financial stats)
-- Quick Actions adapt based on user role (staff get My Jobs/Time/Chat, owners get Job/Quote/Invoice creation)
-- Map screen shows restricted view for staff without `view_map` permission
-- More menu items conditionally rendered based on role permissions via `useUserRole` hook
-- Staff users only see jobs assigned to them via server-side filtering (`/api/jobs/my-jobs`)
-
-**Navigation Structure:**
-- Bottom Tabs: Dashboard, Jobs, Map, More
-- More Stack: Quotes, Invoices, Clients, Business Settings, Payments, Notifications, App Settings
-- Detail Screens: Client/[id], Quote/[id], Invoice/[id]
-
-**To test the mobile app:**
-1. Navigate to `mobile/` directory
-2. Run `npm install` 
-3. Run `npm start`
-4. Scan QR code with Expo Go app on your phone
-
-**Upcoming Features:**
-- **Tap to Pay** - Stripe Terminal SDK for NFC contactless payments with invoice-specific collection and receipt generation (COMPLETE)
-- **Push Notifications** - Complete with backend and mobile integration (requires EAS Build for device testing)
-
-**App Store Requirements:**
-1. Apple Developer Program ($99/year) + Tap to Pay entitlement
-2. Google Play Developer account ($25 one-time)
-
-Full requirements in `docs/NATIVE_APP_REQUIREMENTS.md`.

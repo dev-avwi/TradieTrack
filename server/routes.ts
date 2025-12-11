@@ -623,7 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await AuthService.register(cleanUserData);
       
       if (result.success) {
-        // Generate and send email verification token
+        // Generate and send email verification token (non-blocking)
         try {
           const verificationToken = await AuthService.createEmailVerificationToken(result.user.id);
           await sendEmailVerificationEmail(result.user, verificationToken);
@@ -632,12 +632,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Don't fail registration if email fails - user can resend later
         }
 
-        // Don't create session until email is verified
-        res.json({ 
-          success: true, 
-          user: result.user,
-          message: 'Registration successful! Please check your email to verify your account before logging in.'
+        // Auto-login after registration to allow immediate onboarding
+        // Email verification can be enforced later for sensitive operations
+        req.session.userId = result.user.id;
+        req.session.user = result.user;
+        req.session.save((err: any) => {
+          if (err) {
+            console.error("Session save error:", err);
+            // Still return success but log the error
+          }
+          res.json({ 
+            success: true, 
+            user: result.user,
+            message: 'Registration successful! A verification email has been sent.'
+          });
         });
+        return;
       } else {
         res.status(400).json({ error: result.error });
       }

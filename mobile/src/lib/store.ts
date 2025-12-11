@@ -141,6 +141,8 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   fetchRoleInfo: () => Promise<void>;
+  fetchBusinessSettings: () => Promise<void>;
+  setBusinessSettings: (settings: BusinessSettings) => void;
   clearError: () => void;
   updateBusinessSettings: (settings: Partial<BusinessSettings>) => Promise<boolean>;
   hasPermission: (permission: string) => boolean;
@@ -287,6 +289,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  fetchBusinessSettings: async () => {
+    const settingsResponse = await api.get<BusinessSettings>('/api/business-settings');
+    if (settingsResponse.data) {
+      set({ businessSettings: settingsResponse.data });
+    }
+  },
+
+  setBusinessSettings: (settings: BusinessSettings) => {
+    set({ businessSettings: settings });
+  },
 
   updateBusinessSettings: async (settings: Partial<BusinessSettings>) => {
     const response = await api.patch<BusinessSettings>('/api/business-settings', settings);

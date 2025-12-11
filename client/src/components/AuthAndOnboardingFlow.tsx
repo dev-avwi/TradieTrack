@@ -55,16 +55,38 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
   const [showGoogleAccountPicker, setShowGoogleAccountPicker] = useState(false);
   const { toast } = useToast();
 
-  // Check if user is already authenticated (from Google OAuth) and skip to business setup
+  // Check if user is already authenticated and determine onboarding state
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
         const res = await fetch('/api/auth/me', { credentials: 'include' });
         if (res.ok) {
           const user = await res.json();
-          // Check if business settings exist
+          // Check if business settings exist and are complete
           const businessRes = await fetch('/api/business-settings', { credentials: 'include' });
-          if (businessRes.status === 404) {
+          if (businessRes.ok) {
+            const settings = await businessRes.json();
+            // If onboarding has been completed, skip the onboarding flow entirely
+            if (settings.onboardingCompleted) {
+              onComplete();
+              return;
+            }
+            // Has settings but incomplete - go to business setup
+            setSettingsExist(true);
+            setBusinessData(prev => ({
+              ...prev,
+              teamSize: settings.teamSize || '',
+              businessName: settings.businessName || '',
+              tradeType: settings.tradeType || '',
+              abn: settings.abn || '',
+              phone: settings.phone || '',
+              address: settings.address || '',
+              gstEnabled: settings.gstEnabled ?? true,
+              defaultHourlyRate: String(settings.defaultHourlyRate || '120'),
+              calloutFee: String(settings.calloutFee || '90'),
+            }));
+            setCurrentStep('business');
+          } else if (businessRes.status === 404) {
             // User is authenticated but no business settings - go to business setup
             setCurrentStep('business');
           }
@@ -74,7 +96,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
       }
     };
     checkAuthStatus();
-  }, []);
+  }, [onComplete]);
 
   // Authentication data
   const [loginData, setLoginData] = useState({
@@ -115,6 +137,9 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('staff');
   const [sendingInvites, setSendingInvites] = useState(false);
+  
+  // Track if settings already exist (for POST vs PATCH decision)
+  const [settingsExist, setSettingsExist] = useState(false);
 
   const tradeTypes = [
     { value: 'plumbing', label: 'Plumbing' },
@@ -312,8 +337,9 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         return;
       }
 
-      // Create business settings with team size
-      await apiRequest('POST', '/api/business-settings', {
+      // Create or update business settings with team size
+      const method = settingsExist ? 'PATCH' : 'POST';
+      await apiRequest(method, '/api/business-settings', {
         teamSize: businessData.teamSize,
         numberOfEmployees: parseInt(businessData.numberOfEmployees) || 1,
         businessName: businessData.businessName,
@@ -325,6 +351,9 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         defaultHourlyRate: hourlyRate,
         calloutFee: callout
       });
+      
+      // Mark that settings now exist for future updates
+      setSettingsExist(true);
 
       // Invalidate cached data so dashboard will have fresh data for the checklist
       await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
@@ -364,21 +393,33 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
     }
   };
 
+  // Mark onboarding as complete in database
+  const markOnboardingComplete = async () => {
+    try {
+      await apiRequest('PATCH', '/api/business-settings', { onboardingCompleted: true });
+      await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
+    } catch (error) {
+      console.error('Failed to mark onboarding complete:', error);
+    }
+  };
+
   // Handle skipping integrations step
-  const handleSkipIntegrations = () => {
+  const handleSkipIntegrations = async () => {
     if (isTeamMode) {
       setCurrentStep('team');
     } else {
+      await markOnboardingComplete();
       setCurrentStep('complete');
       setTimeout(() => onComplete(), 2000);
     }
   };
 
   // Handle continuing from integrations
-  const handleContinueFromIntegrations = () => {
+  const handleContinueFromIntegrations = async () => {
     if (isTeamMode) {
       setCurrentStep('team');
     } else {
+      await markOnboardingComplete();
       setCurrentStep('complete');
       setTimeout(() => onComplete(), 2000);
     }
@@ -404,6 +445,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
   // Send all pending invites
   const handleSendInvites = async () => {
     if (teamInvites.length === 0) {
+      await markOnboardingComplete();
       setCurrentStep('complete');
       setTimeout(() => onComplete(), 2000);
       return;
@@ -418,6 +460,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
           roleId: invite.role
         });
       }
+      await markOnboardingComplete();
       toast({
         title: "Invites Sent!",
         description: `${teamInvites.length} team member${teamInvites.length > 1 ? 's' : ''} invited`
@@ -436,7 +479,8 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
   };
 
   // Skip team step
-  const handleSkipTeam = () => {
+  const handleSkipTeam = async () => {
+    await markOnboardingComplete();
     setCurrentStep('complete');
     setTimeout(() => onComplete(), 2000);
   };

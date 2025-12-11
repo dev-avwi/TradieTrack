@@ -189,6 +189,8 @@ export const businessSettings = pgTable("business_settings", {
   signatureName: text("signature_name"), // Name displayed under signature
   includeSignatureOnQuotes: boolean("include_signature_on_quotes").default(false),
   includeSignatureOnInvoices: boolean("include_signature_on_invoices").default(false),
+  // Onboarding tracking
+  onboardingCompleted: boolean("onboarding_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
