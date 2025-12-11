@@ -8,7 +8,14 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import { 
+  useAudioRecorder, 
+  useAudioRecorderState,
+  RecordingPresets,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  Audio,
+} from 'expo-audio';
 import { useTheme } from '../lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,39 +27,40 @@ interface VoiceRecorderProps {
 
 export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderProps) {
   const theme = useTheme();
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
-  const [duration, setDuration] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
   
-  const recordingRef = useRef<Audio.Recording | null>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(audioRecorder, 500);
+  const player = useAudioPlayer(recordedUri || undefined);
+  const playerStatus = useAudioPlayerStatus(player);
+
+  const isRecording = recorderState?.isRecording ?? false;
+  const isPlaying = playerStatus?.playing ?? false;
+  const currentTime = playerStatus?.currentTime ?? 0;
 
   useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => {});
-      }
-    };
-  }, []);
+    if (recorderState?.durationMillis) {
+      setRecordingDuration(Math.floor(recorderState.durationMillis / 1000));
+    }
+  }, [recorderState?.durationMillis]);
 
   const requestPermissions = async () => {
-    const { status } = await Audio.requestPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission Required',
-        'Please grant microphone permission to record voice notes.',
-        [{ text: 'OK' }]
-      );
+    try {
+      const { status } = await Audio.requestRecordingPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please grant microphone permission to record voice notes.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
       return false;
     }
-    return true;
   };
 
   const startRecording = async () => {
@@ -60,22 +68,8 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      
-      recordingRef.current = recording;
-      setIsRecording(true);
-      setDuration(0);
-      
-      timerRef.current = setInterval(() => {
-        setDuration(d => d + 1);
-      }, 1000);
+      await audioRecorder.prepareToRecordAsync(RecordingPresets.HIGH_QUALITY);
+      audioRecorder.record();
       
     } catch (error) {
       console.error('Error starting recording:', error);
@@ -84,98 +78,58 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
   };
 
   const stopRecording = async () => {
-    if (!recordingRef.current) return;
-
     try {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-
-      await recordingRef.current.stopAndUnloadAsync();
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
-      
-      setIsRecording(false);
-      setIsPaused(false);
+      const uri = await audioRecorder.stop();
       
       if (uri) {
         setRecordedUri(uri);
       }
-      
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-      });
       
     } catch (error) {
       console.error('Error stopping recording:', error);
     }
   };
 
-  const pauseRecording = async () => {
-    if (!recordingRef.current) return;
-
+  const pauseRecording = () => {
     try {
-      if (isPaused) {
-        await recordingRef.current.startAsync();
-        timerRef.current = setInterval(() => {
-          setDuration(d => d + 1);
-        }, 1000);
+      if (recorderState?.isRecording) {
+        audioRecorder.pause();
       } else {
-        await recordingRef.current.pauseAsync();
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
+        audioRecorder.record();
       }
-      setIsPaused(!isPaused);
     } catch (error) {
       console.error('Error pausing recording:', error);
     }
   };
 
-  const playRecording = async () => {
-    if (!recordedUri) return;
+  const playRecording = () => {
+    if (!recordedUri || !player) return;
 
     try {
-      if (isPlaying && soundRef.current) {
-        await soundRef.current.stopAsync();
-        setIsPlaying(false);
+      if (isPlaying) {
+        player.pause();
         return;
       }
 
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: recordedUri },
-        { shouldPlay: true }
-      );
-      
-      soundRef.current = sound;
-      setIsPlaying(true);
-      
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setIsPlaying(false);
-        }
-      });
+      player.seekTo(0);
+      player.play();
       
     } catch (error) {
       console.error('Error playing recording:', error);
     }
   };
 
-  const deleteRecording = async () => {
-    if (soundRef.current) {
-      await soundRef.current.unloadAsync();
-      soundRef.current = null;
+  const deleteRecording = () => {
+    if (player) {
+      player.pause();
     }
     setRecordedUri(null);
-    setDuration(0);
-    setIsPlaying(false);
+    setRecordingDuration(0);
   };
 
   const handleSave = () => {
     if (recordedUri) {
-      onSave(recordedUri, duration);
+      onSave(recordedUri, recordingDuration);
     }
   };
 
@@ -199,10 +153,10 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
             />
           </View>
           
-          <Text style={styles.duration}>{formatDuration(duration)}</Text>
+          <Text style={styles.duration}>{formatDuration(recordingDuration)}</Text>
           
           <View style={styles.buttonRow}>
-            {!isRecording ? (
+            {!isRecording && !recorderState?.canRecord ? (
               <TouchableOpacity 
                 style={[styles.button, styles.primaryButton]}
                 onPress={startRecording}
@@ -210,14 +164,14 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
                 <Ionicons name="mic" size={20} color="#ffffff" />
                 <Text style={styles.buttonTextWhite}>Start Recording</Text>
               </TouchableOpacity>
-            ) : (
+            ) : isRecording || recorderState?.canRecord ? (
               <>
                 <TouchableOpacity 
                   style={[styles.button, styles.outlineButton]}
                   onPress={pauseRecording}
                 >
                   <Ionicons 
-                    name={isPaused ? "play" : "pause"} 
+                    name={isRecording ? "pause" : "play"} 
                     size={20} 
                     color={theme.colors.primary} 
                   />
@@ -230,6 +184,14 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
                   <Text style={styles.buttonTextWhite}>Stop</Text>
                 </TouchableOpacity>
               </>
+            ) : (
+              <TouchableOpacity 
+                style={[styles.button, styles.primaryButton]}
+                onPress={startRecording}
+              >
+                <Ionicons name="mic" size={20} color="#ffffff" />
+                <Text style={styles.buttonTextWhite}>Start Recording</Text>
+              </TouchableOpacity>
             )}
           </View>
         </>
@@ -248,7 +210,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
             </TouchableOpacity>
             <View style={styles.playbackInfo}>
               <Text style={styles.playbackTitle}>Voice Note</Text>
-              <Text style={styles.playbackDuration}>{formatDuration(duration)}</Text>
+              <Text style={styles.playbackDuration}>{formatDuration(recordingDuration)}</Text>
             </View>
             <TouchableOpacity 
               style={styles.deleteButton}
@@ -315,44 +277,23 @@ export function VoiceNotePlayer({
   onDelete 
 }: VoiceNotePlayerProps) {
   const theme = useTheme();
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const player = useAudioPlayer(uri);
+  const status = useAudioPlayerStatus(player);
+  
+  const isPlaying = status?.playing ?? false;
+  const currentTime = status?.currentTime ?? 0;
 
-  useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
-    };
-  }, []);
+  const togglePlay = () => {
+    if (!player) return;
 
-  const togglePlay = async () => {
     try {
-      if (isPlaying && soundRef.current) {
-        await soundRef.current.stopAsync();
-        setIsPlaying(false);
-        setCurrentTime(0);
+      if (isPlaying) {
+        player.pause();
         return;
       }
 
-      const { sound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true }
-      );
-      
-      soundRef.current = sound;
-      setIsPlaying(true);
-      
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          setCurrentTime(Math.floor(status.positionMillis / 1000));
-          if (status.didJustFinish) {
-            setIsPlaying(false);
-            setCurrentTime(0);
-          }
-        }
-      });
+      player.seekTo(0);
+      player.play();
       
     } catch (error) {
       console.error('Error playing audio:', error);
@@ -392,7 +333,7 @@ export function VoiceNotePlayer({
           {title || 'Voice Note'}
         </Text>
         <Text style={styles.playerMeta}>
-          {formatDuration(isPlaying ? currentTime : 0)} / {formatDuration(duration || 0)}
+          {formatDuration(Math.floor(isPlaying ? currentTime : 0))} / {formatDuration(duration || 0)}
           {createdAt && ` | ${formatDate(createdAt)}`}
         </Text>
       </View>
