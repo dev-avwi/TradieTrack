@@ -25,6 +25,12 @@ Key architectural features include:
 - **Workflow-Integrated Smart Actions**: Contextual automation suggestions with user approval, previews, and toggle controls.
 - **Mobile App**: A React Native mobile app (Expo SDK 52) with full API integration, Zustand for state management, and an SQLite-based offline mode with background sync and conflict resolution. It features permission-aware navigation and dedicated stores for auth, jobs, clients, quotes, and invoices.
 
+### Recent Changes (December 2025)
+- **Offline Sync Improvements**: Exponential backoff now follows spec (30s/2m/5m/15m/30m delays), `last_attempted_at` updates after sync attempts to prevent premature delays on pre-sync failures
+- **Automation Templates**: 12 pre-built trade-specific sequences (quote follow-ups, invoice reminders, job confirmations) with full email/SMS content for plumbing, electrical, HVAC, landscaping
+- **Stripe Terminal Mobile**: SDK integration complete with connection token fetching, simulator fallback for Expo Go testing
+- **Offline Auth Flow**: checkAuth() properly falls back to cached auth data when offline or API fails
+
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)
 -   **Email Service**: User SMTP, Gmail Connector, SendGrid Platform
