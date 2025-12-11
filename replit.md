@@ -26,6 +26,12 @@ Key architectural features include:
 - **Mobile App**: A React Native mobile app (Expo SDK 52) with full API integration, Zustand for state management, and an SQLite-based offline mode with background sync and conflict resolution. It features permission-aware navigation and dedicated stores for auth, jobs, clients, quotes, and invoices.
 
 ### Recent Changes (December 2025)
+- **Client Asset Library**: API endpoints to retrieve job photos, quote items, invoice items, and notes for reuse; security-verified with client ownership checks
+- **Smart Pre-fill API**: `/api/clients/:id/prefill` endpoint returns recent job descriptions, line items, and notes for auto-populating new jobs/quotes/invoices
+- **CSV Export**: Reports dashboard has export buttons with disabled states for each report type
+- **Mobile Smart Pre-fill**: Create job screen fetches and displays smart suggestions when client is selected, with proper loading states and error handling
+- **Attachment Offline Sync**: Complete implementation with `saveAttachmentOffline`, `deleteAttachmentOffline`, `syncAttachment` methods; `local_id` column for ID reconciliation; nullable `local_uri` for server-fetched attachments; verified update success before clearing sync queue
+- **ID Reconciliation**: `updateLocalIdWithServerId` tries WHERE local_id=? first, falls back to WHERE id=? for backwards compatibility, returns boolean success
 - **Offline Sync Improvements**: Exponential backoff now follows spec (30s/2m/5m/15m/30m delays), `last_attempted_at` updates after sync attempts to prevent premature delays on pre-sync failures
 - **Automation Templates**: 12 pre-built trade-specific sequences (quote follow-ups, invoice reminders, job confirmations) with full email/SMS content for plumbing, electrical, HVAC, landscaping
 - **Stripe Terminal Mobile**: SDK integration complete with connection token fetching, simulator fallback for Expo Go testing
