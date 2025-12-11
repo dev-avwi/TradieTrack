@@ -916,14 +916,14 @@ export default function DashboardScreen() {
                   onPress={() => router.push('/(tabs)/jobs')}
                 />
                 <QuickActionButton
+                  title="Map"
+                  icon="map"
+                  onPress={() => router.push('/(tabs)/map')}
+                />
+                <QuickActionButton
                   title="Time"
                   icon="clock"
                   onPress={() => router.push('/more/time-tracking')}
-                />
-                <QuickActionButton
-                  title="Team Chat"
-                  icon="message-circle"
-                  onPress={() => router.push('/more/team-chat')}
                 />
               </>
             ) : (
@@ -943,6 +943,46 @@ export default function DashboardScreen() {
                   title="Invoice"
                   icon="dollar-sign"
                   onPress={() => router.push('/more/invoice/new')}
+                />
+              </>
+            )}
+          </View>
+          {/* Second row - role-specific actions */}
+          <View style={[styles.quickActionsRow, { marginTop: spacing.sm }]}>
+            {isStaffUser ? (
+              <>
+                <QuickActionButton
+                  title="Team Chat"
+                  icon="message-circle"
+                  onPress={() => router.push('/more/team-chat')}
+                />
+                <QuickActionButton
+                  title="Calendar"
+                  icon="calendar"
+                  onPress={() => router.push('/more/calendar')}
+                />
+                <QuickActionButton
+                  title="History"
+                  icon="file-text"
+                  onPress={() => router.push('/(tabs)/jobs')}
+                />
+              </>
+            ) : (
+              <>
+                <QuickActionButton
+                  title="Schedule"
+                  icon="calendar"
+                  onPress={() => router.push('/more/dispatch-board')}
+                />
+                <QuickActionButton
+                  title="Team"
+                  icon="users"
+                  onPress={() => router.push('/more/team-management')}
+                />
+                <QuickActionButton
+                  title="Clients"
+                  icon="user"
+                  onPress={() => router.push('/more/clients')}
                 />
               </>
             )}

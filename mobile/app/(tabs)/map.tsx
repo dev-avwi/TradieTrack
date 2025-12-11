@@ -435,15 +435,20 @@ export default function MapScreen() {
   const { user } = useAuthStore();
   const { isStaff, canAccessMap, isLoading: roleLoading, isSolo, isOwner, isManager } = useUserRole();
   
-  // EVERYONE can access the map to see jobs - map is core functionality
-  // Only team tracking mode requires special permission
-  const hasMapAccess = true; // Always allow job view on map
+  // Map access: All authenticated users can view jobs on the map (core tradie functionality)
+  // Team tracking mode is restricted to owners/managers with view_map permission
+  // The user must be authenticated to reach this screen (enforced by app auth flow)
+  const isAuthenticated = !!user;
+  
+  // Everyone sees their jobs on the map - staff see assigned jobs, owners see all jobs
+  // This is core functionality - tradies need to see job locations on a map
+  const hasMapAccess = isAuthenticated;
   
   // Only show team toggle if user has permission for team tracking (not solo owners)
-  const showTeamToggle = !isSolo && (isOwner || isManager || canAccessMap);
+  const showTeamToggle = isAuthenticated && !isSolo && (isOwner || isManager || canAccessMap);
   
-  // Staff can only view jobs mode, not team tracking
-  const canViewTeamMode = isOwner || isManager || canAccessMap;
+  // Only owners/managers can view team tracking mode
+  const canViewTeamMode = isAuthenticated && (isOwner || isManager || canAccessMap);
   
   const [viewMode, setViewMode] = useState<ViewMode>('jobs');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
