@@ -433,10 +433,14 @@ export default function MapScreen() {
   const { jobs, fetchJobs, isLoading: jobsLoading } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
   const { user } = useAuthStore();
-  const { isStaff, canAccessMap, isLoading: roleLoading } = useUserRole();
+  const { isStaff, canAccessMap, isLoading: roleLoading, isSolo, isOwner } = useUserRole();
   
-  // Staff users without map access should see a restricted view
-  const hasMapAccess = !isStaff || canAccessMap;
+  // Solo owners and owners always have map access, staff need explicit permission
+  // Everyone can see jobs on the map - only team tracking requires special permission
+  const hasMapAccess = isOwner || isSolo || !isStaff || canAccessMap;
+  
+  // Only show team toggle if user has team (not solo)
+  const showTeamToggle = !isSolo && (isOwner || canAccessMap);
   
   const [viewMode, setViewMode] = useState<ViewMode>('jobs');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -784,38 +788,40 @@ export default function MapScreen() {
               <Feather name="chevron-down" size={14} color={colors.mutedForeground} />
             </TouchableOpacity>
 
-            <View style={styles.toggleContainer}>
-              <TouchableOpacity
-                style={[styles.toggleButton, viewMode === 'jobs' && styles.toggleButtonActive]}
-                onPress={() => setViewMode('jobs')}
-                activeOpacity={0.7}
-              >
-                <Feather 
-                  name="briefcase" 
-                  size={14} 
-                  color={viewMode === 'jobs' ? '#fff' : colors.foreground} 
-                />
-                <Text style={[
-                  styles.toggleButtonText,
-                  viewMode === 'jobs' && styles.toggleButtonTextActive
-                ]}>Jobs</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.toggleButton, viewMode === 'team' && styles.toggleButtonActive]}
-                onPress={() => setViewMode('team')}
-                activeOpacity={0.7}
-              >
-                <Feather 
-                  name="users" 
-                  size={14} 
-                  color={viewMode === 'team' ? '#fff' : colors.foreground} 
-                />
-                <Text style={[
-                  styles.toggleButtonText,
-                  viewMode === 'team' && styles.toggleButtonTextActive
-                ]}>Team</Text>
-              </TouchableOpacity>
-            </View>
+            {showTeamToggle ? (
+              <View style={styles.toggleContainer}>
+                <TouchableOpacity
+                  style={[styles.toggleButton, viewMode === 'jobs' && styles.toggleButtonActive]}
+                  onPress={() => setViewMode('jobs')}
+                  activeOpacity={0.7}
+                >
+                  <Feather 
+                    name="briefcase" 
+                    size={14} 
+                    color={viewMode === 'jobs' ? '#fff' : colors.foreground} 
+                  />
+                  <Text style={[
+                    styles.toggleButtonText,
+                    viewMode === 'jobs' && styles.toggleButtonTextActive
+                  ]}>Jobs</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.toggleButton, viewMode === 'team' && styles.toggleButtonActive]}
+                  onPress={() => setViewMode('team')}
+                  activeOpacity={0.7}
+                >
+                  <Feather 
+                    name="users" 
+                    size={14} 
+                    color={viewMode === 'team' ? '#fff' : colors.foreground} 
+                  />
+                  <Text style={[
+                    styles.toggleButtonText,
+                    viewMode === 'team' && styles.toggleButtonTextActive
+                  ]}>Team</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
 
             <TouchableOpacity 
               style={styles.legendButton}
