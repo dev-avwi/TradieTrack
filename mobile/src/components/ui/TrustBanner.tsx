@@ -1,7 +1,11 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemeColors } from '../../lib/theme';
 import { spacing, radius } from '../../lib/design-tokens';
+
+const STORAGE_KEY = 'tradietrack-banner-dismissed';
 
 interface TrustBannerProps {
   businessName?: string;
@@ -10,9 +14,36 @@ interface TrustBannerProps {
 export function TrustBanner({ businessName }: TrustBannerProps) {
   const { colors, isDark } = useTheme();
   const styles = createStyles(colors, isDark);
+  const [isDismissed, setIsDismissed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check if banner was previously dismissed
+    AsyncStorage.getItem(STORAGE_KEY).then((value) => {
+      setIsDismissed(value === 'true');
+    });
+  }, []);
+
+  const handleDismiss = async () => {
+    setIsDismissed(true);
+    await AsyncStorage.setItem(STORAGE_KEY, 'true');
+  };
+
+  // Don't render while loading or if dismissed
+  if (isDismissed === null || isDismissed) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+        style={styles.dismissButton}
+        onPress={handleDismiss}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        testID="button-dismiss-banner"
+      >
+        <Feather name="x" size={16} color={colors.mutedForeground} />
+      </TouchableOpacity>
+      
       <View style={styles.header}>
         <View style={styles.logoContainer}>
           <View style={styles.logo}>
@@ -55,11 +86,25 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: isDark ? colors.info : '#bfdbfe',
+    position: 'relative',
+  },
+  dismissButton: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+    zIndex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.md,
+    paddingRight: 30,
   },
   logoContainer: {
     marginRight: spacing.md,

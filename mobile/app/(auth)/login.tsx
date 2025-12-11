@@ -18,6 +18,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../../src/lib/store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
+import { GoogleLogo } from '../../src/components/ui/GoogleLogo';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { API_URL } from '../../src/lib/api';
 
@@ -205,7 +206,7 @@ export default function LoginScreen() {
                 ) : (
                   <>
                     <View style={styles.googleIconContainer}>
-                      <Text style={styles.googleIconText}>G</Text>
+                      <GoogleLogo size={20} />
                     </View>
                     <Text style={styles.googleButtonText}>Continue with Google</Text>
                   </>

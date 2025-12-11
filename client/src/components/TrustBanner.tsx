@@ -1,21 +1,41 @@
+import { useState } from "react";
 import { 
   Sparkles, 
   Shield, 
   Lock, 
-  Cloud, 
-  CheckCircle2
+  CheckCircle2,
+  X
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+
+const STORAGE_KEY = "tradietrack-banner-dismissed";
 
 interface TrustBannerProps {
   compact?: boolean;
 }
 
 export default function TrustBanner({ compact = false }: TrustBannerProps) {
+  const [isDismissed, setIsDismissed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(STORAGE_KEY) === 'true';
+    }
+    return false;
+  });
+
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    localStorage.setItem(STORAGE_KEY, 'true');
+  };
+
+  // If dismissed, show nothing or a minimal indicator
+  if (isDismissed) {
+    return null;
+  }
+
   if (compact) {
     return (
       <div 
-        className="flex items-center justify-center gap-4 py-2 px-4 border-b text-xs"
+        className="flex items-center justify-between py-2 px-4 border-b text-xs"
         style={{ 
           backgroundColor: 'hsl(var(--trade) / 0.05)',
           borderColor: 'hsl(var(--trade) / 0.15)',
@@ -23,25 +43,35 @@ export default function TrustBanner({ compact = false }: TrustBannerProps) {
         }}
         data-testid="trust-banner-compact"
       >
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="h-3 w-3" />
-          <span>Beta - Free to use</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="h-3 w-3" />
+            <span>Beta - Free to use</span>
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5">
+            <Shield className="h-3 w-3" />
+            <span>Bank-level security</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Lock className="h-3 w-3" />
+            <span>Your data stays yours</span>
+          </div>
         </div>
-        <div className="hidden sm:flex items-center gap-1.5">
-          <Shield className="h-3 w-3" />
-          <span>Bank-level security</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Lock className="h-3 w-3" />
-          <span>Your data stays yours</span>
-        </div>
+        <button
+          onClick={handleDismiss}
+          className="ml-2 p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          aria-label="Dismiss banner"
+          data-testid="button-dismiss-banner"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
     );
   }
 
   return (
     <div 
-      className="border p-4"
+      className="border p-4 relative"
       style={{ 
         borderRadius: '16px', 
         borderColor: 'hsl(var(--trade) / 0.2)',
@@ -49,7 +79,16 @@ export default function TrustBanner({ compact = false }: TrustBannerProps) {
       }}
       data-testid="trust-banner"
     >
-      <div className="flex items-center gap-3">
+      <button
+        onClick={handleDismiss}
+        className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+        aria-label="Dismiss banner"
+        data-testid="button-dismiss-banner"
+      >
+        <X className="h-4 w-4 text-muted-foreground" />
+      </button>
+      
+      <div className="flex items-center gap-3 pr-8">
         <div 
           className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}

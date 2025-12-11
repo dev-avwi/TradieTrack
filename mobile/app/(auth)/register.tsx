@@ -18,6 +18,7 @@ import api, { API_URL } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { Card, CardContent } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
+import { GoogleLogo } from '../../src/components/ui/GoogleLogo';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 
 export default function RegisterScreen() {
@@ -145,7 +146,7 @@ export default function RegisterScreen() {
                 ) : (
                   <>
                     <View style={styles.googleIconContainer}>
-                      <Text style={styles.googleIconText}>G</Text>
+                      <GoogleLogo size={20} />
                     </View>
                     <Text style={styles.googleButtonText}>Sign up with Google</Text>
                   </>
