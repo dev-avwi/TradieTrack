@@ -361,6 +361,16 @@ export default function MoreScreen() {
         )}
         {!isStaff && (
           <MenuItem
+            icon="clipboard"
+            iconBg={colors.warningLight}
+            iconColor={colors.warning}
+            title="Custom Forms"
+            subtitle="Create form templates for jobs"
+            onPress={() => router.push('/more/custom-forms')}
+          />
+        )}
+        {!isStaff && (
+          <MenuItem
             icon="credit-card"
             iconBg={colors.primaryLight}
             iconColor={colors.primary}
