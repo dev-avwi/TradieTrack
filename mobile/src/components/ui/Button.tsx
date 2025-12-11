@@ -225,8 +225,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   text: {
-    fontWeight: '500',
-    letterSpacing: 0,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });
 
