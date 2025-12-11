@@ -492,19 +492,19 @@ export default function LiveDocumentPreview({
                   />
                 )}
                 <View style={styles.businessInfo}>
-                  <Text style={styles.businessName} numberOfLines={1}>
+                  <Text style={styles.businessName}>
                     {business.businessName || 'Your Business'}
                   </Text>
                   {business.abn && (
-                    <Text style={styles.abnText} numberOfLines={1}>ABN: {business.abn}</Text>
+                    <Text style={styles.abnText}>ABN: {business.abn}</Text>
                   )}
                 </View>
               </View>
               {(business.email || business.phone || business.address) && (
                 <View style={styles.businessContactRow}>
-                  {business.email && <Text style={styles.businessDetail} numberOfLines={1}>{business.email}</Text>}
-                  {business.phone && <Text style={styles.businessDetail} numberOfLines={1}>{business.phone}</Text>}
-                  {business.address && <Text style={styles.businessDetail} numberOfLines={2}>{business.address}</Text>}
+                  {business.email && <Text style={styles.businessDetail}>{business.email}</Text>}
+                  {business.phone && <Text style={styles.businessDetail}>{business.phone}</Text>}
+                  {business.address && <Text style={styles.businessDetail}>{business.address}</Text>}
                 </View>
               )}
             </View>

@@ -7,7 +7,7 @@ import { useLocationStore, getActivityStatus, formatAccuracy } from '../../src/l
 import { useOfflineStore } from '../../src/lib/offline-storage';
 import offlineStorage from '../../src/lib/offline-storage';
 import { useAuthStore } from '../../src/lib/store';
-import { apiRequest } from '../../src/lib/api';
+import api from '../../src/lib/api';
 
 const MAP_COLORS = [
   { name: 'Blue', hex: '#3b82f6' },
@@ -46,12 +46,18 @@ function MapColorSection({ colors }: { colors: any }) {
   
   const loadAvailableColors = useCallback(async () => {
     try {
-      const response = await apiRequest('GET', '/api/team/colors/available');
-      const data = await response.json() as ColorAvailabilityResponse;
+      const response = await api.request<ColorAvailabilityResponse>('GET', '/api/team/colors/available');
       
-      setColorOptions(data.colors);
-      if (data.currentColor) {
-        setSelectedColor(data.currentColor);
+      if (response.error) {
+        console.error('Failed to load available colors:', response.error);
+        return;
+      }
+      
+      if (response.data) {
+        setColorOptions(response.data.colors);
+        if (response.data.currentColor) {
+          setSelectedColor(response.data.currentColor);
+        }
       }
     } catch (error) {
       console.error('Failed to load available colors:', error);
@@ -71,10 +77,13 @@ function MapColorSection({ colors }: { colors: any }) {
     setIsSaving(true);
     
     try {
-      const response = await apiRequest('PATCH', '/api/user/theme-color', { themeColor: colorHex });
-      const data = await response.json();
+      const response = await api.request<{ success: boolean }>('PATCH', '/api/user/theme-color', { themeColor: colorHex });
       
-      if (data.success && user) {
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      if (response.data?.success && user) {
         setUser({ ...user, themeColor: colorHex });
         await loadAvailableColors();
       }
