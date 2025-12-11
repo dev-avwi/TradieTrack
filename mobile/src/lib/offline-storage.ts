@@ -195,7 +195,7 @@ class OfflineStorageService {
         -- Quotes table
         CREATE TABLE IF NOT EXISTS quotes (
           id TEXT PRIMARY KEY,
-          quote_number TEXT NOT NULL,
+          quote_number TEXT,
           client_id TEXT,
           client_name TEXT,
           job_id TEXT,
@@ -215,7 +215,7 @@ class OfflineStorageService {
         -- Invoices table
         CREATE TABLE IF NOT EXISTS invoices (
           id TEXT PRIMARY KEY,
-          invoice_number TEXT NOT NULL,
+          invoice_number TEXT,
           client_id TEXT,
           client_name TEXT,
           job_id TEXT,
