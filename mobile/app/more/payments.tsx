@@ -326,25 +326,46 @@ export default function PaymentsScreen() {
 
   const handleConnectStripe = async () => {
     try {
-      // Try to get the Stripe Connect onboarding/dashboard link from the backend
-      const response = await api.post<{ url: string; isOnboarding?: boolean }>('/api/stripe-connect/account-link', {
+      setIsLoading(true);
+      
+      // Step 1: Create the Connect account if it doesn't exist
+      const createResponse = await api.post<{ 
+        accountId?: string; 
+        connectNotEnabled?: boolean;
+        error?: string;
+      }>('/api/stripe-connect/create-account', {});
+      
+      if (createResponse.data?.connectNotEnabled) {
+        Alert.alert(
+          'Coming Soon',
+          'Online payments are being set up and will be available shortly.',
+          [{ text: 'OK' }]
+        );
+        setIsLoading(false);
+        return;
+      }
+      
+      if (createResponse.error) {
+        Alert.alert('Error', createResponse.error);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Step 2: Get the onboarding link
+      const linkResponse = await api.post<{ url: string }>('/api/stripe-connect/account-link', {
         type: 'account_onboarding'
       });
       
-      if (response.data?.url) {
-        Linking.openURL(response.data.url);
-      } else if (response.error) {
-        // If account doesn't exist yet, try dashboard-link which creates one if needed
-        const dashboardResponse = await api.get<{ url: string; isOnboarding?: boolean }>('/api/stripe-connect/dashboard-link');
-        if (dashboardResponse.data?.url) {
-          Linking.openURL(dashboardResponse.data.url);
-        } else {
-          // Fallback to status check which may have more info
-          console.log('No Stripe Connect URL available:', response.error);
-        }
+      if (linkResponse.data?.url) {
+        Linking.openURL(linkResponse.data.url);
+      } else if (linkResponse.error) {
+        Alert.alert('Error', linkResponse.error || 'Failed to get Stripe setup link');
       }
     } catch (error) {
-      console.error('Error getting Stripe Connect link:', error);
+      console.error('Error setting up Stripe Connect:', error);
+      Alert.alert('Error', 'Failed to connect to Stripe. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

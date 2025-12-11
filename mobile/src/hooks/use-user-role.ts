@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import api from '../lib/api';
 import { useAuthStore } from '../lib/store';
+import { useOfflineStore } from '../lib/offline-storage';
 import { 
   roleCache, 
   fetchingUsers, 
@@ -107,6 +108,7 @@ const isBusinessOwner = (settings: any, userId: string | undefined): boolean => 
 export function useUserRole() {
   const { user, businessSettings } = useAuthStore();
   const userId = user?.id;
+  const { isOnline } = useOfflineStore();
   
   // Force re-render trigger when fetch completes
   const [fetchVersion, setFetchVersion] = useState(0);
@@ -120,12 +122,14 @@ export function useUserRole() {
   }, []);
 
   // Revalidate cache when app comes to foreground (match web's focus refetch)
+  // Only refetch when online to avoid repeated network errors
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (
         appStateRef.current.match(/inactive|background/) &&
         nextAppState === 'active' &&
-        userId
+        userId &&
+        isOnline  // Only refetch when online
       ) {
         // App came to foreground - always refetch like web's focus refetch
         // This ensures permission changes are picked up immediately
@@ -138,16 +142,17 @@ export function useUserRole() {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
-  }, [userId]);
+  }, [userId, isOnline]);
 
   // Periodic refetch while app is active (catch permission changes without focus change)
+  // Only refetch when online to avoid repeated network errors
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !isOnline) return;
     
     const interval = setInterval(() => {
-      // Only refetch if cache is stale
+      // Only refetch if cache is stale AND we're online
       const cache = roleCache.get(userId);
-      if (isCacheStale(cache)) {
+      if (isCacheStale(cache) && isOnline) {
         // Use invalidateUserRoleCache to properly increment session counter
         invalidateUserRoleCache(userId);
         setFetchVersion(v => v + 1);
@@ -155,11 +160,15 @@ export function useUserRole() {
     }, PERIODIC_REFETCH_MS);
     
     return () => clearInterval(interval);
-  }, [userId]);
+  }, [userId, isOnline]);
 
   // Fetch role info when userId changes or cache is stale
+  // Only fetch when online to avoid repeated network errors
   useEffect(() => {
     if (!userId) return;
+    
+    // Don't attempt network requests when offline - use cached data
+    if (!isOnline) return;
     
     // Check if cache exists and is fresh
     const existingCache = roleCache.get(userId);
@@ -233,7 +242,7 @@ export function useUserRole() {
     }
     
     fetchRoleInfo(fetchSessionToken);
-  }, [userId, businessSettings, fetchVersion]);
+  }, [userId, businessSettings, fetchVersion, isOnline]);
 
   // Derive all values from cache - NO stale state possible
   const cache = userId ? roleCache.get(userId) : undefined;
