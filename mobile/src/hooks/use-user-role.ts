@@ -2,14 +2,25 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import api from '../lib/api';
 import { useAuthStore } from '../lib/store';
+import { 
+  roleCache, 
+  fetchingUsers, 
+  getSessionCounter, 
+  startNewFetchSession,
+  clearRoleCache,
+  invalidateUserRoleCache,
+  type UserRoleType
+} from '../lib/role-cache';
 
-// Cache TTL in milliseconds (30 seconds - short to catch permission changes quickly)
-const CACHE_TTL_MS = 30 * 1000;
+// Re-export for backwards compatibility
+export { clearRoleCache, invalidateUserRoleCache };
+export type { UserRoleType };
 
-// Periodic refetch interval while app is active (every 30 seconds to match TTL)
-const PERIODIC_REFETCH_MS = 30 * 1000;
+// Cache TTL in milliseconds (5 minutes - reasonable balance between freshness and API load)
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
-export type UserRoleType = 'owner' | 'manager' | 'staff' | 'solo_owner' | 'loading';
+// Periodic refetch interval while app is active (every 5 minutes to match TTL)
+const PERIODIC_REFETCH_MS = 5 * 60 * 1000;
 
 interface TeamMemberInfo {
   roleId: string;
@@ -60,29 +71,6 @@ interface CachedRoleData {
   timestamp: number;
 }
 
-// Per-user cache - NEVER cleared on login/logout, only updated
-// This allows returning to same user session without refetch
-const roleCache = new Map<string, CachedRoleData>();
-
-// Track which users are currently being fetched
-const fetchingUsers = new Set<string>();
-
-// Session counter for stale fetch detection
-let sessionCounter = 0;
-
-// Clear cache only for security-critical scenarios (should rarely be needed)
-export const clearRoleCache = () => {
-  roleCache.clear();
-  fetchingUsers.clear();
-  sessionCounter++;
-};
-
-// Invalidate cache for a specific user (for permission refresh)
-export const invalidateUserRoleCache = (userId: string) => {
-  roleCache.delete(userId);
-  fetchingUsers.delete(userId);
-};
-
 // Check if cache is stale (older than TTL)
 const isCacheStale = (cache: CachedRoleData | undefined): boolean => {
   if (!cache) return true;
@@ -122,7 +110,7 @@ export function useUserRole() {
   
   // Force re-render trigger when fetch completes
   const [fetchVersion, setFetchVersion] = useState(0);
-  const sessionRef = useRef(sessionCounter);
+  const sessionRef = useRef(getSessionCounter());
   const mountedRef = useRef(true);
   const appStateRef = useRef(AppState.currentState);
 
@@ -141,8 +129,8 @@ export function useUserRole() {
       ) {
         // App came to foreground - always refetch like web's focus refetch
         // This ensures permission changes are picked up immediately
-        roleCache.delete(userId);
-        fetchingUsers.delete(userId);
+        // Use invalidateUserRoleCache to properly increment session counter
+        invalidateUserRoleCache(userId);
         setFetchVersion(v => v + 1);
       }
       appStateRef.current = nextAppState;
@@ -160,8 +148,8 @@ export function useUserRole() {
       // Only refetch if cache is stale
       const cache = roleCache.get(userId);
       if (isCacheStale(cache)) {
-        roleCache.delete(userId);
-        fetchingUsers.delete(userId);
+        // Use invalidateUserRoleCache to properly increment session counter
+        invalidateUserRoleCache(userId);
         setFetchVersion(v => v + 1);
       }
     }, PERIODIC_REFETCH_MS);
@@ -171,8 +159,6 @@ export function useUserRole() {
 
   // Fetch role info when userId changes or cache is stale
   useEffect(() => {
-    sessionRef.current = sessionCounter;
-    
     if (!userId) return;
     
     // Check if cache exists and is fresh
@@ -182,14 +168,18 @@ export function useUserRole() {
     // Skip if already fetching
     if (fetchingUsers.has(userId)) return;
     
+    // Start new fetch session and capture the session token
+    // This token is used to detect if the fetch becomes stale
+    const fetchSessionToken = startNewFetchSession();
+    sessionRef.current = fetchSessionToken;
     fetchingUsers.add(userId);
     
-    async function fetchRoleInfo() {
+    async function fetchRoleInfo(sessionToken: number) {
       try {
         const response = await api.get<TeamMemberInfo>('/api/team/my-role');
         
-        // Check for stale fetch
-        if (sessionRef.current !== sessionCounter || !mountedRef.current) {
+        // Check for stale fetch - compare against captured session token
+        if (sessionToken !== getSessionCounter() || !mountedRef.current) {
           fetchingUsers.delete(userId);
           return;
         }
@@ -211,7 +201,8 @@ export function useUserRole() {
         if (mountedRef.current) setFetchVersion(v => v + 1);
         
       } catch (error: any) {
-        if (sessionRef.current !== sessionCounter || !mountedRef.current) {
+        // Check for stale fetch - compare against captured session token
+        if (sessionToken !== getSessionCounter() || !mountedRef.current) {
           fetchingUsers.delete(userId);
           return;
         }
@@ -241,7 +232,7 @@ export function useUserRole() {
       }
     }
     
-    fetchRoleInfo();
+    fetchRoleInfo(fetchSessionToken);
   }, [userId, businessSettings, fetchVersion]);
 
   // Derive all values from cache - NO stale state possible

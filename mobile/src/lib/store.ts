@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import api from './api';
 import offlineStorage, { useOfflineStore } from './offline-storage';
-import { clearRoleCache } from '../hooks/use-user-role';
+import { clearRoleCache } from './role-cache';
 
 // ============ TYPES ============
 

@@ -28,7 +28,7 @@ const FEATURES: FeatureItem[] = [
   { name: 'GST Calculation', free: true, pro: true, icon: 'percent' },
   { name: '5 Jobs/Month', free: true, pro: false, icon: 'layers' },
   { name: 'Unlimited Jobs', free: false, pro: true, icon: 'layers' },
-  { name: 'Custom Branding', free: false, pro: true, icon: 'palette' },
+  { name: 'Custom Branding', free: false, pro: true, icon: 'droplet' },
   { name: 'AI Assistant', free: false, pro: true, icon: 'zap' },
   { name: 'PDF Export', free: false, pro: true, icon: 'download' },
   { name: 'Email Integration', free: false, pro: true, icon: 'mail' },
@@ -417,7 +417,7 @@ export default function SubscriptionScreen() {
             
             <View style={styles.infoItem}>
               <View style={styles.infoIcon}>
-                <Feather name="palette" size={16} color={colors.primary} />
+                <Feather name="droplet" size={16} color={colors.primary} />
               </View>
               <Text style={styles.infoText}>
                 Custom branding on all quotes and invoices. Look professional.

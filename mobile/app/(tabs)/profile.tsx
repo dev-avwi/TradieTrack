@@ -512,7 +512,7 @@ export default function MoreScreen() {
         )}
         {canAccessSettings && (
           <MenuItem
-            icon="palette"
+            icon="droplet"
             iconBg={colors.primaryLight}
             iconColor={colors.primary}
             title="Branding"

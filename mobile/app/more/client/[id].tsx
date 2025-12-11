@@ -202,6 +202,47 @@ export default function ClientDetailScreen() {
             </View>
           </View>
 
+          {/* Past Jobs - Clickable List */}
+          {clientJobs.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Past Jobs</Text>
+              {clientJobs.map((job) => (
+                <TouchableOpacity
+                  key={job.id}
+                  style={styles.jobCard}
+                  onPress={() => router.push(`/job/${job.id}`)}
+                  data-testid={`card-job-${job.id}`}
+                >
+                  <View style={styles.jobCardContent}>
+                    <View style={styles.jobCardHeader}>
+                      <View style={styles.jobIconContainer}>
+                        <Feather name="briefcase" size={18} color={colors.primary} />
+                      </View>
+                      <View style={styles.jobCardInfo}>
+                        <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
+                        {job.scheduledAt && (
+                          <Text style={styles.jobDate}>
+                            {new Date(job.scheduledAt).toLocaleDateString('en-AU', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(job.status, colors).bg }]}>
+                      <Text style={[styles.statusText, { color: getStatusColor(job.status, colors).text }]}>
+                        {job.status.replace('_', ' ')}
+                      </Text>
+                    </View>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+
           {/* Notes */}
           {client.notes && (
             <>
@@ -216,6 +257,23 @@ export default function ClientDetailScreen() {
     </>
   );
 }
+
+const getStatusColor = (status: string, colors: ThemeColors) => {
+  switch (status) {
+    case 'pending':
+      return { bg: colors.warningLight, text: colors.warning };
+    case 'scheduled':
+      return { bg: colors.infoLight, text: colors.info };
+    case 'in_progress':
+      return { bg: colors.primaryLight, text: colors.primary };
+    case 'done':
+      return { bg: colors.successLight, text: colors.success };
+    case 'invoiced':
+      return { bg: colors.successLight, text: colors.success };
+    default:
+      return { bg: colors.muted, text: colors.mutedForeground };
+  }
+};
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -358,5 +416,60 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.body,
     color: colors.foreground,
     lineHeight: 22,
+  },
+  jobCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  jobCardContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  jobCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  jobIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  jobCardInfo: {
+    flex: 1,
+  },
+  jobTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  jobDate: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+  },
+  statusText: {
+    ...typography.caption,
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
 });
