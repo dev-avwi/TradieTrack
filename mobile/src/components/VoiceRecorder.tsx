@@ -34,10 +34,10 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder, 500);
   
-  // Create player only when we have a valid URI to avoid constructor errors
-  // Some expo-audio versions have issues with null/undefined sources
-  const audioSource = recordedUri ? { uri: recordedUri } : null;
-  const player = useAudioPlayer(audioSource);
+  // Create player - expo-audio useAudioPlayer expects (source, updateInterval) 
+  // Pass a valid source object or empty string, with 500ms update interval
+  const audioSource = recordedUri || '';
+  const player = useAudioPlayer(audioSource, 500);
   const playerStatus = useAudioPlayerStatus(player);
 
   const isRecording = recorderState?.isRecording ?? false;
@@ -282,7 +282,8 @@ export function VoiceNotePlayer({
   onDelete 
 }: VoiceNotePlayerProps) {
   const theme = useTheme();
-  const player = useAudioPlayer(uri);
+  // expo-audio useAudioPlayer expects (source, updateInterval)
+  const player = useAudioPlayer(uri, 500);
   const status = useAudioPlayerStatus(player);
   
   const isPlaying = status?.playing ?? false;

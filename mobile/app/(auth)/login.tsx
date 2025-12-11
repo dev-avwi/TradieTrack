@@ -114,7 +114,7 @@ export default function LoginScreen() {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Image 
-                source={require('../../assets/logo.png')}
+                source={require('../../assets/tradietrack-logo.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />
