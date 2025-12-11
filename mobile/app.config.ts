@@ -19,6 +19,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: true,
     bundleIdentifier: 'com.tradietrack.app',
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription: 'TradieTrack needs camera access to take job photos',
       NSPhotoLibraryUsageDescription: 'TradieTrack needs photo library access to upload job photos',
       NSLocationWhenInUseUsageDescription: 'TradieTrack needs location access to track job sites',
