@@ -433,14 +433,17 @@ export default function MapScreen() {
   const { jobs, fetchJobs, isLoading: jobsLoading } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
   const { user } = useAuthStore();
-  const { isStaff, canAccessMap, isLoading: roleLoading, isSolo, isOwner } = useUserRole();
+  const { isStaff, canAccessMap, isLoading: roleLoading, isSolo, isOwner, isManager } = useUserRole();
   
-  // Solo owners and owners always have map access, staff need explicit permission
-  // Everyone can see jobs on the map - only team tracking requires special permission
-  const hasMapAccess = isOwner || isSolo || !isStaff || canAccessMap;
+  // EVERYONE can access the map to see jobs - map is core functionality
+  // Only team tracking mode requires special permission
+  const hasMapAccess = true; // Always allow job view on map
   
-  // Only show team toggle if user has team (not solo)
-  const showTeamToggle = !isSolo && (isOwner || canAccessMap);
+  // Only show team toggle if user has permission for team tracking (not solo owners)
+  const showTeamToggle = !isSolo && (isOwner || isManager || canAccessMap);
+  
+  // Staff can only view jobs mode, not team tracking
+  const canViewTeamMode = isOwner || isManager || canAccessMap;
   
   const [viewMode, setViewMode] = useState<ViewMode>('jobs');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
