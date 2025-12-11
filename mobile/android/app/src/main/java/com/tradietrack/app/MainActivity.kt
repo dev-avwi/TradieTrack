@@ -1,4 +1,4 @@
-package com.tradietrack
+package com.tradietrack.app
 
 import android.os.Build
 import android.os.Bundle
