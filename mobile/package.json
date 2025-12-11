@@ -13,10 +13,6 @@
     "build:android": "eas build --platform android",
     "install:maps": "npm install --legacy-peer-deps"
   },
-  "overrides": {
-    "react": "19.1.0",
-    "react-native": "0.81.5"
-  },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -25,7 +21,6 @@
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/native-stack": "^7.2.0",
-    "@stripe/stripe-terminal-react-native": "^0.0.1-beta.28",
     "@tanstack/react-query": "^5.28.0",
     "date-fns": "^4.1.0",
     "expo": "~54.0.25",

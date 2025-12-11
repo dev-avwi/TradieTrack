@@ -7,21 +7,21 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "22.0.0",
+      "node": "20.19.4",
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
     },
     "preview": {
       "distribution": "internal",
-      "node": "22.0.0",
+      "node": "20.19.4",
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
     },
     "production": {
       "autoIncrement": true,
-      "node": "22.0.0",
+      "node": "20.19.4",
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
