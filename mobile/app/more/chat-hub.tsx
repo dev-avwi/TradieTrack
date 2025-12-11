@@ -387,7 +387,7 @@ export default function ChatHubScreen() {
     } else if (item.type === 'direct') {
       router.push('/more/direct-messages');
     } else if (item.type === 'job') {
-      router.push(`/job/${item.data.id}`);
+      router.push(`/job/chat?jobId=${item.data.id}`);
     }
   };
 

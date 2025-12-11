@@ -2165,6 +2165,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // General SMS send endpoint for Smart Actions logging
+  const sendSmsInputSchema = z.object({
+    to: z.string().min(1, "Phone number is required"),
+    message: z.string().min(1, "Message is required"),
+    context: z.object({
+      type: z.enum(['invoice', 'quote', 'job', 'general']).optional(),
+      entityId: z.string().optional(),
+      clientId: z.string().optional(),
+    }).optional(),
+  });
+
+  app.post("/api/sms/send", requireAuth, async (req: any, res) => {
+    try {
+      const data = sendSmsInputSchema.parse(req.body);
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      
+      // Log the SMS activity for audit trail
+      const activity = {
+        userId: effectiveUserId,
+        type: 'sms_sent' as const,
+        phone: data.to,
+        context: data.context,
+        timestamp: new Date(),
+        sentBy: req.userId,
+      };
+      console.log('[SMS Activity]', JSON.stringify(activity));
+      
+      // Create a notification for tracking
+      await storage.createNotification({
+        userId: effectiveUserId,
+        type: 'sms_sent',
+        title: 'SMS Sent',
+        message: `SMS sent to ${data.to.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2')}`,
+        relatedId: data.context?.entityId || null,
+        relatedType: data.context?.type || null,
+      });
+      
+      // SMS is disabled for beta - log and return success for logging purposes
+      // In future, integrate with Twilio here when SMS is enabled
+      res.json({ 
+        success: true, 
+        logged: true,
+        message: 'SMS activity logged. SMS delivery disabled in beta.',
+        smsDelivered: false, // Indicates SMS wasn't actually sent
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Error in SMS send endpoint:", error);
+      res.status(500).json({ error: "Failed to process SMS request" });
+    }
+  });
+
   // Notification Routes
   // Define input schema that omits server-managed fields (userId, id, createdAt)
   const createNotificationInputSchema = z.object({

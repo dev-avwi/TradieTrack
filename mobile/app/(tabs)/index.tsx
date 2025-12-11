@@ -146,6 +146,222 @@ function ActivityFeed({ activities }: { activities: any[] }) {
   );
 }
 
+// Time Tracking Widget - matches web Staff Dashboard
+function TimeTrackingWidget() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const [activeTimer, setActiveTimer] = useState<any>(null);
+  const [elapsedTime, setElapsedTime] = useState('00:00:00');
+  const [totalMinutesToday, setTotalMinutesToday] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isStopping, setIsStopping] = useState(false);
+
+  useEffect(() => {
+    loadTimeData();
+    const interval = setInterval(loadTimeData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (activeTimer) {
+      timer = setInterval(() => {
+        const startTime = new Date(activeTimer.startTime).getTime();
+        const elapsed = Date.now() - startTime;
+        const hours = Math.floor(elapsed / 3600000);
+        const minutes = Math.floor((elapsed % 3600000) / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+        setElapsedTime(
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        );
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [activeTimer]);
+
+  const loadTimeData = async () => {
+    try {
+      const { default: api } = await import('../../src/lib/api');
+      const [activeResponse, dashboardResponse] = await Promise.all([
+        api.get('/api/time-entries/active/current'),
+        api.get('/api/time-tracking/dashboard')
+      ]);
+      
+      if (activeResponse.data) {
+        setActiveTimer(activeResponse.data);
+      } else {
+        setActiveTimer(null);
+      }
+      
+      if (dashboardResponse.data) {
+        const entries = (dashboardResponse.data as any).recentEntries || [];
+        const total = entries.reduce((sum: number, e: any) => {
+          if (e.duration) return sum + e.duration;
+          if (e.endTime) {
+            const start = new Date(e.startTime).getTime();
+            const end = new Date(e.endTime).getTime();
+            return sum + Math.floor((end - start) / 60000);
+          }
+          return sum;
+        }, 0);
+        setTotalMinutesToday(total);
+      }
+    } catch (error) {
+      console.log('Error loading time data:', error);
+      setActiveTimer(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStopTimer = async () => {
+    if (!activeTimer) return;
+    setIsStopping(true);
+    try {
+      const { default: api } = await import('../../src/lib/api');
+      const endTime = new Date();
+      const startTime = new Date(activeTimer.startTime);
+      const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
+      
+      await api.post(`/api/time-entries/${activeTimer.id}/stop`, {});
+      
+      setActiveTimer(null);
+      Alert.alert('Timer Stopped', 'Time has been recorded');
+      loadTimeData();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to stop timer');
+    } finally {
+      setIsStopping(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.timeTrackingWidget, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
+  }
+
+  const hours = Math.floor(totalMinutesToday / 60);
+  const mins = totalMinutesToday % 60;
+
+  return (
+    <View style={[styles.timeTrackingWidget, activeTimer && styles.timeTrackingWidgetActive]}>
+      <View style={styles.timeTrackingContent}>
+        <View style={[styles.timerIconContainer, activeTimer && styles.timerIconContainerActive]}>
+          <Feather 
+            name="clock" 
+            size={24} 
+            color={activeTimer ? colors.primary : colors.mutedForeground} 
+          />
+        </View>
+        <View style={styles.timerTextContent}>
+          {activeTimer ? (
+            <>
+              <Text style={styles.elapsedTime}>{elapsedTime}</Text>
+              <Text style={styles.timerSubtext} numberOfLines={1}>
+                Working on: {activeTimer.jobTitle || 'Current job'}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.totalTimeToday}>{hours}h {mins}m today</Text>
+              <Text style={styles.timerSubtext}>No active timer</Text>
+            </>
+          )}
+        </View>
+      </View>
+      {activeTimer && (
+        <TouchableOpacity
+          style={styles.stopTimerButton}
+          onPress={handleStopTimer}
+          disabled={isStopping}
+          activeOpacity={0.8}
+        >
+          {isStopping ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <>
+              <Feather name="square" size={16} color={colors.white} />
+              <Text style={styles.stopTimerText}>Stop</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+// This Week Jobs Component - matches web Staff Dashboard
+function ThisWeekSection({ jobs, onViewJob }: { jobs: any[]; onViewJob: (id: string) => void }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+    
+    return date.toLocaleDateString('en-AU', { 
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    });
+  };
+
+  if (jobs.length === 0) return null;
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionTitleIcon}>
+            <Feather name="calendar" size={iconSizes.md} color={colors.primary} />
+          </View>
+          <Text style={styles.sectionTitle}>This Week</Text>
+        </View>
+        <View style={styles.weekBadge}>
+          <Text style={styles.weekBadgeText}>{jobs.length} jobs</Text>
+        </View>
+      </View>
+
+      <View style={styles.thisWeekCard}>
+        {jobs.slice(0, 5).map((job, index) => (
+          <TouchableOpacity
+            key={job.id}
+            style={[styles.weekJobItem, index < Math.min(jobs.length, 5) - 1 && styles.weekJobItemBorder]}
+            onPress={() => onViewJob(job.id)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.weekJobContent}>
+              <Text style={styles.weekJobTitle} numberOfLines={1}>{job.title}</Text>
+              <Text style={styles.weekJobMeta}>
+                {job.scheduledAt && formatDate(job.scheduledAt)}
+                {job.clientName && ` • ${job.clientName}`}
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        ))}
+        {jobs.length > 5 && (
+          <TouchableOpacity
+            style={styles.viewAllWeekButton}
+            onPress={() => router.push('/(tabs)/jobs')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.viewAllWeekText}>View all {jobs.length} jobs this week</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+}
+
 // KPI Stat Card Component - compact modern design
 function KPICard({ 
   title, 
@@ -550,6 +766,22 @@ export default function DashboardScreen() {
   const quotesCount = stats.pendingQuotes || 0;
   const monthRevenue = formatCurrency(stats.thisMonthRevenue || 0);
 
+  // Calculate this week's jobs (next 7 days, excluding today) for staff
+  const thisWeeksJobs = useMemo(() => {
+    const activeJobs = todaysJobs.filter((job: any) => 
+      job.status !== 'done' && job.status !== 'invoiced'
+    );
+    return activeJobs.filter((job: any) => {
+      if (!job.scheduledAt) return false;
+      const jobDate = new Date(job.scheduledAt);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(today);
+      endOfWeek.setDate(endOfWeek.getDate() + 7);
+      return jobDate > today && jobDate <= endOfWeek && jobDate.toDateString() !== today.toDateString();
+    });
+  }, [todaysJobs]);
+
   const isLoading = jobsLoading || statsLoading;
 
   return (
@@ -590,6 +822,13 @@ export default function DashboardScreen() {
 
       {/* Trust Banner */}
       <TrustBanner />
+
+      {/* Time Tracking Widget - Staff Only */}
+      {isStaffUser && (
+        <View style={styles.section}>
+          <TimeTrackingWidget />
+        </View>
+      )}
 
       {/* Quick Stats - Different for staff vs owner */}
       <View style={styles.section}>
@@ -751,6 +990,14 @@ export default function DashboardScreen() {
           </View>
         )}
       </View>
+
+      {/* This Week Section - Staff Only */}
+      {isStaffUser && thisWeeksJobs.length > 0 && (
+        <ThisWeekSection 
+          jobs={thisWeeksJobs} 
+          onViewJob={(id) => router.push(`/job/${id}`)} 
+        />
+      )}
 
       {/* Recent Activity */}
       <View style={styles.section}>
@@ -1293,5 +1540,123 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
     color: colors.white,
+  },
+
+  // Time Tracking Widget
+  timeTrackingWidget: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: colors.cardBorder,
+    padding: spacing.md,
+    ...shadows.sm,
+  },
+  timeTrackingWidgetActive: {
+    borderColor: colors.primary,
+  },
+  timeTrackingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing.md,
+  },
+  timerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timerIconContainerActive: {
+    backgroundColor: `${colors.primary}15`,
+  },
+  timerTextContent: {
+    flex: 1,
+  },
+  elapsedTime: {
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: 'monospace',
+    color: colors.primary,
+  },
+  totalTimeToday: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  timerSubtext: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  stopTimerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.destructive,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+  },
+  stopTimerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.white,
+  },
+
+  // This Week Section
+  weekBadge: {
+    backgroundColor: colors.muted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  weekBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  thisWeekCard: {
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+  },
+  weekJobItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    backgroundColor: 'transparent',
+  },
+  weekJobItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  weekJobContent: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  weekJobTitle: {
+    ...typography.body,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  weekJobMeta: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  viewAllWeekButton: {
+    padding: spacing.md,
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  viewAllWeekText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
   },
 });

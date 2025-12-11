@@ -29,6 +29,7 @@ import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../.
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
+import SmartActionsPanel, { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
 
 interface Job {
   id: string;
@@ -1092,6 +1093,9 @@ export default function JobDetailScreen() {
   const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
   const [isConvertingToInvoice, setIsConvertingToInvoice] = useState(false);
   
+  const [smartActions, setSmartActions] = useState<SmartAction[]>([]);
+  const [isExecutingActions, setIsExecutingActions] = useState(false);
+  
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { 
     activeTimer, 
@@ -1138,6 +1142,208 @@ export default function JobDetailScreen() {
       if (interval) clearInterval(interval);
     };
   }, [isTimerForThisJob, activeTimer?.id, activeTimer?.startTime]);
+
+  // Generate smart actions when job/client/quote/invoice change
+  useEffect(() => {
+    if (job) {
+      const actions = getJobSmartActions(job, client, quote, invoice);
+      setSmartActions(actions);
+    }
+  }, [job?.status, client?.email, client?.phone, quote?.id, invoice?.id]);
+
+  const handleSmartActionToggle = (actionId: string, enabled: boolean) => {
+    setSmartActions(prev => 
+      prev.map(action => 
+        action.id === actionId ? { ...action, enabled } : action
+      )
+    );
+  };
+
+  const executeAction = async (action: SmartAction): Promise<boolean> => {
+    if (!job) return false;
+
+    try {
+      // Use action.id for more specific routing when needed
+      switch (action.id) {
+        case 'create_invoice':
+          router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`);
+          return true;
+
+        case 'create_quote':
+          router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`);
+          return true;
+
+        case 'mark_complete':
+          await api.patch(`/api/jobs/${job.id}/status`, { status: 'done' });
+          await loadJob();
+          Alert.alert('Success', 'Job marked as complete');
+          return true;
+
+        case 'send_invoice_email':
+          // Use the API endpoint that sends invoice with PDF (matching web behavior)
+          if (invoice?.id) {
+            try {
+              await api.post(`/api/invoices/${invoice.id}/send`, {});
+              Alert.alert('Success', 'Invoice sent to client');
+            } catch {
+              // Fall back to native email if API fails
+              if (client?.email) {
+                await Linking.openURL(`mailto:${client.email}?subject=Invoice for ${job.title}`);
+              }
+            }
+          } else if (client?.email) {
+            await Linking.openURL(`mailto:${client.email}?subject=Invoice for ${job.title}`);
+          }
+          return true;
+
+        case 'send_invoice_sms':
+          // Log SMS activity on server, then open native SMS
+          if (client?.phone) {
+            const message = `Hi! Your invoice for ${job.title} is ready. Please check your email for payment details.`;
+            try {
+              await api.post('/api/sms/send', {
+                to: client.phone,
+                message,
+                context: {
+                  type: 'invoice',
+                  entityId: invoice?.id,
+                  clientId: client.id,
+                }
+              });
+            } catch (logError) {
+              console.log('SMS logging failed, continuing with native SMS:', logError);
+            }
+            await Linking.openURL(`sms:${client.phone}?body=${encodeURIComponent(message)}`);
+          }
+          return true;
+
+        case 'send_quote_email':
+          if (quote?.id) {
+            try {
+              await api.post(`/api/quotes/${quote.id}/send`, {});
+              Alert.alert('Success', 'Quote sent to client');
+            } catch {
+              if (client?.email) {
+                await Linking.openURL(`mailto:${client.email}?subject=Quote for ${job.title}`);
+              }
+            }
+          }
+          return true;
+
+        case 'send_confirmation':
+          if (client?.email) {
+            try {
+              await api.post(`/api/jobs/${job.id}/send-confirmation`, {});
+              Alert.alert('Success', 'Confirmation email sent');
+            } catch {
+              await Linking.openURL(`mailto:${client.email}?subject=Booking Confirmed: ${job.title}`);
+            }
+          }
+          return true;
+
+        case 'send_reminder':
+          if (invoice?.id) {
+            try {
+              await api.post(`/api/invoices/${invoice.id}/reminder`, {});
+              Alert.alert('Success', 'Payment reminder sent');
+            } catch {
+              Alert.alert('Error', 'Failed to send reminder');
+            }
+          }
+          return true;
+
+        case 'schedule_followup':
+          router.push(`/more/create-job?copyFromId=${job.id}`);
+          return true;
+
+        default:
+          // Fall back to type-based routing for any other actions
+          switch (action.type) {
+            case 'send_email':
+              if (client?.email) {
+                await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(job.title)}`);
+              }
+              return true;
+
+            case 'send_sms':
+              if (client?.phone) {
+                // Log SMS activity on server for audit trail
+                try {
+                  await api.post('/api/sms/send', {
+                    to: client.phone,
+                    message: `Re: ${job.title}`,
+                    context: {
+                      type: 'job',
+                      entityId: job.id,
+                      clientId: client.id,
+                    }
+                  });
+                } catch (logError) {
+                  console.log('SMS logging failed:', logError);
+                }
+                await Linking.openURL(`sms:${client.phone}`);
+              }
+              return true;
+
+            default:
+              return false;
+          }
+      }
+    } catch (error) {
+      console.error(`Error executing action ${action.id}:`, error);
+      return false;
+    }
+  };
+
+  const handleSmartActionExecute = async (actionId: string) => {
+    const action = smartActions.find(a => a.id === actionId);
+    if (!action || !job) return;
+
+    setSmartActions(prev =>
+      prev.map(a => a.id === actionId ? { ...a, status: 'running' as const } : a)
+    );
+
+    const success = await executeAction(action);
+
+    setSmartActions(prev =>
+      prev.map(a => a.id === actionId ? { ...a, status: success ? 'completed' as const : 'pending' as const } : a)
+    );
+  };
+
+  const handleExecuteAllActions = async () => {
+    if (!job) return;
+    
+    setIsExecutingActions(true);
+    try {
+      const enabledActions = smartActions.filter(a => a.enabled && a.status !== 'completed');
+      
+      for (const action of enabledActions) {
+        setSmartActions(prev =>
+          prev.map(a => a.id === action.id ? { ...a, status: 'running' as const } : a)
+        );
+
+        const success = await executeAction(action);
+
+        setSmartActions(prev =>
+          prev.map(a => a.id === action.id ? { ...a, status: success ? 'completed' as const : 'pending' as const } : a)
+        );
+
+        if (action.type === 'create_invoice' || action.type === 'create_quote') {
+          break;
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to execute actions');
+    } finally {
+      setIsExecutingActions(false);
+    }
+  };
+
+  const handleSkipAllActions = () => {
+    setSmartActions(prev =>
+      prev.map(action => ({ ...action, enabled: false, status: 'skipped' as const }))
+    );
+  };
 
   const loadJob = async () => {
     setIsLoading(true);
@@ -2479,6 +2685,23 @@ export default function JobDetailScreen() {
           </View>
         )}
 
+        {/* Smart Actions Panel - Show when job is done and has suggested actions */}
+        {smartActions.length > 0 && (
+          <View style={{ marginBottom: spacing.lg }}>
+            <SmartActionsPanel
+              title="Next Steps"
+              subtitle="Suggested actions for this job"
+              actions={smartActions}
+              onActionToggle={handleSmartActionToggle}
+              onActionExecute={handleSmartActionExecute}
+              onExecuteAll={handleExecuteAllActions}
+              onSkipAll={handleSkipAllActions}
+              isExecuting={isExecutingActions}
+              entityType="job"
+            />
+          </View>
+        )}
+
         {/* Quick Actions */}
         <View style={styles.quickActionsSection}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -2510,6 +2733,16 @@ export default function JobDetailScreen() {
                 <Feather name="file-text" size={iconSizes['2xl']} color={colors.primary} />
               </View>
               <Text style={styles.quickActionText}>Notes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              style={styles.quickActionButton}
+              onPress={() => router.push(`/job/chat?jobId=${id}`)}
+            >
+              <View style={styles.quickActionIcon}>
+                <Feather name="message-circle" size={iconSizes['2xl']} color={colors.primary} />
+              </View>
+              <Text style={styles.quickActionText}>Chat</Text>
             </TouchableOpacity>
           </View>
         </View>
