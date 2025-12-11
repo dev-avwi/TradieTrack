@@ -84,7 +84,20 @@ class NotificationService {
       }
 
       // Get the push token
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+      // Try multiple sources for projectId (varies between dev/production builds)
+      const projectId = 
+        Constants.expoConfig?.extra?.eas?.projectId ||
+        Constants.easConfig?.projectId ||
+        process.env.EXPO_PUBLIC_PROJECT_ID;
+      
+      // Validate projectId is a valid UUID before attempting to get push token
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!projectId || !uuidRegex.test(projectId)) {
+        console.log('[Notifications] No valid projectId available - push notifications disabled in dev');
+        console.log('[Notifications] To enable, add EAS projectId to app.config or run eas build');
+        return null;
+      }
+      
       const tokenData = await Notifications.getExpoPushTokenAsync({
         projectId: projectId,
       });

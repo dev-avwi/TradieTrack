@@ -268,6 +268,9 @@ class OfflineStorageService {
         );
       `);
       
+      // Run migrations to fix old schemas with NOT NULL constraints
+      await this.runMigrations();
+      
       // Set up network listener
       this.networkUnsubscribe = NetInfo.addEventListener(this.handleNetworkChange);
       
@@ -283,6 +286,113 @@ class OfflineStorageService {
     } catch (error) {
       console.error('[OfflineStorage] Initialization failed:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Run schema migrations to fix old databases with NOT NULL constraints
+   * SQLite doesn't support ALTER COLUMN, so we need to recreate tables
+   */
+  private async runMigrations(): Promise<void> {
+    if (!this.db) return;
+    
+    try {
+      // Check if we need to migrate quotes table (check for NOT NULL on quote_number)
+      const quotesInfo = await this.db.getAllAsync("PRAGMA table_info(quotes)");
+      const quoteNumberCol = (quotesInfo as any[]).find((c: any) => c.name === 'quote_number');
+      
+      if (quoteNumberCol && quoteNumberCol.notnull === 1) {
+        console.log('[OfflineStorage] Migrating quotes table to allow NULL quote_number...');
+        await this.db.execAsync(`
+          BEGIN TRANSACTION;
+          
+          -- Create new quotes table with correct schema
+          CREATE TABLE IF NOT EXISTS quotes_new (
+            id TEXT PRIMARY KEY,
+            quote_number TEXT,
+            client_id TEXT,
+            client_name TEXT,
+            job_id TEXT,
+            status TEXT NOT NULL,
+            subtotal REAL DEFAULT 0,
+            gst_amount REAL DEFAULT 0,
+            total REAL DEFAULT 0,
+            valid_until TEXT,
+            notes TEXT,
+            created_at TEXT,
+            cached_at INTEGER NOT NULL,
+            pending_sync INTEGER DEFAULT 0,
+            sync_action TEXT,
+            local_id TEXT
+          );
+          
+          -- Copy data from old table
+          INSERT INTO quotes_new SELECT * FROM quotes;
+          
+          -- Drop old table and rename new one
+          DROP TABLE quotes;
+          ALTER TABLE quotes_new RENAME TO quotes;
+          
+          -- Recreate indexes
+          CREATE INDEX IF NOT EXISTS idx_quotes_client_id ON quotes(client_id);
+          CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes(status);
+          
+          COMMIT;
+        `);
+        console.log('[OfflineStorage] Quotes table migrated successfully');
+      }
+      
+      // Check if we need to migrate invoices table
+      const invoicesInfo = await this.db.getAllAsync("PRAGMA table_info(invoices)");
+      const invoiceNumberCol = (invoicesInfo as any[]).find((c: any) => c.name === 'invoice_number');
+      
+      if (invoiceNumberCol && invoiceNumberCol.notnull === 1) {
+        console.log('[OfflineStorage] Migrating invoices table to allow NULL invoice_number...');
+        await this.db.execAsync(`
+          BEGIN TRANSACTION;
+          
+          -- Create new invoices table with correct schema
+          CREATE TABLE IF NOT EXISTS invoices_new (
+            id TEXT PRIMARY KEY,
+            invoice_number TEXT,
+            client_id TEXT,
+            client_name TEXT,
+            job_id TEXT,
+            quote_id TEXT,
+            status TEXT NOT NULL,
+            subtotal REAL DEFAULT 0,
+            gst_amount REAL DEFAULT 0,
+            total REAL DEFAULT 0,
+            amount_paid REAL DEFAULT 0,
+            due_date TEXT,
+            paid_at TEXT,
+            notes TEXT,
+            created_at TEXT,
+            cached_at INTEGER NOT NULL,
+            pending_sync INTEGER DEFAULT 0,
+            sync_action TEXT,
+            local_id TEXT
+          );
+          
+          -- Copy data from old table
+          INSERT INTO invoices_new SELECT * FROM invoices;
+          
+          -- Drop old table and rename new one
+          DROP TABLE invoices;
+          ALTER TABLE invoices_new RENAME TO invoices;
+          
+          -- Recreate indexes
+          CREATE INDEX IF NOT EXISTS idx_invoices_client_id ON invoices(client_id);
+          CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+          
+          COMMIT;
+        `);
+        console.log('[OfflineStorage] Invoices table migrated successfully');
+      }
+      
+    } catch (error) {
+      console.error('[OfflineStorage] Migration error:', error);
+      // Don't throw - we don't want to block initialization
     }
   }
 

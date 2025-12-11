@@ -2413,8 +2413,8 @@ export default function JobDetailScreen() {
           </View>
         )}
 
-        {/* Client Signature Section - Only show for done or invoiced jobs */}
-        {(job.status === 'done' || job.status === 'invoiced') && (
+        {/* Client Signature Section - Show for in_progress, done, or invoiced jobs */}
+        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
           <View style={styles.photosCard}>
             <View style={styles.photosHeader}>
               <View style={[styles.photosIconContainer, { backgroundColor: `${colors.primary}15` }]}>

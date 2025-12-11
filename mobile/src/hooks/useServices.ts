@@ -188,7 +188,10 @@ export function useStripeTerminal() {
       });
 
       if (intentResponse.error || !intentResponse.data?.clientSecret) {
-        throw new Error('Failed to create payment intent');
+        const errorMsg = typeof intentResponse.error === 'string' 
+          ? intentResponse.error 
+          : (intentResponse.error as any)?.message || JSON.stringify(intentResponse.error) || 'Failed to create payment intent';
+        throw new Error(errorMsg);
       }
 
       const clientSecret = intentResponse.data.clientSecret;

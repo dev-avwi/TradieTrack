@@ -76,10 +76,12 @@ export function Button({
           overlayColor: 'transparent',
         };
       case 'brand':
+        // Brand button uses a fixed blue color for guaranteed visibility
+        // especially on login/register screens before theme loads
         return {
-          backgroundColor: colors.primary,
-          borderColor: colors.primaryDark,
-          textColor: '#ffffff',
+          backgroundColor: '#3B82F6',
+          borderColor: '#2563EB',
+          textColor: '#FFFFFF',
           overlayColor: elevateColor,
         };
       default:
