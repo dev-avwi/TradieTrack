@@ -29,10 +29,15 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
   const theme = useTheme();
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [playerError, setPlayerError] = useState<boolean>(false);
   
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder, 500);
-  const player = useAudioPlayer(recordedUri || undefined);
+  
+  // Create player only when we have a valid URI to avoid constructor errors
+  // Some expo-audio versions have issues with null/undefined sources
+  const audioSource = recordedUri ? { uri: recordedUri } : null;
+  const player = useAudioPlayer(audioSource);
   const playerStatus = useAudioPlayerStatus(player);
 
   const isRecording = recorderState?.isRecording ?? false;

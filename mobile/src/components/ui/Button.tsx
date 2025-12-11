@@ -79,10 +79,10 @@ export function Button({
         // Brand button uses a fixed blue color for guaranteed visibility
         // especially on login/register screens before theme loads
         return {
-          backgroundColor: '#3B82F6',
+          backgroundColor: pressed ? '#2563EB' : '#3B82F6',
           borderColor: '#2563EB',
           textColor: '#FFFFFF',
-          overlayColor: elevateColor,
+          overlayColor: 'transparent',
         };
       default:
         return {
