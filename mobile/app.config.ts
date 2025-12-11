@@ -79,8 +79,5 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     router: {
       origin: false,
     },
-    eas: {
-      projectId: 'your-project-id',
-    },
   },
 });
