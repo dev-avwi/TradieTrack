@@ -26,6 +26,15 @@ Key architectural features include:
 - **Mobile App**: A React Native mobile app (Expo SDK 52) with full API integration, Zustand for state management, and an SQLite-based offline mode with background sync and conflict resolution. It features permission-aware navigation and dedicated stores for auth, jobs, clients, quotes, and invoices.
 
 ### Recent Changes (December 2025)
+- **Job Workflow Validation**: Backend now validates job status transitions - jobs cannot be set to "invoiced" without a linked invoice record. Added efficient `/api/jobs/:id/linked-documents` endpoint for fetching quote/invoice linkage.
+- **Comprehensive FAQ System**: Enhanced SupportTab with 6 categorized FAQ sections using Accordion UI:
+  - Getting Started (first job, first client, business setup)
+  - Jobs & Scheduling (statuses, photos, scheduling, completion)
+  - Quotes (creation, sending, deposits, conversion to invoice)
+  - Invoices & Payments (creation, sending, Stripe, payment recording, overdue handling)
+  - Team Management (adding members, roles, job assignment)
+  - Troubleshooting (email issues, Stripe, sync, PDF generation, feature requests)
+- **App Walkthrough Tutorial**: New `AppWalkthrough.tsx` component provides guided 5-step tour for new users covering clients, jobs, quotes, invoices, and settings. Accessible via Settings → Support → "Start App Tour" button.
 - **Mobile P0 Bug Fixes**: Fixed critical production bugs:
   - Added missing Alert import to payments.tsx for Stripe Connect error handling
   - Fixed VoiceRecorder permission handling for expo-audio with graceful fallback

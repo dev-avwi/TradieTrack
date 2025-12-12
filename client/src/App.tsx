@@ -61,6 +61,7 @@ import DispatchBoard from "@/pages/DispatchBoard";
 import Automations from "@/pages/Automations";
 import CustomForms from "@/pages/CustomForms";
 import MyAccount from "@/pages/MyAccount";
+import AppWalkthrough, { useAppWalkthrough } from "@/components/AppWalkthrough";
 
 // Types for job completion
 interface JobPhoto {
@@ -486,6 +487,15 @@ function AppLayout() {
   // Modal state for quotes and invoices
   const [quoteModal, setQuoteModal] = useState<{ isOpen: boolean; quoteId: string | null }>({ isOpen: false, quoteId: null });
   const [invoiceModal, setInvoiceModal] = useState<{ isOpen: boolean; invoiceId: string | null }>({ isOpen: false, invoiceId: null });
+  
+  // App walkthrough state
+  const { 
+    showWalkthrough, 
+    hasCompleted: walkthroughCompleted, 
+    startWalkthrough, 
+    closeWalkthrough, 
+    completeWalkthrough 
+  } = useAppWalkthrough();
 
   // Detect OAuth callback and trigger auth refresh
   useEffect(() => {
@@ -653,6 +663,17 @@ function AppLayout() {
       window.dispatchEvent(new Event('trade-change'));
     }
   }, [userCheck?.tradeType]);
+
+  // Listen for walkthrough trigger from settings
+  useEffect(() => {
+    const handleStartWalkthrough = () => {
+      startWalkthrough();
+    };
+    window.addEventListener('start-walkthrough', handleStartWalkthrough);
+    return () => {
+      window.removeEventListener('start-walkthrough', handleStartWalkthrough);
+    };
+  }, [startWalkthrough]);
 
   // Sync brand theme from backend to ThemeProvider ONLY on initial load
   // We use a ref to track if we've already synced to prevent overriding user's local changes
@@ -908,6 +929,14 @@ function AppLayout() {
           }}
         />
       )}
+      
+      {/* App Walkthrough Tutorial */}
+      <AppWalkthrough
+        isOpen={showWalkthrough}
+        onClose={closeWalkthrough}
+        onComplete={completeWalkthrough}
+        onNavigate={handleNavigation}
+      />
     </>
   );
 }

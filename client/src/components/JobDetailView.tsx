@@ -82,8 +82,12 @@ interface LinkedDocument {
   title?: string;
   status: string;
   total: string;
+  number?: string;
   quoteNumber?: string;
   invoiceNumber?: string;
+  createdAt?: string;
+  dueDate?: string;
+  paidAt?: string;
 }
 
 interface JobWithLinks {
@@ -144,26 +148,30 @@ export default function JobDetailView({
     queryKey: ['/api/auth/me'],
   });
 
-  // Fetch linked quote/invoice for this job from contextual endpoint
-  // Uses the same queryKey pattern as the contextual jobs list for proper cache sharing
-  const { data: contextualJobs } = useQuery<JobWithLinks[]>({
-    queryKey: ['/api/jobs/contextual'],
+  // Fetch linked quote/invoice for this job using dedicated endpoint
+  interface LinkedDocumentsResponse {
+    linkedQuote: LinkedDocument | null;
+    linkedInvoice: LinkedDocument | null;
+    quoteCount: number;
+    invoiceCount: number;
+  }
+  
+  const { data: linkedDocuments } = useQuery<LinkedDocumentsResponse>({
+    queryKey: ['/api/jobs', jobId, 'linked-documents'],
     queryFn: async () => {
-      const res = await fetch('/api/jobs/contextual', { credentials: 'include' });
+      const res = await fetch(`/api/jobs/${jobId}/linked-documents`, { credentials: 'include' });
       if (!res.ok) {
-        if (res.status === 401) return []; // Handle unauthenticated gracefully
-        throw new Error('Failed to fetch contextual jobs');
+        if (res.status === 401) return { linkedQuote: null, linkedInvoice: null, quoteCount: 0, invoiceCount: 0 };
+        throw new Error('Failed to fetch linked documents');
       }
       return res.json();
     },
-    enabled: !!currentUser, // Only fetch when authenticated
+    enabled: !!currentUser && !!jobId,
     staleTime: 30000,
   });
 
-  // Find the current job from contextual data
-  const currentJobWithLinks = contextualJobs?.find((j: any) => j.id === jobId);
-  const linkedQuote = currentJobWithLinks?.linkedQuote;
-  const linkedInvoice = currentJobWithLinks?.linkedInvoice;
+  const linkedQuote = linkedDocuments?.linkedQuote;
+  const linkedInvoice = linkedDocuments?.linkedInvoice;
 
   // Fetch team members for assignment (only for owners/managers)
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
@@ -205,7 +213,7 @@ export default function JobDetailView({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/jobs/contextual'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'linked-documents'] });
       toast({
         title: "Job Updated",
         description: "Job status has been updated",

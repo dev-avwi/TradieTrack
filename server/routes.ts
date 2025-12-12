@@ -3815,6 +3815,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get linked documents (quote and invoice) for a specific job
+  // This is a dedicated efficient endpoint for job detail views
+  app.get("/api/jobs/:id/linked-documents", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const jobId = req.params.id;
+      
+      // Verify job exists and user has access
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      // Fetch all quotes and invoices, then filter for this job
+      const [quotes, invoices] = await Promise.all([
+        storage.getQuotes(effectiveUserId),
+        storage.getInvoices(effectiveUserId)
+      ]);
+      
+      // Find linked quote (most recent if multiple)
+      const linkedQuotes = quotes.filter((q: any) => q.jobId === jobId);
+      const linkedQuote = linkedQuotes.length > 0 ? linkedQuotes[linkedQuotes.length - 1] : null;
+      
+      // Find linked invoice (most recent if multiple)
+      const linkedInvoices = invoices.filter((i: any) => i.jobId === jobId);
+      const linkedInvoice = linkedInvoices.length > 0 ? linkedInvoices[linkedInvoices.length - 1] : null;
+      
+      res.json({
+        linkedQuote: linkedQuote ? {
+          id: linkedQuote.id,
+          number: linkedQuote.number,
+          quoteNumber: linkedQuote.number, // Alias for backward compatibility
+          title: linkedQuote.title,
+          status: linkedQuote.status,
+          total: linkedQuote.total,
+          createdAt: linkedQuote.createdAt,
+        } : null,
+        linkedInvoice: linkedInvoice ? {
+          id: linkedInvoice.id,
+          number: linkedInvoice.number,
+          invoiceNumber: linkedInvoice.number, // Alias for backward compatibility
+          title: linkedInvoice.title,
+          status: linkedInvoice.status,
+          total: linkedInvoice.total,
+          dueDate: linkedInvoice.dueDate,
+          paidAt: linkedInvoice.paidAt,
+          createdAt: linkedInvoice.createdAt,
+        } : null,
+        // Include counts for UI
+        quoteCount: linkedQuotes.length,
+        invoiceCount: linkedInvoices.length,
+      });
+    } catch (error) {
+      console.error("Error fetching linked documents:", error);
+      res.status(500).json({ error: "Failed to fetch linked documents" });
+    }
+  });
+
   app.post("/api/jobs", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       // Use effectiveUserId (business owner's ID) for multi-tenant data scoping
@@ -3865,6 +3923,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const data = insertJobSchema.partial().parse(req.body);
       const existingJob = await storage.getJob(req.params.id, effectiveUserId);
+      
+      // Validate: Can't set status to "invoiced" without a linked invoice
+      if (data.status === 'invoiced' && existingJob?.status !== 'invoiced') {
+        const invoices = await storage.getInvoices(effectiveUserId);
+        const linkedInvoice = invoices.find((inv: any) => inv.jobId === req.params.id);
+        if (!linkedInvoice) {
+          return res.status(400).json({ 
+            error: "Cannot mark job as invoiced without creating an invoice first. Please create an invoice for this job.",
+            code: "INVOICE_REQUIRED"
+          });
+        }
+      }
       
       // Auto-geocode if address changed (always re-geocode when address changes)
       let updateData = { ...data };
@@ -3920,6 +3990,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validStatuses = ['pending', 'scheduled', 'in_progress', 'done', 'invoiced'];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ error: "Invalid status value" });
+      }
+      
+      // Prevent staff from setting status to "invoiced" - only owners/managers can do this after creating invoice
+      if (status === 'invoiced') {
+        return res.status(403).json({ 
+          error: "Staff cannot mark jobs as invoiced. Only owners or managers can do this after creating an invoice.",
+          code: "PERMISSION_DENIED"
+        });
       }
       
       const userContext = await getUserContext(req.userId);

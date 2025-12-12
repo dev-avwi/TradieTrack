@@ -1507,42 +1507,47 @@ export default function JobDetailScreen() {
   };
 
   const loadRelatedDocuments = async () => {
+    // Use the dedicated linked-documents endpoint for efficiency
     try {
-      const invoiceResponse = await api.get<any[]>(`/api/invoices`);
-      if (invoiceResponse.data) {
-        const jobInvoice = invoiceResponse.data.find((inv: any) => inv.jobId === id);
-        if (jobInvoice) {
-          setInvoice({
-            id: jobInvoice.id,
-            number: jobInvoice.number,
-            title: jobInvoice.title,
-            total: parseFloat(jobInvoice.total) || 0,
-            status: jobInvoice.status,
-            dueDate: jobInvoice.dueDate,
-            paidAmount: parseFloat(jobInvoice.paidAmount) || 0,
-          });
-        }
-      }
-    } catch (error) {
-      console.log('Error loading invoices:', error);
-    }
-    
-    try {
-      const quoteResponse = await api.get<any[]>(`/api/quotes`);
-      if (quoteResponse.data) {
-        const jobQuote = quoteResponse.data.find((q: any) => q.jobId === id);
-        if (jobQuote) {
+      const response = await api.get<{
+        linkedQuote: any;
+        linkedInvoice: any;
+        quoteCount: number;
+        invoiceCount: number;
+      }>(`/api/jobs/${id}/linked-documents`);
+      
+      if (response.data) {
+        if (response.data.linkedQuote) {
           setQuote({
-            id: jobQuote.id,
-            number: jobQuote.number,
-            title: jobQuote.title,
-            total: parseFloat(jobQuote.total) || 0,
-            status: jobQuote.status,
+            id: response.data.linkedQuote.id,
+            number: response.data.linkedQuote.number,
+            title: response.data.linkedQuote.title,
+            total: parseFloat(response.data.linkedQuote.total) || 0,
+            status: response.data.linkedQuote.status,
           });
+        } else {
+          setQuote(null);
+        }
+        
+        if (response.data.linkedInvoice) {
+          setInvoice({
+            id: response.data.linkedInvoice.id,
+            number: response.data.linkedInvoice.number,
+            title: response.data.linkedInvoice.title,
+            total: parseFloat(response.data.linkedInvoice.total) || 0,
+            status: response.data.linkedInvoice.status,
+            dueDate: response.data.linkedInvoice.dueDate,
+            paidAmount: 0, // Not in the response, default to 0
+          });
+        } else {
+          setInvoice(null);
         }
       }
     } catch (error) {
-      console.log('Error loading quotes:', error);
+      console.log('Error loading linked documents:', error);
+      // Clear the state on error
+      setQuote(null);
+      setInvoice(null);
     }
   };
 

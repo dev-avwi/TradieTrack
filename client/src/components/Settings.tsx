@@ -9,6 +9,12 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { SignaturePad, SignatureDisplay } from "@/components/ui/signature-pad";
+import { 
+  Accordion, 
+  AccordionContent, 
+  AccordionItem, 
+  AccordionTrigger 
+} from "@/components/ui/accordion";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useTheme } from "@/components/ThemeProvider";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -36,7 +42,14 @@ import {
   Headphones,
   Phone,
   MessageCircle,
-  PenTool
+  PenTool,
+  HelpCircle,
+  Briefcase,
+  Receipt,
+  ClipboardList,
+  Users,
+  BookOpen,
+  Sparkles
 } from "lucide-react";
 import { LogoUpload } from "./LogoUpload";
 import { useToast } from "@/hooks/use-toast";
@@ -1720,30 +1733,292 @@ function SupportTab() {
 
           <Separator />
 
-          {/* FAQ / Common Issues */}
+          {/* Comprehensive FAQ System */}
           <div className="space-y-4">
             <h3 className="font-semibold flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              Common Questions
+              <BookOpen className="h-4 w-4" />
+              Frequently Asked Questions
             </h3>
-            <div className="space-y-3" data-testid="support-faq-list">
-              <div className="p-4 rounded-lg bg-muted/50" data-testid="faq-email-issues">
-                <p className="font-medium text-sm">Email not sending?</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Check Settings → Integrations to make sure your email is connected. If you're still having issues, contact us and we'll help you sort it out.
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-muted/50" data-testid="faq-stripe-issues">
-                <p className="font-medium text-sm">Stripe payments not working?</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Make sure you've completed Stripe Connect setup in Settings → Integrations. If the status shows as pending, you may need to finish verification with Stripe.
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-muted/50" data-testid="faq-feature-request">
-                <p className="font-medium text-sm">Feature request or bug report?</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  We love feedback! Email us your ideas or any bugs you find. We're always working to make TradieTrack better for Aussie tradies.
-                </p>
+            
+            <Accordion type="multiple" className="w-full" data-testid="support-faq-accordion">
+              {/* Getting Started */}
+              <AccordionItem value="getting-started">
+                <AccordionTrigger className="text-sm font-medium" data-testid="faq-section-getting-started">
+                  <span className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-primary" />
+                    Getting Started
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pt-2">
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-first-job">
+                    <p className="font-medium text-sm">How do I create my first job?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Head to the Jobs page and tap the "+" button. Add a client (or create a new one), 
+                      enter the job description and address, then save. You can schedule it for a specific 
+                      date or leave it as pending.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-first-client">
+                    <p className="font-medium text-sm">How do I add a client?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Go to the Clients page and tap "+". Enter their name, phone, email, and address. 
+                      You can also add clients on the fly when creating a job using "Quick Add Client".
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-business-setup">
+                    <p className="font-medium text-sm">How do I set up my business details?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Go to Settings → Business to add your company name, ABN, contact details, and logo. 
+                      These will appear on all your quotes and invoices.
+                    </p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Jobs & Scheduling */}
+              <AccordionItem value="jobs">
+                <AccordionTrigger className="text-sm font-medium" data-testid="faq-section-jobs">
+                  <span className="flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 text-primary" />
+                    Jobs & Scheduling
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pt-2">
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-job-status">
+                    <p className="font-medium text-sm">What do the job statuses mean?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      <strong>Pending:</strong> New job, not yet scheduled. <strong>Scheduled:</strong> Has a date set. 
+                      <strong>In Progress:</strong> Work has started. <strong>Done:</strong> Work complete, ready to invoice. 
+                      <strong>Invoiced:</strong> Invoice has been sent to the customer.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-job-photos">
+                    <p className="font-medium text-sm">Can I add photos to a job?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Yes! Open any job and scroll to the Photos section. You can upload before, during, 
+                      and after shots. Great for documentation and showing clients your work.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-schedule-job">
+                    <p className="font-medium text-sm">How do I schedule a job for a specific day?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Edit the job and set the "Scheduled Date". The job will then appear in your 
+                      Today's Schedule on the Dashboard when that day comes.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-complete-job">
+                    <p className="font-medium text-sm">How do I mark a job as complete?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Open the job and change the status to "Done". You'll then see an option to 
+                      create an invoice for the completed work.
+                    </p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Quotes */}
+              <AccordionItem value="quotes">
+                <AccordionTrigger className="text-sm font-medium" data-testid="faq-section-quotes">
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Quotes
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pt-2">
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-create-quote">
+                    <p className="font-medium text-sm">How do I create a quote?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Go to Quotes and tap "+", or open a job and tap "Create Quote". Add line items 
+                      with descriptions, quantities, and prices. GST is calculated automatically.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-send-quote">
+                    <p className="font-medium text-sm">How do I send a quote to a customer?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Open the quote and tap "Email Quote". A professional PDF will be generated 
+                      and sent to your customer. Make sure your email is connected in Settings → Integrations.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-quote-to-invoice">
+                    <p className="font-medium text-sm">Can I convert a quote to an invoice?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Yes! Once a quote is accepted, open it and tap "Convert to Invoice". 
+                      All the line items will be copied across automatically.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-quote-deposit">
+                    <p className="font-medium text-sm">How do I request a deposit with a quote?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      When creating or editing a quote, enable the deposit option and set a percentage 
+                      or fixed amount. Customers can pay the deposit online if you have Stripe connected.
+                    </p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Invoices & Payments */}
+              <AccordionItem value="invoices">
+                <AccordionTrigger className="text-sm font-medium" data-testid="faq-section-invoices">
+                  <span className="flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-primary" />
+                    Invoices & Payments
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pt-2">
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-create-invoice">
+                    <p className="font-medium text-sm">How do I create an invoice?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Go to Invoices and tap "+", or from a completed job, tap "Create Invoice". 
+                      Add your line items, set payment terms, and save.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-send-invoice">
+                    <p className="font-medium text-sm">How do I send an invoice?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Open the invoice and tap "Email Invoice". The customer will receive a PDF 
+                      with a payment link if you have Stripe connected.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-stripe-setup">
+                    <p className="font-medium text-sm">How do I accept card payments?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Go to Settings → Integrations and connect Stripe. Once verified, customers 
+                      can pay invoices online via credit card. Funds go directly to your bank account.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-mark-paid">
+                    <p className="font-medium text-sm">How do I mark an invoice as paid?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Open the invoice and tap "Record Payment". You can record cash, bank transfer, 
+                      or other payment methods. The invoice status will update to "Paid".
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-overdue-invoices">
+                    <p className="font-medium text-sm">How do I chase overdue invoices?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      TradieTrack shows overdue invoices on your Dashboard. You can send reminder 
+                      emails from the invoice page. Consider enabling automated reminders in Settings.
+                    </p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Team Management */}
+              <AccordionItem value="team">
+                <AccordionTrigger className="text-sm font-medium" data-testid="faq-section-team">
+                  <span className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    Team Management
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pt-2">
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-add-team">
+                    <p className="font-medium text-sm">How do I add team members?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Go to Settings → Team and tap "Invite Member". Enter their email and choose 
+                      a role. They'll receive an invitation to join your business.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-team-roles">
+                    <p className="font-medium text-sm">What are the different team roles?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      <strong>Owner:</strong> Full access to everything. <strong>Admin/Manager:</strong> Can manage jobs, 
+                      quotes, and team. <strong>Staff:</strong> Can view and update assigned jobs only.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-assign-jobs">
+                    <p className="font-medium text-sm">How do I assign a job to a team member?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Edit the job and select the team member from the "Assigned To" dropdown. 
+                      They'll be notified and the job will appear in their schedule.
+                    </p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Troubleshooting */}
+              <AccordionItem value="troubleshooting">
+                <AccordionTrigger className="text-sm font-medium" data-testid="faq-section-troubleshooting">
+                  <span className="flex items-center gap-2">
+                    <HelpCircle className="h-4 w-4 text-primary" />
+                    Troubleshooting
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pt-2">
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-email-issues">
+                    <p className="font-medium text-sm">Emails not sending?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Check Settings → Integrations to make sure your email (Gmail or SendGrid) is connected. 
+                      If using Gmail, you may need to re-authorize. Contact us if you're still having trouble.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-stripe-issues">
+                    <p className="font-medium text-sm">Stripe payments not working?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Make sure you've completed Stripe Connect setup in Settings → Integrations. 
+                      If the status shows "Pending", you need to finish verification with Stripe.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-sync-issues">
+                    <p className="font-medium text-sm">Data not syncing between devices?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Make sure you're connected to the internet. Pull down to refresh on any list. 
+                      If using the mobile app offline, data will sync when you're back online.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-pdf-issues">
+                    <p className="font-medium text-sm">PDF not generating correctly?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Check that your business details and logo are set up in Settings → Business. 
+                      If PDFs look wrong, try a different template style or contact support.
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-feature-request">
+                    <p className="font-medium text-sm">Feature request or bug report?</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      We love feedback! Email us at admin@avwebinnovation.com with your ideas or any 
+                      bugs you find. We're always working to make TradieTrack better for Aussie tradies.
+                    </p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+
+          <Separator />
+
+          {/* App Tour */}
+          <div className="space-y-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Learn TradieTrack
+            </h3>
+            <div className="p-4 rounded-lg border-2 bg-gradient-to-r from-primary/5 to-primary/10">
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-lg bg-primary/10">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                </div>
+                <div className="space-y-2 flex-1">
+                  <h4 className="font-semibold">Take the App Tour</h4>
+                  <p className="text-sm text-muted-foreground">
+                    New to TradieTrack? Our quick walkthrough will show you how to create jobs, 
+                    send quotes, and get paid faster.
+                  </p>
+                  <Button 
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      localStorage.removeItem("tradietrack-walkthrough-completed");
+                      localStorage.removeItem("tradietrack-walkthrough-skipped");
+                      window.dispatchEvent(new CustomEvent("start-walkthrough"));
+                    }}
+                    className="mt-2"
+                    data-testid="button-restart-tour"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Start App Tour
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
