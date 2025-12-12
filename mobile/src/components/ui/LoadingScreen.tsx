@@ -7,6 +7,7 @@ import {
   Easing,
   Image,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useTheme, ThemeColors } from '../../lib/theme';
 import { useAuthStore } from '../../lib/store';
 import { spacing } from '../../lib/design-tokens';
@@ -281,9 +282,11 @@ export function LoadingScreen({ message, showProgress = false }: LoadingScreenPr
   });
 
   const businessLogoUrl = businessSettings?.logoUrl;
+  const { isDark } = useTheme();
 
   return (
     <View style={styles.container}>
+      <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} />
       <View style={styles.contentWrapper}>
         <PulsingLogo 
           colors={colors} 

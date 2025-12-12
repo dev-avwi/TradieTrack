@@ -52,18 +52,31 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
 
   const requestPermissions = async () => {
     try {
-      const { status } = await Audio.requestRecordingPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission Required',
-          'Please grant microphone permission to record voice notes.',
-          [{ text: 'OK' }]
-        );
-        return false;
+      // Check if Audio module has requestRecordingPermissionsAsync (expo-audio)
+      if (typeof Audio?.requestRecordingPermissionsAsync === 'function') {
+        const { status } = await Audio.requestRecordingPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permission Required',
+            'Please grant microphone permission to record voice notes.',
+            [{ text: 'OK' }]
+          );
+          return false;
+        }
+        return true;
+      } else {
+        // Fallback: expo-audio may not require explicit permission request
+        // The recorder will request permissions when starting
+        console.log('[VoiceRecorder] Audio.requestRecordingPermissionsAsync not available, proceeding without explicit check');
+        return true;
       }
-      return true;
     } catch (error) {
       console.error('Error requesting permissions:', error);
+      Alert.alert(
+        'Permission Error',
+        'Could not check microphone permissions. Please try again.',
+        [{ text: 'OK' }]
+      );
       return false;
     }
   };

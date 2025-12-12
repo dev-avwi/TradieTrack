@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, ActivityIndicator, Alert } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -357,7 +357,13 @@ export default function PaymentsScreen() {
       });
       
       if (linkResponse.data?.url) {
-        Linking.openURL(linkResponse.data.url);
+        // Try to open the Stripe URL in the system browser
+        const canOpen = await Linking.canOpenURL(linkResponse.data.url);
+        if (canOpen) {
+          await Linking.openURL(linkResponse.data.url);
+        } else {
+          Alert.alert('Error', 'Unable to open Stripe setup page. Please try again later.');
+        }
       } else if (linkResponse.error) {
         Alert.alert('Error', linkResponse.error || 'Failed to get Stripe setup link');
       }

@@ -113,24 +113,39 @@ class LocationTrackingService {
         return true;
       }
 
-      // Start background location updates
-      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-        accuracy: Location.Accuracy.Balanced,
-        timeInterval: 30000, // Update every 30 seconds
-        distanceInterval: 50, // Or when moved 50 meters
-        showsBackgroundLocationIndicator: true,
-        foregroundService: {
-          notificationTitle: 'TradieTrack',
-          notificationBody: 'Location tracking active for team visibility',
-          notificationColor: '#f97316',
-        },
-        pausesUpdatesAutomatically: true,
-        activityType: Location.ActivityType.AutomotiveNavigation,
-      });
+      // Try to start background location updates
+      try {
+        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 30000, // Update every 30 seconds
+          distanceInterval: 50, // Or when moved 50 meters
+          showsBackgroundLocationIndicator: true,
+          foregroundService: {
+            notificationTitle: 'TradieTrack',
+            notificationBody: 'Location tracking active for team visibility',
+            notificationColor: '#f97316',
+          },
+          pausesUpdatesAutomatically: true,
+          activityType: Location.ActivityType.AutomotiveNavigation,
+        });
 
-      console.log('[Location] Background tracking started');
-      this.updateStatus('tracking');
-      return true;
+        console.log('[Location] Background tracking started');
+        this.updateStatus('tracking');
+        return true;
+      } catch (bgError: any) {
+        // Check if this is a background mode configuration error
+        const errorMessage = bgError?.message || '';
+        if (errorMessage.includes('UIBackgroundModes') || errorMessage.includes('Background location')) {
+          console.warn('[Location] Background location not configured in Info.plist, using foreground tracking only');
+          // Fall back to foreground-only tracking - just get current location
+          const location = await this.getCurrentLocation();
+          if (location) {
+            this.updateStatus('tracking');
+            return true;
+          }
+        }
+        throw bgError; // Re-throw other errors
+      }
     } catch (error) {
       console.error('[Location] Failed to start tracking:', error);
       this.updateStatus('error');

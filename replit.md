@@ -26,6 +26,14 @@ Key architectural features include:
 - **Mobile App**: A React Native mobile app (Expo SDK 52) with full API integration, Zustand for state management, and an SQLite-based offline mode with background sync and conflict resolution. It features permission-aware navigation and dedicated stores for auth, jobs, clients, quotes, and invoices.
 
 ### Recent Changes (December 2025)
+- **Mobile P0 Bug Fixes**: Fixed critical production bugs:
+  - Added missing Alert import to payments.tsx for Stripe Connect error handling
+  - Fixed VoiceRecorder permission handling for expo-audio with graceful fallback
+  - Added background location tracking error handling with foreground-only fallback
+  - Fixed Stripe Connect URL opening with canOpenURL/openURL pattern
+  - Fixed chat hub filter chips height (36px) for better touch targets
+  - Added Quick Add Client to create-job.tsx for feature parity
+  - Added StatusBar to LoadingScreen to prevent dark bars on splash
 - **AI Quote Generator**: Generate quote line items from photos/voice/description using GPT-4o vision. Features JSON parse validation, line item normalization (clamps quantities/prices), and server-side total recalculation (subtotal + GST + grand total). Integrated into LiveQuoteEditor with Sparkles AI button.
 - **Instant Job Parser**: Create jobs from pasted text (SMS, email, message) via `/api/ai/parse-job-text`. Extracts client name, description, address, urgency. SessionStorage uses scoped keys with 5-minute expiry for security.
 - **Next-Action Indicators**: Smart "what to do next" suggestions on job cards and table view. Batch endpoint `/api/jobs/next-actions` returns priority-colored guidance (high/medium/low). Cache invalidates on job create/update.

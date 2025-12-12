@@ -294,6 +294,7 @@ function ClientSelector({
   visible,
   onClose,
   colors,
+  onQuickAdd,
 }: {
   clients: any[];
   selectedId: string | null;
@@ -301,6 +302,7 @@ function ClientSelector({
   visible: boolean;
   onClose: () => void;
   colors: ThemeColors;
+  onQuickAdd?: () => void;
 }) {
   const [search, setSearch] = useState('');
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -340,6 +342,18 @@ function ClientSelector({
             value={search}
             onChangeText={setSearch}
           />
+
+          {onQuickAdd && (
+            <TouchableOpacity
+              style={[styles.clientItem, { backgroundColor: colors.primaryLight, borderColor: colors.primary, marginBottom: 8 }]}
+              onPress={onQuickAdd}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Feather name="plus-circle" size={20} color={colors.primary} />
+                <Text style={[styles.clientItemName, { color: colors.primary }]}>Quick Add New Client</Text>
+              </View>
+            </TouchableOpacity>
+          )}
 
           <ScrollView style={styles.modalList}>
             {filteredClients.map((client) => (
@@ -455,9 +469,14 @@ export default function CreateJobScreen() {
 
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [showQuickAddClient, setShowQuickAddClient] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [prefillSuggestions, setPrefillSuggestions] = useState<any>(null);
   const [loadingPrefill, setLoadingPrefill] = useState(false);
+  const [quickClientName, setQuickClientName] = useState('');
+  const [quickClientEmail, setQuickClientEmail] = useState('');
+  const [quickClientPhone, setQuickClientPhone] = useState('');
+  const [isAddingClient, setIsAddingClient] = useState(false);
 
   const STATUS_OPTIONS: { value: JobStatus; label: string; color: string }[] = [
     { value: 'pending', label: 'Pending', color: colors.pending },
@@ -587,6 +606,37 @@ export default function CreateJobScreen() {
     const newDate = scheduledAt ? new Date(scheduledAt) : new Date();
     newDate.setHours(time.getHours(), time.getMinutes());
     setScheduledAt(newDate);
+  };
+
+  const handleQuickAddClient = async () => {
+    if (!quickClientName.trim()) {
+      Alert.alert('Missing Name', 'Please enter a client name');
+      return;
+    }
+
+    setIsAddingClient(true);
+    try {
+      const response = await api.post<{ id: string }>('/api/clients', {
+        name: quickClientName.trim(),
+        email: quickClientEmail.trim() || null,
+        phone: quickClientPhone.trim() || null,
+      });
+
+      if (response.data?.id) {
+        await fetchClients();
+        handleClientSelect(response.data.id);
+        setShowQuickAddClient(false);
+        setQuickClientName('');
+        setQuickClientEmail('');
+        setQuickClientPhone('');
+        Alert.alert('Success', 'Client added successfully');
+      }
+    } catch (error: any) {
+      console.error('Quick add client error:', error);
+      Alert.alert('Error', error.response?.data?.error || 'Failed to add client');
+    } finally {
+      setIsAddingClient(false);
+    }
   };
 
   return (
@@ -824,6 +874,10 @@ export default function CreateJobScreen() {
         visible={showClientPicker}
         onClose={() => setShowClientPicker(false)}
         colors={colors}
+        onQuickAdd={() => {
+          setShowClientPicker(false);
+          setShowQuickAddClient(true);
+        }}
       />
 
       <StatusSelector
@@ -833,6 +887,87 @@ export default function CreateJobScreen() {
         onClose={() => setShowStatusPicker(false)}
         colors={colors}
       />
+
+      <Modal visible={showQuickAddClient} animationType="slide" transparent>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Quick Add Client</Text>
+                <TouchableOpacity 
+                  onPress={() => setShowQuickAddClient(false)}
+                  testID="button-close-quick-add"
+                >
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView 
+                style={{ maxHeight: 400 }} 
+                contentContainerStyle={{ padding: 16, gap: 12 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View>
+                  <Text style={styles.sectionTitle}>Name *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Client name"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={quickClientName}
+                    onChangeText={setQuickClientName}
+                    autoFocus
+                    testID="input-quick-client-name"
+                  />
+                </View>
+                <View>
+                  <Text style={styles.sectionTitle}>Email</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="client@email.com"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={quickClientEmail}
+                    onChangeText={setQuickClientEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    testID="input-quick-client-email"
+                  />
+                </View>
+                <View>
+                  <Text style={styles.sectionTitle}>Phone</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0400 000 000"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={quickClientPhone}
+                    onChangeText={setQuickClientPhone}
+                    keyboardType="phone-pad"
+                    testID="input-quick-client-phone"
+                  />
+                </View>
+                
+                <TouchableOpacity
+                  style={[styles.saveButton, { marginTop: 8, opacity: isAddingClient ? 0.6 : 1 }]}
+                  onPress={handleQuickAddClient}
+                  disabled={isAddingClient}
+                  testID="button-add-quick-client"
+                >
+                  {isAddingClient ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <>
+                      <Feather name="plus" size={18} color={colors.white} />
+                      <Text style={styles.saveButtonText}>Add Client</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </>
   );
 }
