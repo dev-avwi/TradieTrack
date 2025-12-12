@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest, setSessionToken } from "@/lib/queryClient";
-import { Loader2, User, Mail, AlertCircle, CheckCircle } from "lucide-react";
+import { Loader2, User, Mail, AlertCircle, CheckCircle, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthFormProps {
@@ -82,6 +82,18 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
     { value: 'handyman', label: 'Handyman Services' },
     { value: 'other', label: 'Other' }
   ];
+
+  const getPasswordRequirements = (password: string) => {
+    return [
+      { label: 'At least 8 characters', met: password.length >= 8 },
+      { label: 'Contains a number', met: /\d/.test(password) },
+      { label: 'Contains uppercase letter', met: /[A-Z]/.test(password) },
+      { label: 'Contains lowercase letter', met: /[a-z]/.test(password) },
+    ];
+  };
+
+  const passwordRequirements = getPasswordRequirements(registerData.password);
+  const passwordsMatch = registerData.password === registerData.confirmPassword && registerData.confirmPassword.length > 0;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,9 +226,11 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
       return;
     }
 
-    // Validate password strength
-    if (registerData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+    // Validate password strength - all requirements must be met
+    const requirements = getPasswordRequirements(registerData.password);
+    const allMet = requirements.every(r => r.met);
+    if (!allMet) {
+      setError('Please meet all password requirements');
       setIsLoading(false);
       return;
     }
@@ -552,12 +566,29 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
                   <Input
                     id="register-password"
                     type="password"
-                    placeholder="At least 8 characters"
+                    placeholder="Create a strong password"
                     value={registerData.password}
                     onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
                     required
                     data-testid="input-register-password"
                   />
+                  {registerData.password.length > 0 && (
+                    <div className="space-y-1.5 pt-1" data-testid="password-requirements">
+                      {passwordRequirements.map((req, index) => (
+                        <div 
+                          key={index} 
+                          className={`flex items-center gap-2 text-xs ${req.met ? 'text-green-600' : 'text-muted-foreground'}`}
+                        >
+                          {req.met ? (
+                            <Check className="h-3 w-3" />
+                          ) : (
+                            <X className="h-3 w-3" />
+                          )}
+                          <span>{req.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -571,6 +602,21 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
                     required
                     data-testid="input-register-confirmPassword"
                   />
+                  {registerData.confirmPassword.length > 0 && (
+                    <div className={`flex items-center gap-2 text-xs pt-1 ${passwordsMatch ? 'text-green-600' : 'text-destructive'}`}>
+                      {passwordsMatch ? (
+                        <>
+                          <Check className="h-3 w-3" />
+                          <span>Passwords match</span>
+                        </>
+                      ) : (
+                        <>
+                          <X className="h-3 w-3" />
+                          <span>Passwords don't match</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 <Button 

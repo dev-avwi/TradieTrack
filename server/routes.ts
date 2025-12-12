@@ -632,6 +632,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Don't fail registration if email fails - user can resend later
         }
 
+        // Send welcome email with quick-start tips (non-blocking)
+        try {
+          await sendWelcomeEmail(result.user);
+        } catch (welcomeEmailError) {
+          console.error('Failed to send welcome email:', welcomeEmailError);
+          // Don't fail registration if welcome email fails
+        }
+
         // Auto-login after registration to allow immediate onboarding
         // Email verification can be enforced later for sensitive operations
         req.session.userId = result.user.id;

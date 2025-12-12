@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Eye, EyeOff, AlertCircle, Zap } from "lucide-react";
+import { Loader2, Eye, EyeOff, AlertCircle, Zap, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import appIconUrl from '@assets/Photo 1-12-2025, 6 03 07 pm (1)_1764576362665.png';
 
@@ -37,6 +37,19 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
     lastName: '',
     username: ''
   });
+
+  const getPasswordRequirements = (password: string) => {
+    return [
+      { label: 'At least 8 characters', met: password.length >= 8 },
+      { label: 'Contains a number', met: /\d/.test(password) },
+      { label: 'Contains uppercase letter', met: /[A-Z]/.test(password) },
+      { label: 'Contains lowercase letter', met: /[a-z]/.test(password) },
+    ];
+  };
+
+  const passwordRequirements = getPasswordRequirements(registerData.password);
+  const allRequirementsMet = passwordRequirements.every(r => r.met);
+  const passwordsMatch = registerData.password === registerData.confirmPassword && registerData.confirmPassword.length > 0;
 
   const handleGoogleSignIn = () => {
     setIsGoogleLoading(true);
@@ -94,8 +107,9 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
       return;
     }
 
-    if (registerData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+    // Validate all password requirements are met
+    if (!allRequirementsMet) {
+      setError('Please meet all password requirements');
       return;
     }
 
@@ -383,7 +397,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                         type={showPassword ? "text" : "password"}
                         value={registerData.password}
                         onChange={(e) => setRegisterData(prev => ({ ...prev, password: e.target.value }))}
-                        placeholder="At least 8 characters"
+                        placeholder="Create a strong password"
                         disabled={isLoading}
                         className="pr-10"
                         data-testid="input-register-password"
@@ -403,6 +417,23 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                         )}
                       </Button>
                     </div>
+                    {registerData.password.length > 0 && (
+                      <div className="space-y-1 pt-1" data-testid="password-requirements">
+                        {passwordRequirements.map((req, index) => (
+                          <div 
+                            key={index} 
+                            className={`flex items-center gap-2 text-xs ${req.met ? 'text-green-600' : 'text-muted-foreground'}`}
+                          >
+                            {req.met ? (
+                              <Check className="h-3 w-3" />
+                            ) : (
+                              <X className="h-3 w-3" />
+                            )}
+                            <span>{req.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -433,6 +464,21 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                         )}
                       </Button>
                     </div>
+                    {registerData.confirmPassword.length > 0 && (
+                      <div className={`flex items-center gap-2 text-xs pt-1 ${passwordsMatch ? 'text-green-600' : 'text-destructive'}`}>
+                        {passwordsMatch ? (
+                          <>
+                            <Check className="h-3 w-3" />
+                            <span>Passwords match</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="h-3 w-3" />
+                            <span>Passwords don't match</span>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <Button 
