@@ -3,22 +3,20 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { LogOut, User, LayoutDashboard } from "lucide-react";
+import { LogOut, User, Map, LayoutDashboard } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { 
-  getSidebarMenuItems, 
-  getSidebarSettingsItems,
+  getUnifiedNavItems,
   type NavItem 
 } from "@/lib/navigation-config";
 import appIconUrl from '@assets/Photo 1-12-2025, 6 03 07 pm (1)_1764576362665.png';
@@ -34,8 +32,8 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
   const { isTeam, isTradie, isOwner, isManager, userRole } = useAppMode();
 
   const filterOptions = { isTeam, isTradie, isOwner, isManager, userRole };
-  const visibleMenuItems = getSidebarMenuItems(filterOptions);
-  const visibleSettingsItems = getSidebarSettingsItems(filterOptions);
+  const navItems = getUnifiedNavItems(filterOptions);
+  const canViewMap = isOwner || isManager;
 
   const businessName = businessSettings?.businessName || 'TradieTrack';
   const initials = businessName
@@ -44,6 +42,19 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
     .slice(0, 2)
     .join('')
     .toUpperCase();
+
+  const isActiveRoute = (itemUrl: string) => {
+    if (itemUrl === '/') {
+      return location === '/';
+    }
+    if (itemUrl === '/money') {
+      return location === '/money' || location.startsWith('/quotes') || location.startsWith('/invoices') || location === '/reports' || location === '/collect-payment';
+    }
+    if (itemUrl === '/settings') {
+      return location === '/settings' || location.startsWith('/settings/') || location === '/integrations' || location === '/team' || location === '/my-account';
+    }
+    return location.startsWith(itemUrl);
+  };
 
   return (
     <Sidebar data-testid="sidebar-main">
@@ -80,11 +91,10 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
       
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleMenuItems.map((item: NavItem) => {
-                const isActive = location === item.url;
+              {navItems.map((item: NavItem) => {
+                const isActive = isActiveRoute(item.url);
                 const Icon = item.icon || LayoutDashboard;
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -96,7 +106,6 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
                       style={isActive ? { 
                         backgroundColor: 'hsl(var(--trade))', 
                         color: 'white',
-
                       } : {}}
                     >
                       <Icon className="h-4 w-4" />
@@ -105,40 +114,27 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
                   </SidebarMenuItem>
                 );
               })}
+              
+              {canViewMap && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    isActive={location === '/map'}
+                    data-testid="sidebar-map"
+                    onClick={() => onNavigate?.('/map')}
+                    className={location === '/map' ? 'text-white' : ''}
+                    style={location === '/map' ? { 
+                      backgroundColor: 'hsl(var(--trade))', 
+                      color: 'white',
+                    } : {}}
+                  >
+                    <Map className="h-4 w-4" />
+                    <span>Map</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {visibleSettingsItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleSettingsItems.map((item: NavItem) => {
-                  const isActive = location === item.url;
-                  const Icon = item.icon || LayoutDashboard;
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton 
-                        isActive={isActive}
-                        data-testid={`sidebar-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                        onClick={() => onNavigate?.(item.url)}
-                        className={isActive ? 'text-white' : ''}
-                        style={isActive ? { 
-                          backgroundColor: 'hsl(var(--trade))', 
-                          color: 'white',
-
-                        } : {}}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4">
