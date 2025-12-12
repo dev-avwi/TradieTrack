@@ -11,6 +11,7 @@ import { JobChat } from "./JobChat";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
 import GeofenceSettingsCard from "./GeofenceSettingsCard";
+import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from "./JobWorkflowComponents";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -440,6 +441,43 @@ export default function JobDetailView({
       </div>
 
       <div className="space-y-4">
+        <JobProgressBar 
+          status={job.status} 
+          hasQuote={!!linkedQuote}
+          hasInvoice={!!linkedInvoice}
+        />
+
+        {!isTradie && (
+          <NextActionCard
+            jobStatus={job.status}
+            hasQuote={!!linkedQuote}
+            hasInvoice={!!linkedInvoice}
+            quoteStatus={linkedQuote?.status}
+            invoiceStatus={linkedInvoice?.status}
+            scheduledAt={job.scheduledAt}
+            onSchedule={() => onEditJob?.(jobId)}
+            onStartJob={() => updateJobMutation.mutate({ status: 'in_progress' })}
+            onCompleteJob={() => onCompleteJob?.(jobId)}
+            onCreateQuote={() => onCreateQuote?.(jobId)}
+            onSendQuote={() => linkedQuote && navigate(`/quotes/${linkedQuote.id}`)}
+            onCreateInvoice={() => onCreateInvoice?.(jobId)}
+            onSendInvoice={() => linkedInvoice && navigate(`/invoices/${linkedInvoice.id}`)}
+            onSendReminder={() => linkedInvoice && navigate(`/invoices/${linkedInvoice.id}`)}
+          />
+        )}
+
+        {!isTradie && (
+          <LinkedDocumentsCard
+            linkedQuote={linkedQuote}
+            linkedInvoice={linkedInvoice}
+            jobStatus={job.status}
+            onViewQuote={(id) => navigate(`/quotes/${id}`)}
+            onViewInvoice={(id) => navigate(`/invoices/${id}`)}
+            onCreateQuote={() => onCreateQuote?.(jobId)}
+            onCreateInvoice={() => onCreateInvoice?.(jobId)}
+          />
+        )}
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
