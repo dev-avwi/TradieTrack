@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Briefcase, User, Clock, MapPin, MoreVertical, Edit, FileText, CheckCircle, AlertCircle, LayoutGrid, List, ChevronRight, Play, ArrowRight, Clipboard, Lightbulb } from "lucide-react";
+import { Plus, Briefcase, User, Clock, MapPin, MoreVertical, Edit, FileText, CheckCircle, AlertCircle, LayoutGrid, List, ChevronRight, Play, ArrowRight, Clipboard, Lightbulb, Columns3, Calendar, Receipt } from "lucide-react";
 import PasteJobModal from "./PasteJobModal";
 import { PageShell, PageHeader, SectionTitle } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
@@ -45,7 +45,7 @@ export default function JobsList({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showOlderJobs, setShowOlderJobs] = useState(false);
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [viewMode, setViewMode] = useState<"cards" | "table" | "kanban">("cards");
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [pendingStatus, setPendingStatus] = useState<JobStatus | null>(null);
@@ -326,6 +326,7 @@ export default function JobsList({
                   viewMode === "cards" && "bg-background shadow-sm"
                 )}
                 data-testid="button-view-cards"
+                title="Card View"
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
@@ -338,8 +339,22 @@ export default function JobsList({
                   viewMode === "table" && "bg-background shadow-sm"
                 )}
                 data-testid="button-view-table"
+                title="Table View"
               >
                 <List className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("kanban")}
+                className={cn(
+                  "h-8 px-3 rounded-lg press-scale",
+                  viewMode === "kanban" && "bg-background shadow-sm"
+                )}
+                data-testid="button-view-kanban"
+                title="Kanban Board"
+              >
+                <Columns3 className="h-4 w-4" />
               </Button>
             </div>
             {onCreateJob && canCreateJobs && (
@@ -567,6 +582,92 @@ export default function JobsList({
               tip={(!searchTerm && statusFilter === "all") ? "Add photos and notes to jobs for easy reference later" : undefined}
               encouragement={(!searchTerm && statusFilter === "all") ? "Most tradies add their first job in under 2 minutes" : undefined}
             />
+          ) : viewMode === "kanban" ? (
+            <div className="overflow-x-auto pb-4" data-testid="jobs-kanban-board">
+              <div className="flex gap-4 min-w-max">
+                {['pending', 'scheduled', 'in_progress', 'done', 'invoiced'].map((status) => {
+                  const statusJobs = filteredJobs.filter((j: any) => j.status === status);
+                  const columnConfig = {
+                    pending: { label: 'New', icon: Briefcase, color: 'hsl(var(--muted-foreground))' },
+                    scheduled: { label: 'Scheduled', icon: Calendar, color: 'hsl(210 80% 52%)' },
+                    in_progress: { label: 'In Progress', icon: Play, color: 'hsl(35 90% 55%)' },
+                    done: { label: 'Done', icon: CheckCircle, color: 'hsl(145 65% 45%)' },
+                    invoiced: { label: 'Invoiced', icon: Receipt, color: 'hsl(280 60% 55%)' },
+                  }[status]!;
+                  const ColumnIcon = columnConfig.icon;
+                  
+                  return (
+                    <div 
+                      key={status} 
+                      className="flex-shrink-0 w-72 bg-muted/30 rounded-xl p-3"
+                      data-testid={`kanban-column-${status}`}
+                    >
+                      <div className="flex items-center gap-2 mb-3 px-1">
+                        <div 
+                          className="w-8 h-8 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: `${columnConfig.color}15` }}
+                        >
+                          <ColumnIcon className="h-4 w-4" style={{ color: columnConfig.color }} />
+                        </div>
+                        <span className="font-medium text-sm">{columnConfig.label}</span>
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {statusJobs.length}
+                        </Badge>
+                      </div>
+                      <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto">
+                        {statusJobs.length === 0 ? (
+                          <div className="text-center py-6 text-muted-foreground text-sm">
+                            No jobs
+                          </div>
+                        ) : (
+                          statusJobs.map((job: any) => (
+                            <div
+                              key={job.id}
+                              className="bg-background rounded-lg p-3 border hover-elevate cursor-pointer"
+                              onClick={() => onViewJob?.(job.id)}
+                              data-testid={`kanban-job-${job.id}`}
+                            >
+                              <p className="font-medium text-sm truncate mb-1">
+                                {job.title || 'Untitled Job'}
+                              </p>
+                              {job.clientName && (
+                                <p className="text-xs text-muted-foreground truncate mb-2">
+                                  {job.clientName}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {job.scheduledAt && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{new Date(job.scheduledAt).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })}</span>
+                                  </div>
+                                )}
+                                {nextActions[job.id] && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className={cn(
+                                      "text-[10px] px-1.5 py-0",
+                                      nextActions[job.id].priority === 'high' 
+                                        ? "border-orange-300 text-orange-600 dark:text-orange-400"
+                                        : nextActions[job.id].priority === 'medium'
+                                        ? "border-yellow-300 text-yellow-600 dark:text-yellow-400"
+                                        : "border-blue-300 text-blue-600 dark:text-blue-400"
+                                    )}
+                                  >
+                                    <Lightbulb className="h-2.5 w-2.5 mr-1" />
+                                    Action needed
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           ) : viewMode === "table" ? (
             <DataTable
               data={filteredJobs}
