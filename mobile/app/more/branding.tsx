@@ -14,9 +14,11 @@ import {
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useAuthStore } from '../../src/lib/store';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
+import { AdvancedThemeControls } from '../../src/components/AdvancedThemeControls';
 import api from '../../src/lib/api';
 
 const PRESET_COLORS = [
@@ -294,17 +296,64 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
     marginTop: 12,
   },
+  advancedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  advancedButtonIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  advancedButtonContent: {
+    flex: 1,
+  },
+  advancedButtonTitle: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '600',
+  },
+  advancedButtonDesc: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  advancedModalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  advancedModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  advancedModalTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    fontWeight: '600',
+  },
 });
 
 export default function BrandingScreen() {
   const { colors, brandColor } = useTheme();
   const { businessSettings, updateBusinessSettings } = useAuthStore();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const [customColor, setCustomColor] = useState(brandColor || businessSettings?.primaryColor || '#3b82f6');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [logoUrl, setLogoUrl] = useState(businessSettings?.logoUrl || '');
+  const [showAdvancedTheme, setShowAdvancedTheme] = useState(false);
 
   const currentColor = brandColor || businessSettings?.primaryColor || '#3b82f6';
 
@@ -642,8 +691,50 @@ export default function BrandingScreen() {
               Your brand color will be applied throughout the app including buttons, badges, and accent elements.
             </Text>
           </View>
+
+          <Text style={styles.sectionTitle}>Advanced Settings</Text>
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.advancedButton}
+              onPress={() => setShowAdvancedTheme(true)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.advancedButtonIcon}>
+                <Feather name="sliders" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.advancedButtonContent}>
+                <Text style={styles.advancedButtonTitle}>Advanced Theme Controls</Text>
+                <Text style={styles.advancedButtonDesc}>
+                  Typography, corner radius, shadows, and more
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
+
+      {/* Advanced Theme Controls Modal */}
+      {showAdvancedTheme && (
+        <Modal 
+          visible={showAdvancedTheme} 
+          animationType="slide" 
+          presentationStyle="pageSheet"
+        >
+          <View style={[styles.advancedModalContainer, { paddingTop: insets.top }]}>
+            <View style={styles.advancedModalHeader}>
+              <TouchableOpacity onPress={() => setShowAdvancedTheme(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+              <Text style={styles.advancedModalTitle}>Advanced Theme</Text>
+              <View style={{ width: 24 }} />
+            </View>
+            <View style={{ flex: 1, paddingBottom: insets.bottom }}>
+              <AdvancedThemeControls onClose={() => setShowAdvancedTheme(false)} />
+            </View>
+          </View>
+        </Modal>
+      )}
     </>
   );
 }

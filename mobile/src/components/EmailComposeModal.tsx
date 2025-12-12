@@ -65,11 +65,12 @@ export function EmailComposeModal({
   const [isSending, setIsSending] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AIEmailSuggestion | null>(null);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
-  const clientFirstName = clientName?.split(' ')[0] || 'there';
+  const clientFirstName = useMemo(() => clientName?.split(' ')[0] || 'there', [clientName]);
 
   useEffect(() => {
-    if (visible) {
+    if (visible && !hasInitialized) {
       const defaultSubject = type === 'quote'
         ? `Quote ${documentNumber} from ${businessName || 'Us'}`
         : `Invoice ${documentNumber} from ${businessName || 'Us'}`;
@@ -82,8 +83,11 @@ export function EmailComposeModal({
       setMessage(defaultMessage);
       setAiSuggestion(null);
       setActiveTab('compose');
+      setHasInitialized(true);
+    } else if (!visible) {
+      setHasInitialized(false);
     }
-  }, [visible, type, documentNumber, documentTitle, total, businessName, clientFirstName]);
+  }, [visible, hasInitialized, type, documentNumber, documentTitle, total, businessName, clientFirstName]);
 
   const generateAISuggestion = useCallback(async () => {
     setIsGeneratingAI(true);
@@ -126,9 +130,9 @@ export function EmailComposeModal({
     setIsSending(true);
     try {
       await onSend(subject, message);
-      onClose();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to send email. Please try again.');
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to send email. Please try again.';
+      Alert.alert('Send Failed', errorMessage);
     } finally {
       setIsSending(false);
     }

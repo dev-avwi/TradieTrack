@@ -70,6 +70,9 @@ export default function InvoiceDetailScreen() {
   };
 
   const handleEmailSend = async (subject: string, message: string) => {
+    let emailSent = false;
+    let apiError = false;
+    
     try {
       const response = await fetch(`${API_URL}/api/invoices/${id}/send`, {
         method: 'POST',
@@ -84,34 +87,44 @@ export default function InvoiceDetailScreen() {
       });
 
       if (response.ok) {
-        await loadData();
-        setShowEmailCompose(false);
-        Alert.alert('Success', 'Invoice sent successfully to the client');
+        emailSent = true;
       } else {
-        const success = await updateInvoiceStatus(id!, 'sent');
-        if (success) {
-          await loadData();
-          setShowEmailCompose(false);
-          Alert.alert('Invoice Updated', 'Invoice marked as sent (email sending may be unavailable)');
-        } else {
-          throw new Error('Failed to send invoice');
-        }
+        apiError = true;
       }
-    } catch (error) {
-      const success = await updateInvoiceStatus(id!, 'sent');
-      if (success) {
+    } catch (networkError) {
+      console.log('Network error sending invoice:', networkError);
+      apiError = true;
+    }
+
+    if (emailSent) {
+      await loadData();
+      setShowEmailCompose(false);
+      Alert.alert('Success', 'Invoice sent successfully to the client');
+      return;
+    }
+
+    if (apiError) {
+      const statusSuccess = await updateInvoiceStatus(id!, 'sent');
+      if (statusSuccess) {
         await loadData();
         setShowEmailCompose(false);
-        Alert.alert('Invoice Updated', 'Invoice marked as sent');
-      } else {
-        throw error;
+        Alert.alert('Invoice Updated', 'Invoice marked as sent. Email delivery may be delayed due to network issues.');
+        return;
       }
     }
+
+    throw new Error('Unable to send invoice. Please check your connection and try again.');
   };
 
   const toggleOnlinePayment = async () => {
-    if (!invoice) return;
+    if (!invoice || isTogglingPayment) return;
+    
+    const previousValue = invoice.allowOnlinePayment;
+    const newValue = !previousValue;
+    
+    setInvoice(prev => prev ? { ...prev, allowOnlinePayment: newValue } : prev);
     setIsTogglingPayment(true);
+    
     try {
       const response = await fetch(`${API_URL}/api/invoices/${id}/toggle-online-payment`, {
         method: 'POST',
@@ -120,7 +133,7 @@ export default function InvoiceDetailScreen() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          allowOnlinePayment: !invoice.allowOnlinePayment,
+          allowOnlinePayment: newValue,
         }),
       });
 
@@ -128,14 +141,16 @@ export default function InvoiceDetailScreen() {
         await loadData();
         Alert.alert(
           'Success',
-          invoice.allowOnlinePayment 
-            ? 'Online payment disabled for this invoice' 
-            : 'Online payment enabled - clients can pay with card'
+          newValue 
+            ? 'Online payment enabled - clients can pay with card' 
+            : 'Online payment disabled for this invoice'
         );
       } else {
+        setInvoice(prev => prev ? { ...prev, allowOnlinePayment: previousValue } : prev);
         Alert.alert('Error', 'Failed to update payment settings');
       }
     } catch (error) {
+      setInvoice(prev => prev ? { ...prev, allowOnlinePayment: previousValue } : prev);
       Alert.alert('Error', 'Failed to update payment settings');
     } finally {
       setIsTogglingPayment(false);

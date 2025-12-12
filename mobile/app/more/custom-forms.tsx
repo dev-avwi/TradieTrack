@@ -28,28 +28,14 @@ interface CustomForm {
   requiresSignature?: boolean;
 }
 
-const FIELD_TYPES: { type: FormField['type']; label: string; icon: string; description: string }[] = [
-  { type: 'text', label: 'Text', icon: 'type', description: 'Single line text' },
-  { type: 'number', label: 'Number', icon: 'hash', description: 'Numeric input' },
-  { type: 'email', label: 'Email', icon: 'mail', description: 'Email address' },
-  { type: 'phone', label: 'Phone', icon: 'phone', description: 'Phone number' },
-  { type: 'textarea', label: 'Text Area', icon: 'align-left', description: 'Multi-line text' },
-  { type: 'checkbox', label: 'Checkbox', icon: 'check-square', description: 'Yes/No option' },
-  { type: 'radio', label: 'Radio', icon: 'circle', description: 'Single choice' },
-  { type: 'select', label: 'Dropdown', icon: 'list', description: 'Dropdown list' },
-  { type: 'date', label: 'Date', icon: 'calendar', description: 'Date picker' },
-  { type: 'time', label: 'Time', icon: 'clock', description: 'Time picker' },
-  { type: 'photo', label: 'Photo', icon: 'camera', description: 'Photo capture' },
-  { type: 'signature', label: 'Signature', icon: 'edit-3', description: 'Signature pad' },
-  { type: 'section', label: 'Section', icon: 'minus', description: 'Header divider' },
-];
-
-const FORM_TYPES: { value: string; label: string; icon: string }[] = [
-  { value: 'general', label: 'General', icon: 'file-text' },
-  { value: 'safety', label: 'Safety', icon: 'shield' },
-  { value: 'compliance', label: 'Compliance', icon: 'clipboard' },
-  { value: 'inspection', label: 'Inspection', icon: 'search' },
-];
+const FORM_TYPE_ICONS: Record<string, string> = {
+  general: 'file-text',
+  safety: 'shield',
+  compliance: 'clipboard',
+  inspection: 'search',
+  job: 'briefcase',
+  other: 'file-text',
+};
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -557,8 +543,7 @@ export default function CustomFormsScreen() {
   };
 
   const getFormIcon = (type: string) => {
-    const formTypeItem = FORM_TYPES.find(f => f.value === type);
-    return formTypeItem?.icon || 'file-text';
+    return FORM_TYPE_ICONS[type] || 'file-text';
   };
 
   const renderForm = ({ item: form }: { item: CustomForm }) => (

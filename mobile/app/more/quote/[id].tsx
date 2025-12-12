@@ -69,6 +69,9 @@ export default function QuoteDetailScreen() {
   };
 
   const handleEmailSend = async (subject: string, message: string) => {
+    let emailSent = false;
+    let apiError = false;
+    
     try {
       const response = await fetch(`${API_URL}/api/quotes/${id}/send`, {
         method: 'POST',
@@ -83,29 +86,33 @@ export default function QuoteDetailScreen() {
       });
 
       if (response.ok) {
-        await loadData();
-        setShowEmailCompose(false);
-        Alert.alert('Success', 'Quote sent successfully to the client');
+        emailSent = true;
       } else {
-        const success = await updateQuoteStatus(id!, 'sent');
-        if (success) {
-          await loadData();
-          setShowEmailCompose(false);
-          Alert.alert('Quote Updated', 'Quote marked as sent (email sending may be unavailable)');
-        } else {
-          throw new Error('Failed to send quote');
-        }
+        apiError = true;
       }
-    } catch (error) {
-      const success = await updateQuoteStatus(id!, 'sent');
-      if (success) {
+    } catch (networkError) {
+      console.log('Network error sending quote:', networkError);
+      apiError = true;
+    }
+
+    if (emailSent) {
+      await loadData();
+      setShowEmailCompose(false);
+      Alert.alert('Success', 'Quote sent successfully to the client');
+      return;
+    }
+
+    if (apiError) {
+      const statusSuccess = await updateQuoteStatus(id!, 'sent');
+      if (statusSuccess) {
         await loadData();
         setShowEmailCompose(false);
-        Alert.alert('Quote Updated', 'Quote marked as sent');
-      } else {
-        throw error;
+        Alert.alert('Quote Updated', 'Quote marked as sent. Email delivery may be delayed due to network issues.');
+        return;
       }
     }
+
+    throw new Error('Unable to send quote. Please check your connection and try again.');
   };
 
   const handleAccept = async () => {
