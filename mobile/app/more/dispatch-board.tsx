@@ -17,6 +17,9 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, statusColors } from '../../src/lib/design-tokens';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { api } from '../../src/lib/api';
+import DragDropDispatchBoard from '../../src/components/DragDropDispatchBoard';
+
+type ViewMode = 'list' | 'timeline';
 
 interface ScheduleSuggestion {
   jobId: string;
@@ -82,6 +85,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerSubtitle: {
     fontSize: 13,
     color: colors.mutedForeground,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  viewModeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   aiButton: {
     flexDirection: 'row',
@@ -541,6 +557,9 @@ export default function DispatchBoardScreen() {
   const [aiLoading, setAiLoading] = useState(false);
   const [appliedSuggestions, setAppliedSuggestions] = useState<Set<string>>(new Set());
   const [applyingJobId, setApplyingJobId] = useState<string | null>(null);
+  
+  // View mode state for list vs timeline view
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   const refreshData = useCallback(async () => {
     await Promise.all([fetchJobs(), fetchClients()]);
@@ -754,6 +773,59 @@ export default function DispatchBoardScreen() {
     setAppliedSuggestions(new Set());
   };
 
+  // Handler for drag-drop board job scheduling
+  const handleDragDropSchedule = async (jobId: string, time: string, assignedTo?: string) => {
+    setIsScheduling(true);
+    try {
+      const scheduledAt = new Date(`${dateStr}T${time}:00`);
+      await api.patch(`/api/jobs/${jobId}`, {
+        scheduledAt: scheduledAt.toISOString(),
+        scheduledTime: time,
+        assignedTo: assignedTo || undefined,
+        status: 'scheduled'
+      });
+      await fetchJobs();
+    } finally {
+      setIsScheduling(false);
+    }
+  };
+
+  // Handler for job press from drag-drop board
+  const handleDragDropJobPress = (jobId: string) => {
+    router.push(`/job/${jobId}`);
+  };
+
+  // Toggle view mode
+  const toggleViewMode = () => {
+    setViewMode(prev => prev === 'list' ? 'timeline' : 'list');
+  };
+
+  // Prepare jobs data for drag-drop board
+  const dragDropJobs = useMemo(() => {
+    return jobs.map(job => ({
+      id: job.id,
+      title: job.title,
+      status: job.status,
+      scheduledAt: job.scheduledAt || undefined,
+      scheduledTime: (job as any).scheduledTime,
+      address: (job as any).address,
+      clientId: job.clientId || '',
+      clientName: getClientName(job.clientId),
+      assignedTo: (job as any).assignedTo,
+    }));
+  }, [jobs, clientsMap]);
+
+  // Prepare team members for drag-drop board
+  const dragDropTeamMembers = useMemo(() => {
+    return teamMembers.map(member => ({
+      id: member.id,
+      userId: member.userId,
+      name: member.user?.firstName 
+        ? `${member.user.firstName} ${member.user.lastName || ''}`.trim()
+        : 'Team Member',
+    }));
+  }, [teamMembers]);
+
   const renderJobCard = (job: any, isScheduled: boolean) => {
     const statusColor = getStatusColor(job.status);
     
@@ -821,14 +893,26 @@ export default function DispatchBoardScreen() {
             <Text style={styles.headerTitle}>Dispatch Board</Text>
             <Text style={styles.headerSubtitle}>Schedule and manage jobs</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.aiButton}
-            onPress={fetchAISuggestions}
-            disabled={unscheduledJobs.length === 0}
-          >
-            <Feather name="zap" size={16} color={colors.primaryForeground} />
-            <Text style={styles.aiButtonText}>AI</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.viewModeButton}
+              onPress={toggleViewMode}
+            >
+              <Feather 
+                name={viewMode === 'list' ? 'grid' : 'list'} 
+                size={18} 
+                color={colors.foreground} 
+              />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.aiButton}
+              onPress={fetchAISuggestions}
+              disabled={unscheduledJobs.length === 0}
+            >
+              <Feather name="zap" size={16} color={colors.primaryForeground} />
+              <Text style={styles.aiButtonText}>AI</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Date Navigation */}
@@ -855,80 +939,94 @@ export default function DispatchBoardScreen() {
           )}
         </View>
 
-        {/* Summary Cards */}
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryNumber}>{scheduledJobsForDate.length}</Text>
-            <Text style={styles.summaryLabel}>Scheduled</Text>
+        {/* Summary Cards - Only show in list view */}
+        {viewMode === 'list' && (
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryNumber}>{scheduledJobsForDate.length}</Text>
+              <Text style={styles.summaryLabel}>Scheduled</Text>
+            </View>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryNumber}>{unscheduledJobs.length}</Text>
+              <Text style={styles.summaryLabel}>Unscheduled</Text>
+            </View>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryNumber}>{teamMembers.length || 1}</Text>
+              <Text style={styles.summaryLabel}>Team</Text>
+            </View>
           </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryNumber}>{unscheduledJobs.length}</Text>
-            <Text style={styles.summaryLabel}>Unscheduled</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryNumber}>{teamMembers.length || 1}</Text>
-            <Text style={styles.summaryLabel}>Team</Text>
-          </View>
-        </View>
+        )}
 
-        {/* Content */}
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={isLoading}
-              onRefresh={refreshData}
-              tintColor={colors.primary}
-            />
-          }
-        >
-          {/* Scheduled Jobs */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Feather name="calendar" size={18} color={colors.primary} />
-              <Text style={styles.sectionTitle}>Today's Schedule</Text>
-              {scheduledJobsForDate.length > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{scheduledJobsForDate.length}</Text>
+        {/* Timeline View - Drag and Drop Dispatch Board */}
+        {viewMode === 'timeline' ? (
+          <DragDropDispatchBoard
+            jobs={dragDropJobs}
+            teamMembers={dragDropTeamMembers}
+            currentDate={currentDate}
+            onJobSchedule={handleDragDropSchedule}
+            onJobPress={handleDragDropJobPress}
+            isScheduling={isScheduling}
+          />
+        ) : (
+          /* List View Content */
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.contentContainer}
+            refreshControl={
+              <RefreshControl
+                refreshing={isLoading}
+                onRefresh={refreshData}
+                tintColor={colors.primary}
+              />
+            }
+          >
+            {/* Scheduled Jobs */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Feather name="calendar" size={18} color={colors.primary} />
+                <Text style={styles.sectionTitle}>Today's Schedule</Text>
+                {scheduledJobsForDate.length > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{scheduledJobsForDate.length}</Text>
+                  </View>
+                )}
+              </View>
+              
+              {scheduledJobsForDate.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Feather name="calendar" size={32} color={colors.mutedForeground} />
+                  <Text style={styles.emptyStateText}>No jobs scheduled for this day</Text>
                 </View>
+              ) : (
+                scheduledJobsForDate.map(job => renderJobCard(job, true))
               )}
             </View>
-            
-            {scheduledJobsForDate.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Feather name="calendar" size={32} color={colors.mutedForeground} />
-                <Text style={styles.emptyStateText}>No jobs scheduled for this day</Text>
-              </View>
-            ) : (
-              scheduledJobsForDate.map(job => renderJobCard(job, true))
-            )}
-          </View>
 
-          {/* Unscheduled Jobs */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Feather name="inbox" size={18} color={statusColors.pending.text} />
-              <Text style={styles.sectionTitle}>Unscheduled Jobs</Text>
-              {unscheduledJobs.length > 0 && (
-                <View style={[styles.badge, { backgroundColor: statusColors.pending.bg }]}>
-                  <Text style={[styles.badgeText, { color: statusColors.pending.text }]}>
-                    {unscheduledJobs.length}
-                  </Text>
+            {/* Unscheduled Jobs */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Feather name="inbox" size={18} color={statusColors.pending.text} />
+                <Text style={styles.sectionTitle}>Unscheduled Jobs</Text>
+                {unscheduledJobs.length > 0 && (
+                  <View style={[styles.badge, { backgroundColor: statusColors.pending.bg }]}>
+                    <Text style={[styles.badgeText, { color: statusColors.pending.text }]}>
+                      {unscheduledJobs.length}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            
+              {unscheduledJobs.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Feather name="check-circle" size={32} color={colors.success} />
+                  <Text style={styles.emptyStateText}>All jobs are scheduled!</Text>
                 </View>
+              ) : (
+                unscheduledJobs.map(job => renderJobCard(job, false))
               )}
             </View>
-            
-            {unscheduledJobs.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Feather name="check-circle" size={32} color={colors.success} />
-                <Text style={styles.emptyStateText}>All jobs are scheduled!</Text>
-              </View>
-            ) : (
-              unscheduledJobs.map(job => renderJobCard(job, false))
-            )}
-          </View>
-        </ScrollView>
+          </ScrollView>
+        )}
 
         {/* Schedule Modal */}
         <Modal

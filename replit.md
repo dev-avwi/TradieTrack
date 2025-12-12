@@ -26,6 +26,12 @@ Key architectural features include:
 - **Mobile App**: A React Native mobile app (Expo SDK 52) with full API integration, Zustand for state management, and an SQLite-based offline mode with background sync and conflict resolution. It features permission-aware navigation and dedicated stores for auth, jobs, clients, quotes, and invoices.
 
 ### Recent Changes (December 2025)
+- **Mobile Feature Parity Components**: Four new standalone components for web-mobile parity:
+  - `DragDropDispatchBoard.tsx`: Gesture-based drag-and-drop dispatch board with timeline grid, draggable job cards, and team member columns (integrated into dispatch-board.tsx with list/timeline toggle)
+  - `EmailComposeModal.tsx`: AI-powered email compose modal with templates, preview, and AI suggestions
+  - `CustomFormBuilder.tsx`: Full form builder UI with field type picker, drag reorder, and live preview
+  - `AdvancedThemeControls.tsx`: Granular theming controls with presets, typography, corner radius, and animation settings
+- **Advanced Theme Store**: Extended theme management (`advanced-theme-store.ts`) with theme presets, custom palettes (light/dark), typography settings (font scale, heading weight, line height), and appearance settings (border radius, shadow intensity, animation speed, compact mode)
 - **Client Asset Library**: API endpoints to retrieve job photos, quote items, invoice items, and notes for reuse; security-verified with client ownership checks
 - **Smart Pre-fill API**: `/api/clients/:id/prefill` endpoint returns recent job descriptions, line items, and notes for auto-populating new jobs/quotes/invoices
 - **CSV Export**: Reports dashboard has export buttons with disabled states for each report type
