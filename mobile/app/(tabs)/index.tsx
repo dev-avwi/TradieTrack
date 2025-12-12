@@ -17,62 +17,7 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
-
-// Trust Banner Component - compact modern design
-function TrustBanner() {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
-  
-  return (
-    <View style={styles.trustBanner}>
-      <View style={styles.trustBannerTop}>
-        <View style={styles.trustBannerIcon}>
-          <Feather name="star" size={14} color={colors.primary} />
-        </View>
-        <View style={styles.trustBannerContent}>
-          <View style={styles.trustBannerTitleRow}>
-            <Text style={styles.trustBannerTitle}>TradieTrack</Text>
-            <View style={styles.betaBadge}>
-              <Text style={styles.betaBadgeText}>Free During Beta</Text>
-            </View>
-          </View>
-          <Text style={styles.trustBannerSubtitle}>Built for Australian tradies</Text>
-        </View>
-      </View>
-      <View style={styles.trustBannerFeatures}>
-        <View style={styles.trustFeature}>
-          <Feather name="check-circle" size={10} color={colors.success} />
-          <Text style={styles.trustFeatureText}>GST compliant</Text>
-        </View>
-        <View style={styles.trustFeature}>
-          <Feather name="check-circle" size={10} color={colors.success} />
-          <Text style={styles.trustFeatureText}>Secure payments</Text>
-        </View>
-        <View style={styles.trustFeature}>
-          <Feather name="check-circle" size={10} color={colors.success} />
-          <Text style={styles.trustFeatureText}>Encrypted</Text>
-        </View>
-      </View>
-      {/* Security & Privacy Rows */}
-      <View style={styles.trustSecuritySection}>
-        <View style={styles.trustSecurityRow}>
-          <Feather name="shield" size={14} color={colors.primary} />
-          <View style={styles.trustSecurityContent}>
-            <Text style={styles.trustSecurityTitle}>Bank-grade security</Text>
-            <Text style={styles.trustSecurityDesc}>256-bit encryption for all data</Text>
-          </View>
-        </View>
-        <View style={styles.trustSecurityRow}>
-          <Feather name="lock" size={14} color={colors.primary} />
-          <View style={styles.trustSecurityContent}>
-            <Text style={styles.trustSecurityTitle}>Your data stays private</Text>
-            <Text style={styles.trustSecurityDesc}>We never share your information</Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
+import { TrustBanner } from '../../src/components/ui/TrustBanner';
 
 // Activity Feed Component - matches web Recent Activity section
 function ActivityFeed({ activities }: { activities: any[] }) {
@@ -820,8 +765,10 @@ export default function DashboardScreen() {
         onNavigateToItem={handleNavigateToItem}
       />
 
-      {/* Trust Banner */}
-      <TrustBanner />
+      {/* Trust Banner - Dismissible */}
+      <View style={{ marginBottom: spacing.lg }}>
+        <TrustBanner />
+      </View>
 
       {/* Time Tracking Widget - Staff Only */}
       {isStaffUser && (
@@ -1098,100 +1045,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
     marginTop: spacing.xs,
-  },
-
-  // Trust Banner - compact
-  trustBanner: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: `${colors.primary}25`,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    backgroundColor: `${colors.primary}06`,
-  },
-  trustBannerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  trustBannerIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: `${colors.primary}12`,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  trustBannerContent: {
-    flex: 1,
-  },
-  trustBannerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-  },
-  trustBannerTitle: {
-    ...typography.subtitle,
-    color: colors.foreground,
-  },
-  betaBadge: {
-    backgroundColor: colors.successLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-  },
-  betaBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.success,
-  },
-  trustBannerSubtitle: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  trustBannerFeatures: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.lg,
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  trustFeature: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  trustFeatureText: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-  },
-  trustSecuritySection: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.md,
-  },
-  trustSecurityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  trustSecurityContent: {
-    flex: 1,
-  },
-  trustSecurityTitle: {
-    ...typography.body,
-    fontWeight: '500',
-    color: colors.foreground,
-  },
-  trustSecurityDesc: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
   },
 
   // Activity Feed - compact

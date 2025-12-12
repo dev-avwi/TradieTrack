@@ -14,12 +14,15 @@ interface TrustBannerProps {
 export function TrustBanner({ businessName }: TrustBannerProps) {
   const { colors, isDark } = useTheme();
   const styles = createStyles(colors, isDark);
-  const [isDismissed, setIsDismissed] = useState<boolean | null>(null);
+  const [isDismissed, setIsDismissed] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Check if banner was previously dismissed
     AsyncStorage.getItem(STORAGE_KEY).then((value) => {
       setIsDismissed(value === 'true');
+      setIsLoading(false);
+    }).catch(() => {
+      setIsLoading(false);
     });
   }, []);
 
@@ -28,8 +31,7 @@ export function TrustBanner({ businessName }: TrustBannerProps) {
     await AsyncStorage.setItem(STORAGE_KEY, 'true');
   };
 
-  // Don't render while loading or if dismissed
-  if (isDismissed === null || isDismissed) {
+  if (isLoading || isDismissed) {
     return null;
   }
 
