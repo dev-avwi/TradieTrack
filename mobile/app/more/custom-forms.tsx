@@ -4,13 +4,10 @@ import {
   Text, 
   ScrollView, 
   TouchableOpacity,
-  TextInput,
   StyleSheet,
   Alert,
   ActivityIndicator,
   Modal,
-  Switch,
-  FlatList,
   RefreshControl,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
@@ -19,16 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../../src/lib/api';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
-
-interface FormField {
-  id: string;
-  type: 'text' | 'number' | 'email' | 'phone' | 'textarea' | 'checkbox' | 'radio' | 'select' | 'date' | 'time' | 'photo' | 'signature' | 'section';
-  label: string;
-  placeholder?: string;
-  required?: boolean;
-  options?: string[];
-  description?: string;
-}
+import { CustomFormBuilder, FormField } from '../../src/components/CustomFormBuilder';
 
 interface CustomForm {
   id: string;
@@ -486,25 +474,8 @@ export default function CustomFormsScreen() {
   const [forms, setForms] = useState<CustomForm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showFormModal, setShowFormModal] = useState(false);
-  const [showFieldTypeModal, setShowFieldTypeModal] = useState(false);
-  const [showFieldEditModal, setShowFieldEditModal] = useState(false);
+  const [showFormBuilder, setShowFormBuilder] = useState(false);
   const [editingForm, setEditingForm] = useState<CustomForm | null>(null);
-  const [editingField, setEditingField] = useState<FormField | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  
-  const [formName, setFormName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formType, setFormType] = useState('general');
-  const [requiresSignature, setRequiresSignature] = useState(false);
-  const [isActive, setIsActive] = useState(true);
-  const [fields, setFields] = useState<FormField[]>([]);
-  
-  const [fieldLabel, setFieldLabel] = useState('');
-  const [fieldPlaceholder, setFieldPlaceholder] = useState('');
-  const [fieldRequired, setFieldRequired] = useState(false);
-  const [fieldOptions, setFieldOptions] = useState<string[]>([]);
-  const [newOption, setNewOption] = useState('');
 
   useEffect(() => {
     loadForms();
@@ -530,30 +501,14 @@ export default function CustomFormsScreen() {
     setIsRefreshing(false);
   };
 
-  const resetFormState = () => {
-    setFormName('');
-    setFormDescription('');
-    setFormType('general');
-    setRequiresSignature(false);
-    setIsActive(true);
-    setFields([]);
-    setEditingForm(null);
-  };
-
   const handleCreateNew = () => {
-    resetFormState();
-    setShowFormModal(true);
+    setEditingForm(null);
+    setShowFormBuilder(true);
   };
 
   const handleEditForm = (form: CustomForm) => {
     setEditingForm(form);
-    setFormName(form.name);
-    setFormDescription(form.description || '');
-    setFormType(form.formType || 'general');
-    setRequiresSignature(form.requiresSignature || false);
-    setIsActive(form.isActive);
-    setFields(Array.isArray(form.fields) ? form.fields : []);
-    setShowFormModal(true);
+    setShowFormBuilder(true);
   };
 
   const handleDeleteForm = (form: CustomForm) => {
@@ -579,116 +534,26 @@ export default function CustomFormsScreen() {
     );
   };
 
-  const handleSaveForm = async () => {
-    if (!formName.trim()) {
-      Alert.alert('Error', 'Please enter a form name');
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      const payload = {
-        name: formName.trim(),
-        description: formDescription.trim() || null,
-        formType,
-        requiresSignature,
-        isActive,
-        fields,
-      };
-
-      if (editingForm) {
-        await api.patch(`/api/custom-forms/${editingForm.id}`, payload);
-        Alert.alert('Success', 'Form updated');
-      } else {
-        await api.post('/api/custom-forms', payload);
-        Alert.alert('Success', 'Form created');
-      }
-      
-      setShowFormModal(false);
-      resetFormState();
-      await loadForms();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save form');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleAddField = (type: FormField['type']) => {
-    const newField: FormField = {
-      id: Date.now().toString(),
-      type,
-      label: FIELD_TYPES.find(f => f.type === type)?.label || 'New Field',
-      required: false,
-      options: type === 'radio' || type === 'select' ? ['Option 1', 'Option 2'] : undefined,
-    };
-    setFields([...fields, newField]);
-    setShowFieldTypeModal(false);
-    
-    setEditingField(newField);
-    setFieldLabel(newField.label);
-    setFieldPlaceholder(newField.placeholder || '');
-    setFieldRequired(newField.required || false);
-    setFieldOptions(newField.options || []);
-    setShowFieldEditModal(true);
-  };
-
-  const handleEditField = (field: FormField) => {
-    setEditingField(field);
-    setFieldLabel(field.label);
-    setFieldPlaceholder(field.placeholder || '');
-    setFieldRequired(field.required || false);
-    setFieldOptions(field.options || []);
-    setShowFieldEditModal(true);
-  };
-
-  const handleSaveField = () => {
-    if (!editingField) return;
-    
-    const updatedField: FormField = {
-      ...editingField,
-      label: fieldLabel.trim() || editingField.label,
-      placeholder: fieldPlaceholder.trim() || undefined,
-      required: fieldRequired,
-      options: editingField.type === 'radio' || editingField.type === 'select' ? fieldOptions : undefined,
+  const handleFormBuilderSave = async (formData: { id?: string; name: string; description?: string; category: string; fields: FormField[]; isActive: boolean }) => {
+    const payload = {
+      name: formData.name,
+      description: formData.description || null,
+      formType: formData.category,
+      isActive: formData.isActive,
+      fields: formData.fields,
     };
 
-    setFields(fields.map(f => f.id === editingField.id ? updatedField : f));
-    setShowFieldEditModal(false);
-    setEditingField(null);
-  };
-
-  const handleDeleteField = (fieldId: string) => {
-    setFields(fields.filter(f => f.id !== fieldId));
-  };
-
-  const handleMoveField = (fieldId: string, direction: 'up' | 'down') => {
-    const index = fields.findIndex(f => f.id === fieldId);
-    if (direction === 'up' && index > 0) {
-      const newFields = [...fields];
-      [newFields[index - 1], newFields[index]] = [newFields[index], newFields[index - 1]];
-      setFields(newFields);
-    } else if (direction === 'down' && index < fields.length - 1) {
-      const newFields = [...fields];
-      [newFields[index], newFields[index + 1]] = [newFields[index + 1], newFields[index]];
-      setFields(newFields);
+    if (editingForm?.id) {
+      await api.patch(`/api/custom-forms/${editingForm.id}`, payload);
+      Alert.alert('Success', 'Form updated');
+    } else {
+      await api.post('/api/custom-forms', payload);
+      Alert.alert('Success', 'Form created');
     }
-  };
-
-  const addOption = () => {
-    if (newOption.trim()) {
-      setFieldOptions([...fieldOptions, newOption.trim()]);
-      setNewOption('');
-    }
-  };
-
-  const removeOption = (index: number) => {
-    setFieldOptions(fieldOptions.filter((_, i) => i !== index));
-  };
-
-  const getFieldIcon = (type: FormField['type']) => {
-    const fieldType = FIELD_TYPES.find(f => f.type === type);
-    return fieldType?.icon || 'type';
+    
+    setShowFormBuilder(false);
+    setEditingForm(null);
+    await loadForms();
   };
 
   const getFormIcon = (type: string) => {
@@ -803,326 +668,26 @@ export default function CustomFormsScreen() {
         )}
       </ScrollView>
 
-      {/* Form Editor Modal */}
-      <Modal visible={showFormModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editingForm ? 'Edit Form' : 'Create Form'}
-              </Text>
-              <TouchableOpacity onPress={() => setShowFormModal(false)}>
-                <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.modalBody}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Form Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formName}
-                  onChangeText={setFormName}
-                  placeholder="e.g., Safety Checklist"
-                  placeholderTextColor={colors.mutedForeground}
-                  data-testid="input-form-name"
-                />
-              </View>
-              
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Description</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={formDescription}
-                  onChangeText={setFormDescription}
-                  placeholder="Optional description..."
-                  placeholderTextColor={colors.mutedForeground}
-                  multiline
-                  numberOfLines={3}
-                  data-testid="input-form-description"
-                />
-              </View>
-              
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Form Type</Text>
-                <View style={styles.typeSelector}>
-                  {FORM_TYPES.map(type => (
-                    <TouchableOpacity
-                      key={type.value}
-                      style={[styles.typeOption, formType === type.value && styles.typeOptionActive]}
-                      onPress={() => setFormType(type.value)}
-                      data-testid={`button-type-${type.value}`}
-                    >
-                      <Feather 
-                        name={type.icon as any} 
-                        size={14} 
-                        color={formType === type.value ? colors.primary : colors.mutedForeground} 
-                      />
-                      <Text style={[styles.typeOptionText, formType === type.value && styles.typeOptionTextActive]}>
-                        {type.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Requires Signature</Text>
-                <Switch
-                  value={requiresSignature}
-                  onValueChange={setRequiresSignature}
-                  trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                  thumbColor={requiresSignature ? colors.primary : colors.mutedForeground}
-                />
-              </View>
-              
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Active</Text>
-                <Switch
-                  value={isActive}
-                  onValueChange={setIsActive}
-                  trackColor={{ false: colors.muted, true: colors.successLight }}
-                  thumbColor={isActive ? colors.success : colors.mutedForeground}
-                />
-              </View>
-              
-              <View style={styles.fieldsSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Form Fields ({fields.length})</Text>
-                  <TouchableOpacity 
-                    style={styles.addFieldButton}
-                    onPress={() => setShowFieldTypeModal(true)}
-                    data-testid="button-add-field"
-                  >
-                    <Feather name="plus" size={14} color={colors.primary} />
-                    <Text style={styles.addFieldButtonText}>Add Field</Text>
-                  </TouchableOpacity>
-                </View>
-                
-                {fields.map((field, index) => (
-                  <View key={field.id} style={styles.fieldCard}>
-                    <View style={styles.fieldIcon}>
-                      <Feather name={getFieldIcon(field.type) as any} size={iconSizes.sm} color={colors.mutedForeground} />
-                    </View>
-                    <View style={styles.fieldInfo}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.fieldLabel}>{field.label}</Text>
-                        {field.required && (
-                          <View style={styles.requiredBadge}>
-                            <Text style={styles.requiredText}>REQ</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.fieldType}>{FIELD_TYPES.find(f => f.type === field.type)?.description}</Text>
-                    </View>
-                    <View style={styles.fieldActions}>
-                      {index > 0 && (
-                        <TouchableOpacity 
-                          style={styles.fieldActionButton}
-                          onPress={() => handleMoveField(field.id, 'up')}
-                        >
-                          <Feather name="chevron-up" size={14} color={colors.mutedForeground} />
-                        </TouchableOpacity>
-                      )}
-                      {index < fields.length - 1 && (
-                        <TouchableOpacity 
-                          style={styles.fieldActionButton}
-                          onPress={() => handleMoveField(field.id, 'down')}
-                        >
-                          <Feather name="chevron-down" size={14} color={colors.mutedForeground} />
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity 
-                        style={styles.fieldActionButton}
-                        onPress={() => handleEditField(field)}
-                      >
-                        <Feather name="edit-2" size={14} color={colors.mutedForeground} />
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.fieldActionButton}
-                        onPress={() => handleDeleteField(field.id)}
-                      >
-                        <Feather name="trash-2" size={14} color={colors.destructive} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
-                
-                {fields.length === 0 && (
-                  <View style={[styles.emptyState, { paddingVertical: spacing.xl }]}>
-                    <Text style={styles.emptyText}>No fields added yet. Tap "Add Field" to start building your form.</Text>
-                  </View>
-                )}
-              </View>
-            </ScrollView>
-            
-            <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setShowFormModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.saveButton, isSaving && styles.disabledButton]}
-                onPress={handleSaveForm}
-                disabled={isSaving}
-                data-testid="button-save-form"
-              >
-                {isSaving ? (
-                  <ActivityIndicator size="small" color={colors.primaryForeground} />
-                ) : (
-                  <Text style={styles.saveButtonText}>Save Form</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Field Type Selector Modal */}
-      <Modal visible={showFieldTypeModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Field</Text>
-              <TouchableOpacity onPress={() => setShowFieldTypeModal(false)}>
-                <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.fieldTypeGrid}>
-              {FIELD_TYPES.map(fieldType => (
-                <TouchableOpacity
-                  key={fieldType.type}
-                  style={styles.fieldTypeItem}
-                  onPress={() => handleAddField(fieldType.type)}
-                  data-testid={`button-field-type-${fieldType.type}`}
-                >
-                  <View style={styles.fieldTypeItemIcon}>
-                    <Feather name={fieldType.icon as any} size={iconSizes.md} color={colors.primary} />
-                  </View>
-                  <Text style={styles.fieldTypeItemLabel}>{fieldType.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Field Editor Modal */}
-      <Modal visible={showFieldEditModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Field</Text>
-              <TouchableOpacity onPress={() => setShowFieldEditModal(false)}>
-                <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.modalBody}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Label *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={fieldLabel}
-                  onChangeText={setFieldLabel}
-                  placeholder="Field label"
-                  placeholderTextColor={colors.mutedForeground}
-                  data-testid="input-field-label"
-                />
-              </View>
-              
-              {editingField?.type !== 'section' && editingField?.type !== 'checkbox' && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Placeholder (Optional)</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={fieldPlaceholder}
-                    onChangeText={setFieldPlaceholder}
-                    placeholder="Placeholder text..."
-                    placeholderTextColor={colors.mutedForeground}
-                    data-testid="input-field-placeholder"
-                  />
-                </View>
-              )}
-              
-              {(editingField?.type === 'radio' || editingField?.type === 'select') && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Options</Text>
-                  {fieldOptions.map((option, index) => (
-                    <View key={index} style={styles.optionRow}>
-                      <TextInput
-                        style={styles.optionInput}
-                        value={option}
-                        onChangeText={(text) => {
-                          const newOptions = [...fieldOptions];
-                          newOptions[index] = text;
-                          setFieldOptions(newOptions);
-                        }}
-                        placeholder={`Option ${index + 1}`}
-                        placeholderTextColor={colors.mutedForeground}
-                      />
-                      <TouchableOpacity 
-                        style={styles.deleteOptionButton}
-                        onPress={() => removeOption(index)}
-                      >
-                        <Feather name="trash-2" size={14} color={colors.destructive} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                  <View style={styles.optionRow}>
-                    <TextInput
-                      style={styles.optionInput}
-                      value={newOption}
-                      onChangeText={setNewOption}
-                      placeholder="Add option..."
-                      placeholderTextColor={colors.mutedForeground}
-                      onSubmitEditing={addOption}
-                      data-testid="input-new-option"
-                    />
-                    <TouchableOpacity 
-                      style={[styles.actionButton, { backgroundColor: colors.primaryLight }]}
-                      onPress={addOption}
-                    >
-                      <Feather name="plus" size={14} color={colors.primary} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-              
-              {editingField?.type !== 'section' && (
-                <View style={styles.switchRow}>
-                  <Text style={styles.switchLabel}>Required</Text>
-                  <Switch
-                    value={fieldRequired}
-                    onValueChange={setFieldRequired}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={fieldRequired ? colors.primary : colors.mutedForeground}
-                  />
-                </View>
-              )}
-            </ScrollView>
-            
-            <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setShowFieldEditModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.saveButton}
-                onPress={handleSaveField}
-                data-testid="button-save-field"
-              >
-                <Text style={styles.saveButtonText}>Save Field</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Custom Form Builder Modal */}
+      {showFormBuilder && (
+        <Modal visible={showFormBuilder} animationType="slide" presentationStyle="pageSheet">
+          <CustomFormBuilder
+            form={editingForm ? {
+              id: editingForm.id,
+              name: editingForm.name,
+              description: editingForm.description,
+              category: (editingForm.formType || 'job') as 'job' | 'safety' | 'inspection' | 'other',
+              fields: editingForm.fields || [],
+              isActive: editingForm.isActive,
+            } : undefined}
+            onSave={handleFormBuilderSave}
+            onCancel={() => {
+              setShowFormBuilder(false);
+              setEditingForm(null);
+            }}
+          />
+        </Modal>
+      )}
     </View>
   );
 }
