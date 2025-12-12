@@ -2013,7 +2013,7 @@ function SupportTab() {
                       window.dispatchEvent(new CustomEvent("start-walkthrough"));
                     }}
                     className="mt-2"
-                    data-testid="button-restart-tour"
+                    data-testid="button-start-tour"
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
                     Start App Tour
