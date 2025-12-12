@@ -4759,6 +4759,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const invoiceWithItems = await storage.getInvoiceWithLineItems(invoice.id, req.userId);
+      
+      // Auto-update linked job status to 'invoiced' if job is in 'done' status
+      if (invoice.jobId) {
+        try {
+          const job = await storage.getJob(invoice.jobId, req.userId);
+          if (job && job.status === 'done') {
+            await storage.updateJob(invoice.jobId, req.userId, { status: 'invoiced' });
+            console.log(`✅ Auto-updated job ${invoice.jobId} status to 'invoiced'`);
+          }
+        } catch (e) {
+          console.log('Could not auto-update job status:', e);
+          // Don't fail the invoice creation if job update fails
+        }
+      }
+      
       res.status(201).json(invoiceWithItems);
     } catch (error) {
       if (error instanceof z.ZodError) {

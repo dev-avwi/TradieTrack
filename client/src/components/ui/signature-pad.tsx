@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Eraser, Check, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SignaturePadProps {
@@ -125,22 +125,16 @@ export function SignaturePad({
   };
 
   const stopDrawing = () => {
+    if (isDrawing && hasSignature) {
+      // Auto-save the signature when user stops drawing
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const signatureData = canvas.toDataURL('image/png');
+        onSave?.(signatureData);
+      }
+    }
     setIsDrawing(false);
     lastPointRef.current = null;
-  };
-
-  const saveSignature = () => {
-    const canvas = canvasRef.current;
-    if (!canvas || !hasSignature) return;
-    
-    const signatureData = canvas.toDataURL('image/png');
-    onSave?.(signatureData);
-  };
-
-  const getSignatureData = (): string | null => {
-    const canvas = canvasRef.current;
-    if (!canvas || !hasSignature) return null;
-    return canvas.toDataURL('image/png');
   };
 
   return (
@@ -174,7 +168,10 @@ export function SignaturePad({
       </div>
 
       {showControls && (
-        <div className="flex gap-2 justify-end">
+        <div className="flex gap-2 justify-between items-center">
+          <span className="text-xs text-muted-foreground">
+            {hasSignature ? 'Signature captured' : 'Draw your signature above'}
+          </span>
           <Button
             type="button"
             variant="outline"
@@ -185,17 +182,6 @@ export function SignaturePad({
             <RotateCcw className="w-4 h-4 mr-1" />
             Clear
           </Button>
-          {onSave && (
-            <Button
-              type="button"
-              size="sm"
-              onClick={saveSignature}
-              disabled={disabled || !hasSignature}
-            >
-              <Check className="w-4 h-4 mr-1" />
-              Save Signature
-            </Button>
-          )}
         </div>
       )}
     </div>
