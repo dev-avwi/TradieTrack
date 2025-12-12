@@ -50,9 +50,9 @@ export function JobProgressBar({ status, hasQuote, hasInvoice, className }: JobP
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           {WORKFLOW_STEPS.map((step, index) => {
-            const isCompleted = index < currentIndex;
+            const isPassed = index < currentIndex;
             const isCurrent = index === currentIndex;
-            const isPending = index > currentIndex;
+            const isUpcoming = index > currentIndex;
             const StepIcon = step.icon;
 
             return (
@@ -61,7 +61,7 @@ export function JobProgressBar({ status, hasQuote, hasInvoice, className }: JobP
                   <div 
                     className={cn(
                       "absolute top-4 right-1/2 w-full h-0.5 -translate-y-1/2",
-                      isCompleted ? "bg-green-500" : isPending ? "bg-muted" : "bg-primary"
+                      isPassed || isCurrent ? "bg-primary/60" : "bg-muted"
                     )}
                     style={{ width: 'calc(100% - 32px)', right: 'calc(50% + 16px)' }}
                   />
@@ -69,16 +69,12 @@ export function JobProgressBar({ status, hasQuote, hasInvoice, className }: JobP
                 <div
                   className={cn(
                     "relative z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                    isCompleted && "bg-green-500 text-white",
+                    isPassed && "bg-primary/20 text-primary border-2 border-primary/40",
                     isCurrent && "bg-primary text-primary-foreground ring-4 ring-primary/20",
-                    isPending && "bg-muted text-muted-foreground"
+                    isUpcoming && "bg-muted text-muted-foreground"
                   )}
                 >
-                  {isCompleted ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
-                    <StepIcon className="h-4 w-4" />
-                  )}
+                  <StepIcon className="h-4 w-4" />
                 </div>
                 <span 
                   className={cn(
