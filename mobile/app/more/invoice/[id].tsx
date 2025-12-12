@@ -7,14 +7,14 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  TextInput,
-  Modal
+  Switch
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useInvoicesStore, useClientsStore, useAuthStore } from '../../../src/lib/store';
 import { colors } from '../../../src/lib/colors';
 import { DocumentPreview } from '../../../src/components/DocumentPreview';
+import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { API_URL } from '../../../src/lib/api';
 
 const STATUS_CONFIG = {
@@ -29,13 +29,12 @@ export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getInvoice, updateInvoiceStatus } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   const [invoice, setInvoice] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
-  const [showSendModal, setShowSendModal] = useState(false);
-  const [sendMessage, setSendMessage] = useState('');
-  const [isSending, setIsSending] = useState(false);
+  const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [isTogglingPayment, setIsTogglingPayment] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -67,11 +66,10 @@ export default function InvoiceDetailScreen() {
   };
 
   const handleSend = () => {
-    setShowSendModal(true);
+    setShowEmailCompose(true);
   };
 
-  const confirmSend = async () => {
-    setIsSending(true);
+  const handleEmailSend = async (subject: string, message: string) => {
     try {
       const response = await fetch(`${API_URL}/api/invoices/${id}/send`, {
         method: 'POST',
@@ -80,34 +78,67 @@ export default function InvoiceDetailScreen() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          message: sendMessage || undefined,
+          subject,
+          message,
         }),
       });
 
       if (response.ok) {
         await loadData();
-        setShowSendModal(false);
-        setSendMessage('');
+        setShowEmailCompose(false);
         Alert.alert('Success', 'Invoice sent successfully to the client');
       } else {
         const success = await updateInvoiceStatus(id!, 'sent');
         if (success) {
           await loadData();
-          setShowSendModal(false);
+          setShowEmailCompose(false);
           Alert.alert('Invoice Updated', 'Invoice marked as sent (email sending may be unavailable)');
         } else {
-          Alert.alert('Error', 'Failed to send invoice');
+          throw new Error('Failed to send invoice');
         }
       }
     } catch (error) {
       const success = await updateInvoiceStatus(id!, 'sent');
       if (success) {
         await loadData();
-        setShowSendModal(false);
+        setShowEmailCompose(false);
         Alert.alert('Invoice Updated', 'Invoice marked as sent');
+      } else {
+        throw error;
       }
+    }
+  };
+
+  const toggleOnlinePayment = async () => {
+    if (!invoice) return;
+    setIsTogglingPayment(true);
+    try {
+      const response = await fetch(`${API_URL}/api/invoices/${id}/toggle-online-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          allowOnlinePayment: !invoice.allowOnlinePayment,
+        }),
+      });
+
+      if (response.ok) {
+        await loadData();
+        Alert.alert(
+          'Success',
+          invoice.allowOnlinePayment 
+            ? 'Online payment disabled for this invoice' 
+            : 'Online payment enabled - clients can pay with card'
+        );
+      } else {
+        Alert.alert('Error', 'Failed to update payment settings');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update payment settings');
     } finally {
-      setIsSending(false);
+      setIsTogglingPayment(false);
     }
   };
 
@@ -383,6 +414,41 @@ export default function InvoiceDetailScreen() {
             )}
           </View>
 
+          {/* Payment Settings */}
+          {invoice.status !== 'paid' && (
+            <>
+              <Text style={styles.sectionTitle}>Payment Options</Text>
+              <View style={styles.card}>
+                <View style={styles.paymentToggleRow}>
+                  <View style={styles.paymentToggleInfo}>
+                    <Feather name="credit-card" size={20} color={colors.primary} />
+                    <View style={styles.paymentToggleText}>
+                      <Text style={styles.paymentToggleTitle}>Accept Online Payments</Text>
+                      <Text style={styles.paymentToggleDesc}>
+                        Allow clients to pay with card, Apple Pay, or Google Pay
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={invoice.allowOnlinePayment || false}
+                    onValueChange={toggleOnlinePayment}
+                    disabled={isTogglingPayment}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={invoice.allowOnlinePayment ? colors.primary : colors.mutedForeground}
+                  />
+                </View>
+                {invoice.allowOnlinePayment && invoice.paymentToken && (
+                  <View style={styles.paymentLinkInfo}>
+                    <Feather name="check-circle" size={16} color={colors.success} />
+                    <Text style={styles.paymentLinkText}>
+                      Payment link active - clients can pay online
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </>
+          )}
+
           {/* Notes */}
           {invoice.notes && (
             <>
@@ -426,78 +492,20 @@ export default function InvoiceDetailScreen() {
         document={previewDocument}
       />
 
-      {/* Send Modal */}
-      <Modal
-        visible={showSendModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowSendModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowSendModal(false)}>
-              <X size={24} color={colors.foreground} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Send Invoice</Text>
-            <View style={{ width: 24 }} />
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.sendInfo}>
-              <Feather name="mail" size={20} color={colors.primary} />
-              <View style={styles.sendInfoText}>
-                <Text style={styles.sendInfoLabel}>Sending to:</Text>
-                <Text style={styles.sendInfoValue}>{client?.email || 'No email'}</Text>
-              </View>
-            </View>
-
-            <Text style={styles.inputLabel}>Personal Message (Optional)</Text>
-            <TextInput
-              style={styles.messageInput}
-              placeholder="Add a personal message to include with the invoice..."
-              placeholderTextColor={colors.mutedForeground}
-              value={sendMessage}
-              onChangeText={setSendMessage}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-
-            <View style={styles.previewCard}>
-              <Text style={styles.previewTitle}>Invoice Preview</Text>
-              <View style={styles.previewRow}>
-                <Text style={styles.previewLabel}>Invoice Number:</Text>
-                <Text style={styles.previewValue}>{invoice.invoiceNumber}</Text>
-              </View>
-              <View style={styles.previewRow}>
-                <Text style={styles.previewLabel}>Due Date:</Text>
-                <Text style={styles.previewValue}>{formatDate(invoice.dueDate)}</Text>
-              </View>
-              <View style={styles.previewRow}>
-                <Text style={styles.previewLabel}>Total:</Text>
-                <Text style={[styles.previewValue, styles.previewTotal]}>
-                  {formatCurrency(invoice.total)}
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.sendButton, isSending && styles.buttonDisabled]}
-              onPress={confirmSend}
-              disabled={isSending}
-            >
-              {isSending ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <>
-                  <Feather name="send" size={20} color={colors.white} />
-                  <Text style={styles.sendButtonText}>Send Invoice</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </Modal>
+      {/* Email Compose Modal */}
+      <EmailComposeModal
+        visible={showEmailCompose}
+        onClose={() => setShowEmailCompose(false)}
+        type="invoice"
+        documentId={id!}
+        clientName={client?.name || 'Client'}
+        clientEmail={client?.email || ''}
+        documentNumber={invoice?.invoiceNumber || ''}
+        documentTitle={invoice?.title || 'Invoice'}
+        total={formatCurrency(invoice?.total || 0)}
+        businessName={user?.businessName}
+        onSend={handleEmailSend}
+      />
     </>
   );
 }
@@ -733,6 +741,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.foreground,
     lineHeight: 22,
+  },
+  paymentToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  paymentToggleInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  paymentToggleText: {
+    flex: 1,
+  },
+  paymentToggleTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  paymentToggleDesc: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    lineHeight: 18,
+  },
+  paymentLinkInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  paymentLinkText: {
+    fontSize: 13,
+    color: colors.success,
   },
   actionsColumn: {
     gap: 12,

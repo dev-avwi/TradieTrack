@@ -6,15 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
-  TextInput,
-  Modal
+  Alert
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useQuotesStore, useClientsStore, useAuthStore } from '../../../src/lib/store';
 import { colors } from '../../../src/lib/colors';
 import { DocumentPreview } from '../../../src/components/DocumentPreview';
+import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { API_URL } from '../../../src/lib/api';
 
 const STATUS_CONFIG = {
@@ -33,9 +32,7 @@ export default function QuoteDetailScreen() {
   const [quote, setQuote] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
-  const [showSendModal, setShowSendModal] = useState(false);
-  const [sendMessage, setSendMessage] = useState('');
-  const [isSending, setIsSending] = useState(false);
+  const [showEmailCompose, setShowEmailCompose] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -66,13 +63,12 @@ export default function QuoteDetailScreen() {
     });
   };
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!quote) return;
-    setShowSendModal(true);
+    setShowEmailCompose(true);
   };
 
-  const confirmSend = async () => {
-    setIsSending(true);
+  const handleEmailSend = async (subject: string, message: string) => {
     try {
       const response = await fetch(`${API_URL}/api/quotes/${id}/send`, {
         method: 'POST',
@@ -81,34 +77,34 @@ export default function QuoteDetailScreen() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          message: sendMessage || undefined,
+          subject,
+          message,
         }),
       });
 
       if (response.ok) {
         await loadData();
-        setShowSendModal(false);
-        setSendMessage('');
+        setShowEmailCompose(false);
         Alert.alert('Success', 'Quote sent successfully to the client');
       } else {
         const success = await updateQuoteStatus(id!, 'sent');
         if (success) {
           await loadData();
-          setShowSendModal(false);
+          setShowEmailCompose(false);
           Alert.alert('Quote Updated', 'Quote marked as sent (email sending may be unavailable)');
         } else {
-          Alert.alert('Error', 'Failed to send quote');
+          throw new Error('Failed to send quote');
         }
       }
     } catch (error) {
       const success = await updateQuoteStatus(id!, 'sent');
       if (success) {
         await loadData();
-        setShowSendModal(false);
+        setShowEmailCompose(false);
         Alert.alert('Quote Updated', 'Quote marked as sent');
+      } else {
+        throw error;
       }
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -394,74 +390,20 @@ export default function QuoteDetailScreen() {
         document={previewDocument}
       />
 
-      {/* Send Modal */}
-      <Modal
-        visible={showSendModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowSendModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowSendModal(false)}>
-              <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Send Quote</Text>
-            <View style={{ width: 24 }} />
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.sendInfo}>
-              <Feather name="mail" size={20} color={colors.primary} />
-              <View style={styles.sendInfoText}>
-                <Text style={styles.sendInfoLabel}>Sending to:</Text>
-                <Text style={styles.sendInfoValue}>{client?.email || 'No email'}</Text>
-              </View>
-            </View>
-
-            <Text style={styles.inputLabel}>Personal Message (Optional)</Text>
-            <TextInput
-              style={styles.messageInput}
-              placeholder="Add a personal message to include with the quote..."
-              placeholderTextColor={colors.mutedForeground}
-              value={sendMessage}
-              onChangeText={setSendMessage}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-
-            <View style={styles.previewCard}>
-              <Text style={styles.previewTitle}>Quote Preview</Text>
-              <View style={styles.previewRow}>
-                <Text style={styles.previewLabel}>Quote Number:</Text>
-                <Text style={styles.previewValue}>{quote.quoteNumber}</Text>
-              </View>
-              <View style={styles.previewRow}>
-                <Text style={styles.previewLabel}>Total:</Text>
-                <Text style={[styles.previewValue, styles.previewTotal]}>
-                  {formatCurrency(quote.total)}
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.sendButton, isSending && styles.buttonDisabled]}
-              onPress={confirmSend}
-              disabled={isSending}
-            >
-              {isSending ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <>
-                  <Feather name="send" size={20} color={colors.white} />
-                  <Text style={styles.sendButtonText}>Send Quote</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </Modal>
+      {/* Email Compose Modal */}
+      <EmailComposeModal
+        visible={showEmailCompose}
+        onClose={() => setShowEmailCompose(false)}
+        type="quote"
+        documentId={id!}
+        clientName={client?.name || 'Client'}
+        clientEmail={client?.email || ''}
+        documentNumber={quote?.quoteNumber || ''}
+        documentTitle={quote?.title || 'Quote'}
+        total={formatCurrency(quote?.total || 0)}
+        businessName={user?.businessName}
+        onSend={handleEmailSend}
+      />
     </>
   );
 }
