@@ -17,7 +17,7 @@ import {
   Switch,
   KeyboardAvoidingView,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
+import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
