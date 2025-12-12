@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useJobsStore, useClientsStore } from '../../src/lib/store';
+import { useJobsStore, useClientsStore, useQuotesStore } from '../../src/lib/store';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
@@ -290,12 +290,13 @@ export default function JobsScreen() {
   
   const { jobs, fetchJobs, updateJobStatus, isLoading } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
+  const { quotes, fetchQuotes } = useQuotesStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
 
   const refreshData = useCallback(async () => {
-    await Promise.all([fetchJobs(), fetchClients()]);
-  }, [fetchJobs, fetchClients]);
+    await Promise.all([fetchJobs(), fetchClients(), fetchQuotes()]);
+  }, [fetchJobs, fetchClients, fetchQuotes]);
 
   useEffect(() => {
     refreshData();
@@ -314,6 +315,21 @@ export default function JobsScreen() {
   };
 
   const handleUpdateStatus = async (jobId: string, newStatus: string) => {
+    // Special handling for "Invoice" action - navigate to create invoice instead of updating status
+    if (newStatus === 'invoiced') {
+      // Find the quote associated with this job (if any)
+      const jobQuote = quotes.find(q => q.jobId === jobId && (q.status === 'accepted' || q.status === 'sent'));
+      
+      if (jobQuote) {
+        // Navigate to create invoice with quoteId for prefilling
+        router.push(`/more/create-invoice?quoteId=${jobQuote.id}&jobId=${jobId}`);
+      } else {
+        // No quote found, just navigate with jobId
+        router.push(`/more/create-invoice?jobId=${jobId}`);
+      }
+      return;
+    }
+    
     try {
       await updateJobStatus(jobId, newStatus);
     } catch (error) {

@@ -327,6 +327,28 @@ export default function CreateInvoiceScreen() {
     }
   }, [params.quoteId, quotes]);
 
+  // Handle jobId param (when no quote exists) - prefill client from job
+  useEffect(() => {
+    if (params.jobId && !params.quoteId && jobs.length > 0) {
+      const job = jobs.find(j => j.id === params.jobId);
+      if (job) {
+        setJobId(job.id);
+        if (job.clientId) {
+          setClientId(job.clientId);
+        }
+        // Use job title/description as a starting point for line items
+        if (job.title && lineItems.length === 1 && !lineItems[0].description) {
+          setLineItems([{
+            id: generateId(),
+            description: job.title,
+            quantity: 1,
+            unitPrice: 0,
+          }]);
+        }
+      }
+    }
+  }, [params.jobId, params.quoteId, jobs]);
+
   const selectedClient = clients.find((c) => c.id === clientId);
 
   const addLineItem = () => {
@@ -503,7 +525,7 @@ export default function CreateInvoiceScreen() {
     <>
       <Stack.Screen
         options={{
-          title: quoteId ? 'Create Invoice from Quote' : 'Create Invoice',
+          title: quoteId ? 'Create Invoice from Quote' : (jobId ? 'Create Invoice for Job' : 'Create Invoice'),
           headerTitleStyle: { fontWeight: '600', color: colors.foreground },
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
@@ -524,6 +546,14 @@ export default function CreateInvoiceScreen() {
             <View style={styles.quoteNotice}>
               <Text style={styles.quoteNoticeText}>
                 Creating invoice from quote. Client and items have been pre-filled.
+              </Text>
+            </View>
+          )}
+          
+          {jobId && !quoteId && (
+            <View style={styles.quoteNotice}>
+              <Text style={styles.quoteNoticeText}>
+                Creating invoice for job. Client has been pre-filled.
               </Text>
             </View>
           )}
