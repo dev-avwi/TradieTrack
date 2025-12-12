@@ -3,30 +3,218 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sparkles, Send, Loader2, Lightbulb } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, Send, Loader2, Lightbulb, ExternalLink, Briefcase, FileText, Receipt, User, Check, X, Bell, ChevronRight } from "lucide-react";
+import { Link, useLocation } from "wouter";
+
+interface RichContentItem {
+  type: 'job_link' | 'quote_link' | 'invoice_link' | 'client_link' | 'action_button';
+  id: string;
+  label: string;
+  url?: string;
+  status?: string;
+  amount?: number;
+}
+
+interface AIAction {
+  type: string;
+  data?: any;
+  confirmationRequired?: boolean;
+  message?: string;
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  richContent?: RichContentItem[];
+  action?: AIAction;
+  suggestedFollowups?: string[];
+}
+
+interface AINotification {
+  id: string;
+  type: 'reminder' | 'alert' | 'suggestion' | 'update';
+  title: string;
+  message: string;
+  entityType?: 'job' | 'quote' | 'invoice' | 'client';
+  entityId?: string;
+  priority: 'high' | 'medium' | 'low';
+  timestamp: Date;
+  dismissed?: boolean;
+}
 
 const SUGGESTED_PROMPTS = [
-  "How can I follow up with overdue invoices?",
-  "Generate a weekly performance summary",
   "What jobs need my attention today?",
-  "Draft a quote for a bathroom renovation",
-  "Tips for improving my cash flow",
-  "How do I track expenses efficiently?"
+  "Show me overdue invoices",
+  "Draft a follow-up for pending quotes",
+  "Give me a daily summary",
+  "Who should I chase for payment?",
+  "What's on my schedule this week?"
 ];
 
-export default function AIAssistant() {
-  const [chatMessage, setChatMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+function EntityLink({ item, onNavigate }: { item: RichContentItem; onNavigate?: (path: string) => void }) {
+  const getIcon = () => {
+    switch (item.type) {
+      case 'job_link': return <Briefcase className="h-3.5 w-3.5" />;
+      case 'quote_link': return <FileText className="h-3.5 w-3.5" />;
+      case 'invoice_link': return <Receipt className="h-3.5 w-3.5" />;
+      case 'client_link': return <User className="h-3.5 w-3.5" />;
+      default: return <ExternalLink className="h-3.5 w-3.5" />;
+    }
+  };
 
-  // Fetch AI suggestions
+  const getPath = () => {
+    switch (item.type) {
+      case 'job_link': return `/jobs/${item.id}`;
+      case 'quote_link': return `/quotes/${item.id}`;
+      case 'invoice_link': return `/invoices/${item.id}`;
+      case 'client_link': return `/clients/${item.id}`;
+      default: return item.url || '#';
+    }
+  };
+
+  const getStatusColor = () => {
+    if (!item.status) return 'default';
+    const status = item.status.toLowerCase();
+    if (status === 'overdue' || status === 'cancelled') return 'destructive';
+    if (status === 'paid' || status === 'completed' || status === 'accepted' || status === 'done') return 'default';
+    if (status === 'sent' || status === 'pending' || status === 'in_progress') return 'secondary';
+    return 'outline';
+  };
+
+  const handleClick = () => {
+    if (onNavigate) {
+      onNavigate(getPath());
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all hover-elevate active-elevate-2"
+      style={{
+        backgroundColor: 'hsl(var(--primary) / 0.1)',
+        border: '1px solid hsl(var(--primary) / 0.2)',
+        color: 'hsl(var(--primary))'
+      }}
+      data-testid={`ai-entity-link-${item.type}-${item.id}`}
+    >
+      {getIcon()}
+      <span>{item.label}</span>
+      {item.status && (
+        <Badge variant={getStatusColor() as any} className="ml-1 text-[10px] px-1.5 py-0">
+          {item.status}
+        </Badge>
+      )}
+      {item.amount !== undefined && (
+        <span className="ml-1 font-semibold">${(item.amount / 100).toFixed(2)}</span>
+      )}
+      <ChevronRight className="h-3 w-3 ml-0.5 opacity-60" />
+    </button>
+  );
+}
+
+function ActionConfirmation({ 
+  action, 
+  onConfirm, 
+  onCancel,
+  isPending 
+}: { 
+  action: AIAction; 
+  onConfirm: () => void; 
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <div 
+      className="p-3 rounded-lg border-2 mt-2"
+      style={{
+        backgroundColor: 'hsl(var(--trade) / 0.05)',
+        borderColor: 'hsl(var(--trade) / 0.3)'
+      }}
+    >
+      <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--trade))' }}>
+        {action.message || 'Confirm this action?'}
+      </p>
+      <div className="flex gap-2">
+        <Button 
+          size="sm" 
+          onClick={onConfirm}
+          disabled={isPending}
+          style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+          data-testid="button-ai-confirm-action"
+        >
+          {isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
+          Yes, do it
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={onCancel}
+          disabled={isPending}
+          data-testid="button-ai-cancel-action"
+        >
+          <X className="h-3 w-3 mr-1" />
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function NotificationBadge({ notifications }: { notifications: AINotification[] }) {
+  const activeNotifications = notifications.filter(n => !n.dismissed);
+  if (activeNotifications.length === 0) return null;
+
+  const highPriority = activeNotifications.filter(n => n.priority === 'high').length;
+
+  return (
+    <div className="relative">
+      <Bell className="h-4 w-4" />
+      <span 
+        className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
+        style={{
+          backgroundColor: highPriority > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--trade))',
+          color: 'white'
+        }}
+      >
+        {activeNotifications.length}
+      </span>
+    </div>
+  );
+}
+
+interface AIAssistantProps {
+  onNavigate?: (path: string) => void;
+}
+
+export default function AIAssistant({ onNavigate }: AIAssistantProps) {
+  const [, setLocation] = useLocation();
+  const [chatMessage, setChatMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [pendingAction, setPendingAction] = useState<AIAction | null>(null);
+  const [notifications, setNotifications] = useState<AINotification[]>([]);
+
+  const handleNavigation = (path: string) => {
+    if (onNavigate) {
+      onNavigate(path);
+    } else {
+      setLocation(path);
+    }
+  };
+
   const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery({
     queryKey: ["/api/ai/suggestions"],
-    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+  const { data: notificationsData } = useQuery({
+    queryKey: ["/api/ai/notifications"],
+    refetchInterval: 2 * 60 * 1000,
   });
 
   const suggestions = (suggestionsData as any)?.suggestions || [];
 
-  // Chat mutation
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
       const response = await fetch("/api/ai/chat", {
@@ -40,12 +228,52 @@ export default function AIAssistant() {
       return response.json();
     },
     onSuccess: (data, message) => {
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: data.response,
+        richContent: data.richContent,
+        action: data.action,
+        suggestedFollowups: data.suggestedFollowups
+      };
+
       setChatHistory(prev => [
         ...prev,
         { role: 'user', content: message },
-        { role: 'assistant', content: data.response }
+        assistantMessage
       ]);
       setChatMessage("");
+
+      if (data.action?.confirmationRequired) {
+        setPendingAction(data.action);
+      }
+    }
+  });
+
+  const actionMutation = useMutation({
+    mutationFn: async (action: AIAction) => {
+      const response = await fetch("/api/ai/execute-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action })
+      });
+      
+      if (!response.ok) throw new Error("Failed to execute action");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setPendingAction(null);
+      setChatHistory(prev => [
+        ...prev,
+        { role: 'assistant', content: data.response || "Done! Action completed successfully." }
+      ]);
+    },
+    onError: () => {
+      setPendingAction(null);
+      setChatHistory(prev => [
+        ...prev,
+        { role: 'assistant', content: "Sorry, something went wrong. Please try again or do it manually." }
+      ]);
     }
   });
 
@@ -57,6 +285,64 @@ export default function AIAssistant() {
 
   const handleSuggestionClick = (suggestion: string) => {
     setChatMessage(suggestion);
+  };
+
+  const handleConfirmAction = () => {
+    if (pendingAction) {
+      actionMutation.mutate(pendingAction);
+    }
+  };
+
+  const handleCancelAction = () => {
+    setPendingAction(null);
+    setChatHistory(prev => [
+      ...prev,
+      { role: 'assistant', content: "No worries, cancelled that. Anything else I can help with?" }
+    ]);
+  };
+
+  const renderMessageContent = (msg: ChatMessage) => {
+    return (
+      <div className="space-y-2">
+        <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+        
+        {msg.richContent && msg.richContent.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {msg.richContent.map((item, idx) => (
+              <EntityLink key={idx} item={item} onNavigate={handleNavigation} />
+            ))}
+          </div>
+        )}
+
+        {msg.action?.confirmationRequired && pendingAction && (
+          <ActionConfirmation
+            action={msg.action}
+            onConfirm={handleConfirmAction}
+            onCancel={handleCancelAction}
+            isPending={actionMutation.isPending}
+          />
+        )}
+
+        {msg.suggestedFollowups && msg.suggestedFollowups.length > 0 && !pendingAction && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {msg.suggestedFollowups.map((followup, idx) => (
+              <button
+                key={idx}
+                onClick={() => setChatMessage(followup)}
+                className="text-xs px-2 py-1 rounded-full transition-all hover-elevate"
+                style={{
+                  backgroundColor: 'hsl(var(--muted))',
+                  border: '1px solid hsl(var(--border))'
+                }}
+                data-testid={`ai-followup-${idx}`}
+              >
+                {followup}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -74,13 +360,13 @@ export default function AIAssistant() {
           </div>
           <span className="truncate">AI Assistant</span>
         </CardTitle>
+        {notifications.length > 0 && <NotificationBadge notifications={notifications} />}
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-3 sm:gap-4 p-4 sm:p-6">
         <p className="text-xs sm:text-sm text-muted-foreground">
-          Get help with your business tasks
+          I can help with jobs, quotes, invoices, and more. Just ask!
         </p>
 
-        {/* Suggested Prompts - only show when no chat history */}
         {chatHistory.length === 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -102,7 +388,6 @@ export default function AIAssistant() {
           </div>
         )}
 
-        {/* AI-Generated Suggestions */}
         {suggestionsLoading ? (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Smart Suggestions:</p>
@@ -133,7 +418,6 @@ export default function AIAssistant() {
           </div>
         ) : null}
 
-        {/* Chat History */}
         {chatHistory.length > 0 && (
           <div className="flex-1 space-y-2 sm:space-y-3 overflow-y-auto max-h-48 sm:max-h-64">
             {chatHistory.map((msg, index) => (
@@ -152,13 +436,14 @@ export default function AIAssistant() {
                 <p className="text-xs font-medium mb-1 text-muted-foreground">
                   {msg.role === 'user' ? 'You' : 'TradieTrack AI'}
                 </p>
-                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                {msg.role === 'assistant' ? renderMessageContent(msg) : (
+                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                )}
               </div>
             ))}
           </div>
         )}
 
-        {/* Chat Input */}
         <form onSubmit={handleSendMessage} className="flex gap-2 mt-auto">
           <Input
             value={chatMessage}

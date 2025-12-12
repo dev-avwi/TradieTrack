@@ -356,6 +356,35 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         required: ["quotes", "summary"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "show_invoices_with_links",
+      description: "Show a list of invoices with clickable links to view each one. Use when tradie asks about invoices, overdue payments, or outstanding amounts.",
+      parameters: {
+        type: "object",
+        properties: {
+          invoices: { 
+            type: "array", 
+            description: "Array of invoices to show",
+            items: {
+              type: "object",
+              properties: {
+                invoiceId: { type: "string", description: "The invoice ID" },
+                invoiceNumber: { type: "string", description: "Invoice number (optional)" },
+                clientName: { type: "string", description: "Client name" },
+                amount: { type: "number", description: "Invoice amount" },
+                status: { type: "string", description: "Invoice status (sent, overdue, paid, etc.)" },
+                daysPastDue: { type: "number", description: "Days past due if overdue (optional)" }
+              }
+            }
+          },
+          summary: { type: "string", description: "Brief summary of the invoices" }
+        },
+        required: ["invoices", "summary"]
+      }
+    }
   }
 ];
 
@@ -754,6 +783,46 @@ You can do ALL of these for ${context.tradieFirstName}:
             response: followUpPrompt,
             richContent: quoteLinks,
             suggestedFollowups: ['Follow up on oldest quote', 'Create new quote', 'View all quotes']
+          } as RichChatResponse;
+
+        case "show_invoices_with_links":
+          const invoicesList = functionArgs.invoices || [];
+          const invoiceLinks: RichContentItem[] = invoicesList.map((invoice: any) => ({
+            type: 'invoice_link' as const,
+            id: invoice.invoiceId,
+            label: `${invoice.invoiceNumber || 'Invoice'} - ${invoice.clientName}`,
+            status: invoice.status,
+            url: `/invoices/${invoice.invoiceId}`
+          }));
+          
+          // Add action button for sending payment reminder if overdue
+          const overdueInvoice = invoicesList.find((i: any) => i.status?.toLowerCase() === 'overdue' || i.daysPastDue > 0);
+          if (overdueInvoice) {
+            invoiceLinks.push({
+              type: 'action_button' as const,
+              id: 'send_reminder',
+              label: `Send payment reminder to ${overdueInvoice.clientName}`,
+              action: {
+                type: 'payment_reminder',
+                data: { 
+                  invoiceId: overdueInvoice.invoiceId, 
+                  clientName: overdueInvoice.clientName,
+                  amount: overdueInvoice.amount,
+                  daysPastDue: overdueInvoice.daysPastDue || 0
+                },
+                confirmationRequired: true
+              }
+            });
+          }
+          
+          followUpPrompt = `${functionArgs.summary}\n\n${invoicesList.map((invoice: any) => 
+            `• **${invoice.invoiceNumber || 'Invoice'}** - ${invoice.clientName}: $${invoice.amount.toFixed(2)}${invoice.daysPastDue ? ` (${invoice.daysPastDue} days overdue)` : ''} - ${invoice.status}`
+          ).join('\n')}\n\nTap any invoice to view or send a reminder.`;
+          
+          return {
+            response: followUpPrompt,
+            richContent: invoiceLinks,
+            suggestedFollowups: ['Send reminder to oldest overdue', 'View all invoices', 'Create new invoice']
           } as RichChatResponse;
       }
 

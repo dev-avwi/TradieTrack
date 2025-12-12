@@ -1357,6 +1357,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Smart Notifications - role-based reminders and alerts
+  app.get("/api/ai/notifications", requireAuth, async (req: any, res) => {
+    try {
+      const context = await gatherAIContext(req.userId, storage);
+      const notifications: any[] = [];
+      const now = new Date();
+
+      // Overdue invoices - high priority
+      for (const invoice of context.overdueInvoicesList.slice(0, 3)) {
+        notifications.push({
+          id: `overdue-invoice-${invoice.id}`,
+          type: 'alert',
+          title: 'Payment Overdue',
+          message: `${invoice.clientName} owes $${invoice.amount.toFixed(2)} - ${invoice.daysPastDue} days overdue`,
+          entityType: 'invoice',
+          entityId: String(invoice.id),
+          priority: invoice.daysPastDue > 30 ? 'high' : 'medium',
+          timestamp: now,
+        });
+      }
+
+      // Pending quotes older than 7 days - medium priority
+      for (const quote of context.pendingQuotes.filter(q => q.createdDaysAgo >= 7).slice(0, 2)) {
+        notifications.push({
+          id: `pending-quote-${quote.id}`,
+          type: 'reminder',
+          title: 'Quote Follow-up',
+          message: `${quote.clientName}'s quote ($${quote.total.toFixed(2)}) sent ${quote.createdDaysAgo} days ago - worth a follow-up`,
+          entityType: 'quote',
+          entityId: String(quote.id),
+          priority: quote.createdDaysAgo > 14 ? 'high' : 'medium',
+          timestamp: now,
+        });
+      }
+
+      // Today's jobs reminder
+      if (context.todaysJobs.length > 0) {
+        const firstJob = context.todaysJobs[0];
+        notifications.push({
+          id: `todays-jobs`,
+          type: 'suggestion',
+          title: `${context.todaysJobs.length} Job${context.todaysJobs.length > 1 ? 's' : ''} Today`,
+          message: `First up: ${firstJob.title} for ${firstJob.clientName}${firstJob.time ? ` at ${firstJob.time}` : ''}`,
+          entityType: 'job',
+          entityId: String(firstJob.id),
+          priority: 'medium',
+          timestamp: now,
+        });
+      }
+
+      // Jobs done but not invoiced
+      const doneJobs = context.todaysJobs.filter(j => j.status === 'done');
+      if (doneJobs.length > 0) {
+        notifications.push({
+          id: `invoice-reminder`,
+          type: 'suggestion',
+          title: 'Ready to Invoice',
+          message: `${doneJobs.length} completed job${doneJobs.length > 1 ? 's' : ''} waiting for invoices`,
+          entityType: 'job',
+          entityId: String(doneJobs[0].id),
+          priority: 'low',
+          timestamp: now,
+        });
+      }
+
+      res.json({ notifications });
+    } catch (error) {
+      console.error("Error generating AI notifications:", error);
+      res.status(500).json({ error: "Failed to generate notifications" });
+    }
+  });
+
   app.post("/api/ai/chat", requireAuth, async (req: any, res) => {
     try {
       const { message } = req.body;
