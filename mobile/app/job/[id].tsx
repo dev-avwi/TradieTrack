@@ -31,6 +31,7 @@ import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecord
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
 import SmartActionsPanel, { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
+import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from '../../src/components/JobWorkflowComponents';
 
 interface Job {
   id: string;
@@ -2018,6 +2019,18 @@ export default function JobDetailScreen() {
           )}
         </View>
 
+        {/* Job Progress Bar - Visual workflow indicator */}
+        <JobProgressBar status={job.status} />
+
+        {/* Next Action Card - CTA when job is done without invoice */}
+        <NextActionCard
+          jobStatus={job.status}
+          hasInvoice={!!invoice}
+          hasQuote={!!quote}
+          onCreateInvoice={() => router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+          onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+        />
+
         {/* Address Card */}
         {job.address && (
           <TouchableOpacity 
@@ -2564,87 +2577,26 @@ export default function JobDetailScreen() {
           </View>
         )}
 
-        {/* Invoice Card - Show if job has an invoice */}
-        {invoice && (
-          <View style={styles.documentCard}>
-            <View style={styles.documentHeader}>
-              <View style={[styles.documentIconContainer, { backgroundColor: `${colors.invoiced}15` }]}>
-                <Feather name="file-text" size={iconSizes.xl} color={colors.invoiced} />
-              </View>
-              <View style={styles.documentInfo}>
-                <Text style={styles.documentTitle}>Invoice #{invoice.number}</Text>
-                <Text style={styles.documentNumber}>{invoice.title}</Text>
-              </View>
-              <View style={[styles.documentStatusBadge, { backgroundColor: `${getInvoiceStatusColor(invoice.status)}20` }]}>
-                <Text style={[styles.documentStatusText, { color: getInvoiceStatusColor(invoice.status) }]}>
-                  {invoice.status}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.documentDetails}>
-              <Text style={styles.documentAmount}>{formatCurrency(invoice.total)}</Text>
-              <TouchableOpacity 
-                style={styles.documentViewButton}
-                onPress={handleViewInvoice}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.documentViewButtonText}>View Invoice</Text>
-                <Feather name="chevron-right" size={16} color={colors.primaryForeground} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Quote Card - Show if job has an associated quote */}
-        {quote && (
-          <View style={styles.documentCard}>
-            <View style={styles.documentHeader}>
-              <View style={[styles.documentIconContainer, { backgroundColor: `${colors.scheduled}15` }]}>
-                <Feather name="file" size={iconSizes.xl} color={colors.scheduled} />
-              </View>
-              <View style={styles.documentInfo}>
-                <Text style={styles.documentTitle}>Quote #{quote.number}</Text>
-                <Text style={styles.documentNumber}>{quote.title}</Text>
-              </View>
-              <View style={[styles.documentStatusBadge, { backgroundColor: `${quote.status === 'accepted' ? colors.success : colors.scheduled}20` }]}>
-                <Text style={[styles.documentStatusText, { color: quote.status === 'accepted' ? colors.success : colors.scheduled }]}>
-                  {quote.status}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.documentDetails}>
-              <Text style={styles.documentAmount}>{formatCurrency(quote.total)}</Text>
-              <View style={{ flexDirection: 'row' }}>
-                {/* Quote-to-Invoice action for accepted quotes */}
-                {quote.status === 'accepted' && !invoice && (
-                  <TouchableOpacity 
-                    style={[styles.documentViewButton, { backgroundColor: colors.success, marginRight: 8 }]}
-                    onPress={handleConvertToInvoice}
-                    disabled={isConvertingToInvoice}
-                    activeOpacity={0.7}
-                  >
-                    {isConvertingToInvoice ? (
-                      <ActivityIndicator size="small" color={colors.primaryForeground} />
-                    ) : (
-                      <>
-                        <Text style={styles.documentViewButtonText}>Create Invoice</Text>
-                        <Feather name="arrow-right" size={16} color={colors.primaryForeground} />
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity 
-                  style={[styles.documentViewButton, { backgroundColor: colors.scheduled }]}
-                  onPress={handleViewQuote}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.documentViewButtonText}>View Quote</Text>
-                  <Feather name="chevron-right" size={16} color={colors.primaryForeground} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
+        {/* Linked Documents Card - Unified quote/invoice section matching web */}
+        <LinkedDocumentsCard
+          linkedQuote={quote ? {
+            id: quote.id,
+            status: quote.status,
+            total: quote.total,
+            quoteNumber: quote.number,
+          } : null}
+          linkedInvoice={invoice ? {
+            id: invoice.id,
+            status: invoice.status,
+            total: invoice.total,
+            invoiceNumber: invoice.number,
+          } : null}
+          jobStatus={job.status}
+          onViewQuote={handleViewQuote}
+          onViewInvoice={handleViewInvoice}
+          onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+          onCreateInvoice={() => router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+        />
 
         {/* Job Costing Section */}
         {(estimatedHours > 0 || estimatedCost > 0 || actualHours > 0) && (
