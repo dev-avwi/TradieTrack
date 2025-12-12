@@ -11,10 +11,33 @@ export interface SubscriptionLimitError {
   usageInfo: UsageCounts;
 }
 
+// Next Action types
+export interface NextAction {
+  action: string;
+  priority: 'high' | 'medium' | 'low';
+  actionType: string;
+  reason: string;
+}
+
 export function useJobs() {
   return useQuery({
     queryKey: ["/api/jobs"],
   });
+}
+
+// Fetch next actions for all jobs (batch)
+export function useJobNextActions() {
+  const query = useQuery<Record<string, NextAction>>({
+    queryKey: ["/api/jobs/next-actions"],
+    staleTime: 5 * 60 * 1000, // 5 minutes - next actions don't change that frequently
+  });
+  
+  return {
+    ...query,
+    data: query.data ?? {},
+    isLoading: query.isLoading,
+    isError: query.isError,
+  };
 }
 
 export function useRecentJobs() {
@@ -61,6 +84,7 @@ export function useCreateJob() {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/jobs/today"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
       
       // Invalidate subscription usage to update job counts
       queryClient.invalidateQueries({ queryKey: ["/api/subscription/usage"] });
@@ -97,6 +121,8 @@ export function useUpdateJob() {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/jobs/today"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
+      // Refresh next actions when job status changes
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
     },
   });
 }

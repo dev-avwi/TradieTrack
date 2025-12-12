@@ -38,8 +38,10 @@ import {
   Check,
   DollarSign,
   Percent,
-  Briefcase
+  Briefcase,
+  Sparkles
 } from "lucide-react";
+import AIQuoteGenerator from "@/components/AIQuoteGenerator";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description required"),
@@ -85,6 +87,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   const [templateSheetOpen, setTemplateSheetOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | undefined>(urlJobId || undefined);
   const [jobAutoLoaded, setJobAutoLoaded] = useState(false);
+  const [aiQuoteOpen, setAiQuoteOpen] = useState(false);
 
   const { data: userCheck } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -634,6 +637,17 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                   <Button
                     type="button"
                     variant="outline"
+                    onClick={() => setAiQuoteOpen(true)}
+                    className="h-12 px-4 rounded-xl press-scale gap-2 text-primary border-primary/30 hover:bg-primary/5"
+                    data-testid="button-ai-generate"
+                    title="Generate quote items with AI"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    AI
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setCatalogOpen(true)}
                     className="h-12 w-12 rounded-xl press-scale"
                     data-testid="button-from-catalog"
@@ -938,6 +952,35 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
         onOpenChange={setCatalogOpen}
         onSelectItem={handleCatalogSelect}
         tradeType={userCheck?.user?.tradeType}
+      />
+
+      {/* AI Quote Generator Modal */}
+      <AIQuoteGenerator
+        open={aiQuoteOpen}
+        onOpenChange={setAiQuoteOpen}
+        jobId={selectedJobId}
+        onApplyItems={(items, title, description) => {
+          // Add AI-generated items to the form
+          items.forEach(item => {
+            append({
+              description: item.description,
+              quantity: item.quantity.toString(),
+              unitPrice: item.unitPrice.toString(),
+              cost: "",
+            });
+          });
+          // Update title and description if empty
+          if (title && !form.getValues('title')) {
+            form.setValue('title', title);
+          }
+          if (description && !form.getValues('description')) {
+            form.setValue('description', description);
+          }
+          toast({
+            title: "Items added",
+            description: `${items.length} items added from AI generation`,
+          });
+        }}
       />
     </div>
   );

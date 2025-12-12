@@ -1949,6 +1949,237 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================
+  // STANDOUT AI FEATURES
+  // ============================
+
+  // AI Quote Generator from Photos + Voice - THE KILLER FEATURE
+  app.post("/api/ai/generate-quote", requireAuth, async (req: any, res) => {
+    try {
+      const { jobId, photoUrls, voiceTranscription, jobDescription } = req.body;
+      
+      // Get business settings for trade type
+      const businessSettings = await storage.getBusinessSettings(req.userId);
+      const tradeType = businessSettings?.tradeName || 'Trade';
+      const businessName = businessSettings?.businessName || 'My Business';
+      
+      // If jobId provided, get job details
+      let description = jobDescription;
+      let photos: string[] = photoUrls || [];
+      
+      if (jobId) {
+        const job = await storage.getJob(jobId, req.userId);
+        if (job) {
+          description = description || job.description || job.title;
+          // Get job photos if not provided
+          if (!photos.length && (job as any).photos) {
+            photos = (job as any).photos.map((p: any) => p.url);
+          }
+        }
+      }
+      
+      const { generateQuoteFromMedia } = await import('./ai');
+      
+      const result = await generateQuoteFromMedia({
+        photoUrls: photos,
+        voiceTranscription,
+        jobDescription: description,
+        tradeType,
+        businessName,
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error generating AI quote:", error);
+      res.status(500).json({ error: "Failed to generate quote. Please try again." });
+    }
+  });
+
+  // Instant Job Parser - Create job from pasted text (SMS, email, message)
+  app.post("/api/ai/parse-job-text", requireAuth, async (req: any, res) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text || typeof text !== 'string' || text.trim().length < 10) {
+        return res.status(400).json({ error: "Please provide at least 10 characters of text to parse." });
+      }
+      
+      // Get business settings for trade type
+      const businessSettings = await storage.getBusinessSettings(req.userId);
+      const tradeType = businessSettings?.tradeName || 'Trade';
+      
+      const { parseJobFromText } = await import('./ai');
+      
+      const result = await parseJobFromText(text.trim(), tradeType);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error parsing job text:", error);
+      res.status(500).json({ error: "Failed to parse text. Please try again." });
+    }
+  });
+
+  // Get Next Action for a Job - Shows what to do next
+  app.get("/api/jobs/:id/next-action", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const job = await storage.getJob(req.params.id, userContext.effectiveUserId);
+      
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      // Get related data
+      const quotes = await storage.getQuotes(userContext.effectiveUserId);
+      const invoices = await storage.getInvoices(userContext.effectiveUserId);
+      const clients = await storage.getClients(userContext.effectiveUserId);
+      
+      const jobQuotes = quotes.filter(q => q.jobId === job.id);
+      const jobInvoices = invoices.filter(i => i.jobId === job.id);
+      const client = clients.find(c => c.id === job.clientId);
+      
+      const hasQuote = jobQuotes.length > 0;
+      const hasInvoice = jobInvoices.length > 0;
+      const quoteStatus = hasQuote ? jobQuotes[0].status : undefined;
+      const invoiceStatus = hasInvoice ? jobInvoices[0].status : undefined;
+      
+      const daysSinceCreated = Math.floor((Date.now() - new Date(job.createdAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24));
+      const daysSinceLastUpdate = Math.floor((Date.now() - new Date(job.updatedAt || job.createdAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24));
+      
+      const { generateJobNextAction } = await import('./ai');
+      
+      const nextAction = await generateJobNextAction({
+        jobStatus: job.status,
+        jobTitle: job.title,
+        clientName: client?.name || 'Unknown',
+        hasQuote,
+        quoteStatus,
+        hasInvoice,
+        invoiceStatus,
+        daysSinceCreated,
+        daysSinceLastUpdate,
+        hasPhotos: !!((job as any).photos?.length),
+        scheduledAt: job.scheduledAt,
+        completedAt: job.completedAt,
+      });
+      
+      res.json(nextAction);
+    } catch (error) {
+      console.error("Error getting job next action:", error);
+      res.status(500).json({ error: "Failed to get next action" });
+    }
+  });
+
+  // Batch get Next Actions for all jobs (for job list view)
+  app.get("/api/jobs/next-actions", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const jobs = await storage.getJobs(userContext.effectiveUserId);
+      const quotes = await storage.getQuotes(userContext.effectiveUserId);
+      const invoices = await storage.getInvoices(userContext.effectiveUserId);
+      const clients = await storage.getClients(userContext.effectiveUserId);
+      
+      const { generateJobNextAction } = await import('./ai');
+      
+      const nextActions: Record<string, any> = {};
+      
+      // Process active jobs only (not invoiced)
+      const activeJobs = jobs.filter(j => j.status !== 'invoiced').slice(0, 50);
+      
+      for (const job of activeJobs) {
+        const jobQuotes = quotes.filter(q => q.jobId === job.id);
+        const jobInvoices = invoices.filter(i => i.jobId === job.id);
+        const client = clients.find(c => c.id === job.clientId);
+        
+        const hasQuote = jobQuotes.length > 0;
+        const hasInvoice = jobInvoices.length > 0;
+        const quoteStatus = hasQuote ? jobQuotes[0].status : undefined;
+        const invoiceStatus = hasInvoice ? jobInvoices[0].status : undefined;
+        
+        const daysSinceCreated = Math.floor((Date.now() - new Date(job.createdAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24));
+        const daysSinceLastUpdate = Math.floor((Date.now() - new Date(job.updatedAt || job.createdAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24));
+        
+        nextActions[job.id] = await generateJobNextAction({
+          jobStatus: job.status,
+          jobTitle: job.title,
+          clientName: client?.name || 'Unknown',
+          hasQuote,
+          quoteStatus,
+          hasInvoice,
+          invoiceStatus,
+          daysSinceCreated,
+          daysSinceLastUpdate,
+          hasPhotos: !!((job as any).photos?.length),
+          scheduledAt: job.scheduledAt,
+          completedAt: job.completedAt,
+        });
+      }
+      
+      res.json(nextActions);
+    } catch (error) {
+      console.error("Error getting job next actions:", error);
+      res.status(500).json({ error: "Failed to get next actions" });
+    }
+  });
+
+  // Job Profitability - Simple profit/loss indicator
+  app.get("/api/jobs/:id/profit", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const job = await storage.getJob(req.params.id, userContext.effectiveUserId);
+      
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      // Get invoices for this job
+      const invoices = await storage.getInvoices(userContext.effectiveUserId);
+      const jobInvoices = invoices.filter(i => i.jobId === job.id && i.status === 'paid');
+      const invoiceTotal = jobInvoices.reduce((sum, i) => sum + (parseFloat(i.total || '0')), 0);
+      
+      // Get expenses for this job
+      const expenses = await storage.getExpenses(userContext.effectiveUserId);
+      const jobExpenses = expenses.filter(e => e.jobId === job.id);
+      const materialsCost = jobExpenses.filter(e => e.category === 'materials').reduce((sum, e) => sum + parseFloat(e.amount), 0);
+      const otherExpenses = jobExpenses.filter(e => e.category !== 'materials').reduce((sum, e) => sum + parseFloat(e.amount), 0);
+      
+      // Get time entries for labour cost
+      const timeEntries = await storage.getTimeEntriesByJob(job.id, userContext.effectiveUserId);
+      const totalMinutes = timeEntries.reduce((sum, t) => {
+        if (t.startTime && t.endTime) {
+          return sum + Math.floor((new Date(t.endTime).getTime() - new Date(t.startTime).getTime()) / 60000);
+        }
+        return sum;
+      }, 0);
+      const hourlyRate = 80; // Default rate
+      const labourCost = (totalMinutes / 60) * hourlyRate;
+      
+      const { calculateJobProfit } = await import('./ai');
+      
+      const profitData = calculateJobProfit({
+        invoiceTotal,
+        labourCost,
+        materialsCost,
+        otherExpenses,
+      });
+      
+      res.json({
+        ...profitData,
+        revenue: invoiceTotal,
+        costs: {
+          labour: labourCost,
+          materials: materialsCost,
+          other: otherExpenses,
+          total: labourCost + materialsCost + otherExpenses,
+        },
+        hoursWorked: totalMinutes / 60,
+      });
+    } catch (error) {
+      console.error("Error calculating job profit:", error);
+      res.status(500).json({ error: "Failed to calculate profit" });
+    }
+  });
+
   // Business Settings Routes
   app.get("/api/business-settings", requireAuth, async (req: any, res) => {
     try {

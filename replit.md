@@ -26,6 +26,9 @@ Key architectural features include:
 - **Mobile App**: A React Native mobile app (Expo SDK 52) with full API integration, Zustand for state management, and an SQLite-based offline mode with background sync and conflict resolution. It features permission-aware navigation and dedicated stores for auth, jobs, clients, quotes, and invoices.
 
 ### Recent Changes (December 2025)
+- **AI Quote Generator**: Generate quote line items from photos/voice/description using GPT-4o vision. Features JSON parse validation, line item normalization (clamps quantities/prices), and server-side total recalculation (subtotal + GST + grand total). Integrated into LiveQuoteEditor with Sparkles AI button.
+- **Instant Job Parser**: Create jobs from pasted text (SMS, email, message) via `/api/ai/parse-job-text`. Extracts client name, description, address, urgency. SessionStorage uses scoped keys with 5-minute expiry for security.
+- **Next-Action Indicators**: Smart "what to do next" suggestions on job cards and table view. Batch endpoint `/api/jobs/next-actions` returns priority-colored guidance (high/medium/low). Cache invalidates on job create/update.
 - **Mobile Feature Parity Components**: Four new standalone components for web-mobile parity:
   - `DragDropDispatchBoard.tsx`: Gesture-based drag-and-drop dispatch board with timeline grid, draggable job cards, and team member columns (integrated into dispatch-board.tsx with list/timeline toggle)
   - `EmailComposeModal.tsx`: AI-powered email compose modal with templates, preview, and AI suggestions

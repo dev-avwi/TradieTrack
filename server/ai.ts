@@ -1213,3 +1213,407 @@ Suggest the best times and team members for each unscheduled job. Consider locat
     };
   }
 }
+
+// ============================
+// STANDOUT FEATURES - AI Quote Generator, Next Actions, Instant Job Parser
+// ============================
+
+export interface QuoteLineItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  category: 'labour' | 'materials' | 'equipment' | 'other';
+}
+
+export interface AIQuoteFromMediaResult {
+  success: boolean;
+  jobType: string;
+  description: string;
+  lineItems: QuoteLineItem[];
+  totalEstimate: number;
+  gstAmount: number;
+  grandTotal: number;
+  confidence: 'high' | 'medium' | 'low';
+  notes: string[];
+  suggestedTitle: string;
+}
+
+/**
+ * AI Quote Generator from Photos + Voice
+ * Analyzes job photos and voice transcription to auto-generate quote line items
+ */
+export async function generateQuoteFromMedia(params: {
+  photoUrls?: string[];
+  voiceTranscription?: string;
+  jobDescription?: string;
+  tradeType: string;
+  businessName: string;
+}): Promise<AIQuoteFromMediaResult> {
+  const { photoUrls = [], voiceTranscription, jobDescription, tradeType, businessName } = params;
+
+  const systemPrompt = `You are an expert ${tradeType} estimator for ${businessName} in Australia. 
+Analyze the provided information (photos description and/or voice notes) to generate accurate quote line items.
+
+PRICING GUIDELINES FOR AUSTRALIAN ${tradeType.toUpperCase()}:
+- Labour rates: $80-150/hour depending on complexity
+- Materials: Use current Australian trade supplier pricing
+- Call-out/minimum fee: $80-150 for small jobs
+- Include travel if applicable
+
+Always:
+- Use Australian English
+- Include all materials and labour separately
+- Be specific with item descriptions
+- Round to nearest $5 for line items
+- Include GST (10%) calculation
+- Err on the side of realistic pricing (not too cheap, not too expensive)
+
+Return a JSON object with this exact structure:
+{
+  "jobType": "Brief job type (e.g., 'Hot Water System Replacement')",
+  "description": "Professional job description for the quote",
+  "suggestedTitle": "Short title for the quote (max 50 chars)",
+  "lineItems": [
+    {
+      "description": "Item description",
+      "quantity": 1,
+      "unitPrice": 100.00,
+      "total": 100.00,
+      "category": "labour|materials|equipment|other"
+    }
+  ],
+  "totalEstimate": 500.00,
+  "gstAmount": 50.00,
+  "grandTotal": 550.00,
+  "confidence": "high|medium|low",
+  "notes": ["Any important notes", "Assumptions made"]
+}`;
+
+  let userPrompt = `Please analyze this job and generate quote line items:\n\n`;
+  userPrompt += `TRADE: ${tradeType}\n\n`;
+
+  if (jobDescription) {
+    userPrompt += `JOB DESCRIPTION:\n${jobDescription}\n\n`;
+  }
+
+  if (voiceTranscription) {
+    userPrompt += `VOICE NOTE FROM TRADIE:\n"${voiceTranscription}"\n\n`;
+  }
+
+  if (photoUrls.length > 0) {
+    userPrompt += `PHOTOS: ${photoUrls.length} photo(s) provided showing the job site/issue.\n`;
+    userPrompt += `(Note: Describe what you would typically see for this type of job based on the description)\n\n`;
+  }
+
+  userPrompt += `Generate detailed quote line items with realistic Australian pricing.`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1500,
+      response_format: { type: "json_object" }
+    });
+
+    const responseText = completion.choices[0]?.message?.content || '{}';
+    
+    let parsed: any;
+    try {
+      parsed = JSON.parse(responseText);
+    } catch (parseErr) {
+      console.error('Failed to parse AI response:', responseText);
+      return {
+        success: false,
+        jobType: 'Unknown',
+        description: '',
+        suggestedTitle: 'Quote',
+        lineItems: [],
+        totalEstimate: 0,
+        gstAmount: 0,
+        grandTotal: 0,
+        confidence: 'low',
+        notes: ['AI response was not valid JSON. Please try again.']
+      };
+    }
+
+    // Validate and normalize line items
+    const lineItems: QuoteLineItem[] = (parsed.lineItems || [])
+      .filter((item: any) => item && typeof item === 'object' && item.description)
+      .map((item: any) => ({
+        description: String(item.description || ''),
+        quantity: Math.max(1, Number(item.quantity) || 1),
+        unitPrice: Math.max(0, Number(item.unitPrice) || 0),
+        total: Math.max(0, Number(item.total) || (Number(item.quantity || 1) * Number(item.unitPrice || 0))),
+        category: ['labour', 'materials', 'equipment', 'other'].includes(item.category) 
+          ? item.category 
+          : 'other'
+      }));
+
+    // Recalculate totals server-side to ensure accuracy
+    const calculatedSubtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
+    const calculatedGst = calculatedSubtotal * 0.10;
+    const calculatedTotal = calculatedSubtotal + calculatedGst;
+
+    return {
+      success: true,
+      jobType: String(parsed.jobType || 'General Work'),
+      description: String(parsed.description || ''),
+      suggestedTitle: String(parsed.suggestedTitle || parsed.jobType || 'Quote').substring(0, 50),
+      lineItems,
+      totalEstimate: Math.round(calculatedSubtotal * 100) / 100,
+      gstAmount: Math.round(calculatedGst * 100) / 100,
+      grandTotal: Math.round(calculatedTotal * 100) / 100,
+      confidence: ['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'medium',
+      notes: Array.isArray(parsed.notes) ? parsed.notes.map(String).slice(0, 5) : []
+    };
+  } catch (error) {
+    console.error('AI quote generation error:', error);
+    return {
+      success: false,
+      jobType: 'Unknown',
+      description: '',
+      suggestedTitle: 'Quote',
+      lineItems: [],
+      totalEstimate: 0,
+      gstAmount: 0,
+      grandTotal: 0,
+      confidence: 'low',
+      notes: ['AI quote generation failed. Please enter items manually.']
+    };
+  }
+}
+
+export interface NextAction {
+  action: string;
+  priority: 'high' | 'medium' | 'low';
+  actionType: 'send_invoice' | 'send_quote' | 'follow_up' | 'schedule' | 'complete' | 'collect_payment' | 'add_photos' | 'send_confirmation';
+  reason: string;
+}
+
+/**
+ * Generate "Next Best Action" suggestions for a job
+ * Shows tradies exactly what to do next
+ */
+export async function generateJobNextAction(params: {
+  jobStatus: string;
+  jobTitle: string;
+  clientName: string;
+  hasQuote: boolean;
+  quoteStatus?: string;
+  hasInvoice: boolean;
+  invoiceStatus?: string;
+  daysSinceCreated: number;
+  daysSinceLastUpdate: number;
+  hasPhotos: boolean;
+  scheduledAt?: Date | null;
+  completedAt?: Date | null;
+}): Promise<NextAction> {
+  const {
+    jobStatus,
+    jobTitle,
+    clientName,
+    hasQuote,
+    quoteStatus,
+    hasInvoice,
+    invoiceStatus,
+    daysSinceCreated,
+    daysSinceLastUpdate,
+    hasPhotos,
+    scheduledAt,
+    completedAt
+  } = params;
+
+  // Rule-based next action logic (fast, no AI call needed)
+  
+  // Job is done but no invoice
+  if (jobStatus === 'done' && !hasInvoice) {
+    return {
+      action: 'Create & send invoice',
+      priority: 'high',
+      actionType: 'send_invoice',
+      reason: 'Job completed - time to get paid!'
+    };
+  }
+
+  // Job is done, has invoice but unpaid
+  if (jobStatus === 'done' && hasInvoice && invoiceStatus !== 'paid') {
+    const isOverdue = invoiceStatus === 'overdue';
+    return {
+      action: isOverdue ? 'Chase payment' : 'Send payment reminder',
+      priority: isOverdue ? 'high' : 'medium',
+      actionType: 'collect_payment',
+      reason: isOverdue ? 'Invoice is overdue!' : 'Invoice sent, awaiting payment'
+    };
+  }
+
+  // Job is pending with no schedule
+  if (jobStatus === 'pending' && !scheduledAt) {
+    return {
+      action: 'Schedule this job',
+      priority: 'medium',
+      actionType: 'schedule',
+      reason: 'Job needs a date and time'
+    };
+  }
+
+  // Job is scheduled for today or past - should be in progress
+  if (jobStatus === 'scheduled' && scheduledAt) {
+    const isToday = new Date(scheduledAt).toDateString() === new Date().toDateString();
+    const isPast = new Date(scheduledAt) < new Date();
+    if (isToday || isPast) {
+      return {
+        action: 'Start job / Mark in progress',
+        priority: 'high',
+        actionType: 'complete',
+        reason: isToday ? 'Job scheduled for today' : 'Job was scheduled - update status'
+      };
+    }
+  }
+
+  // Job in progress - prompt to complete
+  if (jobStatus === 'in_progress') {
+    return {
+      action: hasPhotos ? 'Mark job complete' : 'Add photos & complete',
+      priority: 'medium',
+      actionType: hasPhotos ? 'complete' : 'add_photos',
+      reason: hasPhotos ? 'Ready to mark as done' : 'Add job photos before completing'
+    };
+  }
+
+  // Quote sent but not accepted
+  if (hasQuote && quoteStatus === 'sent' && daysSinceLastUpdate > 3) {
+    return {
+      action: 'Follow up on quote',
+      priority: 'medium',
+      actionType: 'follow_up',
+      reason: `Quote sent ${daysSinceLastUpdate} days ago`
+    };
+  }
+
+  // Default for pending/new jobs
+  if (jobStatus === 'pending' && !hasQuote) {
+    return {
+      action: 'Create quote',
+      priority: 'medium',
+      actionType: 'send_quote',
+      reason: 'Send quote to confirm the job'
+    };
+  }
+
+  // Default fallback
+  return {
+    action: 'Review job details',
+    priority: 'low',
+    actionType: 'follow_up',
+    reason: 'Check if any updates needed'
+  };
+}
+
+export interface ParsedJobFromText {
+  success: boolean;
+  clientName?: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  address?: string;
+  description: string;
+  suggestedTitle: string;
+  urgency: 'urgent' | 'normal' | 'flexible';
+  extractedDetails: string[];
+}
+
+/**
+ * Instant Job Creation from Text
+ * Parse a pasted SMS, email, or message to extract job details
+ */
+export async function parseJobFromText(text: string, tradeType: string): Promise<ParsedJobFromText> {
+  const systemPrompt = `You are a smart assistant for a ${tradeType} business in Australia.
+Parse the message below to extract job details. Look for:
+- Client name (person's name)
+- Phone number (Australian format: 04XX XXX XXX or similar)
+- Email address
+- Address/location (Australian suburb/street format)
+- Job description/issue
+- Urgency indicators (ASAP, urgent, emergency, when available, etc.)
+
+Return a JSON object:
+{
+  "success": true,
+  "clientName": "Name if found or null",
+  "clientPhone": "Phone if found or null",
+  "clientEmail": "Email if found or null",
+  "address": "Address if found or null",
+  "description": "Clear job description extracted from the message",
+  "suggestedTitle": "Short title for the job (max 40 chars)",
+  "urgency": "urgent|normal|flexible",
+  "extractedDetails": ["List of", "key details", "found in message"]
+}`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Parse this message for a ${tradeType} job:\n\n"${text}"` }
+      ],
+      temperature: 0.3,
+      max_tokens: 500,
+      response_format: { type: "json_object" }
+    });
+
+    const responseText = completion.choices[0]?.message?.content || '';
+    const parsed = JSON.parse(responseText);
+
+    return {
+      success: true,
+      clientName: parsed.clientName || undefined,
+      clientPhone: parsed.clientPhone || undefined,
+      clientEmail: parsed.clientEmail || undefined,
+      address: parsed.address || undefined,
+      description: parsed.description || text.substring(0, 200),
+      suggestedTitle: parsed.suggestedTitle || 'New Job',
+      urgency: parsed.urgency || 'normal',
+      extractedDetails: parsed.extractedDetails || []
+    };
+  } catch (error) {
+    console.error('Text parsing error:', error);
+    // Fallback: basic extraction
+    const phoneMatch = text.match(/\b0[45]\d{2}[\s-]?\d{3}[\s-]?\d{3}\b/);
+    const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
+    
+    return {
+      success: true,
+      clientPhone: phoneMatch?.[0],
+      clientEmail: emailMatch?.[0],
+      description: text.substring(0, 300),
+      suggestedTitle: 'New Job Enquiry',
+      urgency: text.toLowerCase().includes('urgent') || text.toLowerCase().includes('asap') ? 'urgent' : 'normal',
+      extractedDetails: []
+    };
+  }
+}
+
+/**
+ * Calculate job profitability with simple indicators
+ */
+export function calculateJobProfit(params: {
+  invoiceTotal: number;
+  labourCost: number;
+  materialsCost: number;
+  otherExpenses: number;
+}): { profit: number; margin: number; status: 'profitable' | 'break_even' | 'loss' } {
+  const { invoiceTotal, labourCost, materialsCost, otherExpenses } = params;
+  const totalCosts = labourCost + materialsCost + otherExpenses;
+  const profit = invoiceTotal - totalCosts;
+  const margin = invoiceTotal > 0 ? (profit / invoiceTotal) * 100 : 0;
+
+  let status: 'profitable' | 'break_even' | 'loss' = 'profitable';
+  if (margin < 5) status = 'break_even';
+  if (profit < 0) status = 'loss';
+
+  return { profit, margin, status };
+}

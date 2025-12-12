@@ -9,12 +9,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Briefcase, User, Clock, MapPin, MoreVertical, Edit, FileText, CheckCircle, AlertCircle, LayoutGrid, List, ChevronRight, Play, ArrowRight } from "lucide-react";
+import { Plus, Briefcase, User, Clock, MapPin, MoreVertical, Edit, FileText, CheckCircle, AlertCircle, LayoutGrid, List, ChevronRight, Play, ArrowRight, Clipboard, Lightbulb } from "lucide-react";
+import PasteJobModal from "./PasteJobModal";
 import { PageShell, PageHeader, SectionTitle } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
 import { FilterChips, SearchBar } from "@/components/ui/filter-chips";
 import { DataTable, ColumnDef, StatusBadge } from "@/components/ui/data-table";
-import { useJobs, useUpdateJob, useRecentJobs } from "@/hooks/use-jobs";
+import { useJobs, useUpdateJob, useRecentJobs, useJobNextActions, type NextAction } from "@/hooks/use-jobs";
 import { useGenerateQuoteFromJob } from "@/hooks/use-quotes";
 import { useToast } from "@/hooks/use-toast";
 import { useAppMode } from "@/hooks/use-app-mode";
@@ -48,7 +49,9 @@ export default function JobsList({
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [pendingStatus, setPendingStatus] = useState<JobStatus | null>(null);
+  const [pasteJobOpen, setPasteJobOpen] = useState(false);
   const { data: jobs = [] } = useJobs() as { data: any[] };
+  const { data: nextActions = {}, isLoading: nextActionsLoading } = useJobNextActions();
   
   // Get role-based permissions
   const { actionPermissions, shouldFilterToAssignedJobs } = useAppMode();
@@ -99,6 +102,33 @@ export default function JobsList({
           {row.address || "—"}
         </span>
       ),
+    },
+    {
+      id: "nextAction",
+      header: "Next Action",
+      hideOnMobile: true,
+      cell: (row) => {
+        if (nextActionsLoading) {
+          return <div className="h-5 w-20 bg-muted animate-pulse rounded" />;
+        }
+        const action = nextActions[row.id];
+        if (!action) {
+          return <span className="text-muted-foreground text-xs italic">No guidance</span>;
+        }
+        return (
+          <div className={cn(
+            "flex items-center gap-1 px-2 py-0.5 rounded text-xs w-fit",
+            action.priority === 'high' 
+              ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
+              : action.priority === 'medium'
+              ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
+              : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+          )}>
+            <Lightbulb className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate max-w-[120px]">{action.action}</span>
+          </div>
+        );
+      },
     },
     {
       id: "actions",
@@ -313,15 +343,27 @@ export default function JobsList({
               </Button>
             </div>
             {onCreateJob && canCreateJobs && (
-              <Button 
-                onClick={onCreateJob} 
-                data-testid="button-create-job"
-                className="text-white font-medium rounded-xl h-10 px-4 press-scale"
-                style={{ backgroundColor: 'hsl(var(--trade))' }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Job
-              </Button>
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={() => setPasteJobOpen(true)}
+                  data-testid="button-paste-job"
+                  className="font-medium rounded-xl h-10 px-3 press-scale border-primary/30 text-primary hover:bg-primary/5"
+                  title="Create job from pasted text"
+                >
+                  <Clipboard className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Paste</span>
+                </Button>
+                <Button 
+                  onClick={onCreateJob} 
+                  data-testid="button-create-job"
+                  className="text-white font-medium rounded-xl h-10 px-4 press-scale"
+                  style={{ backgroundColor: 'hsl(var(--trade))' }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Job
+                </Button>
+              </>
             )}
           </div>
         }
@@ -572,6 +614,27 @@ export default function JobsList({
                             </div>
                           )}
                         </div>
+                        {/* Next Action Indicator */}
+                        {nextActionsLoading ? (
+                          <div className="mt-2 h-6 w-32 bg-muted animate-pulse rounded-lg" />
+                        ) : nextActions[job.id] ? (
+                          <div className={cn(
+                            "flex items-center gap-1.5 mt-2 px-2 py-1 rounded-lg text-xs",
+                            nextActions[job.id].priority === 'high' 
+                              ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
+                              : nextActions[job.id].priority === 'medium'
+                              ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
+                              : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                          )}>
+                            <Lightbulb className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{nextActions[job.id].action}</span>
+                          </div>
+                        ) : job.status !== 'invoiced' ? (
+                          <div className="flex items-center gap-1.5 mt-2 px-2 py-1 rounded-lg text-xs bg-muted text-muted-foreground">
+                            <Lightbulb className="h-3 w-3 flex-shrink-0" />
+                            <span className="italic">No guidance</span>
+                          </div>
+                        ) : null}
                       </div>
                       
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -644,6 +707,27 @@ export default function JobsList({
           isPending={updateJobMutation.isPending}
         />
       )}
+
+      {/* Paste Job Modal - Instant job from text */}
+      <PasteJobModal
+        open={pasteJobOpen}
+        onOpenChange={setPasteJobOpen}
+        onCreateJob={(data) => {
+          // Navigate to job creation with pre-filled data
+          // Use scoped session key with expiry to prevent cross-tab access
+          const draftData = {
+            ...data,
+            _createdAt: Date.now(),
+            _expiresAt: Date.now() + 5 * 60 * 1000, // 5 minute expiry
+          };
+          sessionStorage.setItem('tradietrack_draft_job', JSON.stringify(draftData));
+          toast({
+            title: "Job details extracted",
+            description: "Opening job form with extracted details...",
+          });
+          onCreateJob?.();
+        }}
+      />
     </PageShell>
   );
 }
