@@ -102,3 +102,186 @@
 - Icon-based visual hierarchy instead of decorative imagery
 
 The design emphasizes functionality and efficiency over visual flair, ensuring tradespeople can quickly complete tasks and manage their business effectively.
+
+---
+
+## TradieTrack UX Checklist (For Every Screen)
+
+**This is the design bible. If a screen breaks even one rule, fix it.**
+
+### 1. Clarity Check
+Every screen must answer these 3 questions in under 1 second:
+
+**What is this screen?**
+- Clear title (Jobs, Quote #1012, Dashboard, Photos)
+- No ambiguous names
+- Breadcrumbs or back button always visible
+
+**What can I do here?**
+- Actions must be obvious (Add Job, Add Photo, Send Invoice)
+- Avoid hidden actions or long menus
+- Only 1–3 primary actions per screen
+
+**What should I do NEXT?**
+- Highlighted primary button ("Create Quote", "Mark Job Complete")
+- Progress indicators (Quote → Job → Invoice)
+
+*If a tradie hesitates or looks confused → UI failed.*
+
+### 2. Tap Count Rules
+**Absolute rule: no common task should take more than 5 taps.**
+
+| Task | Max Taps |
+|------|----------|
+| Create a job | ≤ 3 taps |
+| Add photos | 1 tap |
+| Send invoice | ≤ 3 taps |
+| Mark job complete | 1–2 taps |
+| Assign job | ≤ 3 taps |
+
+*If any workflow takes too long → redesign.*
+
+### 3. One-Hand Usability
+Tradies often use the app in a van, on ladders, holding tools, wearing gloves, with dirty hands.
+
+- Buttons must be large (44px minimum)
+- Primary actions at the bottom (thumb zone)
+- No tiny icons
+- No text smaller than 14–15px
+- Actions reachable with thumb only
+
+*If a tradie can't operate it with one hand → fail.*
+
+### 4. Speed & Performance Check
+Every screen must load under 1 second (goal), under 2 seconds (absolute max).
+
+- Skeleton loaders (never show blank white screens)
+- Preload common data (jobs, clients)
+- Do NOT fetch 10,000 records at once
+- Use infinite scroll or pagination
+
+*Speed is your weapon.*
+
+### 5. Visual Hierarchy
+Screens must have a clear visual "flow":
+
+- Big title at top
+- Primary action = bold coloured button
+- Secondary = outlined or grey
+- Group related items into cards
+- Important info = top; details = bottom
+- Avoid clutter & dense data
+
+### 6. Reduce Cognitive Load
+Tradies don't want to THINK — they want to DO.
+
+- No more than 6–8 elements per screen
+- Avoid long forms
+- Use defaults wherever possible
+- Auto-fill data when possible
+- Turn complex tasks into guided steps
+- Use icons AND labels (not icons alone)
+
+*Make everything "obvious at a glance."*
+
+### 7. Confirmation & Feedback
+Every action MUST show feedback:
+
+- "Saved ✓"
+- "Quote sent ✓"
+- "Invoice paid 💰"
+- "Photo uploaded ✓"
+
+*Micro-feedback builds trust.*
+
+### 8. Error-Proofing
+Prevent mistakes BEFORE they happen:
+
+- Auto-save everything
+- Warn if leaving unsaved screen
+- Prevent duplicate jobs
+- Validate fields instantly ("Invalid email")
+- Background syncing so users never lose data
+- Must work offline, with auto sync later
+
+### 9. Design Language
+Ensure consistency across all screens:
+
+**Colours:**
+- Primary = brand colour
+- Secondary = neutral
+- Error = red
+- Success = green
+- Info = blue
+
+**Spacing:**
+- Use uniform margins (8, 12, 16, 24 px grid)
+
+**Components:**
+- Use the SAME buttons, cards, lists, form fields, headings
+
+*Consistency = professionalism.*
+
+### 10. AI Interaction Check
+If the screen uses AI:
+
+- AI results ALWAYS editable
+- Show a "thinking" animation, not loading spinner
+- Suggest 2–3 alternate outputs
+- Use simple tradie language, not corporate language
+- Allow "Regenerate"
+- AI should not replace user control — only speed things up
+
+*If AI makes tradie type MORE → fail.*
+
+### 11. Offline-First Check
+Every screen must:
+
+- Save offline instantly
+- Show offline status
+- Sync cleanly when back online
+- NEVER lose data
+
+**Test:** Put phone in airplane mode. Add job, photos, notes. Turn off airplane mode. All should sync automatically.
+
+*This alone beats 80% of competitor apps.*
+
+### 12. Accessibility & Environment Check
+Tradies use the app in harsh conditions (sunlight, dust, glare, on roofs, in rain).
+
+- High contrast mode
+- Large tap areas
+- Avoid light grey text
+- Support dark mode
+- Vibrations on send/complete
+- Buttons usable with wet/dirty hands
+
+### 13. Security Check
+Every screen handling user data must:
+
+- Auto-lock after X minutes
+- Hide sensitive data in multitask preview
+- Enforce secure API calls
+- Validate input
+- Protect payments & invoices
+
+### 14. Predictability Rule
+Every user action should do EXACTLY what they expect.
+
+- Save should SAVE
+- Send should SEND
+- Back should go back, not delete
+
+*No weird behaviour. No hidden surprises.*
+
+---
+
+## The 6-Second Test
+After building any screen, ask:
+
+**If a tradie opened this screen for the first time, could he:**
+1. Understand what he's looking at
+2. Know what to do next
+3. Complete the task in under 6 seconds
+
+**If the answer is not YES → the screen is not ready.**
