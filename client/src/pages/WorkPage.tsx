@@ -251,56 +251,54 @@ export default function WorkPage({
   const JobCardItem = ({ job }: { job: Job }) => {
     const nextAction = getNextAction(job);
     const scheduledLabel = job.scheduledAt 
-      ? format(parseISO(job.scheduledAt), 'EEE d MMM, h:mm a')
+      ? format(parseISO(job.scheduledAt), 'EEE d MMM')
       : null;
 
     return (
       <Card 
         className="hover-elevate cursor-pointer"
-        style={{ borderRadius: '14px' }}
+        style={{ borderRadius: '12px' }}
         onClick={() => onViewJob?.(job.id)}
         data-testid={`job-card-${job.id}`}
       >
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <h4 className="font-semibold text-base truncate leading-tight">
-                  {job.title || 'Untitled Job'}
-                </h4>
-                <StatusBadge status={job.status} />
-              </div>
-              
-              <div className="space-y-1">
-                {job.clientName && (
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <User className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{job.clientName}</span>
-                  </div>
-                )}
-                {job.address && (
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{job.address}</span>
-                  </div>
-                )}
-                {scheduledLabel && (
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span>{scheduledLabel}</span>
-                  </div>
-                )}
-              </div>
+        <CardContent className="p-3">
+          <div className="space-y-2">
+            <div className="flex items-start justify-between gap-1">
+              <h4 className="font-semibold text-sm leading-tight line-clamp-2">
+                {job.title || 'Untitled Job'}
+              </h4>
+              <StatusBadge status={job.status} />
+            </div>
+            
+            <div className="space-y-0.5">
+              {job.clientName && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <User className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{job.clientName}</span>
+                </div>
+              )}
+              {job.address && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{job.address}</span>
+                </div>
+              )}
+              {scheduledLabel && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Calendar className="h-3 w-3 flex-shrink-0" />
+                  <span>{scheduledLabel}</span>
+                </div>
+              )}
             </div>
           </div>
           
           {nextAction && (
-            <div className="mt-3 pt-3 border-t flex justify-end">
+            <div className="mt-2 pt-2 border-t flex justify-end">
               <Button
                 size="sm"
                 variant={job.status === 'done' ? 'default' : 'outline'}
                 className={cn(
-                  "rounded-lg",
+                  "rounded-lg h-7 text-xs px-2",
                   job.status === 'done' && "text-white"
                 )}
                 style={job.status === 'done' ? { backgroundColor: 'hsl(var(--trade))' } : {}}
@@ -310,7 +308,7 @@ export default function WorkPage({
                 }}
                 data-testid={`btn-${nextAction.label.toLowerCase()}-${job.id}`}
               >
-                <nextAction.icon className="h-4 w-4 mr-1.5" />
+                <nextAction.icon className="h-3 w-3 mr-1" />
                 {nextAction.label}
               </Button>
             </div>
