@@ -189,6 +189,9 @@ export const businessSettings = pgTable("business_settings", {
   signatureName: text("signature_name"), // Name displayed under signature
   includeSignatureOnQuotes: boolean("include_signature_on_quotes").default(false),
   includeSignatureOnInvoices: boolean("include_signature_on_invoices").default(false),
+  // Document Template Settings
+  documentTemplate: text("document_template").default('professional'), // modern, professional, minimal
+  documentTemplateSettings: json("document_template_settings"), // Custom overrides for template
   // Onboarding tracking
   onboardingCompleted: boolean("onboarding_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
