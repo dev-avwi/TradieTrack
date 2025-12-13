@@ -435,9 +435,12 @@ function Router({
         <CollectPayment />
       )} />
       
-      <Route path="/my-account" component={() => (
-        <MyAccount />
-      )} />
+      <Route path="/my-account">
+        {() => {
+          window.location.href = '/settings';
+          return null;
+        }}
+      </Route>
       
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/reset-password" component={ResetPassword} />

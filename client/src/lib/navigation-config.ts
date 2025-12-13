@@ -219,17 +219,6 @@ export const mainMenuItems: NavItem[] = [
 
 export const settingsMenuItems: NavItem[] = [
   {
-    title: "My Account",
-    url: "/my-account",
-    icon: UserCircle,
-    description: "Your profile and permissions",
-    color: "text-primary",
-    bgColor: "bg-primary/10",
-    showInSidebar: true,
-    showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
-  },
-  {
     title: "Integrations",
     url: "/integrations",
     icon: Zap,
