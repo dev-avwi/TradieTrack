@@ -62,6 +62,29 @@ export default function InvoiceDetailView({
     enabled: !!invoice?.jobId
   });
 
+  const { data: linkedQuote } = useQuery({
+    queryKey: ['/api/quotes', invoice?.quoteId],
+    queryFn: async () => {
+      if (!invoice?.quoteId) return null;
+      const response = await fetch(`/api/quotes/${invoice.quoteId}`);
+      if (!response.ok) throw new Error('Failed to fetch linked quote');
+      return response.json();
+    },
+    enabled: !!invoice?.quoteId
+  });
+
+  const { data: quoteSignature } = useQuery({
+    queryKey: ['/api/digital-signatures', invoice?.quoteId, 'quote'],
+    queryFn: async () => {
+      if (!invoice?.quoteId) return null;
+      const response = await fetch(`/api/digital-signatures?documentType=quote&documentId=${invoice.quoteId}`);
+      if (!response.ok) return null;
+      const signatures = await response.json();
+      return signatures.length > 0 ? signatures[0] : null;
+    },
+    enabled: !!invoice?.quoteId && businessSettings?.includeSignatureOnInvoices === true
+  });
+
   const toggleOnlinePaymentMutation = useMutation({
     mutationFn: async (allowOnlinePayment: boolean) => {
       return apiRequest('PATCH', `/api/invoices/${invoiceId}/online-payment`, {
@@ -518,6 +541,32 @@ export default function InvoiceDetailView({
                   <p className="text-sm font-medium text-green-800">
                     <strong>Paid:</strong> This invoice was paid on {formatDate(invoice.paidAt)}
                   </p>
+                </div>
+              )}
+
+              {businessSettings?.includeSignatureOnInvoices && quoteSignature && (
+                <div className="mb-8 p-4 border border-gray-200 rounded-lg">
+                  <h3 className="font-semibold mb-3 text-gray-800 text-sm">Quote Acceptance Signature</h3>
+                  <div className="flex flex-col sm:flex-row gap-6 items-start">
+                    <div className="flex-shrink-0">
+                      <img 
+                        src={quoteSignature.signatureData} 
+                        alt="Client Signature" 
+                        className="max-w-[200px] max-h-[80px] object-contain border-b border-gray-300"
+                      />
+                    </div>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      {quoteSignature.signerName && (
+                        <p><strong>Signed by:</strong> {quoteSignature.signerName}</p>
+                      )}
+                      {quoteSignature.signedAt && (
+                        <p><strong>Date:</strong> {formatDate(quoteSignature.signedAt)}</p>
+                      )}
+                      {linkedQuote?.number && (
+                        <p><strong>Quote:</strong> {linkedQuote.number}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 

@@ -256,7 +256,7 @@ export default function LiveDocumentPreview({
               {type === 'quote' ? 'Quote Details' : 'Invoice Details'}
             </div>
             <div className="leading-[1.5]">
-              <p><strong>{type === 'invoice' ? 'Issue Date:' : 'Date:'}</strong> {formatDate(date || new Date().toISOString())}</p>
+              <p><strong>Date:</strong> {formatDate(date || new Date().toISOString())}</p>
               {type === 'quote' && validUntil && (
                 <p><strong>Valid Until:</strong> {formatDate(validUntil)}</p>
               )}
