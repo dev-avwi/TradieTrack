@@ -158,7 +158,7 @@ export default function DocumentTemplateSelector({
   };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative z-0">
       <div>
         <h3 className="text-lg font-semibold mb-2">Document Templates</h3>
         <p className="text-sm text-muted-foreground">

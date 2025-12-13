@@ -14,6 +14,10 @@ interface DocumentTemplate {
   headingWeight: number;
 }
 
+// Fixed document accent color - consistent navy blue across all templates
+// This must match DOCUMENT_ACCENT_COLOR in client/src/lib/document-templates.ts
+const DOCUMENT_ACCENT_COLOR = '#1e3a5f';
+
 const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
   professional: {
     id: 'professional',
@@ -120,8 +124,10 @@ const getDefaultInvoiceTerms = (lateFeeRate: string = '1.5% per month'): string 
 4. OWNERSHIP: Goods remain the property of the supplier until payment is received in full.
 `.trim();
 
-const generateDocumentStyles = (brandColor: string, templateId: string = 'professional') => {
-  const template = DOCUMENT_TEMPLATES[templateId as TemplateId] || DOCUMENT_TEMPLATES.professional;
+const generateDocumentStyles = (_brandColor: string, templateId: string = 'minimal') => {
+  const template = DOCUMENT_TEMPLATES[templateId as TemplateId] || DOCUMENT_TEMPLATES.minimal;
+  // Use the fixed accent color for all templates - ignore brandColor
+  const brandColor = DOCUMENT_ACCENT_COLOR;
   
   // Table header styles based on template
   const tableHeaderStyles = template.tableStyle === 'minimal' 

@@ -78,14 +78,17 @@ export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
   },
 };
 
+// Fixed document accent color - consistent navy blue across all templates and PDFs
+export const DOCUMENT_ACCENT_COLOR = '#1e3a5f';
+
 // Helper to get template styles for inline application
-export function getTemplateStyles(templateId: TemplateId, brandColor: string = '#2563eb') {
-  const template = DOCUMENT_TEMPLATES[templateId] || DOCUMENT_TEMPLATES.professional;
+export function getTemplateStyles(templateId: TemplateId, _brandColor: string = '#2563eb') {
+  const template = DOCUMENT_TEMPLATES[templateId] || DOCUMENT_TEMPLATES.minimal;
   
-  // Calculate color variants based on template color scheme
-  const usesBrand = template.colorScheme === 'brand' || template.colorScheme === 'bold';
-  const primaryColor = usesBrand ? brandColor : '#1a1a1a';
-  const accentColor = usesBrand ? brandColor : '#4b5563';
+  // Use consistent accent color for ALL templates - no variation based on colorScheme
+  // This ensures live preview, detail views, and PDFs all match exactly
+  const primaryColor = DOCUMENT_ACCENT_COLOR;
+  const accentColor = DOCUMENT_ACCENT_COLOR;
   
   return {
     template,
@@ -166,4 +169,4 @@ export function getTemplateStyles(templateId: TemplateId, brandColor: string = '
 }
 
 // Default template if none selected
-export const DEFAULT_TEMPLATE: TemplateId = 'professional';
+export const DEFAULT_TEMPLATE: TemplateId = 'minimal';
