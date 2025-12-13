@@ -6,6 +6,7 @@ import { Printer, ArrowLeft, Send, FileText, Download } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
+import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
 
 interface QuoteDetailViewProps {
   quoteId: string;
@@ -19,6 +20,9 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const { toast } = useToast();
 
   const brandColor = businessSettings?.brandColor || '#2563eb';
+  const templateId = (businessSettings?.documentTemplate as TemplateId) || DEFAULT_TEMPLATE;
+  const templateStyles = getTemplateStyles(templateId, brandColor);
+  const { template, primaryColor, headingStyle, tableHeaderStyle, getTableRowStyle, getNoteStyle } = templateStyles;
 
   const { data: quote, isLoading } = useQuery({
     queryKey: ['/api/quotes', quoteId],
@@ -188,10 +192,13 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
         </div>
 
         <div className="print-content">
-          <Card className="bg-white shadow-lg border overflow-hidden">
+          <Card 
+            className="bg-white shadow-lg border overflow-hidden"
+            style={{ fontFamily: template.fontFamily, fontSize: template.baseFontSize }}
+          >
             <div 
               className="p-6 sm:p-8 relative"
-              style={{ borderBottom: `3px solid ${brandColor}` }}
+              style={{ borderBottom: template.showHeaderDivider ? `${template.headerBorderWidth} solid ${primaryColor}` : 'none' }}
             >
               {quote.status === 'accepted' && (
                 <div 
@@ -216,8 +223,8 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                     />
                   )}
                   <h1 
-                    className="text-2xl sm:text-3xl font-bold mb-2"
-                    style={{ color: brandColor }}
+                    className="text-2xl sm:text-3xl mb-2"
+                    style={{ ...headingStyle }}
                   >
                     {businessSettings?.businessName || 'Your Business Name'}
                   </h1>
@@ -236,8 +243,8 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                 
                 <div className="text-right">
                   <h2 
-                    className="text-2xl sm:text-3xl font-bold uppercase tracking-wide"
-                    style={{ color: brandColor }}
+                    className="text-2xl sm:text-3xl uppercase tracking-wide"
+                    style={{ ...headingStyle }}
                   >
                     QUOTE
                   </h2>
@@ -287,10 +294,13 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
               )}
 
               {(quote.title || quote.description) && (
-                <div className="mb-8 p-4 bg-gray-50 rounded-md">
+                <div 
+                  className="mb-8 p-4"
+                  style={{ backgroundColor: template.sectionBackground, borderRadius: template.borderRadius }}
+                >
                   <p 
                     className="font-semibold mb-2"
-                    style={{ color: brandColor }}
+                    style={{ color: primaryColor }}
                   >
                     {quote.title || 'Description'}
                   </p>
@@ -303,28 +313,26 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
               <div className="mb-6 overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr style={{ backgroundColor: brandColor }}>
-                      <th className="px-4 py-3 text-left text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '50%' }}>Description</th>
-                      <th className="px-4 py-3 text-right text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '15%' }}>Qty</th>
-                      <th className="px-4 py-3 text-right text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '17%' }}>Unit Price</th>
-                      <th className="px-4 py-3 text-right text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '18%' }}>Amount</th>
+                    <tr style={tableHeaderStyle}>
+                      <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider" style={{ width: '50%', color: tableHeaderStyle.color }}>Description</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider" style={{ width: '15%', color: tableHeaderStyle.color }}>Qty</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider" style={{ width: '17%', color: tableHeaderStyle.color }}>Unit Price</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider" style={{ width: '18%', color: tableHeaderStyle.color }}>Amount</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {quote.lineItems?.map((item: any, index: number) => (
-                      <tr key={index} className="border-b border-gray-200">
-                        <td className="px-4 py-3 text-gray-900">{item.description}</td>
-                        <td className="px-4 py-3 text-right text-gray-700">{Number(item.quantity).toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right text-gray-700">{formatCurrency(Number(item.unitPrice))}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(Number(item.total))}</td>
-                      </tr>
-                    ))}
+                    {quote.lineItems?.map((item: any, index: number) => {
+                      const isLast = index === (quote.lineItems?.length || 0) - 1;
+                      return (
+                        <tr key={index} style={getTableRowStyle(index, isLast)}>
+                          <td className="px-4 py-3 text-gray-900">{item.description}</td>
+                          <td className="px-4 py-3 text-right text-gray-700">{Number(item.quantity).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right text-gray-700">{formatCurrency(Number(item.unitPrice))}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(Number(item.total))}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan={4} style={{ borderBottom: `2px solid ${brandColor}` }}></td>
-                    </tr>
-                  </tfoot>
                 </table>
               </div>
 
@@ -342,17 +350,17 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                   )}
                   <div 
                     className="flex justify-between py-3 mt-1"
-                    style={{ borderTop: `2px solid ${brandColor}` }}
+                    style={{ borderTop: `2px solid ${primaryColor}` }}
                   >
                     <span 
-                      className="text-lg font-bold"
-                      style={{ color: brandColor }}
+                      className="text-lg"
+                      style={{ ...headingStyle }}
                     >
                       Total{gstAmount > 0 ? ' (incl. GST)' : ''}
                     </span>
                     <span 
-                      className="text-lg font-bold"
-                      style={{ color: brandColor }}
+                      className="text-lg"
+                      style={{ ...headingStyle }}
                     >
                       {formatCurrency(total)}
                     </span>
@@ -362,11 +370,8 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
 
               {quote.notes && (
                 <div 
-                  className="mb-8 p-4 rounded-r-md"
-                  style={{ 
-                    background: '#fafafa',
-                    borderLeft: `4px solid ${brandColor}`
-                  }}
+                  className="mb-8 p-4"
+                  style={getNoteStyle()}
                 >
                   <h3 className="font-semibold mb-2 text-gray-800">Additional Notes</h3>
                   <p className="text-gray-600 text-sm whitespace-pre-wrap">{quote.notes}</p>
@@ -375,11 +380,8 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
 
               {businessSettings?.warrantyPeriod && (
                 <div 
-                  className="mb-8 p-4 rounded-r-md"
-                  style={{ 
-                    background: '#fafafa',
-                    borderLeft: `4px solid ${brandColor}`
-                  }}
+                  className="mb-8 p-4"
+                  style={getNoteStyle()}
                 >
                   <h3 className="font-semibold mb-2 text-gray-800">Warranty</h3>
                   <p className="text-gray-600 text-sm">

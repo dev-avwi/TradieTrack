@@ -1,5 +1,52 @@
 import type { Quote, Invoice, QuoteLineItem, InvoiceLineItem, Client, BusinessSettings, DigitalSignature, Job, TimeEntry } from "@shared/schema";
 
+// Document Template Definitions (mirrored from client/src/lib/document-templates.ts)
+type TemplateId = 'professional' | 'modern' | 'minimal';
+
+interface DocumentTemplate {
+  id: TemplateId;
+  fontFamily: string;
+  tableStyle: 'bordered' | 'striped' | 'minimal';
+  headerBorderWidth: string;
+  showHeaderDivider: boolean;
+  noteStyle: 'bordered' | 'highlighted' | 'simple';
+  baseFontSize: string;
+  headingWeight: number;
+}
+
+const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
+  professional: {
+    id: 'professional',
+    fontFamily: 'Georgia, "Times New Roman", Times, serif',
+    tableStyle: 'bordered',
+    headerBorderWidth: '2px',
+    showHeaderDivider: true,
+    noteStyle: 'bordered',
+    baseFontSize: '11px',
+    headingWeight: 700,
+  },
+  modern: {
+    id: 'modern',
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+    tableStyle: 'striped',
+    headerBorderWidth: '3px',
+    showHeaderDivider: true,
+    noteStyle: 'highlighted',
+    baseFontSize: '12px',
+    headingWeight: 600,
+  },
+  minimal: {
+    id: 'minimal',
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    tableStyle: 'minimal',
+    headerBorderWidth: '1px',
+    showHeaderDivider: false,
+    noteStyle: 'simple',
+    baseFontSize: '11px',
+    headingWeight: 500,
+  },
+};
+
 interface QuoteWithDetails {
   quote: Quote;
   lineItems: QuoteLineItem[];
@@ -73,13 +120,79 @@ const getDefaultInvoiceTerms = (lateFeeRate: string = '1.5% per month'): string 
 4. OWNERSHIP: Goods remain the property of the supplier until payment is received in full.
 `.trim();
 
-const generateDocumentStyles = (brandColor: string) => `
+const generateDocumentStyles = (brandColor: string, templateId: string = 'professional') => {
+  const template = DOCUMENT_TEMPLATES[templateId as TemplateId] || DOCUMENT_TEMPLATES.professional;
+  
+  // Table header styles based on template
+  const tableHeaderStyles = template.tableStyle === 'minimal' 
+    ? `background: transparent; color: #1a1a1a; border-bottom: 2px solid ${brandColor};`
+    : `background: ${brandColor}; color: white;`;
+  
+  // Table row styles based on template
+  const getTableRowStyles = () => {
+    switch (template.tableStyle) {
+      case 'striped':
+        return `
+    .line-items-table tbody tr:nth-child(odd) { background: #f9fafb; }
+    .line-items-table tbody tr:nth-child(even) { background: transparent; }
+    .line-items-table td { border-bottom: none; }`;
+      case 'minimal':
+        return `
+    .line-items-table td { border-bottom: 1px solid #e5e7eb; }`;
+      case 'bordered':
+      default:
+        return `
+    .line-items-table td { border-bottom: 1px solid #eee; }`;
+    }
+  };
+  
+  // Note section styles based on template
+  const getNoteStyles = () => {
+    switch (template.noteStyle) {
+      case 'highlighted':
+        return `
+    .notes-section {
+      margin-bottom: 30px;
+      padding: 16px;
+      background: linear-gradient(135deg, ${brandColor}10, ${brandColor}05);
+      border: 1px solid ${brandColor}30;
+      border-radius: 8px;
+    }`;
+      case 'simple':
+        return `
+    .notes-section {
+      margin-bottom: 30px;
+      padding: 16px 0;
+      background: transparent;
+      border-top: 1px solid #e5e7eb;
+      border-left: none;
+      border-radius: 0;
+    }`;
+      case 'bordered':
+      default:
+        return `
+    .notes-section {
+      margin-bottom: 30px;
+      padding: 16px;
+      background: #fafafa;
+      border-left: 4px solid ${brandColor};
+      border-radius: 0 6px 6px 0;
+    }`;
+    }
+  };
+  
+  // Header border based on template
+  const headerBorder = template.showHeaderDivider 
+    ? `border-bottom: ${template.headerBorderWidth} solid ${brandColor};`
+    : 'border-bottom: none;';
+
+  return `
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      font-size: 11px;
+      font-family: ${template.fontFamily};
+      font-size: ${template.baseFontSize};
       line-height: 1.5;
       color: #1a1a1a;
       background: #fff;
@@ -97,7 +210,7 @@ const generateDocumentStyles = (brandColor: string) => `
       align-items: flex-start;
       margin-bottom: 40px;
       padding-bottom: 20px;
-      border-bottom: 3px solid ${brandColor};
+      ${headerBorder}
     }
     
     .company-info {
@@ -106,7 +219,7 @@ const generateDocumentStyles = (brandColor: string) => `
     
     .company-name {
       font-size: 24px;
-      font-weight: 700;
+      font-weight: ${template.headingWeight};
       color: ${brandColor};
       margin-bottom: 8px;
     }
@@ -127,7 +240,7 @@ const generateDocumentStyles = (brandColor: string) => `
     
     .document-title {
       font-size: 32px;
-      font-weight: 700;
+      font-weight: ${template.headingWeight};
       color: ${brandColor};
       text-transform: uppercase;
       letter-spacing: 2px;
@@ -178,12 +291,12 @@ const generateDocumentStyles = (brandColor: string) => `
     .description-section {
       margin-bottom: 30px;
       padding: 16px;
-      background: #f8f9fa;
+      background: ${template.noteStyle === 'simple' ? 'transparent' : '#f8f9fa'};
       border-radius: 6px;
     }
     
     .description-title {
-      font-weight: 600;
+      font-weight: ${template.headingWeight};
       margin-bottom: 8px;
       color: ${brandColor};
     }
@@ -195,8 +308,7 @@ const generateDocumentStyles = (brandColor: string) => `
     }
     
     .line-items-table th {
-      background: ${brandColor};
-      color: white;
+      ${tableHeaderStyles}
       padding: 12px;
       text-align: left;
       font-weight: 600;
@@ -213,7 +325,6 @@ const generateDocumentStyles = (brandColor: string) => `
     
     .line-items-table td {
       padding: 12px;
-      border-bottom: 1px solid #eee;
       vertical-align: top;
     }
     
@@ -227,6 +338,7 @@ const generateDocumentStyles = (brandColor: string) => `
     .line-items-table tr:last-child td {
       border-bottom: 2px solid ${brandColor};
     }
+    ${getTableRowStyles()}
     
     .totals-section {
       display: flex;
@@ -255,7 +367,7 @@ const generateDocumentStyles = (brandColor: string) => `
     .totals-row.total .totals-label,
     .totals-row.total .totals-value {
       font-size: 16px;
-      font-weight: 700;
+      font-weight: ${template.headingWeight};
       color: ${brandColor};
     }
     
@@ -273,17 +385,10 @@ const generateDocumentStyles = (brandColor: string) => `
       color: #888;
       margin-top: 4px;
     }
-    
-    .notes-section {
-      margin-bottom: 30px;
-      padding: 16px;
-      background: #fafafa;
-      border-left: 4px solid ${brandColor};
-      border-radius: 0 6px 6px 0;
-    }
+    ${getNoteStyles()}
     
     .notes-title {
-      font-weight: 600;
+      font-weight: ${template.headingWeight};
       margin-bottom: 8px;
       color: #333;
     }
@@ -303,7 +408,7 @@ const generateDocumentStyles = (brandColor: string) => `
     }
     
     .payment-title {
-      font-weight: 600;
+      font-weight: ${template.headingWeight};
       margin-bottom: 12px;
       color: ${brandColor};
       font-size: 12px;
@@ -321,7 +426,7 @@ const generateDocumentStyles = (brandColor: string) => `
     }
     
     .terms-title {
-      font-weight: 600;
+      font-weight: ${template.headingWeight};
       margin-bottom: 8px;
       color: #333;
       font-size: 11px;
@@ -341,7 +446,7 @@ const generateDocumentStyles = (brandColor: string) => `
     }
     
     .acceptance-title {
-      font-weight: 600;
+      font-weight: ${template.headingWeight};
       margin-bottom: 16px;
       color: #333;
     }
@@ -375,7 +480,7 @@ const generateDocumentStyles = (brandColor: string) => `
       border: 3px solid #22c55e;
       color: #22c55e;
       font-size: 18px;
-      font-weight: 700;
+      font-weight: ${template.headingWeight};
       text-transform: uppercase;
       transform: rotate(-15deg);
       opacity: 0.8;
@@ -428,10 +533,12 @@ const generateDocumentStyles = (brandColor: string) => `
     }
   </style>
 `;
+};
 
 export const generateQuotePDF = (data: QuoteWithDetails): string => {
   const { quote, lineItems, client, business, job, acceptanceUrl } = data;
   const brandColor = business.brandColor || '#2563eb';
+  const templateId = (business as any).documentTemplate || 'professional';
   
   const subtotal = parseFloat(quote.subtotal as unknown as string);
   const gstAmount = parseFloat(quote.gstAmount as unknown as string);
@@ -448,7 +555,7 @@ export const generateQuotePDF = (data: QuoteWithDetails): string => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quote ${quote.number} - ${business.businessName}</title>
-  ${generateDocumentStyles(brandColor)}
+  ${generateDocumentStyles(brandColor, templateId)}
 </head>
 <body>
   <div class="document">
@@ -661,6 +768,7 @@ ${(quote as any).acceptanceIp ? `IP Address: ${(quote as any).acceptanceIp}` : '
 export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
   const { invoice, lineItems, client, business, job, timeEntries, paymentUrl } = data;
   const brandColor = business.brandColor || '#dc2626';
+  const templateId = (business as any).documentTemplate || 'professional';
   
   // Calculate time tracking totals if present
   const totalMinutes = timeEntries?.reduce((sum, entry) => sum + (entry.duration || 0), 0) || 0;
@@ -692,7 +800,7 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${documentTitle} ${invoice.number} - ${business.businessName}</title>
-  ${generateDocumentStyles(brandColor)}
+  ${generateDocumentStyles(brandColor, templateId)}
 </head>
 <body>
   <div class="document">
