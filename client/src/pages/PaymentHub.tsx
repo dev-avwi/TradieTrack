@@ -188,7 +188,7 @@ function InvoiceRow({ invoice, onView, onSend }: InvoiceRowProps) {
       </div>
       <div className="flex items-center gap-4">
         <div className="text-right">
-          <p className="font-semibold">{formatCurrency(invoice.total)}</p>
+          <p className="font-semibold">{formatCurrency(parseFloat(String(invoice.total) || '0') * 100)}</p>
           {invoice.dueDate && (
             <p className={`text-xs ${isOverdue ? 'text-red-600' : 'text-muted-foreground'}`}>
               {isOverdue ? `${daysOverdue}d overdue` : `Due ${format(new Date(invoice.dueDate), 'dd MMM')}`}
@@ -255,7 +255,7 @@ function QuoteRow({ quote, onView }: QuoteRowProps) {
       </div>
       <div className="flex items-center gap-4">
         <div className="text-right">
-          <p className="font-semibold">{formatCurrency(quote.total)}</p>
+          <p className="font-semibold">{formatCurrency(parseFloat(String(quote.total) || '0') * 100)}</p>
           {quote.validUntil && (
             <p className="text-xs text-muted-foreground">
               Valid until {format(new Date(quote.validUntil), 'dd MMM')}
@@ -528,29 +528,29 @@ export default function PaymentHub() {
     const outstanding = invoicesWithClients.filter(
       inv => inv.status !== 'paid' && inv.status !== 'draft'
     );
-    const outstandingTotal = outstanding.reduce((sum, inv) => sum + inv.total, 0);
+    const outstandingTotal = outstanding.reduce((sum, inv) => sum + parseFloat(String(inv.total) || '0'), 0);
 
     const overdue = outstanding.filter(
       inv => inv.dueDate && isBefore(new Date(inv.dueDate), now)
     );
-    const overdueTotal = overdue.reduce((sum, inv) => sum + inv.total, 0);
+    const overdueTotal = overdue.reduce((sum, inv) => sum + parseFloat(String(inv.total) || '0'), 0);
 
     const paid = invoicesWithClients.filter(inv => inv.status === 'paid');
-    const paidTotal = paid.reduce((sum, inv) => sum + inv.total, 0);
+    const paidTotal = paid.reduce((sum, inv) => sum + parseFloat(String(inv.total) || '0'), 0);
 
     const recentPaid = paid.filter(
       inv => inv.paidAt && isAfter(new Date(inv.paidAt), thirtyDaysAgo)
     );
-    const recentPaidTotal = recentPaid.reduce((sum, inv) => sum + inv.total, 0);
+    const recentPaidTotal = recentPaid.reduce((sum, inv) => sum + parseFloat(String(inv.total) || '0'), 0);
 
     const drafts = invoicesWithClients.filter(inv => inv.status === 'draft');
-    const draftsTotal = drafts.reduce((sum, inv) => sum + inv.total, 0);
+    const draftsTotal = drafts.reduce((sum, inv) => sum + parseFloat(String(inv.total) || '0'), 0);
 
     const acceptedQuotes = quotesWithClients.filter(q => q.status === 'accepted');
-    const acceptedQuotesTotal = acceptedQuotes.reduce((sum, q) => sum + q.total, 0);
+    const acceptedQuotesTotal = acceptedQuotes.reduce((sum, q) => sum + parseFloat(String(q.total) || '0'), 0);
 
     const pendingQuotes = quotesWithClients.filter(q => q.status === 'sent' || q.status === 'viewed');
-    const pendingQuotesTotal = pendingQuotes.reduce((sum, q) => sum + q.total, 0);
+    const pendingQuotesTotal = pendingQuotes.reduce((sum, q) => sum + parseFloat(String(q.total) || '0'), 0);
 
     return {
       outstandingTotal,
@@ -608,19 +608,20 @@ export default function PaymentHub() {
   const isLoading = invoicesLoading || quotesLoading;
 
   const handleViewInvoice = (invoiceId: string) => {
-    window.dispatchEvent(new CustomEvent('openInvoiceDetail', { detail: { invoiceId } }));
+    navigate(`/invoices/${invoiceId}`);
   };
 
   const handleViewQuote = (quoteId: string) => {
-    window.dispatchEvent(new CustomEvent('openQuoteDetail', { detail: { quoteId } }));
+    navigate(`/quotes/${quoteId}`);
   };
 
   const handleConnectStripe = async () => {
     setIsConnecting(true);
     try {
-      const response = await apiRequest('/api/stripe-connect/onboard', { method: 'POST' });
-      if (response.url) {
-        window.open(response.url, '_blank');
+      const response = await apiRequest('POST', '/api/stripe-connect/onboard');
+      const data = await response.json();
+      if (data.url) {
+        window.open(data.url, '_blank');
       }
     } catch (error: any) {
       toast({
@@ -635,9 +636,10 @@ export default function PaymentHub() {
 
   const handleOpenStripeDashboard = async () => {
     try {
-      const response = await apiRequest('/api/stripe-connect/dashboard', { method: 'GET' });
-      if (response.url) {
-        window.open(response.url, '_blank');
+      const response = await apiRequest('GET', '/api/stripe-connect/dashboard');
+      const data = await response.json();
+      if (data.url) {
+        window.open(data.url, '_blank');
       }
     } catch (error: any) {
       toast({
@@ -684,28 +686,28 @@ export default function PaymentHub() {
             <>
               <KPICard
                 title="Outstanding"
-                value={formatCurrency(stats.outstandingTotal)}
+                value={formatCurrency(stats.outstandingTotal * 100)}
                 subtitle={`${stats.outstandingCount} invoices`}
                 icon={<Clock className="h-5 w-5 text-primary" />}
                 variant={stats.outstandingCount > 0 ? 'warning' : 'default'}
               />
               <KPICard
                 title="Overdue"
-                value={formatCurrency(stats.overdueTotal)}
+                value={formatCurrency(stats.overdueTotal * 100)}
                 subtitle={`${stats.overdueCount} invoices`}
                 icon={<AlertTriangle className="h-5 w-5 text-red-500" />}
                 variant={stats.overdueCount > 0 ? 'danger' : 'default'}
               />
               <KPICard
                 title="Paid (30 days)"
-                value={formatCurrency(stats.recentPaidTotal)}
+                value={formatCurrency(stats.recentPaidTotal * 100)}
                 subtitle={`${stats.recentPaidCount} invoices`}
                 icon={<CheckCircle2 className="h-5 w-5 text-green-500" />}
                 variant="success"
               />
               <KPICard
                 title="Pending Quotes"
-                value={formatCurrency(stats.pendingQuotesTotal)}
+                value={formatCurrency(stats.pendingQuotesTotal * 100)}
                 subtitle={`${stats.pendingQuotesCount} awaiting response`}
                 icon={<Receipt className="h-5 w-5 text-blue-500" />}
               />
