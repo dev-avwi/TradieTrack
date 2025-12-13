@@ -12,7 +12,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { DatePicker } from '../../src/components/ui/DatePicker';
 import { useClientsStore, useQuotesStore, useJobsStore } from '../../src/lib/store';
@@ -404,12 +404,13 @@ export default function CreateQuoteScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
+  const params = useLocalSearchParams<{ jobId?: string }>();
   const { clients, fetchClients } = useClientsStore();
   const { jobs, fetchJobs } = useJobsStore();
   const { fetchQuotes } = useQuotesStore();
 
   const [clientId, setClientId] = useState<string | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(params.jobId || null);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: generateId(), description: '', quantity: 1, unitPrice: 0, cost: 0 },
   ]);
@@ -439,6 +440,27 @@ export default function CreateQuoteScreen() {
     fetchClients();
     fetchJobs();
   }, []);
+
+  useEffect(() => {
+    if (params.jobId && jobs.length > 0) {
+      const job = jobs.find(j => j.id === params.jobId);
+      if (job) {
+        setJobId(job.id);
+        if (job.clientId) {
+          setClientId(job.clientId);
+        }
+        if (job.title && lineItems.length === 1 && !lineItems[0].description) {
+          setLineItems([{
+            id: generateId(),
+            description: job.title,
+            quantity: 1,
+            unitPrice: 0,
+            cost: 0,
+          }]);
+        }
+      }
+    }
+  }, [params.jobId, jobs]);
 
   const selectedClient = clients.find((c) => c.id === clientId);
   const selectedJob = jobs.find((j) => j.id === jobId);
@@ -659,23 +681,38 @@ export default function CreateQuoteScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Job Selection (Optional) */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Link to Job (Optional)</Text>
-            <TouchableOpacity
-              style={styles.selector}
-              onPress={() => setShowJobPicker(true)}
-            >
-              {selectedJob ? (
+          {/* Job Selection (Optional) - Hidden when jobId is passed via params */}
+          {!params.jobId && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Link to Job (Optional)</Text>
+              <TouchableOpacity
+                style={styles.selector}
+                onPress={() => setShowJobPicker(true)}
+              >
+                {selectedJob ? (
+                  <View style={styles.selectedItem}>
+                    <Text style={styles.selectedItemName}>{selectedJob.title}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.selectorPlaceholder}>No job linked</Text>
+                )}
+                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {/* Show linked job info when passed via params */}
+          {params.jobId && selectedJob && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Linked Job</Text>
+              <View style={[styles.selector, { backgroundColor: `${colors.primary}10` }]}>
                 <View style={styles.selectedItem}>
+                  <Feather name="briefcase" size={18} color={colors.primary} style={{ marginRight: 8 }} />
                   <Text style={styles.selectedItemName}>{selectedJob.title}</Text>
                 </View>
-              ) : (
-                <Text style={styles.selectorPlaceholder}>No job linked</Text>
-              )}
-              <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
+              </View>
+            </View>
+          )}
 
           {/* Line Items */}
           <View style={styles.section}>

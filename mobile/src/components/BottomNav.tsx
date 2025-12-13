@@ -20,22 +20,28 @@ const navItems: NavItem[] = [
     matchPaths: ['/', '/index']
   },
   { 
-    title: 'Jobs', 
+    title: 'Work', 
     icon: 'briefcase', 
     path: '/jobs',
     matchPaths: ['/jobs', '/job']
   },
   { 
-    title: 'Map', 
-    icon: 'map', 
-    path: '/map',
-    matchPaths: ['/map']
+    title: 'Payment Hub', 
+    icon: 'dollar-sign', 
+    path: '/more/payment-hub',
+    matchPaths: ['/more/payment-hub', '/more/invoices', '/more/payments']
+  },
+  { 
+    title: 'Calendar', 
+    icon: 'calendar', 
+    path: '/more/calendar',
+    matchPaths: ['/more/calendar']
   },
   { 
     title: 'More', 
     icon: 'more-horizontal', 
     path: '/profile',
-    matchPaths: ['/profile', '/more']
+    matchPaths: ['/profile', '/more/settings', '/more/clients', '/more/quotes', '/map']
   },
 ];
 

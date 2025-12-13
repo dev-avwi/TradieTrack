@@ -25,12 +25,11 @@ const navigateToCreateJob = () => {
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 
 const STATUS_FILTERS: { key: string; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'pending', label: 'New' },
-  { key: 'scheduled', label: 'Scheduled' },
+  { key: 'active', label: 'Active' },
+  { key: 'today', label: 'Today' },
   { key: 'in_progress', label: 'In Progress' },
-  { key: 'done', label: 'Completed' },
-  { key: 'invoiced', label: 'Invoiced' },
+  { key: 'needs_invoice', label: 'Needs Invoice' },
+  { key: 'completed', label: 'Completed' },
 ];
 
 function StatCard({ 
@@ -292,7 +291,7 @@ export default function JobsScreen() {
   const { clients, fetchClients } = useClientsStore();
   const { quotes, fetchQuotes } = useQuotesStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState('active');
 
   const refreshData = useCallback(async () => {
     await Promise.all([fetchJobs(), fetchClients(), fetchQuotes()]);
@@ -337,24 +336,84 @@ export default function JobsScreen() {
     }
   };
 
-  const statusCounts = {
-    all: jobs.length,
-    pending: jobs.filter(j => j.status === 'pending').length,
-    scheduled: jobs.filter(j => j.status === 'scheduled').length,
-    in_progress: jobs.filter(j => j.status === 'in_progress').length,
-    done: jobs.filter(j => j.status === 'done').length,
-    invoiced: jobs.filter(j => j.status === 'invoiced').length
+  const isToday = (dateStr?: string) => {
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
   };
 
-  const filteredJobs = jobs.filter(job => {
+  const groupedJobs = useMemo(() => {
+    const today: typeof jobs = [];
+    const upcoming: typeof jobs = [];
+    const inProgress: typeof jobs = [];
+    const needsInvoice: typeof jobs = [];
+    const completed: typeof jobs = [];
+
+    jobs.forEach(job => {
+      if (job.status === 'invoiced') {
+        completed.push(job);
+      } else if (job.status === 'done') {
+        needsInvoice.push(job);
+      } else if (job.status === 'in_progress') {
+        inProgress.push(job);
+      } else if (job.scheduledAt && isToday(job.scheduledAt)) {
+        today.push(job);
+      } else {
+        upcoming.push(job);
+      }
+    });
+
+    const sortBySchedule = (a: typeof jobs[0], b: typeof jobs[0]) => {
+      if (!a.scheduledAt && !b.scheduledAt) return 0;
+      if (!a.scheduledAt) return 1;
+      if (!b.scheduledAt) return -1;
+      return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+    };
+
+    today.sort(sortBySchedule);
+    upcoming.sort(sortBySchedule);
+
+    return { today, upcoming, inProgress, needsInvoice, completed };
+  }, [jobs]);
+
+  const statusCounts = {
+    active: groupedJobs.today.length + groupedJobs.upcoming.length + groupedJobs.inProgress.length + groupedJobs.needsInvoice.length,
+    today: groupedJobs.today.length,
+    in_progress: groupedJobs.inProgress.length,
+    needs_invoice: groupedJobs.needsInvoice.length,
+    completed: groupedJobs.completed.length
+  };
+
+  const getFilteredJobs = () => {
     const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = 
+    const filterBySearch = (jobList: typeof jobs) => jobList.filter(job => 
       job.title.toLowerCase().includes(searchLower) ||
       (job.address?.toLowerCase().includes(searchLower)) ||
-      (getClientName(job.clientId)?.toLowerCase().includes(searchLower));
-    const matchesFilter = activeFilter === 'all' || job.status === activeFilter;
-    return matchesSearch && matchesFilter;
-  });
+      (getClientName(job.clientId)?.toLowerCase().includes(searchLower))
+    );
+
+    switch (activeFilter) {
+      case 'today':
+        return filterBySearch(groupedJobs.today);
+      case 'in_progress':
+        return filterBySearch(groupedJobs.inProgress);
+      case 'needs_invoice':
+        return filterBySearch(groupedJobs.needsInvoice);
+      case 'completed':
+        return filterBySearch(groupedJobs.completed);
+      case 'active':
+      default:
+        return filterBySearch([
+          ...groupedJobs.needsInvoice,
+          ...groupedJobs.today,
+          ...groupedJobs.inProgress,
+          ...groupedJobs.upcoming
+        ]);
+    }
+  };
+
+  const filteredJobs = getFilteredJobs();
 
   const sortedJobs = [...filteredJobs].sort((a, b) => {
     const dateA = a.createdAt || a.scheduledAt;
