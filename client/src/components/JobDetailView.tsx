@@ -333,23 +333,6 @@ export default function JobDetailView({
     });
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="secondary" data-testid="badge-status-pending">Pending</Badge>;
-      case 'scheduled':
-        return <Badge variant="default" className="bg-blue-500" data-testid="badge-status-scheduled">Scheduled</Badge>;
-      case 'in_progress':
-        return <Badge variant="default" className="bg-amber-500" data-testid="badge-status-in-progress">In Progress</Badge>;
-      case 'done':
-        return <Badge variant="default" className="bg-green-500" data-testid="badge-status-done">Completed</Badge>;
-      case 'invoiced':
-        return <Badge variant="default" className="bg-purple-500" data-testid="badge-status-invoiced">Invoiced</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
   if (isLoading) {
     return (
       <PageShell data-testid="job-detail-loading">

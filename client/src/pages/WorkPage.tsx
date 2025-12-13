@@ -238,7 +238,7 @@ export default function WorkPage({
       )}
       data-testid={`column-${columnId}`}
     >
-      <div className="h-full flex flex-col bg-muted/30 rounded-xl p-3">
+      <div className="h-full flex flex-col bg-muted/30 rounded-xl p-4 md:p-6">
         <div className="flex items-center gap-2 mb-3 px-1">
           <div 
             className="w-6 h-6 rounded-md flex items-center justify-center"
@@ -299,14 +299,15 @@ export default function WorkPage({
         }
       />
 
-      <SearchBar
-        value={searchTerm}
-        onChange={setSearchTerm}
-        placeholder="Search jobs..."
-      />
+      <div className="space-y-4 md:space-y-6">
+        <SearchBar
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Search jobs..."
+        />
 
-      {/* Mobile Tab Navigation - visible below md breakpoint */}
-      <Tabs defaultValue="queue" className="md:hidden mt-4">
+        {/* Mobile Tab Navigation - visible below md breakpoint */}
+        <Tabs defaultValue="queue" className="md:hidden">
         <TabsList className="w-full grid grid-cols-4 h-auto p-1" data-testid="mobile-column-tabs">
           <TabsTrigger 
             value="queue" 
@@ -396,11 +397,11 @@ export default function WorkPage({
         </TabsContent>
       </Tabs>
 
-      {/* Desktop: Grid layout - hidden on mobile, visible from md breakpoint */}
-      <div 
-        className="hidden md:grid md:grid-cols-4 gap-4 mt-4"
-        data-testid="kanban-board"
-      >
+        {/* Desktop: Grid layout - hidden on mobile, visible from md breakpoint */}
+        <div 
+          className="hidden md:grid md:grid-cols-4 gap-4"
+          data-testid="kanban-board"
+        >
         <KanbanColumn
           columnId="queue"
           title="Queue"
@@ -433,29 +434,30 @@ export default function WorkPage({
           iconColor="hsl(var(--success))"
           emptyText="No completed jobs"
         />
-      </div>
-
-      {/* Empty state when no jobs at all */}
-      {jobs.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-            <Briefcase className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h3 className="font-semibold mb-1">No jobs yet</h3>
-          <p className="text-sm text-muted-foreground mb-4">Create your first job to get started</p>
-          {canCreateJobs && onCreateJob && (
-            <Button
-              onClick={onCreateJob}
-              className="rounded-xl text-white"
-              style={{ backgroundColor: 'hsl(var(--trade))' }}
-              data-testid="btn-create-first-job"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Job
-            </Button>
-          )}
         </div>
-      )}
+
+        {/* Empty state when no jobs at all */}
+        {jobs.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+              <Briefcase className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold mb-1">No jobs yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">Create your first job to get started</p>
+            {canCreateJobs && onCreateJob && (
+              <Button
+                onClick={onCreateJob}
+                className="rounded-xl text-white"
+                style={{ backgroundColor: 'hsl(var(--trade))' }}
+                data-testid="btn-create-first-job"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Job
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
 
       <PasteJobModal
         open={pasteJobOpen}
