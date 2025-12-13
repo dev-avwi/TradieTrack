@@ -28,11 +28,14 @@ export default function QuoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getQuote, updateQuoteStatus } = useQuotesStore();
   const { clients, fetchClients } = useClientsStore();
-  const { user, token } = useAuthStore();
+  const { user, token, businessSettings } = useAuthStore();
   const [quote, setQuote] = useState<any>(null);
+  const [quoteSignature, setQuoteSignature] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
+  
+  const brandColor = businessSettings?.primaryColor || user?.brandColor || '#2563eb';
 
   useEffect(() => {
     loadData();
@@ -43,6 +46,24 @@ export default function QuoteDetailScreen() {
     const quoteData = await getQuote(id!);
     setQuote(quoteData);
     await fetchClients();
+    
+    // Fetch signature if quote is accepted
+    if (quoteData?.status === 'accepted') {
+      try {
+        const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote&documentId=${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const signatures = await response.json();
+          if (signatures.length > 0) {
+            setQuoteSignature(signatures[0]);
+          }
+        }
+      } catch (err) {
+        console.log('Could not fetch signature:', err);
+      }
+    }
+    
     setIsLoading(false);
   };
 
@@ -357,11 +378,69 @@ export default function QuoteDetailScreen() {
           {quote.notes && (
             <>
               <Text style={styles.sectionTitle}>Notes</Text>
-              <View style={styles.card}>
+              <View style={[styles.card, styles.notesCard, { borderLeftColor: brandColor }]}>
                 <Text style={styles.notesText}>{quote.notes}</Text>
               </View>
             </>
           )}
+
+          {/* Quote Acceptance Section */}
+          {quote.status !== 'accepted' && quote.status !== 'rejected' && (
+            <>
+              <Text style={styles.sectionTitle}>Quote Acceptance</Text>
+              <View style={styles.acceptanceCard}>
+                <Text style={styles.acceptanceText}>
+                  By signing below, I accept this quote and authorise the work to proceed in accordance with the terms and conditions above.
+                </Text>
+                <View style={styles.signaturePlaceholder}>
+                  <Feather name="edit-3" size={16} color={colors.mutedForeground} />
+                  <Text style={styles.signaturePlaceholderText}>Client signature area</Text>
+                </View>
+              </View>
+            </>
+          )}
+
+          {/* Accepted Quote Signature */}
+          {quote.status === 'accepted' && quoteSignature && (
+            <>
+              <Text style={styles.sectionTitle}>Quote Accepted</Text>
+              <View style={[styles.card, styles.acceptedCard]}>
+                <View style={styles.signatureImageContainer}>
+                  <Text style={styles.signatureLabel}>Client Signature:</Text>
+                </View>
+                {quoteSignature.signerName && (
+                  <Text style={styles.acceptedInfo}>
+                    Accepted by: {quoteSignature.signerName}
+                  </Text>
+                )}
+                {quoteSignature.signedAt && (
+                  <Text style={styles.acceptedInfo}>
+                    Date: {formatDate(quoteSignature.signedAt)}
+                  </Text>
+                )}
+              </View>
+            </>
+          )}
+
+          {quote.status === 'accepted' && !quoteSignature && quote.acceptedBy && (
+            <>
+              <Text style={styles.sectionTitle}>Quote Accepted</Text>
+              <View style={[styles.card, styles.acceptedCard]}>
+                <Text style={styles.acceptedInfo}>Accepted by: {quote.acceptedBy}</Text>
+                {quote.acceptedAt && (
+                  <Text style={styles.acceptedInfo}>Date: {formatDate(quote.acceptedAt)}</Text>
+                )}
+              </View>
+            </>
+          )}
+
+          {/* Footer */}
+          <View style={[styles.footerSection, { borderTopColor: brandColor }]}>
+            <Text style={styles.thankYouText}>Thank you for your business!</Text>
+            {(user?.abn || businessSettings?.abn) && (
+              <Text style={styles.abnFooter}>ABN: {user?.abn || businessSettings?.abn}</Text>
+            )}
+          </View>
 
           {/* Actions */}
           {quote.status === 'draft' && (
@@ -766,5 +845,70 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  notesCard: {
+    borderLeftWidth: 4,
+    borderRadius: 0,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+  },
+  acceptanceCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  acceptanceText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  signaturePlaceholder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  signaturePlaceholderText: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  acceptedCard: {
+    backgroundColor: '#dcfce7',
+    borderColor: '#22c55e',
+  },
+  signatureImageContainer: {
+    marginBottom: 12,
+  },
+  signatureLabel: {
+    fontSize: 12,
+    color: '#166534',
+    marginBottom: 8,
+  },
+  acceptedInfo: {
+    fontSize: 13,
+    color: '#166534',
+  },
+  footerSection: {
+    marginTop: 8,
+    marginBottom: 24,
+    paddingTop: 16,
+    borderTopWidth: 2,
+    alignItems: 'center',
+  },
+  thankYouText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginBottom: 4,
+  },
+  abnFooter: {
+    fontSize: 12,
+    color: colors.mutedForeground,
   },
 });

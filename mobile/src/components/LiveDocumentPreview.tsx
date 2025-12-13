@@ -263,7 +263,6 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: documentColors.background,
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderBottomWidth: 1,
@@ -272,7 +271,6 @@ const styles = StyleSheet.create({
   tableHeaderCell: {
     fontSize: 10,
     fontWeight: '700',
-    color: documentColors.textMuted,
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
@@ -421,6 +419,12 @@ const styles = StyleSheet.create({
     color: documentColors.textLight,
     textAlign: 'center',
     marginTop: 4,
+  },
+  abnText: {
+    fontSize: 9,
+    color: documentColors.textMuted,
+    textAlign: 'center',
+    marginTop: 2,
   },
 });
 
@@ -581,11 +585,11 @@ export default function LiveDocumentPreview({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Items & Services</Text>
             <View style={styles.tableContainer}>
-              <View style={styles.tableHeader}>
-                <Text style={[styles.tableHeaderCell, styles.descCell]}>Description</Text>
-                <Text style={[styles.tableHeaderCell, styles.qtyCell, styles.centerText]}>Qty</Text>
-                <Text style={[styles.tableHeaderCell, styles.priceCell, styles.rightText]}>Price</Text>
-                <Text style={[styles.tableHeaderCell, styles.totalCell, styles.rightText]}>Total</Text>
+              <View style={[styles.tableHeader, { backgroundColor: brandColor }]}>
+                <Text style={[styles.tableHeaderCell, styles.descCell, { color: documentColors.white }]}>Description</Text>
+                <Text style={[styles.tableHeaderCell, styles.qtyCell, styles.centerText, { color: documentColors.white }]}>Qty</Text>
+                <Text style={[styles.tableHeaderCell, styles.priceCell, styles.rightText, { color: documentColors.white }]}>Price</Text>
+                <Text style={[styles.tableHeaderCell, styles.totalCell, styles.rightText, { color: documentColors.white }]}>Total</Text>
               </View>
               
               {validLineItems.length > 0 ? (
@@ -682,7 +686,7 @@ export default function LiveDocumentPreview({
           )}
 
           {/* Footer */}
-          <View style={styles.footer}>
+          <View style={[styles.footer, { borderTopColor: brandColor }]}>
             <View style={styles.footerContacts}>
               {business.phone && (
                 <View style={styles.footerItem}>
@@ -697,7 +701,10 @@ export default function LiveDocumentPreview({
                 </View>
               )}
             </View>
-            <Text style={styles.thankYouText}>Thank you for your business</Text>
+            <Text style={styles.thankYouText}>Thank you for your business!</Text>
+            {business.abn && (
+              <Text style={styles.abnText}>ABN: {business.abn}</Text>
+            )}
           </View>
         </View>
       </View>

@@ -7,11 +7,12 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  Switch
+  Switch,
+  Image
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useInvoicesStore, useClientsStore, useAuthStore } from '../../../src/lib/store';
+import { useInvoicesStore, useClientsStore, useAuthStore, useQuotesStore } from '../../../src/lib/store';
 import { colors } from '../../../src/lib/colors';
 import { DocumentPreview } from '../../../src/components/DocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
@@ -28,13 +29,18 @@ const STATUS_CONFIG = {
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getInvoice, updateInvoiceStatus } = useInvoicesStore();
+  const { getQuote } = useQuotesStore();
   const { clients, fetchClients } = useClientsStore();
-  const { token, user } = useAuthStore();
+  const { token, user, businessSettings } = useAuthStore();
   const [invoice, setInvoice] = useState<any>(null);
+  const [linkedQuote, setLinkedQuote] = useState<any>(null);
+  const [quoteSignature, setQuoteSignature] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [isTogglingPayment, setIsTogglingPayment] = useState(false);
+  
+  const brandColor = businessSettings?.primaryColor || user?.brandColor || '#2563eb';
 
   useEffect(() => {
     loadData();
@@ -45,6 +51,30 @@ export default function InvoiceDetailScreen() {
     const invoiceData = await getInvoice(id!);
     setInvoice(invoiceData);
     await fetchClients();
+    
+    // Fetch linked quote if exists
+    if (invoiceData?.quoteId) {
+      const quoteData = await getQuote(invoiceData.quoteId);
+      setLinkedQuote(quoteData);
+      
+      // Fetch signature if quote was signed
+      if (quoteData && businessSettings?.includeSignatureOnInvoices) {
+        try {
+          const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote&documentId=${invoiceData.quoteId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const signatures = await response.json();
+            if (signatures.length > 0) {
+              setQuoteSignature(signatures[0]);
+            }
+          }
+        } catch (err) {
+          console.log('Could not fetch signature:', err);
+        }
+      }
+    }
+    
     setIsLoading(false);
   };
 
@@ -468,11 +498,45 @@ export default function InvoiceDetailScreen() {
           {invoice.notes && (
             <>
               <Text style={styles.sectionTitle}>Notes</Text>
-              <View style={styles.card}>
+              <View style={[styles.card, styles.notesCard, { borderLeftColor: brandColor }]}>
                 <Text style={styles.notesText}>{invoice.notes}</Text>
               </View>
             </>
           )}
+
+          {/* Signature Section - Shows if invoice is linked to a signed quote */}
+          {quoteSignature && (
+            <>
+              <Text style={styles.sectionTitle}>Quote Acceptance Signature</Text>
+              <View style={styles.card}>
+                <Image 
+                  source={{ uri: quoteSignature.signatureData }} 
+                  style={styles.signatureImage}
+                  resizeMode="contain"
+                />
+                <View style={styles.signatureDetails}>
+                  {quoteSignature.signerName && (
+                    <Text style={styles.signatureInfo}>
+                      Signed by: {quoteSignature.signerName}
+                    </Text>
+                  )}
+                  {quoteSignature.signedAt && (
+                    <Text style={styles.signatureInfo}>
+                      Date: {formatDate(quoteSignature.signedAt)}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </>
+          )}
+
+          {/* Footer */}
+          <View style={[styles.footerSection, { borderTopColor: brandColor }]}>
+            <Text style={styles.thankYouText}>Thank you for your business!</Text>
+            {(user?.abn || businessSettings?.abn) && (
+              <Text style={styles.abnFooter}>ABN: {user?.abn || businessSettings?.abn}</Text>
+            )}
+          </View>
 
           {/* Actions */}
           {invoice.status === 'draft' && (
@@ -938,5 +1002,41 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  notesCard: {
+    borderLeftWidth: 4,
+    borderRadius: 0,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+  },
+  signatureImage: {
+    width: '100%',
+    height: 80,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  signatureDetails: {
+    gap: 4,
+  },
+  signatureInfo: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  footerSection: {
+    marginTop: 8,
+    marginBottom: 24,
+    paddingTop: 16,
+    borderTopWidth: 2,
+    alignItems: 'center',
+  },
+  thankYouText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginBottom: 4,
+  },
+  abnFooter: {
+    fontSize: 12,
+    color: colors.mutedForeground,
   },
 });
