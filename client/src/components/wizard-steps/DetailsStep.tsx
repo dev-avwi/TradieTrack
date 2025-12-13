@@ -64,7 +64,7 @@ export default function DetailsStep({
             </div>
           </Button>
         </SheetTrigger>
-        <SheetContent side="bottom" className="h-[80vh] pb-8">
+        <SheetContent side="bottom" className="h-[80vh] pb-8 z-[60]">
           <SheetHeader className="mb-4">
             <SheetTitle>Choose a Template</SheetTitle>
           </SheetHeader>
