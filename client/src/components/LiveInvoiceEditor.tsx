@@ -156,6 +156,9 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       setAutoLoaded(true);
       const job = preloadedJob as any;
       
+      // Mark this job as selected in the picker
+      setSelectedJobId(job.id);
+      
       // Set client from job
       if (job.clientId) {
         form.setValue("clientId", job.clientId);
@@ -165,10 +168,41 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       form.setValue("title", job.title || "");
       form.setValue("description", job.description || "");
       
-      toast({
-        title: "Job details loaded",
-        description: `Creating invoice for "${job.title}"`,
-      });
+      // Set default due date
+      const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      form.setValue("dueDate", dueDate);
+      
+      // Fetch linked documents to get quote line items
+      fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include' })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.quote?.lineItems && data.quote.lineItems.length > 0) {
+            const items = data.quote.lineItems.map((item: any) => ({
+              description: String(item.description ?? ""),
+              quantity: String(item.quantity ?? item.qty ?? 1),
+              unitPrice: String(item.unitPrice ?? item.unit_price ?? 0),
+            }));
+            form.setValue("lineItems", items);
+            setSourceQuoteId(data.quote.id);
+            setSelectedQuoteId(data.quote.id);
+            
+            toast({
+              title: "Job loaded",
+              description: `Invoice prefilled from "${job.title}" with quote line items`,
+            });
+          } else {
+            toast({
+              title: "Job loaded", 
+              description: `Invoice prefilled from "${job.title}". Add line items for your charges.`,
+            });
+          }
+        })
+        .catch(() => {
+          toast({
+            title: "Job loaded",
+            description: `Invoice prefilled from "${job.title}". Add line items for your charges.`,
+          });
+        });
     }
   }, [preloadedJob, preloadedQuote, autoLoaded, clients, form, toast]);
 
