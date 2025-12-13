@@ -59,11 +59,8 @@ export default function PasteJobModal({ open, onOpenChange, onCreateJob }: Paste
 
   const parseMutation = useMutation({
     mutationFn: async (text: string) => {
-      const response = await apiRequest('/api/ai/parse-job-text', {
-        method: 'POST',
-        body: JSON.stringify({ text }),
-      });
-      return response as ParsedJob;
+      const response = await apiRequest('POST', '/api/ai/parse-job-text', { text });
+      return await response.json() as ParsedJob;
     },
     onSuccess: (data) => {
       setParsedData(data);

@@ -21,7 +21,6 @@ import { useDocumentTemplates, type DocumentTemplate } from "@/hooks/use-templat
 import { useQuery } from "@tanstack/react-query";
 import LiveDocumentPreview from "./LiveDocumentPreview";
 import CatalogModal from "@/components/CatalogModal";
-import RecentJobPicker from "@/components/RecentJobPicker";
 import {
   Plus,
   Trash2,
@@ -443,14 +442,6 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
               </Badge>
             </div>
 
-            {/* Quick Create from Job - only show when not already coming from a job context */}
-            {!urlJobId && (
-              <RecentJobPicker
-                type="quote"
-                onSelectJob={handleSelectJob}
-                selectedJobId={selectedJobId}
-              />
-            )}
 
             {/* Client Selection */}
             <Card className="rounded-2xl overflow-hidden">

@@ -216,7 +216,7 @@ export default function DispatchBoard() {
       jobId: string; 
       scheduledAt: string;
       scheduledTime?: string;
-      assignedTo?: string;
+      assignedTo: string | null;
     }) => {
       return apiRequest('PATCH', `/api/jobs/${jobId}`, {
         scheduledAt,
@@ -236,6 +236,31 @@ export default function DispatchBoard() {
       toast({
         title: "Failed to reschedule",
         description: error.message || "Could not move the job",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unscheduleJobMutation = useMutation({
+    mutationFn: async (jobId: string) => {
+      return apiRequest('PATCH', `/api/jobs/${jobId}`, {
+        scheduledAt: null,
+        scheduledTime: null,
+        assignedTo: null,
+        status: 'pending'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      toast({
+        title: "Job unscheduled",
+        description: "The job has been moved back to the unscheduled list",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to unschedule",
+        description: error.message || "Could not unschedule the job",
         variant: "destructive",
       });
     },
@@ -275,6 +300,7 @@ export default function DispatchBoard() {
       lastName: '(Owner)',
       email: '',
       roleName: 'Owner',
+      profileImageUrl: undefined as string | undefined,
       isActive: true,
     };
 
@@ -326,7 +352,7 @@ export default function DispatchBoard() {
       jobId: draggedJob.job.id,
       scheduledAt: scheduledDate.toISOString(),
       scheduledTime: timeStr,
-      assignedTo: memberId === 'owner' ? undefined : memberId,
+      assignedTo: memberId === 'owner' ? null : memberId,
     });
 
     setDraggedJob(null);
@@ -336,19 +362,7 @@ export default function DispatchBoard() {
     e.preventDefault();
     if (!draggedJob) return;
 
-    apiRequest('PATCH', `/api/jobs/${draggedJob.job.id}`, {
-      scheduledAt: null,
-      scheduledTime: null,
-      assignedTo: null,
-      status: 'pending'
-    }).then(() => {
-      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
-      toast({
-        title: "Job unscheduled",
-        description: "The job has been moved back to the unscheduled list",
-      });
-    });
-
+    unscheduleJobMutation.mutate(draggedJob.job.id);
     setDraggedJob(null);
   };
 
@@ -574,10 +588,10 @@ export default function DispatchBoard() {
                                     )}
                                   </div>
                                 )}
-                                {height > 80 && job.location && (
+                                {height > 80 && job.address && (
                                   <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                                     <MapPin className="h-3 w-3 flex-shrink-0" />
-                                    <span className="truncate">{job.location}</span>
+                                    <span className="truncate">{job.address}</span>
                                   </div>
                                 )}
                               </div>
@@ -635,10 +649,10 @@ export default function DispatchBoard() {
                               <p className="text-xs text-muted-foreground truncate">
                                 {job.clientName}
                               </p>
-                              {job.location && (
+                              {job.address && (
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                                   <MapPin className="h-3 w-3" />
-                                  <span className="truncate">{job.location}</span>
+                                  <span className="truncate">{job.address}</span>
                                 </div>
                               )}
                             </div>
