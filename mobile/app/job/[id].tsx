@@ -1856,6 +1856,39 @@ export default function JobDetailScreen() {
       return;
     }
 
+    // Guardrail: Warn if completing an "empty" job (no photos, notes, or time tracked)
+    if (action.next === 'done') {
+      const hasPhotos = photos.length > 0;
+      const hasNotes = job.notes && job.notes.trim().length > 0;
+      // Count ANY time entries (active or completed) - not just completed ones
+      const hasTimeTracked = timeEntries.length > 0;
+      const hasSignatures = signatures.length > 0;
+      const hasVoiceNotes = voiceNotes.length > 0;
+      
+      const isEmptyJob = !hasPhotos && !hasNotes && !hasTimeTracked && !hasSignatures && !hasVoiceNotes;
+      
+      if (isEmptyJob) {
+        Alert.alert(
+          'Complete Job?',
+          'This job has no photos, notes, time tracked, or signatures. Are you sure you want to mark it as complete?\n\nConsider adding documentation before completing.',
+          [
+            { text: 'Go Back', style: 'cancel' },
+            {
+              text: 'Complete Anyway',
+              style: 'destructive',
+              onPress: async () => {
+                const success = await updateJobStatus(job.id, 'done');
+                if (success) {
+                  setJob({ ...job, status: 'done' });
+                }
+              }
+            }
+          ]
+        );
+        return;
+      }
+    }
+
     Alert.alert(
       action.label,
       `Are you sure you want to ${action.label.toLowerCase()}?`,

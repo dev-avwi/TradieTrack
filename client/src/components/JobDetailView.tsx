@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle } from "lucide-react";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
@@ -25,6 +25,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -127,6 +137,7 @@ export default function JobDetailView({
   const [emailEditorOpen, setEmailEditorOpen] = useState(false);
   const [editingAction, setEditingAction] = useState<SmartAction | null>(null);
   const [emailTemplates, setEmailTemplates] = useState<Record<string, EmailTemplate>>({});
+  const [showEmptyJobWarning, setShowEmptyJobWarning] = useState(false);
   
   const { userRole, isTradie, isSolo, actionPermissions } = useAppMode();
   const { data: businessSettings } = useBusinessSettings();
@@ -174,6 +185,60 @@ export default function JobDetailView({
     queryKey: ['/api/team/members'],
     enabled: !isTradie && !isSolo,
   });
+
+  // Fetch job photos to check if job has documentation
+  const { data: jobPhotos = [] } = useQuery<{ id: string }[]>({
+    queryKey: ['/api/jobs', jobId, 'photos'],
+    enabled: !!jobId && job?.status === 'in_progress',
+  });
+
+  // Fetch time entries for this job
+  const { data: timeEntries = [] } = useQuery<{ id: string; endTime?: string }[]>({
+    queryKey: ['/api/time-entries', { jobId }],
+    queryFn: async () => {
+      const res = await fetch(`/api/time-entries?jobId=${jobId}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!jobId && job?.status === 'in_progress',
+  });
+
+  // Fetch voice notes for this job
+  const { data: voiceNotes = [] } = useQuery<{ id: string }[]>({
+    queryKey: ['/api/jobs', jobId, 'voice-notes'],
+    enabled: !!jobId && job?.status === 'in_progress',
+  });
+
+  // Fetch signatures for this job
+  const { data: signatures = [] } = useQuery<{ id: string }[]>({
+    queryKey: ['/api/jobs', jobId, 'signatures'],
+    enabled: !!jobId && job?.status === 'in_progress',
+  });
+
+  // Check if job is "empty" (no documentation)
+  const isEmptyJob = () => {
+    const hasPhotos = jobPhotos.length > 0;
+    const hasNotes = job?.notes && job.notes.trim().length > 0;
+    // Count ANY time entries (active or completed) - not just completed ones
+    const hasTimeTracked = timeEntries.length > 0;
+    const hasSignatures = signatures.length > 0;
+    const hasVoiceNotes = voiceNotes.length > 0;
+    return !hasPhotos && !hasNotes && !hasTimeTracked && !hasSignatures && !hasVoiceNotes;
+  };
+
+  // Handler for completing job with empty job guardrail
+  const handleCompleteJob = () => {
+    if (isEmptyJob()) {
+      setShowEmptyJobWarning(true);
+    } else {
+      updateJobMutation.mutate({ status: 'done' });
+    }
+  };
+
+  const confirmCompleteEmptyJob = () => {
+    setShowEmptyJobWarning(false);
+    updateJobMutation.mutate({ status: 'done' });
+  };
 
   // Assign worker mutation
   const assignWorkerMutation = useMutation({
@@ -403,7 +468,7 @@ export default function JobDetailView({
           onViewQuote={() => linkedQuote && navigate(`/quotes/${linkedQuote.id}`)}
           onSchedule={() => onEditJob?.(jobId)}
           onStart={() => updateJobMutation.mutate({ status: 'in_progress' })}
-          onComplete={() => updateJobMutation.mutate({ status: 'done' })}
+          onComplete={handleCompleteJob}
           onCreateInvoice={() => onCreateInvoice?.(jobId)}
           onViewInvoice={() => linkedInvoice && navigate(`/invoices/${linkedInvoice.id}`)}
           data-testid="job-flow-wizard"
@@ -420,7 +485,7 @@ export default function JobDetailView({
             scheduledAt={job.scheduledAt}
             onSchedule={() => onEditJob?.(jobId)}
             onStartJob={() => updateJobMutation.mutate({ status: 'in_progress' })}
-            onCompleteJob={() => onCompleteJob?.(jobId)}
+            onCompleteJob={handleCompleteJob}
             onCreateQuote={() => onCreateQuote?.(jobId)}
             onSendQuote={() => linkedQuote && navigate(`/quotes/${linkedQuote.id}`)}
             onCreateInvoice={() => onCreateInvoice?.(jobId)}
@@ -898,6 +963,33 @@ export default function JobDetailView({
           businessName={businessSettings?.businessName || 'Your Business'}
         />
       )}
+
+      {/* Empty Job Warning Dialog */}
+      <AlertDialog open={showEmptyJobWarning} onOpenChange={setShowEmptyJobWarning}>
+        <AlertDialogContent data-testid="dialog-empty-job-warning">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Complete Job?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This job has no photos, notes, time tracked, or signatures. Are you sure you want to mark it as complete?
+              <br /><br />
+              Consider adding documentation before completing.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-complete">Go Back</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmCompleteEmptyJob}
+              className="bg-amber-600 hover:bg-amber-700"
+              data-testid="button-confirm-complete-anyway"
+            >
+              Complete Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageShell>
   );
 }

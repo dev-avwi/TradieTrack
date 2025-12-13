@@ -154,7 +154,7 @@ function JobCard({
       case 'scheduled':
         return { label: 'Start Job', status: 'in_progress', icon: 'play' as const, color: colors.inProgress };
       case 'in_progress':
-        return { label: 'Complete', status: 'done', icon: 'check' as const, color: colors.done };
+        return { label: 'View & Complete', status: 'done', icon: 'eye' as const, color: colors.done };
       case 'done':
         return { label: 'Invoice', status: 'invoiced', icon: 'file-text' as const, color: colors.invoiced };
       default:
@@ -326,6 +326,13 @@ export default function JobsScreen() {
         // No quote found, just navigate with jobId
         router.push(`/more/create-invoice?jobId=${jobId}`);
       }
+      return;
+    }
+    
+    // Special handling for "Complete" action - navigate to job detail first (same as web behavior)
+    // This lets the user review the job before completing it
+    if (newStatus === 'done') {
+      router.push(`/job/${jobId}`);
       return;
     }
     
