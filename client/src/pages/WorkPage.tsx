@@ -1,8 +1,6 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { 
   Plus, 
   Briefcase, 
@@ -11,17 +9,32 @@ import {
   CheckCircle, 
   Receipt, 
   Calendar,
-  AlertCircle,
   Clipboard,
-  User
+  User,
+  MapPin,
+  LayoutGrid,
+  List,
+  MoreVertical,
+  Hourglass,
+  AlertCircle
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
-import { SearchBar } from "@/components/ui/filter-chips";
+import { EmptyState } from "@/components/ui/compact-card";
+import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
+import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import KPIBox from "@/components/KPIBox";
+import StatusBadge from "@/components/StatusBadge";
 import { useJobs, useUpdateJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useLocation } from "wouter";
-import { format, isToday, isTomorrow, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { queryClient } from "@/lib/queryClient";
 import PasteJobModal from "@/components/PasteJobModal";
@@ -52,13 +65,15 @@ export default function WorkPage({
   onCreateJob,
 }: WorkPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [pasteJobOpen, setPasteJobOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [pendingStatus, setPendingStatus] = useState<JobStatus | null>(null);
   const [, navigate] = useLocation();
 
-  const { data: jobs = [] } = useJobs() as { data: Job[] };
+  const { data: jobs = [], isLoading } = useJobs() as { data: Job[], isLoading: boolean };
   const { toast } = useToast();
   const updateJobMutation = useUpdateJob();
   const { actionPermissions } = useAppMode();
@@ -72,48 +87,28 @@ export default function WorkPage({
     invoiced: 'Invoiced',
   };
 
-  // Group jobs into 4 kanban columns
-  const kanbanColumns = useMemo(() => {
-    const todayJobs: Job[] = [];
-    const inProgress: Job[] = [];
-    const needsInvoice: Job[] = [];
-    const completed: Job[] = [];
-    const nowDate = new Date();
+  const stats = useMemo(() => ({
+    total: jobs.length,
+    pending: jobs.filter(j => j.status === 'pending').length,
+    scheduled: jobs.filter(j => j.status === 'scheduled').length,
+    inProgress: jobs.filter(j => j.status === 'in_progress').length,
+    done: jobs.filter(j => j.status === 'done').length,
+    invoiced: jobs.filter(j => j.status === 'invoiced').length,
+  }), [jobs]);
 
-    jobs.forEach(job => {
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        const matchesSearch = 
-          (job.title || '').toLowerCase().includes(search) ||
-          (job.clientName || '').toLowerCase().includes(search) ||
-          (job.address || '').toLowerCase().includes(search);
-        if (!matchesSearch) return;
-      }
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
+      const search = searchTerm.toLowerCase();
+      const matchesSearch = !searchTerm || 
+        (job.title || '').toLowerCase().includes(search) ||
+        (job.clientName || '').toLowerCase().includes(search) ||
+        (job.address || '').toLowerCase().includes(search);
 
-      if (job.status === 'invoiced') {
-        completed.push(job);
-      } else if (job.status === 'done') {
-        needsInvoice.push(job);
-      } else if (job.status === 'in_progress') {
-        inProgress.push(job);
-      } else {
-        // Today column: all pending/scheduled jobs (today, overdue, future, and unscheduled)
-        // This is the "queue" of work that needs to be started
-        todayJobs.push(job);
-      }
+      const matchesFilter = activeFilter === 'all' || job.status === activeFilter;
+
+      return matchesSearch && matchesFilter;
     });
-
-    const sortBySchedule = (a: Job, b: Job) => {
-      if (!a.scheduledAt && !b.scheduledAt) return 0;
-      if (!a.scheduledAt) return 1;
-      if (!b.scheduledAt) return -1;
-      return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
-    };
-
-    todayJobs.sort(sortBySchedule);
-
-    return { today: todayJobs, inProgress, needsInvoice, completed };
-  }, [jobs, searchTerm]);
+  }, [jobs, searchTerm, activeFilter]);
 
   const handleStatusChange = (job: Job, newStatus: JobStatus) => {
     setSelectedJob(job);
@@ -152,48 +147,137 @@ export default function WorkPage({
     return null;
   };
 
-  // Compact kanban card
-  const KanbanCard = ({ job }: { job: Job }) => {
+  const tableColumns: ColumnDef<Job>[] = [
+    {
+      id: "title",
+      header: "Job",
+      accessorKey: "title",
+      sortable: true,
+      cell: (row) => (
+        <div className="min-w-0">
+          <span className="font-medium block truncate">{row.title || 'Untitled Job'}</span>
+          {row.clientName && (
+            <span className="text-xs text-muted-foreground truncate block">{row.clientName}</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      accessorKey: "status",
+      sortable: true,
+      cell: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      id: "scheduledAt",
+      header: "Scheduled",
+      accessorKey: "scheduledAt",
+      sortable: true,
+      hideOnMobile: true,
+      cell: (row) => row.scheduledAt ? format(parseISO(row.scheduledAt), 'dd MMM, h:mm a') : '—',
+    },
+    {
+      id: "address",
+      header: "Address",
+      accessorKey: "address",
+      hideOnMobile: true,
+      cell: (row) => (
+        <span className="text-muted-foreground truncate max-w-[200px] block">
+          {row.address || "—"}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      className: "w-10",
+      cell: (row) => {
+        const nextAction = getNextAction(row);
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={(e) => e.stopPropagation()}
+                data-testid={`button-job-table-actions-${row.id}`}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" style={{ borderRadius: "12px" }}>
+              <DropdownMenuItem onClick={() => onViewJob?.(row.id)}>
+                <Briefcase className="h-4 w-4 mr-2" />
+                View Details
+              </DropdownMenuItem>
+              {nextAction && (
+                <DropdownMenuItem onClick={nextAction.action}>
+                  <nextAction.icon className="h-4 w-4 mr-2" />
+                  {nextAction.label}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
+  const JobCardItem = ({ job }: { job: Job }) => {
     const nextAction = getNextAction(job);
     const scheduledLabel = job.scheduledAt 
-      ? isToday(parseISO(job.scheduledAt)) 
-        ? format(parseISO(job.scheduledAt), 'h:mm a')
-        : isTomorrow(parseISO(job.scheduledAt))
-        ? 'Tomorrow'
-        : format(parseISO(job.scheduledAt), 'EEE d')
+      ? format(parseISO(job.scheduledAt), 'EEE d MMM, h:mm a')
       : null;
 
     return (
       <Card 
         className="hover-elevate cursor-pointer"
+        style={{ borderRadius: '14px' }}
         onClick={() => onViewJob?.(job.id)}
         data-testid={`job-card-${job.id}`}
       >
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-sm truncate leading-tight">
-                {job.title || 'Untitled Job'}
-              </h4>
-              {job.clientName && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                  <User className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">{job.clientName}</span>
-                </div>
-              )}
-              {scheduledLabel && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                  <Clock className="h-3 w-3 flex-shrink-0" />
-                  <span>{scheduledLabel}</span>
-                </div>
-              )}
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="font-semibold text-base truncate leading-tight">
+                  {job.title || 'Untitled Job'}
+                </h4>
+                <StatusBadge status={job.status} />
+              </div>
+              
+              <div className="space-y-1">
+                {job.clientName && (
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <User className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="truncate">{job.clientName}</span>
+                  </div>
+                )}
+                {job.address && (
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="truncate">{job.address}</span>
+                  </div>
+                )}
+                {scheduledLabel && (
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>{scheduledLabel}</span>
+                  </div>
+                )}
+              </div>
             </div>
-            {nextAction && (
+          </div>
+          
+          {nextAction && (
+            <div className="mt-3 pt-3 border-t flex justify-end">
               <Button
                 size="sm"
                 variant={job.status === 'done' ? 'default' : 'outline'}
                 className={cn(
-                  "flex-shrink-0 h-7 px-2 text-xs rounded-lg",
+                  "rounded-lg",
                   job.status === 'done' && "text-white"
                 )}
                 style={job.status === 'done' ? { backgroundColor: 'hsl(var(--trade))' } : {}}
@@ -203,77 +287,50 @@ export default function WorkPage({
                 }}
                 data-testid={`btn-${nextAction.label.toLowerCase()}-${job.id}`}
               >
-                <nextAction.icon className="h-3 w-3 mr-1" />
+                <nextAction.icon className="h-4 w-4 mr-1.5" />
                 {nextAction.label}
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
   };
 
-  // Column component
-  const KanbanColumn = ({ 
-    title, 
-    jobs, 
-    icon, 
-    iconColor,
-    columnId,
-    emptyText,
-    isMobile = false
-  }: { 
-    title: string; 
-    jobs: Job[]; 
-    icon: React.ReactNode;
-    iconColor: string;
-    columnId: string;
-    emptyText: string;
-    isMobile?: boolean;
-  }) => (
-    <div 
-      className={cn(
-        "flex-shrink-0",
-        isMobile ? "w-full" : "w-full min-w-0"
-      )}
-      data-testid={`column-${columnId}`}
-    >
-      <div className="h-full flex flex-col bg-muted/30 rounded-xl p-4 md:p-6">
-        <div className="flex items-center gap-2 mb-3 px-1">
-          <div 
-            className="w-6 h-6 rounded-md flex items-center justify-center"
-            style={{ backgroundColor: `${iconColor}20` }}
-          >
-            {icon}
-          </div>
-          <span className="font-semibold text-sm">{title}</span>
-          <Badge variant="secondary" className="ml-auto text-xs">
-            {jobs.length}
-          </Badge>
-        </div>
-        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-3">
-          {jobs.length > 0 ? (
-            jobs.map(job => <KanbanCard key={job.id} job={job} />)
-          ) : (
-            <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
-              {emptyText}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  const totalActive = kanbanColumns.today.length + kanbanColumns.inProgress.length + kanbanColumns.needsInvoice.length;
-
   return (
     <PageShell data-testid="work-page">
       <PageHeader
         title="Work"
-        subtitle={`${totalActive} active jobs`}
+        subtitle={`${jobs.length} total jobs`}
         action={
           canCreateJobs && (
             <div className="flex items-center gap-2">
+              <div className="hidden md:inline-flex rounded-lg border bg-muted p-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode("cards")}
+                  className={cn(
+                    "h-8 px-3 rounded-md",
+                    viewMode === "cards" && "bg-background shadow-sm"
+                  )}
+                  data-testid="button-work-view-cards"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode("table")}
+                  className={cn(
+                    "h-8 px-3 rounded-md",
+                    viewMode === "table" && "bg-background shadow-sm"
+                  )}
+                  data-testid="button-work-view-table"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -299,165 +356,174 @@ export default function WorkPage({
         }
       />
 
-      <div className="space-y-4 md:space-y-6">
-        <SearchBar
-          value={searchTerm}
-          onChange={setSearchTerm}
-          placeholder="Search jobs..."
-        />
+      <SearchBar
+        value={searchTerm}
+        onChange={setSearchTerm}
+        placeholder="Search jobs by title, client, or address..."
+      />
 
-        {/* Mobile Tab Navigation - visible below md breakpoint */}
-        <Tabs defaultValue="queue" className="md:hidden">
-        <TabsList className="w-full grid grid-cols-4 h-auto p-1" data-testid="mobile-column-tabs">
-          <TabsTrigger 
-            value="queue" 
-            className="flex flex-col gap-0.5 py-2 px-1 text-xs data-[state=active]:text-[hsl(var(--trade))]"
-            data-testid="tab-queue"
-          >
-            <span>Queue</span>
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              {kanbanColumns.today.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="in-progress" 
-            className="flex flex-col gap-0.5 py-2 px-1 text-xs data-[state=active]:text-[hsl(var(--warning))]"
-            data-testid="tab-in-progress"
-          >
-            <span>In Progress</span>
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              {kanbanColumns.inProgress.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="needs-invoice" 
-            className="flex flex-col gap-0.5 py-2 px-1 text-xs data-[state=active]:text-[hsl(var(--destructive))]"
-            data-testid="tab-needs-invoice"
-          >
-            <span>Invoice</span>
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              {kanbanColumns.needsInvoice.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="completed" 
-            className="flex flex-col gap-0.5 py-2 px-1 text-xs data-[state=active]:text-[hsl(var(--success))]"
-            data-testid="tab-completed"
-          >
-            <span>Done</span>
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              {kanbanColumns.completed.length}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
+      <FilterChips 
+        chips={[
+          { id: 'all', label: 'All', count: stats.total, icon: <Briefcase className="h-3 w-3" /> },
+          { id: 'pending', label: 'Pending', count: stats.pending, icon: <Hourglass className="h-3 w-3" /> },
+          { id: 'scheduled', label: 'Scheduled', count: stats.scheduled, icon: <Calendar className="h-3 w-3" /> },
+          { id: 'in_progress', label: 'In Progress', count: stats.inProgress, icon: <Play className="h-3 w-3" /> },
+          { id: 'done', label: 'Done', count: stats.done, icon: <CheckCircle className="h-3 w-3" /> },
+          { id: 'invoiced', label: 'Invoiced', count: stats.invoiced, icon: <Receipt className="h-3 w-3" /> },
+        ]}
+        activeId={activeFilter}
+        onSelect={setActiveFilter}
+      />
 
-        <TabsContent value="queue" className="mt-3" data-testid="mobile-kanban-content-queue">
-          <KanbanColumn
-            columnId="queue"
-            title="Queue"
-            jobs={kanbanColumns.today}
-            icon={<Calendar className="h-3.5 w-3.5" style={{ color: 'hsl(var(--trade))' }} />}
-            iconColor="hsl(var(--trade))"
-            emptyText="No jobs in queue"
-            isMobile
-          />
-        </TabsContent>
-        <TabsContent value="in-progress" className="mt-3" data-testid="mobile-kanban-content-in-progress">
-          <KanbanColumn
-            columnId="in-progress"
-            title="In Progress"
-            jobs={kanbanColumns.inProgress}
-            icon={<Play className="h-3.5 w-3.5" style={{ color: 'hsl(var(--warning))' }} />}
-            iconColor="hsl(var(--warning))"
-            emptyText="Nothing in progress"
-            isMobile
-          />
-        </TabsContent>
-        <TabsContent value="needs-invoice" className="mt-3" data-testid="mobile-kanban-content-needs-invoice">
-          <KanbanColumn
-            columnId="needs-invoice"
-            title="Needs Invoice"
-            jobs={kanbanColumns.needsInvoice}
-            icon={<AlertCircle className="h-3.5 w-3.5" style={{ color: 'hsl(var(--destructive))' }} />}
-            iconColor="hsl(var(--destructive))"
-            emptyText="All invoiced"
-            isMobile
-          />
-        </TabsContent>
-        <TabsContent value="completed" className="mt-3" data-testid="mobile-kanban-content-completed">
-          <KanbanColumn
-            columnId="completed"
-            title="Done"
-            jobs={kanbanColumns.completed}
-            icon={<CheckCircle className="h-3.5 w-3.5" style={{ color: 'hsl(var(--success))' }} />}
-            iconColor="hsl(var(--success))"
-            emptyText="No completed jobs"
-            isMobile
-          />
-        </TabsContent>
-      </Tabs>
-
-        {/* Desktop: Grid layout - hidden on mobile, visible from md breakpoint */}
-        <div 
-          className="hidden md:grid md:grid-cols-4 gap-4"
-          data-testid="kanban-board"
-        >
-        <KanbanColumn
-          columnId="queue"
-          title="Queue"
-          jobs={kanbanColumns.today}
-          icon={<Calendar className="h-3.5 w-3.5" style={{ color: 'hsl(var(--trade))' }} />}
-          iconColor="hsl(var(--trade))"
-          emptyText="No jobs in queue"
-        />
-        <KanbanColumn
-          columnId="in-progress"
-          title="In Progress"
-          jobs={kanbanColumns.inProgress}
-          icon={<Play className="h-3.5 w-3.5" style={{ color: 'hsl(var(--warning))' }} />}
-          iconColor="hsl(var(--warning))"
-          emptyText="Nothing in progress"
-        />
-        <KanbanColumn
-          columnId="needs-invoice"
-          title="Needs Invoice"
-          jobs={kanbanColumns.needsInvoice}
-          icon={<AlertCircle className="h-3.5 w-3.5" style={{ color: 'hsl(var(--destructive))' }} />}
-          iconColor="hsl(var(--destructive))"
-          emptyText="All invoiced"
-        />
-        <KanbanColumn
-          columnId="completed"
-          title="Done"
-          jobs={kanbanColumns.completed}
-          icon={<CheckCircle className="h-3.5 w-3.5" style={{ color: 'hsl(var(--success))' }} />}
-          iconColor="hsl(var(--success))"
-          emptyText="No completed jobs"
-        />
-        </div>
-
-        {/* Empty state when no jobs at all */}
-        {jobs.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-              <Briefcase className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <h3 className="font-semibold mb-1">No jobs yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">Create your first job to get started</p>
-            {canCreateJobs && onCreateJob && (
-              <Button
-                onClick={onCreateJob}
-                className="rounded-xl text-white"
-                style={{ backgroundColor: 'hsl(var(--trade))' }}
-                data-testid="btn-create-first-job"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Job
-              </Button>
-            )}
-          </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {isLoading ? (
+          <>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="bg-card border rounded-md p-4">
+                <div className="animate-pulse space-y-2">
+                  <div className="h-4 w-16 bg-muted rounded" />
+                  <div className="h-8 w-12 bg-muted rounded" />
+                </div>
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            <KPIBox
+              icon={Hourglass}
+              title="Pending"
+              value={stats.pending.toString()}
+              onClick={() => setActiveFilter('pending')}
+            />
+            <KPIBox
+              icon={Calendar}
+              title="Scheduled"
+              value={stats.scheduled.toString()}
+              onClick={() => setActiveFilter('scheduled')}
+            />
+            <KPIBox
+              icon={Play}
+              title="In Progress"
+              value={stats.inProgress.toString()}
+              onClick={() => setActiveFilter('in_progress')}
+            />
+            <KPIBox
+              icon={AlertCircle}
+              title="Needs Invoice"
+              value={stats.done.toString()}
+              onClick={() => setActiveFilter('done')}
+            />
+            <KPIBox
+              icon={Receipt}
+              title="Invoiced"
+              value={stats.invoiced.toString()}
+              onClick={() => setActiveFilter('invoiced')}
+            />
+          </>
         )}
       </div>
+
+      <Card>
+        <CardHeader className="px-4 pt-4 pb-3">
+          <CardTitle className="text-base font-semibold">Recent Jobs</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          {isLoading ? (
+            <div className="text-center py-4 text-muted-foreground">
+              <div className="animate-pulse text-xs">Loading...</div>
+            </div>
+          ) : jobs.length > 0 ? (
+            <div className="max-h-[200px] overflow-y-auto">
+              <div className="space-y-2 pr-2">
+                {jobs.slice(0, 5).map((job: Job) => (
+                  <div 
+                    key={job.id}
+                    className="flex items-start gap-2 text-xs hover-elevate p-2 rounded cursor-pointer"
+                    onClick={() => onViewJob?.(job.id)}
+                    data-testid={`recent-job-${job.id}`}
+                  >
+                    <div 
+                      className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                      style={{ backgroundColor: 'hsl(var(--trade))' }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{job.title || 'Untitled Job'}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {job.clientName || statusLabels[job.status]}
+                      </p>
+                    </div>
+                    <StatusBadge status={job.status} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-muted-foreground">
+              <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-20" />
+              <p className="text-xs">No jobs yet</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <div className="space-y-3" data-testid="jobs-loading">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} style={{ borderRadius: '14px' }}>
+              <CardContent className="p-4 animate-pulse">
+                <div className="space-y-3">
+                  <div className="h-5 w-48 bg-muted rounded" />
+                  <div className="h-4 w-32 bg-muted rounded" />
+                  <div className="flex gap-4">
+                    <div className="h-3 w-24 bg-muted rounded" />
+                    <div className="h-3 w-24 bg-muted rounded" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : filteredJobs.length === 0 ? (
+        <EmptyState
+          icon={Briefcase}
+          title="No jobs found"
+          description={
+            searchTerm 
+              ? "Try adjusting your search terms"
+              : "Create your first job to start tracking work and generating invoices."
+          }
+          action={
+            !searchTerm && canCreateJobs && (
+              <Button 
+                onClick={onCreateJob}
+                style={{ borderRadius: '12px' }}
+                className="text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Job
+              </Button>
+            )
+          }
+          tip={!searchTerm ? "Jobs flow: Pending → Scheduled → In Progress → Done → Invoiced" : undefined}
+          encouragement={!searchTerm ? "Track jobs from start to payment" : undefined}
+        />
+      ) : viewMode === "table" ? (
+        <DataTable
+          data={filteredJobs}
+          columns={tableColumns}
+          onRowClick={(row) => onViewJob?.(row.id)}
+          isLoading={isLoading}
+          pageSize={15}
+          showViewToggle={false}
+          getRowId={(row) => row.id}
+        />
+      ) : (
+        <div className="space-y-3" data-testid="jobs-list-cards">
+          {filteredJobs.map((job: Job) => (
+            <JobCardItem key={job.id} job={job} />
+          ))}
+        </div>
+      )}
 
       <PasteJobModal
         open={pasteJobOpen}
