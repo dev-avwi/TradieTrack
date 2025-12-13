@@ -28,7 +28,6 @@ import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
 import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
-import KPIBox from "@/components/KPIBox";
 import StatusBadge from "@/components/StatusBadge";
 import { useJobs, useUpdateJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
@@ -375,96 +374,6 @@ export default function WorkPage({
         onSelect={setActiveFilter}
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {isLoading ? (
-          <>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="bg-card border rounded-md p-4">
-                <div className="animate-pulse space-y-2">
-                  <div className="h-4 w-16 bg-muted rounded" />
-                  <div className="h-8 w-12 bg-muted rounded" />
-                </div>
-              </div>
-            ))}
-          </>
-        ) : (
-          <>
-            <KPIBox
-              icon={Hourglass}
-              title="Pending"
-              value={stats.pending.toString()}
-              onClick={() => setActiveFilter('pending')}
-            />
-            <KPIBox
-              icon={Calendar}
-              title="Scheduled"
-              value={stats.scheduled.toString()}
-              onClick={() => setActiveFilter('scheduled')}
-            />
-            <KPIBox
-              icon={Play}
-              title="In Progress"
-              value={stats.inProgress.toString()}
-              onClick={() => setActiveFilter('in_progress')}
-            />
-            <KPIBox
-              icon={AlertCircle}
-              title="Needs Invoice"
-              value={stats.done.toString()}
-              onClick={() => setActiveFilter('done')}
-            />
-            <KPIBox
-              icon={Receipt}
-              title="Invoiced"
-              value={stats.invoiced.toString()}
-              onClick={() => setActiveFilter('invoiced')}
-            />
-          </>
-        )}
-      </div>
-
-      <Card>
-        <CardHeader className="px-4 pt-4 pb-3">
-          <CardTitle className="text-base font-semibold">Recent Jobs</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          {isLoading ? (
-            <div className="text-center py-4 text-muted-foreground">
-              <div className="animate-pulse text-xs">Loading...</div>
-            </div>
-          ) : jobs.length > 0 ? (
-            <div className="max-h-[200px] overflow-y-auto">
-              <div className="space-y-2 pr-2">
-                {jobs.slice(0, 5).map((job: Job) => (
-                  <div 
-                    key={job.id}
-                    className="flex items-start gap-2 text-xs hover-elevate p-2 rounded cursor-pointer"
-                    onClick={() => onViewJob?.(job.id)}
-                    data-testid={`recent-job-${job.id}`}
-                  >
-                    <div 
-                      className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                      style={{ backgroundColor: 'hsl(var(--trade))' }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{job.title || 'Untitled Job'}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {job.clientName || statusLabels[job.status]}
-                      </p>
-                    </div>
-                    <StatusBadge status={job.status} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-6 text-muted-foreground">
-              <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-20" />
-              <p className="text-xs">No jobs yet</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {isLoading ? (
         <div className="space-y-3" data-testid="jobs-loading">

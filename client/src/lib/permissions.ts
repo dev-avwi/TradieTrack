@@ -73,8 +73,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/invoices/:id', label: 'Invoice Details', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   { path: '/invoice-editor/:id', label: 'Invoice Editor', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   
-  // Calendar - staff sees only their assigned jobs
+  // Calendar/Schedule - staff sees only their assigned jobs
   { path: '/calendar', label: 'Calendar', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
+  { path: '/schedule', label: 'Schedule', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   
   // Dispatch - owner/manager only
   { path: '/dispatch', label: 'Dispatch', allowedRoles: ['owner', 'manager'], showInNav: true },
