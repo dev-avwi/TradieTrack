@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient, clearSessionToken } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { WifiOff } from "lucide-react";
@@ -62,6 +62,7 @@ import Automations from "@/pages/Automations";
 import CustomForms from "@/pages/CustomForms";
 import MyAccount from "@/pages/MyAccount";
 import PaymentHub from "@/pages/PaymentHub";
+import WorkPage from "@/pages/WorkPage";
 import AppWalkthrough, { useAppWalkthrough } from "@/components/AppWalkthrough";
 
 // Types for job completion
@@ -207,13 +208,19 @@ function Router({
 
   return (
     <Switch>
-      <Route path="/jobs" component={() => (
-        <JobsList 
-          onCreateJob={() => onNavigate('/jobs/new')}
+      {/* Work page - unified job workflow view */}
+      <Route path="/work" component={() => (
+        <WorkPage 
           onViewJob={(id) => onNavigate(`/jobs/${id}`)}
+          onCreateJob={() => onNavigate('/jobs/new')}
           onShowQuoteModal={onShowQuoteModal}
+          onShowInvoiceModal={onShowInvoiceModal}
         />
       )} />
+
+      <Route path="/jobs">
+        <Redirect to="/work" />
+      </Route>
       
       {/* IMPORTANT: /jobs/new must come BEFORE /jobs/:id to prevent "new" matching as an ID */}
       <Route path="/jobs/new" component={() => (

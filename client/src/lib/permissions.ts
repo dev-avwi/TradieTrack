@@ -48,6 +48,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/profile', label: 'Profile', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
   { path: '/my-account', label: 'My Account', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   
+  // Work - unified job view for all roles
+  { path: '/work', label: 'Work', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
+  
   // Jobs - all roles can see, but staff only sees assigned
   { path: '/jobs', label: 'Jobs', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   { path: '/jobs/new', label: 'New Job', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },

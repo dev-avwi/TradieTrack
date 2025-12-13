@@ -130,20 +130,37 @@ export default function Header({
         )}
 
         {canViewMap && (
-          <Button
-            variant={location === '/map' ? "default" : "outline"}
-            size="sm"
-            onClick={() => setLocation('/map')}
-            className="hidden sm:flex items-center gap-2"
-            data-testid="button-header-map"
-            style={location === '/map' ? {
-              backgroundColor: 'hsl(var(--trade))',
-              borderColor: 'hsl(var(--trade))'
-            } : {}}
-          >
-            <Map className="h-4 w-4" />
-            <span className="hidden md:inline">Job Map</span>
-          </Button>
+          <>
+            {/* Mobile: icon-only button */}
+            <Button
+              variant={location === '/map' ? "default" : "outline"}
+              size="icon"
+              onClick={() => setLocation('/map')}
+              className="sm:hidden"
+              data-testid="button-header-map-mobile"
+              style={location === '/map' ? {
+                backgroundColor: 'hsl(var(--trade))',
+                borderColor: 'hsl(var(--trade))'
+              } : {}}
+            >
+              <Map className="h-4 w-4" />
+            </Button>
+            {/* Desktop: button with text */}
+            <Button
+              variant={location === '/map' ? "default" : "outline"}
+              size="sm"
+              onClick={() => setLocation('/map')}
+              className="hidden sm:flex items-center gap-2"
+              data-testid="button-header-map"
+              style={location === '/map' ? {
+                backgroundColor: 'hsl(var(--trade))',
+                borderColor: 'hsl(var(--trade))'
+              } : {}}
+            >
+              <Map className="h-4 w-4" />
+              <span className="hidden md:inline">Job Map</span>
+            </Button>
+          </>
         )}
 
         {showAddButton && (

@@ -12,6 +12,7 @@ import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActio
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
 import GeofenceSettingsCard from "./GeofenceSettingsCard";
 import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from "./JobWorkflowComponents";
+import JobFlowWizard from "@/components/JobFlowWizard";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -441,6 +442,21 @@ export default function JobDetailView({
       </div>
 
       <div className="space-y-4">
+        <JobFlowWizard
+          status={job.status}
+          hasQuote={!!linkedQuote}
+          hasInvoice={!!linkedInvoice}
+          invoicePaid={linkedInvoice?.status === 'paid'}
+          onCreateQuote={() => onCreateQuote?.(jobId)}
+          onViewQuote={() => linkedQuote && navigate(`/quotes/${linkedQuote.id}`)}
+          onSchedule={() => onEditJob?.(jobId)}
+          onStart={() => updateJobMutation.mutate({ status: 'in_progress' })}
+          onComplete={() => updateJobMutation.mutate({ status: 'done' })}
+          onCreateInvoice={() => onCreateInvoice?.(jobId)}
+          onViewInvoice={() => linkedInvoice && navigate(`/invoices/${linkedInvoice.id}`)}
+          data-testid="job-flow-wizard"
+        />
+
         <JobProgressBar 
           status={job.status} 
           hasQuote={!!linkedQuote}

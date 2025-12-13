@@ -55,8 +55,8 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
   },
   {
-    title: "Jobs",
-    url: "/jobs",
+    title: "Work",
+    url: "/work",
     icon: Briefcase,
     description: "Manage your jobs and work",
     color: "text-primary",
@@ -87,6 +87,7 @@ export const mainMenuItems: NavItem[] = [
     hideForStaff: true,
     showInSidebar: true,
     showInMore: true,
+    showInBottomNav: false,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
@@ -99,6 +100,7 @@ export const mainMenuItems: NavItem[] = [
     hideForStaff: true,
     showInSidebar: true,
     showInMore: true,
+    showInBottomNav: false,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
