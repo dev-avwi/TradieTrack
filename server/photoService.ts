@@ -1,22 +1,22 @@
-import { Storage } from '@google-cloud/storage';
 import { storage as dbStorage } from './storage';
+import { objectStorageClient } from './objectStorage';
 import crypto from 'crypto';
 
 const PRIVATE_OBJECT_DIR = process.env.PRIVATE_OBJECT_DIR || '.private';
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 
-let gcsStorage: Storage | null = null;
-
-function getGCSStorage(): Storage | null {
-  if (!gcsStorage && BUCKET_ID) {
-    try {
-      gcsStorage = new Storage();
-    } catch (error) {
-      console.error('Failed to initialize GCS storage:', error);
-      return null;
-    }
+// Parse full object path to extract bucket name and object name
+function parseObjectPath(path: string): { bucketName: string; objectName: string } {
+  if (!path.startsWith("/")) {
+    path = `/${path}`;
   }
-  return gcsStorage;
+  const pathParts = path.split("/");
+  if (pathParts.length < 3) {
+    throw new Error("Invalid path: must contain at least a bucket name");
+  }
+  const bucketName = pathParts[1];
+  const objectName = pathParts.slice(2).join("/");
+  return { bucketName, objectName };
 }
 
 // Check if object storage is configured
@@ -53,18 +53,20 @@ export async function uploadJobPhoto(
     };
   }
   
-  const storage = getGCSStorage();
-  if (!storage || !BUCKET_ID) {
-    return { success: false, error: 'Failed to initialize storage' };
+  if (!PRIVATE_OBJECT_DIR) {
+    return { success: false, error: 'Private object directory not configured' };
   }
 
   try {
     const fileExtension = metadata.fileName.split('.').pop() || 'jpg';
     const uniqueId = crypto.randomBytes(8).toString('hex');
+    // Store the full path including bucket name for later retrieval
     const objectKey = `${PRIVATE_OBJECT_DIR}/jobs/${jobId}/${uniqueId}.${fileExtension}`;
 
-    const bucket = storage.bucket(BUCKET_ID);
-    const file = bucket.file(objectKey);
+    // Parse the path to get bucket name and object name
+    const { bucketName, objectName } = parseObjectPath(objectKey);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
     
     await file.save(fileBuffer, {
       contentType: metadata.mimeType,
@@ -101,28 +103,56 @@ export async function uploadJobPhoto(
   }
 }
 
+const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+
 export async function getSignedPhotoUrl(
   objectStorageKey: string,
   expiresInMinutes: number = 60
 ): Promise<{ url?: string; error?: string }> {
-  const storage = getGCSStorage();
-  
-  if (!storage || !BUCKET_ID) {
-    return { error: 'Object storage not configured' };
+  if (!objectStorageKey) {
+    return { error: 'No object storage key provided' };
   }
 
   try {
-    const bucket = storage.bucket(BUCKET_ID);
-    const file = bucket.file(objectStorageKey);
+    // Parse the full path to get bucket name and object name
+    const { bucketName, objectName } = parseObjectPath(objectStorageKey);
     
-    const [url] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + expiresInMinutes * 60 * 1000,
-    });
+    // Use Replit's sidecar to generate a signed URL (works in Replit environment)
+    const request = {
+      bucket_name: bucketName,
+      object_name: objectName,
+      method: 'GET',
+      expires_at: new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString(),
+    };
+    
+    const response = await fetch(
+      `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      }
+    );
+    
+    if (!response.ok) {
+      // Fallback: Try using the GCS client directly
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      
+      const [signedUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + expiresInMinutes * 60 * 1000,
+      });
+      
+      return { url: signedUrl };
+    }
 
-    return { url };
+    const { signed_url: signedURL } = await response.json();
+    return { url: signedURL };
   } catch (error: any) {
-    console.error('Error getting signed URL:', error);
+    console.error('Error getting signed URL for photo:', error);
     return { error: error.message };
   }
 }
@@ -131,20 +161,16 @@ export async function deleteJobPhoto(
   photoId: string,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const storage = getGCSStorage();
-  
-  if (!storage || !BUCKET_ID) {
-    return { success: false, error: 'Object storage not configured' };
-  }
-
   try {
     const photo = await dbStorage.getJobPhoto(photoId, userId);
     if (!photo) {
       return { success: false, error: 'Photo not found' };
     }
 
-    const bucket = storage.bucket(BUCKET_ID);
-    const file = bucket.file(photo.objectStorageKey);
+    // Parse the path to get bucket name and object name
+    const { bucketName, objectName } = parseObjectPath(photo.objectStorageKey);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
     
     try {
       await file.delete();
