@@ -614,6 +614,11 @@ export const updateInvoiceSchema = insertInvoiceSchema.partial().extend({
 export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).omit({
   id: true,
   createdAt: true,
+}).extend({
+  // Coerce decimal fields to handle both string and number inputs from frontend
+  quantity: z.coerce.string().optional(),
+  unitPrice: z.coerce.string().optional(),
+  total: z.coerce.string().optional(),
 });
 
 // Payment Request schemas

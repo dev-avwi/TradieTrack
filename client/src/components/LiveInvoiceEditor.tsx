@@ -418,6 +418,7 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
     try {
       const invoiceData: any = {
         clientId: data.clientId,
+        jobId: selectedJobId || null,
         title: data.title,
         description: data.description,
         dueDate: data.dueDate ? new Date(data.dueDate) : undefined,

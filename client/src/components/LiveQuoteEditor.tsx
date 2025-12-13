@@ -324,6 +324,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     try {
       const quoteData = {
         clientId: data.clientId,
+        jobId: selectedJobId || null,
         title: data.title,
         description: data.description,
         validUntil: new Date(data.validUntil),
