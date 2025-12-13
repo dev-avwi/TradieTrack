@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Printer, ArrowLeft, Send, FileText, Mail, Phone, User, MapPin, DollarSign, Download } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
@@ -20,7 +18,8 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
 
-  // Fetch quote with line items
+  const brandColor = businessSettings?.brandColor || '#2563eb';
+
   const { data: quote, isLoading } = useQuery({
     queryKey: ['/api/quotes', quoteId],
     queryFn: async () => {
@@ -30,7 +29,6 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
     }
   });
 
-  // Fetch client details
   const { data: client } = useQuery({
     queryKey: ['/api/clients', quote?.clientId],
     queryFn: async () => {
@@ -40,6 +38,17 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
       return response.json();
     },
     enabled: !!quote?.clientId
+  });
+
+  const { data: job } = useQuery({
+    queryKey: ['/api/jobs', quote?.jobId],
+    queryFn: async () => {
+      if (!quote?.jobId) return null;
+      const response = await fetch(`/api/jobs/${quote.jobId}`);
+      if (!response.ok) throw new Error('Failed to fetch job');
+      return response.json();
+    },
+    enabled: !!quote?.jobId
   });
 
   const handlePrint = () => {
@@ -53,7 +62,6 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const handleSaveAsPDF = async () => {
     setIsPrinting(true);
     try {
-      // Fetch the professionally generated PDF from the server
       const response = await fetch(`/api/quotes/${quoteId}/pdf`, {
         credentials: 'include'
       });
@@ -62,10 +70,8 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
         throw new Error('Failed to generate PDF');
       }
       
-      // Get the PDF blob
       const blob = await response.blob();
       
-      // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -73,7 +79,6 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
       document.body.appendChild(a);
       a.click();
       
-      // Cleanup
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
@@ -125,16 +130,10 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
 
   return (
     <>
-      {/* Print styles */}
       <style>{`
         @media print {
-          * {
-            visibility: hidden;
-          }
-          .print-content,
-          .print-content * {
-            visibility: visible;
-          }
+          * { visibility: hidden; }
+          .print-content, .print-content * { visibility: visible; }
           .print-content {
             position: absolute;
             left: 0;
@@ -147,61 +146,16 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             border: none !important;
             background: white !important;
           }
-          .no-print {
-            display: none !important;
-          }
-          .print-header {
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: start !important;
-            margin-bottom: 30px !important;
-            page-break-inside: avoid !important;
-          }
-          .print-table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            margin-bottom: 20px !important;
-          }
-          .print-table th,
-          .print-table td {
-            border: 1px solid #ddd !important;
-            padding: 8px !important;
-            text-align: left !important;
-          }
-          .print-table th {
-            background-color: #f5f5f5 !important;
-            font-weight: bold !important;
-          }
-          .print-totals {
-            margin-top: 20px !important;
-            float: right !important;
-            width: 300px !important;
-          }
-          .print-business-info {
-            text-align: right !important;
-          }
-          .print-quote-title {
-            font-size: 28px !important;
-            font-weight: bold !important;
-            color: #333 !important;
-            margin-bottom: 10px !important;
-          }
+          .no-print { display: none !important; }
           body {
             print-color-adjust: exact !important;
             -webkit-print-color-adjust: exact !important;
           }
-          @page {
-            size: A4;
-            margin: 12mm;
-          }
-          .print-table tr {
-            page-break-inside: avoid !important;
-          }
+          @page { size: A4; margin: 12mm; }
         }
       `}</style>
 
-      <div className={`max-w-4xl mx-auto p-4 sm:p-6 ${isPrinting ? 'print-page' : ''}`}>
-        {/* Action buttons - hidden when printing */}
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 no-print">
           <div className="flex items-center gap-4">
             {onBack && (
@@ -233,163 +187,254 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
           </div>
         </div>
 
-        {/* Printable Content */}
-        <div className={`print-content ${isPrinting ? 'print-page' : ''}`}>
-          {/* Quote document */}
-          <Card className="print-page">
-          <CardHeader className="print-header">
-            <div className="flex flex-col sm:flex-row sm:justify-between gap-6 w-full">
-              {/* Business information */}
-              <div className="flex-1 print-business-info">
-                <h2 className="text-2xl font-bold text-primary">
-                  {businessSettings?.businessName || 'TradieTrack Business'}
-                </h2>
-                {businessSettings?.abn && (
-                  <p className="text-sm text-muted-foreground"><strong>ABN:</strong> {businessSettings.abn}</p>
-                )}
-                {businessSettings?.email && (
-                  <p className="text-sm text-muted-foreground">{businessSettings.email}</p>
-                )}
-                {businessSettings?.phone && (
-                  <p className="text-sm text-muted-foreground">{businessSettings.phone}</p>
-                )}
-              </div>
+        <div className="print-content">
+          <Card className="bg-white shadow-lg border overflow-hidden">
+            <div 
+              className="p-6 sm:p-8 relative"
+              style={{ borderBottom: `3px solid ${brandColor}` }}
+            >
+              {quote.status === 'accepted' && (
+                <div 
+                  className="absolute top-20 right-16 px-5 py-2 text-lg font-bold uppercase tracking-wide border-[3px] opacity-80"
+                  style={{ 
+                    color: '#22c55e',
+                    borderColor: '#22c55e',
+                    transform: 'rotate(-15deg)'
+                  }}
+                >
+                  ACCEPTED
+                </div>
+              )}
               
-              {/* Quote information */}
-              <div className="space-y-2">
-                <div className="print-quote-title text-2xl font-bold">QUOTE</div>
-                <div className="space-y-1 text-sm">
-                  <p><strong>Quote #:</strong> {quote.number}</p>
-                  <p><strong>Date:</strong> {formatDate(quote.createdAt)}</p>
-                  {quote.validUntil && <p><strong>Valid Until:</strong> {formatDate(quote.validUntil)}</p>}
-                  <div className="flex items-center gap-2">
-                    <strong>Status:</strong>
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-6 items-start">
+                <div className="flex-1">
+                  {businessSettings?.logoUrl && (
+                    <img 
+                      src={businessSettings.logoUrl} 
+                      alt={businessSettings?.businessName || 'Logo'} 
+                      className="max-w-[150px] max-h-[60px] object-contain mb-3"
+                    />
+                  )}
+                  <h1 
+                    className="text-2xl sm:text-3xl font-bold mb-2"
+                    style={{ color: brandColor }}
+                  >
+                    {businessSettings?.businessName || 'Your Business Name'}
+                  </h1>
+                  <div className="text-sm text-gray-600 space-y-0.5">
+                    {businessSettings?.abn && (
+                      <p><strong>ABN:</strong> {businessSettings.abn}</p>
+                    )}
+                    {businessSettings?.address && <p>{businessSettings.address}</p>}
+                    {businessSettings?.phone && <p>Phone: {businessSettings.phone}</p>}
+                    {businessSettings?.email && <p>Email: {businessSettings.email}</p>}
+                    {businessSettings?.licenseNumber && (
+                      <p>Licence No: {businessSettings.licenseNumber}</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="text-right">
+                  <h2 
+                    className="text-2xl sm:text-3xl font-bold uppercase tracking-wide"
+                    style={{ color: brandColor }}
+                  >
+                    QUOTE
+                  </h2>
+                  <p className="text-gray-600 mt-1">{quote.number}</p>
+                  <div className="mt-2">
                     <StatusBadge status={quote.status} />
                   </div>
                 </div>
               </div>
             </div>
-          </CardHeader>
 
-          <CardContent className="space-y-6">
-            {/* Client information */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Bill To:</h3>
-              <div className="bg-muted/30 p-4 rounded-lg">
-                <p className="font-medium">{client?.name || 'Loading...'}</p>
-                {client?.email && <p className="text-sm text-muted-foreground">{client.email}</p>}
-                {client?.phone && <p className="text-sm text-muted-foreground">{client.phone}</p>}
-                {client?.address && <p className="text-sm text-muted-foreground">{client.address}</p>}
+            <CardContent className="p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row gap-8 mb-8">
+                <div className="flex-1">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Quote For</p>
+                  <div className="text-gray-800">
+                    <p className="font-semibold">{client?.name || 'Loading...'}</p>
+                    {client?.address && <p>{client.address}</p>}
+                    {client?.email && <p>{client.email}</p>}
+                    {client?.phone && <p>{client.phone}</p>}
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Quote Details</p>
+                  <div className="text-gray-800 space-y-1">
+                    <p><strong>Date:</strong> {formatDate(quote.createdAt)}</p>
+                    {quote.validUntil && (
+                      <p><strong>Valid Until:</strong> {formatDate(quote.validUntil)}</p>
+                    )}
+                    {quote.acceptedAt && (
+                      <p><strong>Accepted:</strong> {formatDate(quote.acceptedAt)}</p>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* Quote details */}
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Quote Details</h3>
-              <p className="font-medium">{quote.title}</p>
-              {quote.description && (
-                <p className="text-sm text-muted-foreground mt-1">{quote.description}</p>
+              {job?.address && (
+                <div className="mb-8">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Job Site Location</p>
+                  <div className="text-gray-800">
+                    <p className="font-semibold">{job.address}</p>
+                    {job.scheduledAt && (
+                      <p className="text-gray-600 text-sm">Scheduled: {formatDate(job.scheduledAt)}</p>
+                    )}
+                  </div>
+                </div>
               )}
-            </div>
 
-            {/* Line items */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Items</h3>
-              <div className="overflow-x-auto">
-                <table className="print-table w-full border-collapse border border-border">
+              {(quote.title || quote.description) && (
+                <div className="mb-8 p-4 bg-gray-50 rounded-md">
+                  <p 
+                    className="font-semibold mb-2"
+                    style={{ color: brandColor }}
+                  >
+                    {quote.title || 'Description'}
+                  </p>
+                  {quote.description && (
+                    <p className="text-gray-700">{quote.description}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="mb-6 overflow-x-auto">
+                <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-muted/50">
-                      <th className="border border-border px-4 py-3 text-left">Description</th>
-                      <th className="border border-border px-4 py-3 text-center w-20 sm:w-24">Qty</th>
-                      <th className="border border-border px-4 py-3 text-right w-24 sm:w-32">Unit Price</th>
-                      <th className="border border-border px-4 py-3 text-right w-24 sm:w-32">Total</th>
+                    <tr style={{ backgroundColor: brandColor }}>
+                      <th className="px-4 py-3 text-left text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '50%' }}>Description</th>
+                      <th className="px-4 py-3 text-right text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '15%' }}>Qty</th>
+                      <th className="px-4 py-3 text-right text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '17%' }}>Unit Price</th>
+                      <th className="px-4 py-3 text-right text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '18%' }}>Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {quote.lineItems?.map((item: any, index: number) => (
-                      <tr key={index}>
-                        <td className="border border-border px-4 py-3 break-words">{item.description}</td>
-                        <td className="border border-border px-4 py-3 text-center whitespace-nowrap">
-                          {Number(item.quantity).toFixed(2)}
-                        </td>
-                        <td className="border border-border px-4 py-3 text-right whitespace-nowrap">
-                          {formatCurrency(Number(item.unitPrice))}
-                        </td>
-                        <td className="border border-border px-4 py-3 text-right font-medium whitespace-nowrap">
-                          {formatCurrency(Number(item.total))}
-                        </td>
+                      <tr key={index} className="border-b border-gray-200">
+                        <td className="px-4 py-3 text-gray-900">{item.description}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">{Number(item.quantity).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">{formatCurrency(Number(item.unitPrice))}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(Number(item.total))}</td>
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={4} style={{ borderBottom: `2px solid ${brandColor}` }}></td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
-            </div>
 
-            {/* Totals */}
-            <div className="print-totals">
-              <div className="space-y-2 bg-muted/30 p-4 rounded-lg">
-                {businessSettings?.gstEnabled ? (
-                  <>
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span>{formatCurrency(subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>GST (10%):</span>
-                      <span>{formatCurrency(gstAmount)}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>Total Amount:</span>
-                      <span>{formatCurrency(total)}</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total Amount:</span>
-                    <span>{formatCurrency(total)}</span>
+              <div className="flex justify-end mb-8">
+                <div className="w-72">
+                  <div className="flex justify-between py-2 border-b border-gray-200">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-semibold">{formatCurrency(subtotal)}</span>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Notes */}
-            {quote.notes && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-2">Notes</h3>
-                <div className="bg-muted/30 p-4 rounded-lg">
-                  <p className="text-sm whitespace-pre-wrap">{quote.notes}</p>
+                  {gstAmount > 0 && (
+                    <div className="flex justify-between py-2 border-b border-gray-200">
+                      <span className="text-gray-600">GST (10%)</span>
+                      <span className="font-semibold">{formatCurrency(gstAmount)}</span>
+                    </div>
+                  )}
+                  <div 
+                    className="flex justify-between py-3 mt-1"
+                    style={{ borderTop: `2px solid ${brandColor}` }}
+                  >
+                    <span 
+                      className="text-lg font-bold"
+                      style={{ color: brandColor }}
+                    >
+                      Total{gstAmount > 0 ? ' (incl. GST)' : ''}
+                    </span>
+                    <span 
+                      className="text-lg font-bold"
+                      style={{ color: brandColor }}
+                    >
+                      {formatCurrency(total)}
+                    </span>
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Payment Terms - Important for quotes */}
-            {businessSettings?.paymentInstructions && (
-              <div className="bg-slate-50 border-2 border-slate-300 p-6 rounded-lg">
-                <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" /> Payment Terms
-                </h3>
-                <div className="bg-white p-4 rounded-md border border-slate-200">
-                  <p className="text-sm text-slate-700 whitespace-pre-wrap font-medium leading-relaxed">
-                    {businessSettings.paymentInstructions}
+              {quote.notes && (
+                <div 
+                  className="mb-8 p-4 rounded-r-md"
+                  style={{ 
+                    background: '#fafafa',
+                    borderLeft: `4px solid ${brandColor}`
+                  }}
+                >
+                  <h3 className="font-semibold mb-2 text-gray-800">Additional Notes</h3>
+                  <p className="text-gray-600 text-sm whitespace-pre-wrap">{quote.notes}</p>
+                </div>
+              )}
+
+              {businessSettings?.warrantyPeriod && (
+                <div 
+                  className="mb-8 p-4 rounded-r-md"
+                  style={{ 
+                    background: '#fafafa',
+                    borderLeft: `4px solid ${brandColor}`
+                  }}
+                >
+                  <h3 className="font-semibold mb-2 text-gray-800">Warranty</h3>
+                  <p className="text-gray-600 text-sm">
+                    All work is guaranteed for {businessSettings.warrantyPeriod} from completion date.
                   </p>
                 </div>
-              </div>
-            )}
-
-            {/* Footer */}
-            <div className="mt-8 pt-6 border-t text-center text-sm text-muted-foreground">
-              <p>Thank you for considering our services. We look forward to working with you.</p>
-              {businessSettings?.businessName && (
-                <p className="mt-2">
-                  <strong>{businessSettings.businessName}</strong>
-                  {businessSettings.email && ` • ${businessSettings.email}`}
-                  {businessSettings.phone && ` • ${businessSettings.phone}`}
-                </p>
               )}
-            </div>
-          </CardContent>
-        </Card>
+
+              {quote.status !== 'accepted' && quote.status !== 'declined' && (
+                <div className="mb-8 p-5 border-2 border-dashed border-gray-300 rounded-lg">
+                  <h3 className="font-semibold mb-4 text-gray-800">Quote Acceptance</h3>
+                  <p className="text-sm text-gray-600 mb-5">
+                    By signing below, I accept this quote and authorise the work to proceed in accordance with the terms and conditions above.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-8">
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 mb-8">Client Signature</p>
+                      <div className="border-b border-gray-800"></div>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 mb-8">Print Name</p>
+                      <div className="border-b border-gray-800"></div>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 mb-8">Date</p>
+                      <div className="border-b border-gray-800"></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {quote.status === 'accepted' && quote.acceptedBy && (
+                <div 
+                  className="mb-8 p-4 rounded-lg"
+                  style={{ 
+                    background: '#dcfce7',
+                    borderLeft: `4px solid #22c55e`
+                  }}
+                >
+                  <h3 className="font-semibold mb-2" style={{ color: '#166534' }}>Quote Accepted</h3>
+                  <div className="text-sm" style={{ color: '#166534' }}>
+                    <p>Accepted by: {quote.acceptedBy}</p>
+                    <p>Date: {formatDate(quote.acceptedAt)}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-10 pt-5 border-t border-gray-200 text-center text-gray-500 text-sm">
+                <p>Thank you for your business!</p>
+                {businessSettings?.abn && (
+                  <p className="mt-1">ABN: {businessSettings.abn}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </>

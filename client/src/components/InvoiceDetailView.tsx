@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Mail, Phone, User, MapPin, Download, Copy, ExternalLink, Loader2 } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2 } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -29,10 +27,10 @@ export default function InvoiceDetailView({
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
 
-  // Check if Stripe Connect is enabled for this business
+  const brandColor = businessSettings?.brandColor || '#2563eb';
+
   const connectEnabled = businessSettings?.connectChargesEnabled === true;
 
-  // Fetch invoice with line items
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['/api/invoices', invoiceId],
     queryFn: async () => {
@@ -42,7 +40,6 @@ export default function InvoiceDetailView({
     }
   });
 
-  // Fetch client details
   const { data: client } = useQuery({
     queryKey: ['/api/clients', invoice?.clientId],
     queryFn: async () => {
@@ -54,7 +51,17 @@ export default function InvoiceDetailView({
     enabled: !!invoice?.clientId
   });
 
-  // Mutation to toggle online payment
+  const { data: job } = useQuery({
+    queryKey: ['/api/jobs', invoice?.jobId],
+    queryFn: async () => {
+      if (!invoice?.jobId) return null;
+      const response = await fetch(`/api/jobs/${invoice.jobId}`);
+      if (!response.ok) throw new Error('Failed to fetch job');
+      return response.json();
+    },
+    enabled: !!invoice?.jobId
+  });
+
   const toggleOnlinePaymentMutation = useMutation({
     mutationFn: async (allowOnlinePayment: boolean) => {
       return apiRequest('PATCH', `/api/invoices/${invoiceId}/online-payment`, {
@@ -101,7 +108,6 @@ export default function InvoiceDetailView({
   const handleSaveAsPDF = async () => {
     setIsPrinting(true);
     try {
-      // Fetch the professionally generated PDF from the server
       const response = await fetch(`/api/invoices/${invoiceId}/pdf`, {
         credentials: 'include'
       });
@@ -110,10 +116,8 @@ export default function InvoiceDetailView({
         throw new Error('Failed to generate PDF');
       }
       
-      // Get the PDF blob
       const blob = await response.blob();
       
-      // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -121,7 +125,6 @@ export default function InvoiceDetailView({
       document.body.appendChild(a);
       a.click();
       
-      // Cleanup
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
@@ -170,19 +173,15 @@ export default function InvoiceDetailView({
   const subtotal = Number(invoice.subtotal || 0);
   const gstAmount = Number(invoice.gstAmount || 0);
   const total = Number(invoice.total || 0);
+  const isGstRegistered = businessSettings?.gstEnabled && gstAmount > 0;
+  const documentTitle = isGstRegistered ? 'TAX INVOICE' : 'INVOICE';
 
   return (
     <>
-      {/* Print styles */}
       <style>{`
         @media print {
-          * {
-            visibility: hidden;
-          }
-          .print-content,
-          .print-content * {
-            visibility: visible;
-          }
+          * { visibility: hidden; }
+          .print-content, .print-content * { visibility: visible; }
           .print-content {
             position: absolute;
             left: 0;
@@ -195,72 +194,16 @@ export default function InvoiceDetailView({
             border: none !important;
             background: white !important;
           }
-          .no-print {
-            display: none !important;
-          }
-          .print-header {
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: start !important;
-            margin-bottom: 30px !important;
-            page-break-inside: avoid !important;
-          }
-          .print-table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            margin-bottom: 20px !important;
-          }
-          .print-table th,
-          .print-table td {
-            border: 1px solid #ddd !important;
-            padding: 8px !important;
-            text-align: left !important;
-          }
-          .print-table th {
-            background-color: #f5f5f5 !important;
-            font-weight: bold !important;
-          }
-          .print-totals {
-            margin-top: 20px !important;
-            float: right !important;
-            width: 300px !important;
-          }
-          .print-business-info {
-            text-align: right !important;
-          }
-          .print-invoice-title {
-            font-size: 36px !important;
-            font-weight: 800 !important;
-            color: #1e40af !important;
-            margin-bottom: 15px !important;
-            letter-spacing: 1px !important;
-            text-transform: uppercase !important;
-            border-bottom: 3px solid #3b82f6 !important;
-            padding-bottom: 8px !important;
-          }
-          .print-due-notice {
-            background-color: #fef3c7 !important;
-            border: 1px solid #f59e0b !important;
-            padding: 10px !important;
-            border-radius: 5px !important;
-            margin-top: 15px !important;
-          }
+          .no-print { display: none !important; }
           body {
             print-color-adjust: exact !important;
             -webkit-print-color-adjust: exact !important;
           }
-          @page {
-            size: A4;
-            margin: 12mm;
-          }
-          .print-table tr {
-            page-break-inside: avoid !important;
-          }
+          @page { size: A4; margin: 12mm; }
         }
       `}</style>
 
-      <div className={`max-w-4xl mx-auto p-4 sm:p-6 ${isPrinting ? 'print-page' : ''}`}>
-        {/* Action buttons - hidden when printing */}
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 no-print">
           <div className="flex items-center gap-4">
             {onBack && (
@@ -298,10 +241,9 @@ export default function InvoiceDetailView({
           </div>
         </div>
 
-        {/* Online Payment Section - Only show if Stripe Connect is enabled and invoice is not paid */}
         {connectEnabled && invoice.status !== 'paid' && (
           <Card className="mb-6 no-print">
-            <CardContent className="p-4">
+            <div className="p-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <CreditCard className="h-5 w-5 text-muted-foreground" />
@@ -353,14 +295,13 @@ export default function InvoiceDetailView({
                   </div>
                 </div>
               )}
-            </CardContent>
+            </div>
           </Card>
         )}
 
-        {/* Show message if Stripe Connect not enabled */}
         {!connectEnabled && invoice.status !== 'paid' && (
           <Card className="mb-6 no-print border-dashed">
-            <CardContent className="p-4">
+            <div className="p-4">
               <div className="flex items-center gap-4">
                 <CreditCard className="h-5 w-5 text-muted-foreground" />
                 <div>
@@ -370,338 +311,224 @@ export default function InvoiceDetailView({
                   </p>
                 </div>
               </div>
-            </CardContent>
+            </div>
           </Card>
         )}
 
-        {/* Printable Content */}
-        <div className={`print-content ${isPrinting ? 'print-page' : ''}`}>
-          {/* Professional Invoice Document */}
-          <Card className="print-page max-w-4xl mx-auto bg-white shadow-lg border">
-          {/* Invoice Header */}
-          <div className="print-header border-b p-4 sm:p-8 bg-slate-50">
-            <div className="flex flex-col sm:flex-row sm:justify-between gap-6 items-start">
-              {/* Company Information */}
-              <div className="flex-1">
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
-                  {businessSettings?.businessName || 'Your Business Name'}
-                </h1>
-                {businessSettings?.abn && (
-                  <p className="text-sm text-slate-600 mb-1">
-                    <span className="font-medium">ABN:</span> {businessSettings.abn}
-                  </p>
-                )}
-                <div className="text-sm text-slate-600 space-y-1">
-                  {businessSettings?.email && (
-                    <p className="break-words">{businessSettings.email}</p>
+        <div className="print-content">
+          <Card className="bg-white shadow-lg border overflow-hidden">
+            <div 
+              className="p-6 sm:p-8"
+              style={{ borderBottom: `3px solid ${brandColor}` }}
+            >
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-6 items-start">
+                <div className="flex-1">
+                  {businessSettings?.logoUrl && (
+                    <img 
+                      src={businessSettings.logoUrl} 
+                      alt={businessSettings?.businessName || 'Logo'} 
+                      className="max-w-[150px] max-h-[60px] object-contain mb-3"
+                    />
                   )}
-                  {businessSettings?.phone && (
-                    <p>{businessSettings.phone}</p>
-                  )}
-                  {businessSettings?.address && (
-                    <p className="break-words">{businessSettings.address}</p>
-                  )}
-                </div>
-              </div>
-              
-              {/* Invoice Title & Details */}
-              <div className="w-full sm:w-auto sm:text-right">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4">
-                  {businessSettings?.gstEnabled ? 'TAX INVOICE' : 'INVOICE'}
-                </h2>
-                <div className="bg-white border rounded-lg p-4 shadow-sm">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between gap-4 sm:gap-8">
-                      <span className="font-medium text-slate-600">Invoice #:</span>
-                      <span className="font-mono font-semibold">{invoice.number}</span>
-                    </div>
-                    <div className="flex justify-between gap-4 sm:gap-8">
-                      <span className="font-medium text-slate-600">Date:</span>
-                      <span>{formatDate(invoice.createdAt)}</span>
-                    </div>
-                    {invoice.dueDate && (
-                      <div className="flex justify-between gap-4 sm:gap-8">
-                        <span className="font-medium text-slate-600">Due Date:</span>
-                        <span className="font-semibold text-red-600">{formatDate(invoice.dueDate)}</span>
-                      </div>
+                  <h1 
+                    className="text-2xl sm:text-3xl font-bold mb-2"
+                    style={{ color: brandColor }}
+                  >
+                    {businessSettings?.businessName || 'Your Business Name'}
+                  </h1>
+                  <div className="text-sm text-gray-600 space-y-0.5">
+                    {businessSettings?.abn && (
+                      <p><strong>ABN:</strong> {businessSettings.abn}</p>
                     )}
-                    <div className="flex justify-between gap-4 sm:gap-8 pt-2 border-t">
-                      <span className="font-medium text-slate-600">Status:</span>
-                      <StatusBadge status={invoice.status} />
-                    </div>
+                    {businessSettings?.address && <p>{businessSettings.address}</p>}
+                    {businessSettings?.phone && <p>Phone: {businessSettings.phone}</p>}
+                    {businessSettings?.email && <p>Email: {businessSettings.email}</p>}
+                    {businessSettings?.licenseNumber && (
+                      <p>Licence No: {businessSettings.licenseNumber}</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="text-right">
+                  <h2 
+                    className="text-2xl sm:text-3xl font-bold uppercase tracking-wide"
+                    style={{ color: brandColor }}
+                  >
+                    {documentTitle}
+                  </h2>
+                  <p className="text-gray-600 mt-1">{invoice.number}</p>
+                  <div className="mt-2">
+                    <StatusBadge status={invoice.status} />
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <CardContent className="p-8">
-            {/* Invoice Description */}
-            {(invoice.title || invoice.description) && (
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-slate-800 mb-2">Description</h3>
-                <div className="bg-slate-50 p-4 rounded border">
-                  <p className="font-medium text-slate-900">{invoice.title}</p>
-                  {invoice.description && (
-                    <p className="text-sm text-slate-600 mt-1">{invoice.description}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Client Billing Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-600 mb-3 uppercase tracking-wide">Bill To:</h3>
-                <div className="bg-slate-50 p-4 rounded border">
-                  <p className="font-semibold text-slate-900 text-lg">{client?.name || 'Loading...'}</p>
-                  <div className="text-sm text-slate-600 space-y-1 mt-2">
+            <CardContent className="p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row gap-8 mb-8">
+                <div className="flex-1">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Bill To</p>
+                  <div className="text-gray-800">
+                    <p className="font-semibold">{client?.name || 'Loading...'}</p>
+                    {client?.address && <p>{client.address}</p>}
                     {client?.email && <p>{client.email}</p>}
                     {client?.phone && <p>{client.phone}</p>}
-                    {client?.address && <p className="whitespace-pre-line">{client.address}</p>}
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Invoice Details</p>
+                  <div className="text-gray-800 space-y-1">
+                    <p><strong>Date:</strong> {formatDate(invoice.createdAt)}</p>
+                    {invoice.dueDate && (
+                      <p><strong>Due Date:</strong> {formatDate(invoice.dueDate)}</p>
+                    )}
                   </div>
                 </div>
               </div>
-              
-              <div>
-                <h3 className="text-sm font-semibold text-slate-600 mb-3 uppercase tracking-wide">Payment Terms:</h3>
-                <div className="bg-slate-50 p-4 rounded border text-sm text-slate-700">
-                  <p>Net 30 days</p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Payment is due within 30 days of invoice date
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            {/* Line Items Table */}
-            <div className="mb-8">
-              <h3 className="text-sm font-semibold text-slate-600 mb-4 uppercase tracking-wide">Items & Services</h3>
-              <div className="overflow-x-auto">
-                <table className="print-table w-full border-collapse border border-slate-200 rounded-lg overflow-hidden">
+              {job?.address && (
+                <div className="mb-8">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Job Site Location</p>
+                  <div className="text-gray-800">
+                    <p className="font-semibold">{job.address}</p>
+                    {job.scheduledAt && (
+                      <p className="text-gray-600 text-sm">Scheduled: {formatDate(job.scheduledAt)}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {(invoice.title || invoice.description) && (
+                <div className="mb-8 p-4 bg-gray-50 rounded-md">
+                  <p 
+                    className="font-semibold mb-2"
+                    style={{ color: brandColor }}
+                  >
+                    {invoice.title || 'Description'}
+                  </p>
+                  {invoice.description && (
+                    <p className="text-gray-700">{invoice.description}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="mb-6 overflow-x-auto">
+                <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-slate-100 border-b border-slate-200">
-                      <th className="px-4 sm:px-6 py-3 text-left text-sm font-semibold text-slate-700">Description</th>
-                      <th className="px-4 sm:px-6 py-3 text-center w-16 sm:w-20 text-sm font-semibold text-slate-700">Qty</th>
-                      <th className="px-4 sm:px-6 py-3 text-right w-24 sm:w-32 text-sm font-semibold text-slate-700">Unit Price</th>
-                      <th className="px-4 sm:px-6 py-3 text-right w-24 sm:w-32 text-sm font-semibold text-slate-700">Total</th>
+                    <tr style={{ backgroundColor: brandColor }}>
+                      <th className="px-4 py-3 text-left text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '50%' }}>Description</th>
+                      <th className="px-4 py-3 text-right text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '15%' }}>Qty</th>
+                      <th className="px-4 py-3 text-right text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '17%' }}>Unit Price</th>
+                      <th className="px-4 py-3 text-right text-white font-semibold text-xs uppercase tracking-wider" style={{ width: '18%' }}>Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {invoice.lineItems?.map((item: any, index: number) => (
-                      <tr key={index} className="border-b border-slate-200">
-                        <td className="px-4 sm:px-6 py-4 text-slate-900 break-words">{item.description}</td>
-                        <td className="px-4 sm:px-6 py-4 text-center text-slate-700 whitespace-nowrap">
-                          {Number(item.quantity)}
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 text-right text-slate-700 whitespace-nowrap">
-                          {formatCurrency(Number(item.unitPrice))}
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 text-right font-semibold text-slate-900 whitespace-nowrap">
-                          {formatCurrency(Number(item.total))}
-                        </td>
+                      <tr key={index} className="border-b border-gray-200">
+                        <td className="px-4 py-3 text-gray-900">{item.description}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">{Number(item.quantity).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">{formatCurrency(Number(item.unitPrice))}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(Number(item.total))}</td>
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={4} style={{ borderBottom: `2px solid ${brandColor}` }}></td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
-            </div>
 
-            {/* Invoice Total */}
-            <div className="print-totals flex justify-end mb-8">
-              <div className="w-80">
-                {businessSettings?.gstEnabled ? (
-                  <div className="space-y-2">
-                    <div className="flex justify-between py-2 text-sm">
-                      <span className="text-slate-600">Subtotal:</span>
-                      <span className="font-semibold text-slate-900">{formatCurrency(subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between py-2 text-sm">
-                      <span className="text-slate-600">GST (10%):</span>
-                      <span className="font-semibold text-slate-900">{formatCurrency(gstAmount)}</span>
-                    </div>
-                    <div className="border-t border-slate-300 pt-3">
-                      <div className="flex justify-between items-center bg-slate-100 p-4 rounded">
-                        <span className="text-lg font-bold text-slate-900">Total Amount:</span>
-                        <span className="text-xl font-bold text-slate-900">{formatCurrency(total)}</span>
-                      </div>
-                    </div>
+              <div className="flex justify-end mb-8">
+                <div className="w-72">
+                  <div className="flex justify-between py-2 border-b border-gray-200">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-semibold">{formatCurrency(subtotal)}</span>
                   </div>
-                ) : (
-                  <div className="bg-slate-100 p-4 rounded">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-slate-900">Total Amount:</span>
-                      <span className="text-xl font-bold text-slate-900">{formatCurrency(total)}</span>
+                  {gstAmount > 0 && (
+                    <div className="flex justify-between py-2 border-b border-gray-200">
+                      <span className="text-gray-600">GST (10%)</span>
+                      <span className="font-semibold">{formatCurrency(gstAmount)}</span>
                     </div>
+                  )}
+                  <div 
+                    className="flex justify-between py-3 mt-1"
+                    style={{ borderTop: `2px solid ${brandColor}` }}
+                  >
+                    <span 
+                      className="text-lg font-bold"
+                      style={{ color: brandColor }}
+                    >
+                      Total{gstAmount > 0 ? ' (incl. GST)' : ''}
+                    </span>
+                    <span 
+                      className="text-lg font-bold"
+                      style={{ color: brandColor }}
+                    >
+                      {formatCurrency(total)}
+                    </span>
                   </div>
+                </div>
+              </div>
+
+              {businessSettings?.paymentInstructions && (
+                <div 
+                  className="mb-8 p-5 rounded-lg"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${brandColor}10, ${brandColor}05)`,
+                    border: `1px solid ${brandColor}30`
+                  }}
+                >
+                  <h3 
+                    className="font-semibold mb-3 text-sm"
+                    style={{ color: brandColor }}
+                  >
+                    Payment Details
+                  </h3>
+                  <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
+                    {businessSettings.paymentInstructions}
+                  </p>
+                </div>
+              )}
+
+              {invoice.notes && (
+                <div 
+                  className="mb-8 p-4 rounded-r-md"
+                  style={{ 
+                    background: '#fafafa',
+                    borderLeft: `4px solid ${brandColor}`
+                  }}
+                >
+                  <h3 className="font-semibold mb-2 text-gray-800">Additional Notes</h3>
+                  <p className="text-gray-600 text-sm whitespace-pre-wrap">{invoice.notes}</p>
+                </div>
+              )}
+
+              {invoice.status === 'sent' && invoice.dueDate && (
+                <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm font-medium text-yellow-800">
+                    <strong>Payment Due:</strong> This invoice is due on {formatDate(invoice.dueDate)}
+                  </p>
+                </div>
+              )}
+
+              {invoice.status === 'paid' && invoice.paidAt && (
+                <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm font-medium text-green-800">
+                    <strong>Paid:</strong> This invoice was paid on {formatDate(invoice.paidAt)}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-10 pt-5 border-t border-gray-200 text-center text-gray-500 text-sm">
+                <p>Thank you for your business!</p>
+                {businessSettings?.abn && (
+                  <p className="mt-1">ABN: {businessSettings.abn}</p>
                 )}
               </div>
-            </div>
-
-            {/* Payment due notice for unpaid invoices */}
-            {invoice.status === 'sent' && invoice.dueDate && (
-              <div className="print-due-notice bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                <p className="text-sm font-medium text-yellow-800">
-                  <strong>Payment Due:</strong> This invoice is due on {formatDate(invoice.dueDate)}
-                </p>
-              </div>
-            )}
-
-            {/* Payment status for paid invoices */}
-            {invoice.status === 'paid' && invoice.paidAt && (
-              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-                <p className="text-sm font-medium text-green-800">
-                  <strong>Paid:</strong> This invoice was paid on {formatDate(invoice.paidAt)}
-                </p>
-              </div>
-            )}
-
-            {/* Notes */}
-            {invoice.notes && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-2">Notes</h3>
-                <div className="bg-muted/30 p-4 rounded-lg">
-                  <p className="text-sm whitespace-pre-wrap">{invoice.notes}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Enhanced Payment Instructions & Terms */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-              {/* Payment Methods */}
-              <div className="border border-slate-200 p-6 rounded bg-slate-50">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wide">
-                  Payment Methods
-                </h3>
-                <div className="text-sm text-slate-700 space-y-3">
-                  {businessSettings?.bankDetails && (
-                    <div>
-                      <p className="font-medium text-slate-800 mb-1">Direct Bank Transfer (Preferred)</p>
-                      <div className="bg-white p-3 rounded border text-xs">
-                        <pre className="whitespace-pre-wrap font-mono">{businessSettings.bankDetails}</pre>
-                      </div>
-                    </div>
-                  )}
-                  {businessSettings?.paymentInstructions && (
-                    <div>
-                      <p className="font-medium text-slate-800 mb-1">Additional Instructions</p>
-                      <div className="text-xs leading-relaxed">
-                        <pre className="whitespace-pre-wrap font-sans">{businessSettings.paymentInstructions}</pre>
-                      </div>
-                    </div>
-                  )}
-                  <div className="pt-2 border-t text-xs text-slate-600">
-                    <p>• Cash payments accepted on-site</p>
-                    <p>• Credit card payments via Square/EFTPOS</p>
-                    <p>• Please include invoice number with payment</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Terms & Conditions */}
-              <div className="border border-slate-200 p-6 rounded bg-slate-50">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wide">
-                  Terms & Conditions
-                </h3>
-                <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
-                  <p><strong>Payment Terms:</strong> Net 30 days from invoice date</p>
-                  <p><strong>Late Payment Fees:</strong> {businessSettings?.lateFeeRate || '1.5% per month'} will be charged on all overdue amounts after 30 days</p>
-                  <p><strong>Workmanship Warranty:</strong> {businessSettings?.warrantyPeriod || '12 months'} guarantee on all labor and workmanship</p>
-                  <p><strong>Materials:</strong> Manufacturer warranty applies to all supplied materials</p>
-                  <p><strong>Disputes:</strong> Any disputes must be raised in writing within 7 days of completion</p>
-                  <p><strong>Right to Remedy:</strong> We reserve the right to remedy any defective work within reasonable timeframes</p>
-                  <p className="pt-2 border-t">
-                    <strong>Australian Consumer Law:</strong> Your rights as a consumer are protected under the Australian Consumer Law. 
-                    For major failures, you are entitled to a replacement or refund; for minor failures, repair or remedy. 
-                    Goods come with guarantees that cannot be excluded under the Australian Consumer Law.
-                  </p>
-                  <p className="pt-1">
-                    <strong>GST & Legal:</strong> Prices include GST where applicable. This document constitutes a tax invoice 
-                    for GST purposes under Australian Taxation Office requirements.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Professional Compliance Information */}
-            <div 
-              className="mt-6 border p-6 rounded"
-              style={{ 
-                borderColor: 'hsl(var(--trade) / 0.2)',
-                backgroundColor: 'hsl(var(--trade) / 0.05)' 
-              }}
-            >
-              <h3 className="text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wide">
-                Professional Trade Compliance
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600">
-                <div>
-                  {businessSettings?.licenseNumber && (
-                    <p><strong>Trade License:</strong> {businessSettings.licenseNumber}</p>
-                  )}
-                  {businessSettings?.regulatorRegistration && (
-                    <p><strong>Regulator Registration:</strong> {businessSettings.regulatorRegistration}</p>
-                  )}
-                  {businessSettings?.insurancePolicyNumber && businessSettings?.insuranceProvider && (
-                    <p><strong>Public Liability Insurance:</strong> Policy #{businessSettings.insurancePolicyNumber} ({businessSettings.insuranceProvider})</p>
-                  )}
-                  {businessSettings?.insuranceAmount && (
-                    <p><strong>Insurance Coverage:</strong> {businessSettings.insuranceAmount}</p>
-                  )}
-                  <p><strong>Work Guarantee:</strong> All tradework guaranteed for {businessSettings?.warrantyPeriod || '12 months'}</p>
-                </div>
-                <div>
-                  <p><strong>Standards Compliance:</strong> All work meets Australian Standards (AS/NZS)</p>
-                  <p><strong>OH&S Compliance:</strong> Work Health & Safety Act 2011 compliant</p>
-                  <p><strong>Environmental:</strong> Waste disposal meets EPA guidelines</p>
-                  <p><strong>Quality Assurance:</strong> Building Code of Australia (BCA) compliance</p>
-                  {businessSettings?.gstEnabled && (
-                    <p><strong>Tax Registration:</strong> Registered for GST (ABN: {businessSettings.abn})</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Legal Compliance Footer */}
-            <div className="mt-6 border-2 border-slate-300 p-4 rounded bg-slate-100">
-              <h4 className="text-xs font-bold text-slate-800 mb-2 uppercase tracking-wide">
-                Australian Trade Compliance Declaration
-              </h4>
-              <div className="text-xs text-slate-700 space-y-1 leading-relaxed">
-                <p>
-                  <strong>Consumer Protection:</strong> This invoice and all associated work is covered by the Australian Consumer Law. 
-                  Consumer guarantees apply and cannot be excluded. For complaints contact {businessSettings?.email || 'your local consumer affairs office'}.
-                </p>
-                <p>
-                  <strong>Trade Licensing:</strong> All work performed by licensed tradesperson{businessSettings?.licenseNumber ? ` (License: ${businessSettings.licenseNumber})` : ''}. 
-                  Work meets all relevant Australian Standards and local building codes.
-                </p>
-                <p>
-                  <strong>Insurance & Liability:</strong> {businessSettings?.insuranceProvider && businessSettings?.insurancePolicyNumber ? 
-                    `Fully insured with ${businessSettings.insuranceProvider} (Policy: ${businessSettings.insurancePolicyNumber})` : 
-                    'Appropriate public liability insurance held'} 
-                  covering all work performed. Minimum {businessSettings?.insuranceAmount || '$2,000,000'} coverage.
-                </p>
-                <p>
-                  <strong>Warranty Declaration:</strong> {businessSettings?.warrantyPeriod || '12 months'} warranty on workmanship. 
-                  Materials covered by manufacturer warranty. Defects must be reported within warranty period for remedy.
-                </p>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="mt-8 pt-6 border-t text-center text-sm text-muted-foreground">
-              <p>Thank you for your business. We appreciate your prompt payment.</p>
-              {businessSettings?.businessName && (
-                <p className="mt-2">
-                  <strong>{businessSettings.businessName}</strong>
-                  {businessSettings.email && ` • ${businessSettings.email}`}
-                  {businessSettings.phone && ` • ${businessSettings.phone}`}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </>
