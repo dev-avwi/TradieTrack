@@ -533,11 +533,13 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
               </Badge>
             </div>
 
-            {/* Create Invoice from Completed Job */}
-            <CompletedJobPicker
-              onSelectJob={handleSelectJob}
-              selectedJobId={selectedJobId}
-            />
+            {/* Create Invoice from Completed Job - only show when not already coming from a job/quote context */}
+            {!urlJobId && !urlQuoteId && (
+              <CompletedJobPicker
+                onSelectJob={handleSelectJob}
+                selectedJobId={selectedJobId}
+              />
+            )}
 
             {/* Client Selection */}
             <Card className="rounded-2xl overflow-hidden">

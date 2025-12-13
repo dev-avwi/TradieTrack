@@ -443,12 +443,14 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
               </Badge>
             </div>
 
-            {/* Quick Create from Job */}
-            <RecentJobPicker
-              type="quote"
-              onSelectJob={handleSelectJob}
-              selectedJobId={selectedJobId}
-            />
+            {/* Quick Create from Job - only show when not already coming from a job context */}
+            {!urlJobId && (
+              <RecentJobPicker
+                type="quote"
+                onSelectJob={handleSelectJob}
+                selectedJobId={selectedJobId}
+              />
+            )}
 
             {/* Client Selection */}
             <Card className="rounded-2xl overflow-hidden">
