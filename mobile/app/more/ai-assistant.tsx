@@ -11,14 +11,27 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import api from '../../src/lib/api';
+
+const DISMISSED_NOTIFICATIONS_KEY = 'tradietrack_dismissed_notifications';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+}
+
+interface AINotification {
+  id: string;
+  type: 'reminder' | 'alert' | 'suggestion' | 'update';
+  title: string;
+  message: string;
+  entityType?: 'job' | 'quote' | 'invoice' | 'client';
+  entityId?: string;
+  priority: 'high' | 'medium' | 'low';
 }
 
 const SUGGESTED_PROMPTS = [
@@ -74,6 +87,57 @@ function ChatBubble({ message }: { message: ChatMessage }) {
   );
 }
 
+function NotificationCard({ 
+  notification, 
+  onPress,
+  onDismiss
+}: { 
+  notification: AINotification; 
+  onPress: () => void;
+  onDismiss: () => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  const getIcon = () => {
+    switch (notification.type) {
+      case 'alert': return 'alert-circle';
+      case 'reminder': return 'clock';
+      case 'suggestion': return 'lightbulb';
+      default: return 'bell';
+    }
+  };
+
+  const getPriorityColor = () => {
+    switch (notification.priority) {
+      case 'high': return colors.destructive;
+      case 'medium': return colors.warning || '#f59e0b';
+      default: return colors.primary;
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[styles.notificationCard, { borderLeftColor: getPriorityColor() }]}
+    >
+      <View style={styles.notificationHeader}>
+        <View style={[styles.notificationIconContainer, { backgroundColor: `${getPriorityColor()}20` }]}>
+          <Feather name={getIcon() as any} size={16} color={getPriorityColor()} />
+        </View>
+        <View style={styles.notificationContent}>
+          <Text style={styles.notificationTitle}>{notification.title}</Text>
+          <Text style={styles.notificationMessage}>{notification.message}</Text>
+        </View>
+        <TouchableOpacity onPress={onDismiss} style={styles.dismissButton}>
+          <Feather name="x" size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function AIAssistantScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -81,9 +145,25 @@ export default function AIAssistantScreen() {
   const [chatMessage, setChatMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<AINotification[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const loadDismissed = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(DISMISSED_NOTIFICATIONS_KEY);
+        if (stored) {
+          setDismissedIds(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.log('Failed to load dismissed notifications:', e);
+      }
+    };
+    loadDismissed();
+  }, []);
 
   const fetchSuggestions = useCallback(async () => {
     setIsLoadingSuggestions(true);
@@ -98,9 +178,58 @@ export default function AIAssistantScreen() {
     }
   }, []);
 
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const response = await api.get('/api/ai/notifications');
+      const data = response.data?.notifications ?? response.data ?? [];
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.log('Failed to fetch AI notifications:', error);
+      setNotifications([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchSuggestions();
-  }, [fetchSuggestions]);
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchSuggestions, fetchNotifications]);
+
+  const activeNotifications = notifications.filter(n => !dismissedIds.includes(n.id));
+
+  const handleDismissNotification = async (id: string) => {
+    const newDismissed = [...dismissedIds, id];
+    setDismissedIds(newDismissed);
+    try {
+      await AsyncStorage.setItem(DISMISSED_NOTIFICATIONS_KEY, JSON.stringify(newDismissed));
+    } catch (e) {
+      console.log('Failed to save dismissed notifications:', e);
+    }
+  };
+
+  const handleNotificationPress = (notification: AINotification) => {
+    if (notification.entityType && notification.entityId) {
+      handleDismissNotification(notification.id);
+      
+      switch (notification.entityType) {
+        case 'job':
+          router.push(`/job/${notification.entityId}`);
+          break;
+        case 'quote':
+          router.push(`/quote/${notification.entityId}`);
+          break;
+        case 'invoice':
+          router.push(`/invoice/${notification.entityId}`);
+          break;
+        case 'client':
+          router.push(`/client/${notification.entityId}`);
+          break;
+        default:
+          Alert.alert(notification.title, notification.message);
+      }
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!chatMessage.trim() || isSending) return;
@@ -181,6 +310,32 @@ export default function AIAssistantScreen() {
               <Text style={styles.headerSubtitle}>Get help with your business tasks</Text>
             </View>
           </View>
+
+          {/* Proactive Notifications */}
+          {activeNotifications.length > 0 && chatHistory.length === 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionIconContainer}>
+                  <Feather name="bell" size={16} color={colors.destructive} />
+                </View>
+                <Text style={styles.sectionTitle}>Needs Attention</Text>
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>{activeNotifications.length}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.notificationsContainer}>
+                {activeNotifications.slice(0, 5).map((notification) => (
+                  <NotificationCard
+                    key={notification.id}
+                    notification={notification}
+                    onPress={() => handleNotificationPress(notification)}
+                    onDismiss={() => handleDismissNotification(notification.id)}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Suggested Prompts - Show when no chat history */}
           {chatHistory.length === 0 && (
@@ -476,5 +631,57 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerButton: {
     padding: 8,
     marginRight: -8,
+  },
+  notificationsContainer: {
+    gap: 10,
+  },
+  notificationCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 4,
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  notificationIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationContent: {
+    flex: 1,
+  },
+  notificationTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  notificationMessage: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    lineHeight: 18,
+  },
+  dismissButton: {
+    padding: 4,
+  },
+  notificationBadge: {
+    marginLeft: 8,
+    backgroundColor: colors.destructive,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  notificationBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.white,
   },
 });
