@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle } from "lucide-react";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
@@ -17,12 +17,6 @@ import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { PageShell } from "@/components/ui/page-shell";
 import {
   Select,
@@ -386,39 +380,17 @@ export default function JobDetailView({
           </div>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid="button-job-actions">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {onEditJob && !isTradie && (
-              <DropdownMenuItem onClick={() => onEditJob(jobId)} data-testid="menu-edit-job">
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Job
-              </DropdownMenuItem>
-            )}
-            {job.status !== 'done' && onCompleteJob && (
-              <DropdownMenuItem onClick={() => onCompleteJob(jobId)} data-testid="menu-complete-job">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Go Complete Job
-              </DropdownMenuItem>
-            )}
-            {onCreateQuote && !isTradie && (
-              <DropdownMenuItem onClick={() => onCreateQuote(jobId)} data-testid="menu-create-quote">
-                <FileText className="h-4 w-4 mr-2" />
-                Create Quote
-              </DropdownMenuItem>
-            )}
-            {onCreateInvoice && !isTradie && (
-              <DropdownMenuItem onClick={() => onCreateInvoice(jobId)} data-testid="menu-create-invoice">
-                <Receipt className="h-4 w-4 mr-2" />
-                Create Invoice
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+{/* Edit button only - other actions are in the workflow components below */}
+        {onEditJob && !isTradie && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => onEditJob(jobId)} 
+            data-testid="button-edit-job"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       <div className="space-y-4">

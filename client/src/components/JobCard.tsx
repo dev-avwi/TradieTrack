@@ -240,18 +240,6 @@ export default function JobCard({
               </>
             )}
           </div>
-          
-          {status === 'done' && (
-            <Button 
-              size="sm"
-              className="w-full"
-              onClick={() => setLocation(`/invoices/new?jobId=${id}`)}
-              data-testid={`button-invoice-job-${id}`}
-            >
-              <DollarSign className="h-4 w-4 mr-2" />
-              Create Invoice
-            </Button>
-          )}
         </div>
       </CardContent>
     </Card>
