@@ -452,7 +452,7 @@ export default function WorkPage({
           getRowId={(row) => row.id}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3" data-testid="jobs-list-cards">
+        <div className="grid grid-cols-2 gap-3" data-testid="jobs-list-cards">
           {filteredJobs.map((job: Job) => (
             <JobCardItem key={job.id} job={job} />
           ))}
