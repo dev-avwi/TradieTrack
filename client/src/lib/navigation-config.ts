@@ -18,6 +18,7 @@ import {
   LayoutGrid,
   Smartphone,
   UserCircle,
+  Wallet,
   type LucideIcon
 } from "lucide-react";
 
@@ -93,6 +94,18 @@ export const mainMenuItems: NavItem[] = [
     url: "/invoices",
     icon: Receipt,
     description: "Send and track invoices",
+    color: "text-success",
+    bgColor: "bg-success/10",
+    hideForStaff: true,
+    showInSidebar: true,
+    showInMore: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
+    title: "Money Hub",
+    url: "/money-hub",
+    icon: Wallet,
+    description: "Track invoices, payments, and quotes",
     color: "text-success",
     bgColor: "bg-success/10",
     hideForStaff: true,

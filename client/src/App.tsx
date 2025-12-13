@@ -61,6 +61,7 @@ import DispatchBoard from "@/pages/DispatchBoard";
 import Automations from "@/pages/Automations";
 import CustomForms from "@/pages/CustomForms";
 import MyAccount from "@/pages/MyAccount";
+import MoneyHub from "@/pages/MoneyHub";
 import AppWalkthrough, { useAppWalkthrough } from "@/components/AppWalkthrough";
 
 // Types for job completion
@@ -408,6 +409,8 @@ function Router({
       <Route path="/reports" component={() => (
         <Reports />
       )} />
+      
+      <Route path="/money-hub" component={MoneyHub} />
       
       <Route path="/automations" component={() => (
         <Automations />
