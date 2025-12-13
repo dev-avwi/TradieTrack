@@ -17,6 +17,7 @@ import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -796,9 +797,10 @@ export default function JobDetailView({
                     </p>
                   </div>
                 </div>
-                <div className="text-center text-sm text-muted-foreground pt-2">
-                  Track materials and labour costs coming soon
-                </div>
+                <Separator className="my-3" />
+                <p className="text-xs text-muted-foreground text-center">
+                  Tip: Add materials and labour as line items in your quote or invoice for detailed cost tracking
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
