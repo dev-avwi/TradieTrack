@@ -16,7 +16,13 @@ import {
   Receipt,
   Banknote,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  ExternalLink,
+  Wallet,
+  Settings,
+  Link2,
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +32,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Invoice, Quote, Client } from "@shared/schema";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
+import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-AU', {
@@ -37,6 +47,48 @@ const formatCurrency = (amount: number) => {
     maximumFractionDigits: 0,
   }).format(amount / 100);
 };
+
+const formatCurrencyDecimal = (amount: number) => {
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount / 100);
+};
+
+interface StripeConnectStatus {
+  connected: boolean;
+  stripeAvailable?: boolean;
+  connectEnabled?: boolean;
+  chargesEnabled?: boolean;
+  payoutsEnabled?: boolean;
+  onboardingStatus?: string;
+  requirementsCurrentlyDue?: string[];
+  message?: string;
+  error?: string;
+}
+
+interface StripeBalance {
+  available: number;
+  pending: number;
+  error?: string;
+}
+
+interface StripePayoutsResponse {
+  payouts: StripePayout[];
+  error?: string;
+}
+
+interface StripePayout {
+  id: string;
+  amount: number;
+  status: string;
+  arrivalDate: string | null;
+  created: string;
+  method?: string;
+  destination?: string | null;
+}
 
 interface KPICardProps {
   title: string;
@@ -216,10 +268,209 @@ function QuoteRow({ quote, onView }: QuoteRowProps) {
   );
 }
 
+interface PayoutRowProps {
+  payout: StripePayout;
+}
+
+function PayoutRow({ payout }: PayoutRowProps) {
+  const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+    paid: { label: 'Completed', variant: 'default' },
+    pending: { label: 'Pending', variant: 'outline' },
+    in_transit: { label: 'In Transit', variant: 'secondary' },
+    canceled: { label: 'Cancelled', variant: 'destructive' },
+    failed: { label: 'Failed', variant: 'destructive' },
+  };
+
+  const config = statusConfig[payout.status] || { label: payout.status, variant: 'secondary' as const };
+  
+  const formatPayoutDate = (dateStr: string | null) => {
+    if (!dateStr) return 'Unknown date';
+    try {
+      return format(new Date(dateStr), 'dd MMM yyyy');
+    } catch {
+      return 'Unknown date';
+    }
+  };
+
+  return (
+    <div 
+      className="flex items-center justify-between p-3 rounded-lg border bg-card transition-all"
+      data-testid={`payout-row-${payout.id}`}
+    >
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="rounded-lg bg-green-500/10 p-2 flex-shrink-0">
+          <Banknote className="h-4 w-4 text-green-500" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">
+              Bank Transfer
+            </span>
+            <Badge variant={config.variant} className="text-xs">
+              {config.label}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {payout.destination ? `To account ${payout.destination}` : `Payout ${payout.id.slice(-8)}`}
+          </p>
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="font-semibold text-green-600">
+          +${payout.amount.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {payout.status === 'paid' 
+            ? `Arrived ${formatPayoutDate(payout.arrivalDate)}`
+            : `Expected ${formatPayoutDate(payout.arrivalDate)}`
+          }
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function StripeConnectCard({ 
+  status, 
+  balance, 
+  isLoading, 
+  onConnect,
+  onDashboard,
+  onSettings
+}: { 
+  status?: StripeConnectStatus; 
+  balance?: StripeBalance;
+  isLoading: boolean;
+  onConnect: () => void;
+  onDashboard: () => void;
+  onSettings: () => void;
+}) {
+  const [, navigate] = useLocation();
+  
+  if (isLoading) {
+    return (
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-12 w-12 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-6 w-48" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const isConnected = status?.connected && status?.chargesEnabled;
+  const needsSetup = status?.connected && !status?.chargesEnabled;
+  
+  const availableBalance = balance?.available || 0;
+  const pendingBalance = balance?.pending || 0;
+
+  return (
+    <Card className={`mb-6 ${isConnected ? 'border-green-200 dark:border-green-800' : needsSetup ? 'border-yellow-200 dark:border-yellow-800' : 'border-muted'}`}>
+      <CardContent className="p-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className={`rounded-lg p-3 ${isConnected ? 'bg-green-100 dark:bg-green-950/50' : needsSetup ? 'bg-yellow-100 dark:bg-yellow-950/50' : 'bg-muted'}`}>
+              {isConnected ? (
+                <Wallet className="h-6 w-6 text-green-600" />
+              ) : needsSetup ? (
+                <AlertCircle className="h-6 w-6 text-yellow-600" />
+              ) : (
+                <Link2 className="h-6 w-6 text-muted-foreground" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold">Stripe Connect</h3>
+                {isConnected && (
+                  <Badge variant="default" className="bg-green-600 text-xs">Connected</Badge>
+                )}
+                {needsSetup && (
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200 text-xs">Setup Required</Badge>
+                )}
+                {!status?.connected && (
+                  <Badge variant="secondary" className="text-xs">Not Connected</Badge>
+                )}
+              </div>
+              {isConnected ? (
+                <div className="mt-1 space-y-1">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Available</p>
+                      <p className="text-lg font-bold text-green-600">${availableBalance.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Pending</p>
+                      <p className="text-lg font-semibold text-muted-foreground">${pendingBalance.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : needsSetup ? (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Complete your Stripe account setup to start accepting payments
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Connect your Stripe account to accept online payments
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isConnected ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={onDashboard}
+                  data-testid="btn-stripe-dashboard"
+                >
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  Stripe Dashboard
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onSettings}
+                  data-testid="btn-payment-settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </>
+            ) : needsSetup ? (
+              <Button 
+                onClick={onConnect}
+                data-testid="btn-complete-stripe-setup"
+              >
+                Complete Setup
+              </Button>
+            ) : (
+              <Button 
+                onClick={onConnect}
+                data-testid="btn-connect-stripe"
+              >
+                <Link2 className="h-4 w-4 mr-1" />
+                Connect Stripe
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function PaymentHub() {
   const [activeTab, setActiveTab] = useState<'overview' | 'invoices' | 'quotes' | 'payments'>('overview');
   const [invoiceFilter, setInvoiceFilter] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<string>('30d');
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices'],
@@ -232,6 +483,25 @@ export default function PaymentHub() {
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
   });
+
+  const { data: stripeStatus, isLoading: stripeStatusLoading } = useQuery<StripeConnectStatus>({
+    queryKey: ['/api/stripe-connect/status'],
+    retry: false,
+  });
+
+  const { data: stripeBalance, isLoading: stripeBalanceLoading } = useQuery<StripeBalance>({
+    queryKey: ['/api/stripe-connect/balance'],
+    enabled: stripeStatus?.connected && stripeStatus?.chargesEnabled,
+    retry: false,
+  });
+
+  const { data: stripePayoutsResponse, isLoading: payoutsLoading } = useQuery<StripePayoutsResponse>({
+    queryKey: ['/api/stripe-connect/payouts'],
+    enabled: stripeStatus?.connected && stripeStatus?.chargesEnabled,
+    retry: false,
+  });
+  
+  const stripePayouts = stripePayoutsResponse?.payouts || [];
 
   const clientMap = useMemo(() => {
     return new Map(clients.map(c => [c.id, c]));
@@ -324,6 +594,17 @@ export default function PaymentHub() {
     });
   }, [invoicesWithClients, invoiceFilter]);
 
+  const filteredPayouts = useMemo(() => {
+    const now = new Date();
+    return stripePayouts.filter(payout => {
+      const createdDate = new Date(payout.created);
+      if (timeRange === '7d') return isAfter(createdDate, subDays(now, 7));
+      if (timeRange === '30d') return isAfter(createdDate, subDays(now, 30));
+      if (timeRange === '90d') return isAfter(createdDate, subDays(now, 90));
+      return true;
+    });
+  }, [stripePayouts, timeRange]);
+
   const isLoading = invoicesLoading || quotesLoading;
 
   const handleViewInvoice = (invoiceId: string) => {
@@ -334,6 +615,43 @@ export default function PaymentHub() {
     window.dispatchEvent(new CustomEvent('openQuoteDetail', { detail: { quoteId } }));
   };
 
+  const handleConnectStripe = async () => {
+    setIsConnecting(true);
+    try {
+      const response = await apiRequest('/api/stripe-connect/onboard', { method: 'POST' });
+      if (response.url) {
+        window.open(response.url, '_blank');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Connection Error",
+        description: error.message || "Failed to start Stripe connection",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleOpenStripeDashboard = async () => {
+    try {
+      const response = await apiRequest('/api/stripe-connect/dashboard', { method: 'GET' });
+      if (response.url) {
+        window.open(response.url, '_blank');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to open Stripe dashboard",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenSettings = () => {
+    navigate('/settings');
+  };
+
   return (
     <PageShell data-testid="payment-hub-page">
       <PageHeader 
@@ -341,6 +659,15 @@ export default function PaymentHub() {
         subtitle="Track invoices, payments, and quotes in one place"
       />
       <div className="space-y-6 mt-6">
+        <StripeConnectCard 
+          status={stripeStatus}
+          balance={stripeBalance}
+          isLoading={stripeStatusLoading || stripeBalanceLoading}
+          onConnect={handleConnectStripe}
+          onDashboard={handleOpenStripeDashboard}
+          onSettings={handleOpenSettings}
+        />
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {isLoading ? (
             <>
@@ -598,11 +925,65 @@ export default function PaymentHub() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="payments" className="mt-4">
+          <TabsContent value="payments" className="mt-4 space-y-4">
+            {stripeStatus?.connected && stripeStatus?.chargesEnabled && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Banknote className="h-4 w-4 text-green-500" />
+                        Bank Payouts
+                      </CardTitle>
+                      <CardDescription>Money transferred to your bank account</CardDescription>
+                    </div>
+                    <Select value={timeRange} onValueChange={setTimeRange}>
+                      <SelectTrigger className="w-[140px]" data-testid="payout-time-range">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Time range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7d">Last 7 days</SelectItem>
+                        <SelectItem value="30d">Last 30 days</SelectItem>
+                        <SelectItem value="90d">Last 90 days</SelectItem>
+                        <SelectItem value="all">All time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[200px]">
+                    <div className="space-y-2">
+                      {payoutsLoading ? (
+                        [1, 2, 3].map(i => (
+                          <Skeleton key={i} className="h-16 w-full" />
+                        ))
+                      ) : filteredPayouts.length > 0 ? (
+                        filteredPayouts.map(payout => (
+                          <PayoutRow key={payout.id} payout={payout} />
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Banknote className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                          <p>No payouts in this period</p>
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <CardTitle className="text-base">Payment History</CardTitle>
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      Invoice Payments
+                    </CardTitle>
+                    <CardDescription>Payments received from clients</CardDescription>
+                  </div>
                   <Select value={timeRange} onValueChange={setTimeRange}>
                     <SelectTrigger className="w-[140px]" data-testid="time-range-filter">
                       <Calendar className="h-4 w-4 mr-2" />
@@ -618,7 +999,7 @@ export default function PaymentHub() {
                 </div>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[400px]">
+                <ScrollArea className="h-[300px]">
                   <div className="space-y-2">
                     {isLoading ? (
                       [1, 2, 3, 4, 5].map(i => (
@@ -652,6 +1033,23 @@ export default function PaymentHub() {
                 </ScrollArea>
               </CardContent>
             </Card>
+
+            {!stripeStatus?.connected && (
+              <Alert>
+                <Link2 className="h-4 w-4" />
+                <AlertDescription className="flex items-center justify-between">
+                  <span>Connect Stripe to see real-time payment data and bank payouts</span>
+                  <Button 
+                    size="sm" 
+                    onClick={handleConnectStripe}
+                    disabled={isConnecting}
+                    data-testid="btn-connect-stripe-alert"
+                  >
+                    {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect Stripe'}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
           </TabsContent>
         </Tabs>
       </div>
