@@ -172,18 +172,19 @@ export default function JobCard({
                 variant="outline" 
                 size="sm"
                 onClick={() => {
-                  // ServiceM8-style workflow: pending → scheduled → in_progress → done
-                  const nextStatus: JobStatus = 
-                    status === 'pending' ? 'scheduled' :
-                    status === 'scheduled' ? 'in_progress' :
-                    'done';
-                  onStatusChange?.(id, nextStatus);
+                  if (status === 'in_progress') {
+                    onViewClick?.(id);
+                  } else {
+                    const nextStatus: JobStatus = 
+                      status === 'pending' ? 'scheduled' : 'in_progress';
+                    onStatusChange?.(id, nextStatus);
+                  }
                 }}
                 data-testid={`button-status-job-${id}`}
               >
                 {status === 'pending' && 'Schedule Job'}
                 {status === 'scheduled' && 'Start Job'}
-                {status === 'in_progress' && 'Complete Job'}
+                {status === 'in_progress' && 'View & Complete'}
               </Button>
             )}
           </div>
