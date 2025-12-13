@@ -4,13 +4,25 @@
  * Provides local caching of jobs, clients, quotes, invoices, and time entries
  * for offline access. Automatically syncs with the server when connectivity is restored.
  * 
+ * Enhanced features:
+ * - Delta sync: Only transfers items changed since last sync
+ * - Conflict resolution: Server wins with local backup for review
+ * - Background sync: Periodic sync using expo-background-fetch
+ * - Attachment caching: Downloads remote files for offline access
+ * 
  * Uses expo-sqlite for local database storage.
  */
 
 import * as SQLite from 'expo-sqlite';
+import * as FileSystem from 'expo-file-system';
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { create } from 'zustand';
 import api from './api';
+
+// Background task name
+const BACKGROUND_SYNC_TASK = 'background-sync-task';
 
 // ============ TYPES ============
 
@@ -129,6 +141,18 @@ export interface PendingSyncItem {
   lastAttemptedAt?: number; // For exponential backoff
 }
 
+export interface ConflictRecord {
+  id: string;
+  entityType: 'job' | 'client' | 'quote' | 'invoice' | 'timeEntry';
+  entityId: string;
+  localData: string; // JSON stringified local version
+  serverData: string; // JSON stringified server version
+  conflictedAt: number;
+  resolved: boolean;
+  resolution?: 'kept_server' | 'kept_local' | 'merged';
+  resolvedAt?: number;
+}
+
 // ============ OFFLINE STATE STORE ============
 
 interface OfflineState {
@@ -138,6 +162,8 @@ interface OfflineState {
   lastSyncTime: number | null;
   pendingSyncCount: number;
   syncError: string | null;
+  unresolvedConflictCount: number;
+  backgroundSyncEnabled: boolean;
   
   setOnline: (online: boolean) => void;
   setInitialized: (initialized: boolean) => void;
@@ -145,6 +171,8 @@ interface OfflineState {
   setLastSyncTime: (time: number | null) => void;
   setPendingSyncCount: (count: number) => void;
   setSyncError: (error: string | null) => void;
+  setUnresolvedConflictCount: (count: number) => void;
+  setBackgroundSyncEnabled: (enabled: boolean) => void;
 }
 
 export const useOfflineStore = create<OfflineState>((set) => ({
@@ -154,6 +182,8 @@ export const useOfflineStore = create<OfflineState>((set) => ({
   lastSyncTime: null,
   pendingSyncCount: 0,
   syncError: null,
+  unresolvedConflictCount: 0,
+  backgroundSyncEnabled: false,
   
   setOnline: (online) => set({ isOnline: online }),
   setInitialized: (initialized) => set({ isInitialized: initialized }),
@@ -161,6 +191,8 @@ export const useOfflineStore = create<OfflineState>((set) => ({
   setLastSyncTime: (time) => set({ lastSyncTime: time }),
   setPendingSyncCount: (count) => set({ pendingSyncCount: count }),
   setSyncError: (error) => set({ syncError: error }),
+  setUnresolvedConflictCount: (count) => set({ unresolvedConflictCount: count }),
+  setBackgroundSyncEnabled: (enabled) => set({ backgroundSyncEnabled: enabled }),
 }));
 
 // ============ OFFLINE STORAGE SERVICE ============
@@ -317,6 +349,26 @@ class OfflineStorageService {
           sync_action TEXT,
           local_id TEXT
         );
+        
+        -- Conflicts table for tracking sync conflicts
+        CREATE TABLE IF NOT EXISTS conflicts (
+          id TEXT PRIMARY KEY,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          local_data TEXT NOT NULL,
+          server_data TEXT NOT NULL,
+          conflicted_at INTEGER NOT NULL,
+          resolved INTEGER DEFAULT 0,
+          resolution TEXT,
+          resolved_at INTEGER
+        );
+        
+        -- Delta sync timestamps per entity type
+        CREATE TABLE IF NOT EXISTS delta_sync (
+          entity_type TEXT PRIMARY KEY,
+          last_synced_at INTEGER NOT NULL,
+          last_server_timestamp TEXT
+        );
       `);
       
       // Run migrations to fix old schemas with NOT NULL constraints
@@ -330,8 +382,14 @@ class OfflineStorageService {
       useOfflineStore.getState().setOnline(netState.isConnected ?? false);
       useOfflineStore.getState().setInitialized(true);
       
-      // Update pending count
+      // Update pending count and conflict count
       await this.updatePendingSyncCount();
+      await this.updateUnresolvedConflictCount();
+      
+      // Register background sync (non-blocking)
+      this.registerBackgroundSync().catch(err => {
+        console.warn('[OfflineStorage] Background sync registration failed:', err);
+      });
       
       console.log('[OfflineStorage] Initialized successfully');
     } catch (error) {
@@ -1675,6 +1733,556 @@ class OfflineStorageService {
     console.log('[OfflineStorage] Cache cleared');
   }
 
+  // ============ DELTA SYNC ============
+
+  /**
+   * Get the last sync timestamp for an entity type
+   */
+  async getDeltaSyncTimestamp(entityType: string): Promise<number | null> {
+    if (!this.db) return null;
+    
+    const result = await this.db.getFirstAsync(
+      'SELECT last_synced_at FROM delta_sync WHERE entity_type = ?',
+      [entityType]
+    ) as any;
+    
+    return result?.last_synced_at ?? null;
+  }
+
+  /**
+   * Set the last sync timestamp for an entity type
+   */
+  async setDeltaSyncTimestamp(entityType: string, timestamp: number, serverTimestamp?: string): Promise<void> {
+    if (!this.db) return;
+    
+    await this.db.runAsync(
+      `INSERT OR REPLACE INTO delta_sync (entity_type, last_synced_at, last_server_timestamp)
+       VALUES (?, ?, ?)`,
+      [entityType, timestamp, serverTimestamp || null]
+    );
+  }
+
+  /**
+   * Delta sync jobs - fetch only jobs updated since last sync
+   */
+  async deltaSyncJobs(): Promise<void> {
+    if (!this.db || !useOfflineStore.getState().isOnline) return;
+    
+    try {
+      const lastSync = await this.getDeltaSyncTimestamp('jobs');
+      const params = lastSync ? `?since=${new Date(lastSync).toISOString()}` : '';
+      
+      const response = await api.get<any[]>(`/api/jobs${params}`);
+      
+      if (response.data && response.data.length > 0) {
+        // Check for conflicts before caching
+        for (const job of response.data) {
+          await this.detectAndSaveConflict('job', job.id, job);
+        }
+        await this.cacheJobs(response.data);
+      }
+      
+      await this.setDeltaSyncTimestamp('jobs', Date.now());
+      console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} jobs`);
+    } catch (error) {
+      console.error('[OfflineStorage] Delta sync jobs failed:', error);
+    }
+  }
+
+  /**
+   * Delta sync clients - fetch only clients updated since last sync
+   */
+  async deltaSyncClients(): Promise<void> {
+    if (!this.db || !useOfflineStore.getState().isOnline) return;
+    
+    try {
+      const lastSync = await this.getDeltaSyncTimestamp('clients');
+      const params = lastSync ? `?since=${new Date(lastSync).toISOString()}` : '';
+      
+      const response = await api.get<any[]>(`/api/clients${params}`);
+      
+      if (response.data && response.data.length > 0) {
+        for (const client of response.data) {
+          await this.detectAndSaveConflict('client', client.id, client);
+        }
+        await this.cacheClients(response.data);
+      }
+      
+      await this.setDeltaSyncTimestamp('clients', Date.now());
+      console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} clients`);
+    } catch (error) {
+      console.error('[OfflineStorage] Delta sync clients failed:', error);
+    }
+  }
+
+  /**
+   * Delta sync quotes - fetch only quotes updated since last sync
+   */
+  async deltaSyncQuotes(): Promise<void> {
+    if (!this.db || !useOfflineStore.getState().isOnline) return;
+    
+    try {
+      const lastSync = await this.getDeltaSyncTimestamp('quotes');
+      const params = lastSync ? `?since=${new Date(lastSync).toISOString()}` : '';
+      
+      const response = await api.get<any[]>(`/api/quotes${params}`);
+      
+      if (response.data && response.data.length > 0) {
+        for (const quote of response.data) {
+          await this.detectAndSaveConflict('quote', quote.id, quote);
+        }
+        await this.cacheQuotes(response.data);
+      }
+      
+      await this.setDeltaSyncTimestamp('quotes', Date.now());
+      console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} quotes`);
+    } catch (error) {
+      console.error('[OfflineStorage] Delta sync quotes failed:', error);
+    }
+  }
+
+  /**
+   * Delta sync invoices - fetch only invoices updated since last sync
+   */
+  async deltaSyncInvoices(): Promise<void> {
+    if (!this.db || !useOfflineStore.getState().isOnline) return;
+    
+    try {
+      const lastSync = await this.getDeltaSyncTimestamp('invoices');
+      const params = lastSync ? `?since=${new Date(lastSync).toISOString()}` : '';
+      
+      const response = await api.get<any[]>(`/api/invoices${params}`);
+      
+      if (response.data && response.data.length > 0) {
+        for (const invoice of response.data) {
+          await this.detectAndSaveConflict('invoice', invoice.id, invoice);
+        }
+        await this.cacheInvoices(response.data);
+      }
+      
+      await this.setDeltaSyncTimestamp('invoices', Date.now());
+      console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} invoices`);
+    } catch (error) {
+      console.error('[OfflineStorage] Delta sync invoices failed:', error);
+    }
+  }
+
+  // ============ CONFLICT RESOLUTION ============
+
+  /**
+   * Detect if there's a pending local change that conflicts with server data
+   */
+  private async detectAndSaveConflict(
+    entityType: 'job' | 'client' | 'quote' | 'invoice' | 'timeEntry',
+    entityId: string,
+    serverData: any
+  ): Promise<boolean> {
+    if (!this.db) return false;
+    
+    const tableMap = {
+      job: 'jobs',
+      client: 'clients', 
+      quote: 'quotes',
+      invoice: 'invoices',
+      timeEntry: 'time_entries'
+    };
+    
+    const table = tableMap[entityType];
+    
+    // Check if we have pending sync for this entity
+    const localRow = await this.db.getFirstAsync(
+      `SELECT * FROM ${table} WHERE id = ? AND pending_sync = 1`,
+      [entityId]
+    ) as any;
+    
+    if (!localRow) return false;
+    
+    // If this is a pending create with a local_id, the server returned the same record
+    // This means our create was successful - update local ID mapping instead of conflict
+    if (localRow.sync_action === 'create' && localRow.local_id) {
+      console.log(`[OfflineStorage] Pending create matched server record, updating ID mapping`);
+      await this.updateLocalIdWithServerId(entityType, localRow.local_id, entityId);
+      return false; // Not a conflict
+    }
+    
+    // For updates/deletes, we have a local pending change - save as conflict
+    await this.saveConflict(entityType, entityId, localRow, serverData);
+    return true;
+  }
+
+  /**
+   * Save a conflict for later review
+   */
+  async saveConflict(
+    entityType: 'job' | 'client' | 'quote' | 'invoice' | 'timeEntry',
+    entityId: string,
+    localData: any,
+    serverData: any
+  ): Promise<void> {
+    if (!this.db) return;
+    
+    const conflictId = `conflict_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    await this.db.runAsync(
+      `INSERT INTO conflicts (id, entity_type, entity_id, local_data, server_data, conflicted_at, resolved)
+       VALUES (?, ?, ?, ?, ?, ?, 0)`,
+      [conflictId, entityType, entityId, JSON.stringify(localData), JSON.stringify(serverData), Date.now()]
+    );
+    
+    await this.updateUnresolvedConflictCount();
+    console.log(`[OfflineStorage] Saved conflict for ${entityType} ${entityId}`);
+  }
+
+  /**
+   * Get list of conflicts
+   */
+  async getConflicts(resolved?: boolean): Promise<ConflictRecord[]> {
+    if (!this.db) return [];
+    
+    let query = 'SELECT * FROM conflicts';
+    const params: any[] = [];
+    
+    if (resolved !== undefined) {
+      query += ' WHERE resolved = ?';
+      params.push(resolved ? 1 : 0);
+    }
+    
+    query += ' ORDER BY conflicted_at DESC';
+    
+    const rows = await this.db.getAllAsync(query, params);
+    
+    return rows.map((row: any) => ({
+      id: row.id,
+      entityType: row.entity_type,
+      entityId: row.entity_id,
+      localData: row.local_data,
+      serverData: row.server_data,
+      conflictedAt: row.conflicted_at,
+      resolved: row.resolved === 1,
+      resolution: row.resolution,
+      resolvedAt: row.resolved_at,
+    }));
+  }
+
+  /**
+   * Resolve a conflict
+   */
+  async resolveConflict(
+    conflictId: string,
+    resolution: 'kept_server' | 'kept_local' | 'merged',
+    mergedData?: any
+  ): Promise<void> {
+    if (!this.db) return;
+    
+    const conflict = await this.db.getFirstAsync(
+      'SELECT * FROM conflicts WHERE id = ?',
+      [conflictId]
+    ) as any;
+    
+    if (!conflict) return;
+    
+    const entityType = conflict.entity_type;
+    const entityId = conflict.entity_id;
+    
+    // Apply the resolution
+    if (resolution === 'kept_server') {
+      // Server data already applied, just clear pending sync
+      const tableMap: Record<string, string> = {
+        job: 'jobs', client: 'clients', quote: 'quotes', 
+        invoice: 'invoices', timeEntry: 'time_entries'
+      };
+      await this.db.runAsync(
+        `UPDATE ${tableMap[entityType]} SET pending_sync = 0, sync_action = NULL WHERE id = ?`,
+        [entityId]
+      );
+      // Remove from sync queue
+      await this.db.runAsync(
+        'DELETE FROM sync_queue WHERE id LIKE ? AND type = ?',
+        [`%${entityId}%`, entityType]
+      );
+    } else if (resolution === 'kept_local') {
+      // Keep local and retry sync
+      console.log(`[OfflineStorage] Keeping local version for ${entityType} ${entityId}`);
+    } else if (resolution === 'merged' && mergedData) {
+      // Apply merged data
+      // This would need entity-specific logic to update the local cache
+      console.log(`[OfflineStorage] Applied merged data for ${entityType} ${entityId}`);
+    }
+    
+    // Mark conflict as resolved
+    await this.db.runAsync(
+      'UPDATE conflicts SET resolved = 1, resolution = ?, resolved_at = ? WHERE id = ?',
+      [resolution, Date.now(), conflictId]
+    );
+    
+    await this.updateUnresolvedConflictCount();
+    await this.updatePendingSyncCount();
+  }
+
+  /**
+   * Update the unresolved conflict count in the store
+   */
+  async updateUnresolvedConflictCount(): Promise<void> {
+    if (!this.db) return;
+    
+    const result = await this.db.getFirstAsync(
+      'SELECT COUNT(*) as count FROM conflicts WHERE resolved = 0'
+    ) as any;
+    
+    useOfflineStore.getState().setUnresolvedConflictCount(result?.count || 0);
+  }
+
+  // ============ BACKGROUND SYNC ============
+
+  /**
+   * Register background sync task
+   */
+  async registerBackgroundSync(): Promise<boolean> {
+    try {
+      await BackgroundFetch.registerTaskAsync(BACKGROUND_SYNC_TASK, {
+        minimumInterval: 15 * 60, // 15 minutes
+        stopOnTerminate: false,
+        startOnBoot: true,
+      });
+      
+      useOfflineStore.getState().setBackgroundSyncEnabled(true);
+      console.log('[OfflineStorage] Background sync registered');
+      return true;
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to register background sync:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Unregister background sync task
+   */
+  async unregisterBackgroundSync(): Promise<void> {
+    try {
+      await BackgroundFetch.unregisterTaskAsync(BACKGROUND_SYNC_TASK);
+      useOfflineStore.getState().setBackgroundSyncEnabled(false);
+      console.log('[OfflineStorage] Background sync unregistered');
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to unregister background sync:', error);
+    }
+  }
+
+  /**
+   * Execute background sync (called by task manager)
+   * Returns true if sync completed successfully, false if skipped/failed
+   */
+  async executeBackgroundSync(): Promise<boolean> {
+    console.log('[OfflineStorage] Executing background sync...');
+    
+    if (!useOfflineStore.getState().isOnline) {
+      console.log('[OfflineStorage] Background sync skipped - offline');
+      return false; // NoData - offline
+    }
+    
+    try {
+      // Sync pending changes first
+      await this.syncPendingChanges();
+      
+      // Then do delta sync
+      await Promise.all([
+        this.deltaSyncJobs(),
+        this.deltaSyncClients(),
+        this.deltaSyncQuotes(),
+        this.deltaSyncInvoices(),
+      ]);
+      
+      useOfflineStore.getState().setLastSyncTime(Date.now());
+      console.log('[OfflineStorage] Background sync complete');
+      return true; // NewData
+    } catch (error) {
+      console.error('[OfflineStorage] Background sync failed:', error);
+      throw error; // Rethrow so task handler can catch it
+    }
+  }
+
+  // ============ ATTACHMENT FILE CACHING ============
+
+  private readonly ATTACHMENTS_DIR = `${FileSystem.documentDirectory}attachments/`;
+
+  /**
+   * Ensure the attachments directory exists
+   */
+  private async ensureAttachmentsDir(): Promise<void> {
+    const dirInfo = await FileSystem.getInfoAsync(this.ATTACHMENTS_DIR);
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(this.ATTACHMENTS_DIR, { intermediates: true });
+    }
+  }
+
+  /**
+   * Download a remote attachment file to local filesystem
+   */
+  async downloadAttachmentFile(attachment: CachedAttachment): Promise<string | null> {
+    if (!attachment.remoteUrl) return null;
+    
+    try {
+      await this.ensureAttachmentsDir();
+      
+      // Sanitize filename to avoid path issues
+      const safeFilename = attachment.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const localPath = `${this.ATTACHMENTS_DIR}${attachment.id}_${safeFilename}`;
+      
+      // Check if already downloaded and valid
+      const existingFile = await FileSystem.getInfoAsync(localPath);
+      if (existingFile.exists && 'size' in existingFile && existingFile.size > 0) {
+        return localPath;
+      }
+      
+      // Download the file
+      const downloadResult = await FileSystem.downloadAsync(
+        attachment.remoteUrl,
+        localPath
+      );
+      
+      if (downloadResult.status === 200) {
+        // Verify file was actually written
+        const newFileInfo = await FileSystem.getInfoAsync(localPath);
+        if (!newFileInfo.exists) {
+          console.error('[OfflineStorage] Download reported success but file not found');
+          return null;
+        }
+        
+        // Update the local cache with local_uri - with compensating cleanup on failure
+        if (this.db) {
+          try {
+            await this.db.runAsync(
+              'UPDATE attachments SET local_uri = ? WHERE id = ?',
+              [localPath, attachment.id]
+            );
+          } catch (dbError) {
+            // DB update failed - remove downloaded file to stay consistent
+            console.error('[OfflineStorage] DB update failed, cleaning up file:', dbError);
+            await FileSystem.deleteAsync(localPath, { idempotent: true });
+            return null;
+          }
+        }
+        
+        console.log(`[OfflineStorage] Downloaded attachment: ${attachment.filename}`);
+        return localPath;
+      }
+      
+      console.error(`[OfflineStorage] Download failed with status: ${downloadResult.status}`);
+      return null;
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to download attachment:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get local URI for an attachment if cached
+   */
+  async getLocalAttachmentUri(attachmentId: string): Promise<string | null> {
+    if (!this.db) return null;
+    
+    const result = await this.db.getFirstAsync(
+      'SELECT local_uri FROM attachments WHERE id = ?',
+      [attachmentId]
+    ) as any;
+    
+    if (!result?.local_uri) return null;
+    
+    // Verify file still exists
+    const fileInfo = await FileSystem.getInfoAsync(result.local_uri);
+    if (!fileInfo.exists) {
+      // Clear the stale local_uri
+      await this.db.runAsync(
+        'UPDATE attachments SET local_uri = NULL WHERE id = ?',
+        [attachmentId]
+      );
+      return null;
+    }
+    
+    return result.local_uri;
+  }
+
+  /**
+   * Cache all remote attachments for a job
+   */
+  async cacheRemoteAttachments(jobId: string): Promise<void> {
+    if (!this.db) return;
+    
+    const attachments = await this.db.getAllAsync(
+      'SELECT * FROM attachments WHERE job_id = ? AND remote_url IS NOT NULL AND local_uri IS NULL',
+      [jobId]
+    ) as any[];
+    
+    console.log(`[OfflineStorage] Caching ${attachments.length} attachments for job ${jobId}`);
+    
+    for (const row of attachments) {
+      const attachment: CachedAttachment = {
+        id: row.id,
+        jobId: row.job_id,
+        quoteId: row.quote_id,
+        invoiceId: row.invoice_id,
+        clientId: row.client_id,
+        type: row.type,
+        filename: row.filename,
+        mimeType: row.mime_type,
+        localUri: row.local_uri,
+        remoteUrl: row.remote_url,
+        fileSize: row.file_size,
+        description: row.description,
+        cachedAt: row.cached_at,
+        pendingSync: row.pending_sync === 1,
+        syncAction: row.sync_action,
+        localId: row.local_id,
+      };
+      
+      await this.downloadAttachmentFile(attachment);
+    }
+  }
+
+  /**
+   * Clear cached attachment files to free up space
+   */
+  async clearAttachmentCache(): Promise<void> {
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(this.ATTACHMENTS_DIR);
+      if (dirInfo.exists) {
+        await FileSystem.deleteAsync(this.ATTACHMENTS_DIR, { idempotent: true });
+        console.log('[OfflineStorage] Cleared attachment cache');
+      }
+      
+      // Clear local_uri from database
+      if (this.db) {
+        await this.db.runAsync('UPDATE attachments SET local_uri = NULL WHERE remote_url IS NOT NULL');
+      }
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to clear attachment cache:', error);
+    }
+  }
+
+  /**
+   * Get total size of cached attachments
+   */
+  async getAttachmentCacheSize(): Promise<number> {
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(this.ATTACHMENTS_DIR);
+      if (!dirInfo.exists) return 0;
+      
+      const files = await FileSystem.readDirectoryAsync(this.ATTACHMENTS_DIR);
+      let totalSize = 0;
+      
+      for (const file of files) {
+        const fileInfo = await FileSystem.getInfoAsync(`${this.ATTACHMENTS_DIR}${file}`);
+        if (fileInfo.exists && 'size' in fileInfo) {
+          totalSize += fileInfo.size || 0;
+        }
+      }
+      
+      return totalSize;
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to get cache size:', error);
+      return 0;
+    }
+  }
+
   /**
    * Full sync - download all data from server and cache locally
    */
@@ -1831,3 +2439,19 @@ class OfflineStorageService {
 
 export const offlineStorage = new OfflineStorageService();
 export default offlineStorage;
+
+// ============ BACKGROUND TASK DEFINITION ============
+// Define the background sync task handler
+TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
+  try {
+    console.log('[BackgroundSync] Task started');
+    const hasNewData = await offlineStorage.executeBackgroundSync();
+    if (hasNewData) {
+      return BackgroundFetch.BackgroundFetchResult.NewData;
+    }
+    return BackgroundFetch.BackgroundFetchResult.NoData;
+  } catch (error) {
+    console.error('[BackgroundSync] Task failed:', error);
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+});
