@@ -268,9 +268,41 @@ function ActionIcon({ type }: { type: string }) {
   return <Icon className="h-4 w-4" />;
 }
 
+const EMAIL_TEMPLATES = [
+  { value: 'quote_followup', label: 'Quote Follow-up' },
+  { value: 'quote_followup_urgent', label: 'Quote Follow-up (Urgent)' },
+  { value: 'quote_final_reminder', label: 'Quote Final Reminder' },
+  { value: 'job_confirmation', label: 'Job Confirmation' },
+  { value: 'job_reminder', label: 'Job Reminder' },
+  { value: 'job_completed', label: 'Job Completed' },
+  { value: 'job_overdue_internal', label: 'Job Overdue (Internal)' },
+  { value: 'invoice_reminder', label: 'Invoice Reminder' },
+  { value: 'invoice_final_notice', label: 'Invoice Final Notice' },
+  { value: 'payment_received', label: 'Payment Received' },
+];
+
+interface FormAction {
+  type: 'send_email' | 'create_job' | 'create_invoice' | 'notification' | 'update_status';
+  template?: string;
+  message?: string;
+  newStatus?: string;
+}
+
+const initialFormState = {
+  name: '',
+  description: '',
+  triggerType: 'status_change' as const,
+  entityType: 'job' as const,
+  fromStatus: '',
+  toStatus: '',
+  delayDays: 3,
+  actions: [{ type: 'send_email' as const, template: '', message: '', newStatus: '' }] as FormAction[],
+};
+
 export default function Automations() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'available'>('active');
+  const [formData, setFormData] = useState(initialFormState);
   const { toast } = useToast();
 
   const { data: automations = [], isLoading } = useQuery<AutomationRule[]>({
@@ -321,6 +353,73 @@ export default function Automations() {
     createAutomationMutation.mutate({ ...preset, isActive: true });
   };
 
+  const resetForm = () => {
+    setFormData(initialFormState);
+  };
+
+  const getStatusOptions = (entityType: string) => {
+    switch (entityType) {
+      case 'job': return JOB_STATUSES;
+      case 'quote': return QUOTE_STATUSES;
+      case 'invoice': return INVOICE_STATUSES;
+      default: return [];
+    }
+  };
+
+  const addAction = () => {
+    setFormData(prev => ({
+      ...prev,
+      actions: [...prev.actions, { type: 'notification' as const, template: '', message: '', newStatus: '' }]
+    }));
+  };
+
+  const removeAction = (index: number) => {
+    if (formData.actions.length <= 1) return;
+    setFormData(prev => ({
+      ...prev,
+      actions: prev.actions.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateAction = (index: number, field: keyof FormAction, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      actions: prev.actions.map((action, i) => 
+        i === index ? { ...action, [field]: value } : action
+      )
+    }));
+  };
+
+  const handleCreateCustomAutomation = () => {
+    if (!formData.name.trim()) {
+      toast({ title: "Name required", description: "Please enter a name for your automation", variant: "destructive" });
+      return;
+    }
+    
+    const automationData: Omit<AutomationRule, 'id' | 'createdAt'> = {
+      name: formData.name.trim(),
+      description: formData.description.trim() || undefined,
+      isActive: true,
+      trigger: {
+        type: formData.triggerType,
+        entityType: formData.entityType,
+        ...(formData.triggerType === 'status_change' && formData.fromStatus ? { fromStatus: formData.fromStatus } : {}),
+        ...(formData.triggerType === 'status_change' && formData.toStatus ? { toStatus: formData.toStatus } : {}),
+        ...((formData.triggerType === 'time_delay' || formData.triggerType === 'no_response') ? { delayDays: formData.delayDays } : {}),
+      },
+      actions: formData.actions.map(action => ({
+        type: action.type,
+        ...(action.type === 'send_email' && action.template ? { template: action.template } : {}),
+        ...(action.type === 'notification' && action.message ? { message: action.message } : {}),
+        ...(action.type === 'update_status' && action.newStatus ? { newStatus: action.newStatus } : {}),
+      })),
+    };
+    
+    createAutomationMutation.mutate(automationData, {
+      onSuccess: () => resetForm()
+    });
+  };
+
   const activeAutomations = automations.filter(a => a.isActive);
   const inactiveAutomations = automations.filter(a => !a.isActive);
 
@@ -341,21 +440,260 @@ export default function Automations() {
                 New Automation
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
               <DialogHeader>
                 <DialogTitle>Create Custom Automation</DialogTitle>
                 <DialogDescription>
                   Build your own automation rule from scratch
                 </DialogDescription>
               </DialogHeader>
-              <div className="py-4">
-                <p className="text-sm text-muted-foreground text-center">
-                  Custom automation builder coming soon! For now, use the preset templates below.
-                </p>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <ScrollArea className="flex-1 pr-4">
+                <div className="space-y-6 py-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="automation-name">Automation Name</Label>
+                      <Input
+                        id="automation-name"
+                        placeholder="e.g., Quote Follow-up After 5 Days"
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        data-testid="input-automation-name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="automation-description">Description (optional)</Label>
+                      <Textarea
+                        id="automation-description"
+                        placeholder="What does this automation do?"
+                        value={formData.description}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        rows={2}
+                        data-testid="input-automation-description"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded bg-primary/10">
+                        <Zap className="h-4 w-4 text-primary" />
+                      </div>
+                      <h3 className="font-medium">Trigger</h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>When</Label>
+                        <Select 
+                          value={formData.triggerType} 
+                          onValueChange={(v: typeof formData.triggerType) => setFormData(prev => ({ ...prev, triggerType: v }))}
+                        >
+                          <SelectTrigger data-testid="select-trigger-type">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TRIGGER_TYPES.map(t => (
+                              <SelectItem key={t.value} value={t.value}>
+                                <div className="flex items-center gap-2">
+                                  <t.icon className="h-4 w-4" />
+                                  {t.label}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Entity</Label>
+                        <Select 
+                          value={formData.entityType} 
+                          onValueChange={(v: typeof formData.entityType) => setFormData(prev => ({ ...prev, entityType: v, fromStatus: '', toStatus: '' }))}
+                        >
+                          <SelectTrigger data-testid="select-entity-type">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="job">Job</SelectItem>
+                            <SelectItem value="quote">Quote</SelectItem>
+                            <SelectItem value="invoice">Invoice</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {formData.triggerType === 'status_change' && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>From Status (optional)</Label>
+                          <Select 
+                            value={formData.fromStatus || "any"} 
+                            onValueChange={(v) => setFormData(prev => ({ ...prev, fromStatus: v === "any" ? "" : v }))}
+                          >
+                            <SelectTrigger data-testid="select-from-status">
+                              <SelectValue placeholder="Any status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any status</SelectItem>
+                              {getStatusOptions(formData.entityType).map(s => (
+                                <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>To Status</Label>
+                          <Select 
+                            value={formData.toStatus} 
+                            onValueChange={(v) => setFormData(prev => ({ ...prev, toStatus: v }))}
+                          >
+                            <SelectTrigger data-testid="select-to-status">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getStatusOptions(formData.entityType).map(s => (
+                                <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+
+                    {(formData.triggerType === 'time_delay' || formData.triggerType === 'no_response') && (
+                      <div className="space-y-2">
+                        <Label>After (days)</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={90}
+                          value={formData.delayDays}
+                          onChange={(e) => setFormData(prev => ({ ...prev, delayDays: parseInt(e.target.value) || 1 }))}
+                          data-testid="input-delay-days"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {formData.triggerType === 'no_response' 
+                            ? `Trigger after ${formData.delayDays} day(s) without client response` 
+                            : `Trigger ${formData.delayDays} day(s) after the event`}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded bg-success/10">
+                          <ArrowRight className="h-4 w-4 text-success" />
+                        </div>
+                        <h3 className="font-medium">Actions</h3>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={addAction} data-testid="button-add-action">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Action
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {formData.actions.map((action, index) => (
+                        <div key={index} className="border rounded-md p-3 space-y-3 bg-muted/30">
+                          <div className="flex items-center justify-between gap-2">
+                            <Select 
+                              value={action.type} 
+                              onValueChange={(v) => updateAction(index, 'type', v)}
+                            >
+                              <SelectTrigger className="flex-1" data-testid={`select-action-type-${index}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ACTION_TYPES.map(a => (
+                                  <SelectItem key={a.value} value={a.value}>
+                                    <div className="flex items-center gap-2">
+                                      <a.icon className="h-4 w-4" />
+                                      {a.label}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {formData.actions.length > 1 && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => removeAction(index)}
+                                data-testid={`button-remove-action-${index}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+
+                          {action.type === 'send_email' && (
+                            <div className="space-y-2">
+                              <Label>Email Template</Label>
+                              <Select 
+                                value={action.template || ""} 
+                                onValueChange={(v) => updateAction(index, 'template', v)}
+                              >
+                                <SelectTrigger data-testid={`select-email-template-${index}`}>
+                                  <SelectValue placeholder="Select template" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {EMAIL_TEMPLATES.map(t => (
+                                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {action.type === 'notification' && (
+                            <div className="space-y-2">
+                              <Label>Notification Message</Label>
+                              <Textarea
+                                placeholder="Enter notification message..."
+                                value={action.message || ''}
+                                onChange={(e) => updateAction(index, 'message', e.target.value)}
+                                rows={2}
+                                data-testid={`input-notification-message-${index}`}
+                              />
+                            </div>
+                          )}
+
+                          {action.type === 'update_status' && (
+                            <div className="space-y-2">
+                              <Label>New Status</Label>
+                              <Select 
+                                value={action.newStatus || ""} 
+                                onValueChange={(v) => updateAction(index, 'newStatus', v)}
+                              >
+                                <SelectTrigger data-testid={`select-new-status-${index}`}>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getStatusOptions(formData.entityType).map(s => (
+                                    <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+              <DialogFooter className="flex gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }} data-testid="button-cancel-automation">
                   Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreateCustomAutomation} 
+                  disabled={createAutomationMutation.isPending || !formData.name.trim()}
+                  data-testid="button-save-automation"
+                >
+                  {createAutomationMutation.isPending ? "Creating..." : "Create Automation"}
                 </Button>
               </DialogFooter>
             </DialogContent>

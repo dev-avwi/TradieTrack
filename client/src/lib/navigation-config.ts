@@ -453,8 +453,14 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
   const isStaffTradie = options.isTradie && !isOwnerOrManager;
   
   return items.filter(item => {
+    // Check allowedRoles - but also consider isOwner/isManager flags
+    // This handles the case where userRole might be loading/incorrect
     if (item.allowedRoles && options.userRole) {
-      if (!item.allowedRoles.includes(options.userRole)) {
+      const hasRoleAccess = item.allowedRoles.includes(options.userRole);
+      const isOwnerAllowed = options.isOwner && (item.allowedRoles.includes('owner') || item.allowedRoles.includes('solo_owner'));
+      const isManagerAllowed = options.isManager && item.allowedRoles.includes('manager');
+      
+      if (!hasRoleAccess && !isOwnerAllowed && !isManagerAllowed) {
         return false;
       }
     }

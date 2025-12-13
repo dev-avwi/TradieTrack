@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Sparkles, Mic, Camera, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Sparkles, Mic, Camera, CheckCircle2, AlertCircle, X, ImagePlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -42,19 +42,52 @@ export default function AIQuoteGenerator({ open, onOpenChange, jobId, onApplyIte
   const { toast } = useToast();
   const [jobDescription, setJobDescription] = useState("");
   const [voiceTranscription, setVoiceTranscription] = useState("");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [result, setResult] = useState<AIQuoteResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setIsUploadingPhoto(true);
+    try {
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) continue;
+        if (photos.length >= 5) {
+          toast({ title: "Max 5 photos", description: "You can upload up to 5 photos", variant: "destructive" });
+          break;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64 = event.target?.result as string;
+          if (base64) {
+            setPhotos(prev => [...prev.slice(0, 4), base64]);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    } finally {
+      setIsUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
+  };
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('/api/ai/generate-quote', {
-        method: 'POST',
-        body: JSON.stringify({
-          jobId,
-          jobDescription: jobDescription.trim() || undefined,
-          voiceTranscription: voiceTranscription.trim() || undefined,
-        }),
+      const response = await apiRequest('POST', '/api/ai/generate-quote', {
+        jobId,
+        jobDescription: jobDescription.trim() || undefined,
+        voiceTranscription: voiceTranscription.trim() || undefined,
+        photoBase64: photos.length > 0 ? photos : undefined,
       });
-      return response as AIQuoteResult;
+      return await response.json() as AIQuoteResult;
     },
     onSuccess: (data) => {
       setResult(data);
@@ -82,6 +115,7 @@ export default function AIQuoteGenerator({ open, onOpenChange, jobId, onApplyIte
       setResult(null);
       setJobDescription("");
       setVoiceTranscription("");
+      setPhotos([]);
     }
   };
 
@@ -149,9 +183,55 @@ export default function AIQuoteGenerator({ open, onOpenChange, jobId, onApplyIte
               />
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Camera className="h-4 w-4" />
-              <span>Photo analysis coming soon</span>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Camera className="h-4 w-4" />
+                Job Photos (optional - AI will analyze)
+              </Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoUpload}
+                className="hidden"
+                data-testid="input-ai-photos"
+              />
+              <div className="flex flex-wrap gap-2">
+                {photos.map((photo, idx) => (
+                  <div key={idx} className="relative w-16 h-16 rounded-md overflow-hidden border">
+                    <img src={photo} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(idx)}
+                      className="absolute top-0.5 right-0.5 p-0.5 bg-destructive text-destructive-foreground rounded-full"
+                      data-testid={`button-remove-photo-${idx}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {photos.length < 5 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-16 h-16"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingPhoto}
+                    data-testid="button-add-photo"
+                  >
+                    {isUploadingPhoto ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <ImagePlus className="h-5 w-5" />
+                    )}
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Add up to 5 photos. AI will analyze them to suggest materials and labour.
+              </p>
             </div>
           </div>
         ) : (
@@ -226,7 +306,7 @@ export default function AIQuoteGenerator({ open, onOpenChange, jobId, onApplyIte
               </Button>
               <Button 
                 onClick={() => generateMutation.mutate()} 
-                disabled={generateMutation.isPending || (!jobDescription.trim() && !voiceTranscription.trim())}
+                disabled={generateMutation.isPending || (!jobDescription.trim() && !voiceTranscription.trim() && photos.length === 0)}
                 data-testid="button-generate-ai-quote"
               >
                 {generateMutation.isPending ? (
@@ -250,6 +330,7 @@ export default function AIQuoteGenerator({ open, onOpenChange, jobId, onApplyIte
                   setResult(null);
                   setJobDescription("");
                   setVoiceTranscription("");
+                  setPhotos([]);
                 }}
                 data-testid="button-regenerate-ai-quote"
               >
