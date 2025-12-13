@@ -16,7 +16,9 @@ import {
   List,
   MoreVertical,
   Hourglass,
-  AlertCircle
+  AlertCircle,
+  Archive,
+  RotateCcw
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,7 +31,7 @@ import { EmptyState } from "@/components/ui/compact-card";
 import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import StatusBadge from "@/components/StatusBadge";
-import { useJobs, useUpdateJob } from "@/hooks/use-jobs";
+import { useJobs, useUpdateJob, useUnarchiveJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useLocation } from "wouter";
@@ -72,9 +74,11 @@ export default function WorkPage({
   const [pendingStatus, setPendingStatus] = useState<JobStatus | null>(null);
   const [, navigate] = useLocation();
 
-  const { data: jobs = [], isLoading } = useJobs() as { data: Job[], isLoading: boolean };
+  const showArchived = activeFilter === 'archived';
+  const { data: jobs = [], isLoading } = useJobs({ archived: showArchived }) as { data: Job[], isLoading: boolean };
   const { toast } = useToast();
   const updateJobMutation = useUpdateJob();
+  const unarchiveJobMutation = useUnarchiveJob();
   const { actionPermissions } = useAppMode();
   const canCreateJobs = actionPermissions.canCreateJobs;
 
@@ -93,7 +97,8 @@ export default function WorkPage({
     inProgress: jobs.filter(j => j.status === 'in_progress').length,
     done: jobs.filter(j => j.status === 'done').length,
     invoiced: jobs.filter(j => j.status === 'invoiced').length,
-  }), [jobs]);
+    archived: showArchived ? jobs.length : undefined,
+  }), [jobs, showArchived]);
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
@@ -103,7 +108,7 @@ export default function WorkPage({
         (job.clientName || '').toLowerCase().includes(search) ||
         (job.address || '').toLowerCase().includes(search);
 
-      const matchesFilter = activeFilter === 'all' || job.status === activeFilter;
+      const matchesFilter = activeFilter === 'all' || activeFilter === 'archived' || job.status === activeFilter;
 
       return matchesSearch && matchesFilter;
     });
@@ -138,7 +143,26 @@ export default function WorkPage({
     navigate(`/invoices/new?jobId=${jobId}`);
   };
 
+  const handleRestoreJob = async (job: Job) => {
+    try {
+      await unarchiveJobMutation.mutateAsync(job.id);
+      toast({
+        title: "Job Restored",
+        description: `${job.title || 'Job'} has been restored`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to restore job",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getNextAction = (job: Job) => {
+    if (showArchived) {
+      return { label: 'Restore', action: () => handleRestoreJob(job), icon: RotateCcw };
+    }
     if (job.status === 'pending') return { label: 'Start', action: () => handleStatusChange(job, 'in_progress'), icon: Play };
     if (job.status === 'scheduled') return { label: 'Start', action: () => handleStatusChange(job, 'in_progress'), icon: Play };
     if (job.status === 'in_progress') return { label: 'Done', action: () => handleStatusChange(job, 'done'), icon: CheckCircle };
@@ -369,6 +393,7 @@ export default function WorkPage({
           { id: 'in_progress', label: 'In Progress', count: stats.inProgress, icon: <Play className="h-3 w-3" /> },
           { id: 'done', label: 'Done', count: stats.done, icon: <CheckCircle className="h-3 w-3" /> },
           { id: 'invoiced', label: 'Invoiced', count: stats.invoiced, icon: <Receipt className="h-3 w-3" /> },
+          { id: 'archived', label: 'Archived', count: stats.archived, icon: <Archive className="h-3 w-3" /> },
         ]}
         activeId={activeFilter}
         onSelect={setActiveFilter}
@@ -427,7 +452,7 @@ export default function WorkPage({
           getRowId={(row) => row.id}
         />
       ) : (
-        <div className="space-y-3" data-testid="jobs-list-cards">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3" data-testid="jobs-list-cards">
           {filteredJobs.map((job: Job) => (
             <JobCardItem key={job.id} job={job} />
           ))}

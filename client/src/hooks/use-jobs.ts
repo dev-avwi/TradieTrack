@@ -19,9 +19,36 @@ export interface NextAction {
   reason: string;
 }
 
-export function useJobs() {
+export function useJobs(options?: { archived?: boolean }) {
+  const archived = options?.archived ?? false;
   return useQuery({
-    queryKey: ["/api/jobs"],
+    queryKey: archived ? ["/api/jobs", { archived: true }] : ["/api/jobs"],
+  });
+}
+
+export function useArchiveJob() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/jobs/${id}/archive`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs", { archived: true }] });
+    },
+  });
+}
+
+export function useUnarchiveJob() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/jobs/${id}/unarchive`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs", { archived: true }] });
+    },
   });
 }
 

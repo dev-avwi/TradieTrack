@@ -3,9 +3,36 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMemo } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
 
-export function useQuotes() {
+export function useQuotes(options?: { archived?: boolean }) {
+  const archived = options?.archived ?? false;
   return useQuery({
-    queryKey: ["/api/quotes"],
+    queryKey: archived ? ["/api/quotes", { archived: true }] : ["/api/quotes"],
+  });
+}
+
+export function useArchiveQuote() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/quotes/${id}/archive`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes", { archived: true }] });
+    },
+  });
+}
+
+export function useUnarchiveQuote() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/quotes/${id}/unarchive`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes", { archived: true }] });
+    },
   });
 }
 

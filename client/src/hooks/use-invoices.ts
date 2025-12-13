@@ -3,9 +3,36 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMemo } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
 
-export function useInvoices() {
+export function useInvoices(options?: { archived?: boolean }) {
+  const archived = options?.archived ?? false;
   return useQuery({
-    queryKey: ["/api/invoices"],
+    queryKey: archived ? ["/api/invoices", { archived: true }] : ["/api/invoices"],
+  });
+}
+
+export function useArchiveInvoice() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/invoices/${id}/archive`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", { archived: true }] });
+    },
+  });
+}
+
+export function useUnarchiveInvoice() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/invoices/${id}/unarchive`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", { archived: true }] });
+    },
   });
 }
 

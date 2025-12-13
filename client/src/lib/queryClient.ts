@@ -71,12 +71,39 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
+
+// Build URL from query key segments
+// Supports: ["/api/jobs"] or ["/api/jobs", { archived: true }]
+function buildUrlFromQueryKey(queryKey: readonly unknown[]): string {
+  const segments = [...queryKey];
+  const lastSegment = segments[segments.length - 1];
+  
+  // Check if last segment is an object (query params)
+  if (lastSegment && typeof lastSegment === 'object' && !Array.isArray(lastSegment)) {
+    segments.pop();
+    const basePath = segments.join("/");
+    const params = new URLSearchParams();
+    
+    for (const [key, value] of Object.entries(lastSegment as Record<string, unknown>)) {
+      if (value !== undefined && value !== null) {
+        params.append(key, String(value));
+      }
+    }
+    
+    const queryString = params.toString();
+    return queryString ? `${basePath}?${queryString}` : basePath;
+  }
+  
+  return segments.join("/");
+}
+
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const url = buildUrlFromQueryKey(queryKey);
+    const res = await fetch(url, {
       credentials: "include",
       headers: buildHeaders(false),
     });

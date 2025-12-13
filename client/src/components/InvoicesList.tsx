@@ -3,7 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Receipt, DollarSign, Clock, Send, CheckCircle, AlertCircle, FileText, LayoutGrid, List, MoreVertical } from "lucide-react";
+import { Receipt, DollarSign, Clock, Send, CheckCircle, AlertCircle, FileText, LayoutGrid, List, MoreVertical, Archive, RotateCcw } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import InvoiceCard from "./InvoiceCard";
-import { useInvoices, useRecentInvoices, useSendInvoice, useMarkInvoicePaid, useCreatePaymentLink } from "@/hooks/use-invoices";
+import { useInvoices, useRecentInvoices, useSendInvoice, useMarkInvoicePaid, useCreatePaymentLink, useUnarchiveInvoice } from "@/hooks/use-invoices";
 import { useClients } from "@/hooks/use-clients";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
@@ -79,11 +79,13 @@ export default function InvoicesList({
     }
   }, [searchParams]);
   
-  const { data: invoicesData = [], isLoading = true } = useInvoices() ?? {};
+  const showArchived = activeFilter === 'archived';
+  const { data: invoicesData = [], isLoading = true } = useInvoices({ archived: showArchived }) ?? {};
   const { data: clientsData = [] } = useClients() ?? {};
   const { data: businessSettings } = useBusinessSettings();
   const invoices = Array.isArray(invoicesData) ? invoicesData : [];
   const clients = Array.isArray(clientsData) ? clientsData : [];
+  const unarchiveInvoiceMutation = useUnarchiveInvoice();
 
   // Open confirmation dialog instead of sending directly
   const handleSendInvoice = (id: string) => {
@@ -141,6 +143,24 @@ export default function InvoicesList({
       toast({
         title: parsedError.title,
         description: formatToastDescription(parsedError),
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Restore archived invoice
+  const handleRestoreInvoice = async (id: string) => {
+    const invoice = invoices.find((inv: any) => inv.id === id);
+    try {
+      await unarchiveInvoiceMutation.mutateAsync(id);
+      toast({
+        title: "Invoice Restored",
+        description: `${invoice?.number || 'Invoice'} has been restored`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to restore invoice",
         variant: "destructive",
       });
     }
@@ -209,7 +229,7 @@ export default function InvoicesList({
                          client.includes(search) ||
                          jobTitle.includes(search);
     
-    const matchesFilter = activeFilter === 'all' || invoice.status === activeFilter;
+    const matchesFilter = activeFilter === 'all' || activeFilter === 'archived' || invoice.status === activeFilter;
     
     return matchesSearch && matchesFilter;
   });
@@ -220,7 +240,8 @@ export default function InvoicesList({
     draft: transformedInvoices.filter((i: any) => i.status && i.status === 'draft').length,
     sent: transformedInvoices.filter((i: any) => i.status && i.status === 'sent').length,
     paid: transformedInvoices.filter((i: any) => i.status && i.status === 'paid').length,
-    overdue: transformedInvoices.filter((i: any) => i.status && i.status === 'overdue').length
+    overdue: transformedInvoices.filter((i: any) => i.status && i.status === 'overdue').length,
+    archived: showArchived ? transformedInvoices.length : undefined
   };
 
   // Calculate totals in dollars (parsed from decimal strings)
@@ -243,7 +264,8 @@ export default function InvoicesList({
     { id: 'draft', label: 'Draft', count: stats.draft, icon: <FileText className="h-3 w-3" /> },
     { id: 'sent', label: 'Sent', count: stats.sent, icon: <Send className="h-3 w-3" /> },
     { id: 'paid', label: 'Paid', count: stats.paid, icon: <CheckCircle className="h-3 w-3" /> },
-    { id: 'overdue', label: 'Overdue', count: stats.overdue, icon: <AlertCircle className="h-3 w-3" /> }
+    { id: 'overdue', label: 'Overdue', count: stats.overdue, icon: <AlertCircle className="h-3 w-3" /> },
+    { id: 'archived', label: 'Archived', count: stats.archived, icon: <Archive className="h-3 w-3" /> }
   ];
 
   const tableColumns: ColumnDef<any>[] = [
@@ -323,7 +345,7 @@ export default function InvoicesList({
                 Send Invoice
               </DropdownMenuItem>
             )}
-            {row.status !== "paid" && (
+            {row.status !== "paid" && !showArchived && (
               <>
                 <DropdownMenuItem onClick={() => handleCreatePaymentLink(row.id)}>
                   <DollarSign className="h-4 w-4 mr-2" />
@@ -334,6 +356,12 @@ export default function InvoicesList({
                   Mark as Paid
                 </DropdownMenuItem>
               </>
+            )}
+            {showArchived && (
+              <DropdownMenuItem onClick={() => handleRestoreInvoice(row.id)}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Restore Invoice
+              </DropdownMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>

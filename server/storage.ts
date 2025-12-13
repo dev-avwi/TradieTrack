@@ -200,12 +200,14 @@ export interface IStorage {
   deleteClient(id: string, userId: string): Promise<boolean>;
 
   // Jobs
-  getJobs(userId: string): Promise<Job[]>;
+  getJobs(userId: string, includeArchived?: boolean): Promise<Job[]>;
   getJob(id: string, userId: string): Promise<Job | undefined>;
   createJob(job: InsertJob): Promise<Job>;
   updateJob(id: string, userId: string, job: Partial<InsertJob>): Promise<Job | undefined>;
   deleteJob(id: string, userId: string): Promise<boolean>;
   getJobsForClient(clientId: string, userId: string): Promise<Job[]>;
+  archiveJob(id: string, userId: string): Promise<Job | undefined>;
+  unarchiveJob(id: string, userId: string): Promise<Job | undefined>;
 
   // Checklist Items
   getChecklistItems(jobId: string, userId: string): Promise<ChecklistItem[]>;
@@ -219,12 +221,14 @@ export interface IStorage {
   getLatestCheckin(jobId: string, userId: string): Promise<JobCheckin | undefined>;
 
   // Quotes
-  getQuotes(userId: string): Promise<Quote[]>;
+  getQuotes(userId: string, includeArchived?: boolean): Promise<Quote[]>;
   getQuote(id: string, userId: string): Promise<Quote | undefined>;
   createQuote(quote: InsertQuote): Promise<Quote>;
   updateQuote(id: string, userId: string, quote: Partial<InsertQuote>): Promise<Quote | undefined>;
   deleteQuote(id: string, userId: string): Promise<boolean>;
   getQuoteWithLineItems(id: string, userId: string): Promise<(Quote & { lineItems: QuoteLineItem[] }) | undefined>;
+  archiveQuote(id: string, userId: string): Promise<Quote | undefined>;
+  unarchiveQuote(id: string, userId: string): Promise<Quote | undefined>;
   // Public quote access (for client acceptance flow)
   getQuoteByToken(token: string): Promise<Quote | undefined>;
   getQuoteWithLineItemsByToken(token: string): Promise<(Quote & { lineItems: QuoteLineItem[] }) | undefined>;
@@ -240,12 +244,14 @@ export interface IStorage {
   deleteQuoteLineItem(id: string, userId?: string): Promise<boolean>;
 
   // Invoices
-  getInvoices(userId: string): Promise<Invoice[]>;
+  getInvoices(userId: string, includeArchived?: boolean): Promise<Invoice[]>;
   getInvoice(id: string, userId: string): Promise<Invoice | undefined>;
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
   updateInvoice(id: string, userId: string, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: string, userId: string): Promise<boolean>;
   getInvoiceWithLineItems(id: string, userId: string): Promise<(Invoice & { lineItems: InvoiceLineItem[] }) | undefined>;
+  archiveInvoice(id: string, userId: string): Promise<Invoice | undefined>;
+  unarchiveInvoice(id: string, userId: string): Promise<Invoice | undefined>;
   // Public invoice access (for payment page)
   getInvoiceByPaymentToken(token: string): Promise<(Invoice & { lineItems: InvoiceLineItem[] }) | undefined>;
   updateInvoiceByToken(token: string, updates: Partial<InsertInvoice>): Promise<Invoice | undefined>;
@@ -872,8 +878,11 @@ export class PostgresStorage implements IStorage {
   }
 
   // Jobs
-  async getJobs(userId: string): Promise<Job[]> {
-    return await db.select().from(jobs).where(eq(jobs.userId, userId)).orderBy(desc(jobs.createdAt));
+  async getJobs(userId: string, includeArchived?: boolean): Promise<Job[]> {
+    if (includeArchived) {
+      return await db.select().from(jobs).where(and(eq(jobs.userId, userId), isNotNull(jobs.archivedAt))).orderBy(desc(jobs.createdAt));
+    }
+    return await db.select().from(jobs).where(and(eq(jobs.userId, userId), isNull(jobs.archivedAt))).orderBy(desc(jobs.createdAt));
   }
 
   async getJob(id: string, userId: string): Promise<Job | undefined> {
@@ -917,6 +926,24 @@ export class PostgresStorage implements IStorage {
       .from(jobs)
       .where(and(eq(jobs.clientId, clientId), eq(jobs.userId, userId)))
       .orderBy(desc(jobs.createdAt));
+  }
+
+  async archiveJob(id: string, userId: string): Promise<Job | undefined> {
+    const result = await db
+      .update(jobs)
+      .set({ archivedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(jobs.id, id), eq(jobs.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async unarchiveJob(id: string, userId: string): Promise<Job | undefined> {
+    const result = await db
+      .update(jobs)
+      .set({ archivedAt: null, updatedAt: new Date() })
+      .where(and(eq(jobs.id, id), eq(jobs.userId, userId)))
+      .returning();
+    return result[0];
   }
 
   // Checklist Items
@@ -1049,8 +1076,11 @@ export class PostgresStorage implements IStorage {
   }
 
   // Quotes
-  async getQuotes(userId: string): Promise<Quote[]> {
-    return await db.select().from(quotes).where(eq(quotes.userId, userId)).orderBy(desc(quotes.createdAt));
+  async getQuotes(userId: string, includeArchived?: boolean): Promise<Quote[]> {
+    if (includeArchived) {
+      return await db.select().from(quotes).where(and(eq(quotes.userId, userId), isNotNull(quotes.archivedAt))).orderBy(desc(quotes.createdAt));
+    }
+    return await db.select().from(quotes).where(and(eq(quotes.userId, userId), isNull(quotes.archivedAt))).orderBy(desc(quotes.createdAt));
   }
 
   async getQuote(id: string, userId: string): Promise<Quote | undefined> {
@@ -1094,6 +1124,24 @@ export class PostgresStorage implements IStorage {
     
     const lineItems = await this.getQuoteLineItems(id);
     return { ...quote, lineItems };
+  }
+
+  async archiveQuote(id: string, userId: string): Promise<Quote | undefined> {
+    const result = await db
+      .update(quotes)
+      .set({ archivedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(quotes.id, id), eq(quotes.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async unarchiveQuote(id: string, userId: string): Promise<Quote | undefined> {
+    const result = await db
+      .update(quotes)
+      .set({ archivedAt: null, updatedAt: new Date() })
+      .where(and(eq(quotes.id, id), eq(quotes.userId, userId)))
+      .returning();
+    return result[0];
   }
 
   // Public quote access by token (no auth required)
@@ -1230,8 +1278,11 @@ export class PostgresStorage implements IStorage {
   }
 
   // Invoices
-  async getInvoices(userId: string): Promise<Invoice[]> {
-    return await db.select().from(invoices).where(eq(invoices.userId, userId)).orderBy(desc(invoices.createdAt));
+  async getInvoices(userId: string, includeArchived?: boolean): Promise<Invoice[]> {
+    if (includeArchived) {
+      return await db.select().from(invoices).where(and(eq(invoices.userId, userId), isNotNull(invoices.archivedAt))).orderBy(desc(invoices.createdAt));
+    }
+    return await db.select().from(invoices).where(and(eq(invoices.userId, userId), isNull(invoices.archivedAt))).orderBy(desc(invoices.createdAt));
   }
 
   async getInvoice(id: string, userId: string): Promise<Invoice | undefined> {
@@ -1275,6 +1326,24 @@ export class PostgresStorage implements IStorage {
     
     const lineItems = await this.getInvoiceLineItems(id);
     return { ...invoice, lineItems };
+  }
+
+  async archiveInvoice(id: string, userId: string): Promise<Invoice | undefined> {
+    const result = await db
+      .update(invoices)
+      .set({ archivedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(invoices.id, id), eq(invoices.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async unarchiveInvoice(id: string, userId: string): Promise<Invoice | undefined> {
+    const result = await db
+      .update(invoices)
+      .set({ archivedAt: null, updatedAt: new Date() })
+      .where(and(eq(invoices.id, id), eq(invoices.userId, userId)))
+      .returning();
+    return result[0];
   }
 
   // Public invoice access by payment token

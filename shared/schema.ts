@@ -292,6 +292,7 @@ export const jobs = pgTable("jobs", {
   geofenceRadius: integer("geofence_radius").default(100), // Radius in meters (default 100m)
   geofenceAutoClockIn: boolean("geofence_auto_clock_in").default(false), // Auto-start timer on entry
   geofenceAutoClockOut: boolean("geofence_auto_clock_out").default(false), // Auto-stop timer on exit
+  archivedAt: timestamp("archived_at"), // When the job was archived
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -358,6 +359,7 @@ export const quotes = pgTable("quotes", {
   depositPaid: boolean("deposit_paid").default(false), // Whether deposit has been paid
   depositPaidAt: timestamp("deposit_paid_at"), // When deposit was paid
   depositPaymentIntentId: varchar("deposit_payment_intent_id"), // Stripe payment intent ID
+  archivedAt: timestamp("archived_at"), // When the quote was archived
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -411,6 +413,7 @@ export const invoices = pgTable("invoices", {
   recurrenceEndDate: timestamp("recurrence_end_date"),
   parentInvoiceId: varchar("parent_invoice_id"), // Links to original recurring invoice
   nextRecurrenceDate: timestamp("next_recurrence_date"),
+  archivedAt: timestamp("archived_at"), // When the invoice was archived
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

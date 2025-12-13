@@ -3,7 +3,7 @@ import { useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { FileText, Clock, TrendingUp, Send, CheckCircle, XCircle, LayoutGrid, List, MoreVertical, DollarSign } from "lucide-react";
+import { FileText, Clock, TrendingUp, Send, CheckCircle, XCircle, LayoutGrid, List, MoreVertical, DollarSign, Archive, RotateCcw } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import QuoteCard from "./QuoteCard";
-import { useQuotes, useConvertQuoteToInvoice, useSendQuote, useRecentQuotes } from "@/hooks/use-quotes";
+import { useQuotes, useConvertQuoteToInvoice, useSendQuote, useRecentQuotes, useUnarchiveQuote } from "@/hooks/use-quotes";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import { formatHistoryDate, getStatusColor } from "@shared/dateUtils";
@@ -61,10 +61,12 @@ export default function QuotesList({
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
-  const { data = [], isLoading = true } = useQuotes() ?? {};
+  const showArchived = activeFilter === 'archived';
+  const { data = [], isLoading = true } = useQuotes({ archived: showArchived }) ?? {};
   const quotes = Array.isArray(data) ? data : [];
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
+  const unarchiveQuoteMutation = useUnarchiveQuote();
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
@@ -130,12 +132,30 @@ export default function QuotesList({
     }
   };
 
+  const handleRestoreQuote = async (id: string) => {
+    const quote = quotes.find((q: any) => q.id === id);
+    try {
+      await unarchiveQuoteMutation.mutateAsync(id);
+      toast({
+        title: "Quote Restored",
+        description: `${quote?.number || 'Quote'} has been restored`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to restore quote",
+        variant: "destructive",
+      });
+    }
+  };
+
   const stats = {
     total: quotes.length,
     draft: quotes.filter((q: any) => q.status && q.status === 'draft').length,
     sent: quotes.filter((q: any) => q.status && q.status === 'sent').length,
     accepted: quotes.filter((q: any) => q.status && q.status === 'accepted').length,
-    rejected: quotes.filter((q: any) => q.status && q.status === 'rejected').length
+    rejected: quotes.filter((q: any) => q.status && q.status === 'rejected').length,
+    archived: showArchived ? quotes.length : undefined
   };
 
   const filteredQuotes = quotes.filter((quote: any) => {
@@ -150,7 +170,7 @@ export default function QuotesList({
                          description.includes(search) ||
                          clientName.includes(search);
     
-    const matchesFilter = activeFilter === 'all' || quote.status === activeFilter;
+    const matchesFilter = activeFilter === 'all' || activeFilter === 'archived' || quote.status === activeFilter;
     
     return matchesSearch && matchesFilter;
   });
@@ -160,7 +180,8 @@ export default function QuotesList({
     { id: 'draft', label: 'Draft', count: stats.draft, icon: <Clock className="h-3 w-3" /> },
     { id: 'sent', label: 'Sent', count: stats.sent, icon: <Send className="h-3 w-3" /> },
     { id: 'accepted', label: 'Accepted', count: stats.accepted, icon: <CheckCircle className="h-3 w-3" /> },
-    { id: 'rejected', label: 'Rejected', count: stats.rejected, icon: <XCircle className="h-3 w-3" /> }
+    { id: 'rejected', label: 'Rejected', count: stats.rejected, icon: <XCircle className="h-3 w-3" /> },
+    { id: 'archived', label: 'Archived', count: stats.archived, icon: <Archive className="h-3 w-3" /> }
   ];
 
   const formatCurrency = (amount: number) => {
@@ -247,10 +268,16 @@ export default function QuotesList({
                 Send Quote
               </DropdownMenuItem>
             )}
-            {row.status === "accepted" && (
+            {row.status === "accepted" && !showArchived && (
               <DropdownMenuItem onClick={() => handleConvertToInvoice(row.id)}>
                 <DollarSign className="h-4 w-4 mr-2" />
                 Convert to Invoice
+              </DropdownMenuItem>
+            )}
+            {showArchived && (
+              <DropdownMenuItem onClick={() => handleRestoreQuote(row.id)}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Restore Quote
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>

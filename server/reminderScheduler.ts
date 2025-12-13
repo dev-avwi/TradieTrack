@@ -1,18 +1,22 @@
-import { storage } from './storage';
+import { storage, db } from './storage';
 import { processOverdueReminders } from './reminderService';
 import { processRecurringForUser } from './recurringService';
 import { checkAndExpireTrials } from './subscriptionService';
 import { processTimeBasedAutomations } from './automationService';
+import { jobs, quotes, invoices } from '@shared/schema';
+import { and, or, eq, lt, isNull } from 'drizzle-orm';
 
 let reminderInterval: NodeJS.Timeout | null = null;
 let recurringInterval: NodeJS.Timeout | null = null;
 let trialInterval: NodeJS.Timeout | null = null;
 let automationInterval: NodeJS.Timeout | null = null;
+let archiveInterval: NodeJS.Timeout | null = null;
 
 const REMINDER_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const RECURRING_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const TRIAL_CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const AUTOMATION_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+const ARCHIVE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (daily)
 
 async function processAllUserReminders(): Promise<void> {
   console.log('[Scheduler] Processing automatic reminders...');
@@ -143,11 +147,88 @@ export function startAutomationScheduler(): void {
   console.log(`[Scheduler] Automation scheduler running every ${AUTOMATION_INTERVAL_MS / 60000} minutes`);
 }
 
+async function processAutoArchive(): Promise<void> {
+  console.log('[Scheduler] Processing auto-archive for old completed items...');
+  
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    // Archive jobs that are done/invoiced and updated more than 30 days ago
+    const archivedJobs = await db
+      .update(jobs)
+      .set({ archivedAt: new Date() })
+      .where(
+        and(
+          isNull(jobs.archivedAt),
+          or(eq(jobs.status, 'done'), eq(jobs.status, 'invoiced')),
+          lt(jobs.updatedAt, thirtyDaysAgo)
+        )
+      )
+      .returning();
+    
+    // Archive invoices that are paid and updated more than 30 days ago
+    const archivedInvoices = await db
+      .update(invoices)
+      .set({ archivedAt: new Date() })
+      .where(
+        and(
+          isNull(invoices.archivedAt),
+          eq(invoices.status, 'paid'),
+          lt(invoices.updatedAt, thirtyDaysAgo)
+        )
+      )
+      .returning();
+    
+    // Archive quotes that are accepted/declined/expired and updated more than 30 days ago
+    const archivedQuotes = await db
+      .update(quotes)
+      .set({ archivedAt: new Date() })
+      .where(
+        and(
+          isNull(quotes.archivedAt),
+          or(
+            eq(quotes.status, 'accepted'),
+            eq(quotes.status, 'declined'),
+            eq(quotes.status, 'expired')
+          ),
+          lt(quotes.updatedAt, thirtyDaysAgo)
+        )
+      )
+      .returning();
+    
+    const totalArchived = archivedJobs.length + archivedInvoices.length + archivedQuotes.length;
+    if (totalArchived > 0) {
+      console.log(`[Scheduler] Auto-archived: ${archivedJobs.length} jobs, ${archivedInvoices.length} invoices, ${archivedQuotes.length} quotes`);
+    } else {
+      console.log('[Scheduler] No items to auto-archive');
+    }
+  } catch (error) {
+    console.error('[Scheduler] Error auto-archiving:', error);
+  }
+}
+
+export function startArchiveScheduler(): void {
+  console.log('[Scheduler] Starting auto-archive scheduler...');
+  
+  if (archiveInterval) {
+    clearInterval(archiveInterval);
+  }
+  
+  // Run first time after a delay
+  setTimeout(processAutoArchive, 10000);
+  
+  archiveInterval = setInterval(processAutoArchive, ARCHIVE_INTERVAL_MS);
+  
+  console.log(`[Scheduler] Archive scheduler running every ${ARCHIVE_INTERVAL_MS / 3600000} hours`);
+}
+
 export function startAllSchedulers(): void {
   startReminderScheduler();
   startRecurringScheduler();
   startTrialScheduler();
   startAutomationScheduler();
+  startArchiveScheduler();
 }
 
 export function stopAllSchedulers(): void {
@@ -169,6 +250,11 @@ export function stopAllSchedulers(): void {
   if (automationInterval) {
     clearInterval(automationInterval);
     automationInterval = null;
+  }
+  
+  if (archiveInterval) {
+    clearInterval(archiveInterval);
+    archiveInterval = null;
   }
   
   console.log('[Scheduler] All schedulers stopped');

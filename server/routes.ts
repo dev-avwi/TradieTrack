@@ -3329,7 +3329,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/jobs", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      let jobs = await storage.getJobs(userContext.effectiveUserId);
+      const includeArchived = req.query.archived === 'true';
+      let jobs = await storage.getJobs(userContext.effectiveUserId, includeArchived);
       
       // Staff tradies (team members without VIEW_ALL permission) only see their assigned jobs
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
@@ -3352,6 +3353,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching jobs:", error);
       res.status(500).json({ error: "Failed to fetch jobs" });
+    }
+  });
+
+  // Archive/Unarchive job
+  app.post("/api/jobs/:id/archive", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const job = await storage.archiveJob(req.params.id, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      res.json(job);
+    } catch (error) {
+      console.error("Error archiving job:", error);
+      res.status(500).json({ error: "Failed to archive job" });
+    }
+  });
+
+  app.post("/api/jobs/:id/unarchive", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const job = await storage.unarchiveJob(req.params.id, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      res.json(job);
+    } catch (error) {
+      console.error("Error unarchiving job:", error);
+      res.status(500).json({ error: "Failed to unarchive job" });
     }
   });
 
@@ -4395,8 +4425,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Quotes Routes
   app.get("/api/quotes", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
+      const includeArchived = req.query.archived === 'true';
       const [quotes, clients] = await Promise.all([
-        storage.getQuotes(req.userId),
+        storage.getQuotes(req.userId, includeArchived),
         storage.getClients(req.userId),
       ]);
       
@@ -4417,6 +4448,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching quotes:", error);
       res.status(500).json({ error: "Failed to fetch quotes" });
+    }
+  });
+
+  // Archive/Unarchive quote
+  app.post("/api/quotes/:id/archive", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
+    try {
+      const quote = await storage.archiveQuote(req.params.id, req.userId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      res.json(quote);
+    } catch (error) {
+      console.error("Error archiving quote:", error);
+      res.status(500).json({ error: "Failed to archive quote" });
+    }
+  });
+
+  app.post("/api/quotes/:id/unarchive", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
+    try {
+      const quote = await storage.unarchiveQuote(req.params.id, req.userId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      res.json(quote);
+    } catch (error) {
+      console.error("Error unarchiving quote:", error);
+      res.status(500).json({ error: "Failed to unarchive quote" });
     }
   });
 
@@ -4791,8 +4849,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Invoices Routes
   app.get("/api/invoices", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
     try {
+      const includeArchived = req.query.archived === 'true';
       const [invoices, clients] = await Promise.all([
-        storage.getInvoices(req.userId),
+        storage.getInvoices(req.userId, includeArchived),
         storage.getClients(req.userId),
       ]);
       
@@ -4813,6 +4872,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching invoices:", error);
       res.status(500).json({ error: "Failed to fetch invoices" });
+    }
+  });
+
+  // Archive/Unarchive invoice
+  app.post("/api/invoices/:id/archive", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const invoice = await storage.archiveInvoice(req.params.id, req.userId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error archiving invoice:", error);
+      res.status(500).json({ error: "Failed to archive invoice" });
+    }
+  });
+
+  app.post("/api/invoices/:id/unarchive", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const invoice = await storage.unarchiveInvoice(req.params.id, req.userId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error unarchiving invoice:", error);
+      res.status(500).json({ error: "Failed to unarchive invoice" });
     }
   });
 
