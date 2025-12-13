@@ -18,6 +18,7 @@ import { useCreateInvoice } from "@/hooks/use-invoices";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useDocumentTemplates, type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import LiveDocumentPreview from "./LiveDocumentPreview";
 import CatalogModal from "@/components/CatalogModal";
 import CompletedJobPicker from "@/components/CompletedJobPicker";
@@ -436,6 +437,14 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       }
 
       const result = await createInvoiceMutation.mutateAsync(invoiceData);
+      
+      // Invalidate linked-documents cache so job detail view updates immediately
+      if (selectedJobId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs', selectedJobId, 'linked-documents'] });
+        // Also invalidate job query to update status to 'invoiced'
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs', selectedJobId] });
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      }
       
       toast({
         title: "Invoice created!",
