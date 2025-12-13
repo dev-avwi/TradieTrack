@@ -58,6 +58,7 @@ import ChatHub from "@/pages/ChatHub";
 import JobMapPage from "@/pages/JobMap";
 import DirectMessagesPage from "@/pages/DirectMessages";
 import DispatchBoard from "@/pages/DispatchBoard";
+import SchedulePage from "@/pages/SchedulePage";
 import Automations from "@/pages/Automations";
 import CustomForms from "@/pages/CustomForms";
 import MyAccount from "@/pages/MyAccount";
@@ -357,17 +358,20 @@ function Router({
         <InvoiceDetailView invoiceId={params.id} />
       )} />
       
-      <Route path="/calendar" component={() => (
-        <CalendarView 
+      <Route path="/schedule" component={() => (
+        <SchedulePage 
           onCreateJob={() => onNavigate('/jobs/new')}
           onViewJob={(id) => onNavigate(`/jobs/${id}`)}
-          onEditJob={(id) => onNavigate(`/jobs/${id}/edit`)}
         />
       )} />
 
-      <Route path="/dispatch" component={() => (
-        <DispatchBoard />
-      )} />
+      <Route path="/calendar">
+        <Redirect to="/schedule" />
+      </Route>
+
+      <Route path="/dispatch">
+        <Redirect to="/schedule" />
+      </Route>
       
       <Route path="/templates" component={() => (
         <TemplateManagement />
