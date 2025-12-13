@@ -284,7 +284,7 @@ export default function WorkPage({
                 </div>
               )}
               {scheduledLabel && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1 text-xs font-medium text-primary">
                   <Calendar className="h-3 w-3 flex-shrink-0" />
                   <span>{scheduledLabel}</span>
                 </div>
