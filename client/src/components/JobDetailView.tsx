@@ -11,7 +11,7 @@ import { JobChat } from "./JobChat";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
 import GeofenceSettingsCard from "./GeofenceSettingsCard";
-import { LinkedDocumentsCard, NextActionCard } from "./JobWorkflowComponents";
+import { LinkedDocumentsCard } from "./JobWorkflowComponents";
 import JobFlowWizard from "@/components/JobFlowWizard";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
@@ -445,17 +445,6 @@ export default function JobDetailView({
           </div>
         </div>
 
-{/* Edit button only - other actions are in the workflow components below */}
-        {onEditJob && !isTradie && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => onEditJob(jobId)} 
-            data-testid="button-edit-job"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-        )}
       </div>
 
       <div className="space-y-4">
@@ -474,25 +463,6 @@ export default function JobDetailView({
           data-testid="job-flow-wizard"
         />
 
-
-        {!isTradie && (
-          <NextActionCard
-            jobStatus={job.status}
-            hasQuote={!!linkedQuote}
-            hasInvoice={!!linkedInvoice}
-            quoteStatus={linkedQuote?.status}
-            invoiceStatus={linkedInvoice?.status}
-            scheduledAt={job.scheduledAt}
-            onSchedule={() => onEditJob?.(jobId)}
-            onStartJob={() => updateJobMutation.mutate({ status: 'in_progress' })}
-            onCompleteJob={handleCompleteJob}
-            onCreateQuote={() => onCreateQuote?.(jobId)}
-            onSendQuote={() => linkedQuote && navigate(`/quotes/${linkedQuote.id}`)}
-            onCreateInvoice={() => onCreateInvoice?.(jobId)}
-            onSendInvoice={() => linkedInvoice && navigate(`/invoices/${linkedInvoice.id}`)}
-            onSendReminder={() => linkedInvoice && navigate(`/invoices/${linkedInvoice.id}`)}
-          />
-        )}
 
         {!isTradie && (
           <LinkedDocumentsCard
