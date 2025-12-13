@@ -1,4 +1,5 @@
 import { Building2 } from "lucide-react";
+import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
 
 interface LineItem {
   description: string;
@@ -48,6 +49,7 @@ interface LiveDocumentPreviewProps {
   status?: string;
   jobAddress?: string;
   jobScheduledDate?: string;
+  templateId?: TemplateId;
 }
 
 function formatCurrency(amount: number): string {
@@ -87,6 +89,7 @@ export default function LiveDocumentPreview({
   status,
   jobAddress,
   jobScheduledDate,
+  templateId = DEFAULT_TEMPLATE,
 }: LiveDocumentPreviewProps) {
   const safeParseFloat = (val: string | number): number => {
     if (typeof val === 'number') return isNaN(val) ? 0 : val;
@@ -115,6 +118,10 @@ export default function LiveDocumentPreview({
   const isPaid = status === 'paid';
   const isOverdue = status === 'overdue';
   const isAccepted = status === 'accepted';
+  
+  // Get template styles
+  const templateStyles = getTemplateStyles(templateId, brandColor);
+  const { template, primaryColor, headingStyle, tableHeaderStyle, getTableRowStyle, getNoteStyle } = templateStyles;
 
   const documentTitle = type === 'quote' 
     ? 'Quote' 
@@ -138,8 +145,8 @@ export default function LiveDocumentPreview({
     <div 
       className="bg-white rounded-lg shadow-lg overflow-hidden w-full max-w-[800px] mx-auto border border-slate-200"
       style={{ 
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-        fontSize: '11px',
+        fontFamily: template.fontFamily,
+        fontSize: template.baseFontSize,
         lineHeight: '1.5',
         color: '#1a1a1a',
       }}
@@ -162,7 +169,11 @@ export default function LiveDocumentPreview({
         {/* Header - matches PDF .header */}
         <div 
           className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-10 pb-5"
-          style={{ borderBottom: `3px solid ${brandColor}` }}
+          style={{ 
+            borderBottom: template.showHeaderDivider 
+              ? `${template.headerBorderWidth} solid ${primaryColor}` 
+              : 'none' 
+          }}
         >
           {/* Company Info - Left Side */}
           <div className="flex-1">
@@ -178,8 +189,12 @@ export default function LiveDocumentPreview({
               </div>
             )}
             <div 
-              className="text-2xl font-bold mb-2"
-              style={{ color: brandColor }}
+              className="text-2xl mb-2"
+              style={{ 
+                color: primaryColor,
+                fontFamily: template.headingFont,
+                fontWeight: template.headingWeight,
+              }}
             >
               {business.businessName || 'Your Business Name'}
             </div>
@@ -205,10 +220,12 @@ export default function LiveDocumentPreview({
           {/* Document Type - Right Side */}
           <div className="text-right">
             <div 
-              className="text-3xl font-bold uppercase tracking-[2px] mb-1"
+              className="text-3xl uppercase tracking-[2px] mb-1"
               style={{ 
-                color: isPaid ? '#22c55e' : brandColor,
-                fontSize: gstEnabled && type === 'invoice' ? '28px' : '32px'
+                color: isPaid ? '#22c55e' : primaryColor,
+                fontSize: gstEnabled && type === 'invoice' ? '28px' : '32px',
+                fontFamily: template.headingFont,
+                fontWeight: template.headingWeight,
               }}
             >
               {documentTitle}
@@ -304,17 +321,21 @@ export default function LiveDocumentPreview({
         {/* Line Items Table */}
         <table className="w-full border-collapse mb-6">
           <thead>
-            <tr style={{ backgroundColor: brandColor }}>
-              <th className="px-3 py-3 text-left text-white font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '50%' }}>
+            <tr style={{ 
+              backgroundColor: tableHeaderStyle.backgroundColor,
+              borderBottom: tableHeaderStyle.borderBottom,
+              borderRadius: template.borderRadius,
+            }}>
+              <th className="px-3 py-3 text-left font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '50%', color: tableHeaderStyle.color }}>
                 Description
               </th>
-              <th className="px-3 py-3 text-right text-white font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '15%' }}>
+              <th className="px-3 py-3 text-right font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '15%', color: tableHeaderStyle.color }}>
                 Qty
               </th>
-              <th className="px-3 py-3 text-right text-white font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '17%' }}>
+              <th className="px-3 py-3 text-right font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '17%', color: tableHeaderStyle.color }}>
                 Unit Price
               </th>
-              <th className="px-3 py-3 text-right text-white font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '18%' }}>
+              <th className="px-3 py-3 text-right font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '18%', color: tableHeaderStyle.color }}>
                 Amount
               </th>
             </tr>
@@ -324,11 +345,7 @@ export default function LiveDocumentPreview({
               validLineItems.map((item, index) => (
                 <tr 
                   key={index} 
-                  style={{ 
-                    borderBottom: index === validLineItems.length - 1 
-                      ? `2px solid ${brandColor}` 
-                      : '1px solid #eee' 
-                  }}
+                  style={getTableRowStyle(index, index === validLineItems.length - 1)}
                 >
                   <td className="px-3 py-3 align-top">{item.description}</td>
                   <td className="px-3 py-3 text-right whitespace-nowrap">
@@ -367,17 +384,17 @@ export default function LiveDocumentPreview({
             )}
             <div 
               className="flex justify-between py-3 mt-1"
-              style={{ borderTop: `2px solid ${isPaid ? '#22c55e' : brandColor}` }}
+              style={{ borderTop: `2px solid ${isPaid ? '#22c55e' : primaryColor}` }}
             >
               <span 
-                className="text-base font-bold"
-                style={{ color: isPaid ? '#22c55e' : brandColor }}
+                className="text-base"
+                style={{ color: isPaid ? '#22c55e' : primaryColor, fontWeight: template.headingWeight }}
               >
                 {isPaid ? 'Amount Paid' : `Total${gstEnabled ? ' (incl. GST)' : ''}`}
               </span>
               <span 
-                className="text-base font-bold"
-                style={{ color: isPaid ? '#22c55e' : brandColor }}
+                className="text-base"
+                style={{ color: isPaid ? '#22c55e' : primaryColor, fontWeight: template.headingWeight }}
               >
                 {formatCurrency(total)}
               </span>
@@ -443,8 +460,8 @@ export default function LiveDocumentPreview({
         {/* Notes Section */}
         {notes && (
           <div 
-            className="mb-8 p-4 bg-[#fafafa] rounded-r-md"
-            style={{ borderLeft: `4px solid ${brandColor}` }}
+            className="mb-8 p-4"
+            style={getNoteStyle()}
           >
             <div className="font-semibold mb-2 text-[#333]">
               Additional Notes
@@ -470,8 +487,8 @@ export default function LiveDocumentPreview({
         {/* Warranty Section */}
         {business.warrantyPeriod && (
           <div 
-            className="mb-8 p-4 bg-[#fafafa] rounded-r-md"
-            style={{ borderLeft: `4px solid ${brandColor}` }}
+            className="mb-8 p-4"
+            style={getNoteStyle()}
           >
             <div className="font-semibold mb-2 text-[#333]">
               Warranty

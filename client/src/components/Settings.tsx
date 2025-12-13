@@ -62,6 +62,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LogoUpload } from "./LogoUpload";
 import { useToast } from "@/hooks/use-toast";
 import DataSafetyBanner from "./DataSafetyBanner";
+import DocumentTemplateSelector from "./DocumentTemplateSelector";
+import { TemplateId } from "@/lib/document-templates";
 
 // Types for MyAccount tab
 interface ColorOption {
@@ -219,6 +221,9 @@ export default function Settings({
     includeSignatureOnInvoices: false,
   });
 
+  // Document template settings
+  const [documentTemplate, setDocumentTemplate] = useState<TemplateId>('professional');
+
   // My Account tab state
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileFormData, setProfileFormData] = useState({
@@ -350,6 +355,9 @@ export default function Settings({
         includeSignatureOnQuotes: (businessSettings as any).includeSignatureOnQuotes || false,
         includeSignatureOnInvoices: (businessSettings as any).includeSignatureOnInvoices || false,
       });
+      
+      // Load document template setting
+      setDocumentTemplate(((businessSettings as any).documentTemplate || 'professional') as TemplateId);
       
       // Get server values - check both primaryColor and brandColor fields
       const serverColor = businessSettings.primaryColor || businessSettings.brandColor || DEFAULT_BRAND_COLOR;
@@ -487,6 +495,8 @@ export default function Settings({
       signatureName: signatureData.signatureName,
       includeSignatureOnQuotes: signatureData.includeSignatureOnQuotes,
       includeSignatureOnInvoices: signatureData.includeSignatureOnInvoices,
+      // Document template
+      documentTemplate: documentTemplate,
     };
     
     saveSettingsMutation.mutate(updateData);
@@ -657,6 +667,17 @@ export default function Settings({
               >
                 <Palette className="h-4 w-4 mr-1.5" />
                 Brand
+              </TabsTrigger>
+            )}
+            {canAccessBusinessSettings && (
+              <TabsTrigger 
+                value="templates" 
+                data-testid="tab-templates"
+                className="flex-shrink-0"
+              >
+                <FileText className="h-4 w-4 mr-1.5" />
+                <span className="hidden sm:inline">Templates</span>
+                <span className="sm:hidden">Docs</span>
               </TabsTrigger>
             )}
             {canAccessBusinessSettings && (
@@ -1412,6 +1433,14 @@ export default function Settings({
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="templates" className="space-y-6">
+          <DocumentTemplateSelector
+            selectedTemplate={documentTemplate}
+            onSelectTemplate={setDocumentTemplate}
+            brandColor={brandingData.color}
+          />
         </TabsContent>
 
         <TabsContent value="payment" className="space-y-6">
