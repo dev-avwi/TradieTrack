@@ -200,9 +200,9 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
         }
       `}</style>
 
-      <div className={`max-w-4xl mx-auto p-6 ${isPrinting ? 'print-page' : ''}`}>
+      <div className={`max-w-4xl mx-auto p-4 sm:p-6 ${isPrinting ? 'print-page' : ''}`}>
         {/* Action buttons - hidden when printing */}
-        <div className="flex items-center justify-between mb-6 no-print">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 no-print">
           <div className="flex items-center gap-4">
             {onBack && (
               <Button variant="outline" onClick={onBack} data-testid="button-back">
@@ -212,21 +212,21 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             )}
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-muted-foreground" />
-              <h1 className="text-2xl font-bold">Quote Details</h1>
+              <h1 className="text-xl sm:text-2xl font-bold">Quote Details</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             {quote.status === 'draft' && onSend && (
-              <Button onClick={() => onSend(quote.id)} data-testid={`button-send-${quote.id}`}>
+              <Button onClick={() => onSend(quote.id)} className="w-full sm:w-auto" data-testid={`button-send-${quote.id}`}>
                 <Send className="h-4 w-4 mr-2" />
                 Send Quote
               </Button>
             )}
-            <Button variant="outline" onClick={handlePrint} data-testid="button-print">
+            <Button variant="outline" onClick={handlePrint} className="w-full sm:w-auto" data-testid="button-print">
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
-            <Button variant="outline" onClick={handleSaveAsPDF} data-testid="button-save-pdf">
+            <Button variant="outline" onClick={handleSaveAsPDF} className="w-full sm:w-auto" data-testid="button-save-pdf">
               <Download className="h-4 w-4 mr-2" />
               Save as PDF
             </Button>
