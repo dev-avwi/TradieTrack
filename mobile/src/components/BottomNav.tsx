@@ -26,22 +26,16 @@ const navItems: NavItem[] = [
     matchPaths: ['/jobs', '/job']
   },
   { 
-    title: 'Payment Hub', 
-    icon: 'dollar-sign', 
-    path: '/more/payment-hub',
-    matchPaths: ['/more/payment-hub', '/more/invoices', '/more/payments']
-  },
-  { 
-    title: 'Calendar', 
-    icon: 'calendar', 
-    path: '/more/calendar',
-    matchPaths: ['/more/calendar']
+    title: 'Chat', 
+    icon: 'message-circle', 
+    path: '/more/chat-hub',
+    matchPaths: ['/more/chat-hub', '/more/team-chat', '/more/direct-messages']
   },
   { 
     title: 'More', 
     icon: 'more-horizontal', 
     path: '/profile',
-    matchPaths: ['/profile', '/more/settings', '/more/clients', '/more/quotes', '/map']
+    matchPaths: ['/profile', '/more', '/map']
   },
 ];
 

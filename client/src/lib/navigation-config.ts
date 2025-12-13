@@ -185,11 +185,10 @@ export const mainMenuItems: NavItem[] = [
     description: "Team and job messaging",
     color: "text-primary",
     bgColor: "bg-primary/10",
-    requiresTeam: true,
     showInBottomNav: true,
     showInSidebar: true,
     showBadge: true,
-    allowedRoles: ['owner', 'manager', 'staff_tradie'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
   },
   {
     title: "Map",
@@ -200,8 +199,9 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "bg-success/10",
     requiresOwnerOrManager: true,
     hideForStaff: true,
-    showInBottomNav: true,
+    showInBottomNav: false,
     showInSidebar: true,
+    showInMore: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
