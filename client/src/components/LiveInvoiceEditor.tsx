@@ -811,7 +811,7 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
 
       {/* Line Item Editor Sheet */}
       <Sheet open={editingLineIndex !== null} onOpenChange={() => setEditingLineIndex(null)}>
-        <SheetContent side="bottom" className="h-auto max-h-[80vh] rounded-t-3xl">
+        <SheetContent side="bottom" className="h-auto max-h-[80vh] rounded-t-3xl pb-8">
           <SheetHeader className="pb-4">
             <SheetTitle>{editingLineIndex === -1 ? 'Add Item' : 'Edit Item'}</SheetTitle>
           </SheetHeader>

@@ -497,7 +497,7 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
                         Add Field
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl">
+                    <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl pb-8">
                       <SheetHeader>
                         <SheetTitle>Add Field</SheetTitle>
                       </SheetHeader>

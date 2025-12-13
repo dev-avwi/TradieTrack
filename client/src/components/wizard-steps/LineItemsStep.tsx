@@ -246,7 +246,7 @@ export default function LineItemsStep({ tradeType }: LineItemsStepProps) {
       )}
 
       <Sheet open={editingIndex !== null} onOpenChange={(open) => !open && setEditingIndex(null)}>
-        <SheetContent side="bottom" className="h-auto max-h-[80vh]">
+        <SheetContent side="bottom" className="h-auto max-h-[80vh] pb-8">
           <SheetHeader className="mb-4">
             <SheetTitle>{editingIndex === -1 ? "Add Item" : "Edit Item"}</SheetTitle>
           </SheetHeader>
