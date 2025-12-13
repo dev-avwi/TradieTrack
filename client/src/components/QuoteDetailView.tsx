@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Printer, ArrowLeft, Send, FileText, Mail, Phone, User, MapPin, DollarSign, Download } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
+import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
 
 interface QuoteDetailViewProps {
@@ -17,6 +18,7 @@ interface QuoteDetailViewProps {
 export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetailViewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
+  const { toast } = useToast();
 
   // Fetch quote with line items
   const { data: quote, isLoading } = useQuery({
@@ -48,52 +50,47 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
     }, 100);
   };
 
-  const handleSaveAsPDF = () => {
+  const handleSaveAsPDF = async () => {
     setIsPrinting(true);
-    setTimeout(() => {
-      // Create a new window with just the quote content
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        const printContent = document.querySelector('.print-content');
-        if (!printContent) {
-          console.error('Print content not found');
-          setIsPrinting(false);
-          return;
-        }
-        
-        // Get all stylesheets and style tags
-        const stylesheets = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-          .map(link => link.outerHTML)
-          .join('\n');
-        const styles = Array.from(document.querySelectorAll('style'))
-          .map(style => style.outerHTML)
-          .join('\n');
-        
-        printWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Quote - ${quote.title}</title>
-            ${stylesheets}
-            ${styles}
-          </head>
-          <body>
-            ${printContent.outerHTML}
-            <script>
-              window.onload = function() {
-                // Allow user to manually save as PDF or print
-                // Don't auto-trigger print dialog
-              }
-            </script>
-          </body>
-          </html>
-        `);
-        printWindow.document.close();
+    try {
+      // Fetch the professionally generated PDF from the server
+      const response = await fetch(`/api/quotes/${quoteId}/pdf`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
       }
+      
+      // Get the PDF blob
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Quote-${quote.number || quote.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "PDF Downloaded",
+        description: "Quote PDF has been downloaded successfully.",
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsPrinting(false);
-    }, 100);
+    }
   };
 
   const formatCurrency = (amount: number) => {
