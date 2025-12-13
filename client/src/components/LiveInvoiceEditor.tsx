@@ -439,10 +439,12 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       const result = await createInvoiceMutation.mutateAsync(invoiceData);
       
       // Invalidate linked-documents cache so job detail view updates immediately
-      if (selectedJobId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/jobs', selectedJobId, 'linked-documents'] });
+      // Use selectedJobId or urlJobId as fallback for URL-based navigation
+      const jobIdToInvalidate = selectedJobId || urlJobId;
+      if (jobIdToInvalidate) {
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobIdToInvalidate, 'linked-documents'] });
         // Also invalidate job query to update status to 'invoiced'
-        queryClient.invalidateQueries({ queryKey: ['/api/jobs', selectedJobId] });
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobIdToInvalidate] });
         queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       }
       

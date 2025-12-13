@@ -14,7 +14,7 @@ import {
   Platform,
   Animated
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore, useClientsStore, useQuotesStore } from '../../../src/lib/store';
@@ -550,6 +550,7 @@ interface LineItem {
 
 export default function NewQuoteScreen() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ jobId?: string; clientId?: string }>();
   const { user, businessSettings } = useAuthStore();
   const { clients, fetchClients } = useClientsStore();
   const { fetchQuotes } = useQuotesStore();
@@ -561,9 +562,10 @@ export default function NewQuoteScreen() {
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+  const [jobId, setJobId] = useState<string | null>(params.jobId || null);
   
   const [form, setForm] = useState({
-    clientId: '',
+    clientId: params.clientId || '',
     clientName: '',
     title: '',
     description: '',
@@ -679,6 +681,7 @@ export default function NewQuoteScreen() {
     try {
       const response = await api.post('/api/quotes', {
         clientId: form.clientId,
+        jobId: jobId || undefined,
         title: form.title.trim(),
         description: form.description.trim() || undefined,
         notes: form.notes.trim() || undefined,

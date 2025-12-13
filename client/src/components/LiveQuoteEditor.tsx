@@ -348,8 +348,10 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       const result = await createQuoteMutation.mutateAsync(quoteData);
       
       // Invalidate linked-documents cache so job detail view updates immediately
-      if (selectedJobId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/jobs', selectedJobId, 'linked-documents'] });
+      // Use selectedJobId or urlJobId as fallback for URL-based navigation
+      const jobIdToInvalidate = selectedJobId || urlJobId;
+      if (jobIdToInvalidate) {
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobIdToInvalidate, 'linked-documents'] });
       }
       
       toast({
