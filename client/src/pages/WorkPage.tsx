@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
   Plus, 
   Briefcase, 
@@ -164,12 +165,12 @@ export default function WorkPage({
 
     return (
       <Card 
-        className="hover-elevate cursor-pointer mb-2"
+        className="hover-elevate cursor-pointer"
         onClick={() => onViewJob?.(job.id)}
         data-testid={`job-card-${job.id}`}
       >
-        <CardContent className="p-3">
-          <div className="flex items-start justify-between gap-2">
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h4 className="font-medium text-sm truncate leading-tight">
                 {job.title || 'Untitled Job'}
@@ -219,7 +220,8 @@ export default function WorkPage({
     icon, 
     iconColor,
     columnId,
-    emptyText
+    emptyText,
+    isMobile = false
   }: { 
     title: string; 
     jobs: Job[]; 
@@ -227,9 +229,13 @@ export default function WorkPage({
     iconColor: string;
     columnId: string;
     emptyText: string;
+    isMobile?: boolean;
   }) => (
     <div 
-      className="flex-shrink-0 w-[85vw] md:w-full md:min-w-0 snap-center"
+      className={cn(
+        "flex-shrink-0",
+        isMobile ? "w-full" : "w-full min-w-0"
+      )}
       data-testid={`column-${columnId}`}
     >
       <div className="h-full flex flex-col bg-muted/30 rounded-xl p-3">
@@ -245,7 +251,7 @@ export default function WorkPage({
             {jobs.length}
           </Badge>
         </div>
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-3">
           {jobs.length > 0 ? (
             jobs.map(job => <KanbanCard key={job.id} job={job} />)
           ) : (
@@ -299,10 +305,100 @@ export default function WorkPage({
         placeholder="Search jobs..."
       />
 
-      {/* Kanban Board - horizontal scroll on mobile, grid on desktop */}
+      {/* Mobile Tab Navigation - visible below md breakpoint */}
+      <Tabs defaultValue="queue" className="md:hidden mt-4">
+        <TabsList className="w-full grid grid-cols-4 h-auto p-1" data-testid="mobile-column-tabs">
+          <TabsTrigger 
+            value="queue" 
+            className="flex flex-col gap-0.5 py-2 px-1 text-xs data-[state=active]:text-[hsl(var(--trade))]"
+            data-testid="tab-queue"
+          >
+            <span>Queue</span>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              {kanbanColumns.today.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="in-progress" 
+            className="flex flex-col gap-0.5 py-2 px-1 text-xs data-[state=active]:text-[hsl(var(--warning))]"
+            data-testid="tab-in-progress"
+          >
+            <span>In Progress</span>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              {kanbanColumns.inProgress.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="needs-invoice" 
+            className="flex flex-col gap-0.5 py-2 px-1 text-xs data-[state=active]:text-[hsl(var(--destructive))]"
+            data-testid="tab-needs-invoice"
+          >
+            <span>Invoice</span>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              {kanbanColumns.needsInvoice.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="completed" 
+            className="flex flex-col gap-0.5 py-2 px-1 text-xs data-[state=active]:text-[hsl(var(--success))]"
+            data-testid="tab-completed"
+          >
+            <span>Done</span>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              {kanbanColumns.completed.length}
+            </Badge>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="queue" className="mt-3" data-testid="mobile-kanban-content-queue">
+          <KanbanColumn
+            columnId="queue"
+            title="Queue"
+            jobs={kanbanColumns.today}
+            icon={<Calendar className="h-3.5 w-3.5" style={{ color: 'hsl(var(--trade))' }} />}
+            iconColor="hsl(var(--trade))"
+            emptyText="No jobs in queue"
+            isMobile
+          />
+        </TabsContent>
+        <TabsContent value="in-progress" className="mt-3" data-testid="mobile-kanban-content-in-progress">
+          <KanbanColumn
+            columnId="in-progress"
+            title="In Progress"
+            jobs={kanbanColumns.inProgress}
+            icon={<Play className="h-3.5 w-3.5" style={{ color: 'hsl(var(--warning))' }} />}
+            iconColor="hsl(var(--warning))"
+            emptyText="Nothing in progress"
+            isMobile
+          />
+        </TabsContent>
+        <TabsContent value="needs-invoice" className="mt-3" data-testid="mobile-kanban-content-needs-invoice">
+          <KanbanColumn
+            columnId="needs-invoice"
+            title="Needs Invoice"
+            jobs={kanbanColumns.needsInvoice}
+            icon={<AlertCircle className="h-3.5 w-3.5" style={{ color: 'hsl(var(--destructive))' }} />}
+            iconColor="hsl(var(--destructive))"
+            emptyText="All invoiced"
+            isMobile
+          />
+        </TabsContent>
+        <TabsContent value="completed" className="mt-3" data-testid="mobile-kanban-content-completed">
+          <KanbanColumn
+            columnId="completed"
+            title="Done"
+            jobs={kanbanColumns.completed}
+            icon={<CheckCircle className="h-3.5 w-3.5" style={{ color: 'hsl(var(--success))' }} />}
+            iconColor="hsl(var(--success))"
+            emptyText="No completed jobs"
+            isMobile
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Desktop: Grid layout - hidden on mobile, visible from md breakpoint */}
       <div 
-        className="flex gap-3 overflow-x-auto snap-x snap-mandatory md:grid md:grid-cols-4 md:overflow-visible pb-4 -mx-4 px-4 md:mx-0 md:px-0 mt-4"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className="hidden md:grid md:grid-cols-4 gap-4 mt-4"
         data-testid="kanban-board"
       >
         <KanbanColumn
@@ -317,24 +413,24 @@ export default function WorkPage({
           columnId="in-progress"
           title="In Progress"
           jobs={kanbanColumns.inProgress}
-          icon={<Play className="h-3.5 w-3.5 text-amber-500" />}
-          iconColor="hsl(35 90% 55%)"
+          icon={<Play className="h-3.5 w-3.5" style={{ color: 'hsl(var(--warning))' }} />}
+          iconColor="hsl(var(--warning))"
           emptyText="Nothing in progress"
         />
         <KanbanColumn
           columnId="needs-invoice"
           title="Needs Invoice"
           jobs={kanbanColumns.needsInvoice}
-          icon={<AlertCircle className="h-3.5 w-3.5 text-orange-500" />}
-          iconColor="hsl(25 90% 55%)"
+          icon={<AlertCircle className="h-3.5 w-3.5" style={{ color: 'hsl(var(--destructive))' }} />}
+          iconColor="hsl(var(--destructive))"
           emptyText="All invoiced"
         />
         <KanbanColumn
           columnId="completed"
           title="Done"
           jobs={kanbanColumns.completed}
-          icon={<CheckCircle className="h-3.5 w-3.5 text-green-500" />}
-          iconColor="hsl(145 65% 45%)"
+          icon={<CheckCircle className="h-3.5 w-3.5" style={{ color: 'hsl(var(--success))' }} />}
+          iconColor="hsl(var(--success))"
           emptyText="No completed jobs"
         />
       </div>

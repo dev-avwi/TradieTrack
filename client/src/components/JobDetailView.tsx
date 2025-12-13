@@ -11,7 +11,7 @@ import { JobChat } from "./JobChat";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
 import GeofenceSettingsCard from "./GeofenceSettingsCard";
-import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from "./JobWorkflowComponents";
+import { LinkedDocumentsCard, NextActionCard } from "./JobWorkflowComponents";
 import JobFlowWizard from "@/components/JobFlowWizard";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
@@ -391,18 +391,15 @@ export default function JobDetailView({
           </Button>
           <div>
             <h1 className="text-lg font-semibold">{job.title}</h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {client?.name && (
-                <span 
-                  className="hover:underline cursor-pointer"
-                  onClick={() => job.clientId && onViewClient?.(job.clientId)}
-                  data-testid="link-client"
-                >
-                  {client.name}
-                </span>
-              )}
-              {getStatusBadge(job.status)}
-            </div>
+            {client?.name && (
+              <span 
+                className="text-sm text-muted-foreground hover:underline cursor-pointer"
+                onClick={() => job.clientId && onViewClient?.(job.clientId)}
+                data-testid="link-client"
+              >
+                {client.name}
+              </span>
+            )}
           </div>
         </div>
 
@@ -457,11 +454,6 @@ export default function JobDetailView({
           data-testid="job-flow-wizard"
         />
 
-        <JobProgressBar 
-          status={job.status} 
-          hasQuote={!!linkedQuote}
-          hasInvoice={!!linkedInvoice}
-        />
 
         {!isTradie && (
           <NextActionCard
@@ -551,13 +543,6 @@ export default function JobDetailView({
                 </div>
               )}
 
-              <div>
-                <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
-                  <Clock className="h-3 w-3" />
-                  Status
-                </div>
-                <div>{getStatusBadge(job.status)}</div>
-              </div>
             </div>
 
             {/* Assign Worker - Only for team owners/managers */}
