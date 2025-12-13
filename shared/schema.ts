@@ -548,6 +548,8 @@ export const insertQuoteSchema = createInsertSchema(quotes).omit({
   updatedAt: true,
 }).extend({
   number: z.string().optional(), // Auto-generate if not provided
+  // Coerce date fields to handle both Date objects and ISO strings from frontend
+  validUntil: z.coerce.date().optional(),
   // Coerce decimal fields to handle both string and number inputs from frontend
   subtotal: z.coerce.string().optional(),
   gstAmount: z.coerce.string().optional(),
@@ -591,6 +593,8 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   updatedAt: true,
 }).extend({
   number: z.string().optional(), // Auto-generate if not provided
+  // Coerce date fields to handle both Date objects and ISO strings from frontend
+  dueDate: z.coerce.date().optional(),
   // Coerce decimal fields to handle both string and number inputs from frontend
   subtotal: z.coerce.string().optional(),
   gstAmount: z.coerce.string().optional(),
