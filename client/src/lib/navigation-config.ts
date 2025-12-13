@@ -102,8 +102,8 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
-    title: "Money Hub",
-    url: "/money-hub",
+    title: "Payment Hub",
+    url: "/payment-hub",
     icon: Wallet,
     description: "Track invoices, payments, and quotes",
     color: "text-success",

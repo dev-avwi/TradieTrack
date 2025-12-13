@@ -54,7 +54,7 @@ const formatCurrency = (amount: number) => {
   }).format(amount / 100);
 };
 
-export default function MoneyHubScreen() {
+export default function PaymentHubScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
@@ -422,7 +422,7 @@ export default function MoneyHubScreen() {
           <Feather name="arrow-left" size={24} color={colors.foreground} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Money Hub</Text>
+          <Text style={styles.headerTitle}>Payment Hub</Text>
           <Text style={styles.headerSubtitle}>Track invoices, payments & quotes</Text>
         </View>
       </View>

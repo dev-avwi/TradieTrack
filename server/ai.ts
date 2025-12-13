@@ -1370,19 +1370,37 @@ Return a JSON object with this exact structure:
     userPrompt += `VOICE NOTE FROM TRADIE:\n"${voiceTranscription}"\n\n`;
   }
 
-  if (photoUrls.length > 0) {
-    userPrompt += `PHOTOS: ${photoUrls.length} photo(s) provided showing the job site/issue.\n`;
-    userPrompt += `(Note: Describe what you would typically see for this type of job based on the description)\n\n`;
-  }
-
   userPrompt += `Generate detailed quote line items with realistic Australian pricing.`;
 
   try {
+    // Build message content - either text-only or multimodal with images
+    type ContentPart = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string; detail: "low" | "high" | "auto" } };
+    let userContent: string | ContentPart[];
+
+    if (photoUrls.length > 0) {
+      // Use multimodal content with images for GPT-4o vision
+      const contentParts: ContentPart[] = [
+        { type: "text", text: userPrompt + `\n\nPlease analyze the ${photoUrls.length} photo(s) below to assess the job and provide accurate pricing:` }
+      ];
+
+      // Add each photo URL as an image content part
+      for (const photoUrl of photoUrls.slice(0, 5)) { // Limit to 5 photos to avoid token limits
+        contentParts.push({
+          type: "image_url",
+          image_url: { url: photoUrl, detail: "low" }
+        });
+      }
+
+      userContent = contentParts;
+    } else {
+      userContent = userPrompt;
+    }
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
+        { role: "user", content: userContent }
       ],
       temperature: 0.7,
       max_tokens: 1500,

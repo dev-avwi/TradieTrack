@@ -216,7 +216,7 @@ function QuoteRow({ quote, onView }: QuoteRowProps) {
   );
 }
 
-export default function MoneyHub() {
+export default function PaymentHub() {
   const [activeTab, setActiveTab] = useState<'overview' | 'invoices' | 'quotes' | 'payments'>('overview');
   const [invoiceFilter, setInvoiceFilter] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<string>('30d');
@@ -335,9 +335,9 @@ export default function MoneyHub() {
   };
 
   return (
-    <PageShell data-testid="money-hub-page">
+    <PageShell data-testid="payment-hub-page">
       <PageHeader 
-        title="Money Hub" 
+        title="Payment Hub" 
         subtitle="Track invoices, payments, and quotes in one place"
       />
       <div className="space-y-6 mt-6">
