@@ -147,9 +147,44 @@ export function useUpdateJob() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/jobs/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/my-jobs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
       // Refresh next actions when job status changes
       queryClient.invalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
+    },
+  });
+}
+
+// Assign a job to a team member
+export function useAssignJob() {
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: async ({ jobId, assignedTo }: { jobId: string; assignedTo: string | null }) => {
+      const response = await apiRequest("PATCH", `/api/jobs/${jobId}`, { assignedTo });
+      return response.json();
+    },
+    onSuccess: (_data, { assignedTo }) => {
+      // Invalidate all job-related queries for proper sync
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/my-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
+      
+      toast({
+        title: assignedTo ? "Job Assigned" : "Job Unassigned",
+        description: assignedTo 
+          ? "Job has been assigned to team member" 
+          : "Team member has been removed from this job",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update job assignment",
+        variant: "destructive",
+      });
     },
   });
 }

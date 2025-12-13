@@ -700,3 +700,430 @@ main[data-scroll-container] > * {
     display: none;
   }
 }
+
+/* ============================================
+ * PRINT STYLES - Match PDF Download Styling
+ * These styles ensure browser print preview 
+ * matches the server-generated PDF exactly
+ * ============================================ */
+@media print {
+  /* Force color printing and hide backgrounds */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Reset body for print */
+  body {
+    background: white !important;
+    color: #1a1a1a !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+    font-size: 11px !important;
+    line-height: 1.5 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide non-printable elements */
+  .no-print,
+  [data-no-print],
+  header:not(.print-header),
+  nav,
+  aside,
+  footer:not(.print-footer),
+  .sidebar,
+  .bottom-nav,
+  button:not(.print-button),
+  .floating-action,
+  .toast,
+  .dialog,
+  .modal,
+  [role="dialog"],
+  [role="menu"],
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Document container - matches PDF .document class */
+  .print-document,
+  [data-print-document] {
+    max-width: 800px !important;
+    margin: 0 auto !important;
+    padding: 20px 40px !important;
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Document header - matches PDF .header class */
+  .print-header,
+  [data-print-header] {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    margin-bottom: 30px !important;
+    padding-bottom: 16px !important;
+    border-bottom: 3px solid var(--print-brand-color, #2563eb) !important;
+    background: transparent !important;
+  }
+
+  /* Company info section */
+  .print-company-info {
+    flex: 1 !important;
+  }
+
+  .print-company-name {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: var(--print-brand-color, #2563eb) !important;
+    margin-bottom: 8px !important;
+  }
+
+  .print-company-details {
+    color: #666 !important;
+    font-size: 10px !important;
+    line-height: 1.6 !important;
+  }
+
+  .print-company-details p {
+    margin: 2px 0 !important;
+  }
+
+  /* Logo styling */
+  .print-logo {
+    max-width: 150px !important;
+    max-height: 60px !important;
+    object-fit: contain !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Document type section (right side) */
+  .print-document-type {
+    text-align: right !important;
+  }
+
+  .print-document-title {
+    font-size: 32px !important;
+    font-weight: 700 !important;
+    color: var(--print-brand-color, #2563eb) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 2px !important;
+  }
+
+  .print-document-number {
+    font-size: 14px !important;
+    color: #666 !important;
+    margin-top: 4px !important;
+  }
+
+  /* Info section - client/quote details */
+  .print-info-section {
+    display: flex !important;
+    justify-content: space-between !important;
+    margin-bottom: 24px !important;
+    gap: 40px !important;
+  }
+
+  .print-info-block {
+    flex: 1 !important;
+  }
+
+  .print-info-label {
+    font-size: 10px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    color: #888 !important;
+    margin-bottom: 6px !important;
+    font-weight: 600 !important;
+  }
+
+  .print-info-value {
+    color: #1a1a1a !important;
+    line-height: 1.5 !important;
+  }
+
+  .print-info-value strong {
+    font-weight: 600 !important;
+  }
+
+  /* Description section */
+  .print-description-section {
+    margin-bottom: 24px !important;
+    padding: 16px !important;
+    background: #f8f9fa !important;
+    border-radius: 6px !important;
+  }
+
+  .print-description-title {
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
+    color: var(--print-brand-color, #2563eb) !important;
+  }
+
+  /* Line items table - matches PDF exactly */
+  .print-line-items-table,
+  [data-print-table] {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-bottom: 24px !important;
+    font-size: 11px !important;
+  }
+
+  .print-line-items-table th,
+  [data-print-table] th {
+    background: var(--print-brand-color, #2563eb) !important;
+    color: white !important;
+    padding: 12px !important;
+    text-align: left !important;
+    font-weight: 600 !important;
+    font-size: 10px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  .print-line-items-table th:nth-child(2),
+  .print-line-items-table th:nth-child(3),
+  .print-line-items-table th:nth-child(4),
+  [data-print-table] th:nth-child(2),
+  [data-print-table] th:nth-child(3),
+  [data-print-table] th:nth-child(4) {
+    text-align: right !important;
+  }
+
+  .print-line-items-table td,
+  [data-print-table] td {
+    padding: 12px !important;
+    border-bottom: 1px solid #eee !important;
+    vertical-align: top !important;
+    color: #1a1a1a !important;
+  }
+
+  .print-line-items-table td:nth-child(2),
+  .print-line-items-table td:nth-child(3),
+  .print-line-items-table td:nth-child(4),
+  [data-print-table] td:nth-child(2),
+  [data-print-table] td:nth-child(3),
+  [data-print-table] td:nth-child(4) {
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+
+  .print-line-items-table tr:last-child td,
+  [data-print-table] tbody tr:last-child td {
+    border-bottom: 2px solid var(--print-brand-color, #2563eb) !important;
+  }
+
+  /* Totals section - right aligned like PDF */
+  .print-totals-section {
+    display: flex !important;
+    justify-content: flex-end !important;
+    margin-bottom: 24px !important;
+  }
+
+  .print-totals-table {
+    width: 280px !important;
+  }
+
+  .print-totals-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid #eee !important;
+  }
+
+  .print-totals-row.print-total-final {
+    border-bottom: none !important;
+    border-top: 2px solid var(--print-brand-color, #2563eb) !important;
+    padding-top: 12px !important;
+    margin-top: 4px !important;
+  }
+
+  .print-totals-row.print-total-final .print-totals-label,
+  .print-totals-row.print-total-final .print-totals-value {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--print-brand-color, #2563eb) !important;
+  }
+
+  .print-totals-label {
+    color: #666 !important;
+  }
+
+  .print-totals-value {
+    font-weight: 600 !important;
+  }
+
+  .print-gst-note {
+    text-align: right !important;
+    font-size: 9px !important;
+    color: #888 !important;
+    margin-top: 4px !important;
+  }
+
+  /* Notes section */
+  .print-notes-section {
+    margin-bottom: 24px !important;
+    padding: 16px !important;
+    background: #fafafa !important;
+    border-left: 4px solid var(--print-brand-color, #2563eb) !important;
+    border-radius: 0 6px 6px 0 !important;
+  }
+
+  .print-notes-title {
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
+    color: #333 !important;
+  }
+
+  .print-notes-content {
+    color: #666 !important;
+    font-size: 10px !important;
+    white-space: pre-wrap !important;
+  }
+
+  /* Terms section */
+  .print-terms-section {
+    margin-bottom: 24px !important;
+  }
+
+  .print-terms-title {
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
+    color: #333 !important;
+    font-size: 11px !important;
+  }
+
+  .print-terms-content {
+    color: #666 !important;
+    font-size: 9px !important;
+    line-height: 1.6 !important;
+    white-space: pre-wrap !important;
+  }
+
+  /* Signature/acceptance section */
+  .print-acceptance-section {
+    margin-top: 30px !important;
+    padding: 20px !important;
+    border: 2px dashed #ddd !important;
+    border-radius: 8px !important;
+  }
+
+  .print-acceptance-title {
+    font-weight: 600 !important;
+    margin-bottom: 16px !important;
+    color: #333 !important;
+  }
+
+  .print-signature-line {
+    display: flex !important;
+    gap: 40px !important;
+    margin-top: 20px !important;
+  }
+
+  .print-signature-block {
+    flex: 1 !important;
+  }
+
+  .print-signature-label {
+    font-size: 10px !important;
+    color: #888 !important;
+    margin-bottom: 30px !important;
+  }
+
+  .print-signature-underline {
+    border-bottom: 1px solid #333 !important;
+    height: 1px !important;
+  }
+
+  /* Footer */
+  .print-footer {
+    margin-top: 30px !important;
+    padding-top: 16px !important;
+    border-top: 1px solid #eee !important;
+    text-align: center !important;
+    font-size: 9px !important;
+    color: #999 !important;
+    display: block !important;
+  }
+
+  /* Status badges for print */
+  .print-status-badge {
+    display: inline-block !important;
+    padding: 4px 12px !important;
+    border-radius: 20px !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  .print-status-draft { background: #e5e7eb !important; color: #374151 !important; }
+  .print-status-sent { background: #dbeafe !important; color: #1d4ed8 !important; }
+  .print-status-accepted { background: #dcfce7 !important; color: #166534 !important; }
+  .print-status-declined { background: #fee2e2 !important; color: #991b1b !important; }
+  .print-status-paid { background: #dcfce7 !important; color: #166534 !important; }
+  .print-status-overdue { background: #fee2e2 !important; color: #991b1b !important; }
+
+  /* Accepted/Paid stamp overlay */
+  .print-stamp {
+    position: absolute !important;
+    top: 100px !important;
+    right: 60px !important;
+    padding: 10px 20px !important;
+    border: 3px solid #22c55e !important;
+    color: #22c55e !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    transform: rotate(-15deg) !important;
+    opacity: 0.8 !important;
+  }
+
+  /* Page break handling */
+  .print-page-break-before {
+    page-break-before: always !important;
+  }
+
+  .print-page-break-after {
+    page-break-after: always !important;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+  }
+
+  /* Keep headers with content */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid !important;
+  }
+
+  /* Keep tables together when possible */
+  table, figure {
+    page-break-inside: avoid !important;
+  }
+
+  /* Links - show URL for reference but don't style as links */
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  /* Remove shadows and unnecessary visual effects */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Ensure proper margins for printing */
+  @page {
+    margin: 1cm;
+    size: A4;
+  }
+
+  /* First page specific */
+  @page :first {
+    margin-top: 1.5cm;
+  }
+}

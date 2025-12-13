@@ -548,6 +548,7 @@ export const insertQuoteSchema = createInsertSchema(quotes).omit({
   updatedAt: true,
 }).extend({
   number: z.string().optional(), // Auto-generate if not provided
+  status: z.string().optional(), // Default to 'draft' if not provided
   // Coerce date fields to handle both Date objects and ISO strings from frontend
   validUntil: z.coerce.date().optional(),
   // Coerce decimal fields to handle both string and number inputs from frontend

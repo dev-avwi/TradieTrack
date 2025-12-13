@@ -163,9 +163,10 @@ export default function WorkPage({
     if (showArchived) {
       return { label: 'Restore', action: () => handleRestoreJob(job), icon: RotateCcw };
     }
-    if (job.status === 'pending') return { label: 'Start', action: () => handleStatusChange(job, 'in_progress'), icon: Play };
-    if (job.status === 'scheduled') return { label: 'Start', action: () => handleStatusChange(job, 'in_progress'), icon: Play };
-    if (job.status === 'in_progress') return { label: 'Done', action: () => handleStatusChange(job, 'done'), icon: CheckCircle };
+    // All status-related actions now navigate to job view so user can make informed decisions
+    if (job.status === 'pending') return { label: 'View', action: () => onViewJob?.(job.id), icon: Briefcase };
+    if (job.status === 'scheduled') return { label: 'View', action: () => onViewJob?.(job.id), icon: Briefcase };
+    if (job.status === 'in_progress') return { label: 'View', action: () => onViewJob?.(job.id), icon: Briefcase };
     if (job.status === 'done') return { label: 'Invoice', action: () => handleCreateInvoice(job.id), icon: Receipt };
     return null;
   };

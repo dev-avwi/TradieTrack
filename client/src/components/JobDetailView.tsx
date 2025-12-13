@@ -245,18 +245,24 @@ export default function JobDetailView({
     mutationFn: async (assignedTo: string | null) => {
       return await apiRequest("PATCH", `/api/jobs/${jobId}`, { assignedTo });
     },
-    onSuccess: () => {
+    onSuccess: (_data, assignedTo) => {
+      // Invalidate all job-related queries to ensure sync across views
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs/my-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs/today'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/kpis'] });
       toast({
-        title: "Worker Assigned",
-        description: "Job has been assigned successfully",
+        title: assignedTo ? "Worker Assigned" : "Worker Unassigned",
+        description: assignedTo 
+          ? "Job has been assigned successfully" 
+          : "Worker has been removed from this job",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to assign worker",
+        description: "Failed to update job assignment",
         variant: "destructive",
       });
     },
