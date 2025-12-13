@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, Hammer, DollarSign, CreditCard, QrCode, Wallet } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, CheckCircle, Edit, FileText, Receipt, MoreVertical, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer } from "lucide-react";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
@@ -17,7 +16,6 @@ import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -468,31 +466,17 @@ export default function JobDetailView({
           />
         )}
 
-        <Tabs defaultValue="brief" className="w-full" data-testid="job-stages-tabs">
-          <TabsList className="grid w-full grid-cols-5 mb-4">
-            <TabsTrigger value="brief" className="text-xs px-1" data-testid="tab-brief">
-              <Briefcase className="h-3 w-3 mr-1 hidden sm:inline" />
-              Brief
-            </TabsTrigger>
-            <TabsTrigger value="site" className="text-xs px-1" data-testid="tab-site">
-              <Hammer className="h-3 w-3 mr-1 hidden sm:inline" />
-              Site
-            </TabsTrigger>
-            <TabsTrigger value="docs" className="text-xs px-1" data-testid="tab-docs" disabled={isTradie}>
-              <FileText className="h-3 w-3 mr-1 hidden sm:inline" />
-              Docs
-            </TabsTrigger>
-            <TabsTrigger value="costing" className="text-xs px-1" data-testid="tab-costing" disabled={isTradie}>
-              <DollarSign className="h-3 w-3 mr-1 hidden sm:inline" />
-              Costing
-            </TabsTrigger>
-            <TabsTrigger value="payment" className="text-xs px-1" data-testid="tab-payment" disabled={isTradie}>
-              <CreditCard className="h-3 w-3 mr-1 hidden sm:inline" />
-              Payment
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="brief" className="space-y-4" data-testid="tab-content-brief">
+        {!isTradie && (
+          <LinkedDocumentsCard
+            linkedQuote={linkedQuote}
+            linkedInvoice={linkedInvoice}
+            jobStatus={job.status}
+            onViewQuote={(id) => navigate(`/quotes/${id}`)}
+            onViewInvoice={(id) => navigate(`/invoices/${id}`)}
+            onCreateQuote={() => onCreateQuote?.(jobId)}
+            onCreateInvoice={() => onCreateInvoice?.(jobId)}
+          />
+        )}
 
         <Card>
           <CardHeader className="pb-3">
@@ -624,10 +608,8 @@ export default function JobDetailView({
             </CardContent>
           </Card>
         )}
-          </TabsContent>
 
-          <TabsContent value="site" className="space-y-4" data-testid="tab-content-site">
-            {/* Time Tracking Widget - Show for in_progress jobs */}
+        {/* Time Tracking Widget - Show for in_progress jobs */}
         {job.status === 'in_progress' && (
           <Card data-testid="card-time-tracking">
             <CardHeader className="pb-3">
@@ -655,6 +637,103 @@ export default function JobDetailView({
             geofenceAutoClockIn={job.geofenceAutoClockIn}
             geofenceAutoClockOut={job.geofenceAutoClockOut}
           />
+        )}
+
+        {/* Linked Documents Section - Shows quote/invoice status */}
+        {(linkedQuote || linkedInvoice) && (
+          <Card data-testid="card-linked-documents">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Linked Documents
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {linkedQuote && (
+                <button
+                  onClick={() => navigate(`/quotes/${linkedQuote.id}`)}
+                  className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
+                  data-testid="button-view-linked-quote"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">
+                        Quote #{linkedQuote.quoteNumber}
+                      </span>
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs ${
+                          linkedQuote.status === 'accepted' 
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
+                            : linkedQuote.status === 'sent'
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                            : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                        }`}
+                      >
+                        {linkedQuote.status === 'accepted' ? 'Accepted' : 
+                         linkedQuote.status === 'sent' ? 'Sent' : 'Draft'}
+                      </Badge>
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                    {linkedQuote.title} • ${parseFloat(linkedQuote.total || '0').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                  </p>
+                </button>
+              )}
+
+              {linkedInvoice && (
+                <button
+                  onClick={() => navigate(`/invoices/${linkedInvoice.id}`)}
+                  className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
+                  data-testid="button-view-linked-invoice"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Receipt className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">
+                        Invoice #{linkedInvoice.invoiceNumber}
+                      </span>
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs ${
+                          linkedInvoice.status === 'paid' 
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
+                            : linkedInvoice.status === 'sent'
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                            : linkedInvoice.status === 'overdue'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                            : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                        }`}
+                      >
+                        {linkedInvoice.status === 'paid' ? 'Paid' : 
+                         linkedInvoice.status === 'sent' ? 'Sent' : 
+                         linkedInvoice.status === 'overdue' ? 'Overdue' : 'Draft'}
+                      </Badge>
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                    {linkedInvoice.title} • ${parseFloat(linkedInvoice.total || '0').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                  </p>
+                </button>
+              )}
+
+              {/* Prominent CTA: Create Invoice from Accepted Quote */}
+              {linkedQuote?.status === 'accepted' && !linkedInvoice && (
+                <Button
+                  onClick={() => navigate(`/invoices/new?quoteId=${linkedQuote.id}&jobId=${jobId}`)}
+                  className="w-full mt-2 text-white"
+                  style={{ backgroundColor: 'hsl(var(--trade))' }}
+                  data-testid="button-create-invoice-from-quote"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Create Invoice from Accepted Quote
+                </Button>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Photos - only show for in_progress, done, invoiced jobs */}
@@ -713,192 +792,6 @@ export default function JobDetailView({
         {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
           <JobSignature jobId={jobId} />
         )}
-          </TabsContent>
-
-          <TabsContent value="docs" className="space-y-4" data-testid="tab-content-docs">
-            {/* Linked Documents Section - Shows quote/invoice status */}
-            <LinkedDocumentsCard
-              linkedQuote={linkedQuote}
-              linkedInvoice={linkedInvoice}
-              jobStatus={job.status}
-              onViewQuote={(id) => navigate(`/quotes/${id}`)}
-              onViewInvoice={(id) => navigate(`/invoices/${id}`)}
-              onCreateQuote={() => onCreateQuote?.(jobId)}
-              onCreateInvoice={() => onCreateInvoice?.(jobId)}
-            />
-            
-            {/* Create Quote/Invoice Buttons */}
-            <div className="flex gap-2">
-              {!linkedQuote && onCreateQuote && (
-                <Button
-                  variant="outline"
-                  onClick={() => onCreateQuote(jobId)}
-                  className="flex-1"
-                  data-testid="button-docs-create-quote"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Create Quote
-                </Button>
-              )}
-              {!linkedInvoice && onCreateInvoice && (
-                <Button
-                  variant="outline"
-                  onClick={() => onCreateInvoice(jobId)}
-                  className="flex-1"
-                  data-testid="button-docs-create-invoice"
-                >
-                  <Receipt className="h-4 w-4 mr-2" />
-                  Create Invoice
-                </Button>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="costing" className="space-y-4" data-testid="tab-content-costing">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Job Costing
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 rounded-lg bg-muted/50">
-                    <p className="text-xs text-muted-foreground">Estimated Cost</p>
-                    <p className="text-lg font-semibold">
-                      ${job.estimatedCost ? (Number(job.estimatedCost) / 100).toFixed(2) : '0.00'}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-muted/50">
-                    <p className="text-xs text-muted-foreground">Quoted Amount</p>
-                    <p className="text-lg font-semibold">
-                      ${linkedQuote ? parseFloat(linkedQuote.total || '0').toFixed(2) : '0.00'}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-muted/50">
-                    <p className="text-xs text-muted-foreground">Invoiced Amount</p>
-                    <p className="text-lg font-semibold">
-                      ${linkedInvoice ? parseFloat(linkedInvoice.total || '0').toFixed(2) : '0.00'}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
-                    <p className="text-xs text-muted-foreground">Profit Margin</p>
-                    <p className="text-lg font-semibold text-green-600 dark:text-green-400">
-                      {(() => {
-                        const invoiced = linkedInvoice ? parseFloat(linkedInvoice.total || '0') : 0;
-                        const cost = job.estimatedCost ? Number(job.estimatedCost) / 100 : 0;
-                        if (invoiced && cost) {
-                          const margin = ((invoiced - cost) / invoiced) * 100;
-                          return `${margin.toFixed(1)}%`;
-                        }
-                        return '—';
-                      })()}
-                    </p>
-                  </div>
-                </div>
-                <Separator className="my-3" />
-                <p className="text-xs text-muted-foreground text-center">
-                  Tip: Add materials and labour as line items in your quote or invoice for detailed cost tracking
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="payment" className="space-y-4" data-testid="tab-content-payment">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Payment Collection
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {linkedInvoice ? (
-                  <>
-                    <div className="p-4 rounded-lg border bg-muted/30">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">Invoice #{linkedInvoice.invoiceNumber}</span>
-                        <Badge 
-                          variant="secondary" 
-                          className={`text-xs ${
-                            linkedInvoice.status === 'paid' 
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
-                              : linkedInvoice.status === 'overdue'
-                              ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                          }`}
-                        >
-                          {linkedInvoice.status === 'paid' ? 'Paid' : 
-                           linkedInvoice.status === 'overdue' ? 'Overdue' : 'Sent'}
-                        </Badge>
-                      </div>
-                      <p className="text-2xl font-bold">
-                        ${parseFloat(linkedInvoice.total || '0').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                    
-                    {linkedInvoice.status !== 'paid' && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => navigate(`/collect-payment?invoiceId=${linkedInvoice.id}`)}
-                          data-testid="button-collect-qr"
-                        >
-                          <QrCode className="h-4 w-4 mr-2" />
-                          QR Code
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => navigate(`/collect-payment?invoiceId=${linkedInvoice.id}`)}
-                          data-testid="button-tap-to-pay"
-                        >
-                          <Wallet className="h-4 w-4 mr-2" />
-                          Tap to Pay
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => navigate(`/invoices/${linkedInvoice.id}`)}
-                          className="col-span-2"
-                          data-testid="button-send-payment-link"
-                        >
-                          Send Payment Link
-                        </Button>
-                      </div>
-                    )}
-                    
-                    {linkedInvoice.status === 'paid' && (
-                      <div className="text-center py-4">
-                        <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-2" />
-                        <p className="font-medium text-green-600 dark:text-green-400">Payment Received</p>
-                        <p className="text-sm text-muted-foreground">
-                          {linkedInvoice.paidAt && `Paid on ${format(new Date(linkedInvoice.paidAt), 'MMM d, yyyy')}`}
-                        </p>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Receipt className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                    <p className="font-medium">No Invoice Created</p>
-                    <p className="text-sm mt-1">Create an invoice first to collect payment</p>
-                    {onCreateInvoice && (
-                      <Button
-                        onClick={() => onCreateInvoice(jobId)}
-                        className="mt-4 text-white"
-                        style={{ backgroundColor: 'hsl(var(--trade))' }}
-                        data-testid="button-payment-create-invoice"
-                      >
-                        <Receipt className="h-4 w-4 mr-2" />
-                        Create Invoice
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
 
         {/* Job Discussion - only show for team mode (not solo owners) */}
         {currentUser && !isSolo && (

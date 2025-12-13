@@ -62,9 +62,6 @@ import Automations from "@/pages/Automations";
 import CustomForms from "@/pages/CustomForms";
 import MyAccount from "@/pages/MyAccount";
 import AppWalkthrough, { useAppWalkthrough } from "@/components/AppWalkthrough";
-import TodayDashboard from "@/pages/TodayDashboard";
-import MoneyHub from "@/pages/MoneyHub";
-import UnifiedSettings from "@/pages/UnifiedSettings";
 
 // Types for job completion
 interface JobPhoto {
@@ -368,9 +365,7 @@ function Router({
         <TemplateManagement />
       )} />
       
-      <Route path="/settings" component={() => <UnifiedSettings />} />
-      
-      <Route path="/money" component={() => <MoneyHub />} />
+      <Route path="/settings" component={SettingsWrapper} />
       
       <Route path="/email-setup" component={() => (
         <EmailSetupGuide 
@@ -435,8 +430,18 @@ function Router({
       
       <Route path="/more" component={More} />
       
-      {/* Root route - Today Command Center */}
-      <Route path="/" component={() => <TodayDashboard />} />
+      {/* Root route must be near the end to avoid prefix matching issues */}
+      <Route path="/" component={() => (
+        <Dashboard 
+          onCreateJob={() => onNavigate('/jobs')}
+          onCreateQuote={() => onNavigate('/quotes')}
+          onCreateInvoice={() => onNavigate('/invoices')}
+          onViewJobs={() => onNavigate('/jobs')}
+          onViewInvoices={() => onNavigate('/invoices')}
+          onViewQuotes={() => onNavigate('/quotes')}
+          onNavigate={onNavigate}
+        />
+      )} />
       
       <Route component={NotFound} />
     </Switch>

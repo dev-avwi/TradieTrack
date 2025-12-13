@@ -4,7 +4,8 @@ import { useAppMode } from "@/hooks/use-app-mode";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useQuery } from "@tanstack/react-query";
 import { 
-  getUnifiedNavItems, 
+  getBottomNavItems, 
+  getMorePagesPattern,
   type NavItem 
 } from "@/lib/navigation-config";
 
@@ -26,20 +27,16 @@ export default function BottomNav({ onNavigate }: BottomNavProps) {
   const { isTeam, isTradie, isOwner, isManager, userRole } = useAppMode();
   const { openMobile, isMobile } = useSidebar();
 
-  const navItems = getUnifiedNavItems({ isTeam, isTradie, isOwner, isManager, userRole });
+  const { data: unreadCounts } = useQuery<UnreadCountsResponse>({
+    queryKey: ['/api/chat/unread-counts'],
+    refetchInterval: 30000,
+    staleTime: 10000,
+  });
 
-  const isActiveRoute = (itemUrl: string) => {
-    if (itemUrl === '/') {
-      return location === '/';
-    }
-    if (itemUrl === '/money') {
-      return location === '/money' || location.startsWith('/quotes') || location.startsWith('/invoices') || location === '/reports' || location === '/collect-payment';
-    }
-    if (itemUrl === '/settings') {
-      return location === '/settings' || location.startsWith('/settings/') || location === '/integrations' || location === '/team' || location === '/my-account';
-    }
-    return location.startsWith(itemUrl);
-  };
+  const navItems = getBottomNavItems({ isTeam, isTradie, isOwner, isManager, userRole });
+  const morePagesPattern = getMorePagesPattern();
+  
+  const totalUnread = unreadCounts?.total || 0;
   
   if (isMobile && openMobile) {
     return null;
@@ -62,8 +59,14 @@ export default function BottomNav({ onNavigate }: BottomNavProps) {
         }}
       >
         <div className="flex items-center justify-around py-2 px-2">
-          {navItems.filter(item => item.showInBottomNav).map((item: NavItem) => {
-            const isActive = isActiveRoute(item.url);
+          {navItems.map((item: NavItem) => {
+            let isActive = location === item.url;
+            
+            if (item.url === "/more") {
+              isActive = location === "/more" || morePagesPattern.test(location);
+            }
+            
+            const showUnreadBadge = item.showBadge && totalUnread > 0 && !isActive;
             
             return (
               <Button
@@ -96,6 +99,14 @@ export default function BottomNav({ onNavigate }: BottomNavProps) {
                       strokeWidth: isActive ? 2.5 : 2
                     }}
                   />
+                  {showUnreadBadge && (
+                    <span 
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold z-20"
+                      data-testid="chat-unread-badge"
+                    >
+                      {totalUnread > 9 ? '9+' : totalUnread}
+                    </span>
+                  )}
                 </div>
                 <span 
                   className={`text-[11px] relative z-10 ${isActive ? 'font-semibold' : 'font-medium'}`}

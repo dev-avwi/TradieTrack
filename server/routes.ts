@@ -2036,7 +2036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Quote Generator from Photos + Voice - THE KILLER FEATURE
   app.post("/api/ai/generate-quote", requireAuth, async (req: any, res) => {
     try {
-      const { jobId, photoUrls, photoBase64, voiceTranscription, jobDescription } = req.body;
+      const { jobId, photoUrls, voiceTranscription, jobDescription } = req.body;
       
       // Get business settings for trade type
       const businessSettings = await storage.getBusinessSettings(req.userId);
@@ -2062,7 +2062,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = await generateQuoteFromMedia({
         photoUrls: photos,
-        photoBase64: photoBase64 || [],
         voiceTranscription,
         jobDescription: description,
         tradeType,

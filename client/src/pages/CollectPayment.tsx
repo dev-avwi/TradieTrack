@@ -138,7 +138,9 @@ export default function CollectPayment() {
     if (selectedInvoiceId && invoices) {
       const invoice = invoices.find(inv => inv.id === selectedInvoiceId);
       if (invoice) {
-        const totalStr = parseFloat(String(invoice.total || '0')).toFixed(2);
+        const totalStr = typeof invoice.total === 'number' 
+          ? invoice.total.toFixed(2) 
+          : String(invoice.total || '0.00');
         setNewAmount(totalStr);
         setNewDescription(`Payment for ${invoice.number}: ${invoice.title}`);
         setSelectedClientId(invoice.clientId);
@@ -151,7 +153,9 @@ export default function CollectPayment() {
     if (recordInvoiceId && invoices) {
       const invoice = invoices.find(inv => inv.id === recordInvoiceId);
       if (invoice) {
-        const totalStr = parseFloat(String(invoice.total || '0')).toFixed(2);
+        const totalStr = typeof invoice.total === 'number' 
+          ? invoice.total.toFixed(2) 
+          : String(invoice.total || '0.00');
         setRecordAmount(totalStr);
       }
     }

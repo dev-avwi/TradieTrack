@@ -1314,13 +1314,12 @@ export interface AIQuoteFromMediaResult {
  */
 export async function generateQuoteFromMedia(params: {
   photoUrls?: string[];
-  photoBase64?: string[];
   voiceTranscription?: string;
   jobDescription?: string;
   tradeType: string;
   businessName: string;
 }): Promise<AIQuoteFromMediaResult> {
-  const { photoUrls = [], photoBase64 = [], voiceTranscription, jobDescription, tradeType, businessName } = params;
+  const { photoUrls = [], voiceTranscription, jobDescription, tradeType, businessName } = params;
 
   const systemPrompt = `You are an expert ${tradeType} estimator for ${businessName} in Australia. 
 Analyze the provided information (photos description and/or voice notes) to generate accurate quote line items.
@@ -1371,54 +1370,24 @@ Return a JSON object with this exact structure:
     userPrompt += `VOICE NOTE FROM TRADIE:\n"${voiceTranscription}"\n\n`;
   }
 
+  if (photoUrls.length > 0) {
+    userPrompt += `PHOTOS: ${photoUrls.length} photo(s) provided showing the job site/issue.\n`;
+    userPrompt += `(Note: Describe what you would typically see for this type of job based on the description)\n\n`;
+  }
+
   userPrompt += `Generate detailed quote line items with realistic Australian pricing.`;
 
-  // Build messages array - use vision model if photos provided
-  const hasPhotos = photoBase64.length > 0 || photoUrls.length > 0;
-  
   try {
-    let completion;
-    
-    if (hasPhotos && photoBase64.length > 0) {
-      // Use GPT-4o vision to analyze photos
-      const imageContent: any[] = [
-        { type: "text", text: userPrompt }
-      ];
-      
-      // Add base64 images
-      for (const base64 of photoBase64.slice(0, 5)) {
-        imageContent.push({
-          type: "image_url",
-          image_url: {
-            url: base64,
-            detail: "low" // Use low detail to reduce tokens/cost
-          }
-        });
-      }
-      
-      completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: imageContent }
-        ],
-        temperature: 0.7,
-        max_tokens: 1500,
-        response_format: { type: "json_object" }
-      });
-    } else {
-      // No photos - use gpt-4o-mini for text-only
-      completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 1500,
-        response_format: { type: "json_object" }
-      });
-    }
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1500,
+      response_format: { type: "json_object" }
+    });
 
     const responseText = completion.choices[0]?.message?.content || '{}';
     
