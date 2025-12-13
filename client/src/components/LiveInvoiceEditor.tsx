@@ -20,7 +20,7 @@ import { useDocumentTemplates, type DocumentTemplate } from "@/hooks/use-templat
 import { useQuery } from "@tanstack/react-query";
 import LiveDocumentPreview from "./LiveDocumentPreview";
 import CatalogModal from "@/components/CatalogModal";
-import AcceptedQuotePicker from "@/components/AcceptedQuotePicker";
+import CompletedJobPicker from "@/components/CompletedJobPicker";
 import {
   Plus,
   Trash2,
@@ -216,6 +216,83 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       title: "Quote loaded",
       description: `Invoice prefilled from accepted quote #${quote.number}`,
     });
+  };
+
+  // Prefill form from completed job - the primary workflow for invoice creation
+  const handleSelectJob = async (job: any) => {
+    setSelectedJobId(job.id);
+    
+    // Set client from job
+    if (job.client?.id) {
+      form.setValue("clientId", job.client.id);
+    } else if (job.clientId) {
+      form.setValue("clientId", job.clientId);
+    }
+    
+    // Copy job details to invoice
+    form.setValue("title", job.title || "");
+    form.setValue("description", job.description || "");
+    
+    // Set default due date to 14 days from now
+    const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    form.setValue("dueDate", dueDate);
+    
+    // Check if job has a linked quote with line items
+    if (job.linkedQuote?.lineItems && job.linkedQuote.lineItems.length > 0) {
+      const items = job.linkedQuote.lineItems.map((item: any) => ({
+        description: String(item.description ?? ""),
+        quantity: String(item.quantity ?? item.qty ?? 1),
+        unitPrice: String(item.unitPrice ?? item.unit_price ?? 0),
+      }));
+      form.setValue("lineItems", items);
+      
+      // Set the source quote for linking
+      setSourceQuoteId(job.linkedQuote.id);
+      setSelectedQuoteId(job.linkedQuote.id);
+      
+      toast({
+        title: "Job loaded",
+        description: `Invoice prefilled from "${job.title}" with quote line items`,
+      });
+    } else {
+      // Try to fetch linked documents to get quote line items
+      try {
+        const res = await fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.quote?.lineItems && data.quote.lineItems.length > 0) {
+            const items = data.quote.lineItems.map((item: any) => ({
+              description: String(item.description ?? ""),
+              quantity: String(item.quantity ?? item.qty ?? 1),
+              unitPrice: String(item.unitPrice ?? item.unit_price ?? 0),
+            }));
+            form.setValue("lineItems", items);
+            
+            // Set the source quote for linking
+            setSourceQuoteId(data.quote.id);
+            setSelectedQuoteId(data.quote.id);
+            
+            toast({
+              title: "Job loaded",
+              description: `Invoice prefilled from "${job.title}" with quote line items`,
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching linked documents:", err);
+      }
+      
+      // No quote line items - just prefill from job
+      form.setValue("lineItems", []);
+      setSourceQuoteId(undefined);
+      setSelectedQuoteId(undefined);
+      
+      toast({
+        title: "Job loaded",
+        description: `Invoice prefilled from "${job.title}". Add line items for your charges.`,
+      });
+    }
   };
 
   const handleApplyTemplate = (template: DocumentTemplate) => {
@@ -422,10 +499,10 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
               </Badge>
             </div>
 
-            {/* Create Invoice from Accepted Quote */}
-            <AcceptedQuotePicker
-              onSelectQuote={handleSelectQuote}
-              selectedQuoteId={selectedQuoteId}
+            {/* Create Invoice from Completed Job */}
+            <CompletedJobPicker
+              onSelectJob={handleSelectJob}
+              selectedJobId={selectedJobId}
             />
 
             {/* Client Selection */}

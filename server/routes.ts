@@ -3499,6 +3499,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Get photos for this job
             const photos = await storage.getJobPhotos(job.id, userId);
             
+            // Get line items for linked quote if exists
+            const quoteLineItems = linkedQuote 
+              ? await storage.getQuoteLineItems(linkedQuote.id)
+              : [];
+            
             return {
               ...job,
               client: client ? {
@@ -3526,7 +3531,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 quoteNumber: linkedQuote.number,
                 title: linkedQuote.title,
                 description: linkedQuote.description,
-                lineItems: linkedQuote.lineItems,
+                lineItems: quoteLineItems.map((item: any) => ({
+                  id: item.id,
+                  description: item.description,
+                  quantity: item.quantity,
+                  unitPrice: item.unitPrice,
+                  total: item.total,
+                })),
                 subtotal: linkedQuote.subtotal,
                 gstAmount: linkedQuote.gstAmount,
                 total: linkedQuote.total,
