@@ -290,6 +290,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.muted,
     borderRadius: radius.lg,
     gap: spacing.xs,
+    minHeight: 44,
   },
   clientActionText: {
     fontSize: 13,
@@ -642,6 +643,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: radius.lg,
     marginRight: spacing.sm,
+    minHeight: 44,
   },
   takePhotoInlineButtonIcon: {
     marginRight: spacing.sm,
@@ -661,6 +663,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    minHeight: 44,
   },
   galleryInlineButtonIcon: {
     marginRight: spacing.sm,
@@ -1064,6 +1067,63 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    gap: spacing.xs,
+    minHeight: 44,
+  },
+  tabActive: {
+    backgroundColor: colors.primary,
+  },
+  tabIcon: {
+    color: colors.mutedForeground,
+  },
+  tabIconActive: {
+    color: colors.primaryForeground,
+  },
+  tabLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  tabLabelActive: {
+    color: colors.primaryForeground,
+    fontWeight: '600',
+  },
+  fixedHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.background,
+  },
+  tabSection: {
+    marginBottom: spacing.lg,
+  },
+  tabSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.md,
+    paddingLeft: spacing.xs,
+  },
 });
 
 export default function JobDetailScreen() {
@@ -1095,6 +1155,7 @@ export default function JobDetailScreen() {
   const [signatures, setSignatures] = useState<DigitalSignature[]>([]);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [isSavingSignature, setIsSavingSignature] = useState(false);
+  const [signerName, setSignerName] = useState('');
   
   const [sliderRadius, setSliderRadius] = useState(100);
   
@@ -1104,6 +1165,8 @@ export default function JobDetailScreen() {
   
   const [smartActions, setSmartActions] = useState<SmartAction[]>([]);
   const [isExecutingActions, setIsExecutingActions] = useState(false);
+  
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes'>('overview');
   
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { 
@@ -1983,365 +2046,453 @@ export default function JobDetailScreen() {
   const statusColor = getStatusColor(job.status);
   const clientInitials = client?.name ? client.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
 
-  return (
+  // Job Costing calculations
+  const estimatedHours = job.estimatedHours || 0;
+  const estimatedCost = job.estimatedCost || 0;
+  const actualHours = totalTrackedHours;
+  const hoursVariance = actualHours - estimatedHours;
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
+  };
+
+  const TAB_CONFIG = [
+    { id: 'overview' as const, label: 'Overview', icon: 'briefcase' as const },
+    { id: 'documents' as const, label: 'Docs', icon: 'file-text' as const },
+    { id: 'photos' as const, label: 'Photos', icon: 'camera' as const },
+    { id: 'notes' as const, label: 'Notes', icon: 'file' as const },
+  ];
+
+  const renderOverviewTab = () => (
     <>
-      <Stack.Screen 
-        options={{ 
-          title: '',
-          headerBackTitle: 'Back',
-          headerStyle: {
-            backgroundColor: colors.background,
-          },
-          headerShadowVisible: false,
-          headerTintColor: colors.foreground,
-        }} 
+      {/* Job Progress Bar - Visual workflow indicator */}
+      <JobProgressBar status={job.status} />
+
+      {/* Next Action Card - CTA when job is done without invoice */}
+      <NextActionCard
+        jobStatus={job.status}
+        hasInvoice={!!invoice}
+        hasQuote={!!quote}
+        onCreateInvoice={() => router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+        onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />
-      <ScrollView 
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
+
+      {/* Smart Actions Panel - Show when job has suggested actions */}
+      {smartActions.length > 0 && (
+        <View style={{ marginBottom: spacing.md }}>
+          <SmartActionsPanel
+            title="Next Steps"
+            subtitle="Suggested actions for this job"
+            actions={smartActions}
+            onActionToggle={handleSmartActionToggle}
+            onActionExecute={handleSmartActionExecute}
+            onExecuteAll={handleExecuteAllActions}
+            onSkipAll={handleSkipAllActions}
+            isExecuting={isExecutingActions}
+            entityType="job"
           />
-        }
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.statusRow}>
-            <StatusBadge status={job.status} />
-          </View>
-          <Text style={styles.title}>{job.title}</Text>
-          {job.description && (
-            <Text style={styles.description}>{job.description}</Text>
-          )}
         </View>
+      )}
 
-        {/* Job Progress Bar - Visual workflow indicator */}
-        <JobProgressBar status={job.status} />
-
-        {/* Next Action Card - CTA when job is done without invoice */}
-        <NextActionCard
-          jobStatus={job.status}
-          hasInvoice={!!invoice}
-          hasQuote={!!quote}
-          onCreateInvoice={() => router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
-          onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
-        />
-
-        {/* Address Card */}
-        {job.address && (
-          <TouchableOpacity 
-            activeOpacity={0.7} 
-            style={styles.card}
-            onPress={handleNavigate}
-          >
-            <View style={[styles.cardIconContainer, { backgroundColor: `${colors.scheduled}15` }]}>
-              <Feather name="map-pin" size={iconSizes.xl} color={colors.scheduled} />
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardLabel}>Address</Text>
-              <Text style={styles.cardValue}>{job.address}</Text>
-            </View>
-            <Feather 
-              name="navigation" 
-              size={iconSizes.lg} 
-              color={colors.primary} 
-              style={styles.cardActionIcon}
-            />
-          </TouchableOpacity>
-        )}
-
-        {/* Scheduled Date Card */}
-        <View style={styles.card}>
-          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
-            <Feather name="clock" size={iconSizes.xl} color={colors.primary} />
+      {/* Address Card */}
+      {job.address && (
+        <TouchableOpacity 
+          activeOpacity={0.7} 
+          style={styles.card}
+          onPress={handleNavigate}
+        >
+          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.scheduled}15` }]}>
+            <Feather name="map-pin" size={iconSizes.xl} color={colors.scheduled} />
           </View>
           <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Scheduled</Text>
-            <Text style={styles.cardValue}>
-              {formatDate(job.scheduledAt)}
-              {job.scheduledAt && ` at ${formatTime(job.scheduledAt)}`}
-            </Text>
+            <Text style={styles.cardLabel}>Address</Text>
+            <Text style={styles.cardValue}>{job.address}</Text>
+          </View>
+          <Feather 
+            name="navigation" 
+            size={iconSizes.lg} 
+            color={colors.primary} 
+            style={styles.cardActionIcon}
+          />
+        </TouchableOpacity>
+      )}
+
+      {/* Scheduled Date Card */}
+      <View style={styles.card}>
+        <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+          <Feather name="clock" size={iconSizes.xl} color={colors.primary} />
+        </View>
+        <View style={styles.cardContent}>
+          <Text style={styles.cardLabel}>Scheduled</Text>
+          <Text style={styles.cardValue}>
+            {formatDate(job.scheduledAt)}
+            {job.scheduledAt && ` at ${formatTime(job.scheduledAt)}`}
+          </Text>
+        </View>
+      </View>
+
+      {/* Client Card */}
+      {client && (
+        <View style={styles.clientCard}>
+          <TouchableOpacity 
+            style={styles.clientHeader}
+            onPress={handleViewClient}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.clientAvatar, { backgroundColor: statusColor }]}>
+              <Text style={styles.clientAvatarText}>{clientInitials}</Text>
+            </View>
+            <View style={styles.clientInfo}>
+              <Text style={styles.clientName}>{client.name}</Text>
+              {client.email && (
+                <Text style={styles.clientEmail}>{client.email}</Text>
+              )}
+            </View>
+            <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
+          </TouchableOpacity>
+          
+          <View style={styles.clientActions}>
+            {client.phone && (
+              <TouchableOpacity 
+                style={[styles.clientActionButton, { backgroundColor: `${colors.success}15` }]}
+                onPress={handleCall}
+                activeOpacity={0.7}
+              >
+                <Feather name="phone" size={iconSizes.md} color={colors.success} />
+                <Text style={[styles.clientActionText, { color: colors.success }]}>Call</Text>
+              </TouchableOpacity>
+            )}
+            {client.phone && (
+              <TouchableOpacity 
+                style={[styles.clientActionButton, { backgroundColor: `${colors.scheduled}15` }]}
+                onPress={handleSMS}
+                activeOpacity={0.7}
+              >
+                <Feather name="message-square" size={iconSizes.md} color={colors.scheduled} />
+                <Text style={[styles.clientActionText, { color: colors.scheduled }]}>SMS</Text>
+              </TouchableOpacity>
+            )}
+            {client.email && (
+              <TouchableOpacity 
+                style={[styles.clientActionButton, { backgroundColor: `${colors.invoiced}15` }]}
+                onPress={handleEmail}
+                activeOpacity={0.7}
+              >
+                <Feather name="mail" size={iconSizes.md} color={colors.invoiced} />
+                <Text style={[styles.clientActionText, { color: colors.invoiced }]}>Email</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
+      )}
 
-        {/* Client Card */}
-        {client && (
-          <View style={styles.clientCard}>
-            <TouchableOpacity 
-              style={styles.clientHeader}
-              onPress={handleViewClient}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.clientAvatar, { backgroundColor: statusColor }]}>
-                <Text style={styles.clientAvatarText}>{clientInitials}</Text>
-              </View>
-              <View style={styles.clientInfo}>
-                <Text style={styles.clientName}>{client.name}</Text>
-                {client.email && (
-                  <Text style={styles.clientEmail}>{client.email}</Text>
-                )}
-              </View>
-              <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-            </TouchableOpacity>
-            
-            <View style={styles.clientActions}>
-              {client.phone && (
-                <TouchableOpacity 
-                  style={[styles.clientActionButton, { backgroundColor: `${colors.success}15` }]}
-                  onPress={handleCall}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="phone" size={iconSizes.md} color={colors.success} />
-                  <Text style={[styles.clientActionText, { color: colors.success }]}>Call</Text>
-                </TouchableOpacity>
-              )}
-              {client.phone && (
-                <TouchableOpacity 
-                  style={[styles.clientActionButton, { backgroundColor: `${colors.scheduled}15` }]}
-                  onPress={handleSMS}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="message-square" size={iconSizes.md} color={colors.scheduled} />
-                  <Text style={[styles.clientActionText, { color: colors.scheduled }]}>SMS</Text>
-                </TouchableOpacity>
-              )}
-              {client.email && (
-                <TouchableOpacity 
-                  style={[styles.clientActionButton, { backgroundColor: `${colors.invoiced}15` }]}
-                  onPress={handleEmail}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="mail" size={iconSizes.md} color={colors.invoiced} />
-                  <Text style={[styles.clientActionText, { color: colors.invoiced }]}>Email</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+      {/* Time Tracking Card */}
+      {(job.status === 'scheduled' || job.status === 'in_progress') && (
+        <View style={[styles.timerCard, isTimerForThisJob && styles.timerActiveCard]}>
+          <View style={[styles.timerIconContainer, isTimerForThisJob && styles.timerActiveIcon]}>
+            <Feather 
+              name="clock" 
+              size={iconSizes.xl} 
+              color={isTimerForThisJob ? colors.primaryForeground : colors.primary} 
+            />
           </View>
-        )}
+          <View style={styles.timerContent}>
+            <Text style={styles.timerLabel}>Time Tracking</Text>
+            {isTimerForThisJob ? (
+              <Text style={[styles.timerValue, styles.timerActiveValue]}>
+                Running: {formatElapsedTime(elapsedTime)}
+              </Text>
+            ) : activeTimer ? (
+              <Text style={styles.timerValue}>Timer on another job</Text>
+            ) : totalTrackedHours > 0 ? (
+              <Text style={styles.timerValue}>Total: {totalTrackedHours.toFixed(1)}h tracked</Text>
+            ) : (
+              <Text style={styles.timerValue}>Not started</Text>
+            )}
+          </View>
+          <TouchableOpacity
+            onPress={isTimerForThisJob ? handleStopTimer : handleStartTimer}
+            style={[
+              styles.timerButton,
+              isTimerForThisJob ? styles.stopButton : styles.startButton
+            ]}
+            disabled={timerLoading}
+          >
+            {timerLoading ? (
+              <ActivityIndicator size="small" color={colors.primaryForeground} />
+            ) : isTimerForThisJob ? (
+              <Feather name="square" size={iconSizes.md} color={colors.primaryForeground} />
+            ) : (
+              <Feather name="play" size={iconSizes.md} color={colors.primaryForeground} />
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
-        {/* Time Tracking Card */}
-        {(job.status === 'scheduled' || job.status === 'in_progress') && (
-          <View style={[styles.timerCard, isTimerForThisJob && styles.timerActiveCard]}>
-            <View style={[styles.timerIconContainer, isTimerForThisJob && styles.timerActiveIcon]}>
-              <Feather 
-                name="clock" 
-                size={iconSizes.xl} 
-                color={isTimerForThisJob ? colors.primaryForeground : colors.primary} 
-              />
+      {/* Linked Documents Card */}
+      <LinkedDocumentsCard
+        linkedQuote={quote ? {
+          id: quote.id,
+          status: quote.status,
+          total: quote.total,
+          quoteNumber: quote.number,
+        } : null}
+        linkedInvoice={invoice ? {
+          id: invoice.id,
+          status: invoice.status,
+          total: invoice.total,
+          invoiceNumber: invoice.number,
+        } : null}
+        jobStatus={job.status}
+        onViewQuote={handleViewQuote}
+        onViewInvoice={handleViewInvoice}
+        onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+        onCreateInvoice={() => router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+      />
+
+      {/* Job Costing Section */}
+      {(estimatedHours > 0 || estimatedCost > 0 || actualHours > 0) && (
+        <View style={styles.costingCard}>
+          <View style={styles.costingHeader}>
+            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.warning}15` }]}>
+              <Feather name="dollar-sign" size={iconSizes.lg} color={colors.warning} />
             </View>
-            <View style={styles.timerContent}>
-              <Text style={styles.timerLabel}>Time Tracking</Text>
-              {isTimerForThisJob ? (
-                <Text style={[styles.timerValue, styles.timerActiveValue]}>
-                  Running: {formatElapsedTime(elapsedTime)}
+            <Text style={styles.costingTitle}>Job Costing</Text>
+          </View>
+          <View style={styles.costingGrid}>
+            {estimatedHours > 0 && (
+              <View style={styles.costingItem}>
+                <Text style={styles.costingLabel}>Estimated Hours</Text>
+                <Text style={styles.costingValue}>{estimatedHours.toFixed(1)}h</Text>
+              </View>
+            )}
+            {actualHours > 0 && (
+              <View style={styles.costingItem}>
+                <Text style={styles.costingLabel}>Actual Hours</Text>
+                <Text style={[
+                  styles.costingValue,
+                  hoursVariance > 0 && { color: colors.destructive },
+                  hoursVariance < 0 && { color: colors.success }
+                ]}>{actualHours.toFixed(1)}h</Text>
+              </View>
+            )}
+            {estimatedCost > 0 && (
+              <View style={styles.costingItem}>
+                <Text style={styles.costingLabel}>Estimated Cost</Text>
+                <Text style={styles.costingValue}>{formatCurrency(estimatedCost)}</Text>
+              </View>
+            )}
+            {estimatedHours > 0 && actualHours > 0 && (
+              <View style={styles.costingItem}>
+                <Text style={styles.costingLabel}>Hours Variance</Text>
+                <Text style={[
+                  styles.costingValue,
+                  hoursVariance > 0 && { color: colors.destructive },
+                  hoursVariance < 0 && { color: colors.success }
+                ]}>
+                  {hoursVariance > 0 ? '+' : ''}{hoursVariance.toFixed(1)}h
                 </Text>
-              ) : activeTimer ? (
-                <Text style={styles.timerValue}>Timer on another job</Text>
-              ) : totalTrackedHours > 0 ? (
-                <Text style={styles.timerValue}>Total: {totalTrackedHours.toFixed(1)}h tracked</Text>
-              ) : (
-                <Text style={styles.timerValue}>Not started</Text>
-              )}
-            </View>
-            <TouchableOpacity
-              onPress={isTimerForThisJob ? handleStopTimer : handleStartTimer}
-              style={[
-                styles.timerButton,
-                isTimerForThisJob ? styles.stopButton : styles.startButton
-              ]}
-              disabled={timerLoading}
-            >
-              {timerLoading ? (
-                <ActivityIndicator size="small" color={colors.primaryForeground} />
-              ) : isTimerForThisJob ? (
-                <Feather name="square" size={iconSizes.md} color={colors.primaryForeground} />
-              ) : (
-                <Feather name="play" size={iconSizes.md} color={colors.primaryForeground} />
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Notes Section - Always visible */}
-        <TouchableOpacity 
-          style={styles.notesCard}
-          onPress={() => {
-            setEditedNotes(job.notes || '');
-            setShowNotesModal(true);
-          }}
-          activeOpacity={0.7}
-        >
-          <View style={styles.notesHeader}>
-            <View style={styles.notesIconContainer}>
-              <Feather name="file-text" size={iconSizes.lg} color={colors.primary} />
-            </View>
-            <Text style={styles.notesLabel}>Notes</Text>
-            <Feather name="edit-2" size={iconSizes.sm} color={colors.mutedForeground} />
-          </View>
-          {job.notes ? (
-            <Text style={styles.notesText} numberOfLines={4}>{job.notes}</Text>
-          ) : (
-            <View style={styles.emptyNotesPlaceholder}>
-              <Text style={styles.emptyNotesText}>Tap to add notes about this job...</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        {/* Geofence Settings Section */}
-        <View style={styles.geofenceCard}>
-          <View style={styles.geofenceHeader}>
-            <View style={styles.geofenceHeaderLeft}>
-              <View style={styles.geofenceIconContainer}>
-                <Feather name="map-pin" size={iconSizes.lg} color={colors.primary} />
-              </View>
-              <Text style={styles.geofenceLabel}>Geofence Settings</Text>
-            </View>
-            {job.geofenceEnabled && (
-              <View style={styles.geofenceBadge}>
-                <Text style={styles.geofenceBadgeText}>Active</Text>
               </View>
             )}
           </View>
-          
-          {job.latitude && job.longitude ? (
-            <>
-              {/* Enable Geofence Toggle */}
-              <View style={styles.geofenceSettingRow}>
-                <View style={styles.geofenceSettingLeft}>
-                  <Feather name="circle" size={iconSizes.md} color={colors.mutedForeground} style={styles.geofenceSettingIcon} />
-                  <View>
-                    <Text style={styles.geofenceSettingLabel}>Enable Geofence</Text>
-                    <Text style={styles.geofenceSettingDescription}>Track arrival and departure from job site</Text>
-                  </View>
-                </View>
-                <Switch
-                  value={job.geofenceEnabled || false}
-                  onValueChange={async (value) => {
-                    try {
-                      await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceEnabled: value });
-                      setJob({ ...job, geofenceEnabled: value });
-                    } catch (e) {
-                      Alert.alert('Error', 'Failed to update geofence settings');
-                    }
-                  }}
-                  trackColor={{ false: colors.muted, true: colors.primary }}
-                  thumbColor={colors.white}
-                />
-              </View>
-              
-              {job.geofenceEnabled && (
-                <>
-                  {/* Radius Slider */}
-                  <View style={styles.geofenceRadiusRow}>
-                    <Text style={styles.geofenceRadiusLabel}>Detection Radius</Text>
-                    <Text style={styles.geofenceRadiusValue}>{sliderRadius}m</Text>
-                    <Slider
-                      style={styles.geofenceSlider}
-                      minimumValue={50}
-                      maximumValue={500}
-                      step={10}
-                      value={sliderRadius}
-                      onValueChange={(value) => setSliderRadius(value)}
-                      onSlidingComplete={async (value) => {
-                        try {
-                          await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceRadius: value });
-                          setJob({ ...job, geofenceRadius: value });
-                        } catch (e) {
-                          Alert.alert('Error', 'Failed to update radius');
-                        }
-                      }}
-                      minimumTrackTintColor={colors.primary}
-                      maximumTrackTintColor={colors.muted}
-                      thumbTintColor={colors.primary}
-                    />
-                  </View>
-                  
-                  {/* Auto Clock-In Toggle */}
-                  <View style={styles.geofenceSettingRow}>
-                    <View style={styles.geofenceSettingLeft}>
-                      <Feather name="log-in" size={iconSizes.md} color={colors.success} style={styles.geofenceSettingIcon} />
-                      <View>
-                        <Text style={styles.geofenceSettingLabel}>Auto Clock-In</Text>
-                        <Text style={styles.geofenceSettingDescription}>Start timer when arriving at job</Text>
-                      </View>
-                    </View>
-                    <Switch
-                      value={job.geofenceAutoClockIn || false}
-                      onValueChange={async (value) => {
-                        try {
-                          await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceAutoClockIn: value });
-                          setJob({ ...job, geofenceAutoClockIn: value });
-                        } catch (e) {
-                          Alert.alert('Error', 'Failed to update setting');
-                        }
-                      }}
-                      trackColor={{ false: colors.muted, true: colors.success }}
-                      thumbColor={colors.white}
-                    />
-                  </View>
-                  
-                  {/* Auto Clock-Out Toggle */}
-                  <View style={styles.geofenceSettingRow}>
-                    <View style={styles.geofenceSettingLeft}>
-                      <Feather name="log-out" size={iconSizes.md} color={colors.warning} style={styles.geofenceSettingIcon} />
-                      <View>
-                        <Text style={styles.geofenceSettingLabel}>Auto Clock-Out</Text>
-                        <Text style={styles.geofenceSettingDescription}>Stop timer when leaving job site</Text>
-                      </View>
-                    </View>
-                    <Switch
-                      value={job.geofenceAutoClockOut || false}
-                      onValueChange={async (value) => {
-                        try {
-                          await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceAutoClockOut: value });
-                          setJob({ ...job, geofenceAutoClockOut: value });
-                        } catch (e) {
-                          Alert.alert('Error', 'Failed to update setting');
-                        }
-                      }}
-                      trackColor={{ false: colors.muted, true: colors.warning }}
-                      thumbColor={colors.white}
-                    />
-                  </View>
-                </>
-              )}
-            </>
-          ) : (
-            <View style={styles.geofenceNoLocation}>
-              <Feather name="alert-circle" size={iconSizes.lg} color={colors.mutedForeground} />
-              <Text style={styles.geofenceNoLocationText}>
-                Add a job address to enable geofence tracking. The address will be geocoded automatically.
-              </Text>
-            </View>
-          )}
         </View>
+      )}
 
-        {/* Photos Section - Always visible */}
+      {/* Main Action Button */}
+      <View style={styles.actionButtonContainer}>
+        {action ? (
+          <TouchableOpacity
+            style={[styles.mainActionButton, { backgroundColor: statusColor }]}
+            onPress={handleStatusChange}
+            activeOpacity={0.8}
+          >
+            <View style={styles.mainActionButtonIcon}>
+              <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
+            </View>
+            <Text style={styles.mainActionText}>{action.label}</Text>
+          </TouchableOpacity>
+        ) : job.status === 'invoiced' && !invoice && (
+          <Text style={styles.invoicedMessage}>This job has been invoiced</Text>
+        )}
+      </View>
+    </>
+  );
+
+  const renderDocumentsTab = () => (
+    <>
+      {/* Linked Documents Card */}
+      <LinkedDocumentsCard
+        linkedQuote={quote ? {
+          id: quote.id,
+          status: quote.status,
+          total: quote.total,
+          quoteNumber: quote.number,
+        } : null}
+        linkedInvoice={invoice ? {
+          id: invoice.id,
+          status: invoice.status,
+          total: invoice.total,
+          invoiceNumber: invoice.number,
+        } : null}
+        jobStatus={job.status}
+        onViewQuote={handleViewQuote}
+        onViewInvoice={handleViewInvoice}
+        onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+        onCreateInvoice={() => router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+      />
+
+      {/* Custom Forms Section */}
+      {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
+        <View style={styles.photosCard}>
+          <JobForms jobId={job.id} readOnly={job.status === 'invoiced'} />
+        </View>
+      )}
+
+      {/* Client Signature Section */}
+      {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
         <View style={styles.photosCard}>
           <View style={styles.photosHeader}>
-            <View style={styles.photosIconContainer}>
-              <Feather name="camera" size={iconSizes.lg} color={colors.primary} />
+            <View style={[styles.photosIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+              <Feather name="edit-3" size={iconSizes.lg} color={colors.primary} />
             </View>
-            <Text style={styles.photosHeaderLabel}>Photos</Text>
-            {photos.length > 0 && (
-              <View style={styles.photosCountBadge}>
-                <Text style={styles.photosCountText}>{photos.length}</Text>
-              </View>
-            )}
+            <Text style={styles.photosHeaderLabel}>Client Signature</Text>
           </View>
           
-          {photos.length > 0 ? (
+          {showSignaturePad ? (
+            <View style={{ gap: spacing.md }}>
+              <TextInput
+                style={{
+                  backgroundColor: colors.background,
+                  borderRadius: 8,
+                  padding: spacing.md,
+                  fontSize: 16,
+                  color: colors.foreground,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  minHeight: 44,
+                }}
+                placeholder="Client's name *"
+                placeholderTextColor={colors.mutedForeground}
+                value={signerName}
+                onChangeText={setSignerName}
+              />
+              <SignaturePad
+                onSave={(signatureData) => {
+                  if (!signerName.trim()) {
+                    Alert.alert('Error', 'Please enter the client\'s name');
+                    return;
+                  }
+                  handleSaveSignature({
+                    signerName: signerName.trim(),
+                    signatureData,
+                  });
+                  setSignerName('');
+                }}
+                onClear={() => {}}
+                showControls={true}
+              />
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <TouchableOpacity
+                  style={[styles.takePhotoInlineButton, { flex: 1, backgroundColor: colors.muted, minHeight: 44 }]}
+                  onPress={() => {
+                    setShowSignaturePad(false);
+                    setSignerName('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.takePhotoInlineText, { color: colors.foreground }]}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : signatures.length > 0 ? (
+            <View style={{ gap: spacing.sm }}>
+              {signatures.filter(s => s.documentType === 'job_completion').map((sig) => (
+                <View key={sig.id} style={{ 
+                  backgroundColor: colors.background, 
+                  borderRadius: 8, 
+                  padding: spacing.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View>
+                      <Text style={{ color: colors.foreground, fontWeight: '600' }}>
+                        Signed by {sig.signerName}
+                      </Text>
+                      <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                        {new Date(sig.signedAt).toLocaleDateString('en-AU', { 
+                          day: 'numeric', 
+                          month: 'short', 
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                    <TouchableOpacity 
+                      onPress={() => handleDeleteSignature(sig.id)}
+                      style={{ padding: spacing.xs }}
+                    >
+                      <Feather name="trash-2" size={18} color={colors.destructive} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ 
+                    marginTop: spacing.sm, 
+                    backgroundColor: colors.card, 
+                    borderRadius: 8, 
+                    padding: spacing.sm,
+                    alignItems: 'center',
+                  }}>
+                    <Feather name="check-circle" size={24} color={colors.success} />
+                    <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 4 }}>
+                      Signature captured
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyPhotosContainer}>
+              <TouchableOpacity 
+                style={styles.takePhotoInlineButton}
+                onPress={() => setShowSignaturePad(true)}
+                activeOpacity={0.7}
+              >
+                <Feather name="edit-3" size={18} color={colors.primaryForeground} />
+                <Text style={styles.takePhotoInlineText}>Capture Client Signature</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+    </>
+  );
+
+  const renderPhotosTab = () => (
+    <>
+      {/* Photos Section */}
+      <View style={styles.photosCard}>
+        <View style={styles.photosHeader}>
+          <View style={styles.photosIconContainer}>
+            <Feather name="camera" size={iconSizes.lg} color={colors.primary} />
+          </View>
+          <Text style={styles.photosHeaderLabel}>Photos</Text>
+          {photos.length > 0 && (
+            <View style={styles.photosCountBadge}>
+              <Text style={styles.photosCountText}>{photos.length}</Text>
+            </View>
+          )}
+        </View>
+        
+        {photos.length > 0 ? (
+          <>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
               style={styles.photosScrollView}
               contentContainerStyle={styles.photosScrollContent}
             >
-              {photos.slice(0, 5).map((photo) => (
+              {photos.map((photo) => (
                 <TouchableOpacity 
                   key={photo.id}
                   style={styles.inlinePhotoItem}
@@ -2355,16 +2506,6 @@ export default function JobDetailScreen() {
                   />
                 </TouchableOpacity>
               ))}
-              {photos.length > 5 && (
-                <TouchableOpacity 
-                  style={styles.morePhotosButton}
-                  onPress={() => setShowPhotosModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.morePhotosText}>+{photos.length - 5}</Text>
-                  <Text style={styles.morePhotosLabel}>more</Text>
-                </TouchableOpacity>
-              )}
               <TouchableOpacity 
                 style={styles.addPhotoButton}
                 onPress={() => setShowPhotosModal(true)}
@@ -2373,8 +2514,7 @@ export default function JobDetailScreen() {
                 <Feather name="plus" size={iconSizes.xl} color={colors.primary} />
               </TouchableOpacity>
             </ScrollView>
-          ) : (
-            <View style={styles.emptyPhotosContainer}>
+            <View style={[styles.emptyPhotosContainer, { marginTop: spacing.md }]}>
               <TouchableOpacity 
                 style={styles.takePhotoInlineButton}
                 onPress={handleTakePhoto}
@@ -2404,362 +2544,350 @@ export default function JobDetailScreen() {
                 <Text style={styles.galleryInlineText}>Gallery</Text>
               </TouchableOpacity>
             </View>
-          )}
-        </View>
-
-        {/* Voice Notes Section */}
-        <View style={styles.photosCard}>
-          <View style={styles.photosHeader}>
-            <View style={[styles.photosIconContainer, { backgroundColor: `${colors.primary}15` }]}>
-              <Feather name="mic" size={iconSizes.lg} color={colors.primary} />
-            </View>
-            <Text style={styles.photosHeaderLabel}>Voice Notes</Text>
-            {voiceNotes.length > 0 && (
-              <View style={styles.photosCountBadge}>
-                <Text style={styles.photosCountText}>{voiceNotes.length}</Text>
+          </>
+        ) : (
+          <View style={styles.emptyPhotosContainer}>
+            <TouchableOpacity 
+              style={styles.takePhotoInlineButton}
+              onPress={handleTakePhoto}
+              disabled={isUploadingPhoto}
+              activeOpacity={0.7}
+            >
+              {isUploadingPhoto ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+              ) : (
+                <>
+                  <View style={styles.takePhotoInlineButtonIcon}>
+                    <Feather name="camera" size={18} color={colors.primaryForeground} />
+                  </View>
+                  <Text style={styles.takePhotoInlineText}>Take Photo</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.galleryInlineButton}
+              onPress={handlePickPhoto}
+              disabled={isUploadingPhoto}
+              activeOpacity={0.7}
+            >
+              <View style={styles.galleryInlineButtonIcon}>
+                <Feather name="image" size={18} color={colors.foreground} />
               </View>
-            )}
-          </View>
-          
-          {showVoiceRecorder ? (
-            <VoiceRecorder
-              onSave={handleUploadVoiceNote}
-              onCancel={() => setShowVoiceRecorder(false)}
-              isUploading={isUploadingVoiceNote}
-            />
-          ) : voiceNotes.length > 0 ? (
-            <View style={{ gap: spacing.sm }}>
-              {voiceNotes.map((note) => (
-                <VoiceNotePlayer
-                  key={note.id}
-                  uri={note.signedUrl || ''}
-                  title={note.title || undefined}
-                  duration={note.duration || undefined}
-                  createdAt={note.createdAt || undefined}
-                  onDelete={() => handleDeleteVoiceNote(note.id)}
-                />
-              ))}
-              <TouchableOpacity
-                style={styles.takePhotoInlineButton}
-                onPress={() => setShowVoiceRecorder(true)}
-                activeOpacity={0.7}
-              >
-                <Feather name="mic" size={18} color={colors.primaryForeground} />
-                <Text style={styles.takePhotoInlineText}>Record Voice Note</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.emptyPhotosContainer}>
-              <TouchableOpacity 
-                style={styles.takePhotoInlineButton}
-                onPress={() => setShowVoiceRecorder(true)}
-                activeOpacity={0.7}
-              >
-                <Feather name="mic" size={18} color={colors.primaryForeground} />
-                <Text style={styles.takePhotoInlineText}>Record Voice Note</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Custom Forms Section - Only show for in_progress, done, or invoiced jobs */}
-        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
-          <View style={styles.photosCard}>
-            <JobForms jobId={job.id} readOnly={job.status === 'invoiced'} />
+              <Text style={styles.galleryInlineText}>Gallery</Text>
+            </TouchableOpacity>
           </View>
         )}
+      </View>
 
-        {/* Client Signature Section - Show for in_progress, done, or invoiced jobs */}
-        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
-          <View style={styles.photosCard}>
-            <View style={styles.photosHeader}>
-              <View style={[styles.photosIconContainer, { backgroundColor: `${colors.primary}15` }]}>
-                <Feather name="edit-3" size={iconSizes.lg} color={colors.primary} />
+      {/* Voice Notes Section */}
+      <View style={styles.photosCard}>
+        <View style={styles.photosHeader}>
+          <View style={[styles.photosIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+            <Feather name="mic" size={iconSizes.lg} color={colors.primary} />
+          </View>
+          <Text style={styles.photosHeaderLabel}>Voice Notes</Text>
+          {voiceNotes.length > 0 && (
+            <View style={styles.photosCountBadge}>
+              <Text style={styles.photosCountText}>{voiceNotes.length}</Text>
+            </View>
+          )}
+        </View>
+        
+        {showVoiceRecorder ? (
+          <VoiceRecorder
+            onSave={handleUploadVoiceNote}
+            onCancel={() => setShowVoiceRecorder(false)}
+            isUploading={isUploadingVoiceNote}
+          />
+        ) : voiceNotes.length > 0 ? (
+          <View style={{ gap: spacing.sm }}>
+            {voiceNotes.map((note) => (
+              <VoiceNotePlayer
+                key={note.id}
+                uri={note.signedUrl || ''}
+                title={note.title || undefined}
+                duration={note.duration || undefined}
+                createdAt={note.createdAt || undefined}
+                onDelete={() => handleDeleteVoiceNote(note.id)}
+              />
+            ))}
+            <TouchableOpacity
+              style={styles.takePhotoInlineButton}
+              onPress={() => setShowVoiceRecorder(true)}
+              activeOpacity={0.7}
+            >
+              <Feather name="mic" size={18} color={colors.primaryForeground} />
+              <Text style={styles.takePhotoInlineText}>Record Voice Note</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.emptyPhotosContainer}>
+            <TouchableOpacity 
+              style={styles.takePhotoInlineButton}
+              onPress={() => setShowVoiceRecorder(true)}
+              activeOpacity={0.7}
+            >
+              <Feather name="mic" size={18} color={colors.primaryForeground} />
+              <Text style={styles.takePhotoInlineText}>Record Voice Note</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </>
+  );
+
+  const renderNotesTab = () => (
+    <>
+      {/* Notes Section */}
+      <TouchableOpacity 
+        style={styles.notesCard}
+        onPress={() => {
+          setEditedNotes(job.notes || '');
+          setShowNotesModal(true);
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={styles.notesHeader}>
+          <View style={styles.notesIconContainer}>
+            <Feather name="file-text" size={iconSizes.lg} color={colors.primary} />
+          </View>
+          <Text style={styles.notesLabel}>Notes</Text>
+          <Feather name="edit-2" size={iconSizes.sm} color={colors.mutedForeground} />
+        </View>
+        {job.notes ? (
+          <Text style={styles.notesText}>{job.notes}</Text>
+        ) : (
+          <View style={styles.emptyNotesPlaceholder}>
+            <Text style={styles.emptyNotesText}>Tap to add notes about this job...</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* Geofence Settings Section */}
+      <View style={styles.geofenceCard}>
+        <View style={styles.geofenceHeader}>
+          <View style={styles.geofenceHeaderLeft}>
+            <View style={styles.geofenceIconContainer}>
+              <Feather name="map-pin" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <Text style={styles.geofenceLabel}>Geofence Settings</Text>
+          </View>
+          {job.geofenceEnabled && (
+            <View style={styles.geofenceBadge}>
+              <Text style={styles.geofenceBadgeText}>Active</Text>
+            </View>
+          )}
+        </View>
+        
+        {job.latitude && job.longitude ? (
+          <>
+            <View style={styles.geofenceSettingRow}>
+              <View style={styles.geofenceSettingLeft}>
+                <Feather name="circle" size={iconSizes.md} color={colors.mutedForeground} style={styles.geofenceSettingIcon} />
+                <View>
+                  <Text style={styles.geofenceSettingLabel}>Enable Geofence</Text>
+                  <Text style={styles.geofenceSettingDescription}>Track arrival and departure from job site</Text>
+                </View>
               </View>
-              <Text style={styles.photosHeaderLabel}>Client Signature</Text>
+              <Switch
+                value={job.geofenceEnabled || false}
+                onValueChange={async (value) => {
+                  try {
+                    await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceEnabled: value });
+                    setJob({ ...job, geofenceEnabled: value });
+                  } catch (e) {
+                    Alert.alert('Error', 'Failed to update geofence settings');
+                  }
+                }}
+                trackColor={{ false: colors.muted, true: colors.primary }}
+                thumbColor={colors.white}
+              />
             </View>
             
-            {showSignaturePad ? (
-              <View style={{ gap: spacing.md }}>
-                <TextInput
-                  style={{
-                    backgroundColor: colors.background,
-                    borderRadius: 8,
-                    padding: spacing.sm,
-                    fontSize: 16,
-                    color: colors.foreground,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  }}
-                  placeholder="Client's name *"
-                  placeholderTextColor={colors.mutedForeground}
-                  onChangeText={(text) => {}}
-                />
-                <SignaturePad
-                  onSave={(signatureData) => {
-                    handleSaveSignature({
-                      signerName: 'Client',
-                      signatureData,
-                    });
-                  }}
-                  onClear={() => {}}
-                  showControls={true}
-                />
-                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                  <TouchableOpacity
-                    style={[styles.takePhotoInlineButton, { flex: 1, backgroundColor: colors.muted }]}
-                    onPress={() => setShowSignaturePad(false)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.takePhotoInlineText, { color: colors.foreground }]}>Cancel</Text>
-                  </TouchableOpacity>
+            {job.geofenceEnabled && (
+              <>
+                <View style={styles.geofenceRadiusRow}>
+                  <Text style={styles.geofenceRadiusLabel}>Detection Radius</Text>
+                  <Text style={styles.geofenceRadiusValue}>{sliderRadius}m</Text>
+                  <Slider
+                    style={styles.geofenceSlider}
+                    minimumValue={50}
+                    maximumValue={500}
+                    step={10}
+                    value={sliderRadius}
+                    onValueChange={(value) => setSliderRadius(value)}
+                    onSlidingComplete={async (value) => {
+                      try {
+                        await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceRadius: value });
+                        setJob({ ...job, geofenceRadius: value });
+                      } catch (e) {
+                        Alert.alert('Error', 'Failed to update radius');
+                      }
+                    }}
+                    minimumTrackTintColor={colors.primary}
+                    maximumTrackTintColor={colors.muted}
+                    thumbTintColor={colors.primary}
+                  />
                 </View>
-              </View>
-            ) : signatures.length > 0 ? (
-              <View style={{ gap: spacing.sm }}>
-                {signatures.filter(s => s.documentType === 'job_completion').map((sig) => (
-                  <View key={sig.id} style={{ 
-                    backgroundColor: colors.background, 
-                    borderRadius: 8, 
-                    padding: spacing.md,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <View>
-                        <Text style={{ color: colors.foreground, fontWeight: '600' }}>
-                          Signed by {sig.signerName}
-                        </Text>
-                        <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                          {new Date(sig.signedAt).toLocaleDateString('en-AU', { 
-                            day: 'numeric', 
-                            month: 'short', 
-                            year: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}
-                        </Text>
-                      </View>
-                      <TouchableOpacity 
-                        onPress={() => handleDeleteSignature(sig.id)}
-                        style={{ padding: spacing.xs }}
-                      >
-                        <Feather name="trash-2" size={18} color={colors.destructive} />
-                      </TouchableOpacity>
-                    </View>
-                    <View style={{ 
-                      marginTop: spacing.sm, 
-                      backgroundColor: colors.card, 
-                      borderRadius: 8, 
-                      padding: spacing.sm,
-                      alignItems: 'center',
-                    }}>
-                      <Feather name="check-circle" size={24} color={colors.success} />
-                      <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 4 }}>
-                        Signature captured
-                      </Text>
+                
+                <View style={styles.geofenceSettingRow}>
+                  <View style={styles.geofenceSettingLeft}>
+                    <Feather name="log-in" size={iconSizes.md} color={colors.success} style={styles.geofenceSettingIcon} />
+                    <View>
+                      <Text style={styles.geofenceSettingLabel}>Auto Clock-In</Text>
+                      <Text style={styles.geofenceSettingDescription}>Start timer when arriving at job</Text>
                     </View>
                   </View>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.emptyPhotosContainer}>
-                <TouchableOpacity 
-                  style={styles.takePhotoInlineButton}
-                  onPress={() => setShowSignaturePad(true)}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="edit-3" size={18} color={colors.primaryForeground} />
-                  <Text style={styles.takePhotoInlineText}>Capture Client Signature</Text>
-                </TouchableOpacity>
-              </View>
+                  <Switch
+                    value={job.geofenceAutoClockIn || false}
+                    onValueChange={async (value) => {
+                      try {
+                        await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceAutoClockIn: value });
+                        setJob({ ...job, geofenceAutoClockIn: value });
+                      } catch (e) {
+                        Alert.alert('Error', 'Failed to update setting');
+                      }
+                    }}
+                    trackColor={{ false: colors.muted, true: colors.success }}
+                    thumbColor={colors.white}
+                  />
+                </View>
+                
+                <View style={styles.geofenceSettingRow}>
+                  <View style={styles.geofenceSettingLeft}>
+                    <Feather name="log-out" size={iconSizes.md} color={colors.warning} style={styles.geofenceSettingIcon} />
+                    <View>
+                      <Text style={styles.geofenceSettingLabel}>Auto Clock-Out</Text>
+                      <Text style={styles.geofenceSettingDescription}>Stop timer when leaving job site</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={job.geofenceAutoClockOut || false}
+                    onValueChange={async (value) => {
+                      try {
+                        await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceAutoClockOut: value });
+                        setJob({ ...job, geofenceAutoClockOut: value });
+                      } catch (e) {
+                        Alert.alert('Error', 'Failed to update setting');
+                      }
+                    }}
+                    trackColor={{ false: colors.muted, true: colors.warning }}
+                    thumbColor={colors.white}
+                  />
+                </View>
+              </>
             )}
+          </>
+        ) : (
+          <View style={styles.geofenceNoLocation}>
+            <Feather name="alert-circle" size={iconSizes.lg} color={colors.mutedForeground} />
+            <Text style={styles.geofenceNoLocationText}>
+              Add a job address to enable geofence tracking. The address will be geocoded automatically.
+            </Text>
           </View>
         )}
+      </View>
 
-        {/* Linked Documents Card - Unified quote/invoice section matching web */}
-        <LinkedDocumentsCard
-          linkedQuote={quote ? {
-            id: quote.id,
-            status: quote.status,
-            total: quote.total,
-            quoteNumber: quote.number,
-          } : null}
-          linkedInvoice={invoice ? {
-            id: invoice.id,
-            status: invoice.status,
-            total: invoice.total,
-            invoiceNumber: invoice.number,
-          } : null}
-          jobStatus={job.status}
-          onViewQuote={handleViewQuote}
-          onViewInvoice={handleViewInvoice}
-          onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
-          onCreateInvoice={() => router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
-        />
-
-        {/* Job Costing Section */}
-        {(estimatedHours > 0 || estimatedCost > 0 || actualHours > 0) && (
-          <View style={styles.costingCard}>
-            <View style={styles.costingHeader}>
-              <View style={[styles.costingIconContainer, { backgroundColor: `${colors.warning}15` }]}>
-                <Feather name="dollar-sign" size={iconSizes.lg} color={colors.warning} />
-              </View>
-              <Text style={styles.costingTitle}>Job Costing</Text>
+      {/* Activity Log Section */}
+      {activityLog.length > 0 && (
+        <View style={styles.activityCard}>
+          <View style={styles.activityHeader}>
+            <View style={[styles.activityIconContainer, { backgroundColor: `${colors.inProgress}15` }]}>
+              <Feather name="activity" size={iconSizes.lg} color={colors.inProgress} />
             </View>
-            <View style={styles.costingGrid}>
-              {estimatedHours > 0 && (
-                <View style={styles.costingItem}>
-                  <Text style={styles.costingLabel}>Estimated Hours</Text>
-                  <Text style={styles.costingValue}>{estimatedHours.toFixed(1)}h</Text>
-                </View>
-              )}
-              {actualHours > 0 && (
-                <View style={styles.costingItem}>
-                  <Text style={styles.costingLabel}>Actual Hours</Text>
-                  <Text style={[
-                    styles.costingValue,
-                    hoursVariance > 0 && { color: colors.destructive },
-                    hoursVariance < 0 && { color: colors.success }
-                  ]}>{actualHours.toFixed(1)}h</Text>
-                </View>
-              )}
-              {estimatedCost > 0 && (
-                <View style={styles.costingItem}>
-                  <Text style={styles.costingLabel}>Estimated Cost</Text>
-                  <Text style={styles.costingValue}>{formatCurrency(estimatedCost)}</Text>
-                </View>
-              )}
-              {estimatedHours > 0 && actualHours > 0 && (
-                <View style={styles.costingItem}>
-                  <Text style={styles.costingLabel}>Hours Variance</Text>
-                  <Text style={[
-                    styles.costingValue,
-                    hoursVariance > 0 && { color: colors.destructive },
-                    hoursVariance < 0 && { color: colors.success }
-                  ]}>
-                    {hoursVariance > 0 ? '+' : ''}{hoursVariance.toFixed(1)}h
+            <Text style={styles.activityTitle}>Activity Log</Text>
+            <Text style={styles.activityCount}>{activityLog.length}</Text>
+          </View>
+          <View style={styles.activityList}>
+            {activityLog.slice(0, 5).map((item, index) => (
+              <View key={item.id || index} style={styles.activityItem}>
+                <View style={styles.activityDot} />
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityDescription}>{item.description}</Text>
+                  <Text style={styles.activityTime}>
+                    {new Date(item.createdAt).toLocaleDateString('en-AU', { 
+                      day: 'numeric', 
+                      month: 'short',
+                      hour: 'numeric',
+                      minute: '2-digit'
+                    })}
                   </Text>
                 </View>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Activity Log Section */}
-        {activityLog.length > 0 && (
-          <View style={styles.activityCard}>
-            <View style={styles.activityHeader}>
-              <View style={[styles.activityIconContainer, { backgroundColor: `${colors.inProgress}15` }]}>
-                <Feather name="activity" size={iconSizes.lg} color={colors.inProgress} />
               </View>
-              <Text style={styles.activityTitle}>Activity Log</Text>
-              <Text style={styles.activityCount}>{activityLog.length}</Text>
-            </View>
-            <View style={styles.activityList}>
-              {activityLog.slice(0, 5).map((item, index) => (
-                <View key={item.id || index} style={styles.activityItem}>
-                  <View style={styles.activityDot} />
-                  <View style={styles.activityContent}>
-                    <Text style={styles.activityDescription}>{item.description}</Text>
-                    <Text style={styles.activityTime}>
-                      {new Date(item.createdAt).toLocaleDateString('en-AU', { 
-                        day: 'numeric', 
-                        month: 'short',
-                        hour: 'numeric',
-                        minute: '2-digit'
-                      })}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-              {activityLog.length > 5 && (
-                <Text style={styles.activityMore}>+{activityLog.length - 5} more activities</Text>
-              )}
-            </View>
+            ))}
+            {activityLog.length > 5 && (
+              <Text style={styles.activityMore}>+{activityLog.length - 5} more activities</Text>
+            )}
           </View>
-        )}
+        </View>
+      )}
+    </>
+  );
 
-        {/* Smart Actions Panel - Show when job is done and has suggested actions */}
-        {smartActions.length > 0 && (
-          <View style={{ marginBottom: spacing.lg }}>
-            <SmartActionsPanel
-              title="Next Steps"
-              subtitle="Suggested actions for this job"
-              actions={smartActions}
-              onActionToggle={handleSmartActionToggle}
-              onActionExecute={handleSmartActionExecute}
-              onExecuteAll={handleExecuteAllActions}
-              onSkipAll={handleSkipAllActions}
-              isExecuting={isExecutingActions}
-              entityType="job"
+  return (
+    <View style={styles.container}>
+      <Stack.Screen 
+        options={{ 
+          title: '',
+          headerBackTitle: 'Back',
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerShadowVisible: false,
+          headerTintColor: colors.foreground,
+        }} 
+      />
+
+      {/* Fixed Header */}
+      <View style={styles.fixedHeader}>
+        <View style={styles.statusRow}>
+          <StatusBadge status={job.status} />
+        </View>
+        <Text style={styles.title}>{job.title}</Text>
+        {job.description && (
+          <Text style={styles.description}>{job.description}</Text>
+        )}
+      </View>
+
+      {/* Tab Bar */}
+      <View style={styles.tabBar}>
+        {TAB_CONFIG.map((tab) => (
+          <TouchableOpacity
+            key={tab.id}
+            style={[styles.tab, activeTab === tab.id && styles.tabActive]}
+            onPress={() => setActiveTab(tab.id)}
+            activeOpacity={0.7}
+          >
+            <Feather 
+              name={tab.icon} 
+              size={iconSizes.md} 
+              color={activeTab === tab.id ? colors.primaryForeground : colors.mutedForeground} 
             />
-          </View>
-        )}
+            <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActionsSection}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            <TouchableOpacity 
-              activeOpacity={0.7} 
-              style={styles.quickActionButton}
-              onPress={() => setShowPhotosModal(true)}
-            >
-              <View style={styles.quickActionIcon}>
-                <Feather name="camera" size={iconSizes['2xl']} color={colors.primary} />
-                {photos.length > 0 && (
-                  <View style={styles.photoCountBadge}>
-                    <Text style={styles.photoCountText}>{photos.length}</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.quickActionText}>Photos</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              activeOpacity={0.7} 
-              style={styles.quickActionButton}
-              onPress={() => {
-                setEditedNotes(job.notes || '');
-                setShowNotesModal(true);
-              }}
-            >
-              <View style={styles.quickActionIcon}>
-                <Feather name="file-text" size={iconSizes['2xl']} color={colors.primary} />
-              </View>
-              <Text style={styles.quickActionText}>Notes</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              activeOpacity={0.7} 
-              style={styles.quickActionButton}
-              onPress={() => router.push(`/job/chat?jobId=${id}`)}
-            >
-              <View style={styles.quickActionIcon}>
-                <Feather name="message-circle" size={iconSizes['2xl']} color={colors.primary} />
-              </View>
-              <Text style={styles.quickActionText}>Chat</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Main Action Button */}
-        <View style={styles.actionButtonContainer}>
-          {action ? (
-            <TouchableOpacity
-              style={[styles.mainActionButton, { backgroundColor: statusColor }]}
-              onPress={handleStatusChange}
-              activeOpacity={0.8}
-            >
-              <View style={styles.mainActionButtonIcon}>
-                <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
-              </View>
-              <Text style={styles.mainActionText}>{action.label}</Text>
-            </TouchableOpacity>
-          ) : job.status === 'invoiced' && !invoice && (
-            <Text style={styles.invoicedMessage}>This job has been invoiced</Text>
-          )}
-        </View>
+      {/* Tab Content - Scrollable */}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {activeTab === 'overview' && renderOverviewTab()}
+        {activeTab === 'documents' && renderDocumentsTab()}
+        {activeTab === 'photos' && renderPhotosTab()}
+        {activeTab === 'notes' && renderNotesTab()}
       </ScrollView>
+
 
       {/* Notes Modal */}
       <Modal visible={showNotesModal} animationType="slide" transparent>
