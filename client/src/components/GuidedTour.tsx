@@ -476,6 +476,20 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
       pointerEvents: 'auto'
     };
 
+    // On mobile: always position card at bottom of screen for visibility
+    if (isMobile) {
+      return {
+        ...base,
+        left: '16px',
+        right: '16px',
+        bottom: '16px',
+        width: 'auto',
+        maxHeight: '60vh',
+        overflowY: 'auto'
+      };
+    }
+
+    // Desktop: center if no target
     if (!targetRect || cardPosition === 'center') {
       return {
         ...base,
@@ -486,31 +500,36 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
     }
 
     const gap = 20;
+    const cardHeight = 350; // Approximate max card height
 
     switch (cardPosition) {
       case 'bottom':
+        // Ensure card doesn't go off bottom of screen
+        const bottomTop = Math.min(targetRect.bottom + gap, window.innerHeight - cardHeight - 20);
         return {
           ...base,
           left: Math.max(16, Math.min(targetRect.left, window.innerWidth - 400)),
-          top: targetRect.bottom + gap
+          top: Math.max(80, bottomTop)
         };
       case 'top':
+        // Ensure card doesn't go off top of screen - use top positioning instead of bottom
+        const topPosition = Math.max(80, targetRect.top - cardHeight - gap);
         return {
           ...base,
           left: Math.max(16, Math.min(targetRect.left, window.innerWidth - 400)),
-          bottom: window.innerHeight - targetRect.top + gap
+          top: topPosition
         };
       case 'right':
         return {
           ...base,
-          left: targetRect.right + gap,
-          top: Math.max(80, targetRect.top)
+          left: Math.min(targetRect.right + gap, window.innerWidth - 400),
+          top: Math.max(80, Math.min(targetRect.top, window.innerHeight - cardHeight - 20))
         };
       case 'left':
         return {
           ...base,
-          right: window.innerWidth - targetRect.left + gap,
-          top: Math.max(80, targetRect.top)
+          right: Math.max(16, window.innerWidth - targetRect.left + gap),
+          top: Math.max(80, Math.min(targetRect.top, window.innerHeight - cardHeight - 20))
         };
       default:
         return base;
