@@ -34,7 +34,9 @@ import {
   GripVertical,
   UserPlus,
   ArrowRight,
-  Map
+  Map,
+  Loader2,
+  X
 } from "lucide-react";
 
 interface TeamOwnerDashboardProps {
@@ -86,6 +88,7 @@ export default function TeamOwnerDashboard({
   const { toast } = useToast();
   const [draggedJob, setDraggedJob] = useState<Job | null>(null);
   const [dragOverMember, setDragOverMember] = useState<string | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   // Fetch all unassigned jobs for the scheduler
   const { data: unassignedJobs = [] } = useQuery<Job[]>({
@@ -120,6 +123,7 @@ export default function TeamOwnerDashboard({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/jobs/today"] });
+      setSelectedJob(null);
       toast({
         title: "Job assigned",
         description: "The job has been assigned to the team member",
@@ -199,6 +203,24 @@ export default function TeamOwnerDashboard({
       });
     }
     setDraggedJob(null);
+  };
+
+  // Click-based handlers for mobile support
+  const handleJobClick = (job: Job) => {
+    if (assignJob.isPending) return;
+    setSelectedJob(selectedJob?.id === job.id ? null : job);
+  };
+
+  const handleMemberClick = (member: TeamMember) => {
+    if (!selectedJob || assignJob.isPending || !member.userId) return;
+    assignJob.mutate({ 
+      jobId: selectedJob.id, 
+      userId: member.userId 
+    });
+  };
+
+  const cancelJobSelection = () => {
+    setSelectedJob(null);
   };
 
   const getInitials = (member: TeamMember) => {
@@ -417,8 +439,41 @@ export default function TeamOwnerDashboard({
           </div>
 
           <p className="ios-caption">
-            Drag jobs to assign them to team members
+            Tap a job, then tap a team member to assign
           </p>
+
+          {/* Selection Banner */}
+          {selectedJob && (
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {assignJob.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                    <span className="text-sm font-medium">
+                      Assigning <span className="text-primary">"{selectedJob.title}"</span>...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Briefcase className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">
+                      Tap a team member to assign <span className="text-primary">"{selectedJob.title}"</span>
+                    </span>
+                  </>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={cancelJobSelection}
+                disabled={assignJob.isPending}
+                data-testid="button-cancel-job-selection"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Cancel
+              </Button>
+            </div>
+          )}
 
           {/* Unassigned Jobs */}
           {jobsToAssign.length > 0 && (
@@ -434,13 +489,16 @@ export default function TeamOwnerDashboard({
               <CardContent className="py-0 px-4 pb-4">
                 <ScrollArea className="w-full">
                   <div className="flex gap-2 pb-2">
-                    {jobsToAssign.slice(0, 5).map((job) => (
+                    {jobsToAssign.slice(0, 5).map((job) => {
+                      const isSelected = selectedJob?.id === job.id;
+                      return (
                       <div
                         key={job.id}
                         draggable
                         onDragStart={(e) => handleDragStart(e, job)}
                         onDragEnd={handleDragEnd}
-                        className="flex-shrink-0 w-44 p-3 rounded-xl border bg-card hover-elevate cursor-grab active:cursor-grabbing transition-all"
+                        onClick={() => handleJobClick(job)}
+                        className={`flex-shrink-0 w-44 p-3 rounded-xl border bg-card hover-elevate cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
                         data-testid={`draggable-job-${job.id}`}
                       >
                         <div className="flex items-start gap-2">
@@ -460,7 +518,8 @@ export default function TeamOwnerDashboard({
                           </div>
                         </div>
                       </div>
-                    ))}
+                    );
+                    })}
                     {jobsToAssign.length > 5 && (
                       <Button
                         variant="ghost"
@@ -482,6 +541,7 @@ export default function TeamOwnerDashboard({
             {teamMembers.map((member) => {
               const memberJobs = getJobsForMember(member.userId || '');
               const isDragOver = dragOverMember === member.id;
+              const isClickable = !!selectedJob && !assignJob.isPending;
               
               return (
                 <div
@@ -489,10 +549,13 @@ export default function TeamOwnerDashboard({
                   onDragOver={(e) => handleDragOver(e, member.id)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, member)}
+                  onClick={() => handleMemberClick(member)}
                   className={`feed-card transition-all ${
                     isDragOver 
                       ? 'ring-2 ring-primary ring-offset-2' 
-                      : ''
+                      : isClickable 
+                        ? 'cursor-pointer ring-1 ring-primary/30 hover:ring-2 hover:ring-primary' 
+                        : ''
                   }`}
                   data-testid={`team-member-drop-zone-${member.id}`}
                 >
@@ -515,6 +578,11 @@ export default function TeamOwnerDashboard({
                       {isDragOver && (
                         <Badge style={{ backgroundColor: 'hsl(var(--trade))' }} className="text-white">
                           Drop here
+                        </Badge>
+                      )}
+                      {isClickable && !isDragOver && (
+                        <Badge variant="outline" className="text-primary border-primary">
+                          Tap to assign
                         </Badge>
                       )}
                     </div>
