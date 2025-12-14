@@ -2079,11 +2079,6 @@ export default function JobDetailScreen() {
   const statusColor = getStatusColor(job.status);
   const clientInitials = client?.name ? client.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
 
-  // Job Costing calculations
-  const estimatedHours = job.estimatedHours || 0;
-  const estimatedCost = job.estimatedCost || 0;
-  const actualHours = totalTrackedHours;
-  const hoursVariance = actualHours - estimatedHours;
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
