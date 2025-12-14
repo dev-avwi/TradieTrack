@@ -728,6 +728,36 @@ export default function DashboardScreen() {
     }
   };
 
+  const handleUnassignJob = async (job: any) => {
+    Alert.alert(
+      'Unassign Job',
+      `Remove "${job.title}" from this team member?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Unassign',
+          style: 'destructive',
+          onPress: async () => {
+            setIsAssigning(true);
+            try {
+              const { default: api } = await import('../../src/lib/api');
+              await api.post(`/api/jobs/${job.id}/assign`, { assignedTo: null });
+              Alert.alert('Success', 'Job unassigned');
+              await Promise.all([
+                fetchTeamData(),
+                fetchTodaysJobs(),
+              ]);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to unassign job');
+            } finally {
+              setIsAssigning(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getJobsForMember = (memberId: string) => {
     return allJobs.filter((job: any) => 
       job.assignedTo === memberId && job.status !== 'done' && job.status !== 'invoiced'
@@ -939,12 +969,12 @@ export default function DashboardScreen() {
                 />
               )}
               <KPICard
-                title="This Month"
+                title="Revenue"
                 value={monthRevenue}
-                icon="trending-up"
+                icon="dollar-sign"
                 iconBg={colors.successLight}
                 iconColor={colors.success}
-                onPress={() => router.push('/more/invoices')}
+                onPress={() => router.push('/more/payment-hub')}
               />
             </>
           )}
@@ -1086,10 +1116,19 @@ export default function DashboardScreen() {
                   {memberJobs.length > 0 && (
                     <View style={styles.memberJobsList}>
                       {memberJobs.slice(0, 2).map((job: any) => (
-                        <View key={job.id} style={styles.memberJobItem}>
+                        <TouchableOpacity 
+                          key={job.id} 
+                          style={styles.memberJobItem}
+                          onPress={() => handleUnassignJob(job)}
+                          activeOpacity={0.7}
+                          disabled={isAssigning}
+                        >
                           <Text style={styles.memberJobTitle} numberOfLines={1}>{job.title}</Text>
-                          <StatusBadge status={job.status} size="small" />
-                        </View>
+                          <View style={styles.memberJobActions}>
+                            <StatusBadge status={job.status} size="small" />
+                            <Feather name="x-circle" size={14} color={colors.mutedForeground} style={{ marginLeft: 6 }} />
+                          </View>
+                        </TouchableOpacity>
                       ))}
                     </View>
                   )}
@@ -1560,6 +1599,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     flex: 1,
     marginRight: spacing.sm,
+  },
+  memberJobActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   // Job Cards - with left accent bar

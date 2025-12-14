@@ -86,12 +86,47 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
-      await audioRecorder.prepareToRecordAsync(RecordingPresets.HIGH_QUALITY);
-      audioRecorder.record();
+      try {
+        await audioRecorder.prepareToRecordAsync(RecordingPresets.HIGH_QUALITY);
+      } catch (prepareError: any) {
+        console.error('Error preparing recorder:', prepareError);
+        if (prepareError?.message?.includes('permission') || prepareError?.message?.includes('Permission')) {
+          Alert.alert(
+            'Microphone Permission Required',
+            'Please enable microphone access in your device settings to record voice notes.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+        throw prepareError;
+      }
+
+      try {
+        audioRecorder.record();
+      } catch (recordError: any) {
+        console.error('Error starting record:', recordError);
+        if (recordError?.message?.includes('permission') || recordError?.message?.includes('Permission')) {
+          Alert.alert(
+            'Microphone Permission Required',
+            'Please enable microphone access in your device settings to record voice notes.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+        throw recordError;
+      }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error starting recording:', error);
-      Alert.alert('Error', 'Could not start recording. Please try again.');
+      if (error?.message?.includes('permission') || error?.message?.includes('Permission')) {
+        Alert.alert(
+          'Microphone Permission Required',
+          'Please enable microphone access in your device settings to record voice notes.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', 'Could not start recording. Please try again.');
+      }
     }
   };
 

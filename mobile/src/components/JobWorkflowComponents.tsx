@@ -45,6 +45,15 @@ export function JobProgressBar({ status }: JobProgressBarProps) {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <View style={styles.headerIcon}>
+          <Feather name="git-branch" size={iconSizes.md} color={colors.primary} />
+        </View>
+        <Text style={styles.headerTitle}>Job Workflow</Text>
+      </View>
+
+      {/* Progress Steps */}
       <View style={styles.stepsRow}>
         {WORKFLOW_STEPS.map((step, index) => {
           const isPassed = index < currentIndex;
@@ -70,8 +79,8 @@ export function JobProgressBar({ status }: JobProgressBarProps) {
                 ]}
               >
                 <Feather 
-                  name={step.icon} 
-                  size={14} 
+                  name={isPassed ? 'check' : step.icon} 
+                  size={16} 
                   color={
                     isCurrent ? colors.primaryForeground :
                     isPassed ? colors.primary :
@@ -101,16 +110,37 @@ const createProgressStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
-    padding: spacing.md,
-    marginBottom: spacing.md,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  headerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: `${colors.primary}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    flex: 1,
   },
   stepsRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    paddingTop: spacing.sm,
   },
   stepContainer: {
     flex: 1,
@@ -119,55 +149,57 @@ const createProgressStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   connector: {
     position: 'absolute',
-    top: 14,
+    top: 16,
     right: '50%',
     width: '100%',
-    height: 2,
+    height: 3,
     zIndex: -1,
   },
   connectorActive: {
-    backgroundColor: `${colors.primary}60`,
+    backgroundColor: colors.primary,
   },
   connectorInactive: {
     backgroundColor: colors.muted,
   },
   stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   stepCirclePassed: {
-    backgroundColor: `${colors.primary}30`,
+    backgroundColor: `${colors.primary}25`,
     borderWidth: 2,
-    borderColor: `${colors.primary}60`,
+    borderColor: colors.primary,
   },
   stepCircleCurrent: {
     backgroundColor: colors.primary,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 6,
   },
   stepCircleUpcoming: {
     backgroundColor: colors.muted,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   stepLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
     color: colors.mutedForeground,
     textAlign: 'center',
   },
   stepLabelPassed: {
     color: colors.primary,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   stepLabelCurrent: {
     color: colors.foreground,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
 
