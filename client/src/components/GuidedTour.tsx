@@ -476,15 +476,15 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
       pointerEvents: 'auto'
     };
 
-    // On mobile: always position card at bottom of screen for visibility
+    // On mobile: position card at TOP of screen to leave bottom nav accessible
     if (isMobile) {
       return {
         ...base,
         left: '16px',
         right: '16px',
-        bottom: '16px',
+        top: '80px',
         width: 'auto',
-        maxHeight: '60vh',
+        maxHeight: '50vh',
         overflowY: 'auto'
       };
     }
