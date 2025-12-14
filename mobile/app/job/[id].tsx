@@ -2079,11 +2079,6 @@ export default function JobDetailScreen() {
   const statusColor = getStatusColor(job.status);
   const clientInitials = client?.name ? client.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
 
-  
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
-  };
-
   const TAB_CONFIG = [
     { id: 'overview' as const, label: 'Overview', icon: 'briefcase' as const },
     { id: 'documents' as const, label: 'Docs', icon: 'file-text' as const },
