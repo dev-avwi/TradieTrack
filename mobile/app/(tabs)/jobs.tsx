@@ -24,12 +24,13 @@ const navigateToCreateJob = () => {
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 
-const STATUS_FILTERS: { key: string; label: string }[] = [
-  { key: 'active', label: 'Active' },
-  { key: 'today', label: 'Today' },
-  { key: 'in_progress', label: 'In Progress' },
-  { key: 'needs_invoice', label: 'Needs Invoice' },
-  { key: 'completed', label: 'Completed' },
+const STATUS_FILTERS: { key: string; label: string; icon: string }[] = [
+  { key: 'all', label: 'All', icon: 'briefcase' },
+  { key: 'pending', label: 'Pending', icon: 'clock' },
+  { key: 'scheduled', label: 'Scheduled', icon: 'calendar' },
+  { key: 'in_progress', label: 'In Progress', icon: 'play' },
+  { key: 'done', label: 'Done', icon: 'check-circle' },
+  { key: 'invoiced', label: 'Invoiced', icon: 'file-text' },
 ];
 
 function StatCard({ 
@@ -291,7 +292,7 @@ export default function JobsScreen() {
   const { clients, fetchClients } = useClientsStore();
   const { quotes, fetchQuotes } = useQuotesStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('active');
+  const [activeFilter, setActiveFilter] = useState('all');
 
   const refreshData = useCallback(async () => {
     await Promise.all([fetchJobs(), fetchClients(), fetchQuotes()]);
@@ -384,13 +385,27 @@ export default function JobsScreen() {
     return { today, upcoming, inProgress, needsInvoice, completed };
   }, [jobs]);
 
-  const statusCounts = {
-    active: groupedJobs.today.length + groupedJobs.upcoming.length + groupedJobs.inProgress.length + groupedJobs.needsInvoice.length,
-    today: groupedJobs.today.length,
-    in_progress: groupedJobs.inProgress.length,
-    needs_invoice: groupedJobs.needsInvoice.length,
-    completed: groupedJobs.completed.length
-  };
+  // Count jobs by status to match web filters
+  const statusCounts = useMemo(() => {
+    const counts = {
+      all: jobs.length,
+      pending: 0,
+      scheduled: 0,
+      in_progress: 0,
+      done: 0,
+      invoiced: 0,
+    };
+    
+    jobs.forEach(job => {
+      if (job.status === 'pending') counts.pending++;
+      else if (job.status === 'scheduled') counts.scheduled++;
+      else if (job.status === 'in_progress') counts.in_progress++;
+      else if (job.status === 'done') counts.done++;
+      else if (job.status === 'invoiced') counts.invoiced++;
+    });
+    
+    return counts;
+  }, [jobs]);
 
   const getFilteredJobs = () => {
     const searchLower = searchQuery.toLowerCase();
@@ -400,24 +415,12 @@ export default function JobsScreen() {
       (getClientName(job.clientId)?.toLowerCase().includes(searchLower))
     );
 
-    switch (activeFilter) {
-      case 'today':
-        return filterBySearch(groupedJobs.today);
-      case 'in_progress':
-        return filterBySearch(groupedJobs.inProgress);
-      case 'needs_invoice':
-        return filterBySearch(groupedJobs.needsInvoice);
-      case 'completed':
-        return filterBySearch(groupedJobs.completed);
-      case 'active':
-      default:
-        return filterBySearch([
-          ...groupedJobs.needsInvoice,
-          ...groupedJobs.today,
-          ...groupedJobs.inProgress,
-          ...groupedJobs.upcoming
-        ]);
+    // Filter by status matching web WorkPage behavior
+    if (activeFilter === 'all') {
+      return filterBySearch(jobs);
     }
+    
+    return filterBySearch(jobs.filter(job => job.status === activeFilter));
   };
 
   const filteredJobs = getFilteredJobs();
