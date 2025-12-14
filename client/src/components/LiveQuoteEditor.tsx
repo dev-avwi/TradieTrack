@@ -838,6 +838,8 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
               showDepositSection={watchedValues.depositRequired}
               depositPercent={watchedValues.depositPercent}
               gstEnabled={gstEnabled}
+              templateId={(businessSettings as any)?.documentTemplate || 'minimal'}
+              templateCustomization={(businessSettings as any)?.documentTemplateSettings}
             />
           </div>
         </div>

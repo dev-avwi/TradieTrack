@@ -1,5 +1,5 @@
 import { Building2 } from "lucide-react";
-import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
+import { getTemplateStyles, TemplateId, TemplateCustomization, DEFAULT_TEMPLATE } from "@/lib/document-templates";
 
 interface LineItem {
   description: string;
@@ -50,6 +50,7 @@ interface LiveDocumentPreviewProps {
   jobAddress?: string;
   jobScheduledDate?: string;
   templateId?: TemplateId;
+  templateCustomization?: TemplateCustomization;
 }
 
 function formatCurrency(amount: number): string {
@@ -90,6 +91,7 @@ export default function LiveDocumentPreview({
   jobAddress,
   jobScheduledDate,
   templateId = DEFAULT_TEMPLATE,
+  templateCustomization,
 }: LiveDocumentPreviewProps) {
   const safeParseFloat = (val: string | number): number => {
     if (typeof val === 'number') return isNaN(val) ? 0 : val;
@@ -119,8 +121,8 @@ export default function LiveDocumentPreview({
   const isOverdue = status === 'overdue';
   const isAccepted = status === 'accepted';
   
-  // Get template styles
-  const templateStyles = getTemplateStyles(templateId, brandColor);
+  // Get template styles - pass customization for accent color and other overrides
+  const templateStyles = getTemplateStyles(templateId, brandColor, templateCustomization);
   const { template, primaryColor, headingStyle, tableHeaderStyle, getTableRowStyle, getNoteStyle } = templateStyles;
 
   const documentTitle = type === 'quote' 

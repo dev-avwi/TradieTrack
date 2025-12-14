@@ -816,6 +816,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
               business={businessInfo}
               client={clientInfo}
               gstEnabled={gstEnabled}
+              templateId={(businessSettings as any)?.documentTemplate || 'minimal'}
+              templateCustomization={(businessSettings as any)?.documentTemplateSettings}
             />
           </div>
         </div>
