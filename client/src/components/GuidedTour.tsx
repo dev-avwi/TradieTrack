@@ -22,6 +22,7 @@ interface TourStep {
   description: string;
   route: string;
   icon: any;
+  targetSelector?: string;
 }
 
 const TOUR_STEPS: TourStep[] = [
@@ -37,42 +38,48 @@ const TOUR_STEPS: TourStep[] = [
     title: "Your Dashboard",
     description: "This is your home base. See today's scheduled jobs, track your earnings, and get quick access to everything you need.",
     route: "/",
-    icon: LayoutDashboard
+    icon: LayoutDashboard,
+    targetSelector: '[data-testid="today-jobs-card"], [data-testid="dashboard-content"]'
   },
   {
     id: "clients",
     title: "Manage Clients",
     description: "Keep all your customer details in one place. Add new clients, view their job history, and quickly contact them.",
     route: "/clients",
-    icon: Users
+    icon: Users,
+    targetSelector: '[data-testid="clients-list"], [data-testid="clients-content"]'
   },
   {
     id: "jobs",
     title: "Track Your Jobs",
     description: "Create and manage all your work here. Jobs flow through stages from pending to completed, keeping you organised.",
     route: "/work",
-    icon: Briefcase
+    icon: Briefcase,
+    targetSelector: '[data-testid="work-content"], [data-testid="jobs-list"]'
   },
   {
     id: "quotes",
     title: "Professional Quotes",
     description: "Create detailed quotes with line items and GST. Send them to clients and easily convert accepted quotes to invoices.",
     route: "/quotes",
-    icon: FileText
+    icon: FileText,
+    targetSelector: '[data-testid="quotes-content"], [data-testid="quotes-list"]'
   },
   {
     id: "invoices",
     title: "Get Paid Faster",
     description: "Generate professional invoices and accept online payments. Connect Stripe to let clients pay by card instantly.",
     route: "/invoices",
-    icon: Receipt
+    icon: Receipt,
+    targetSelector: '[data-testid="invoices-content"], [data-testid="invoices-list"]'
   },
   {
     id: "settings",
     title: "Customise Your Business",
     description: "Set up your business details, upload your logo, and configure how TradieTrack works for you.",
     route: "/settings",
-    icon: Settings
+    icon: Settings,
+    targetSelector: '[data-testid="settings-content"], [data-testid="settings-tabs"]'
   },
   {
     id: "complete",
@@ -92,20 +99,91 @@ interface GuidedTourProps {
 export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [, setLocation] = useLocation();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const step = TOUR_STEPS[currentStep];
   const isLastStep = currentStep === TOUR_STEPS.length - 1;
   const isFirstStep = currentStep === 0;
   const StepIcon = step.icon;
 
-  // Navigate to the step's route
+  // Find and measure target element
+  const measureTarget = useCallback(() => {
+    if (!step.targetSelector) {
+      setTargetRect(null);
+      return;
+    }
+
+    const selectors = step.targetSelector.split(', ');
+    let element: Element | null = null;
+    
+    for (const selector of selectors) {
+      element = document.querySelector(selector.trim());
+      if (element) break;
+    }
+
+    if (element) {
+      const rect = element.getBoundingClientRect();
+      setTargetRect(rect);
+    } else {
+      setTargetRect(null);
+    }
+  }, [step.targetSelector]);
+
+  // Draw the overlay with spotlight cutout
+  const drawOverlay = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.scale(dpr, dpr);
+
+    // Light overlay - 35% opacity so app is clearly visible
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.fillRect(0, 0, width, height);
+
+    // Cut out spotlight if we have a target
+    if (targetRect) {
+      const padding = 8;
+      const radius = 12;
+      const x = targetRect.left - padding;
+      const y = targetRect.top - padding;
+      const w = targetRect.width + padding * 2;
+      const h = targetRect.height + padding * 2;
+
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, radius);
+      ctx.fill();
+
+      // Draw subtle border around spotlight
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = 'hsl(160, 84%, 39%)'; // Trade green
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, radius);
+      ctx.stroke();
+    }
+  }, [targetRect]);
+
+  // Navigate to step's route
   useEffect(() => {
     if (!isOpen) return;
 
     const navigateToStep = async () => {
       setIsNavigating(true);
+      setTargetRect(null);
       
       const currentPath = window.location.pathname;
       const isRouteChange = step.route !== currentPath;
@@ -116,12 +194,33 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
         window.scrollTo({ top: 0, behavior: 'instant' });
       }
       
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
+      measureTarget();
       setIsNavigating(false);
     };
 
     navigateToStep();
-  }, [currentStep, isOpen, step.route, setLocation]);
+  }, [currentStep, isOpen, step.route, setLocation, measureTarget]);
+
+  // Redraw overlay when target changes
+  useEffect(() => {
+    if (isOpen) {
+      drawOverlay();
+    }
+  }, [isOpen, targetRect, drawOverlay]);
+
+  // Handle window resize
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleResize = () => {
+      measureTarget();
+      drawOverlay();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen, measureTarget, drawOverlay]);
 
   // Reset step when tour opens
   useEffect(() => {
@@ -157,80 +256,105 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
 
   if (!isOpen) return null;
 
+  // Position tooltip - bottom of screen on mobile for visibility
+  const getTooltipStyle = (): React.CSSProperties => {
+    const isMobile = window.innerWidth < 640;
+    
+    if (isMobile) {
+      return {
+        position: 'fixed',
+        bottom: '16px',
+        left: '16px',
+        right: '16px',
+        maxWidth: 'none'
+      };
+    }
+    
+    // Desktop: position near bottom-right but not covering too much
+    return {
+      position: 'fixed',
+      bottom: '24px',
+      right: '24px',
+      width: '380px',
+      maxWidth: 'calc(100vw - 48px)'
+    };
+  };
+
   return (
     <div 
-      ref={containerRef}
-      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[9999]"
       data-testid="guided-tour-overlay"
     >
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={handleSkip}
+      {/* Canvas overlay - light dimming so app is visible */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 pointer-events-none"
+        style={{ width: '100%', height: '100%' }}
       />
 
-      {/* Tour Card - Bottom sheet on mobile, centered on desktop */}
+      {/* Tour Card */}
       <Card
-        className="relative w-full sm:w-[420px] sm:max-w-[90vw] mx-0 sm:mx-4 rounded-t-2xl sm:rounded-2xl border-0 sm:border shadow-2xl overflow-hidden"
-        style={{ maxHeight: '85vh' }}
+        className="shadow-xl border-2 overflow-hidden"
+        style={{
+          ...getTooltipStyle(),
+          borderColor: 'hsl(var(--trade))',
+          zIndex: 10000
+        }}
         data-testid="tour-tooltip"
       >
-        {/* Header with gradient */}
-        <div 
-          className="px-6 pt-6 pb-4"
-          style={{ 
-            background: 'linear-gradient(135deg, hsl(var(--trade)) 0%, hsl(var(--trade) / 0.8) 100%)'
-          }}
-        >
-          {/* Close button */}
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="absolute top-3 right-3 h-8 w-8 text-white/80 hover:text-white hover:bg-white/20"
-            onClick={handleSkip}
-            data-testid="button-close-tour"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+        {/* Header */}
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div 
+                className="p-2 rounded-lg"
+                style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}
+              >
+                <StepIcon className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">
+                  Step {currentStep + 1} of {TOUR_STEPS.length}
+                </p>
+                <h3 className="font-semibold text-sm">{step.title}</h3>
+              </div>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleSkip}
+              data-testid="button-close-tour"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
-          {/* Step indicator */}
-          <div className="flex items-center gap-1.5 mb-4">
+        {/* Content */}
+        <div className="px-4 py-3">
+          <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+            {step.description}
+          </p>
+
+          {/* Step dots */}
+          <div className="flex items-center justify-center gap-1.5 mb-4">
             {TOUR_STEPS.map((_, index) => (
               <div
                 key={index}
-                className={`h-1 rounded-full transition-all duration-300 ${
+                className={`h-1.5 rounded-full transition-all duration-200 ${
                   index === currentStep
-                    ? "w-6 bg-white"
+                    ? "w-4 bg-primary"
                     : index < currentStep
-                    ? "w-2 bg-white/60"
-                    : "w-2 bg-white/30"
+                    ? "w-1.5 bg-primary/50"
+                    : "w-1.5 bg-muted-foreground/30"
                 }`}
               />
             ))}
           </div>
 
-          {/* Icon and title */}
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
-              <StepIcon className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <p className="text-white/70 text-xs font-medium mb-0.5">
-                Step {currentStep + 1} of {TOUR_STEPS.length}
-              </p>
-              <h3 className="text-white font-semibold text-lg">{step.title}</h3>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="px-6 py-5 bg-card">
-          <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-            {step.description}
-          </p>
-
           {/* Navigation */}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="sm"
@@ -249,9 +373,9 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
                   variant="ghost"
                   size="sm"
                   onClick={handleSkip}
-                  className="text-muted-foreground"
+                  className="text-muted-foreground text-xs"
                 >
-                  Skip tour
+                  Skip
                 </Button>
               )}
               
@@ -259,7 +383,6 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
                 size="sm"
                 onClick={handleNext}
                 disabled={isNavigating}
-                className="min-w-[100px]"
                 style={{ 
                   backgroundColor: 'hsl(var(--trade))',
                   color: 'white'
@@ -283,9 +406,6 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
             </div>
           </div>
         </div>
-
-        {/* Mobile handle indicator */}
-        <div className="sm:hidden absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-white/30" />
       </Card>
     </div>
   );
