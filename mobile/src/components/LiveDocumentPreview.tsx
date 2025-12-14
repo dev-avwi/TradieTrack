@@ -147,7 +147,7 @@ export default function LiveDocumentPreview({
   const isAccepted = status === 'accepted';
   
   const templateStyles = getTemplateStyles(templateId, brandColor, templateCustomization);
-  const { template, primaryColor, tableHeaderStyle, getTableRowStyle, getNoteStyle } = templateStyles;
+  const { template, primaryColor, headingStyle, tableHeaderStyle, getTableRowStyle, getNoteStyle } = templateStyles;
 
   const documentTitle = type === 'quote' 
     ? 'QUOTE' 
@@ -222,8 +222,8 @@ export default function LiveDocumentPreview({
     },
     businessName: {
       fontSize: 20,
-      fontWeight: '700',
-      color: primaryColor,
+      fontWeight: headingStyle.fontWeight as any,
+      color: headingStyle.color,
       marginBottom: 8,
     },
     businessDetails: {
@@ -242,8 +242,8 @@ export default function LiveDocumentPreview({
     },
     documentType: {
       fontSize: gstEnabled && type === 'invoice' ? 20 : 24,
-      fontWeight: '700',
-      color: isPaid ? colors.success : primaryColor,
+      fontWeight: headingStyle.fontWeight as any,
+      color: isPaid ? colors.success : headingStyle.color,
       letterSpacing: 2,
       textTransform: 'uppercase',
       marginBottom: 4,
@@ -532,7 +532,7 @@ export default function LiveDocumentPreview({
       textAlign: 'center',
       marginBottom: 4,
     },
-  }), [template, primaryColor, isPaid, gstEnabled, type, tableHeaderStyle]);
+  }), [template, primaryColor, headingStyle, isPaid, gstEnabled, type, tableHeaderStyle]);
 
   const noteStyle = getNoteStyle();
 

@@ -102,6 +102,10 @@ export interface TemplateStyles {
   template: DocumentTemplate;
   primaryColor: string;
   accentColor: string;
+  headingStyle: {
+    fontWeight: string;
+    color: string;
+  };
   tableHeaderStyle: {
     backgroundColor: string;
     color: string;
@@ -137,7 +141,9 @@ export function getTemplateStyles(
     ...baseTemplate,
     tableStyle: customization?.tableStyle ?? baseTemplate.tableStyle,
     noteStyle: customization?.noteStyle ?? baseTemplate.noteStyle,
-    headerBorderWidth: customization?.headerBorderWidth ?? baseTemplate.headerBorderWidth,
+    headerBorderWidth: typeof customization?.headerBorderWidth === 'string' 
+      ? parseInt(customization.headerBorderWidth) 
+      : (customization?.headerBorderWidth ?? baseTemplate.headerBorderWidth),
     showHeaderDivider: customization?.showHeaderDivider ?? baseTemplate.showHeaderDivider,
     bodyWeight: customization?.bodyWeight ?? baseTemplate.bodyWeight,
     headingWeight: customization?.headingWeight ?? baseTemplate.headingWeight,
@@ -150,6 +156,10 @@ export function getTemplateStyles(
     template,
     primaryColor,
     accentColor,
+    headingStyle: {
+      fontWeight: template.headingWeight,
+      color: primaryColor,
+    },
     tableHeaderStyle: {
       backgroundColor: template.tableStyle === 'minimal' ? 'transparent' : primaryColor,
       color: template.tableStyle === 'minimal' ? '#1a1a1a' : '#ffffff',
