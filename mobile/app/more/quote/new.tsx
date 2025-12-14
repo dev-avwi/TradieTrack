@@ -622,6 +622,26 @@ export default function NewQuoteScreen() {
     fetchClients();
   }, []);
 
+  // Auto-fill client when creating quote from job
+  useEffect(() => {
+    const fetchJobAndSetClient = async () => {
+      if (params.jobId && !params.clientId) {
+        try {
+          const response = await api.get(`/api/jobs/${params.jobId}`);
+          if (response.data && response.data.clientId) {
+            setForm(prev => ({
+              ...prev,
+              clientId: response.data.clientId,
+            }));
+          }
+        } catch (error) {
+          console.error('Failed to fetch job for client auto-fill:', error);
+        }
+      }
+    };
+    fetchJobAndSetClient();
+  }, [params.jobId, params.clientId]);
+
   const handleAddLineItem = () => {
     setEditForm({ description: '', quantity: '1', unitPrice: '' });
     setEditingItemIndex(-1);

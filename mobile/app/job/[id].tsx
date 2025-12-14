@@ -1965,6 +1965,19 @@ export default function JobDetailScreen() {
     if (!job) return;
     
     setIsUploadingPhoto(true);
+    
+    // Create optimistic photo entry immediately for instant UI feedback
+    const tempId = `temp-${Date.now()}`;
+    const optimisticPhoto: JobPhoto = {
+      id: tempId,
+      url: uri,
+      signedUrl: uri, // Use local URI as signedUrl for display
+      createdAt: new Date().toISOString(),
+    };
+    
+    // Add photo optimistically
+    setPhotos(prev => [...prev, optimisticPhoto]);
+    
     try {
       const formData = new FormData();
       const filename = uri.split('/').pop() || 'photo.jpg';
@@ -1983,17 +1996,18 @@ export default function JobDetailScreen() {
       });
 
       if (response.data) {
+        // Remove temp photo first, then reload all photos from server
+        setPhotos(prev => prev.filter(p => p.id !== tempId));
         await loadPhotos();
         Alert.alert('Success', 'Photo uploaded successfully');
+      } else {
+        // Remove temp photo if upload had no response
+        setPhotos(prev => prev.filter(p => p.id !== tempId));
+        Alert.alert('Error', 'Failed to upload photo. Please try again.');
       }
     } catch (error: any) {
       console.error('Upload error:', error);
-      const newPhoto: JobPhoto = {
-        id: Date.now().toString(),
-        url: uri,
-        createdAt: new Date().toISOString(),
-      };
-      setPhotos([...photos, newPhoto]);
+      // Keep the temp photo for offline scenarios - user can see it locally
       Alert.alert('Photo Saved', 'Photo saved locally. Will sync when online.');
     }
     setIsUploadingPhoto(false);

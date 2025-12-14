@@ -6,14 +6,17 @@ import {
   TouchableOpacity,
   RefreshControl,
   StyleSheet,
-  Linking
+  Linking,
+  Switch
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import AppTour from '../../src/components/AppTour';
+import { Slider } from '../../src/components/ui/Slider';
 
 const PLAN_FEATURES = [
   { icon: 'briefcase', text: 'Unlimited jobs, quotes & invoices', pro: true },
@@ -25,12 +28,15 @@ const PLAN_FEATURES = [
 ];
 
 const SETTINGS_TABS = [
+  { key: 'jobs', label: 'Jobs', icon: 'briefcase' },
   { key: 'pay', label: 'Pay', icon: 'credit-card' },
   { key: 'apps', label: 'Apps', icon: 'smartphone' },
   { key: 'alerts', label: 'Alerts', icon: 'bell' },
   { key: 'plan', label: 'Plan', icon: 'award' },
   { key: 'help', label: 'Help', icon: 'help-circle' },
 ];
+
+const GEOFENCE_STORAGE_KEY = '@tradietrack/global_geofence_settings';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -305,13 +311,110 @@ export default function SettingsScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { businessSettings } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('plan');
+  const [activeTab, setActiveTab] = useState('jobs');
   const [showTour, setShowTour] = useState(false);
+  
+  // Global geofence settings
+  const [geofenceEnabled, setGeofenceEnabled] = useState(false);
+  const [geofenceRadius, setGeofenceRadius] = useState(100);
+  const [autoClockIn, setAutoClockIn] = useState(true);
+  const [autoClockOut, setAutoClockOut] = useState(true);
+
+  const loadGeofenceSettings = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem(GEOFENCE_STORAGE_KEY);
+      if (stored) {
+        const settings = JSON.parse(stored);
+        setGeofenceEnabled(settings.enabled ?? false);
+        setGeofenceRadius(settings.radius ?? 100);
+        setAutoClockIn(settings.autoClockIn ?? true);
+        setAutoClockOut(settings.autoClockOut ?? true);
+      }
+    } catch (error) {
+      console.error('Failed to load geofence settings:', error);
+    }
+  }, []);
+
+  const saveGeofenceSettings = useCallback(async (settings: {
+    enabled: boolean;
+    radius: number;
+    autoClockIn: boolean;
+    autoClockOut: boolean;
+  }) => {
+    try {
+      await AsyncStorage.setItem(GEOFENCE_STORAGE_KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.error('Failed to save geofence settings:', error);
+    }
+  }, []);
+
+  const handleGeofenceEnabledChange = useCallback((value: boolean) => {
+    setGeofenceEnabled(value);
+    setGeofenceRadius(prev => {
+      setAutoClockIn(prevIn => {
+        setAutoClockOut(prevOut => {
+          saveGeofenceSettings({ enabled: value, radius: prev, autoClockIn: prevIn, autoClockOut: prevOut });
+          return prevOut;
+        });
+        return prevIn;
+      });
+      return prev;
+    });
+  }, [saveGeofenceSettings]);
+
+  const handleRadiusChange = useCallback((value: number | number[]) => {
+    // Slider can return array or single value, normalize to number
+    const numValue = Array.isArray(value) ? value[0] : value;
+    setGeofenceRadius(numValue);
+  }, []);
+
+  const handleRadiusChangeComplete = useCallback((value: number | number[]) => {
+    const numValue = Array.isArray(value) ? value[0] : value;
+    setGeofenceEnabled(prev => {
+      setAutoClockIn(prevIn => {
+        setAutoClockOut(prevOut => {
+          saveGeofenceSettings({ enabled: prev, radius: numValue, autoClockIn: prevIn, autoClockOut: prevOut });
+          return prevOut;
+        });
+        return prevIn;
+      });
+      return prev;
+    });
+  }, [saveGeofenceSettings]);
+
+  const handleAutoClockInChange = useCallback((value: boolean) => {
+    setAutoClockIn(value);
+    setGeofenceEnabled(prev => {
+      setGeofenceRadius(prevRadius => {
+        setAutoClockOut(prevOut => {
+          saveGeofenceSettings({ enabled: prev, radius: prevRadius, autoClockIn: value, autoClockOut: prevOut });
+          return prevOut;
+        });
+        return prevRadius;
+      });
+      return prev;
+    });
+  }, [saveGeofenceSettings]);
+
+  const handleAutoClockOutChange = useCallback((value: boolean) => {
+    setAutoClockOut(value);
+    setGeofenceEnabled(prev => {
+      setGeofenceRadius(prevRadius => {
+        setAutoClockIn(prevIn => {
+          saveGeofenceSettings({ enabled: prev, radius: prevRadius, autoClockIn: prevIn, autoClockOut: value });
+          return prevIn;
+        });
+        return prevRadius;
+      });
+      return prev;
+    });
+  }, [saveGeofenceSettings]);
 
   const refreshData = useCallback(async () => {
     setIsLoading(true);
+    await loadGeofenceSettings();
     setIsLoading(false);
-  }, []);
+  }, [loadGeofenceSettings]);
 
   useEffect(() => {
     refreshData();
@@ -389,6 +492,97 @@ export default function SettingsScreen() {
               );
             })}
           </ScrollView>
+
+          {activeTab === 'jobs' && (
+            <View style={styles.tabContentSection}>
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="map-pin" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Geofence Settings</Text>
+                </View>
+
+                <View style={[styles.featureRow, { justifyContent: 'space-between' }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
+                    <Feather name="target" size={16} color={colors.mutedForeground} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.featureText}>Enable Geofence for New Jobs</Text>
+                      <Text style={[styles.planDescription, { marginTop: 2 }]}>Auto-enable location tracking on new jobs</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={geofenceEnabled}
+                    onValueChange={handleGeofenceEnabledChange}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={geofenceEnabled ? colors.primary : colors.mutedForeground}
+                  />
+                </View>
+
+                {geofenceEnabled && (
+                  <>
+                    <View style={{ marginTop: spacing.lg, paddingTop: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border }}>
+                      <Text style={styles.featureText}>Default Radius: {geofenceRadius}m</Text>
+                      <View style={{ marginTop: spacing.md }}>
+                        <Slider
+                          minimumValue={50}
+                          maximumValue={500}
+                          step={25}
+                          value={geofenceRadius}
+                          onValueChange={handleRadiusChange}
+                          onSlidingComplete={handleRadiusChangeComplete}
+                          minimumTrackTintColor={colors.primary}
+                          maximumTrackTintColor={colors.muted}
+                          thumbTintColor={colors.primary}
+                        />
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs }}>
+                        <Text style={styles.planDescription}>50m</Text>
+                        <Text style={styles.planDescription}>500m</Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.featureRow, { justifyContent: 'space-between', marginTop: spacing.md }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
+                        <Feather name="log-in" size={16} color={colors.mutedForeground} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.featureText}>Auto Clock-In</Text>
+                          <Text style={[styles.planDescription, { marginTop: 2 }]}>Start timer when entering job site</Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={autoClockIn}
+                        onValueChange={handleAutoClockInChange}
+                        trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                        thumbColor={autoClockIn ? colors.primary : colors.mutedForeground}
+                      />
+                    </View>
+
+                    <View style={[styles.featureRow, { justifyContent: 'space-between', marginTop: spacing.sm }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
+                        <Feather name="log-out" size={16} color={colors.mutedForeground} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.featureText}>Auto Clock-Out</Text>
+                          <Text style={[styles.planDescription, { marginTop: 2 }]}>Stop timer when leaving job site</Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={autoClockOut}
+                        onValueChange={handleAutoClockOutChange}
+                        trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                        thumbColor={autoClockOut ? colors.primary : colors.mutedForeground}
+                      />
+                    </View>
+                  </>
+                )}
+              </View>
+
+              <View style={styles.settingsInfoCard}>
+                <Text style={styles.settingsInfoTitle}>About Geofencing</Text>
+                <Text style={styles.settingsInfoText}>
+                  Geofencing uses your phone's location to automatically track when you arrive at and leave job sites. These settings apply as defaults for all new jobs you create.
+                </Text>
+              </View>
+            </View>
+          )}
 
           {activeTab === 'plan' && (
             <View style={styles.planSection}>
