@@ -63,7 +63,7 @@ import CustomForms from "@/pages/CustomForms";
 import MyAccount from "@/pages/MyAccount";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
-import AppWalkthrough, { useAppWalkthrough } from "@/components/AppWalkthrough";
+import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
 
 // Types for job completion
 interface JobPhoto {
@@ -502,14 +502,14 @@ function AppLayout() {
   const [quoteModal, setQuoteModal] = useState<{ isOpen: boolean; quoteId: string | null }>({ isOpen: false, quoteId: null });
   const [invoiceModal, setInvoiceModal] = useState<{ isOpen: boolean; invoiceId: string | null }>({ isOpen: false, invoiceId: null });
   
-  // App walkthrough state
+  // Guided tour state
   const { 
-    showWalkthrough, 
-    hasCompleted: walkthroughCompleted, 
-    startWalkthrough, 
-    closeWalkthrough, 
-    completeWalkthrough 
-  } = useAppWalkthrough();
+    showTour, 
+    hasCompleted: tourCompleted, 
+    startTour, 
+    closeTour, 
+    completeTour 
+  } = useGuidedTour();
 
   // Detect OAuth callback and trigger auth refresh
   useEffect(() => {
@@ -678,16 +678,16 @@ function AppLayout() {
     }
   }, [userCheck?.tradeType]);
 
-  // Listen for walkthrough trigger from settings
+  // Listen for guided tour trigger from settings
   useEffect(() => {
-    const handleStartWalkthrough = () => {
-      startWalkthrough();
+    const handleStartTour = () => {
+      startTour();
     };
-    window.addEventListener('start-walkthrough', handleStartWalkthrough);
+    window.addEventListener('start-guided-tour', handleStartTour);
     return () => {
-      window.removeEventListener('start-walkthrough', handleStartWalkthrough);
+      window.removeEventListener('start-guided-tour', handleStartTour);
     };
-  }, [startWalkthrough]);
+  }, [startTour]);
 
   // Sync brand theme from backend to ThemeProvider ONLY on initial load
   // We use a ref to track if we've already synced to prevent overriding user's local changes
@@ -944,12 +944,11 @@ function AppLayout() {
         />
       )}
       
-      {/* App Walkthrough Tutorial */}
-      <AppWalkthrough
-        isOpen={showWalkthrough}
-        onClose={closeWalkthrough}
-        onComplete={completeWalkthrough}
-        onNavigate={handleNavigation}
+      {/* Guided Tour */}
+      <GuidedTour
+        isOpen={showTour}
+        onClose={closeTour}
+        onComplete={completeTour}
       />
     </>
   );

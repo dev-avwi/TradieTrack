@@ -2546,9 +2546,10 @@ function SupportTab() {
                     variant="default"
                     size="sm"
                     onClick={() => {
-                      localStorage.removeItem("tradietrack-walkthrough-completed");
-                      localStorage.removeItem("tradietrack-walkthrough-skipped");
-                      window.dispatchEvent(new CustomEvent("start-walkthrough"));
+                      localStorage.removeItem("tradietrack-tour-completed");
+                      localStorage.removeItem("tradietrack-tour-completed-date");
+                      localStorage.removeItem("tradietrack-tour-skipped");
+                      window.dispatchEvent(new CustomEvent("start-guided-tour"));
                     }}
                     className="mt-2"
                     data-testid="button-start-tour"
