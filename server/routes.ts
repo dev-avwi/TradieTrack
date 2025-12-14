@@ -8525,6 +8525,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/stripe/terminal-connection-token", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
+      const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ error: 'Payment processing not available' });
+      }
+      
       const settings = await storage.getBusinessSettings(userId);
       
       if (!settings?.stripeConnectAccountId) {
@@ -8548,6 +8553,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/stripe/terminal-location", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
+      const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ error: 'Payment processing not available' });
+      }
+      
       const settings = await storage.getBusinessSettings(userId);
       
       if (!settings?.stripeConnectAccountId) {
@@ -8590,6 +8600,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/stripe/create-terminal-payment-intent", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
+      const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ error: 'Payment processing not available' });
+      }
+      
       const { amount, description, currency = 'aud', invoiceId, jobId } = req.body;
       
       if (!amount || amount < 500) {
