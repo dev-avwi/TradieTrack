@@ -850,6 +850,8 @@ export default function NewInvoiceScreen() {
               business={businessInfo}
               client={clientInfo}
               gstEnabled={user?.gstEnabled !== false}
+              templateId={(businessSettings as any)?.documentTemplate || 'minimal'}
+              templateCustomization={(businessSettings as any)?.documentTemplateSettings}
             />
           </View>
         )}

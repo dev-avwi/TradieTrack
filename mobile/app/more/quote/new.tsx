@@ -961,6 +961,8 @@ export default function NewQuoteScreen() {
               gstEnabled={user?.gstEnabled !== false}
               showDepositSection={form.requireDeposit}
               depositPercent={parseInt(form.depositPercent) || 50}
+              templateId={(businessSettings as any)?.documentTemplate || 'minimal'}
+              templateCustomization={(businessSettings as any)?.documentTemplateSettings}
             />
           </View>
         )}
