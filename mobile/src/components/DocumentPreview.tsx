@@ -13,6 +13,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { colors } from '../lib/colors';
 import { useAuthStore } from '../lib/store';
+import { getTemplateStyles, TemplateId, TemplateCustomization } from '../lib/document-templates';
 
 interface LineItem {
   id: string;
@@ -45,9 +46,18 @@ interface DocumentPreviewProps {
     depositRequired?: number;
     depositPaid?: boolean;
   };
+  templateId?: TemplateId;
+  templateCustomization?: TemplateCustomization;
 }
 
-export function DocumentPreview({ visible, onClose, type, document }: DocumentPreviewProps) {
+export function DocumentPreview({ 
+  visible, 
+  onClose, 
+  type, 
+  document,
+  templateId,
+  templateCustomization 
+}: DocumentPreviewProps) {
   const { businessSettings } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -82,7 +92,19 @@ export function DocumentPreview({ visible, onClose, type, document }: DocumentPr
     }
   };
 
+  const effectiveTemplateId = templateId || businessSettings?.documentTemplate || 'minimal';
+  const effectiveCustomization = templateCustomization || businessSettings?.documentTemplateSettings;
   const brandColor = businessSettings?.primaryColor || '#3b82f6';
+  
+  const templateStyles = getTemplateStyles(
+    effectiveTemplateId as TemplateId,
+    brandColor,
+    effectiveCustomization
+  );
+
+  // Dynamic text styles based on template
+  const bodyTextStyle = { fontWeight: String(templateStyles.template.bodyWeight) as '400' | '500' | '600' | '700' };
+  const headingTextStyle = { fontWeight: String(templateStyles.template.headingWeight) as '600' | '700' | '800', color: templateStyles.primaryColor };
 
   return (
     <Modal
@@ -107,7 +129,7 @@ export function DocumentPreview({ visible, onClose, type, document }: DocumentPr
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={brandColor} />
+            <ActivityIndicator size="large" color={templateStyles.primaryColor} />
             <Text style={styles.loadingText}>Loading preview...</Text>
           </View>
         ) : (
@@ -116,7 +138,11 @@ export function DocumentPreview({ visible, onClose, type, document }: DocumentPr
             <View style={styles.documentContainer}>
               <View style={styles.document}>
                 {/* Document Header */}
-                <View style={[styles.documentHeader, { backgroundColor: brandColor }]}>
+                <View style={[
+                  styles.documentHeader, 
+                  { backgroundColor: templateStyles.primaryColor },
+                  templateStyles.headerStyle
+                ]}>
                   <View style={styles.businessInfo}>
                     {businessSettings?.logoUrl && (
                       <Image 
@@ -152,89 +178,100 @@ export function DocumentPreview({ visible, onClose, type, document }: DocumentPr
                   {/* Client & Dates Row */}
                   <View style={styles.infoRow}>
                     <View style={styles.infoColumn}>
-                      <Text style={styles.infoLabel}>Bill To:</Text>
-                      <Text style={styles.clientName}>{document.clientName}</Text>
+                      <Text style={[styles.infoLabel, headingTextStyle]}>Bill To:</Text>
+                      <Text style={[styles.clientName, bodyTextStyle]}>{document.clientName}</Text>
                       {document.clientEmail && (
-                        <Text style={styles.clientDetail}>{document.clientEmail}</Text>
+                        <Text style={[styles.clientDetail, bodyTextStyle]}>{document.clientEmail}</Text>
                       )}
                       {document.clientPhone && (
-                        <Text style={styles.clientDetail}>{document.clientPhone}</Text>
+                        <Text style={[styles.clientDetail, bodyTextStyle]}>{document.clientPhone}</Text>
                       )}
                       {document.clientAddress && (
-                        <Text style={styles.clientDetail}>{document.clientAddress}</Text>
+                        <Text style={[styles.clientDetail, bodyTextStyle]}>{document.clientAddress}</Text>
                       )}
                     </View>
                     <View style={styles.infoColumn}>
                       <View style={styles.dateRow}>
-                        <Text style={styles.dateLabel}>Date:</Text>
-                        <Text style={styles.dateValue}>{formatDate(document.createdAt)}</Text>
+                        <Text style={[styles.dateLabel, headingTextStyle]}>Date:</Text>
+                        <Text style={[styles.dateValue, bodyTextStyle]}>{formatDate(document.createdAt)}</Text>
                       </View>
                       {document.validUntil && (
                         <View style={styles.dateRow}>
-                          <Text style={styles.dateLabel}>Valid Until:</Text>
-                          <Text style={styles.dateValue}>{formatDate(document.validUntil)}</Text>
+                          <Text style={[styles.dateLabel, headingTextStyle]}>Valid Until:</Text>
+                          <Text style={[styles.dateValue, bodyTextStyle]}>{formatDate(document.validUntil)}</Text>
                         </View>
                       )}
                       {document.dueDate && (
                         <View style={styles.dateRow}>
-                          <Text style={styles.dateLabel}>Due Date:</Text>
-                          <Text style={styles.dateValue}>{formatDate(document.dueDate)}</Text>
+                          <Text style={[styles.dateLabel, headingTextStyle]}>Due Date:</Text>
+                          <Text style={[styles.dateValue, bodyTextStyle]}>{formatDate(document.dueDate)}</Text>
                         </View>
                       )}
                     </View>
                   </View>
 
                   {/* Line Items Table */}
-                  <View style={styles.itemsTable}>
-                    <View style={[styles.tableHeader, { backgroundColor: brandColor + '15' }]}>
-                      <Text style={[styles.tableHeaderText, { flex: 2 }]}>Description</Text>
-                      <Text style={[styles.tableHeaderText, styles.textCenter]}>Qty</Text>
-                      <Text style={[styles.tableHeaderText, styles.textRight]}>Price</Text>
-                      <Text style={[styles.tableHeaderText, styles.textRight]}>Total</Text>
+                  <View style={[styles.itemsTable, { borderRadius: templateStyles.borderRadius }]}>
+                    <View style={[
+                      styles.tableHeader, 
+                      { 
+                        backgroundColor: templateStyles.tableHeaderStyle.backgroundColor,
+                        borderTopLeftRadius: templateStyles.borderRadius,
+                        borderTopRightRadius: templateStyles.borderRadius,
+                      }
+                    ]}>
+                      <Text style={[styles.tableHeaderText, { flex: 2, color: templateStyles.tableHeaderStyle.color }]}>Description</Text>
+                      <Text style={[styles.tableHeaderText, styles.textCenter, { color: templateStyles.tableHeaderStyle.color }]}>Qty</Text>
+                      <Text style={[styles.tableHeaderText, styles.textRight, { color: templateStyles.tableHeaderStyle.color }]}>Price</Text>
+                      <Text style={[styles.tableHeaderText, styles.textRight, { color: templateStyles.tableHeaderStyle.color }]}>Total</Text>
                     </View>
                     
-                    {document.lineItems.map((item, index) => (
-                      <View 
-                        key={item.id} 
-                        style={[
-                          styles.tableRow,
-                          index % 2 === 1 && styles.tableRowAlt
-                        ]}
-                      >
-                        <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={2}>
-                          {item.description}
-                        </Text>
-                        <Text style={[styles.tableCell, styles.textCenter]}>{item.quantity}</Text>
-                        <Text style={[styles.tableCell, styles.textRight]}>
-                          {formatCurrency(item.unitPrice)}
-                        </Text>
-                        <Text style={[styles.tableCell, styles.textRight]}>
-                          {formatCurrency(item.total)}
-                        </Text>
-                      </View>
-                    ))}
+                    {document.lineItems.map((item, index) => {
+                      const isLast = index === document.lineItems.length - 1;
+                      const rowStyle = templateStyles.getTableRowStyle(index, isLast);
+                      return (
+                        <View 
+                          key={item.id} 
+                          style={[
+                            styles.tableRow,
+                            rowStyle
+                          ]}
+                        >
+                          <Text style={[styles.tableCell, { flex: 2 }, bodyTextStyle]} numberOfLines={2}>
+                            {item.description}
+                          </Text>
+                          <Text style={[styles.tableCell, styles.textCenter, bodyTextStyle]}>{item.quantity}</Text>
+                          <Text style={[styles.tableCell, styles.textRight, bodyTextStyle]}>
+                            {formatCurrency(item.unitPrice)}
+                          </Text>
+                          <Text style={[styles.tableCell, styles.textRight, bodyTextStyle]}>
+                            {formatCurrency(item.total)}
+                          </Text>
+                        </View>
+                      );
+                    })}
                   </View>
 
                   {/* Totals */}
-                  <View style={styles.totalsContainer}>
+                  <View style={[styles.totalsContainer, templateStyles.sectionStyle]}>
                     <View style={styles.totalsRow}>
-                      <Text style={styles.totalsLabel}>Subtotal</Text>
-                      <Text style={styles.totalsValue}>{formatCurrency(document.subtotal)}</Text>
+                      <Text style={[styles.totalsLabel, bodyTextStyle]}>Subtotal</Text>
+                      <Text style={[styles.totalsValue, bodyTextStyle]}>{formatCurrency(document.subtotal)}</Text>
                     </View>
                     <View style={styles.totalsRow}>
-                      <Text style={styles.totalsLabel}>GST (10%)</Text>
-                      <Text style={styles.totalsValue}>{formatCurrency(document.gstAmount)}</Text>
+                      <Text style={[styles.totalsLabel, bodyTextStyle]}>GST (10%)</Text>
+                      <Text style={[styles.totalsValue, bodyTextStyle]}>{formatCurrency(document.gstAmount)}</Text>
                     </View>
-                    <View style={[styles.totalsRow, styles.totalsFinal]}>
-                      <Text style={styles.totalsFinalLabel}>Total (AUD)</Text>
-                      <Text style={[styles.totalsFinalValue, { color: brandColor }]}>
+                    <View style={[styles.totalsRow, styles.totalsFinal, { borderTopColor: templateStyles.primaryColor }]}>
+                      <Text style={[styles.totalsFinalLabel, headingTextStyle]}>Total (AUD)</Text>
+                      <Text style={[styles.totalsFinalValue, { color: templateStyles.primaryColor }]}>
                         {formatCurrency(document.total)}
                       </Text>
                     </View>
                     {document.depositRequired && !document.depositPaid && (
                       <View style={styles.depositRow}>
-                        <Text style={styles.depositLabel}>Deposit Required</Text>
-                        <Text style={styles.depositValue}>
+                        <Text style={[styles.depositLabel, bodyTextStyle]}>Deposit Required</Text>
+                        <Text style={[styles.depositValue, bodyTextStyle]}>
                           {formatCurrency(document.depositRequired)}
                         </Text>
                       </View>
@@ -243,24 +280,24 @@ export function DocumentPreview({ visible, onClose, type, document }: DocumentPr
 
                   {/* Notes */}
                   {document.notes && (
-                    <View style={styles.notesSection}>
-                      <Text style={styles.notesTitle}>Notes</Text>
-                      <Text style={styles.notesText}>{document.notes}</Text>
+                    <View style={[styles.notesSection, templateStyles.getNoteStyle()]}>
+                      <Text style={[styles.notesTitle, headingTextStyle]}>Notes</Text>
+                      <Text style={[styles.notesText, bodyTextStyle]}>{document.notes}</Text>
                     </View>
                   )}
 
                   {/* Footer */}
-                  <View style={styles.documentFooter}>
-                    <Text style={styles.footerText}>
+                  <View style={[styles.documentFooter, { borderTopColor: templateStyles.primaryColor }]}>
+                    <Text style={[styles.footerText, headingTextStyle]}>
                       Thank you for your business!
                     </Text>
                     {businessSettings?.phone && (
-                      <Text style={styles.footerContact}>
+                      <Text style={[styles.footerContact, bodyTextStyle]}>
                         Phone: {businessSettings.phone}
                       </Text>
                     )}
                     {businessSettings?.email && (
-                      <Text style={styles.footerContact}>
+                      <Text style={[styles.footerContact, bodyTextStyle]}>
                         Email: {businessSettings.email}
                       </Text>
                     )}
@@ -435,7 +472,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
     overflow: 'hidden',
   },
   tableHeader: {
@@ -447,18 +483,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11,
     fontWeight: '600',
-    color: colors.foreground,
     textTransform: 'uppercase',
   },
   tableRow: {
     flexDirection: 'row',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  tableRowAlt: {
-    backgroundColor: colors.muted + '40',
   },
   tableCell: {
     flex: 1,
@@ -492,7 +522,6 @@ const styles = StyleSheet.create({
   },
   totalsFinal: {
     borderTopWidth: 2,
-    borderTopColor: colors.border,
     marginTop: 4,
     paddingTop: 10,
   },
@@ -525,15 +554,12 @@ const styles = StyleSheet.create({
     color: colors.warning,
   },
   notesSection: {
-    backgroundColor: colors.muted,
-    borderRadius: 8,
     padding: 14,
     marginBottom: 20,
   },
   notesTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.mutedForeground,
     textTransform: 'uppercase',
     marginBottom: 6,
   },
@@ -544,7 +570,6 @@ const styles = StyleSheet.create({
   },
   documentFooter: {
     borderTopWidth: 1,
-    borderTopColor: colors.border,
     paddingTop: 16,
     alignItems: 'center',
   },

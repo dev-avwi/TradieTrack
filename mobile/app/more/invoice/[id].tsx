@@ -8,10 +8,12 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
-  Image
+  Image,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useInvoicesStore, useClientsStore, useAuthStore, useQuotesStore } from '../../../src/lib/store';
 import { colors } from '../../../src/lib/colors';
 import { DocumentPreview } from '../../../src/components/DocumentPreview';
@@ -39,6 +41,7 @@ export default function InvoiceDetailScreen() {
   const [showPreview, setShowPreview] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [isTogglingPayment, setIsTogglingPayment] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   
   const brandColor = businessSettings?.primaryColor || user?.brandColor || '#2563eb';
 
@@ -211,6 +214,46 @@ export default function InvoiceDetailScreen() {
     router.push(`/(tabs)/collect?invoiceId=${id}`);
   };
 
+  const handleDownloadPdf = async () => {
+    if (!invoice || isDownloadingPdf) return;
+    
+    setIsDownloadingPdf(true);
+    try {
+      const fileUri = `${FileSystem.documentDirectory}${invoice.invoiceNumber || 'invoice'}.pdf`;
+      
+      const downloadResult = await FileSystem.downloadAsync(
+        `${API_URL}/api/invoices/${id}/pdf`,
+        fileUri,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (downloadResult.status !== 200) {
+        throw new Error('Failed to download PDF');
+      }
+
+      // Check if sharing is available and use expo-sharing for both platforms
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Invoice ${invoice.invoiceNumber}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Success', `PDF saved to device. File: ${invoice.invoiceNumber}.pdf`);
+      }
+    } catch (error) {
+      console.log('PDF download error:', error);
+      Alert.alert('Error', 'Failed to download PDF. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <>
@@ -307,6 +350,18 @@ export default function InvoiceDetailScreen() {
             >
               <Feather name="eye" size={20} color={colors.primary} />
               <Text style={styles.quickActionText}>Preview</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.quickAction}
+              onPress={handleDownloadPdf}
+              disabled={isDownloadingPdf}
+            >
+              {isDownloadingPdf ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Feather name="download" size={20} color={colors.primary} />
+              )}
+              <Text style={styles.quickActionText}>PDF</Text>
             </TouchableOpacity>
             {invoice.status === 'draft' && (
               <TouchableOpacity style={styles.quickAction}>
@@ -569,6 +624,8 @@ export default function InvoiceDetailScreen() {
         onClose={() => setShowPreview(false)}
         type="invoice"
         document={previewDocument}
+        templateId={businessSettings?.documentTemplate}
+        templateCustomization={businessSettings?.documentTemplateSettings}
       />
 
       {/* Email Compose Modal */}

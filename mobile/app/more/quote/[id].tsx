@@ -6,10 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert
+  Alert,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useQuotesStore, useClientsStore, useAuthStore } from '../../../src/lib/store';
 import { colors } from '../../../src/lib/colors';
 import { DocumentPreview } from '../../../src/components/DocumentPreview';
@@ -34,6 +36,7 @@ export default function QuoteDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   
   const brandColor = businessSettings?.primaryColor || user?.brandColor || '#2563eb';
 
@@ -163,6 +166,46 @@ export default function QuoteDetailScreen() {
     });
   };
 
+  const handleDownloadPdf = async () => {
+    if (!quote || isDownloadingPdf) return;
+    
+    setIsDownloadingPdf(true);
+    try {
+      const fileUri = `${FileSystem.documentDirectory}${quote.quoteNumber || 'quote'}.pdf`;
+      
+      const downloadResult = await FileSystem.downloadAsync(
+        `${API_URL}/api/quotes/${id}/pdf`,
+        fileUri,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (downloadResult.status !== 200) {
+        throw new Error('Failed to download PDF');
+      }
+
+      // Check if sharing is available and use expo-sharing for both platforms
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Quote ${quote.quoteNumber}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Success', `PDF saved to device. File: ${quote.quoteNumber}.pdf`);
+      }
+    } catch (error) {
+      console.log('PDF download error:', error);
+      Alert.alert('Error', 'Failed to download PDF. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <>
@@ -252,6 +295,18 @@ export default function QuoteDetailScreen() {
             >
               <Feather name="eye" size={20} color={colors.primary} />
               <Text style={styles.quickActionText}>Preview</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.quickAction}
+              onPress={handleDownloadPdf}
+              disabled={isDownloadingPdf}
+            >
+              {isDownloadingPdf ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Feather name="download" size={20} color={colors.primary} />
+              )}
+              <Text style={styles.quickActionText}>PDF</Text>
             </TouchableOpacity>
             {quote.status === 'draft' && (
               <TouchableOpacity style={styles.quickAction}>
@@ -474,6 +529,8 @@ export default function QuoteDetailScreen() {
         onClose={() => setShowPreview(false)}
         type="quote"
         document={previewDocument}
+        templateId={businessSettings?.documentTemplate}
+        templateCustomization={businessSettings?.documentTemplateSettings}
       />
 
       {/* Email Compose Modal */}
