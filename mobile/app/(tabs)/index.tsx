@@ -713,6 +713,8 @@ export default function DashboardScreen() {
   const overdueCount = stats.overdueJobs || 0;
   const quotesCount = stats.pendingQuotes || 0;
   const monthRevenue = formatCurrency(stats.thisMonthRevenue || 0);
+  const outstandingAmount = formatCurrency(stats.outstandingAmount || 0);
+  const paidLast30Days = formatCurrency(stats.paidLast30Days || 0);
 
   // Calculate this week's jobs (next 7 days, excluding today) for staff
   const thisWeeksJobs = useMemo(() => {
@@ -836,6 +838,14 @@ export default function DashboardScreen() {
           ) : (
             <>
               <KPICard
+                title="Outstanding"
+                value={outstandingAmount}
+                icon="dollar-sign"
+                iconBg={colors.warningLight}
+                iconColor={colors.warning}
+                onPress={() => router.push('/more/invoices')}
+              />
+              <KPICard
                 title="Overdue"
                 value={overdueCount}
                 icon="alert-circle"
@@ -844,20 +854,20 @@ export default function DashboardScreen() {
                 onPress={() => router.push('/more/invoices')}
               />
               <KPICard
-                title="Quotes Pending"
-                value={quotesCount}
-                icon="clock"
-                iconBg={colors.muted}
-                iconColor={colors.mutedForeground}
-                onPress={() => router.push('/more/quotes')}
-              />
-              <KPICard
-                title="This Month"
-                value={monthRevenue}
-                icon="trending-up"
+                title="Paid (30d)"
+                value={paidLast30Days}
+                icon="check-circle"
                 iconBg={colors.successLight}
                 iconColor={colors.success}
                 onPress={() => router.push('/more/invoices')}
+              />
+              <KPICard
+                title="Quotes"
+                value={quotesCount}
+                icon="file-text"
+                iconBg={colors.muted}
+                iconColor={colors.mutedForeground}
+                onPress={() => router.push('/more/quotes')}
               />
             </>
           )}
@@ -1036,8 +1046,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   contentContainer: {
-    padding: spacing.lg,
-    paddingBottom: 100,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
+    paddingBottom: pageShell.paddingBottom,
   },
 
   // Header
@@ -1125,9 +1136,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.sm,
   },
 
-  // Sections
+  // Sections - consistent 24px section gaps to match web space-y-6
   section: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing['3xl'],
   },
   sectionLabel: {
     ...typography.label,

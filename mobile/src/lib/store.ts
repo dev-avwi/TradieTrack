@@ -1223,6 +1223,8 @@ interface DashboardStats {
   pendingQuotes: number;
   thisMonthRevenue: number;
   unpaidInvoices: number;
+  outstandingAmount: number;
+  paidLast30Days: number;
 }
 
 interface DashboardState {
@@ -1239,6 +1241,8 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     pendingQuotes: 0,
     thisMonthRevenue: 0,
     unpaidInvoices: 0,
+    outstandingAmount: 0,
+    paidLast30Days: 0,
   },
   isLoading: false,
 
@@ -1286,6 +1290,22 @@ export const useDashboardStore = create<DashboardState>((set) => ({
       i.status === 'sent' || i.status === 'overdue'
     ).length;
 
+    // Calculate outstanding amount (total value of unpaid invoices)
+    const outstandingAmount = invoices
+      .filter(i => i.status === 'sent' || i.status === 'overdue')
+      .reduce((sum, i) => sum + ((i.total || 0) - (i.amountPaid || 0)), 0);
+
+    // Calculate paid in last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const paidLast30Days = invoices
+      .filter(i => {
+        if (i.status !== 'paid' || !i.paidAt) return false;
+        const paidDate = new Date(i.paidAt);
+        return paidDate >= thirtyDaysAgo;
+      })
+      .reduce((sum, i) => sum + (i.total || 0), 0);
+
     set({
       stats: {
         jobsToday,
@@ -1293,6 +1313,8 @@ export const useDashboardStore = create<DashboardState>((set) => ({
         pendingQuotes,
         thisMonthRevenue: thisMonthRevenue / 100, // Convert cents to dollars
         unpaidInvoices,
+        outstandingAmount: outstandingAmount / 100, // Convert cents to dollars
+        paidLast30Days: paidLast30Days / 100, // Convert cents to dollars
       },
       isLoading: false,
     });

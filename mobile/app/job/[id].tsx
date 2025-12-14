@@ -145,8 +145,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
     paddingBottom: pageShell.paddingBottom,
   },
   loadingContainer: {
@@ -197,8 +197,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
+    padding: spacing.xl,
+    marginBottom: spacing.xl,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,

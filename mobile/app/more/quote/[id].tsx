@@ -7,6 +7,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -17,6 +19,13 @@ import { colors } from '../../../src/lib/colors';
 import { DocumentPreview } from '../../../src/components/DocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { API_URL } from '../../../src/lib/api';
+
+const TEMPLATE_OPTIONS = [
+  { id: 'professional', name: 'Professional', description: 'Clean, minimal design' },
+  { id: 'modern', name: 'Modern', description: 'Contemporary with accent colors' },
+  { id: 'classic', name: 'Classic', description: 'Traditional business style' },
+  { id: 'bold', name: 'Bold', description: 'Strong branding focus' },
+];
 
 const STATUS_CONFIG = {
   draft: { label: 'Draft', color: colors.mutedForeground, bg: colors.cardHover },
@@ -37,6 +46,10 @@ export default function QuoteDetailScreen() {
   const [showPreview, setShowPreview] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState(businessSettings?.documentTemplate || 'professional');
+  const [showDepositEditor, setShowDepositEditor] = useState(false);
+  const [depositPercent, setDepositPercent] = useState('');
   
   const brandColor = businessSettings?.primaryColor || user?.brandColor || '#2563eb';
 
@@ -308,12 +321,13 @@ export default function QuoteDetailScreen() {
               )}
               <Text style={styles.quickActionText}>PDF</Text>
             </TouchableOpacity>
-            {quote.status === 'draft' && (
-              <TouchableOpacity style={styles.quickAction}>
-                <Feather name="edit-2" size={20} color={colors.primary} />
-                <Text style={styles.quickActionText}>Edit</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity 
+              style={styles.quickAction}
+              onPress={() => setShowTemplateSelector(true)}
+            >
+              <Feather name="layout" size={20} color={colors.primary} />
+              <Text style={styles.quickActionText}>Template</Text>
+            </TouchableOpacity>
             {quote.status === 'accepted' && (
               <TouchableOpacity 
                 style={[styles.quickAction, styles.quickActionPrimary]}
@@ -547,6 +561,46 @@ export default function QuoteDetailScreen() {
         businessName={user?.businessName}
         onSend={handleEmailSend}
       />
+
+      {/* Template Selector Modal */}
+      <Modal
+        visible={showTemplateSelector}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTemplateSelector(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.templateModalContent}>
+            <View style={styles.templateModalHeader}>
+              <Text style={styles.templateModalTitle}>Select Template</Text>
+              <TouchableOpacity onPress={() => setShowTemplateSelector(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            {TEMPLATE_OPTIONS.map((template) => (
+              <TouchableOpacity
+                key={template.id}
+                style={[
+                  styles.templateOption,
+                  selectedTemplate === template.id && styles.templateOptionSelected
+                ]}
+                onPress={() => {
+                  setSelectedTemplate(template.id);
+                  setShowTemplateSelector(false);
+                }}
+              >
+                <View style={styles.templateOptionContent}>
+                  <Text style={styles.templateOptionName}>{template.name}</Text>
+                  <Text style={styles.templateOptionDesc}>{template.description}</Text>
+                </View>
+                {selectedTemplate === template.id && (
+                  <Feather name="check" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -967,5 +1021,54 @@ const styles = StyleSheet.create({
   abnFooter: {
     fontSize: 12,
     color: colors.mutedForeground,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  templateModalContent: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '70%',
+  },
+  templateModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  templateModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  templateOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 12,
+  },
+  templateOptionSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  templateOptionContent: {
+    flex: 1,
+  },
+  templateOptionName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  templateOptionDesc: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 2,
   },
 });

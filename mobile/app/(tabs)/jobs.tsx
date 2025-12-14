@@ -663,7 +663,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: spacing.lg,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
     paddingBottom: pageShell.paddingBottom,
   },
 
@@ -809,9 +810,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
 
-  // Section
+  // Section - consistent 24px section gaps to match web space-y-6
   section: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing['3xl'],
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -882,9 +883,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Jobs List - compact with left accent bar
+  // Jobs List - consistent gap-4 (16px) to match web
   jobsList: {
-    gap: 10,
+    gap: spacing.xl,
   },
   jobCard: {
     flexDirection: 'row',

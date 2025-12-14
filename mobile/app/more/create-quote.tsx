@@ -718,10 +718,28 @@ export default function CreateQuoteScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Line Items</Text>
-              <TouchableOpacity style={styles.addButton} onPress={addLineItem}>
-                <Feather name="plus" size={16} color={colors.primary} />
-                <Text style={styles.addButtonText}>Add Item</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity 
+                  style={[styles.addButton, { backgroundColor: `${colors.primary}15`, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }]} 
+                  onPress={() => {
+                    Alert.alert(
+                      'AI Line Item Generator',
+                      'Describe the work you need to quote and AI will suggest line items with pricing.',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Coming Soon', onPress: () => {} }
+                      ]
+                    );
+                  }}
+                >
+                  <Feather name="zap" size={14} color={colors.primary} />
+                  <Text style={[styles.addButtonText, { fontSize: 13 }]}>AI</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.addButton} onPress={addLineItem}>
+                  <Feather name="plus" size={16} color={colors.primary} />
+                  <Text style={styles.addButtonText}>Add Item</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {lineItems.map((item) => (
