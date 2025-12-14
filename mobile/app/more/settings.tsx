@@ -13,6 +13,7 @@ import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
+import AppTour from '../../src/components/AppTour';
 
 const PLAN_FEATURES = [
   { icon: 'briefcase', text: 'Unlimited jobs, quotes & invoices', pro: true },
@@ -305,6 +306,7 @@ export default function SettingsScreen() {
   const { businessSettings } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('plan');
+  const [showTour, setShowTour] = useState(false);
 
   const refreshData = useCallback(async () => {
     setIsLoading(true);
@@ -517,6 +519,20 @@ export default function SettingsScreen() {
           {activeTab === 'help' && (
             <View style={styles.tabContentSection}>
               <TouchableOpacity 
+                style={[styles.settingsCard, { borderColor: colors.primary, borderWidth: 2 }]}
+                onPress={() => setShowTour(true)}
+              >
+                <View style={styles.settingsCardHeader}>
+                  <Feather name="compass" size={20} color={colors.primary} />
+                  <View style={styles.settingsCardInfo}>
+                    <Text style={styles.settingsCardTitle}>Start App Tour</Text>
+                    <Text style={styles.settingsCardSubtitle}>Quick walkthrough of the app</Text>
+                  </View>
+                </View>
+                <Feather name="play-circle" size={18} color={colors.primary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
                 style={styles.settingsCard}
                 onPress={() => Linking.openURL('mailto:support@tradietrack.com.au')}
               >
@@ -553,6 +569,11 @@ export default function SettingsScreen() {
             </View>
           )}
         </ScrollView>
+
+        <AppTour 
+          visible={showTour} 
+          onClose={() => setShowTour(false)} 
+        />
       </View>
     </>
   );
