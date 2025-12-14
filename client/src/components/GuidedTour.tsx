@@ -292,46 +292,65 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
       className="fixed inset-0 z-[9999]"
       data-testid="guided-tour-overlay"
     >
-      {/* Dark overlay with spotlight cutout */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none">
-        <defs>
-          <mask id="spotlight-mask">
-            <rect x="0" y="0" width="100%" height="100%" fill="white" />
-            {targetRect && (
-              <rect
-                x={targetRect.left - 8}
-                y={targetRect.top - 8}
-                width={targetRect.width + 16}
-                height={targetRect.height + 16}
-                rx="8"
-                fill="black"
-              />
-            )}
-          </mask>
-        </defs>
-        <rect
-          x="0"
-          y="0"
-          width="100%"
-          height="100%"
-          fill="rgba(0, 0, 0, 0.75)"
-          mask="url(#spotlight-mask)"
-        />
-      </svg>
+      {/* Consistent dark overlay - always the same opacity */}
+      <div 
+        className="absolute inset-0 bg-black/80 transition-opacity duration-300"
+        style={{ pointerEvents: 'none' }}
+      />
 
-      {/* Highlight border around target */}
+      {/* Spotlight cutout - only when there's a target */}
       {targetRect && (
-        <div
-          className="absolute pointer-events-none border-2 border-primary rounded-lg animate-pulse"
-          style={{
-            top: targetRect.top - 8,
-            left: targetRect.left - 8,
-            width: targetRect.width + 16,
-            height: targetRect.height + 16,
-            boxShadow: '0 0 0 4px hsl(var(--primary) / 0.3), 0 0 20px hsl(var(--primary) / 0.4)'
-          }}
-          data-testid="tour-spotlight"
-        />
+        <>
+          {/* Top overlay */}
+          <div 
+            className="absolute left-0 right-0 top-0 bg-black/80"
+            style={{ height: Math.max(0, targetRect.top - 12), pointerEvents: 'none' }}
+          />
+          {/* Bottom overlay */}
+          <div 
+            className="absolute left-0 right-0 bg-black/80"
+            style={{ 
+              top: targetRect.bottom + 12, 
+              height: Math.max(0, window.innerHeight - targetRect.bottom - 12),
+              pointerEvents: 'none'
+            }}
+          />
+          {/* Left overlay */}
+          <div 
+            className="absolute bg-black/80"
+            style={{ 
+              top: targetRect.top - 12,
+              left: 0,
+              width: Math.max(0, targetRect.left - 12),
+              height: targetRect.height + 24,
+              pointerEvents: 'none'
+            }}
+          />
+          {/* Right overlay */}
+          <div 
+            className="absolute bg-black/80"
+            style={{ 
+              top: targetRect.top - 12,
+              left: targetRect.right + 12,
+              width: Math.max(0, window.innerWidth - targetRect.right - 12),
+              height: targetRect.height + 24,
+              pointerEvents: 'none'
+            }}
+          />
+          {/* Spotlight border with glow */}
+          <div
+            className="absolute pointer-events-none rounded-lg border-2 transition-all duration-300"
+            style={{
+              top: targetRect.top - 12,
+              left: targetRect.left - 12,
+              width: targetRect.width + 24,
+              height: targetRect.height + 24,
+              borderColor: 'hsl(var(--trade))',
+              boxShadow: '0 0 0 4px hsl(var(--trade) / 0.3), 0 0 30px hsl(var(--trade) / 0.5), inset 0 0 20px hsl(var(--trade) / 0.1)'
+            }}
+            data-testid="tour-spotlight"
+          />
+        </>
       )}
 
       {/* Tooltip card */}
