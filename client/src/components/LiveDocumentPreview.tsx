@@ -147,6 +147,7 @@ export default function LiveDocumentPreview({
       style={{ 
         fontFamily: template.fontFamily,
         fontSize: template.baseFontSize,
+        fontWeight: template.bodyWeight,
         lineHeight: '1.5',
         color: '#1a1a1a',
       }}

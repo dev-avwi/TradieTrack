@@ -12,6 +12,7 @@ interface DocumentTemplate {
   noteStyle: 'bordered' | 'highlighted' | 'simple';
   baseFontSize: string;
   headingWeight: number;
+  bodyWeight: number;
 }
 
 // Fixed document accent color - consistent navy blue across all templates
@@ -31,6 +32,7 @@ const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
     noteStyle: 'bordered',
     baseFontSize: '11px',
     headingWeight: 700,
+    bodyWeight: 600,
   },
   modern: {
     id: 'modern',
@@ -40,7 +42,8 @@ const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
     showHeaderDivider: true,
     noteStyle: 'highlighted',
     baseFontSize: '12px',
-    headingWeight: 600,
+    headingWeight: 700,
+    bodyWeight: 600,
   },
   minimal: {
     id: 'minimal',
@@ -50,7 +53,8 @@ const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
     showHeaderDivider: false,
     noteStyle: 'simple',
     baseFontSize: '11px',
-    headingWeight: 500,
+    headingWeight: 700,
+    bodyWeight: 600,
   },
 };
 
@@ -208,6 +212,7 @@ const generateDocumentStyles = (_brandColor: string, templateId: string = 'minim
     body {
       font-family: ${template.fontFamily};
       font-size: ${template.baseFontSize};
+      font-weight: ${template.bodyWeight >= 600 ? template.bodyWeight : 600};
       line-height: 1.5;
       color: #1a1a1a;
       background: #fff;

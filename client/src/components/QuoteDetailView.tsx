@@ -63,10 +63,38 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
     }, 100);
   };
 
+  // Feature detection: check if download attribute is supported
+  const supportsDownloadAttribute = () => {
+    return 'download' in document.createElement('a');
+  };
+
+  // Detect iOS Safari specifically (needs special handling for blob downloads)
+  const isIOSSafari = () => {
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua);
+    const isWebKit = /WebKit/.test(ua);
+    const isChrome = /CriOS/.test(ua); // Chrome on iOS
+    const isFirefox = /FxiOS/.test(ua); // Firefox on iOS
+    return isIOS && isWebKit && !isChrome && !isFirefox;
+  };
+
   const handleSaveAsPDF = async () => {
     setIsPrinting(true);
+    
+    // For iOS Safari: open window SYNCHRONOUSLY before any async operations
+    // This prevents Safari from blocking it as a popup
+    let pdfWindow: Window | null = null;
+    if (isIOSSafari()) {
+      pdfWindow = window.open('', '_blank');
+      if (pdfWindow) {
+        pdfWindow.document.write('<html><head><title>Generating PDF...</title></head><body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;"><p>Generating PDF, please wait...</p></body></html>');
+      }
+    }
+    
     try {
-      const response = await fetch(`/api/quotes/${quoteId}/pdf`, {
+      const pdfUrl = `/api/quotes/${quoteId}/pdf`;
+      
+      const response = await fetch(pdfUrl, {
         credentials: 'include'
       });
       
@@ -75,23 +103,50 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
       }
       
       const blob = await response.blob();
-      
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Quote-${quote.number || quote.id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
+      const filename = `Quote-${quote.number || quote.id}.pdf`;
       
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      toast({
-        title: "PDF Downloaded",
-        description: "Quote PDF has been downloaded successfully.",
-      });
+      if (isIOSSafari() && pdfWindow) {
+        // iOS Safari: convert blob to data URL and write to already-open window
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          pdfWindow!.document.write(`<html><head><title>${filename}</title></head><body style="margin:0;"><embed width="100%" height="100%" src="${dataUrl}" type="application/pdf" /></body></html>`);
+          pdfWindow!.document.close();
+        };
+        reader.readAsDataURL(blob);
+        window.URL.revokeObjectURL(url);
+        toast({
+          title: "PDF Opened",
+          description: "PDF opened in new tab.",
+        });
+      } else if (supportsDownloadAttribute()) {
+        // Desktop and most modern mobile browsers: use anchor click with download attribute
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+        toast({
+          title: "PDF Downloaded",
+          description: "Quote PDF has been downloaded successfully.",
+        });
+      } else {
+        // Fallback for browsers without download attribute support
+        window.location.href = url;
+        toast({
+          title: "PDF Ready",
+          description: "PDF opened. Use your browser's save option to download.",
+        });
+        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+      }
     } catch (error) {
       console.error('Error generating PDF:', error);
+      if (pdfWindow) {
+        pdfWindow.close();
+      }
       toast({
         title: "Error",
         description: "Failed to generate PDF. Please try again.",
@@ -194,7 +249,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
         <div className="print-content">
           <Card 
             className="bg-white shadow-lg border overflow-hidden"
-            style={{ fontFamily: template.fontFamily, fontSize: template.baseFontSize }}
+            style={{ fontFamily: template.fontFamily, fontSize: template.baseFontSize, fontWeight: template.bodyWeight }}
           >
             <div 
               className="p-6 sm:p-8 relative"

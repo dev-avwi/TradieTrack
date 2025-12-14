@@ -15,6 +15,7 @@ export interface DocumentTemplate {
   // Typography settings
   baseFontSize: string;
   headingWeight: number;
+  bodyWeight: number;
   // Visual styling
   borderRadius: string;
   headerBorderWidth: string;
@@ -39,6 +40,7 @@ export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
     tableStyle: 'bordered',
     baseFontSize: '11px',
     headingWeight: 700,
+    bodyWeight: 600,
     borderRadius: '2px',
     headerBorderWidth: '2px',
     showHeaderDivider: true,
@@ -55,7 +57,8 @@ export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
     colorScheme: 'brand',
     tableStyle: 'striped',
     baseFontSize: '12px',
-    headingWeight: 600,
+    headingWeight: 700,
+    bodyWeight: 600,
     borderRadius: '8px',
     headerBorderWidth: '3px',
     showHeaderDivider: true,
@@ -72,7 +75,8 @@ export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
     colorScheme: 'neutral',
     tableStyle: 'minimal',
     baseFontSize: '11px',
-    headingWeight: 500,
+    headingWeight: 700,
+    bodyWeight: 600,
     borderRadius: '4px',
     headerBorderWidth: '1px',
     showHeaderDivider: false,
@@ -101,6 +105,7 @@ export function getTemplateStyles(templateId: TemplateId, _brandColor: string = 
     containerStyle: {
       fontFamily: template.fontFamily,
       fontSize: template.baseFontSize,
+      fontWeight: template.bodyWeight,
       lineHeight: '1.5',
       color: '#1a1a1a',
     },
