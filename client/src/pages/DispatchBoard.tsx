@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -37,7 +45,9 @@ import {
   Timer,
   Sparkles,
   Loader2,
-  Check
+  Check,
+  X,
+  Plus
 } from "lucide-react";
 import {
   format,
@@ -117,6 +127,11 @@ interface DraggedJob {
   originMemberId: string | null;
 }
 
+interface SelectedJobForAssignment {
+  job: Job;
+  mode: 'assign' | 'reassign';
+}
+
 interface ScheduleSuggestion {
   jobId: string;
   jobTitle: string;
@@ -142,6 +157,10 @@ export default function DispatchBoard() {
   const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
   const [showAISuggestions, setShowAISuggestions] = useState(false);
   const [appliedSuggestions, setAppliedSuggestions] = useState<Set<string>>(new Set());
+  const [selectedJob, setSelectedJob] = useState<SelectedJobForAssignment | null>(null);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('owner');
+  const [selectedHour, setSelectedHour] = useState<number>(9);
   const { toast } = useToast();
 
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<Job[]>({
@@ -373,6 +392,68 @@ export default function DispatchBoard() {
     setDraggedJob(null);
   };
 
+  // Click-based assignment for mobile support
+  // This enters "selection mode" - user can then tap a slot OR open the dialog
+  const handleJobClick = (job: Job, mode: 'assign' | 'reassign') => {
+    setSelectedJob({ job, mode });
+    setSelectedMemberId(job.assignedTo || 'owner');
+    const currentHour = job.scheduledTime ? parseJobTime(job.scheduledTime).hour : 9;
+    setSelectedHour(currentHour);
+    // Don't open dialog immediately - let user tap a slot or use "Assign with Dialog" button
+  };
+
+  const handleAssignJob = () => {
+    if (!selectedJob || rescheduleJobMutation.isPending) return;
+
+    const scheduledDate = new Date(currentDate);
+    scheduledDate.setHours(selectedHour, 0, 0, 0);
+    const timeStr = `${selectedHour.toString().padStart(2, '0')}:00`;
+
+    const mutationPayload = {
+      jobId: selectedJob.job.id,
+      scheduledAt: scheduledDate.toISOString(),
+      scheduledTime: timeStr,
+      assignedTo: selectedMemberId === 'owner' ? null : selectedMemberId,
+    };
+
+    console.log('[DispatchBoard] handleAssignJob - payload:', mutationPayload);
+
+    rescheduleJobMutation.mutate(mutationPayload, {
+      onSuccess: () => {
+        setAssignDialogOpen(false);
+        setSelectedJob(null);
+      },
+    });
+  };
+
+  const handleSlotClick = (memberId: string, hour: number) => {
+    if (!selectedJob || rescheduleJobMutation.isPending) return;
+    
+    const scheduledDate = new Date(currentDate);
+    scheduledDate.setHours(hour, 0, 0, 0);
+    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+
+    const mutationPayload = {
+      jobId: selectedJob.job.id,
+      scheduledAt: scheduledDate.toISOString(),
+      scheduledTime: timeStr,
+      assignedTo: memberId === 'owner' ? null : memberId,
+    };
+
+    console.log('[DispatchBoard] handleSlotClick - assigning to slot:', mutationPayload);
+
+    rescheduleJobMutation.mutate(mutationPayload, {
+      onSuccess: () => {
+        setSelectedJob(null);
+      },
+    });
+  };
+
+  const cancelJobSelection = () => {
+    setSelectedJob(null);
+    setAssignDialogOpen(false);
+  };
+
   const getJobPosition = (job: Job) => {
     const { hour, minute } = parseJobTime(job.scheduledTime);
     const top = (hour - 6) * HOUR_HEIGHT + (minute / 60) * HOUR_HEIGHT;
@@ -395,6 +476,50 @@ export default function DispatchBoard() {
         title="Dispatch Board"
         subtitle="Drag and drop jobs to schedule your team"
       />
+
+      {selectedJob && !assignDialogOpen && (
+        <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            {rescheduleJobMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                <span className="text-sm font-medium">
+                  Assigning <span className="text-primary">"{selectedJob.job.title}"</span>...
+                </span>
+              </>
+            ) : (
+              <>
+                <Briefcase className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">
+                  Tap a time slot to assign <span className="text-primary">"{selectedJob.job.title}"</span>
+                </span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setAssignDialogOpen(true)}
+              disabled={rescheduleJobMutation.isPending}
+              data-testid="button-assign-with-dialog"
+            >
+              <Users className="h-4 w-4 mr-1" />
+              Assign with Dialog
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={cancelJobSelection}
+              disabled={rescheduleJobMutation.isPending}
+              data-testid="button-cancel-job-selection"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-1">
@@ -527,21 +652,28 @@ export default function DispatchBoard() {
                           {teamMembersWithJobs.map(member => {
                             const slotId = `${member.id}-${hour}`;
                             const isOver = dragOverSlot === slotId;
+                            const isClickable = !!selectedJob;
                             
                             return (
                               <div
                                 key={slotId}
                                 className={`flex-1 min-w-[180px] border-l relative transition-colors ${
-                                  isOver ? 'bg-primary/10' : 'hover:bg-muted/30'
-                                }`}
+                                  isOver ? 'bg-primary/10' : ''
+                                } ${isClickable ? 'cursor-pointer hover:bg-primary/20 bg-primary/5' : 'hover:bg-muted/30'}`}
                                 onDragOver={(e) => handleDragOver(e, slotId)}
                                 onDragLeave={handleDragLeave}
                                 onDrop={(e) => handleDrop(e, member.memberId, hour)}
+                                onClick={() => selectedJob && handleSlotClick(member.memberId, hour)}
                                 data-testid={`slot-${member.id}-${hour}`}
                               >
                                 {isOver && (
                                   <div className="absolute inset-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center">
                                     <span className="text-xs text-primary font-medium">Drop here</span>
+                                  </div>
+                                )}
+                                {isClickable && !isOver && (
+                                  <div className="absolute inset-1 border border-dashed border-primary/40 rounded-lg opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
+                                    <span className="text-xs text-primary font-medium">Tap to assign</span>
                                   </div>
                                 )}
                               </div>
@@ -555,6 +687,7 @@ export default function DispatchBoard() {
                           const { top, height } = getJobPosition(job);
                           const statusStyle = getStatusStyle(job.status);
                           const leftOffset = 64 + memberIndex * 180;
+                          const isSelected = selectedJob?.job.id === job.id;
 
                           return (
                             <div
@@ -562,7 +695,8 @@ export default function DispatchBoard() {
                               draggable
                               onDragStart={() => handleDragStart(job, member.memberId)}
                               onDragEnd={() => setDraggedJob(null)}
-                              className={`absolute mx-1 rounded-lg border cursor-grab active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border}`}
+                              onClick={() => handleJobClick(job, 'reassign')}
+                              className={`absolute mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
                               style={{
                                 top: top + 1,
                                 left: leftOffset,
@@ -638,13 +772,12 @@ export default function DispatchBoard() {
                   <div className="space-y-2">
                     {unscheduledJobs.map(job => {
                       const statusStyle = getStatusStyle(job.status);
+                      const isSelected = selectedJob?.job.id === job.id;
                       return (
                         <div
                           key={job.id}
-                          draggable
-                          onDragStart={() => handleDragStart(job, null)}
-                          onDragEnd={() => setDraggedJob(null)}
-                          className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing ${statusStyle.bg} ${statusStyle.border}`}
+                          onClick={() => handleJobClick(job, 'assign')}
+                          className={`p-3 rounded-lg border cursor-pointer hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
                           data-testid={`unscheduled-job-${job.id}`}
                         >
                           <div className="flex items-start gap-2">
@@ -926,6 +1059,82 @@ export default function DispatchBoard() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Schedule Job</DialogTitle>
+            <DialogDescription>
+              {selectedJob?.mode === 'assign' ? 'Assign' : 'Reassign'} "{selectedJob?.job.title}" to a team member and time slot.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Team Member</label>
+              <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+                <SelectTrigger data-testid="select-team-member">
+                  <SelectValue placeholder="Select team member" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamMembersWithJobs.map(member => (
+                    <SelectItem key={member.memberId} value={member.memberId}>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-5 w-5">
+                          <AvatarFallback className="text-[10px]">
+                            {(member.firstName?.[0] || '') + (member.lastName?.[0] || '')}
+                          </AvatarFallback>
+                        </Avatar>
+                        {member.firstName} {member.lastName}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Time</label>
+              <Select value={selectedHour.toString()} onValueChange={(v) => setSelectedHour(parseInt(v))}>
+                <SelectTrigger data-testid="select-time">
+                  <SelectValue placeholder="Select time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {WORK_HOURS.map(hour => (
+                    <SelectItem key={hour} value={hour.toString()}>
+                      {formatTime(hour)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setAssignDialogOpen(false)}
+              data-testid="button-cancel-assign"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAssignJob}
+              disabled={rescheduleJobMutation.isPending}
+              data-testid="button-confirm-assign"
+            >
+              {rescheduleJobMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Assigning...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Assign
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }
