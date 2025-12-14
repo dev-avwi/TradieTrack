@@ -4042,7 +4042,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use effectiveUserId (business owner's ID) for multi-tenant data scoping
       const effectiveUserId = req.effectiveUserId || req.userId;
       
+      // Debug logging for job update - track assignedTo persistence
+      console.log('[PATCH /api/jobs/:id] Request body received:', JSON.stringify(req.body, null, 2));
+      console.log('[PATCH /api/jobs/:id] Job ID:', req.params.id);
+      console.log('[PATCH /api/jobs/:id] assignedTo value in request:', req.body.assignedTo);
+      
       const data = insertJobSchema.partial().parse(req.body);
+      console.log('[PATCH /api/jobs/:id] Parsed data after validation:', JSON.stringify(data, null, 2));
+      
       const existingJob = await storage.getJob(req.params.id, effectiveUserId);
       
       // Validate: Can't set status to "invoiced" without a linked invoice
@@ -4067,6 +4074,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[Geocoding] Updated job address "${data.address}" -> ${geocoded.latitude}, ${geocoded.longitude}`);
         }
       }
+      
+      // Debug logging for updateData before saving
+      console.log('[PATCH /api/jobs/:id] updateData being saved:', JSON.stringify(updateData, null, 2));
+      console.log('[PATCH /api/jobs/:id] assignedTo in updateData:', updateData.assignedTo);
       
       const job = await storage.updateJob(req.params.id, effectiveUserId, updateData);
       if (!job) {

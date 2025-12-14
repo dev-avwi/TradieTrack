@@ -717,8 +717,8 @@ export default function JobDetailView({
                 </button>
               )}
 
-              {/* Prominent CTA: Create Invoice from Accepted Quote */}
-              {linkedQuote?.status === 'accepted' && !linkedInvoice && (
+              {/* Prominent CTA: Create Invoice from Accepted Quote - hidden for staff tradies */}
+              {linkedQuote?.status === 'accepted' && !linkedInvoice && !isTradie && (
                 <Button
                   onClick={() => navigate(`/invoices/new?quoteId=${linkedQuote.id}&jobId=${jobId}`)}
                   className="w-full mt-2 text-white"

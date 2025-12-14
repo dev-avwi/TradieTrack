@@ -348,12 +348,19 @@ export default function DispatchBoard() {
     scheduledDate.setHours(hour, 0, 0, 0);
     const timeStr = `${hour.toString().padStart(2, '0')}:00`;
 
-    rescheduleJobMutation.mutate({
+    const mutationPayload = {
       jobId: draggedJob.job.id,
       scheduledAt: scheduledDate.toISOString(),
       scheduledTime: timeStr,
       assignedTo: memberId === 'owner' ? null : memberId,
-    });
+    };
+
+    // Debug logging for drag-drop assignment
+    console.log('[DispatchBoard] handleDrop - memberId received:', memberId);
+    console.log('[DispatchBoard] handleDrop - jobId:', draggedJob.job.id);
+    console.log('[DispatchBoard] handleDrop - full mutation payload:', mutationPayload);
+
+    rescheduleJobMutation.mutate(mutationPayload);
 
     setDraggedJob(null);
   };
