@@ -7,13 +7,12 @@ import {
   RefreshControl,
   StyleSheet,
   TextInput,
-  Alert
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useQuotesStore, useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, sizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected';
@@ -25,65 +24,6 @@ const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
   { key: 'accepted', label: 'Accepted', icon: 'check-circle' },
   { key: 'rejected', label: 'Rejected', icon: 'x-circle' },
 ];
-
-function StatCard({ 
-  title, 
-  value, 
-  icon,
-  onPress,
-  colors,
-}: { 
-  title: string; 
-  value: number; 
-  icon: React.ReactNode;
-  onPress?: () => void;
-  colors: ThemeColors;
-}) {
-  const styles = useMemo(() => createStyles(colors), [colors]);
-  
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={styles.statCard}
-    >
-      <View style={styles.statIconContainer}>
-        {icon}
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function RecentQuoteItem({ 
-  quote, 
-  clientName,
-  onPress,
-  colors,
-}: { 
-  quote: any;
-  clientName: string;
-  onPress: () => void;
-  colors: ThemeColors;
-}) {
-  const styles = useMemo(() => createStyles(colors), [colors]);
-  
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={styles.recentItem}
-    >
-      <View style={[styles.recentDot, { backgroundColor: colors.primary }]} />
-      <View style={styles.recentContent}>
-        <Text style={styles.recentTitle} numberOfLines={1}>{quote.quoteNumber || 'Draft Quote'}</Text>
-        <Text style={styles.recentSubtitle}>{clientName}</Text>
-      </View>
-      <StatusBadge status={quote.status} size="sm" />
-    </TouchableOpacity>
-  );
-}
 
 const navigateToCreateQuote = () => {
   router.push('/more/quote/new');
@@ -123,7 +63,6 @@ export default function QuotesScreen() {
     });
   };
 
-  // Calculate filter counts
   const filterCounts = {
     all: quotes.length,
     draft: quotes.filter(q => q.status === 'draft').length,
@@ -132,7 +71,6 @@ export default function QuotesScreen() {
     rejected: quotes.filter(q => q.status === 'rejected').length,
   };
 
-  // Filter quotes
   const filteredQuotes = quotes.filter(quote => {
     const searchLower = searchQuery.toLowerCase();
     const clientName = getClientName(quote.clientId);
@@ -144,19 +82,6 @@ export default function QuotesScreen() {
     
     return matchesSearch && matchesFilter;
   });
-
-  // Get recent quotes (last 7 days)
-  const getRecentQuotes = () => {
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    return quotes
-      .filter(quote => new Date(quote.createdAt) >= sevenDaysAgo)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
-  };
-
-  const recentQuotes = getRecentQuotes();
 
   return (
     <>
@@ -212,7 +137,6 @@ export default function QuotesScreen() {
             {FILTERS.map((filter) => {
               const count = filterCounts[filter.key];
               const isActive = activeFilter === filter.key;
-              const IconComponent = filter.icon;
               
               return (
                 <TouchableOpacity
@@ -252,66 +176,6 @@ export default function QuotesScreen() {
               );
             })}
           </ScrollView>
-
-          {/* Stats Grid - 2x2 */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statsRow}>
-              <StatCard
-                title="TOTAL QUOTES"
-                value={filterCounts.all}
-                icon={<Feather name="file-text" size={22} color={colors.primary} />}
-                onPress={() => setActiveFilter('all')}
-                colors={colors}
-              />
-              <StatCard
-                title="DRAFT"
-                value={filterCounts.draft}
-                icon={<Feather name="clock" size={22} color={colors.mutedForeground} />}
-                onPress={() => setActiveFilter('draft')}
-                colors={colors}
-              />
-            </View>
-            <View style={styles.statsRow}>
-              <StatCard
-                title="SENT"
-                value={filterCounts.sent}
-                icon={<Feather name="send" size={22} color={colors.info} />}
-                onPress={() => setActiveFilter('sent')}
-                colors={colors}
-              />
-              <StatCard
-                title="ACCEPTED"
-                value={filterCounts.accepted}
-                icon={<Feather name="check-circle" size={22} color={colors.success} />}
-                onPress={() => setActiveFilter('accepted')}
-                colors={colors}
-              />
-            </View>
-          </View>
-
-          {/* Recent Quotes Section */}
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeaderRow}>
-              <Feather name="clock" size={18} color={colors.foreground} />
-              <Text style={styles.sectionTitle}>Recent Quotes</Text>
-            </View>
-            {recentQuotes.length === 0 ? (
-              <View style={styles.emptySection}>
-                <Feather name="file-text" size={32} color={colors.mutedForeground} />
-                <Text style={styles.emptySectionText}>No recent quotes</Text>
-              </View>
-            ) : (
-              recentQuotes.map((quote) => (
-                <RecentQuoteItem
-                  key={quote.id}
-                  quote={quote}
-                  clientName={getClientName(quote.clientId)}
-                  onPress={() => router.push(`/more/quote/${quote.id}`)}
-                  colors={colors}
-                />
-              ))
-            )}
-          </View>
 
           {/* All Quotes Section */}
           <View style={styles.sectionContainer}>
@@ -374,7 +238,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: 100,
   },
 
-  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -410,7 +273,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Search Bar
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -429,7 +291,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
 
-  // Filter Pills - pill shaped
   filtersScroll: {
     marginBottom: 16,
     marginHorizontal: -16,
@@ -481,54 +342,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
 
-  // Stats Grid - compact
-  statsGrid: {
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  statIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  statValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.foreground,
-  },
-  statTitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-
-  // Section Container - compact
   sectionContainer: {
     marginBottom: spacing.xl,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -546,52 +361,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
 
-  // Recent Quote Item - compact
-  recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
-  },
-  recentDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.primary,
-    marginRight: spacing.md,
-  },
-  recentContent: {
-    flex: 1,
-  },
-  recentTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.foreground,
-  },
-  recentSubtitle: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginTop: 1,
-  },
-
-  // Empty Section - compact
-  emptySection: {
-    alignItems: 'center',
-    paddingVertical: spacing['2xl'],
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  emptySectionText: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginTop: spacing.sm,
-  },
-
-  // Quote Card - matches web Card p-4 (16px)
   quoteCard: {
     backgroundColor: colors.card,
     borderRadius: 12,
@@ -616,15 +385,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.foreground,
-  },
-  statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '600',
   },
   quoteTotal: {
     fontSize: 16,
@@ -651,7 +411,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
 
-  // Empty State - compact
   emptyState: {
     alignItems: 'center',
     paddingVertical: spacing['3xl'],
@@ -672,19 +431,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: spacing.xs,
     textAlign: 'center',
-  },
-
-  // FAB - 56px as per design spec
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing['2xl'],
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.lg,
   },
 });

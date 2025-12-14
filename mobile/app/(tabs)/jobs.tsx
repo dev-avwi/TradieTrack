@@ -7,13 +7,11 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  ActivityIndicator,
-  Alert,
-  Linking
+  ActivityIndicator
 } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useJobsStore, useClientsStore, useQuotesStore } from '../../src/lib/store';
+import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
@@ -33,91 +31,12 @@ const STATUS_FILTERS: { key: string; label: string; icon: string }[] = [
   { key: 'invoiced', label: 'Invoiced', icon: 'file-text' },
 ];
 
-function StatCard({ 
-  title, 
-  value, 
-  icon,
-  iconColor,
-  onPress
-}: { 
-  title: string; 
-  value: number; 
-  icon: React.ReactNode;
-  iconColor: string;
-  onPress?: () => void;
-}) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
-  
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={styles.statCard}
-    >
-      <View style={[styles.statIconContainer, { backgroundColor: `${iconColor}15` }]}>
-        {icon}
-      </View>
-      <View style={styles.statTextContainer}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statTitle}>{title}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function RecentActivityItem({ 
-  job, 
-  onPress 
-}: { 
-  job: any;
-  onPress: () => void;
-}) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
-  
-  const getRelativeDate = (dateStr?: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    }
-    if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    }
-    return date.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
-  };
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={styles.activityItem}
-    >
-      <View style={styles.activityDot} />
-      <View style={styles.activityContent}>
-        <Text style={styles.activityTitle} numberOfLines={1}>{job.title}</Text>
-        <Text style={styles.activityDate}>· {getRelativeDate(job.createdAt || job.scheduledAt)}</Text>
-      </View>
-      <StatusBadge status={job.status} size="sm" />
-    </TouchableOpacity>
-  );
-}
-
 function JobCard({ 
   job, 
-  onPress,
-  onUpdateStatus,
-  clientPhone
+  onPress
 }: { 
   job: any;
   onPress: () => void;
-  onUpdateStatus?: (status: string) => void;
-  clientPhone?: string;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -149,36 +68,26 @@ function JobCard({
   };
 
   const getNextAction = () => {
+    // Match web behavior: all status-related actions navigate to job view
     switch (job.status) {
       case 'pending':
-        return { label: 'Schedule', status: 'scheduled', icon: 'calendar' as const, color: colors.scheduled };
       case 'scheduled':
-        return { label: 'Start Job', status: 'in_progress', icon: 'play' as const, color: colors.inProgress };
       case 'in_progress':
-        return { label: 'View & Complete', status: 'done', icon: 'eye' as const, color: colors.done };
+        return { 
+          label: 'View', 
+          icon: 'briefcase' as const, 
+          color: colors.primary,
+          action: () => onPress()
+        };
       case 'done':
-        return { label: 'Invoice', status: 'invoiced', icon: 'file-text' as const, color: colors.invoiced };
+        return { 
+          label: 'Invoice', 
+          icon: 'file-text' as const, 
+          color: colors.invoiced,
+          action: () => router.push(`/more/create-invoice?jobId=${job.id}`)
+        };
       default:
         return null;
-    }
-  };
-
-  const handleCall = () => {
-    if (clientPhone) {
-      Linking.openURL(`tel:${clientPhone}`);
-    }
-  };
-
-  const handleSMS = () => {
-    if (clientPhone) {
-      Linking.openURL(`sms:${clientPhone}`);
-    }
-  };
-
-  const handleNavigate = () => {
-    if (job.address) {
-      const url = `https://maps.google.com/?q=${encodeURIComponent(job.address)}`;
-      Linking.openURL(url);
     }
   };
 
@@ -230,51 +139,18 @@ function JobCard({
           )}
         </View>
 
-        {/* Inline Actions Row */}
-        <View style={styles.inlineActionsRow}>
-          {/* Quick Actions */}
-          <View style={styles.quickActionsRow}>
-            {clientPhone && (
-              <TouchableOpacity 
-                style={styles.quickActionBtn} 
-                onPress={handleCall}
-                activeOpacity={0.7}
-              >
-                <Feather name="phone" size={iconSizes.sm} color={colors.primary} />
-              </TouchableOpacity>
-            )}
-            {clientPhone && (
-              <TouchableOpacity 
-                style={styles.quickActionBtn} 
-                onPress={handleSMS}
-                activeOpacity={0.7}
-              >
-                <Feather name="message-square" size={iconSizes.sm} color={colors.primary} />
-              </TouchableOpacity>
-            )}
-            {job.address && (
-              <TouchableOpacity 
-                style={styles.quickActionBtn} 
-                onPress={handleNavigate}
-                activeOpacity={0.7}
-              >
-                <Feather name="navigation" size={iconSizes.sm} color={colors.primary} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Status Action Button */}
-          {nextAction && onUpdateStatus && (
+        {nextAction && (
+          <View style={styles.inlineActionsRow}>
             <TouchableOpacity
               style={[styles.statusActionBtn, { backgroundColor: nextAction.color }]}
-              onPress={() => onUpdateStatus(nextAction.status)}
+              onPress={nextAction.action}
               activeOpacity={0.8}
             >
               <Feather name={nextAction.icon} size={iconSizes.sm} color={colors.white} />
               <Text style={styles.statusActionText}>{nextAction.label}</Text>
             </TouchableOpacity>
-          )}
-        </View>
+          </View>
+        )}
       </View>
 
       <View style={styles.jobCardChevronContainer}>
@@ -288,15 +164,14 @@ export default function JobsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
-  const { jobs, fetchJobs, updateJobStatus, isLoading } = useJobsStore();
+  const { jobs, fetchJobs, isLoading } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
-  const { quotes, fetchQuotes } = useQuotesStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
 
   const refreshData = useCallback(async () => {
-    await Promise.all([fetchJobs(), fetchClients(), fetchQuotes()]);
-  }, [fetchJobs, fetchClients, fetchQuotes]);
+    await Promise.all([fetchJobs(), fetchClients()]);
+  }, [fetchJobs, fetchClients]);
 
   useEffect(() => {
     refreshData();
@@ -308,84 +183,6 @@ export default function JobsScreen() {
     return client?.name;
   };
 
-  const getClientPhone = (clientId?: string) => {
-    if (!clientId) return undefined;
-    const client = clients.find(c => c.id === clientId);
-    return client?.phone;
-  };
-
-  const handleUpdateStatus = async (jobId: string, newStatus: string) => {
-    // Special handling for "Invoice" action - navigate to create invoice instead of updating status
-    if (newStatus === 'invoiced') {
-      // Find the quote associated with this job (if any)
-      const jobQuote = quotes.find(q => q.jobId === jobId && (q.status === 'accepted' || q.status === 'sent'));
-      
-      if (jobQuote) {
-        // Navigate to create invoice with quoteId for prefilling
-        router.push(`/more/create-invoice?quoteId=${jobQuote.id}&jobId=${jobId}`);
-      } else {
-        // No quote found, just navigate with jobId
-        router.push(`/more/create-invoice?jobId=${jobId}`);
-      }
-      return;
-    }
-    
-    // Special handling for "Complete" action - navigate to job detail first (same as web behavior)
-    // This lets the user review the job before completing it
-    if (newStatus === 'done') {
-      router.push(`/job/${jobId}`);
-      return;
-    }
-    
-    try {
-      await updateJobStatus(jobId, newStatus);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update job status');
-    }
-  };
-
-  const isToday = (dateStr?: string) => {
-    if (!dateStr) return false;
-    const date = new Date(dateStr);
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
-  };
-
-  const groupedJobs = useMemo(() => {
-    const today: typeof jobs = [];
-    const upcoming: typeof jobs = [];
-    const inProgress: typeof jobs = [];
-    const needsInvoice: typeof jobs = [];
-    const completed: typeof jobs = [];
-
-    jobs.forEach(job => {
-      if (job.status === 'invoiced') {
-        completed.push(job);
-      } else if (job.status === 'done') {
-        needsInvoice.push(job);
-      } else if (job.status === 'in_progress') {
-        inProgress.push(job);
-      } else if (job.scheduledAt && isToday(job.scheduledAt)) {
-        today.push(job);
-      } else {
-        upcoming.push(job);
-      }
-    });
-
-    const sortBySchedule = (a: typeof jobs[0], b: typeof jobs[0]) => {
-      if (!a.scheduledAt && !b.scheduledAt) return 0;
-      if (!a.scheduledAt) return 1;
-      if (!b.scheduledAt) return -1;
-      return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
-    };
-
-    today.sort(sortBySchedule);
-    upcoming.sort(sortBySchedule);
-
-    return { today, upcoming, inProgress, needsInvoice, completed };
-  }, [jobs]);
-
-  // Count jobs by status to match web filters
   const statusCounts = useMemo(() => {
     const counts = {
       all: jobs.length,
@@ -415,7 +212,6 @@ export default function JobsScreen() {
       (getClientName(job.clientId)?.toLowerCase().includes(searchLower))
     );
 
-    // Filter by status matching web WorkPage behavior
     if (activeFilter === 'all') {
       return filterBySearch(jobs);
     }
@@ -435,29 +231,6 @@ export default function JobsScreen() {
     if (dateB) return 1;
     return 0;
   });
-
-  const getThisWeekJobs = () => {
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    return jobs
-      .filter(job => {
-        const jobDate = job.createdAt || job.scheduledAt;
-        if (!jobDate) return false;
-        return new Date(jobDate) >= sevenDaysAgo;
-      })
-      .sort((a, b) => {
-        const dateA = a.createdAt || a.scheduledAt;
-        const dateB = b.createdAt || b.scheduledAt;
-        if (dateA && dateB) {
-          return new Date(dateB).getTime() - new Date(dateA).getTime();
-        }
-        return 0;
-      })
-      .slice(0, 5);
-  };
-
-  const recentJobs = getThisWeekJobs();
 
   return (
     <View style={styles.container}>
@@ -544,74 +317,6 @@ export default function JobsScreen() {
           })}
         </ScrollView>
 
-        {/* Stats Cards Grid */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statsRow}>
-            <StatCard
-              title="Total Jobs"
-              value={statusCounts.all}
-              icon={<Feather name="briefcase" size={iconSizes.xl} color={colors.primary} />}
-              iconColor={colors.primary}
-              onPress={() => setActiveFilter('all')}
-            />
-            <StatCard
-              title="Scheduled"
-              value={statusCounts.scheduled}
-              icon={<Feather name="clock" size={iconSizes.xl} color={colors.scheduled} />}
-              iconColor={colors.scheduled}
-              onPress={() => setActiveFilter('scheduled')}
-            />
-          </View>
-          <View style={styles.statsRow}>
-            <StatCard
-              title="In Progress"
-              value={statusCounts.in_progress}
-              icon={<Feather name="play" size={iconSizes.xl} color={colors.inProgress} />}
-              iconColor={colors.inProgress}
-              onPress={() => setActiveFilter('in_progress')}
-            />
-            <StatCard
-              title="Completed"
-              value={statusCounts.done}
-              icon={<Feather name="check-circle" size={iconSizes.xl} color={colors.done} />}
-              iconColor={colors.done}
-              onPress={() => setActiveFilter('done')}
-            />
-          </View>
-        </View>
-
-        {/* Recent Activity Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Feather name="clock" size={iconSizes.md} color={colors.primary} />
-            <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
-          </View>
-          
-          <View style={styles.activityCard}>
-            <Text style={styles.activityLabel}>THIS WEEK</Text>
-            
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color={colors.primary} />
-              </View>
-            ) : recentJobs.length > 0 ? (
-              <View style={styles.activityList}>
-                {recentJobs.map((job) => (
-                  <RecentActivityItem
-                    key={job.id}
-                    job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
-                    onPress={() => router.push(`/job/${job.id}`)}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View style={styles.emptyActivity}>
-                <Text style={styles.emptyActivityText}>No recent activity</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
         {/* All Jobs Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -642,8 +347,6 @@ export default function JobsScreen() {
                   key={job.id}
                   job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
                   onPress={() => router.push(`/job/${job.id}`)}
-                  onUpdateStatus={(status) => handleUpdateStatus(job.id, status)}
-                  clientPhone={getClientPhone(job.clientId)}
                 />
               ))}
             </View>
@@ -668,22 +371,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: pageShell.paddingBottom,
   },
 
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: spacing.lg,
+    paddingTop: spacing.sm,
   },
-  headerLeft: {},
+  headerLeft: {
+    flex: 1,
+  },
   pageTitle: {
-    ...typography.largeTitle,
+    ...typography.pageTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
     ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: spacing.xs / 2,
+    marginTop: spacing.xs,
   },
   newJobButton: {
     flexDirection: 'row',
@@ -693,205 +398,132 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: radius.lg,
     gap: spacing.xs,
+    ...shadows.sm,
   },
   newJobButtonText: {
-    ...typography.button,
     color: colors.white,
+    ...typography.caption,
+    fontWeight: '600',
   },
 
-  // Search Bar
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     paddingHorizontal: spacing.lg,
-    height: sizes.inputHeight,
+    height: sizes.searchBarHeight,
     marginBottom: spacing.lg,
+    gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
   },
   searchInput: {
     flex: 1,
-    marginLeft: spacing.md,
+    ...typography.body,
     color: colors.foreground,
-    ...typography.cardTitle,
-    fontWeight: '400',
   },
 
-  // Filter Pills - pill-shaped with rounded ends
   filtersScroll: {
-    marginBottom: spacing.xl,
-    marginHorizontal: -spacing.lg,
+    marginBottom: spacing.lg,
+    marginHorizontal: -pageShell.paddingHorizontal,
   },
   filtersContent: {
-    paddingHorizontal: spacing.lg,
-    gap: 8,
-    flexDirection: 'row',
+    paddingHorizontal: pageShell.paddingHorizontal,
+    gap: spacing.sm,
   },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
     backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
-    gap: 6,
+    borderColor: colors.cardBorder,
+    gap: spacing.xs,
   },
   filterPillActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   filterPillText: {
-    fontSize: 13,
+    ...typography.captionSmall,
     fontWeight: '500',
     color: colors.foreground,
   },
   filterPillTextActive: {
-    color: colors.primaryForeground,
+    color: colors.white,
   },
   filterCount: {
     backgroundColor: colors.muted,
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 2,
-    borderRadius: 999,
-    minWidth: 20,
+    borderRadius: radius.sm,
+    minWidth: sizes.filterCountMin,
     alignItems: 'center',
   },
   filterCountActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   filterCountText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.mutedForeground,
-  },
-  filterCountTextActive: {
-    color: colors.primaryForeground,
-  },
-
-  // Stats Grid
-  statsGrid: {
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  statCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    gap: spacing.md,
-    ...shadows.sm,
-  },
-  statIconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statTextContainer: {},
-  statValue: {
-    ...typography.statValue,
     color: colors.foreground,
   },
-  statTitle: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
+  filterCountTextActive: {
+    color: colors.white,
   },
 
-  // Section - consistent 24px section gaps to match web space-y-6
   section: {
-    marginBottom: spacing['3xl'],
+    marginBottom: spacing.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: spacing.lg,
     gap: spacing.sm,
-    marginBottom: spacing.md,
   },
   sectionTitle: {
     ...typography.label,
-    color: colors.mutedForeground,
+    color: colors.foreground,
+    letterSpacing: 0.5,
   },
 
-  // Recent Activity - matches web Card p-4 (16px)
-  activityCard: {
+  loadingContainer: {
+    paddingVertical: spacing['3xl'],
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing['4xl'],
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.xl,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
   },
-  activityLabel: {
-    ...typography.badge,
-    color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginBottom: spacing.md,
+  emptyStateIcon: {
+    marginBottom: spacing.lg,
   },
-  activityList: {
-    gap: spacing.xs,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    gap: spacing.md,
-  },
-  activityDot: {
-    width: sizes.dotSm,
-    height: sizes.dotSm,
-    borderRadius: sizes.dotSm / 2,
-    backgroundColor: colors.primary,
-  },
-  activityContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  activityTitle: {
-    ...typography.bodySemibold,
+  emptyStateTitle: {
+    ...typography.subtitle,
     color: colors.foreground,
-    flex: 1,
+    marginBottom: spacing.xs,
   },
-  activityDate: {
+  emptyStateSubtitle: {
     ...typography.caption,
     color: colors.mutedForeground,
-  },
-  emptyActivity: {
-    paddingVertical: spacing.xl,
-    alignItems: 'center',
-  },
-  emptyActivityText: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-  },
-  loadingContainer: {
-    paddingVertical: spacing.xl,
-    alignItems: 'center',
+    textAlign: 'center',
+    paddingHorizontal: spacing.xl,
   },
 
-  // Jobs List - consistent gap-4 (16px) to match web
   jobsList: {
-    gap: spacing.xl,
+    gap: spacing.md,
   },
   jobCard: {
     flexDirection: 'row',
-    alignItems: 'stretch',
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.xl,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -902,14 +534,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   jobCardContent: {
     flex: 1,
-    padding: 16,
+    padding: spacing.lg,
+  },
+  jobCardChevronContainer: {
+    justifyContent: 'center',
+    paddingRight: spacing.md,
   },
   jobCardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.md,
+    alignItems: 'flex-start',
     marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   jobTitle: {
     ...typography.cardTitle,
@@ -920,102 +556,39 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
   },
   jobDetailText: {
     ...typography.caption,
     color: colors.mutedForeground,
+    flex: 1,
   },
   jobMetaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
     flexWrap: 'wrap',
-    marginTop: spacing.xs,
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
   inlineActionsRow: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  quickActionsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  quickActionBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.md,
-    backgroundColor: `${colors.primary}10`,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderTopColor: colors.cardBorder,
   },
   statusActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
     gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
   },
   statusActionText: {
     ...typography.captionSmall,
+    color: colors.white,
     fontWeight: '600',
-    color: colors.primaryForeground,
-  },
-  jobCardChevronContainer: {
-    paddingHorizontal: spacing.md,
-    justifyContent: 'center',
-  },
-
-  // Empty State - compact
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing['3xl'],
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  emptyStateIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: colors.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  emptyStateTitle: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.foreground,
-  },
-  emptyStateSubtitle: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.xl,
-  },
-
-  // FAB - 56px as per design spec
-  fab: {
-    position: 'absolute',
-    bottom: pageShell.paddingBottom,
-    right: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.lg,
   },
 });

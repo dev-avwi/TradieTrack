@@ -7,7 +7,6 @@ import {
   RefreshControl,
   StyleSheet,
   TextInput,
-  Alert
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -23,63 +22,6 @@ const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
   { key: 'with_phone', label: 'With Phone', icon: 'phone' },
   { key: 'with_address', label: 'With Address', icon: 'map-pin' },
 ];
-
-function StatCard({ 
-  title, 
-  value, 
-  icon,
-  onPress,
-  colors,
-  styles,
-}: { 
-  title: string; 
-  value: number; 
-  icon: React.ReactNode;
-  onPress?: () => void;
-  colors: ThemeColors;
-  styles: ReturnType<typeof createStyles>;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={styles.statCard}
-    >
-      <View style={styles.statIconContainer}>
-        {icon}
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function RecentClientItem({ 
-  client, 
-  onPress,
-  colors,
-  styles,
-}: { 
-  client: any;
-  onPress: () => void;
-  colors: ThemeColors;
-  styles: ReturnType<typeof createStyles>;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={styles.recentItem}
-    >
-      <View style={styles.recentDot} />
-      <View style={styles.recentContent}>
-        <Text style={styles.recentName} numberOfLines={1}>{client.name}</Text>
-        <Text style={styles.recentPhone}>{client.phone || 'No phone'}</Text>
-      </View>
-      <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-    </TouchableOpacity>
-  );
-}
 
 const handleCreateClient = () => {
   router.push('/more/client/new');
@@ -100,7 +42,6 @@ export default function ClientsScreen() {
     refreshData();
   }, []);
 
-  // Calculate filter counts
   const filterCounts = {
     all: clients.length,
     with_email: clients.filter(c => c.email).length,
@@ -108,7 +49,6 @@ export default function ClientsScreen() {
     with_address: clients.filter(c => c.address).length,
   };
 
-  // Filter clients based on search and active filter
   const filteredClients = clients.filter(client => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
@@ -124,11 +64,6 @@ export default function ClientsScreen() {
     
     return matchesSearch && matchesFilter;
   });
-
-  // Get recent clients (last 5 added)
-  const recentClients = [...clients]
-    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-    .slice(0, 5);
 
   const getInitials = (name: string) => {
     return name
@@ -233,67 +168,6 @@ export default function ClientsScreen() {
             })}
           </ScrollView>
 
-          {/* Stats Grid - 2x2 */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statsRow}>
-              <StatCard
-                title="TOTAL CLIENTS"
-                value={filterCounts.all}
-                icon={<Feather name="users" size={22} color={colors.primary} />}
-                onPress={() => setActiveFilter('all')}
-                colors={colors}
-                styles={styles}
-              />
-              <StatCard
-                title="WITH EMAIL"
-                value={filterCounts.with_email}
-                icon={<Feather name="mail" size={22} color={colors.primary} />}
-                onPress={() => setActiveFilter('with_email')}
-                colors={colors}
-                styles={styles}
-              />
-            </View>
-            <View style={styles.statsRow}>
-              <StatCard
-                title="WITH PHONE"
-                value={filterCounts.with_phone}
-                icon={<Feather name="phone" size={22} color={colors.primary} />}
-                onPress={() => setActiveFilter('with_phone')}
-                colors={colors}
-                styles={styles}
-              />
-              <StatCard
-                title="WITH ADDRESS"
-                value={filterCounts.with_address}
-                icon={<Feather name="map-pin" size={22} color={colors.primary} />}
-                onPress={() => setActiveFilter('with_address')}
-                colors={colors}
-                styles={styles}
-              />
-            </View>
-          </View>
-
-          {/* Recent Clients Section */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Recent Clients</Text>
-            {recentClients.length === 0 ? (
-              <View style={styles.emptySection}>
-                <Feather name="users" size={32} color={colors.mutedForeground} />
-                <Text style={styles.emptySectionText}>No clients yet</Text>
-              </View>
-            ) : (
-              recentClients.map((client) => (
-                <RecentClientItem
-                  key={client.id}
-                  client={client}
-                  onPress={() => router.push(`/more/client/${client.id}`)}
-                  colors={colors}
-                  styles={styles}
-                />
-              ))
-            )}
-          </View>
-
           {/* All Clients Section */}
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
@@ -359,7 +233,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: 100,
   },
 
-  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -395,7 +268,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Search Bar
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -414,7 +286,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
 
-  // Filter Pills
   filtersScroll: {
     marginBottom: spacing.lg,
     marginHorizontal: -spacing.lg,
@@ -466,45 +337,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
 
-  // Stats Grid
-  statsGrid: {
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  statValue: {
-    ...typography.statValue,
-    color: colors.foreground,
-  },
-  statTitle: {
-    ...typography.label,
-    color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginTop: 2,
-  },
-
-  // Section Container
   sectionContainer: {
     marginBottom: spacing.xl,
   },
@@ -517,59 +349,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   sectionTitle: {
     ...typography.subtitle,
     color: colors.foreground,
-    marginBottom: spacing.md,
   },
   sectionCount: {
     ...typography.caption,
     color: colors.mutedForeground,
   },
 
-  // Recent Client Item
-  recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
-  },
-  recentDot: {
-    width: sizes.dotSm,
-    height: sizes.dotSm,
-    borderRadius: sizes.dotSm / 2,
-    backgroundColor: colors.primary,
-    marginRight: spacing.md,
-  },
-  recentContent: {
-    flex: 1,
-  },
-  recentName: {
-    ...typography.body,
-    fontWeight: '500',
-    color: colors.foreground,
-  },
-  recentPhone: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-
-  // Empty Section
-  emptySection: {
-    alignItems: 'center',
-    paddingVertical: spacing['2xl'],
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  emptySectionText: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginTop: spacing.sm,
-  },
-
-  // Empty State
   emptyState: {
     alignItems: 'center',
     paddingVertical: spacing['4xl'],
@@ -591,7 +376,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Client Card
   clientCard: {
     flexDirection: 'row',
     alignItems: 'center',

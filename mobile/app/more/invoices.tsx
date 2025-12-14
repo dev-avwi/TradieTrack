@@ -7,13 +7,12 @@ import {
   RefreshControl,
   StyleSheet,
   TextInput,
-  Alert
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useInvoicesStore, useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, sizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'paid' | 'overdue';
@@ -25,67 +24,6 @@ const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
   { key: 'paid', label: 'Paid', icon: 'check-circle' },
   { key: 'overdue', label: 'Overdue', icon: 'alert-circle' },
 ];
-
-function StatCard({ 
-  title, 
-  value, 
-  icon,
-  onPress,
-  styles
-}: { 
-  title: string; 
-  value: number | string; 
-  icon: React.ReactNode;
-  onPress?: () => void;
-  styles: ReturnType<typeof createStyles>;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={styles.statCard}
-    >
-      <View style={styles.statIconContainer}>
-        {icon}
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function RecentInvoiceItem({ 
-  invoice, 
-  clientName,
-  onPress,
-  styles,
-  colors
-}: { 
-  invoice: any;
-  clientName: string;
-  onPress: () => void;
-  styles: ReturnType<typeof createStyles>;
-  colors: ThemeColors;
-}) {
-  const formatCurrency = (amount: number) => {
-    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
-  };
-  
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={styles.recentItem}
-    >
-      <View style={[styles.recentDot, { backgroundColor: colors.primary }]} />
-      <View style={styles.recentContent}>
-        <Text style={styles.recentTitle} numberOfLines={1}>{invoice.invoiceNumber || 'Draft Invoice'}</Text>
-        <Text style={styles.recentSubtitle}>{clientName} • {formatCurrency(invoice.total || 0)}</Text>
-      </View>
-      <StatusBadge status={invoice.status || 'draft'} size="sm" />
-    </TouchableOpacity>
-  );
-}
 
 const navigateToCreateInvoice = () => {
   router.push('/more/invoice/new');
@@ -124,7 +62,6 @@ export default function InvoicesScreen() {
     });
   };
 
-  // Calculate totals
   const totalOutstanding = invoices
     .filter(i => i.status === 'sent' || i.status === 'overdue')
     .reduce((sum, i) => sum + (i.total || 0), 0);
@@ -133,7 +70,6 @@ export default function InvoicesScreen() {
     .filter(i => i.status === 'paid')
     .reduce((sum, i) => sum + (i.total || 0), 0);
 
-  // Calculate filter counts
   const filterCounts = {
     all: invoices.length,
     draft: invoices.filter(i => i.status === 'draft').length,
@@ -142,7 +78,6 @@ export default function InvoicesScreen() {
     overdue: invoices.filter(i => i.status === 'overdue').length,
   };
 
-  // Filter invoices
   const filteredInvoices = invoices.filter(invoice => {
     const searchLower = searchQuery.toLowerCase();
     const clientName = getClientName(invoice.clientId);
@@ -154,19 +89,6 @@ export default function InvoicesScreen() {
     
     return matchesSearch && matchesFilter;
   });
-
-  // Get recent invoices (last 7 days)
-  const getRecentInvoices = () => {
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    return invoices
-      .filter(invoice => new Date(invoice.createdAt) >= sevenDaysAgo)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
-  };
-
-  const recentInvoices = getRecentInvoices();
 
   return (
     <>
@@ -235,7 +157,6 @@ export default function InvoicesScreen() {
             {FILTERS.map((filter) => {
               const count = filterCounts[filter.key];
               const isActive = activeFilter === filter.key;
-              const IconComponent = filter.icon;
               
               return (
                 <TouchableOpacity
@@ -275,67 +196,6 @@ export default function InvoicesScreen() {
               );
             })}
           </ScrollView>
-
-          {/* Stats Grid - 2x2 */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statsRow}>
-              <StatCard
-                title="TOTAL INVOICES"
-                value={filterCounts.all}
-                icon={<Feather name="file-text" size={22} color={colors.primary} />}
-                onPress={() => setActiveFilter('all')}
-                styles={styles}
-              />
-              <StatCard
-                title="DRAFT"
-                value={filterCounts.draft}
-                icon={<Feather name="clock" size={22} color={colors.mutedForeground} />}
-                onPress={() => setActiveFilter('draft')}
-                styles={styles}
-              />
-            </View>
-            <View style={styles.statsRow}>
-              <StatCard
-                title="SENT"
-                value={filterCounts.sent}
-                icon={<Feather name="send" size={22} color={colors.info} />}
-                onPress={() => setActiveFilter('sent')}
-                styles={styles}
-              />
-              <StatCard
-                title="PAID"
-                value={filterCounts.paid}
-                icon={<Feather name="check-circle" size={22} color={colors.success} />}
-                onPress={() => setActiveFilter('paid')}
-                styles={styles}
-              />
-            </View>
-          </View>
-
-          {/* Recent Invoices Section */}
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeaderRow}>
-              <Feather name="clock" size={18} color={colors.foreground} />
-              <Text style={styles.sectionTitle}>Recent Invoices</Text>
-            </View>
-            {recentInvoices.length === 0 ? (
-              <View style={styles.emptySection}>
-                <Feather name="file-text" size={32} color={colors.mutedForeground} />
-                <Text style={styles.emptySectionText}>No recent invoices</Text>
-              </View>
-            ) : (
-              recentInvoices.map((invoice) => (
-                <RecentInvoiceItem
-                  key={invoice.id}
-                  invoice={invoice}
-                  clientName={getClientName(invoice.clientId)}
-                  onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-                  styles={styles}
-                  colors={colors}
-                />
-              ))
-            )}
-          </View>
 
           {/* All Invoices Section */}
           <View style={styles.sectionContainer}>
@@ -412,7 +272,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: 100,
   },
 
-  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -448,7 +307,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Summary Card
   summaryCard: {
     flexDirection: 'row',
     backgroundColor: colors.card,
@@ -478,7 +336,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginHorizontal: 16,
   },
 
-  // Search Bar
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -497,7 +354,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
 
-  // Filter Pills - pill shape with primary active
   filtersScroll: {
     marginBottom: 16,
     marginHorizontal: -16,
@@ -550,54 +406,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
 
-  // Stats Grid - compact
-  statsGrid: {
-    gap: 10,
-    marginBottom: spacing.xl,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  statIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  statValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.foreground,
-  },
-  statTitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-
-  // Section Container - compact
   sectionContainer: {
     marginBottom: spacing.xl,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -615,51 +425,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
 
-  // Recent Invoice Item - compact
-  recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
-  },
-  recentDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: spacing.md,
-  },
-  recentContent: {
-    flex: 1,
-  },
-  recentTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.foreground,
-  },
-  recentSubtitle: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginTop: 1,
-  },
-
-  // Empty Section - compact
-  emptySection: {
-    alignItems: 'center',
-    paddingVertical: spacing['2xl'],
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  emptySectionText: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginTop: spacing.sm,
-  },
-
-  // Invoice Card - compact with left accent
   invoiceCard: {
     flexDirection: 'row',
     backgroundColor: colors.card,
@@ -693,15 +458,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
     color: colors.foreground,
   },
-  statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 999,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
   invoiceTotal: {
     fontSize: 16,
     fontWeight: '700',
@@ -727,7 +483,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
 
-  // Empty State - compact
   emptyState: {
     alignItems: 'center',
     paddingVertical: spacing['3xl'],
@@ -748,19 +503,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: spacing.xs,
     textAlign: 'center',
-  },
-
-  // FAB - 56px as per design spec
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing['2xl'],
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.lg,
   },
 });
