@@ -7,6 +7,8 @@ import {
   RefreshControl,
   StyleSheet,
   ActivityIndicator,
+  Linking,
+  Alert,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -43,7 +45,36 @@ interface Client {
   name: string;
 }
 
+interface StripeConnectStatus {
+  connected: boolean;
+  stripeAvailable?: boolean;
+  connectEnabled?: boolean;
+  chargesEnabled?: boolean;
+  payoutsEnabled?: boolean;
+  onboardingStatus?: string;
+  message?: string;
+  error?: string;
+}
+
+interface StripeBalance {
+  available: number;
+  pending: number;
+  error?: string;
+}
+
+interface StripePayout {
+  id: string;
+  amount: number;
+  status: string;
+  arrivalDate: string | null;
+  created: string;
+  method?: string;
+  destination?: string | null;
+}
+
 type TabType = 'overview' | 'invoices' | 'quotes' | 'payments';
+type InvoiceFilterType = 'all' | 'outstanding' | 'overdue' | 'paid' | 'draft';
+type TimeRangeType = '7d' | '30d' | '90d' | 'all';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-AU', {
@@ -64,10 +95,39 @@ export default function PaymentHubScreen() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
+  const [stripeBalance, setStripeBalance] = useState<StripeBalance | null>(null);
+  const [stripePayouts, setStripePayouts] = useState<StripePayout[]>([]);
+  const [stripeLoading, setStripeLoading] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
+  
+  const [invoiceFilter, setInvoiceFilter] = useState<InvoiceFilterType>('all');
+  const [timeRange, setTimeRange] = useState<TimeRangeType>('30d');
 
   const clientMap = useMemo(() => {
     return new Map(clients.map(c => [c.id, c]));
   }, [clients]);
+
+  const fetchStripeData = useCallback(async () => {
+    try {
+      const statusRes = await api.get('/api/stripe-connect/status');
+      setStripeStatus(statusRes.data);
+      
+      if (statusRes.data?.connected && statusRes.data?.chargesEnabled) {
+        const [balanceRes, payoutsRes] = await Promise.all([
+          api.get('/api/stripe-connect/balance').catch(() => ({ data: null })),
+          api.get('/api/stripe-connect/payouts').catch(() => ({ data: { payouts: [] } })),
+        ]);
+        setStripeBalance(balanceRes.data);
+        setStripePayouts(payoutsRes.data?.payouts || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch Stripe data:', error);
+    } finally {
+      setStripeLoading(false);
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -89,12 +149,67 @@ export default function PaymentHubScreen() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchStripeData();
+  }, [fetchData, fetchStripeData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
-  }, [fetchData]);
+    fetchStripeData();
+  }, [fetchData, fetchStripeData]);
+
+  const handleConnectStripe = useCallback(async () => {
+    setIsConnecting(true);
+    try {
+      const response = await api.post('/api/stripe-connect/onboard');
+      if (response.data?.url) {
+        const url = response.data.url;
+        const canOpen = await Linking.canOpenURL(url);
+        if (!canOpen) {
+          Alert.alert('Error', 'Unable to open Stripe onboarding. Please check your browser settings.');
+          return;
+        }
+        try {
+          await Linking.openURL(url);
+        } catch (linkError) {
+          console.error('Failed to open Stripe URL:', linkError);
+          Alert.alert('Error', 'Failed to open Stripe onboarding page. Please try again.');
+        }
+      } else {
+        Alert.alert('Error', 'Could not start Stripe onboarding');
+      }
+    } catch (error) {
+      console.error('Failed to connect Stripe:', error);
+      Alert.alert('Error', 'Failed to connect Stripe. Please try again.');
+    } finally {
+      setIsConnecting(false);
+    }
+  }, []);
+
+  const handleOpenStripeDashboard = useCallback(async () => {
+    try {
+      const response = await api.get('/api/stripe-connect/dashboard');
+      if (response.data?.url) {
+        const url = response.data.url;
+        const canOpen = await Linking.canOpenURL(url);
+        if (!canOpen) {
+          Alert.alert('Error', 'Unable to open Stripe dashboard. Please check your browser settings.');
+          return;
+        }
+        try {
+          await Linking.openURL(url);
+        } catch (linkError) {
+          console.error('Failed to open Stripe dashboard URL:', linkError);
+          Alert.alert('Error', 'Failed to open Stripe dashboard page. Please try again.');
+        }
+      } else {
+        Alert.alert('Error', 'Could not open Stripe dashboard');
+      }
+    } catch (error) {
+      console.error('Failed to open Stripe dashboard:', error);
+      Alert.alert('Error', 'Failed to open Stripe dashboard. Please try again.');
+    }
+  }, []);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -159,6 +274,118 @@ export default function PaymentHubScreen() {
         </View>
         <Text style={styles.kpiValue}>{value}</Text>
         <Text style={styles.kpiSubtitle}>{subtitle}</Text>
+      </View>
+    );
+  };
+
+  const renderStripeConnectCard = () => {
+    if (stripeLoading) {
+      return (
+        <View style={styles.stripeCard}>
+          <View style={styles.stripeCardHeader}>
+            <View style={[styles.stripeLoadingIcon, { backgroundColor: colors.muted }]} />
+            <View style={{ flex: 1, gap: spacing.xs }}>
+              <View style={{ width: 80, height: 14, backgroundColor: colors.muted, borderRadius: radius.sm }} />
+              <View style={{ width: 120, height: 18, backgroundColor: colors.muted, borderRadius: radius.sm }} />
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    const isConnected = stripeStatus?.connected && stripeStatus?.chargesEnabled;
+    const needsSetup = stripeStatus?.connected && !stripeStatus?.chargesEnabled;
+    const availableBalance = stripeBalance?.available || 0;
+    const pendingBalance = stripeBalance?.pending || 0;
+
+    return (
+      <View style={[
+        styles.stripeCard,
+        isConnected && styles.stripeCardConnected,
+        needsSetup && styles.stripeCardWarning,
+      ]}>
+        <View style={styles.stripeCardHeader}>
+          <View style={[
+            styles.stripeIconWrapper,
+            { backgroundColor: isConnected ? `${colors.success}15` : needsSetup ? `${colors.warning}15` : colors.muted }
+          ]}>
+            <Feather 
+              name={isConnected ? 'credit-card' : needsSetup ? 'alert-circle' : 'link-2'} 
+              size={iconSizes.lg} 
+              color={isConnected ? colors.success : needsSetup ? colors.warning : colors.mutedForeground} 
+            />
+          </View>
+          <View style={styles.stripeCardContent}>
+            <View style={styles.stripeCardTitleRow}>
+              <Text style={styles.stripeCardTitle}>Stripe Connect</Text>
+              <View style={[
+                styles.stripeCardBadge,
+                { backgroundColor: isConnected ? `${colors.success}20` : needsSetup ? `${colors.warning}20` : `${colors.mutedForeground}20` }
+              ]}>
+                <Text style={[
+                  styles.stripeCardBadgeText,
+                  { color: isConnected ? colors.success : needsSetup ? colors.warning : colors.mutedForeground }
+                ]}>
+                  {isConnected ? 'Connected' : needsSetup ? 'Setup Required' : 'Not Connected'}
+                </Text>
+              </View>
+            </View>
+            {isConnected ? (
+              <View style={styles.balanceRow}>
+                <View style={styles.balanceItem}>
+                  <Text style={styles.balanceLabel}>Available</Text>
+                  <Text style={[styles.balanceValue, { color: colors.success }]}>
+                    ${availableBalance.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Text>
+                </View>
+                <View style={styles.balanceItem}>
+                  <Text style={styles.balanceLabel}>Pending</Text>
+                  <Text style={styles.balanceValueMuted}>
+                    ${pendingBalance.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              </View>
+            ) : needsSetup ? (
+              <Text style={styles.stripeCardDescription}>
+                Complete your Stripe account setup to start accepting payments
+              </Text>
+            ) : (
+              <Text style={styles.stripeCardDescription}>
+                Connect your Stripe account to accept online payments
+              </Text>
+            )}
+          </View>
+        </View>
+        <View style={styles.stripeCardActions}>
+          {isConnected ? (
+            <TouchableOpacity 
+              style={styles.stripeButton}
+              onPress={handleOpenStripeDashboard}
+              activeOpacity={0.7}
+            >
+              <Feather name="external-link" size={iconSizes.sm} color={colors.primary} />
+              <Text style={styles.stripeButtonText}>Dashboard</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={[styles.stripeButton, styles.stripeButtonPrimary]}
+              onPress={handleConnectStripe}
+              activeOpacity={0.7}
+              disabled={isConnecting}
+            >
+              {isConnecting ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+              ) : (
+                <>
+                  <Feather name="link-2" size={iconSizes.sm} color={colors.primaryForeground} />
+                  <Text style={styles.stripeButtonTextPrimary}>
+                    {needsSetup ? 'Complete Setup' : 'Connect Stripe'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     );
   };
@@ -344,23 +571,166 @@ export default function PaymentHubScreen() {
     </View>
   );
 
+  const filteredInvoices = useMemo(() => {
+    let filtered = [...invoices];
+    const now = new Date();
+    
+    if (invoiceFilter === 'outstanding') {
+      filtered = filtered.filter(inv => inv.status !== 'paid' && inv.status !== 'draft');
+    } else if (invoiceFilter === 'overdue') {
+      filtered = filtered.filter(inv => 
+        inv.dueDate && 
+        isBefore(new Date(inv.dueDate), now) && 
+        inv.status !== 'paid'
+      );
+    } else if (invoiceFilter === 'paid') {
+      filtered = filtered.filter(inv => inv.status === 'paid');
+    } else if (invoiceFilter === 'draft') {
+      filtered = filtered.filter(inv => inv.status === 'draft');
+    }
+
+    return filtered.sort((a, b) => {
+      if (a.status === 'draft' && b.status !== 'draft') return -1;
+      if (a.status !== 'draft' && b.status === 'draft') return 1;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+  }, [invoices, invoiceFilter]);
+
+  const filteredPayouts = useMemo(() => {
+    const now = new Date();
+    return stripePayouts.filter(payout => {
+      const createdDate = new Date(payout.created);
+      if (timeRange === '7d') return isAfter(createdDate, subDays(now, 7));
+      if (timeRange === '30d') return isAfter(createdDate, subDays(now, 30));
+      if (timeRange === '90d') return isAfter(createdDate, subDays(now, 90));
+      return true;
+    });
+  }, [stripePayouts, timeRange]);
+
+  const filteredPaidInvoices = useMemo(() => {
+    const now = new Date();
+    return invoices
+      .filter(inv => inv.status === 'paid')
+      .filter(inv => {
+        if (!inv.paidAt) return true;
+        const paidDate = new Date(inv.paidAt);
+        if (timeRange === '7d') return isAfter(paidDate, subDays(now, 7));
+        if (timeRange === '30d') return isAfter(paidDate, subDays(now, 30));
+        if (timeRange === '90d') return isAfter(paidDate, subDays(now, 90));
+        return true;
+      })
+      .sort((a, b) => new Date(b.paidAt || 0).getTime() - new Date(a.paidAt || 0).getTime());
+  }, [invoices, timeRange]);
+
+  const renderFilterChip = (
+    label: string, 
+    value: string, 
+    currentValue: string, 
+    onPress: (value: string) => void
+  ) => {
+    const isActive = currentValue === value;
+    return (
+      <TouchableOpacity
+        key={value}
+        style={[styles.filterChip, isActive && styles.filterChipActive]}
+        onPress={() => onPress(value)}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderPayoutRow = (payout: StripePayout) => {
+    const statusColors: Record<string, string> = {
+      paid: colors.success,
+      pending: colors.primary,
+      in_transit: colors.scheduled,
+      canceled: colors.error,
+      failed: colors.error,
+    };
+    const statusLabels: Record<string, string> = {
+      paid: 'Completed',
+      pending: 'Pending',
+      in_transit: 'In Transit',
+      canceled: 'Cancelled',
+      failed: 'Failed',
+    };
+    const statusColor = statusColors[payout.status] || colors.mutedForeground;
+    const statusLabel = statusLabels[payout.status] || payout.status;
+
+    const formatPayoutDate = (dateStr: string | null) => {
+      if (!dateStr) return 'Unknown date';
+      try {
+        return format(new Date(dateStr), 'dd MMM yyyy');
+      } catch {
+        return 'Unknown date';
+      }
+    };
+
+    return (
+      <View key={payout.id} style={styles.payoutRow}>
+        <View style={[styles.payoutIcon, { backgroundColor: `${colors.success}15` }]}>
+          <Feather name="dollar-sign" size={iconSizes.md} color={colors.success} />
+        </View>
+        <View style={styles.payoutInfo}>
+          <View style={styles.documentTitleRow}>
+            <Text style={styles.documentTitle}>Bank Transfer</Text>
+            <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
+              <Text style={[styles.statusText, { color: statusColor }]}>
+                {statusLabel}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.documentSubtitle}>
+            {payout.destination ? `To account ${payout.destination}` : `Payout ${payout.id.slice(-8)}`}
+          </Text>
+        </View>
+        <View style={styles.documentRight}>
+          <Text style={styles.payoutAmount}>
+            +${payout.amount.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </Text>
+          <Text style={styles.documentDue}>
+            {payout.status === 'paid' 
+              ? `Arrived ${formatPayoutDate(payout.arrivalDate)}`
+              : `Expected ${formatPayoutDate(payout.arrivalDate)}`
+            }
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
   const renderInvoices = () => (
     <View style={styles.listContainer}>
-      {invoices
-        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-        .map(renderInvoiceRow)}
-      {invoices.length === 0 && (
-        <View style={styles.emptyState}>
-          <Feather name="file-text" size={48} color={colors.mutedForeground} />
-          <Text style={styles.emptyText}>No invoices yet</Text>
-          <TouchableOpacity 
-            style={styles.createButton}
-            onPress={() => router.push('/more/create-invoice')}
-          >
-            <Text style={styles.createButtonText}>Create Invoice</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={styles.filterRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {renderFilterChip('All', 'all', invoiceFilter, setInvoiceFilter)}
+          {renderFilterChip('Outstanding', 'outstanding', invoiceFilter, setInvoiceFilter)}
+          {renderFilterChip('Overdue', 'overdue', invoiceFilter, setInvoiceFilter)}
+          {renderFilterChip('Paid', 'paid', invoiceFilter, setInvoiceFilter)}
+          {renderFilterChip('Drafts', 'draft', invoiceFilter, setInvoiceFilter)}
+        </ScrollView>
+      </View>
+      <View style={styles.sectionContent}>
+        {filteredInvoices.map(renderInvoiceRow)}
+        {filteredInvoices.length === 0 && (
+          <View style={styles.emptyState}>
+            <Feather name="file-text" size={48} color={colors.mutedForeground} />
+            <Text style={styles.emptyText}>No invoices found</Text>
+            {invoiceFilter === 'all' && (
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => router.push('/more/create-invoice')}
+              >
+                <Text style={styles.createButtonText}>Create Invoice</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
     </View>
   );
 
@@ -386,16 +756,47 @@ export default function PaymentHubScreen() {
 
   const renderPayments = () => (
     <View style={styles.listContainer}>
-      {invoices
-        .filter(inv => inv.status === 'paid')
-        .sort((a, b) => new Date(b.paidAt || 0).getTime() - new Date(a.paidAt || 0).getTime())
-        .map(renderInvoiceRow)}
-      {invoices.filter(inv => inv.status === 'paid').length === 0 && (
-        <View style={styles.emptyState}>
-          <Feather name="credit-card" size={48} color={colors.mutedForeground} />
-          <Text style={styles.emptyText}>No payments recorded</Text>
+      <View style={styles.filterRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {renderFilterChip('7d', '7d', timeRange, setTimeRange)}
+          {renderFilterChip('30d', '30d', timeRange, setTimeRange)}
+          {renderFilterChip('90d', '90d', timeRange, setTimeRange)}
+          {renderFilterChip('All', 'all', timeRange, setTimeRange)}
+        </ScrollView>
+      </View>
+
+      {stripeStatus?.connected && stripeStatus?.chargesEnabled && (
+        <View style={styles.payoutsSection}>
+          <View style={styles.sectionHeader}>
+            <Feather name="dollar-sign" size={iconSizes.md} color={colors.success} />
+            <Text style={styles.sectionTitle}>Bank Payouts</Text>
+          </View>
+          <View style={styles.sectionContent}>
+            {filteredPayouts.length > 0 ? (
+              filteredPayouts.map(renderPayoutRow)
+            ) : (
+              <View style={styles.emptyState}>
+                <Feather name="inbox" size={32} color={colors.mutedForeground} />
+                <Text style={styles.emptyText}>No payouts in this period</Text>
+              </View>
+            )}
+          </View>
         </View>
       )}
+
+      <View style={styles.sectionHeader}>
+        <Feather name="check-circle" size={iconSizes.md} color={colors.success} />
+        <Text style={styles.sectionTitle}>Paid Invoices</Text>
+      </View>
+      <View style={styles.sectionContent}>
+        {filteredPaidInvoices.map(renderInvoiceRow)}
+        {filteredPaidInvoices.length === 0 && (
+          <View style={styles.emptyState}>
+            <Feather name="credit-card" size={48} color={colors.mutedForeground} />
+            <Text style={styles.emptyText}>No payments in this period</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 
@@ -440,6 +841,8 @@ export default function PaymentHubScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
+        {renderStripeConnectCard()}
+        
         <View style={styles.kpiGrid}>
           {renderKPICard(
             'Outstanding',
@@ -739,5 +1142,169 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.primaryForeground,
+  },
+  stripeCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    ...shadows.sm,
+  },
+  stripeCardConnected: {
+    borderColor: `${colors.success}40`,
+  },
+  stripeCardWarning: {
+    borderColor: `${colors.warning}40`,
+  },
+  stripeCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  stripeIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stripeLoadingIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+  },
+  stripeCardContent: {
+    flex: 1,
+  },
+  stripeCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  stripeCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  stripeCardBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+  },
+  stripeCardBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  stripeCardDescription: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.lg,
+    marginTop: spacing.xs,
+  },
+  balanceItem: {
+    gap: 2,
+  },
+  balanceLabel: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+  },
+  balanceValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  balanceValueMuted: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+  },
+  stripeCardActions: {
+    marginTop: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+  },
+  stripeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  stripeButtonPrimary: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  stripeButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.primary,
+  },
+  stripeButtonTextPrimary: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.primaryForeground,
+  },
+  filterRow: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  filterChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginRight: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: colors.muted,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  filterChipTextActive: {
+    color: colors.primaryForeground,
+  },
+  payoutsSection: {
+    marginBottom: spacing.lg,
+  },
+  payoutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: spacing.sm,
+  },
+  payoutIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  payoutInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  payoutAmount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.success,
   },
 });
