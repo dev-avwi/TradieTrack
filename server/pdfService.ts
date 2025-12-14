@@ -15,6 +15,40 @@ interface DocumentTemplate {
   bodyWeight: number;
 }
 
+// Customization options that can override template defaults (mirrors client type)
+interface TemplateCustomization {
+  tableStyle?: 'bordered' | 'striped' | 'minimal';
+  noteStyle?: 'bordered' | 'highlighted' | 'simple';
+  headerBorderWidth?: '1px' | '2px' | '3px' | '4px';
+  showHeaderDivider?: boolean;
+  bodyWeight?: 400 | 500 | 600 | 700;
+  headingWeight?: 600 | 700 | 800;
+  accentColor?: string;
+}
+
+// Apply customizations to base template
+function getCustomizedTemplate(templateId: TemplateId, customization?: TemplateCustomization): { template: DocumentTemplate; accentColor: string } {
+  const baseTemplate = DOCUMENT_TEMPLATES[templateId] || DOCUMENT_TEMPLATES.minimal;
+  
+  if (!customization) {
+    return { template: baseTemplate, accentColor: DOCUMENT_ACCENT_COLOR };
+  }
+  
+  const template: DocumentTemplate = {
+    ...baseTemplate,
+    tableStyle: customization.tableStyle ?? baseTemplate.tableStyle,
+    noteStyle: customization.noteStyle ?? baseTemplate.noteStyle,
+    headerBorderWidth: customization.headerBorderWidth ?? baseTemplate.headerBorderWidth,
+    showHeaderDivider: customization.showHeaderDivider ?? baseTemplate.showHeaderDivider,
+    bodyWeight: customization.bodyWeight ?? baseTemplate.bodyWeight,
+    headingWeight: customization.headingWeight ?? baseTemplate.headingWeight,
+  };
+  
+  const accentColor = customization.accentColor || DOCUMENT_ACCENT_COLOR;
+  
+  return { template, accentColor };
+}
+
 // Fixed document accent color - consistent navy blue across all templates
 // This must match DOCUMENT_ACCENT_COLOR in client/src/lib/document-templates.ts
 const DOCUMENT_ACCENT_COLOR = '#1e3a5f';
@@ -137,10 +171,8 @@ const generateGoogleFontsLink = (): string => {
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">`;
 };
 
-const generateDocumentStyles = (_brandColor: string, templateId: string = 'minimal') => {
-  const template = DOCUMENT_TEMPLATES[templateId as TemplateId] || DOCUMENT_TEMPLATES.minimal;
-  // Use the fixed accent color for all templates - ignore brandColor
-  const brandColor = DOCUMENT_ACCENT_COLOR;
+const generateDocumentStyles = (template: DocumentTemplate, accentColor: string) => {
+  const brandColor = accentColor;
   
   // Table header styles based on template
   const tableHeaderStyles = template.tableStyle === 'minimal' 
@@ -212,7 +244,7 @@ const generateDocumentStyles = (_brandColor: string, templateId: string = 'minim
     body {
       font-family: ${template.fontFamily};
       font-size: ${template.baseFontSize};
-      font-weight: ${template.bodyWeight >= 600 ? template.bodyWeight : 600};
+      font-weight: ${template.bodyWeight};
       line-height: 1.5;
       color: #1a1a1a;
       background: #fff;
@@ -557,8 +589,9 @@ const generateDocumentStyles = (_brandColor: string, templateId: string = 'minim
 
 export const generateQuotePDF = (data: QuoteWithDetails): string => {
   const { quote, lineItems, client, business, job, acceptanceUrl } = data;
-  const brandColor = business.brandColor || '#2563eb';
-  const templateId = (business as any).documentTemplate || 'minimal';
+  const templateId = ((business as any).documentTemplate || 'minimal') as TemplateId;
+  const templateCustomization = (business as any).documentTemplateSettings as TemplateCustomization | undefined;
+  const { template, accentColor } = getCustomizedTemplate(templateId, templateCustomization);
   
   const subtotal = parseFloat(quote.subtotal as unknown as string);
   const gstAmount = parseFloat(quote.gstAmount as unknown as string);
@@ -576,7 +609,7 @@ export const generateQuotePDF = (data: QuoteWithDetails): string => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quote ${quote.number} - ${business.businessName}</title>
   ${generateGoogleFontsLink()}
-  ${generateDocumentStyles(brandColor, templateId)}
+  ${generateDocumentStyles(template, accentColor)}
 </head>
 <body>
   <div class="document">
@@ -691,10 +724,10 @@ export const generateQuotePDF = (data: QuoteWithDetails): string => {
     </div>
     
     ${acceptanceUrl && quote.status !== 'accepted' && quote.status !== 'declined' ? `
-      <div style="margin: 24px 0; padding: 20px; background: linear-gradient(135deg, ${brandColor}10 0%, ${brandColor}05 100%); border-radius: 8px; border: 2px solid ${brandColor}; text-align: center;">
-        <p style="font-size: 12px; font-weight: 600; color: ${brandColor}; margin: 0 0 8px 0;">Accept This Quote Online</p>
+      <div style="margin: 24px 0; padding: 20px; background: linear-gradient(135deg, ${accentColor}10 0%, ${accentColor}05 100%); border-radius: 8px; border: 2px solid ${accentColor}; text-align: center;">
+        <p style="font-size: 12px; font-weight: 600; color: ${accentColor}; margin: 0 0 8px 0;">Accept This Quote Online</p>
         <p style="font-size: 10px; color: #666; margin: 0 0 12px 0;">Click the link or scan the QR code to accept this quote</p>
-        <a href="${acceptanceUrl}" style="display: inline-block; background: ${brandColor}; color: white; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 11px;">${acceptanceUrl}</a>
+        <a href="${acceptanceUrl}" style="display: inline-block; background: ${accentColor}; color: white; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 11px;">${acceptanceUrl}</a>
       </div>
     ` : ''}
     
@@ -788,8 +821,9 @@ ${(quote as any).acceptanceIp ? `IP Address: ${(quote as any).acceptanceIp}` : '
 
 export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
   const { invoice, lineItems, client, business, job, timeEntries, paymentUrl } = data;
-  const brandColor = business.brandColor || '#dc2626';
-  const templateId = (business as any).documentTemplate || 'minimal';
+  const templateId = ((business as any).documentTemplate || 'minimal') as TemplateId;
+  const templateCustomization = (business as any).documentTemplateSettings as TemplateCustomization | undefined;
+  const { template, accentColor } = getCustomizedTemplate(templateId, templateCustomization);
   
   // Calculate time tracking totals if present
   const totalMinutes = timeEntries?.reduce((sum, entry) => sum + (entry.duration || 0), 0) || 0;
@@ -822,7 +856,7 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${documentTitle} ${invoice.number} - ${business.businessName}</title>
   ${generateGoogleFontsLink()}
-  ${generateDocumentStyles(brandColor, templateId)}
+  ${generateDocumentStyles(template, accentColor)}
 </head>
 <body>
   <div class="document">
@@ -850,7 +884,7 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
         </div>
       </div>
       <div class="document-type">
-        <div class="document-title" style="color: ${isPaid ? '#22c55e' : brandColor}; font-size: ${isGstRegistered ? '28px' : '32px'};">
+        <div class="document-title" style="color: ${isPaid ? '#22c55e' : accentColor}; font-size: ${isGstRegistered ? '28px' : '32px'};">
           ${documentTitle}
         </div>
         <div class="document-number">${invoice.number}</div>

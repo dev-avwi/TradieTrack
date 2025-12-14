@@ -25,6 +25,17 @@ export interface DocumentTemplate {
   noteStyle: 'bordered' | 'highlighted' | 'simple';
 }
 
+// Customization options that can override template defaults
+export interface TemplateCustomization {
+  tableStyle?: 'bordered' | 'striped' | 'minimal';
+  noteStyle?: 'bordered' | 'highlighted' | 'simple';
+  headerBorderWidth?: '1px' | '2px' | '3px' | '4px';
+  showHeaderDivider?: boolean;
+  bodyWeight?: 400 | 500 | 600 | 700;
+  headingWeight?: 600 | 700 | 800;
+  accentColor?: string; // Custom accent color override
+}
+
 // All templates use Inter font for consistent modern appearance
 const INTER_FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
@@ -89,13 +100,28 @@ export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
 export const DOCUMENT_ACCENT_COLOR = '#1e3a5f';
 
 // Helper to get template styles for inline application
-export function getTemplateStyles(templateId: TemplateId, _brandColor: string = '#2563eb') {
-  const template = DOCUMENT_TEMPLATES[templateId] || DOCUMENT_TEMPLATES.minimal;
+// Now accepts optional customizations to override template defaults
+export function getTemplateStyles(
+  templateId: TemplateId, 
+  _brandColor: string = '#2563eb',
+  customization?: TemplateCustomization
+) {
+  const baseTemplate = DOCUMENT_TEMPLATES[templateId] || DOCUMENT_TEMPLATES.minimal;
   
-  // Use consistent accent color for ALL templates - no variation based on colorScheme
-  // This ensures live preview, detail views, and PDFs all match exactly
-  const primaryColor = DOCUMENT_ACCENT_COLOR;
-  const accentColor = DOCUMENT_ACCENT_COLOR;
+  // Apply customizations if provided
+  const template = {
+    ...baseTemplate,
+    tableStyle: customization?.tableStyle ?? baseTemplate.tableStyle,
+    noteStyle: customization?.noteStyle ?? baseTemplate.noteStyle,
+    headerBorderWidth: customization?.headerBorderWidth ?? baseTemplate.headerBorderWidth,
+    showHeaderDivider: customization?.showHeaderDivider ?? baseTemplate.showHeaderDivider,
+    bodyWeight: customization?.bodyWeight ?? baseTemplate.bodyWeight,
+    headingWeight: customization?.headingWeight ?? baseTemplate.headingWeight,
+  };
+  
+  // Use custom accent color if provided, otherwise use default
+  const primaryColor = customization?.accentColor || DOCUMENT_ACCENT_COLOR;
+  const accentColor = customization?.accentColor || DOCUMENT_ACCENT_COLOR;
   
   return {
     template,

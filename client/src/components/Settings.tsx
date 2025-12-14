@@ -63,7 +63,7 @@ import { LogoUpload } from "./LogoUpload";
 import { useToast } from "@/hooks/use-toast";
 import DataSafetyBanner from "./DataSafetyBanner";
 import DocumentTemplateSelector from "./DocumentTemplateSelector";
-import { TemplateId } from "@/lib/document-templates";
+import { TemplateId, TemplateCustomization } from "@/lib/document-templates";
 
 // Types for MyAccount tab
 interface ColorOption {
@@ -223,6 +223,7 @@ export default function Settings({
 
   // Document template settings
   const [documentTemplate, setDocumentTemplate] = useState<TemplateId>('professional');
+  const [templateCustomization, setTemplateCustomization] = useState<TemplateCustomization>({});
 
   // My Account tab state
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -358,6 +359,12 @@ export default function Settings({
       
       // Load document template setting
       setDocumentTemplate(((businessSettings as any).documentTemplate || 'professional') as TemplateId);
+      
+      // Load template customization settings
+      const savedCustomization = (businessSettings as any).documentTemplateSettings;
+      if (savedCustomization && typeof savedCustomization === 'object') {
+        setTemplateCustomization(savedCustomization);
+      }
       
       // Get server values - check both primaryColor and brandColor fields
       const serverColor = businessSettings.primaryColor || businessSettings.brandColor || DEFAULT_BRAND_COLOR;
@@ -497,6 +504,7 @@ export default function Settings({
       includeSignatureOnInvoices: signatureData.includeSignatureOnInvoices,
       // Document template
       documentTemplate: documentTemplate,
+      documentTemplateSettings: templateCustomization,
     };
     
     saveSettingsMutation.mutate(updateData);
@@ -1439,6 +1447,8 @@ export default function Settings({
           <DocumentTemplateSelector
             selectedTemplate={documentTemplate}
             onSelectTemplate={setDocumentTemplate}
+            customization={templateCustomization}
+            onCustomizationChange={setTemplateCustomization}
             brandColor={brandingData.color}
           />
         </TabsContent>
