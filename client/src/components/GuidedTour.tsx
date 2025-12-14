@@ -416,11 +416,18 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Reset on open
+  // Reset on open and set body attribute for other components to know tour is active
   useEffect(() => {
     if (isOpen) {
       setCurrentStep(0);
+      document.body.setAttribute('data-tour-active', 'true');
+    } else {
+      document.body.removeAttribute('data-tour-active');
     }
+    
+    return () => {
+      document.body.removeAttribute('data-tour-active');
+    };
   }, [isOpen]);
 
   const handleNext = () => {
@@ -562,7 +569,7 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
       {/* Tour Card */}
       <Card
         ref={cardRef}
-        className="shadow-2xl border-2 overflow-hidden"
+        className="shadow-2xl border-2 overflow-hidden bg-background"
         style={{
           ...getCardStyle(),
           borderColor: isInteractive ? '#10b981' : 'hsl(var(--primary))'

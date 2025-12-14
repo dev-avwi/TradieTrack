@@ -22,7 +22,7 @@ import {
   HelpCircle
 } from "lucide-react";
 import { SiStripe } from "react-icons/si";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -70,7 +70,31 @@ export default function GettingStartedChecklist({
 }: GettingStartedChecklistProps) {
   const [dismissed, setDismissed] = useState(false);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
+  const [isTourActive, setIsTourActive] = useState(false);
   const { toast } = useToast();
+  
+  // Check if guided tour is active and hide this component
+  useEffect(() => {
+    const checkTourActive = () => {
+      setIsTourActive(document.body.hasAttribute('data-tour-active'));
+    };
+    
+    // Initial check
+    checkTourActive();
+    
+    // Use MutationObserver to detect attribute changes on body
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-tour-active') {
+          checkTourActive();
+        }
+      }
+    });
+    
+    observer.observe(document.body, { attributes: true });
+    
+    return () => observer.disconnect();
+  }, []);
   
   const { data: businessSettings } = useQuery({ queryKey: ["/api/business-settings"] });
   const { data: user } = useQuery({ queryKey: ["/api/auth/me"] });
@@ -223,7 +247,8 @@ export default function GettingStartedChecklist({
   const allComplete = completedCount === steps.length;
   const highPriorityIncomplete = steps.filter(s => s.priority === 'high' && !s.completed);
 
-  if (dismissed || allComplete) {
+  // Hide when tour is active, dismissed, or all steps are complete
+  if (isTourActive || dismissed || allComplete) {
     return null;
   }
 
