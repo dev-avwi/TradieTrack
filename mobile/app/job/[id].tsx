@@ -2848,8 +2848,9 @@ export default function JobDetailScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen 
+    <>
+      <View style={styles.container}>
+        <Stack.Screen 
         options={{ 
           title: '',
           headerBackTitle: 'Back',
@@ -2910,7 +2911,7 @@ export default function JobDetailScreen() {
         {activeTab === 'photos' && renderPhotosTab()}
         {activeTab === 'notes' && renderNotesTab()}
       </ScrollView>
-
+      </View>
 
       {/* Notes Modal */}
       <Modal visible={showNotesModal} animationType="slide" transparent>
