@@ -17,7 +17,8 @@ import {
   MousePointerClick,
   Plus,
   ArrowRight,
-  LogOut
+  LogOut,
+  MoreHorizontal
 } from "lucide-react";
 
 interface TourStep {
@@ -49,13 +50,23 @@ const TOUR_STEPS: TourStep[] = [
     targetSelector: '[data-testid="dashboard-content"], main, .dashboard-container'
   },
   {
+    id: "nav-more-clients",
+    title: "Open the More Menu",
+    description: "On mobile, some features are in the 'More' menu. Tap 'More' at the bottom to find Clients.",
+    route: "/",
+    icon: MoreHorizontal,
+    waitForClick: true,
+    clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
+    clickTargetLabel: "More"
+  },
+  {
     id: "nav-clients",
     title: "Go to Clients",
-    description: "Let's check out the Clients section. Click on 'Clients' in the menu to continue.",
-    route: "/",
+    description: "Now tap 'Clients' to see your customer list.",
+    route: "/more",
     icon: Users,
     waitForClick: true,
-    clickTargetSelector: '[data-testid="nav-clients"], a[href="/clients"], [href="/clients"]',
+    clickTargetSelector: '[data-testid="card-clients"], [data-testid="nav-clients"], a[href="/clients"]',
     clickTargetLabel: "Clients"
   },
   {
@@ -79,11 +90,11 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: "nav-work",
     title: "Now Let's See Your Jobs",
-    description: "Click on 'Work' in the menu to see how job management works.",
+    description: "Tap 'Work' at the bottom to see how job management works.",
     route: "/clients",
     icon: Briefcase,
     waitForClick: true,
-    clickTargetSelector: '[data-testid="nav-work"], a[href="/work"], [href="/work"]',
+    clickTargetSelector: '[data-testid="bottom-nav-work"], [data-testid="nav-work"], a[href="/work"]',
     clickTargetLabel: "Work"
   },
   {
@@ -95,13 +106,23 @@ const TOUR_STEPS: TourStep[] = [
     targetSelector: '[data-testid="work-content"], [data-testid="jobs-list"], main'
   },
   {
+    id: "nav-more-quotes",
+    title: "Back to More Menu",
+    description: "Tap 'More' again to find the Quotes section.",
+    route: "/work",
+    icon: MoreHorizontal,
+    waitForClick: true,
+    clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
+    clickTargetLabel: "More"
+  },
+  {
     id: "nav-quotes",
     title: "Time for Quotes",
-    description: "Click 'Quotes' to see how you create professional quotes for your clients.",
-    route: "/work",
+    description: "Now tap 'Quotes' to see how you create professional quotes for your clients.",
+    route: "/more",
     icon: FileText,
     waitForClick: true,
-    clickTargetSelector: '[data-testid="nav-quotes"], a[href="/quotes"], [href="/quotes"]',
+    clickTargetSelector: '[data-testid="card-quotes"], [data-testid="nav-quotes"], a[href="/quotes"]',
     clickTargetLabel: "Quotes"
   },
   {
@@ -113,13 +134,23 @@ const TOUR_STEPS: TourStep[] = [
     targetSelector: '[data-testid="quotes-content"], [data-testid="quotes-list"], main'
   },
   {
+    id: "nav-more-invoices",
+    title: "Back to More Menu",
+    description: "Tap 'More' to find Invoices.",
+    route: "/quotes",
+    icon: MoreHorizontal,
+    waitForClick: true,
+    clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
+    clickTargetLabel: "More"
+  },
+  {
     id: "nav-invoices",
     title: "Check Your Invoices",
-    description: "Click 'Invoices' to see how you get paid.",
-    route: "/quotes",
+    description: "Tap 'Invoices' to see how you get paid.",
+    route: "/more",
     icon: Receipt,
     waitForClick: true,
-    clickTargetSelector: '[data-testid="nav-invoices"], a[href="/invoices"], [href="/invoices"]',
+    clickTargetSelector: '[data-testid="card-invoices"], [data-testid="nav-invoices"], a[href="/invoices"]',
     clickTargetLabel: "Invoices"
   },
   {
@@ -131,13 +162,23 @@ const TOUR_STEPS: TourStep[] = [
     targetSelector: '[data-testid="invoices-content"], [data-testid="invoices-list"], main'
   },
   {
+    id: "nav-more-settings",
+    title: "One More Time",
+    description: "Tap 'More' to find Settings.",
+    route: "/invoices",
+    icon: MoreHorizontal,
+    waitForClick: true,
+    clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
+    clickTargetLabel: "More"
+  },
+  {
     id: "nav-settings",
     title: "Finally, Your Settings",
-    description: "Click 'Settings' to customise your business profile, logo, and preferences.",
-    route: "/invoices",
+    description: "Tap 'Settings' to customise your business profile, logo, and preferences.",
+    route: "/more",
     icon: Settings,
     waitForClick: true,
-    clickTargetSelector: '[data-testid="nav-settings"], a[href="/settings"], [href="/settings"]',
+    clickTargetSelector: '[data-testid="card-settings"], [data-testid="nav-settings"], a[href="/settings"]',
     clickTargetLabel: "Settings"
   },
   {
