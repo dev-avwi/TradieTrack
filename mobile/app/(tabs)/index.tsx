@@ -638,6 +638,9 @@ export default function DashboardScreen() {
   // Determine if user is staff (team member with limited permissions)
   const isStaffUser = isStaff();
   const isOwnerUser = isOwner();
+  // Match web's canViewMap logic: only owners and managers can see the map
+  const isManager = roleInfo?.roleName?.toLowerCase() === 'manager';
+  const canViewMap = isOwnerUser || isManager;
   
   const handleNavigateToItem = (type: string, id: string) => {
     switch (type) {
@@ -754,7 +757,19 @@ export default function DashboardScreen() {
                 : businessSettings?.businessName || "Welcome back"}
             </Text>
           </View>
-          <NotificationBell onPress={() => setShowNotifications(true)} />
+          <View style={styles.headerRight}>
+            {canViewMap && (
+              <TouchableOpacity
+                style={styles.headerMapButton}
+                onPress={() => router.push('/(tabs)/map')}
+                activeOpacity={0.7}
+                testID="button-header-map"
+              >
+                <Feather name="map" size={iconSizes.lg} color={colors.primary} />
+              </TouchableOpacity>
+            )}
+            <NotificationBell onPress={() => setShowNotifications(true)} />
+          </View>
         </View>
       </View>
       
@@ -1045,6 +1060,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
     marginTop: spacing.xs,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  headerMapButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    backgroundColor: `${colors.primary}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Activity Feed - compact
