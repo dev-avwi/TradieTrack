@@ -541,7 +541,8 @@ export default function TeamOwnerDashboard({
             {teamMembers.map((member) => {
               const memberJobs = getJobsForMember(member.userId || '');
               const isDragOver = dragOverMember === member.id;
-              const isClickable = !!selectedJob && !assignJob.isPending;
+              const canReceiveJobs = !!member.userId && member.inviteStatus === 'accepted';
+              const isClickable = !!selectedJob && !assignJob.isPending && canReceiveJobs;
               
               return (
                 <div
@@ -575,7 +576,7 @@ export default function TeamOwnerDashboard({
                           {memberJobs.length} active job{memberJobs.length !== 1 ? 's' : ''}
                         </p>
                       </div>
-                      {isDragOver && (
+                      {isDragOver && canReceiveJobs && (
                         <Badge style={{ backgroundColor: 'hsl(var(--trade))' }} className="text-white">
                           Drop here
                         </Badge>
@@ -583,6 +584,11 @@ export default function TeamOwnerDashboard({
                       {isClickable && !isDragOver && (
                         <Badge variant="outline" className="text-primary border-primary">
                           Tap to assign
+                        </Badge>
+                      )}
+                      {!canReceiveJobs && (
+                        <Badge variant="secondary" className="text-xs">
+                          Invite pending
                         </Badge>
                       )}
                     </div>
