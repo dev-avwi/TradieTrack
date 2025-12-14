@@ -189,9 +189,15 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
       setIsNavigating(true);
       
       const currentPath = window.location.pathname;
-      if (step.route !== currentPath) {
+      const isRouteChange = step.route !== currentPath;
+      
+      if (isRouteChange) {
         setLocation(step.route);
         await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Scroll to top of page after route change
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
       
       await new Promise(resolve => setTimeout(resolve, 300));
