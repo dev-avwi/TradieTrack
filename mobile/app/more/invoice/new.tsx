@@ -778,6 +778,40 @@ export default function NewInvoiceScreen() {
         {/* Preview Mode */}
         {activeTab === 'preview' && (
           <View style={[styles.previewContainer, { paddingBottom: bottomNavHeight }]}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: 8,
+            }}>
+              <Text style={{
+                fontSize: 12,
+                fontWeight: '500',
+                color: colors.mutedForeground,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}>
+                Live Preview
+              </Text>
+              <View style={{
+                backgroundColor: colors.muted,
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 6,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}>
+                <Text style={{
+                  fontSize: 11,
+                  fontWeight: '500',
+                  color: colors.mutedForeground,
+                }}>
+                  Updates as you type
+                </Text>
+              </View>
+            </View>
             <LiveDocumentPreview
               type="invoice"
               title={form.title}

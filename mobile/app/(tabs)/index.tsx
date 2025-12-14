@@ -1049,7 +1049,7 @@ export default function DashboardScreen() {
           {/* Team Members */}
           <View style={styles.teamMembersList}>
             {teamMembers.map((member: any) => {
-              const memberJobs = getJobsForMember(member.userId || member.id);
+              const memberJobs = getJobsForMember(member.memberId);
               const isClickable = !!selectedJob && !isAssigning;
               
               return (
@@ -1060,8 +1060,8 @@ export default function DashboardScreen() {
                     isClickable && styles.teamMemberCardClickable
                   ]}
                   onPress={() => {
-                    if (isClickable && (member.userId || member.id)) {
-                      handleAssignJob(selectedJob.id, member.userId || member.id);
+                    if (isClickable && member.memberId) {
+                      handleAssignJob(selectedJob.id, member.memberId);
                     }
                   }}
                   activeOpacity={isClickable ? 0.7 : 1}
