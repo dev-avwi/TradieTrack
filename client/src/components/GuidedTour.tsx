@@ -16,9 +16,8 @@ import {
   CheckCircle2,
   MousePointerClick,
   Plus,
-  Edit,
-  Eye,
-  Send
+  ArrowRight,
+  LogOut
 } from "lucide-react";
 
 interface TourStep {
@@ -28,216 +27,131 @@ interface TourStep {
   route: string;
   icon: any;
   targetSelector?: string;
-  // Interactive step properties
   waitForClick?: boolean;
   clickTargetSelector?: string;
   clickTargetLabel?: string;
-  // For sub-steps within a workflow
-  subStep?: number;
-  totalSubSteps?: number;
 }
 
 const TOUR_STEPS: TourStep[] = [
-  // Welcome
   {
     id: "welcome",
     title: "Welcome to TradieTrack!",
-    description: "Let's learn by doing! This tour will guide you through actually using the app. You'll click buttons and see how things work firsthand.",
+    description: "This tour will guide you through the app step by step. We'll highlight each area and you'll click through to learn how it works. Ready?",
     route: "/",
     icon: Sparkles
   },
-  
-  // Dashboard Overview
   {
-    id: "dashboard-overview",
+    id: "dashboard",
     title: "Your Dashboard",
-    description: "This is your home base. You can see today's scheduled jobs, track earnings, and quickly access everything you need.",
+    description: "This is your home base. You'll see today's jobs, earnings summary, and quick actions. Everything starts here.",
     route: "/",
     icon: LayoutDashboard,
-    targetSelector: '[data-testid="dashboard-content"], .dashboard-container, main'
+    targetSelector: '[data-testid="dashboard-content"], main, .dashboard-container'
   },
-  
-  // Clients Section - Interactive
   {
-    id: "clients-intro",
-    title: "Let's Add a Client",
-    description: "First, let's go to the Clients page. Click the Clients button in the menu to continue.",
-    route: "/clients",
+    id: "nav-clients",
+    title: "Go to Clients",
+    description: "Let's check out the Clients section. Click on 'Clients' in the menu to continue.",
+    route: "/",
     icon: Users,
     waitForClick: true,
     clickTargetSelector: '[data-testid="nav-clients"], a[href="/clients"], [href="/clients"]',
-    clickTargetLabel: "Clients menu item"
+    clickTargetLabel: "Clients"
   },
   {
     id: "clients-page",
     title: "Your Client List",
-    description: "This is where all your customers live. You can search, filter, and manage everyone you work for.",
+    description: "Here's where all your customers are stored. You can search, call, email, or view their job history from here.",
     route: "/clients",
     icon: Users,
-    targetSelector: '[data-testid="clients-content"], [data-testid="clients-list"]'
+    targetSelector: '[data-testid="clients-content"], [data-testid="clients-list"], main'
   },
   {
-    id: "clients-add-button",
-    title: "Adding New Clients",
-    description: "To add a new client, you'd click the '+ New Client' button. This opens a form where you enter their name, phone, email, and address.",
+    id: "clients-add",
+    title: "Adding a New Client",
+    description: "See the '+ New Client' button? That's how you add customers. Try clicking it now.",
     route: "/clients",
     icon: Plus,
-    targetSelector: '[data-testid="button-new-client"], [data-testid="add-client-button"], button:has-text("New Client")',
     waitForClick: true,
-    clickTargetSelector: '[data-testid="button-new-client"], [data-testid="add-client-button"]',
-    clickTargetLabel: "+ New Client button"
+    clickTargetSelector: '[data-testid="button-new-client"], [data-testid="add-client-button"], button:has(svg.lucide-plus)',
+    clickTargetLabel: "+ New Client"
   },
-  
-  // Jobs Section - Interactive
   {
-    id: "jobs-intro",
-    title: "Now Let's Look at Jobs",
-    description: "Jobs are the heart of your business. Click the Work button to see how job management works.",
-    route: "/work",
+    id: "nav-work",
+    title: "Now Let's See Your Jobs",
+    description: "Click on 'Work' in the menu to see how job management works.",
+    route: "/clients",
     icon: Briefcase,
     waitForClick: true,
     clickTargetSelector: '[data-testid="nav-work"], a[href="/work"], [href="/work"]',
-    clickTargetLabel: "Work menu item"
+    clickTargetLabel: "Work"
   },
   {
     id: "jobs-page",
     title: "Your Job Board",
-    description: "Here you can see all your jobs organised by status. Jobs flow from Pending → Scheduled → In Progress → Done → Invoiced.",
+    description: "Jobs flow through stages: Pending → Scheduled → In Progress → Done → Invoiced. Each card shows a job's status.",
     route: "/work",
     icon: Briefcase,
-    targetSelector: '[data-testid="work-content"], [data-testid="jobs-list"]'
+    targetSelector: '[data-testid="work-content"], [data-testid="jobs-list"], main'
   },
   {
-    id: "jobs-status-flow",
-    title: "Job Status Workflow",
-    description: "Each job card shows its current status. You can tap a job to update its progress, add photos, or mark it complete.",
+    id: "nav-quotes",
+    title: "Time for Quotes",
+    description: "Click 'Quotes' to see how you create professional quotes for your clients.",
     route: "/work",
-    icon: Edit,
-    targetSelector: '[data-testid="job-card"], .job-card, [data-testid="jobs-list"] > div:first-child'
-  },
-  
-  // Quotes Section - Interactive Workflow
-  {
-    id: "quotes-intro",
-    title: "Creating Professional Quotes",
-    description: "Now let's see how to create quotes. Click Quotes to continue.",
-    route: "/quotes",
     icon: FileText,
     waitForClick: true,
     clickTargetSelector: '[data-testid="nav-quotes"], a[href="/quotes"], [href="/quotes"]',
-    clickTargetLabel: "Quotes menu item"
+    clickTargetLabel: "Quotes"
   },
   {
     id: "quotes-page",
-    title: "Your Quotes List",
-    description: "All your quotes are listed here with their status - Draft, Sent, Accepted, or Declined. You can filter and search to find any quote.",
+    title: "Your Quotes",
+    description: "Create quotes with line items and GST calculated automatically. When a client accepts, you can convert it straight to an invoice!",
     route: "/quotes",
     icon: FileText,
-    targetSelector: '[data-testid="quotes-content"], [data-testid="quotes-list"]'
+    targetSelector: '[data-testid="quotes-content"], [data-testid="quotes-list"], main'
   },
   {
-    id: "quotes-new-button",
-    title: "Creating a New Quote",
-    description: "To create a quote, click the '+ New Quote' button. This opens the live quote editor where you can add line items and see a preview.",
+    id: "nav-invoices",
+    title: "Check Your Invoices",
+    description: "Click 'Invoices' to see how you get paid.",
     route: "/quotes",
-    icon: Plus,
-    targetSelector: '[data-testid="button-new-quote"], [data-testid="create-quote-button"]',
-    waitForClick: true,
-    clickTargetSelector: '[data-testid="button-new-quote"], [data-testid="create-quote-button"]',
-    clickTargetLabel: "+ New Quote button",
-    subStep: 1,
-    totalSubSteps: 3
-  },
-  {
-    id: "quotes-editor-overview",
-    title: "The Live Quote Editor",
-    description: "This is where the magic happens! On the left, add your line items. On the right, see the quote preview update in real-time.",
-    route: "/quotes/new",
-    icon: Edit,
-    targetSelector: '[data-testid="quote-editor"], .quote-editor, [data-testid="live-quote-editor"]',
-    subStep: 2,
-    totalSubSteps: 3
-  },
-  {
-    id: "quotes-line-items",
-    title: "Adding Line Items",
-    description: "Click 'Add Line Item' to add services or materials. Enter a description, quantity, and price. GST is calculated automatically!",
-    route: "/quotes/new",
-    icon: Plus,
-    targetSelector: '[data-testid="add-line-item"], [data-testid="button-add-item"]',
-    subStep: 3,
-    totalSubSteps: 3
-  },
-  
-  // Invoices Section
-  {
-    id: "invoices-intro",
-    title: "Getting Paid with Invoices",
-    description: "Time to look at invoices! Click Invoices to see how you get paid.",
-    route: "/invoices",
     icon: Receipt,
     waitForClick: true,
     clickTargetSelector: '[data-testid="nav-invoices"], a[href="/invoices"], [href="/invoices"]',
-    clickTargetLabel: "Invoices menu item"
+    clickTargetLabel: "Invoices"
   },
   {
     id: "invoices-page",
-    title: "Your Invoice Dashboard",
-    description: "Track all your invoices here. See what's pending, overdue, or paid. The totals at the top show your financial snapshot.",
+    title: "Getting Paid",
+    description: "Track all your invoices here - what's pending, overdue, or paid. Connect Stripe to accept card payments directly!",
     route: "/invoices",
     icon: Receipt,
-    targetSelector: '[data-testid="invoices-content"], [data-testid="invoices-list"]'
+    targetSelector: '[data-testid="invoices-content"], [data-testid="invoices-list"], main'
   },
   {
-    id: "invoices-create",
-    title: "Creating Invoices",
-    description: "You can create invoices from scratch OR convert an accepted quote directly into an invoice - saving you time!",
+    id: "nav-settings",
+    title: "Finally, Your Settings",
+    description: "Click 'Settings' to customise your business profile, logo, and preferences.",
     route: "/invoices",
-    icon: FileText,
-    targetSelector: '[data-testid="button-new-invoice"], [data-testid="create-invoice-button"]'
-  },
-  {
-    id: "invoices-payments",
-    title: "Accepting Payments",
-    description: "Connect Stripe in Settings to accept card payments. Your clients can pay online directly from the invoice email!",
-    route: "/invoices",
-    icon: Receipt,
-    targetSelector: '[data-testid="invoices-content"]'
-  },
-  
-  // Settings
-  {
-    id: "settings-intro",
-    title: "Customising Your Business",
-    description: "Finally, let's check Settings. Click Settings to see your business configuration.",
-    route: "/settings",
     icon: Settings,
     waitForClick: true,
     clickTargetSelector: '[data-testid="nav-settings"], a[href="/settings"], [href="/settings"]',
-    clickTargetLabel: "Settings menu item"
+    clickTargetLabel: "Settings"
   },
   {
     id: "settings-page",
-    title: "Your Settings Hub",
-    description: "Here you can update your business details, upload your logo, set up email templates, and connect payment processing.",
+    title: "Business Settings",
+    description: "Set up your business details, upload your logo, configure email templates, and connect payment processing here.",
     route: "/settings",
     icon: Settings,
-    targetSelector: '[data-testid="settings-content"], [data-testid="settings-tabs"]'
+    targetSelector: '[data-testid="settings-content"], [data-testid="settings-tabs"], main'
   },
-  {
-    id: "settings-branding",
-    title: "Branding Your Business",
-    description: "Add your logo and choose brand colours. These appear on all your quotes and invoices for a professional look.",
-    route: "/settings",
-    icon: Eye,
-    targetSelector: '[data-testid="branding-tab"], [value="branding"]'
-  },
-  
-  // Completion
   {
     id: "complete",
     title: "You're All Set!",
-    description: "Brilliant! You've learned the basics. Start by adding your first client, create a job, then send a quote. You can restart this tour anytime from Settings → Support.",
+    description: "Great job! You've seen all the main areas. Start by adding your first client, create a job, then send a quote. Good luck!",
     route: "/",
     icon: CheckCircle2
   }
@@ -249,121 +163,144 @@ interface GuidedTourProps {
   onComplete: () => void;
 }
 
+type CardPosition = 'top' | 'bottom' | 'left' | 'right' | 'center';
+
 export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [isNavigating, setIsNavigating] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
-  const [clickTargetRect, setClickTargetRect] = useState<DOMRect | null>(null);
-  const [waitingForClick, setWaitingForClick] = useState(false);
-  const [, setLocation] = useLocation();
+  const [cardPosition, setCardPosition] = useState<CardPosition>('center');
+  const [isReady, setIsReady] = useState(false);
+  const [location, setLocation] = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const clickListenerRef = useRef<(() => void) | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const step = TOUR_STEPS[currentStep];
   const isLastStep = currentStep === TOUR_STEPS.length - 1;
   const isFirstStep = currentStep === 0;
+  const isInteractive = step.waitForClick && step.clickTargetSelector;
   const StepIcon = step.icon;
 
-  // Find and measure target element
-  const measureTarget = useCallback(() => {
-    if (!step.targetSelector) {
+  // Find element by trying multiple selectors
+  const findElement = useCallback((selectorString: string): Element | null => {
+    const selectors = selectorString.split(', ');
+    for (const selector of selectors) {
+      try {
+        const el = document.querySelector(selector.trim());
+        if (el) return el;
+      } catch (e) {
+        // Invalid selector
+      }
+    }
+    return null;
+  }, []);
+
+  // Scroll element into view with offset for headers
+  const scrollToElement = useCallback((element: Element): Promise<void> => {
+    return new Promise((resolve) => {
+      const rect = element.getBoundingClientRect();
+      const headerOffset = 80; // Account for sticky header
+      const viewportHeight = window.innerHeight;
+      
+      // Calculate if element is visible
+      const isVisible = rect.top >= headerOffset && rect.bottom <= viewportHeight - 100;
+      
+      if (!isVisible) {
+        const scrollTop = window.scrollY + rect.top - headerOffset - 50;
+        window.scrollTo({
+          top: Math.max(0, scrollTop),
+          behavior: 'smooth'
+        });
+        // Wait for scroll to complete
+        setTimeout(resolve, 400);
+      } else {
+        resolve();
+      }
+    });
+  }, []);
+
+  // Calculate best position for the tour card relative to target
+  const calculateCardPosition = useCallback((rect: DOMRect): CardPosition => {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const cardHeight = 280; // Approximate card height
+    const cardWidth = Math.min(380, viewportWidth - 32);
+    const padding = 20;
+
+    // Check available space in each direction
+    const spaceAbove = rect.top - 80; // Account for header
+    const spaceBelow = viewportHeight - rect.bottom - 20;
+    const spaceLeft = rect.left;
+    const spaceRight = viewportWidth - rect.right;
+
+    // For mobile, prefer bottom positioning
+    if (viewportWidth < 640) {
+      return spaceBelow > cardHeight + padding ? 'bottom' : 'top';
+    }
+
+    // Prefer positioning below or to the side
+    if (spaceBelow > cardHeight + padding) return 'bottom';
+    if (spaceAbove > cardHeight + padding) return 'top';
+    if (spaceRight > cardWidth + padding) return 'right';
+    if (spaceLeft > cardWidth + padding) return 'left';
+    
+    return 'bottom'; // Default
+  }, []);
+
+  // Measure and set up target
+  const setupTarget = useCallback(async () => {
+    const selector = isInteractive ? step.clickTargetSelector : step.targetSelector;
+    
+    if (!selector) {
       setTargetRect(null);
-    } else {
-      const selectors = step.targetSelector.split(', ');
-      let element: Element | null = null;
-      
-      for (const selector of selectors) {
-        try {
-          element = document.querySelector(selector.trim());
-          if (element) break;
-        } catch (e) {
-          // Invalid selector, skip
-        }
-      }
-
-      if (element) {
-        const rect = element.getBoundingClientRect();
-        setTargetRect(rect);
-      } else {
-        setTargetRect(null);
-      }
-    }
-
-    // Measure click target separately if it's an interactive step
-    if (step.waitForClick && step.clickTargetSelector) {
-      const clickSelectors = step.clickTargetSelector.split(', ');
-      let clickElement: Element | null = null;
-      
-      for (const selector of clickSelectors) {
-        try {
-          clickElement = document.querySelector(selector.trim());
-          if (clickElement) break;
-        } catch (e) {
-          // Invalid selector, skip
-        }
-      }
-
-      if (clickElement) {
-        const rect = clickElement.getBoundingClientRect();
-        setClickTargetRect(rect);
-        setWaitingForClick(true);
-      } else {
-        setClickTargetRect(null);
-        setWaitingForClick(false);
-      }
-    } else {
-      setClickTargetRect(null);
-      setWaitingForClick(false);
-    }
-  }, [step.targetSelector, step.waitForClick, step.clickTargetSelector]);
-
-  // Set up click listener for interactive steps
-  useEffect(() => {
-    if (!isOpen || !step.waitForClick || !step.clickTargetSelector) {
+      setCardPosition('center');
+      setIsReady(true);
       return;
     }
 
-    const setupClickListener = () => {
-      const clickSelectors = step.clickTargetSelector!.split(', ');
-      let clickElement: Element | null = null;
-      
-      for (const selector of clickSelectors) {
-        try {
-          clickElement = document.querySelector(selector.trim());
-          if (clickElement) break;
-        } catch (e) {
-          // Invalid selector, skip
-        }
+    const element = findElement(selector);
+    if (!element) {
+      setTargetRect(null);
+      setCardPosition('center');
+      setIsReady(true);
+      return;
+    }
+
+    // Scroll to element first
+    await scrollToElement(element);
+
+    // Now measure the element
+    const rect = element.getBoundingClientRect();
+    setTargetRect(rect);
+    setCardPosition(calculateCardPosition(rect));
+    setIsReady(true);
+  }, [step, isInteractive, findElement, scrollToElement, calculateCardPosition]);
+
+  // Handle step navigation
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const navigateToStep = async () => {
+      setIsTransitioning(true);
+      setIsReady(false);
+      setTargetRect(null);
+
+      // Navigate to route if needed
+      const currentPath = window.location.pathname;
+      if (step.route !== currentPath) {
+        setLocation(step.route);
+        await new Promise(r => setTimeout(r, 500));
       }
 
-      if (clickElement) {
-        const handleClick = () => {
-          // User clicked the target - advance to next step
-          setTimeout(() => {
-            setCurrentStep(prev => prev + 1);
-          }, 300); // Small delay so they see the click effect
-        };
-
-        clickElement.addEventListener('click', handleClick);
-        clickListenerRef.current = () => {
-          clickElement?.removeEventListener('click', handleClick);
-        };
-      }
+      // Set up target after navigation
+      await setupTarget();
+      setIsTransitioning(false);
     };
 
-    // Wait for DOM to settle
-    const timeout = setTimeout(setupClickListener, 500);
+    navigateToStep();
+  }, [currentStep, isOpen, step.route, setLocation, setupTarget]);
 
-    return () => {
-      clearTimeout(timeout);
-      if (clickListenerRef.current) {
-        clickListenerRef.current();
-        clickListenerRef.current = null;
-      }
-    };
-  }, [isOpen, currentStep, step.waitForClick, step.clickTargetSelector]);
-
-  // Draw the overlay with spotlight cutout
+  // Draw overlay with spotlight
   const drawOverlay = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -381,98 +318,110 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
     canvas.style.height = `${height}px`;
     ctx.scale(dpr, dpr);
 
-    // Light overlay - 35% opacity so app is clearly visible
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    // Semi-transparent overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, width, height);
 
-    // Cut out spotlight for target area
-    const spotlightRect = clickTargetRect || targetRect;
-    if (spotlightRect) {
+    // Cut out spotlight for target
+    if (targetRect && isReady) {
       const padding = 12;
       const radius = 12;
-      const x = spotlightRect.left - padding;
-      const y = spotlightRect.top - padding;
-      const w = spotlightRect.width + padding * 2;
-      const h = spotlightRect.height + padding * 2;
+      const x = targetRect.left - padding;
+      const y = targetRect.top - padding;
+      const w = targetRect.width + padding * 2;
+      const h = targetRect.height + padding * 2;
 
+      // Clear the spotlight area
       ctx.globalCompositeOperation = 'destination-out';
       ctx.beginPath();
       ctx.roundRect(x, y, w, h, radius);
       ctx.fill();
 
-      // Draw border around spotlight - green for interactive, blue for info
+      // Draw glowing border
       ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = waitingForClick ? 'hsl(160, 84%, 39%)' : 'hsl(210, 80%, 50%)';
-      ctx.lineWidth = waitingForClick ? 3 : 2;
+      const borderColor = isInteractive ? '#10b981' : '#3b82f6';
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = borderColor;
+      ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.roundRect(x, y, w, h, radius);
       ctx.stroke();
+      ctx.shadowBlur = 0;
     }
-  }, [targetRect, clickTargetRect, waitingForClick]);
+  }, [targetRect, isReady, isInteractive]);
 
-  // Navigate to step's route
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const navigateToStep = async () => {
-      setIsNavigating(true);
-      setTargetRect(null);
-      setClickTargetRect(null);
-      
-      const currentPath = window.location.pathname;
-      const isRouteChange = step.route !== currentPath;
-      
-      if (isRouteChange) {
-        setLocation(step.route);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        window.scrollTo({ top: 0, behavior: 'instant' });
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 400));
-      measureTarget();
-      setIsNavigating(false);
-    };
-
-    navigateToStep();
-  }, [currentStep, isOpen, step.route, setLocation, measureTarget]);
-
-  // Redraw overlay when target changes
+  // Redraw on changes
   useEffect(() => {
     if (isOpen) {
       drawOverlay();
     }
-  }, [isOpen, targetRect, clickTargetRect, waitingForClick, drawOverlay]);
+  }, [isOpen, targetRect, isReady, drawOverlay]);
 
-  // Handle window resize
+  // Handle resize
   useEffect(() => {
     if (!isOpen) return;
     
     const handleResize = () => {
-      measureTarget();
+      setupTarget();
       drawOverlay();
     };
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [isOpen, measureTarget, drawOverlay]);
+  }, [isOpen, setupTarget, drawOverlay]);
 
-  // Reset step when tour opens
+  // Listen for clicks on interactive targets
+  useEffect(() => {
+    if (!isOpen || !isInteractive || !step.clickTargetSelector || !isReady) return;
+
+    const element = findElement(step.clickTargetSelector);
+    if (!element) return;
+
+    const handleClick = () => {
+      setTimeout(() => {
+        setCurrentStep(prev => Math.min(prev + 1, TOUR_STEPS.length - 1));
+      }, 200);
+    };
+
+    element.addEventListener('click', handleClick);
+    return () => element.removeEventListener('click', handleClick);
+  }, [isOpen, isInteractive, step.clickTargetSelector, isReady, findElement]);
+
+  // Detect route changes for navigation-based interactive steps using wouter's location
+  // If user navigated to the next step's route, advance automatically
+  useEffect(() => {
+    if (!isOpen || !isInteractive) return;
+    
+    const nextStep = TOUR_STEPS[currentStep + 1];
+    if (!nextStep) return;
+    
+    // If we're now at the next step's route, advance
+    if (location === nextStep.route && step.route !== nextStep.route) {
+      setCurrentStep(prev => Math.min(prev + 1, TOUR_STEPS.length - 1));
+    }
+  }, [isOpen, isInteractive, location, currentStep, step.route]);
+
+  // Handle ESC key to close
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleExit();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  // Reset on open
   useEffect(() => {
     if (isOpen) {
       setCurrentStep(0);
     }
   }, [isOpen]);
-
-  // Periodically re-measure targets (for dynamic content)
-  useEffect(() => {
-    if (!isOpen) return;
-    
-    const interval = setInterval(() => {
-      measureTarget();
-    }, 1000);
-    
-    return () => clearInterval(interval);
-  }, [isOpen, measureTarget]);
 
   const handleNext = () => {
     if (isLastStep) {
@@ -494,66 +443,102 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
     onComplete();
   };
 
-  const handleSkip = () => {
+  const handleExit = () => {
     localStorage.setItem("tradietrack-tour-skipped", "true");
     onClose();
   };
 
-  const handleSkipThisStep = () => {
-    setCurrentStep(prev => prev + 1);
+  const handleSkipStep = () => {
+    if (!isLastStep) {
+      setCurrentStep(prev => prev + 1);
+    }
   };
 
   if (!isOpen) return null;
 
-  // Position tooltip - bottom of screen on mobile for visibility
-  const getTooltipStyle = (): React.CSSProperties => {
+  // Calculate card style based on position
+  const getCardStyle = (): React.CSSProperties => {
     const isMobile = window.innerWidth < 640;
+    const cardWidth = isMobile ? 'calc(100vw - 32px)' : '380px';
     
-    if (isMobile) {
+    const base: React.CSSProperties = {
+      position: 'fixed',
+      width: cardWidth,
+      maxWidth: 'calc(100vw - 32px)',
+      zIndex: 10001,
+      pointerEvents: 'auto'
+    };
+
+    if (!targetRect || cardPosition === 'center') {
       return {
-        position: 'fixed',
-        bottom: '16px',
-        left: '16px',
-        right: '16px',
-        maxWidth: 'none'
+        ...base,
+        left: '50%',
+        top: '50%',
+        transform: 'translate(-50%, -50%)'
       };
     }
-    
-    // Desktop: position near bottom-right but not covering too much
-    return {
-      position: 'fixed',
-      bottom: '24px',
-      right: '24px',
-      width: '400px',
-      maxWidth: 'calc(100vw - 48px)'
-    };
+
+    const gap = 20;
+
+    switch (cardPosition) {
+      case 'bottom':
+        return {
+          ...base,
+          left: Math.max(16, Math.min(targetRect.left, window.innerWidth - 400)),
+          top: targetRect.bottom + gap
+        };
+      case 'top':
+        return {
+          ...base,
+          left: Math.max(16, Math.min(targetRect.left, window.innerWidth - 400)),
+          bottom: window.innerHeight - targetRect.top + gap
+        };
+      case 'right':
+        return {
+          ...base,
+          left: targetRect.right + gap,
+          top: Math.max(80, targetRect.top)
+        };
+      case 'left':
+        return {
+          ...base,
+          right: window.innerWidth - targetRect.left + gap,
+          top: Math.max(80, targetRect.top)
+        };
+      default:
+        return base;
+    }
   };
 
-  // Render pulsing click indicator
-  const renderClickIndicator = () => {
-    if (!waitingForClick || !clickTargetRect) return null;
+  // Render arrow pointing to target
+  const renderArrow = () => {
+    if (!targetRect || !isReady || cardPosition === 'center') return null;
 
+    const arrowColor = isInteractive ? '#10b981' : '#3b82f6';
+    
     return (
-      <div
-        className="fixed pointer-events-none z-[10001]"
+      <div 
+        className="fixed pointer-events-none z-[10002]"
         style={{
-          left: clickTargetRect.left + clickTargetRect.width / 2 - 24,
-          top: clickTargetRect.top - 50
+          left: targetRect.left + targetRect.width / 2 - 20,
+          top: targetRect.top - 45
         }}
       >
-        <div className="flex flex-col items-center animate-bounce">
-          <div 
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-medium shadow-lg"
-            style={{ backgroundColor: 'hsl(160, 84%, 39%)' }}
-          >
-            <MousePointerClick className="h-3.5 w-3.5" />
-            Click here
+        {isInteractive && (
+          <div className="flex flex-col items-center animate-bounce">
+            <div 
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-white text-sm font-semibold shadow-lg whitespace-nowrap"
+              style={{ backgroundColor: arrowColor }}
+            >
+              <MousePointerClick className="h-4 w-4" />
+              Click "{step.clickTargetLabel}"
+            </div>
+            <div 
+              className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent mt-[-1px]"
+              style={{ borderTopColor: arrowColor }}
+            />
           </div>
-          <div 
-            className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent"
-            style={{ borderTopColor: 'hsl(160, 84%, 39%)' }}
-          />
-        </div>
+        )}
       </div>
     );
   };
@@ -561,68 +546,63 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
   return (
     <div 
       className="fixed inset-0 z-[9999]"
-      style={{ pointerEvents: waitingForClick ? 'none' : 'auto' }}
+      style={{ pointerEvents: isInteractive && isReady ? 'none' : 'auto' }}
+      onClick={isInteractive ? undefined : handleExit}
       data-testid="guided-tour-overlay"
     >
-      {/* Canvas overlay - light dimming so app is visible */}
+      {/* Canvas overlay */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 pointer-events-none"
-        style={{ 
-          width: '100%', 
-          height: '100%'
-        }}
       />
 
-      {/* Click indicator for interactive steps */}
-      {renderClickIndicator()}
+      {/* Arrow/indicator pointing to target */}
+      {renderArrow()}
 
       {/* Tour Card */}
       <Card
-        className="shadow-xl border-2 overflow-hidden"
+        ref={cardRef}
+        className="shadow-2xl border-2 overflow-hidden"
         style={{
-          ...getTooltipStyle(),
-          borderColor: waitingForClick ? 'hsl(160, 84%, 39%)' : 'hsl(var(--trade))',
-          zIndex: 10000,
-          pointerEvents: 'auto' // Always allow card interaction
+          ...getCardStyle(),
+          borderColor: isInteractive ? '#10b981' : 'hsl(var(--primary))'
         }}
+        onClick={(e) => e.stopPropagation()}
         data-testid="tour-tooltip"
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b bg-muted/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <div 
+          className="px-4 py-3 border-b"
+          style={{ 
+            backgroundColor: isInteractive ? 'rgba(16, 185, 129, 0.1)' : 'hsl(var(--muted))' 
+          }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <div 
-                className="p-2 rounded-lg"
+                className="p-2 rounded-lg flex-shrink-0"
                 style={{ 
-                  backgroundColor: waitingForClick 
-                    ? 'hsl(160, 84%, 39%, 0.15)' 
-                    : 'hsl(var(--trade) / 0.15)' 
+                  backgroundColor: isInteractive ? 'rgba(16, 185, 129, 0.2)' : 'hsl(var(--primary) / 0.1)' 
                 }}
               >
-                {waitingForClick ? (
-                  <MousePointerClick className="h-5 w-5" style={{ color: 'hsl(160, 84%, 39%)' }} />
+                {isInteractive ? (
+                  <MousePointerClick className="h-5 w-5 text-emerald-500" />
                 ) : (
-                  <StepIcon className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                  <StepIcon className="h-5 w-5 text-primary" />
                 )}
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground font-medium">
                   Step {currentStep + 1} of {TOUR_STEPS.length}
-                  {step.subStep && step.totalSubSteps && (
-                    <span className="ml-1">
-                      ({step.subStep}/{step.totalSubSteps})
-                    </span>
-                  )}
                 </p>
-                <h3 className="font-semibold text-sm">{step.title}</h3>
+                <h3 className="font-semibold text-base truncate">{step.title}</h3>
               </div>
             </div>
             <Button 
               variant="ghost" 
               size="icon"
-              className="h-8 w-8"
-              onClick={handleSkip}
+              className="h-8 w-8 flex-shrink-0"
+              onClick={handleExit}
               data-testid="button-close-tour"
             >
               <X className="h-4 w-4" />
@@ -631,50 +611,57 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
         </div>
 
         {/* Content */}
-        <div className="px-4 py-3">
-          <p className="text-muted-foreground text-sm leading-relaxed mb-3">
+        <div className="px-4 py-4">
+          <p className="text-muted-foreground text-sm leading-relaxed mb-4">
             {step.description}
           </p>
 
-          {/* Interactive step indicator */}
-          {waitingForClick && step.clickTargetLabel && (
+          {/* Interactive action prompt */}
+          {isInteractive && isReady && (
             <div 
-              className="flex items-center gap-2 p-2.5 rounded-lg mb-3 text-sm"
+              className="flex items-center gap-3 p-3 rounded-lg mb-4 border"
               style={{ 
-                backgroundColor: 'hsl(160, 84%, 39%, 0.1)',
-                border: '1px solid hsl(160, 84%, 39%, 0.3)'
+                backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                borderColor: 'rgba(16, 185, 129, 0.3)'
               }}
             >
-              <MousePointerClick className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(160, 84%, 39%)' }} />
-              <span>
-                <strong>Action:</strong> Click the {step.clickTargetLabel}
+              <ArrowRight className="h-5 w-5 text-emerald-500 flex-shrink-0 animate-pulse" />
+              <span className="text-sm font-medium">
+                Click <strong>"{step.clickTargetLabel}"</strong> to continue
               </span>
             </div>
           )}
 
-          {/* Step dots - compact for many steps */}
-          <div className="flex items-center justify-center gap-1 mb-3 flex-wrap">
+          {/* Loading state */}
+          {isTransitioning && (
+            <div className="flex items-center justify-center py-4">
+              <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            </div>
+          )}
+
+          {/* Step progress dots */}
+          <div className="flex items-center justify-center gap-1 mb-4 flex-wrap">
             {TOUR_STEPS.map((_, index) => (
               <div
                 key={index}
-                className={`h-1.5 rounded-full transition-all duration-200 ${
+                className={`h-2 rounded-full transition-all duration-200 ${
                   index === currentStep
-                    ? "w-3 bg-primary"
+                    ? "w-4 bg-primary"
                     : index < currentStep
-                    ? "w-1.5 bg-primary/50"
-                    : "w-1.5 bg-muted-foreground/30"
+                    ? "w-2 bg-primary/40"
+                    : "w-2 bg-muted-foreground/20"
                 }`}
               />
             ))}
           </div>
 
-          {/* Navigation */}
+          {/* Navigation buttons */}
           <div className="flex items-center justify-between gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={handlePrevious}
-              disabled={isFirstStep || isNavigating}
+              disabled={isFirstStep || isTransitioning}
               className="text-muted-foreground"
               data-testid="button-tour-previous"
             >
@@ -682,13 +669,13 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
               Back
             </Button>
 
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               {/* Skip this step (for interactive steps) */}
-              {waitingForClick && (
+              {isInteractive && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleSkipThisStep}
+                  onClick={handleSkipStep}
                   className="text-muted-foreground text-xs"
                   data-testid="button-skip-step"
                 >
@@ -696,35 +683,32 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
                 </Button>
               )}
 
-              {/* Skip entire tour */}
-              {!isLastStep && !waitingForClick && (
+              {/* Done button - fallback for interactive steps when click detection fails */}
+              {isInteractive && (
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={handleSkip}
-                  className="text-muted-foreground text-xs"
+                  onClick={handleNext}
+                  data-testid="button-done-step"
                 >
-                  Skip tour
+                  Done
+                  <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               )}
-              
-              {/* Next/Continue button - hidden for interactive steps waiting for click */}
-              {!waitingForClick && (
+
+              {/* Next button (hidden during interactive steps) */}
+              {!isInteractive && (
                 <Button
                   size="sm"
                   onClick={handleNext}
-                  disabled={isNavigating}
-                  style={{ 
-                    backgroundColor: 'hsl(var(--trade))',
-                    color: 'white'
-                  }}
+                  disabled={isTransitioning}
                   data-testid="button-tour-next"
                 >
-                  {isNavigating ? (
+                  {isTransitioning ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : isLastStep ? (
                     <>
-                      Get Started
+                      Finish
                       <Sparkles className="h-4 w-4 ml-1.5" />
                     </>
                   ) : (
@@ -736,6 +720,18 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
                 </Button>
               )}
             </div>
+          </div>
+
+          {/* Exit tour link */}
+          <div className="flex justify-center mt-3 pt-3 border-t">
+            <button 
+              onClick={handleExit}
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
+              data-testid="button-exit-tour"
+            >
+              <LogOut className="h-3 w-3" />
+              Exit tour (press Esc)
+            </button>
           </div>
         </div>
       </Card>
@@ -790,7 +786,7 @@ export function TourTriggerButton({ onClick }: { onClick: () => void }) {
       data-testid="button-start-tour"
     >
       <Sparkles className="h-4 w-4" />
-      Start Interactive Tour
+      Start App Tour
     </Button>
   );
 }
