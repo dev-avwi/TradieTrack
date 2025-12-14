@@ -124,6 +124,12 @@ const getDefaultInvoiceTerms = (lateFeeRate: string = '1.5% per month'): string 
 4. OWNERSHIP: Goods remain the property of the supplier until payment is received in full.
 `.trim();
 
+const generateGoogleFontsLink = (): string => {
+  return `<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">`;
+};
+
 const generateDocumentStyles = (_brandColor: string, templateId: string = 'minimal') => {
   const template = DOCUMENT_TEMPLATES[templateId as TemplateId] || DOCUMENT_TEMPLATES.minimal;
   // Use the fixed accent color for all templates - ignore brandColor
@@ -544,7 +550,7 @@ const generateDocumentStyles = (_brandColor: string, templateId: string = 'minim
 export const generateQuotePDF = (data: QuoteWithDetails): string => {
   const { quote, lineItems, client, business, job, acceptanceUrl } = data;
   const brandColor = business.brandColor || '#2563eb';
-  const templateId = (business as any).documentTemplate || 'professional';
+  const templateId = (business as any).documentTemplate || 'minimal';
   
   const subtotal = parseFloat(quote.subtotal as unknown as string);
   const gstAmount = parseFloat(quote.gstAmount as unknown as string);
@@ -561,6 +567,7 @@ export const generateQuotePDF = (data: QuoteWithDetails): string => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quote ${quote.number} - ${business.businessName}</title>
+  ${generateGoogleFontsLink()}
   ${generateDocumentStyles(brandColor, templateId)}
 </head>
 <body>
@@ -774,7 +781,7 @@ ${(quote as any).acceptanceIp ? `IP Address: ${(quote as any).acceptanceIp}` : '
 export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
   const { invoice, lineItems, client, business, job, timeEntries, paymentUrl } = data;
   const brandColor = business.brandColor || '#dc2626';
-  const templateId = (business as any).documentTemplate || 'professional';
+  const templateId = (business as any).documentTemplate || 'minimal';
   
   // Calculate time tracking totals if present
   const totalMinutes = timeEntries?.reduce((sum, entry) => sum + (entry.duration || 0), 0) || 0;
@@ -806,6 +813,7 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${documentTitle} ${invoice.number} - ${business.businessName}</title>
+  ${generateGoogleFontsLink()}
   ${generateDocumentStyles(brandColor, templateId)}
 </head>
 <body>
