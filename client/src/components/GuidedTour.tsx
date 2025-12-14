@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
 import {
   X,
@@ -15,8 +13,7 @@ import {
   FileText,
   Receipt,
   Settings,
-  Plus,
-  MousePointerClick
+  CheckCircle2
 } from "lucide-react";
 
 interface TourStep {
@@ -24,118 +21,65 @@ interface TourStep {
   title: string;
   description: string;
   route: string;
-  targetSelector?: string;
   icon: any;
-  position?: 'top' | 'bottom' | 'left' | 'right' | 'center';
-  action?: 'click' | 'observe';
-  highlightArea?: boolean;
 }
 
 const TOUR_STEPS: TourStep[] = [
   {
     id: "welcome",
     title: "Welcome to TradieTrack!",
-    description: "Let's take a quick tour to help you get started. We'll show you the key features of your new job management system.",
+    description: "Let's take a quick tour to show you around. We'll walk you through the key features to help you manage your trade business.",
     route: "/",
-    icon: Sparkles,
-    position: 'center'
+    icon: Sparkles
   },
   {
     id: "dashboard",
     title: "Your Dashboard",
-    description: "This is your home base. See today's jobs, key metrics, and recent activity at a glance. The dashboard gives you a snapshot of your business.",
+    description: "This is your home base. See today's scheduled jobs, track your earnings, and get quick access to everything you need.",
     route: "/",
-    targetSelector: '[data-testid="dashboard-kpis"], [data-testid="today-jobs-card"]',
-    icon: LayoutDashboard,
-    position: 'bottom',
-    highlightArea: true
-  },
-  {
-    id: "sidebar",
-    title: "Navigation Sidebar",
-    description: "Use the sidebar to navigate between different sections. On mobile, tap the menu icon in the top-left to open it.",
-    route: "/",
-    targetSelector: '[data-testid="sidebar"], [data-testid="button-sidebar-toggle"]',
-    icon: LayoutDashboard,
-    position: 'right'
+    icon: LayoutDashboard
   },
   {
     id: "clients",
-    title: "Manage Your Clients",
-    description: "Add and manage your customers here. Each client can have multiple jobs, quotes, and invoices linked to them.",
+    title: "Manage Clients",
+    description: "Keep all your customer details in one place. Add new clients, view their job history, and quickly contact them.",
     route: "/clients",
-    targetSelector: '[data-testid="clients-list"], [data-testid="button-add-client"]',
-    icon: Users,
-    position: 'bottom',
-    highlightArea: true
-  },
-  {
-    id: "clients-add",
-    title: "Add New Clients",
-    description: "Click the '+ New Client' button to add customers. You can also Quick Add clients when creating jobs.",
-    route: "/clients",
-    targetSelector: '[data-testid="button-add-client"], [data-testid="button-new-client"]',
-    icon: Plus,
-    position: 'left',
-    action: 'observe'
+    icon: Users
   },
   {
     id: "jobs",
-    title: "Your Work Hub",
-    description: "All your jobs live here. Create new jobs, track their progress, and manage your workload. Jobs flow through stages: Pending → Scheduled → In Progress → Done → Invoiced.",
-    route: "/jobs",
-    targetSelector: '[data-testid="jobs-list"], [data-testid="work-content"]',
-    icon: Briefcase,
-    position: 'bottom',
-    highlightArea: true
-  },
-  {
-    id: "jobs-create",
-    title: "Create New Jobs",
-    description: "Use this button to create a new job. Link it to a client, add a description, set the address, and schedule it.",
-    route: "/jobs",
-    targetSelector: '[data-testid="button-new-job"], [data-testid="button-add-job"]',
-    icon: Plus,
-    position: 'left',
-    action: 'observe'
+    title: "Track Your Jobs",
+    description: "Create and manage all your work here. Jobs flow through stages from pending to completed, keeping you organised.",
+    route: "/work",
+    icon: Briefcase
   },
   {
     id: "quotes",
     title: "Professional Quotes",
-    description: "Create detailed quotes with line items and automatic GST calculation. Send them to clients and convert accepted quotes to invoices.",
+    description: "Create detailed quotes with line items and GST. Send them to clients and easily convert accepted quotes to invoices.",
     route: "/quotes",
-    targetSelector: '[data-testid="quotes-list"], [data-testid="quotes-content"]',
-    icon: FileText,
-    position: 'bottom',
-    highlightArea: true
+    icon: FileText
   },
   {
     id: "invoices",
-    title: "Invoicing & Payments",
-    description: "Generate professional invoices and get paid online. Connect Stripe to accept card payments directly.",
+    title: "Get Paid Faster",
+    description: "Generate professional invoices and accept online payments. Connect Stripe to let clients pay by card instantly.",
     route: "/invoices",
-    targetSelector: '[data-testid="invoices-list"], [data-testid="invoices-content"]',
-    icon: Receipt,
-    position: 'bottom',
-    highlightArea: true
+    icon: Receipt
   },
   {
     id: "settings",
     title: "Customise Your Business",
-    description: "Set up your business details, add your logo, connect payment providers, and configure email settings. Make TradieTrack work the way you want.",
+    description: "Set up your business details, upload your logo, and configure how TradieTrack works for you.",
     route: "/settings",
-    targetSelector: '[data-testid="settings"], [data-testid="settings-tabs"]',
-    icon: Settings,
-    position: 'bottom',
-    highlightArea: true
+    icon: Settings
   },
   {
     id: "complete",
-    title: "You're All Set!",
-    description: "That's the basics! Start by adding your first client, then create a job. You can restart this tour anytime from Settings → Support.",
+    title: "You're Ready!",
+    description: "That's the basics covered. Start by adding your first client, then create a job. You can restart this tour anytime from Settings.",
     route: "/",
-    icon: Sparkles,
-    position: 'center'
+    icon: CheckCircle2
   }
 ];
 
@@ -147,45 +91,20 @@ interface GuidedTourProps {
 
 export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [, setLocation] = useLocation();
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const step = TOUR_STEPS[currentStep];
-  const progress = ((currentStep + 1) / TOUR_STEPS.length) * 100;
   const isLastStep = currentStep === TOUR_STEPS.length - 1;
   const isFirstStep = currentStep === 0;
   const StepIcon = step.icon;
 
-  const findAndHighlightTarget = useCallback(() => {
-    if (!step.targetSelector) {
-      setTargetRect(null);
-      return;
-    }
-
-    const selectors = step.targetSelector.split(', ');
-    let element: Element | null = null;
-    
-    for (const selector of selectors) {
-      element = document.querySelector(selector.trim());
-      if (element) break;
-    }
-
-    if (element) {
-      const rect = element.getBoundingClientRect();
-      setTargetRect(rect);
-      
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-      setTargetRect(null);
-    }
-  }, [step.targetSelector]);
-
+  // Navigate to the step's route
   useEffect(() => {
     if (!isOpen) return;
 
-    const navigateAndHighlight = async () => {
+    const navigateToStep = async () => {
       setIsNavigating(true);
       
       const currentPath = window.location.pathname;
@@ -193,28 +112,23 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
       
       if (isRouteChange) {
         setLocation(step.route);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Scroll to top of page after route change
+        await new Promise(resolve => setTimeout(resolve, 400));
         window.scrollTo({ top: 0, behavior: 'instant' });
-        await new Promise(resolve => setTimeout(resolve, 100));
       }
       
-      await new Promise(resolve => setTimeout(resolve, 300));
-      findAndHighlightTarget();
+      await new Promise(resolve => setTimeout(resolve, 200));
       setIsNavigating(false);
     };
 
-    navigateAndHighlight();
-  }, [currentStep, isOpen, step.route, setLocation, findAndHighlightTarget]);
+    navigateToStep();
+  }, [currentStep, isOpen, step.route, setLocation]);
 
+  // Reset step when tour opens
   useEffect(() => {
-    if (!isOpen) return;
-    
-    const handleResize = () => findAndHighlightTarget();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isOpen, findAndHighlightTarget]);
+    if (isOpen) {
+      setCurrentStep(0);
+    }
+  }, [isOpen]);
 
   const handleNext = () => {
     if (isLastStep) {
@@ -243,226 +157,135 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
 
   if (!isOpen) return null;
 
-  const getTooltipPosition = () => {
-    if (!targetRect || step.position === 'center') {
-      return {
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)'
-      };
-    }
-
-    const padding = 20;
-    const tooltipWidth = 380;
-    const tooltipHeight = 280;
-    
-    switch (step.position) {
-      case 'top':
-        return {
-          top: `${Math.max(padding, targetRect.top - tooltipHeight - padding)}px`,
-          left: `${Math.min(window.innerWidth - tooltipWidth - padding, Math.max(padding, targetRect.left + targetRect.width / 2 - tooltipWidth / 2))}px`,
-        };
-      case 'bottom':
-        return {
-          top: `${Math.min(window.innerHeight - tooltipHeight - padding, targetRect.bottom + padding)}px`,
-          left: `${Math.min(window.innerWidth - tooltipWidth - padding, Math.max(padding, targetRect.left + targetRect.width / 2 - tooltipWidth / 2))}px`,
-        };
-      case 'left':
-        return {
-          top: `${Math.min(window.innerHeight - tooltipHeight - padding, Math.max(padding, targetRect.top + targetRect.height / 2 - tooltipHeight / 2))}px`,
-          left: `${Math.max(padding, targetRect.left - tooltipWidth - padding)}px`,
-        };
-      case 'right':
-        return {
-          top: `${Math.min(window.innerHeight - tooltipHeight - padding, Math.max(padding, targetRect.top + targetRect.height / 2 - tooltipHeight / 2))}px`,
-          left: `${Math.min(window.innerWidth - tooltipWidth - padding, targetRect.right + padding)}px`,
-        };
-      default:
-        return {
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)'
-        };
-    }
-  };
-
   return (
     <div 
-      ref={overlayRef}
-      className="fixed inset-0 z-[9999]"
+      ref={containerRef}
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
       data-testid="guided-tour-overlay"
     >
-      {/* Consistent dark overlay - always the same opacity */}
+      {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/80 transition-opacity duration-300"
-        style={{ pointerEvents: 'none' }}
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={handleSkip}
       />
 
-      {/* Spotlight cutout - only when there's a target */}
-      {targetRect && (
-        <>
-          {/* Top overlay */}
-          <div 
-            className="absolute left-0 right-0 top-0 bg-black/80"
-            style={{ height: Math.max(0, targetRect.top - 12), pointerEvents: 'none' }}
-          />
-          {/* Bottom overlay */}
-          <div 
-            className="absolute left-0 right-0 bg-black/80"
-            style={{ 
-              top: targetRect.bottom + 12, 
-              height: Math.max(0, window.innerHeight - targetRect.bottom - 12),
-              pointerEvents: 'none'
-            }}
-          />
-          {/* Left overlay */}
-          <div 
-            className="absolute bg-black/80"
-            style={{ 
-              top: targetRect.top - 12,
-              left: 0,
-              width: Math.max(0, targetRect.left - 12),
-              height: targetRect.height + 24,
-              pointerEvents: 'none'
-            }}
-          />
-          {/* Right overlay */}
-          <div 
-            className="absolute bg-black/80"
-            style={{ 
-              top: targetRect.top - 12,
-              left: targetRect.right + 12,
-              width: Math.max(0, window.innerWidth - targetRect.right - 12),
-              height: targetRect.height + 24,
-              pointerEvents: 'none'
-            }}
-          />
-          {/* Spotlight border with glow */}
-          <div
-            className="absolute pointer-events-none rounded-lg border-2 transition-all duration-300"
-            style={{
-              top: targetRect.top - 12,
-              left: targetRect.left - 12,
-              width: targetRect.width + 24,
-              height: targetRect.height + 24,
-              borderColor: 'hsl(var(--trade))',
-              boxShadow: '0 0 0 4px hsl(var(--trade) / 0.3), 0 0 30px hsl(var(--trade) / 0.5), inset 0 0 20px hsl(var(--trade) / 0.1)'
-            }}
-            data-testid="tour-spotlight"
-          />
-        </>
-      )}
-
-      {/* Tooltip card */}
+      {/* Tour Card - Bottom sheet on mobile, centered on desktop */}
       <Card
-        className="absolute w-[380px] max-w-[calc(100vw-32px)] p-5 shadow-2xl border-2"
-        style={{
-          ...getTooltipPosition(),
-          borderColor: 'hsl(var(--trade))',
-          zIndex: 10000
-        }}
+        className="relative w-full sm:w-[420px] sm:max-w-[90vw] mx-0 sm:mx-4 rounded-t-2xl sm:rounded-2xl border-0 sm:border shadow-2xl overflow-hidden"
+        style={{ maxHeight: '85vh' }}
         data-testid="tour-tooltip"
       >
-        {/* Header */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div 
-              className="p-2.5 rounded-xl"
-              style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}
-            >
-              <StepIcon className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-            </div>
-            <div>
-              <Badge 
-                variant="secondary" 
-                className="mb-1 text-xs"
-                data-testid="tour-step-badge"
-              >
-                Step {currentStep + 1} of {TOUR_STEPS.length}
-              </Badge>
-              <h3 className="font-semibold text-base">{step.title}</h3>
-            </div>
-          </div>
+        {/* Header with gradient */}
+        <div 
+          className="px-6 pt-6 pb-4"
+          style={{ 
+            background: 'linear-gradient(135deg, hsl(var(--trade)) 0%, hsl(var(--trade) / 0.8) 100%)'
+          }}
+        >
+          {/* Close button */}
           <Button 
             variant="ghost" 
             size="icon"
-            className="h-8 w-8 -mt-1 -mr-1"
+            className="absolute top-3 right-3 h-8 w-8 text-white/80 hover:text-white hover:bg-white/20"
             onClick={handleSkip}
             data-testid="button-close-tour"
           >
             <X className="h-4 w-4" />
           </Button>
-        </div>
 
-        {/* Description */}
-        <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-          {step.description}
-        </p>
-
-        {/* Action hint */}
-        {step.action === 'observe' && targetRect && (
-          <div className="flex items-center gap-2 text-xs text-primary mb-4 bg-primary/10 p-2 rounded-lg">
-            <MousePointerClick className="h-4 w-4" />
-            <span>Look at the highlighted element above</span>
-          </div>
-        )}
-
-        {/* Progress bar */}
-        <Progress value={progress} className="h-1.5 mb-4" data-testid="tour-progress" />
-
-        {/* Navigation buttons */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handlePrevious}
-            disabled={isFirstStep || isNavigating}
-            data-testid="button-tour-previous"
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-
-          <div className="flex items-center gap-1.5">
+          {/* Step indicator */}
+          <div className="flex items-center gap-1.5 mb-4">
             {TOUR_STEPS.map((_, index) => (
-              <button
+              <div
                 key={index}
-                onClick={() => setCurrentStep(index)}
-                disabled={isNavigating}
-                className={`w-2 h-2 rounded-full transition-all ${
+                className={`h-1 rounded-full transition-all duration-300 ${
                   index === currentStep
-                    ? "bg-primary w-4"
+                    ? "w-6 bg-white"
                     : index < currentStep
-                    ? "bg-primary/50"
-                    : "bg-muted-foreground/30"
+                    ? "w-2 bg-white/60"
+                    : "w-2 bg-white/30"
                 }`}
-                data-testid={`tour-dot-${index}`}
               />
             ))}
           </div>
 
-          <Button
-            size="sm"
-            onClick={handleNext}
-            disabled={isNavigating}
-            style={{ backgroundColor: 'hsl(var(--trade))' }}
-            data-testid="button-tour-next"
-          >
-            {isNavigating ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : isLastStep ? (
-              <>
-                <Sparkles className="h-4 w-4 mr-1" />
-                Done
-              </>
-            ) : (
-              <>
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </>
-            )}
-          </Button>
+          {/* Icon and title */}
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
+              <StepIcon className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <p className="text-white/70 text-xs font-medium mb-0.5">
+                Step {currentStep + 1} of {TOUR_STEPS.length}
+              </p>
+              <h3 className="text-white font-semibold text-lg">{step.title}</h3>
+            </div>
+          </div>
         </div>
+
+        {/* Content */}
+        <div className="px-6 py-5 bg-card">
+          <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+            {step.description}
+          </p>
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handlePrevious}
+              disabled={isFirstStep || isNavigating}
+              className="text-muted-foreground"
+              data-testid="button-tour-previous"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+
+            <div className="flex gap-2">
+              {!isLastStep && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSkip}
+                  className="text-muted-foreground"
+                >
+                  Skip tour
+                </Button>
+              )}
+              
+              <Button
+                size="sm"
+                onClick={handleNext}
+                disabled={isNavigating}
+                className="min-w-[100px]"
+                style={{ 
+                  backgroundColor: 'hsl(var(--trade))',
+                  color: 'white'
+                }}
+                data-testid="button-tour-next"
+              >
+                {isNavigating ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : isLastStep ? (
+                  <>
+                    Get Started
+                    <Sparkles className="h-4 w-4 ml-1.5" />
+                  </>
+                ) : (
+                  <>
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile handle indicator */}
+        <div className="sm:hidden absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-white/30" />
       </Card>
     </div>
   );
