@@ -507,13 +507,13 @@ export default function InvoiceDetailView({
                 <div 
                   className="mb-8 p-5 rounded-lg"
                   style={{ 
-                    background: `linear-gradient(135deg, ${brandColor}10, ${brandColor}05)`,
-                    border: `1px solid ${brandColor}30`
+                    background: `linear-gradient(135deg, ${primaryColor}10, ${primaryColor}05)`,
+                    border: `1px solid ${primaryColor}30`
                   }}
                 >
                   <h3 
                     className="font-semibold mb-3 text-sm"
-                    style={{ color: brandColor }}
+                    style={{ color: primaryColor }}
                   >
                     Payment Details
                   </h3>
