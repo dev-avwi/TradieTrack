@@ -81,6 +81,9 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const handleSaveAsPDF = async () => {
     setIsPrinting(true);
     
+    const pdfUrl = `/api/quotes/${quoteId}/pdf`;
+    const filename = `Quote-${quote?.number || quote?.id || quoteId}.pdf`;
+    
     // For iOS Safari: open window SYNCHRONOUSLY before any async operations
     // This prevents Safari from blocking it as a popup
     let pdfWindow: Window | null = null;
@@ -92,8 +95,6 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
     }
     
     try {
-      const pdfUrl = `/api/quotes/${quoteId}/pdf`;
-      
       const response = await fetch(pdfUrl, {
         credentials: 'include'
       });
@@ -104,7 +105,6 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
       
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const filename = `Quote-${quote.number || quote.id}.pdf`;
       
       if (isIOSSafari() && pdfWindow) {
         // iOS Safari: convert blob to data URL and write to already-open window

@@ -150,6 +150,9 @@ export default function InvoiceDetailView({
   const handleSaveAsPDF = async () => {
     setIsPrinting(true);
     
+    const pdfUrl = `/api/invoices/${invoiceId}/pdf`;
+    const filename = `Invoice-${invoice?.number || invoice?.id || invoiceId}.pdf`;
+    
     // For iOS Safari: open window SYNCHRONOUSLY before any async operations
     // This prevents Safari from blocking it as a popup
     let pdfWindow: Window | null = null;
@@ -161,8 +164,6 @@ export default function InvoiceDetailView({
     }
     
     try {
-      const pdfUrl = `/api/invoices/${invoiceId}/pdf`;
-      
       const response = await fetch(pdfUrl, {
         credentials: 'include'
       });
@@ -173,7 +174,6 @@ export default function InvoiceDetailView({
       
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const filename = `Invoice-${invoice.number || invoice.id}.pdf`;
       
       if (isIOSSafari() && pdfWindow) {
         // iOS Safari: convert blob to data URL and write to already-open window

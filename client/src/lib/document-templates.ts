@@ -153,17 +153,19 @@ export function getTemplateStyles(
       color: template.tableStyle === 'minimal' ? '#1a1a1a' : '#ffffff',
       borderBottom: template.tableStyle === 'minimal' ? `2px solid ${primaryColor}` : 'none',
     },
-    // Table row styles
+    // Table row styles - matches server/pdfService.ts generateDocumentStyles()
     getTableRowStyle: (index: number, isLast: boolean) => {
+      // Server uses: striped rows have no border, minimal uses #e5e7eb, bordered uses #eee
+      // Last row always has 2px solid brandColor border
       const base: React.CSSProperties = {
         borderBottom: isLast 
           ? `2px solid ${primaryColor}` 
-          : template.tableStyle === 'bordered' 
-            ? '1px solid #e5e7eb' 
-            : template.tableStyle === 'striped' && index % 2 === 1 
-              ? '1px solid #f3f4f6'
-              : '1px solid #eee',
-        backgroundColor: template.tableStyle === 'striped' && index % 2 === 1 
+          : template.tableStyle === 'striped'
+            ? 'none'
+            : template.tableStyle === 'minimal'
+              ? '1px solid #e5e7eb'
+              : '1px solid #eee', // bordered
+        backgroundColor: template.tableStyle === 'striped' && index % 2 === 0 
           ? '#f9fafb' 
           : 'transparent',
       };
@@ -174,26 +176,29 @@ export function getTemplateStyles(
       backgroundColor: template.sectionBackground,
       borderRadius: template.borderRadius,
     },
-    // Note styles
+    // Note styles - matches server/pdfService.ts generateDocumentStyles()
     getNoteStyle: () => {
       switch (template.noteStyle) {
         case 'bordered':
           return {
             borderLeft: `4px solid ${primaryColor}`,
             backgroundColor: '#fafafa',
-            borderRadius: `0 ${template.borderRadius} ${template.borderRadius} 0`,
+            borderRadius: '0 6px 6px 0', // Server hardcodes 6px
           };
         case 'highlighted':
           return {
             background: `linear-gradient(135deg, ${primaryColor}10, ${primaryColor}05)`,
             border: `1px solid ${primaryColor}30`,
-            borderRadius: template.borderRadius,
+            borderRadius: '8px', // Server hardcodes 8px
           };
         case 'simple':
         default:
           return {
+            padding: '16px 0',
+            background: 'transparent',
             borderTop: '1px solid #e5e7eb',
-            paddingTop: '1rem',
+            borderLeft: 'none',
+            borderRadius: 0,
           };
       }
     },
