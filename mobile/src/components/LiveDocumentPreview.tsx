@@ -1,6 +1,13 @@
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useMemo } from 'react';
+import { 
+  getTemplateStyles, 
+  TemplateId, 
+  TemplateCustomization, 
+  DEFAULT_TEMPLATE,
+  DOCUMENT_ACCENT_COLOR
+} from '../lib/document-templates';
 
 const tradieTrackLogo = require('../../assets/tradietrack-logo.png');
 
@@ -19,6 +26,11 @@ interface BusinessInfo {
   logoUrl?: string;
   brandColor?: string;
   gstEnabled?: boolean;
+  licenseNumber?: string;
+  paymentInstructions?: string;
+  bankDetails?: string;
+  lateFeeRate?: string;
+  warrantyPeriod?: string;
 }
 
 interface ClientInfo {
@@ -44,6 +56,11 @@ interface LiveDocumentPreviewProps {
   showDepositSection?: boolean;
   depositPercent?: number;
   gstEnabled?: boolean;
+  status?: string;
+  jobAddress?: string;
+  jobScheduledDate?: string;
+  templateId?: TemplateId;
+  templateCustomization?: TemplateCustomization;
 }
 
 function formatCurrency(amount: number): string {
@@ -64,369 +81,20 @@ function formatDate(date: string | Date | null): string {
   });
 }
 
-const documentColors = {
+const colors = {
   white: '#FFFFFF',
   background: '#F8FAFC',
-  text: '#1E293B',
-  textMuted: '#64748B',
-  textLight: '#94A3B8',
-  border: '#E2E8F0',
-  borderLight: '#F1F5F9',
-  primary: '#3B82F6',
-  primaryLight: '#EFF6FF',
-  destructive: '#EF4444',
-  success: '#22C55E',
+  text: '#1a1a1a',
+  textMuted: '#666666',
+  textLight: '#888888',
+  textLighter: '#999999',
+  border: '#eeeeee',
+  borderLight: '#e5e7eb',
+  success: '#22c55e',
+  successBg: '#dcfce7',
+  successText: '#166534',
+  destructive: '#dc2626',
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: documentColors.background,
-  },
-  scrollContent: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 40,
-  },
-  documentCard: {
-    backgroundColor: documentColors.white,
-    borderRadius: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    overflow: 'hidden',
-  },
-  header: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: documentColors.borderLight,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  businessSection: {
-    flex: 1,
-    marginRight: 12,
-  },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 8,
-  },
-  logo: {
-    width: 44,
-    height: 44,
-    borderRadius: 6,
-    backgroundColor: documentColors.background,
-  },
-  logoPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 6,
-    backgroundColor: documentColors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: documentColors.border,
-  },
-  businessInfo: {
-    flex: 1,
-    flexShrink: 1,
-  },
-  businessName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: documentColors.text,
-    marginBottom: 2,
-  },
-  abnText: {
-    fontSize: 10,
-    color: documentColors.textMuted,
-    marginBottom: 2,
-  },
-  businessContactRow: {
-    marginTop: 6,
-  },
-  businessDetail: {
-    fontSize: 10,
-    color: documentColors.textMuted,
-    lineHeight: 14,
-  },
-  documentMeta: {
-    alignItems: 'flex-end',
-    flexShrink: 0,
-  },
-  documentTypeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 4,
-    marginBottom: 10,
-  },
-  documentType: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  detailsBox: {
-    backgroundColor: documentColors.background,
-    borderRadius: 6,
-    padding: 8,
-    minWidth: 130,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 3,
-    gap: 12,
-  },
-  detailLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: documentColors.textMuted,
-  },
-  detailValue: {
-    fontSize: 11,
-    color: documentColors.text,
-    fontWeight: '500',
-  },
-  detailValueMono: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: documentColors.text,
-    fontFamily: 'monospace',
-  },
-  dueDateValue: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: documentColors.destructive,
-  },
-  documentContent: {
-    padding: 20,
-    gap: 16,
-  },
-  section: {
-    gap: 6,
-  },
-  sectionTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: documentColors.textMuted,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  sectionBox: {
-    backgroundColor: documentColors.background,
-    borderRadius: 6,
-    padding: 12,
-  },
-  descriptionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: documentColors.text,
-  },
-  descriptionText: {
-    fontSize: 12,
-    color: documentColors.textMuted,
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  clientName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: documentColors.text,
-  },
-  clientDetails: {
-    marginTop: 4,
-    gap: 1,
-  },
-  clientDetail: {
-    fontSize: 11,
-    color: documentColors.textMuted,
-    lineHeight: 16,
-  },
-  placeholder: {
-    fontSize: 12,
-    color: documentColors.textLight,
-    fontStyle: 'italic',
-  },
-  tableContainer: {
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: documentColors.border,
-    overflow: 'hidden',
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: documentColors.border,
-  },
-  tableHeaderCell: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: documentColors.borderLight,
-    backgroundColor: documentColors.white,
-  },
-  tableCell: {
-    fontSize: 11,
-    color: documentColors.text,
-  },
-  descCell: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  qtyCell: {
-    width: 35,
-  },
-  priceCell: {
-    width: 65,
-  },
-  totalCell: {
-    width: 65,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
-  rightText: {
-    textAlign: 'right',
-  },
-  boldText: {
-    fontWeight: '600',
-  },
-  emptyTableRow: {
-    paddingVertical: 20,
-    alignItems: 'center',
-    backgroundColor: documentColors.white,
-  },
-  emptyText: {
-    fontSize: 11,
-    color: documentColors.textLight,
-    fontStyle: 'italic',
-  },
-  totalsSection: {
-    alignItems: 'flex-end',
-  },
-  totalsContainer: {
-    width: '55%',
-    gap: 4,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 3,
-  },
-  totalLabel: {
-    fontSize: 11,
-    color: documentColors.textMuted,
-  },
-  totalValue: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: documentColors.text,
-  },
-  grandTotalBox: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: documentColors.text,
-    borderRadius: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginTop: 8,
-  },
-  grandTotalLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: documentColors.white,
-  },
-  grandTotalValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: documentColors.white,
-  },
-  depositSection: {
-    width: '55%',
-    marginTop: 6,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: documentColors.borderLight,
-  },
-  notesText: {
-    fontSize: 11,
-    color: documentColors.text,
-    lineHeight: 17,
-  },
-  termsText: {
-    fontSize: 10,
-    color: documentColors.textMuted,
-    lineHeight: 15,
-  },
-  signatureSection: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: documentColors.border,
-    marginTop: 8,
-  },
-  signatureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  signatureText: {
-    fontSize: 11,
-    color: documentColors.textMuted,
-  },
-  footer: {
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: documentColors.border,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  footerContacts: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 6,
-  },
-  footerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  footerText: {
-    fontSize: 10,
-    color: documentColors.textMuted,
-  },
-  thankYouText: {
-    fontSize: 10,
-    color: documentColors.textLight,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  abnText: {
-    fontSize: 9,
-    color: documentColors.textMuted,
-    textAlign: 'center',
-    marginTop: 2,
-  },
-});
 
 export default function LiveDocumentPreview({
   type,
@@ -444,9 +112,12 @@ export default function LiveDocumentPreview({
   showDepositSection = false,
   depositPercent = 50,
   gstEnabled = true,
+  status,
+  jobAddress,
+  jobScheduledDate,
+  templateId = DEFAULT_TEMPLATE,
+  templateCustomization,
 }: LiveDocumentPreviewProps) {
-  const brandColor = business.brandColor || documentColors.primary;
-  
   const safeParseFloat = (val: string | number): number => {
     if (typeof val === 'number') return isNaN(val) ? 0 : val;
     const parsed = parseFloat(val);
@@ -469,6 +140,401 @@ export default function LiveDocumentPreview({
   const gst = gstEnabled ? subtotal * 0.1 : 0;
   const total = subtotal + gst;
   const depositAmount = showDepositSection ? total * ((depositPercent || 0) / 100) : 0;
+  
+  const brandColor = business.brandColor || '#2563eb';
+  const isPaid = status === 'paid';
+  const isOverdue = status === 'overdue';
+  const isAccepted = status === 'accepted';
+  
+  const templateStyles = getTemplateStyles(templateId, brandColor, templateCustomization);
+  const { template, primaryColor, tableHeaderStyle, getTableRowStyle, getNoteStyle } = templateStyles;
+
+  const documentTitle = type === 'quote' 
+    ? 'QUOTE' 
+    : gstEnabled 
+      ? (isPaid ? 'TAX INVOICE / RECEIPT' : 'TAX INVOICE')
+      : (isPaid ? 'INVOICE / RECEIPT' : 'INVOICE');
+
+  const getStatusBadgeStyle = (s: string) => {
+    switch (s) {
+      case 'draft': return { background: '#e5e7eb', color: '#374151' };
+      case 'sent': return { background: '#dbeafe', color: '#1d4ed8' };
+      case 'accepted': return { background: '#dcfce7', color: '#166534' };
+      case 'declined': return { background: '#fee2e2', color: '#991b1b' };
+      case 'paid': return { background: '#dcfce7', color: '#166534' };
+      case 'overdue': return { background: '#fee2e2', color: '#991b1b' };
+      default: return { background: '#e5e7eb', color: '#374151' };
+    }
+  };
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContent: {
+      paddingHorizontal: 12,
+      paddingTop: 8,
+      paddingBottom: 40,
+    },
+    documentCard: {
+      backgroundColor: colors.white,
+      borderRadius: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 3,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: '#e2e8f0',
+    },
+    documentContent: {
+      padding: 24,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 24,
+      paddingBottom: 16,
+      borderBottomWidth: template.showHeaderDivider ? template.headerBorderWidth : 0,
+      borderBottomColor: template.showHeaderDivider ? primaryColor : 'transparent',
+    },
+    companyInfo: {
+      flex: 1,
+      marginRight: 16,
+    },
+    logo: {
+      width: 60,
+      height: 60,
+      borderRadius: 8,
+      marginBottom: 12,
+    },
+    logoPlaceholder: {
+      width: 60,
+      height: 60,
+      borderRadius: 8,
+      backgroundColor: '#f1f5f9',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+    },
+    businessName: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: primaryColor,
+      marginBottom: 8,
+    },
+    businessDetails: {
+      gap: 2,
+    },
+    businessDetail: {
+      fontSize: 10,
+      color: colors.textMuted,
+      lineHeight: 16,
+    },
+    businessDetailBold: {
+      fontWeight: '600',
+    },
+    documentMeta: {
+      alignItems: 'flex-end',
+    },
+    documentType: {
+      fontSize: gstEnabled && type === 'invoice' ? 20 : 24,
+      fontWeight: '700',
+      color: isPaid ? colors.success : primaryColor,
+      letterSpacing: 2,
+      textTransform: 'uppercase',
+      marginBottom: 4,
+    },
+    documentNumber: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 4,
+    },
+    statusBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 12,
+      marginTop: 8,
+    },
+    statusText: {
+      fontSize: 10,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    infoSection: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 24,
+      gap: 24,
+    },
+    infoColumn: {
+      flex: 1,
+    },
+    sectionLabel: {
+      fontSize: 10,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      color: colors.textLight,
+      fontWeight: '600',
+      marginBottom: 6,
+    },
+    clientName: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    clientDetail: {
+      fontSize: 11,
+      color: colors.text,
+      lineHeight: 18,
+    },
+    placeholder: {
+      fontSize: 12,
+      color: colors.textLight,
+      fontStyle: 'italic',
+    },
+    detailRow: {
+      flexDirection: 'row',
+      marginBottom: 2,
+    },
+    detailLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.text,
+      marginRight: 4,
+    },
+    detailValue: {
+      fontSize: 11,
+      color: colors.text,
+    },
+    descriptionSection: {
+      backgroundColor: '#f8f9fa',
+      borderRadius: 6,
+      padding: 16,
+      marginBottom: 24,
+    },
+    descriptionTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: primaryColor,
+      marginBottom: 8,
+    },
+    descriptionText: {
+      fontSize: 11,
+      color: colors.text,
+      lineHeight: 18,
+    },
+    table: {
+      marginBottom: 24,
+    },
+    tableHeader: {
+      flexDirection: 'row',
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      backgroundColor: tableHeaderStyle.backgroundColor,
+      borderBottomWidth: tableHeaderStyle.borderBottomWidth,
+      borderBottomColor: tableHeaderStyle.borderBottomColor,
+      borderRadius: template.borderRadius,
+    },
+    tableHeaderCell: {
+      fontSize: 10,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      color: tableHeaderStyle.color,
+    },
+    tableRow: {
+      flexDirection: 'row',
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+    },
+    tableCell: {
+      fontSize: 11,
+      color: colors.text,
+    },
+    descCol: { flex: 1 },
+    qtyCol: { width: 40, textAlign: 'right' },
+    priceCol: { width: 70, textAlign: 'right' },
+    amountCol: { width: 70, textAlign: 'right' },
+    emptyRow: {
+      paddingVertical: 24,
+      alignItems: 'center',
+    },
+    emptyText: {
+      fontSize: 11,
+      color: colors.textLight,
+      fontStyle: 'italic',
+    },
+    totalsContainer: {
+      alignItems: 'flex-end',
+      marginBottom: 24,
+    },
+    totalsBox: {
+      width: '60%',
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    totalLabel: {
+      fontSize: 11,
+      color: colors.textMuted,
+    },
+    totalValue: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    grandTotalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      marginTop: 4,
+      borderTopWidth: 2,
+      borderTopColor: isPaid ? colors.success : primaryColor,
+    },
+    grandTotalLabel: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: isPaid ? colors.success : primaryColor,
+    },
+    grandTotalValue: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: isPaid ? colors.success : primaryColor,
+    },
+    gstNote: {
+      fontSize: 9,
+      color: colors.textLight,
+      textAlign: 'right',
+      marginTop: 4,
+    },
+    depositSection: {
+      marginTop: 16,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.borderLight,
+    },
+    depositRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 4,
+    },
+    depositLabel: {
+      fontSize: 11,
+      color: colors.textMuted,
+    },
+    depositValue: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    notesSection: {
+      marginBottom: 24,
+      padding: 16,
+    },
+    notesSectionTitle: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#333',
+      marginBottom: 8,
+    },
+    notesText: {
+      fontSize: 10,
+      color: colors.textMuted,
+      lineHeight: 16,
+    },
+    termsSection: {
+      marginBottom: 24,
+    },
+    termsTitle: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: '#333',
+      marginBottom: 8,
+    },
+    termsText: {
+      fontSize: 9,
+      color: colors.textMuted,
+      lineHeight: 14,
+    },
+    acceptanceSection: {
+      marginTop: 24,
+      padding: 20,
+      borderWidth: 2,
+      borderStyle: 'dashed',
+      borderColor: '#ddd',
+      borderRadius: 8,
+    },
+    acceptanceTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#333',
+      marginBottom: 12,
+    },
+    acceptanceText: {
+      fontSize: 10,
+      color: colors.textMuted,
+      marginBottom: 20,
+      lineHeight: 16,
+    },
+    signatureRow: {
+      flexDirection: 'row',
+      gap: 16,
+    },
+    signatureBox: {
+      flex: 1,
+    },
+    signatureLabel: {
+      fontSize: 10,
+      color: colors.textLight,
+      marginBottom: 20,
+    },
+    signatureLine: {
+      borderBottomWidth: 1,
+      borderBottomColor: '#333',
+    },
+    confirmationBox: {
+      backgroundColor: colors.successBg,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.success,
+      borderRadius: 6,
+      padding: 16,
+      marginBottom: 24,
+    },
+    confirmationTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.successText,
+      marginBottom: 4,
+    },
+    confirmationText: {
+      fontSize: 10,
+      color: colors.successText,
+    },
+    footer: {
+      marginTop: 24,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      alignItems: 'center',
+    },
+    footerText: {
+      fontSize: 9,
+      color: colors.textLighter,
+      textAlign: 'center',
+      marginBottom: 4,
+    },
+  }), [template, primaryColor, isPaid, gstEnabled, type, tableHeaderStyle]);
+
+  const noteStyle = getNoteStyle();
 
   return (
     <ScrollView 
@@ -477,234 +543,280 @@ export default function LiveDocumentPreview({
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.documentCard}>
-        {/* Header with Business Info and Document Meta */}
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <View style={styles.businessSection}>
-              <View style={styles.logoRow}>
-                {business.logoUrl ? (
-                  <Image 
-                    source={{ uri: business.logoUrl }} 
-                    style={styles.logo}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <Image 
-                    source={tradieTrackLogo}
-                    style={styles.logo}
-                    resizeMode="contain"
-                  />
-                )}
-                <View style={styles.businessInfo}>
-                  <Text style={styles.businessName}>
-                    {business.businessName || 'Your Business'}
+        <View style={styles.documentContent}>
+          {/* Header - Business Info LEFT, Document Type RIGHT */}
+          <View style={styles.header}>
+            {/* Company Info - Left Side */}
+            <View style={styles.companyInfo}>
+              {business.logoUrl ? (
+                <Image 
+                  source={{ uri: business.logoUrl }} 
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Image 
+                  source={tradieTrackLogo}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              )}
+              <Text style={styles.businessName}>
+                {business.businessName || 'Your Business Name'}
+              </Text>
+              <View style={styles.businessDetails}>
+                {business.abn && (
+                  <Text style={styles.businessDetail}>
+                    <Text style={styles.businessDetailBold}>ABN:</Text> {business.abn}
                   </Text>
-                  {business.abn && (
-                    <Text style={styles.abnText}>ABN: {business.abn}</Text>
-                  )}
-                </View>
+                )}
+                {business.address && (
+                  <Text style={styles.businessDetail}>{business.address}</Text>
+                )}
+                {business.phone && (
+                  <Text style={styles.businessDetail}>Phone: {business.phone}</Text>
+                )}
+                {business.email && (
+                  <Text style={styles.businessDetail}>Email: {business.email}</Text>
+                )}
+                {business.licenseNumber && (
+                  <Text style={styles.businessDetail}>Licence No: {business.licenseNumber}</Text>
+                )}
               </View>
-              {(business.email || business.phone || business.address) && (
-                <View style={styles.businessContactRow}>
-                  {business.email && <Text style={styles.businessDetail}>{business.email}</Text>}
-                  {business.phone && <Text style={styles.businessDetail}>{business.phone}</Text>}
-                  {business.address && <Text style={styles.businessDetail}>{business.address}</Text>}
+            </View>
+
+            {/* Document Type - Right Side */}
+            <View style={styles.documentMeta}>
+              <Text style={styles.documentType}>{documentTitle}</Text>
+              <Text style={styles.documentNumber}>{documentNumber || 'AUTO'}</Text>
+              {status && (
+                <View style={[styles.statusBadge, { backgroundColor: getStatusBadgeStyle(status).background }]}>
+                  <Text style={[styles.statusText, { color: getStatusBadgeStyle(status).color }]}>
+                    {status.toUpperCase()}
+                  </Text>
                 </View>
               )}
             </View>
-
-            <View style={styles.documentMeta}>
-              <View style={[styles.documentTypeBadge, { backgroundColor: brandColor + '15' }]}>
-                <Text style={[styles.documentType, { color: brandColor }]}>
-                  {type === 'quote' ? 'QUOTE' : (gstEnabled ? 'TAX INVOICE' : 'INVOICE')}
-                </Text>
-              </View>
-              
-              <View style={styles.detailsBox}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{type === 'quote' ? 'Quote' : 'Invoice'} #</Text>
-                  <Text style={styles.detailValueMono}>{documentNumber || 'AUTO'}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Date</Text>
-                  <Text style={styles.detailValue}>{formatDate(date || new Date().toISOString())}</Text>
-                </View>
-                {type === 'quote' && validUntil && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Valid Until</Text>
-                    <Text style={styles.detailValue}>{formatDate(validUntil)}</Text>
-                  </View>
-                )}
-                {type === 'invoice' && dueDate && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Due Date</Text>
-                    <Text style={styles.dueDateValue}>{formatDate(dueDate)}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
           </View>
-        </View>
 
-        <View style={styles.documentContent}>
-          {/* Bill To Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Bill To</Text>
-            <View style={styles.sectionBox}>
+          {/* Info Section - Bill To & Document Details */}
+          <View style={styles.infoSection}>
+            {/* Bill To / Quote For */}
+            <View style={styles.infoColumn}>
+              <Text style={styles.sectionLabel}>
+                {type === 'quote' ? 'Quote For' : 'Bill To'}
+              </Text>
               {client ? (
                 <>
                   <Text style={styles.clientName}>{client.name}</Text>
-                  <View style={styles.clientDetails}>
-                    {client.address && <Text style={styles.clientDetail}>{client.address}</Text>}
-                    {client.phone && <Text style={styles.clientDetail}>{client.phone}</Text>}
-                    {client.email && <Text style={styles.clientDetail}>{client.email}</Text>}
-                  </View>
+                  {client.address && <Text style={styles.clientDetail}>{client.address}</Text>}
+                  {client.email && <Text style={styles.clientDetail}>{client.email}</Text>}
+                  {client.phone && <Text style={styles.clientDetail}>{client.phone}</Text>}
                 </>
               ) : (
                 <Text style={styles.placeholder}>Select a client...</Text>
               )}
             </View>
+
+            {/* Document Details */}
+            <View style={styles.infoColumn}>
+              <Text style={styles.sectionLabel}>
+                {type === 'quote' ? 'Quote Details' : 'Invoice Details'}
+              </Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Date:</Text>
+                <Text style={styles.detailValue}>{formatDate(date || new Date().toISOString())}</Text>
+              </View>
+              {type === 'quote' && validUntil && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Valid Until:</Text>
+                  <Text style={styles.detailValue}>{formatDate(validUntil)}</Text>
+                </View>
+              )}
+              {type === 'invoice' && dueDate && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Due Date:</Text>
+                  <Text style={styles.detailValue}>{formatDate(dueDate)}</Text>
+                </View>
+              )}
+            </View>
           </View>
 
-          {/* Work Description */}
-          {(title || description) && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Work Completed</Text>
-              <View style={styles.sectionBox}>
-                <Text style={styles.descriptionTitle}>
-                  {title || `New ${type === 'quote' ? 'Quote' : 'Invoice'}`}
-                </Text>
-                {description && (
-                  <Text style={styles.descriptionText}>{description}</Text>
+          {/* Job Site Location */}
+          {jobAddress && (
+            <View style={[styles.infoSection, { marginTop: 8 }]}>
+              <View style={styles.infoColumn}>
+                <Text style={styles.sectionLabel}>Job Site Location</Text>
+                <Text style={styles.clientName}>{jobAddress}</Text>
+                {jobScheduledDate && (
+                  <Text style={[styles.clientDetail, { color: colors.textMuted }]}>
+                    {type === 'quote' ? 'Scheduled:' : 'Completed:'} {formatDate(jobScheduledDate)}
+                  </Text>
                 )}
               </View>
             </View>
           )}
 
+          {/* Description Section */}
+          {(title || description) && (
+            <View style={styles.descriptionSection}>
+              <Text style={styles.descriptionTitle}>
+                {title || `New ${type === 'quote' ? 'Quote' : 'Invoice'}`}
+              </Text>
+              {description && (
+                <Text style={styles.descriptionText}>{description}</Text>
+              )}
+            </View>
+          )}
+
           {/* Line Items Table */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Items & Services</Text>
-            <View style={styles.tableContainer}>
-              <View style={[styles.tableHeader, { backgroundColor: brandColor }]}>
-                <Text style={[styles.tableHeaderCell, styles.descCell, { color: documentColors.white }]}>Description</Text>
-                <Text style={[styles.tableHeaderCell, styles.qtyCell, styles.centerText, { color: documentColors.white }]}>Qty</Text>
-                <Text style={[styles.tableHeaderCell, styles.priceCell, styles.rightText, { color: documentColors.white }]}>Price</Text>
-                <Text style={[styles.tableHeaderCell, styles.totalCell, styles.rightText, { color: documentColors.white }]}>Total</Text>
-              </View>
-              
-              {validLineItems.length > 0 ? (
-                validLineItems.map((item, index) => (
-                  <View key={index} style={styles.tableRow}>
-                    <Text style={[styles.tableCell, styles.descCell]} numberOfLines={2}>
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderCell, styles.descCol]}>Description</Text>
+              <Text style={[styles.tableHeaderCell, styles.qtyCol]}>Qty</Text>
+              <Text style={[styles.tableHeaderCell, styles.priceCol]}>Unit Price</Text>
+              <Text style={[styles.tableHeaderCell, styles.amountCol]}>Amount</Text>
+            </View>
+            
+            {validLineItems.length > 0 ? (
+              validLineItems.map((item, index) => {
+                const rowStyle = getTableRowStyle(index, index === validLineItems.length - 1);
+                return (
+                  <View 
+                    key={index} 
+                    style={[
+                      styles.tableRow, 
+                      { 
+                        borderBottomWidth: rowStyle.borderBottomWidth,
+                        borderBottomColor: rowStyle.borderBottomColor,
+                        backgroundColor: rowStyle.backgroundColor,
+                      }
+                    ]}
+                  >
+                    <Text style={[styles.tableCell, styles.descCol]} numberOfLines={2}>
                       {item.description}
                     </Text>
-                    <Text style={[styles.tableCell, styles.qtyCell, styles.centerText]}>
-                      {safeParseFloat(item.quantity)}
+                    <Text style={[styles.tableCell, styles.qtyCol]}>
+                      {safeParseFloat(item.quantity).toFixed(2)}
                     </Text>
-                    <Text style={[styles.tableCell, styles.priceCell, styles.rightText]}>
+                    <Text style={[styles.tableCell, styles.priceCol]}>
                       {formatCurrency(safeParseFloat(item.unitPrice))}
                     </Text>
-                    <Text style={[styles.tableCell, styles.totalCell, styles.rightText, styles.boldText]}>
+                    <Text style={[styles.tableCell, styles.amountCol, { fontWeight: '600' }]}>
                       {formatCurrency(calculateLineTotal(item))}
                     </Text>
                   </View>
-                ))
-              ) : (
-                <View style={styles.emptyTableRow}>
-                  <Text style={styles.emptyText}>Add line items to see them here...</Text>
+                );
+              })
+            ) : (
+              <View style={styles.emptyRow}>
+                <Text style={styles.emptyText}>Add line items to see them here...</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Totals Section */}
+          <View style={styles.totalsContainer}>
+            <View style={styles.totalsBox}>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Subtotal</Text>
+                <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
+              </View>
+              {gstEnabled && (
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>GST (10%)</Text>
+                  <Text style={styles.totalValue}>{formatCurrency(gst)}</Text>
+                </View>
+              )}
+              <View style={styles.grandTotalRow}>
+                <Text style={styles.grandTotalLabel}>
+                  {isPaid ? 'Amount Paid' : `Total${gstEnabled ? ' (incl. GST)' : ''}`}
+                </Text>
+                <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
+              </View>
+              {gstEnabled && (
+                <Text style={styles.gstNote}>GST included in total</Text>
+              )}
+              
+              {/* Deposit Section */}
+              {showDepositSection && depositPercent > 0 && (
+                <View style={styles.depositSection}>
+                  <View style={styles.depositRow}>
+                    <Text style={styles.depositLabel}>Deposit Required ({depositPercent}%):</Text>
+                    <Text style={styles.depositValue}>{formatCurrency(depositAmount)}</Text>
+                  </View>
+                  <View style={styles.depositRow}>
+                    <Text style={styles.depositLabel}>Balance on completion:</Text>
+                    <Text style={styles.depositValue}>{formatCurrency(total - depositAmount)}</Text>
+                  </View>
                 </View>
               )}
             </View>
           </View>
 
-          {/* Totals Section */}
-          <View style={styles.totalsSection}>
-            {gstEnabled ? (
-              <View style={styles.totalsContainer}>
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Subtotal:</Text>
-                  <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
-                </View>
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>GST (10%):</Text>
-                  <Text style={styles.totalValue}>{formatCurrency(gst)}</Text>
-                </View>
-                <View style={styles.grandTotalBox}>
-                  <Text style={styles.grandTotalLabel}>Total:</Text>
-                  <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.grandTotalBox}>
-                <Text style={styles.grandTotalLabel}>Total:</Text>
-                <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
-              </View>
-            )}
-            
-            {showDepositSection && depositPercent > 0 && (
-              <View style={styles.depositSection}>
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Deposit ({depositPercent}%):</Text>
-                  <Text style={styles.totalValue}>{formatCurrency(depositAmount)}</Text>
-                </View>
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Balance:</Text>
-                  <Text style={styles.totalValue}>{formatCurrency(total - depositAmount)}</Text>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Notes */}
+          {/* Notes Section */}
           {notes && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Notes</Text>
-              <View style={styles.sectionBox}>
-                <Text style={styles.notesText}>{notes}</Text>
-              </View>
+            <View style={[styles.notesSection, noteStyle]}>
+              <Text style={styles.notesSectionTitle}>Additional Notes</Text>
+              <Text style={styles.notesText}>{notes}</Text>
             </View>
           )}
 
-          {/* Terms */}
+          {/* Terms Section */}
           {terms && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Terms & Conditions</Text>
-              <View style={styles.sectionBox}>
-                <Text style={styles.termsText}>{terms}</Text>
+            <View style={styles.termsSection}>
+              <Text style={styles.termsTitle}>Terms & Conditions</Text>
+              <Text style={styles.termsText}>{terms}</Text>
+            </View>
+          )}
+
+          {/* Quote Acceptance Section */}
+          {type === 'quote' && status !== 'accepted' && status !== 'declined' && (
+            <View style={styles.acceptanceSection}>
+              <Text style={styles.acceptanceTitle}>Quote Acceptance</Text>
+              <Text style={styles.acceptanceText}>
+                By signing below, I accept this quote and authorise the work to proceed in accordance with the terms and conditions above.
+              </Text>
+              <View style={styles.signatureRow}>
+                <View style={styles.signatureBox}>
+                  <Text style={styles.signatureLabel}>Client Signature</Text>
+                  <View style={styles.signatureLine} />
+                </View>
+                <View style={styles.signatureBox}>
+                  <Text style={styles.signatureLabel}>Print Name</Text>
+                  <View style={styles.signatureLine} />
+                </View>
+                <View style={styles.signatureBox}>
+                  <Text style={styles.signatureLabel}>Date</Text>
+                  <View style={styles.signatureLine} />
+                </View>
               </View>
             </View>
           )}
 
-          {/* Signature for Quotes */}
-          {type === 'quote' && (
-            <View style={styles.signatureSection}>
-              <View style={styles.signatureRow}>
-                <Feather name="edit-3" size={12} color={documentColors.textMuted} />
-                <Text style={styles.signatureText}>Client signature area</Text>
-              </View>
+          {/* Accepted Quote Confirmation */}
+          {type === 'quote' && status === 'accepted' && (
+            <View style={styles.confirmationBox}>
+              <Text style={styles.confirmationTitle}>Quote Accepted</Text>
+              <Text style={styles.confirmationText}>This quote has been accepted.</Text>
+            </View>
+          )}
+
+          {/* Payment Received Confirmation */}
+          {type === 'invoice' && isPaid && (
+            <View style={styles.confirmationBox}>
+              <Text style={styles.confirmationTitle}>Payment Received - Thank You!</Text>
+              <Text style={styles.confirmationText}>Amount: {formatCurrency(total)}</Text>
             </View>
           )}
 
           {/* Footer */}
-          <View style={[styles.footer, { borderTopColor: brandColor }]}>
-            <View style={styles.footerContacts}>
-              {business.phone && (
-                <View style={styles.footerItem}>
-                  <Feather name="phone" size={10} color={documentColors.textMuted} />
-                  <Text style={styles.footerText}>{business.phone}</Text>
-                </View>
-              )}
-              {business.email && (
-                <View style={styles.footerItem}>
-                  <Feather name="mail" size={10} color={documentColors.textMuted} />
-                  <Text style={styles.footerText}>{business.email}</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.thankYouText}>Thank you for your business!</Text>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Thank you for your business!</Text>
             {business.abn && (
-              <Text style={styles.abnText}>ABN: {business.abn}</Text>
+              <Text style={styles.footerText}>ABN: {business.abn}</Text>
             )}
+            <Text style={styles.footerText}>Generated by TradieTrack</Text>
           </View>
         </View>
       </View>

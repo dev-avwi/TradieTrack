@@ -1,5 +1,5 @@
-// Document Template System for Mobile
-// Defines visual styles for quotes and invoices - matches web implementation
+// Document Template System - Mobile
+// Matches web client/src/lib/document-templates.ts exactly
 
 export type TemplateId = 'professional' | 'modern' | 'minimal';
 
@@ -7,11 +7,14 @@ export interface DocumentTemplate {
   id: TemplateId;
   name: string;
   description: string;
+  fontFamily: string;
+  headingFont: string;
   headerLayout: 'classic' | 'modern' | 'minimal';
   colorScheme: 'brand' | 'neutral' | 'bold';
   tableStyle: 'bordered' | 'striped' | 'minimal';
-  headingWeight: number;
-  bodyWeight: number;
+  baseFontSize: number;
+  headingWeight: '600' | '700' | '800';
+  bodyWeight: '400' | '500' | '600' | '700';
   borderRadius: number;
   headerBorderWidth: number;
   showHeaderDivider: boolean;
@@ -22,23 +25,29 @@ export interface DocumentTemplate {
 export interface TemplateCustomization {
   tableStyle?: 'bordered' | 'striped' | 'minimal';
   noteStyle?: 'bordered' | 'highlighted' | 'simple';
-  headerBorderWidth?: '1px' | '2px' | '3px' | '4px';
+  headerBorderWidth?: number;
   showHeaderDivider?: boolean;
-  bodyWeight?: 400 | 500 | 600 | 700;
-  headingWeight?: 600 | 700 | 800;
+  bodyWeight?: '400' | '500' | '600' | '700';
+  headingWeight?: '600' | '700' | '800';
   accentColor?: string;
 }
+
+// All templates use system font for React Native
+const SYSTEM_FONT = 'System';
 
 export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
   professional: {
     id: 'professional',
     name: 'Professional',
-    description: 'Traditional layout with bordered tables.',
+    description: 'Traditional layout with bordered tables. Perfect for formal business documents.',
+    fontFamily: SYSTEM_FONT,
+    headingFont: SYSTEM_FONT,
     headerLayout: 'classic',
     colorScheme: 'neutral',
     tableStyle: 'bordered',
-    headingWeight: 700,
-    bodyWeight: 600,
+    baseFontSize: 11,
+    headingWeight: '700',
+    bodyWeight: '600',
     borderRadius: 2,
     headerBorderWidth: 2,
     showHeaderDivider: true,
@@ -48,12 +57,15 @@ export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
   modern: {
     id: 'modern',
     name: 'Modern',
-    description: 'Clean design with bold brand colors.',
+    description: 'Clean design with bold brand colors. Great for contemporary businesses.',
+    fontFamily: SYSTEM_FONT,
+    headingFont: SYSTEM_FONT,
     headerLayout: 'modern',
     colorScheme: 'brand',
     tableStyle: 'striped',
-    headingWeight: 700,
-    bodyWeight: 600,
+    baseFontSize: 12,
+    headingWeight: '700',
+    bodyWeight: '600',
     borderRadius: 8,
     headerBorderWidth: 3,
     showHeaderDivider: true,
@@ -63,12 +75,15 @@ export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
   minimal: {
     id: 'minimal',
     name: 'Minimal',
-    description: 'Ultra-clean design with subtle styling.',
+    description: 'Ultra-clean design with subtle styling. Lets your content speak for itself.',
+    fontFamily: SYSTEM_FONT,
+    headingFont: SYSTEM_FONT,
     headerLayout: 'minimal',
     colorScheme: 'neutral',
     tableStyle: 'minimal',
-    headingWeight: 700,
-    bodyWeight: 600,
+    baseFontSize: 11,
+    headingWeight: '700',
+    bodyWeight: '600',
     borderRadius: 4,
     headerBorderWidth: 1,
     showHeaderDivider: false,
@@ -77,81 +92,83 @@ export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
   },
 };
 
-// Fixed document accent color - consistent navy blue across all templates
+// Fixed document accent color - consistent navy blue across all templates and PDFs
 export const DOCUMENT_ACCENT_COLOR = '#1e3a5f';
+
+// Default template if none selected
 export const DEFAULT_TEMPLATE: TemplateId = 'minimal';
 
-// Helper to get template styles for React Native
+export interface TemplateStyles {
+  template: DocumentTemplate;
+  primaryColor: string;
+  accentColor: string;
+  tableHeaderStyle: {
+    backgroundColor: string;
+    color: string;
+    borderBottomWidth: number;
+    borderBottomColor: string;
+  };
+  getTableRowStyle: (index: number, isLast: boolean) => {
+    borderBottomWidth: number;
+    borderBottomColor: string;
+    backgroundColor: string;
+  };
+  getNoteStyle: () => {
+    borderLeftWidth?: number;
+    borderLeftColor?: string;
+    backgroundColor: string;
+    borderRadius: number;
+    borderWidth?: number;
+    borderColor?: string;
+    paddingVertical?: number;
+    borderTopWidth?: number;
+    borderTopColor?: string;
+  };
+}
+
 export function getTemplateStyles(
-  templateId: TemplateId = 'minimal',
+  templateId: TemplateId = DEFAULT_TEMPLATE,
   _brandColor: string = '#2563eb',
   customization?: TemplateCustomization
-) {
+): TemplateStyles {
   const baseTemplate = DOCUMENT_TEMPLATES[templateId] || DOCUMENT_TEMPLATES.minimal;
   
   const template = {
     ...baseTemplate,
     tableStyle: customization?.tableStyle ?? baseTemplate.tableStyle,
     noteStyle: customization?.noteStyle ?? baseTemplate.noteStyle,
-    headerBorderWidth: customization?.headerBorderWidth 
-      ? parseInt(customization.headerBorderWidth) 
-      : baseTemplate.headerBorderWidth,
+    headerBorderWidth: customization?.headerBorderWidth ?? baseTemplate.headerBorderWidth,
     showHeaderDivider: customization?.showHeaderDivider ?? baseTemplate.showHeaderDivider,
     bodyWeight: customization?.bodyWeight ?? baseTemplate.bodyWeight,
     headingWeight: customization?.headingWeight ?? baseTemplate.headingWeight,
   };
   
   const primaryColor = customization?.accentColor || DOCUMENT_ACCENT_COLOR;
+  const accentColor = customization?.accentColor || DOCUMENT_ACCENT_COLOR;
   
   return {
     template,
     primaryColor,
-    accentColor: primaryColor,
-    
-    // Header styles
-    headerStyle: {
-      borderBottomWidth: template.showHeaderDivider ? template.headerBorderWidth : 0,
-      borderBottomColor: primaryColor,
-    },
-    
-    // Heading styles
-    headingStyle: {
-      fontWeight: String(template.headingWeight) as '600' | '700' | '800',
-      color: primaryColor,
-    },
-    
-    // Table header styles
+    accentColor,
     tableHeaderStyle: {
       backgroundColor: template.tableStyle === 'minimal' ? 'transparent' : primaryColor,
       color: template.tableStyle === 'minimal' ? '#1a1a1a' : '#ffffff',
+      borderBottomWidth: template.tableStyle === 'minimal' ? 2 : 0,
+      borderBottomColor: template.tableStyle === 'minimal' ? primaryColor : 'transparent',
     },
-    
-    // Table row styles
     getTableRowStyle: (index: number, isLast: boolean) => {
-      const borderColor = isLast 
-        ? primaryColor 
-        : template.tableStyle === 'striped'
-          ? 'transparent'
-          : template.tableStyle === 'minimal'
-            ? '#e5e7eb'
-            : '#eeeeee';
-      
       return {
-        borderBottomWidth: isLast ? 2 : 1,
-        borderBottomColor: borderColor,
+        borderBottomWidth: isLast ? 2 : template.tableStyle === 'striped' ? 0 : 1,
+        borderBottomColor: isLast 
+          ? primaryColor 
+          : template.tableStyle === 'minimal' 
+            ? '#e5e7eb' 
+            : '#eee',
         backgroundColor: template.tableStyle === 'striped' && index % 2 === 0 
           ? '#f9fafb' 
           : 'transparent',
       };
     },
-    
-    // Section styles
-    sectionStyle: {
-      backgroundColor: template.sectionBackground,
-      borderRadius: template.borderRadius,
-    },
-    
-    // Note styles
     getNoteStyle: () => {
       switch (template.noteStyle) {
         case 'bordered':
@@ -175,10 +192,9 @@ export function getTemplateStyles(
             backgroundColor: 'transparent',
             borderTopWidth: 1,
             borderTopColor: '#e5e7eb',
+            borderRadius: 0,
           };
       }
     },
-    
-    borderRadius: template.borderRadius,
   };
 }
