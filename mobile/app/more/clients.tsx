@@ -13,6 +13,7 @@ import { Feather } from '@expo/vector-icons';
 import { useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
+import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 
 type FilterKey = 'all' | 'with_email' | 'with_phone' | 'with_address';
 
@@ -185,10 +186,9 @@ export default function ClientsScreen() {
               </View>
             ) : (
               filteredClients.map(client => (
-                <TouchableOpacity
+                <AnimatedCardPressable
                   key={client.id}
                   style={styles.clientCard}
-                  activeOpacity={0.7}
                   onPress={() => router.push(`/more/client/${client.id}`)}
                 >
                   <View style={styles.avatar}>
@@ -210,7 +210,7 @@ export default function ClientsScreen() {
                     )}
                   </View>
                   <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </AnimatedCardPressable>
               ))
             )}
           </View>

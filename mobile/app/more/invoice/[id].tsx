@@ -29,7 +29,7 @@ const TEMPLATE_OPTIONS = [
 ];
 
 const STATUS_CONFIG = {
-  draft: { label: 'Draft', color: colors.mutedForeground, bg: colors.cardHover },
+  draft: { label: 'Draft', color: colors.warning, bg: colors.warningLight },
   sent: { label: 'Sent', color: colors.info, bg: colors.infoLight },
   paid: { label: 'Paid', color: colors.success, bg: colors.successLight },
   overdue: { label: 'Overdue', color: colors.destructive, bg: colors.destructiveLight },

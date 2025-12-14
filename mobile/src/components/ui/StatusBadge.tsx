@@ -42,9 +42,9 @@ function getStatusConfig(colors: ThemeColors): Record<string, { bg: string; text
       label: 'Invoiced'
     },
     draft: {
-      bg: colors.muted,
-      text: colors.mutedForeground,
-      dot: colors.mutedForeground,
+      bg: colors.warningLight,
+      text: colors.warning,
+      dot: colors.warning,
       label: 'Draft'
     },
     sent: {

@@ -28,11 +28,11 @@ const TEMPLATE_OPTIONS = [
 ];
 
 const STATUS_CONFIG = {
-  draft: { label: 'Draft', color: colors.mutedForeground, bg: colors.cardHover },
+  draft: { label: 'Draft', color: colors.warning, bg: colors.warningLight },
   sent: { label: 'Sent', color: colors.info, bg: colors.infoLight },
   accepted: { label: 'Accepted', color: colors.success, bg: colors.successLight },
   rejected: { label: 'Rejected', color: colors.destructive, bg: colors.destructiveLight },
-  expired: { label: 'Expired', color: colors.warning, bg: colors.warningLight },
+  expired: { label: 'Expired', color: colors.mutedForeground, bg: colors.cardHover },
 };
 
 export default function QuoteDetailScreen() {

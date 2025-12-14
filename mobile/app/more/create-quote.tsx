@@ -398,6 +398,19 @@ const createStyles = (colors: any) => StyleSheet.create({
   overallMarginBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'flex-start' },
   overallMarginText: { fontSize: 14, fontWeight: '700' },
   noCostHint: { fontSize: 12, color: colors.mutedForeground, textAlign: 'center', paddingVertical: 8 },
+  suggestionsCard: { backgroundColor: colors.success + '15', borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: colors.success + '30' },
+  suggestionsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  suggestionsTitle: { fontSize: 14, fontWeight: '600', color: colors.success },
+  suggestionsLabel: { fontSize: 12, color: colors.mutedForeground, marginBottom: 6 },
+  suggestionsChipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  suggestionChip: { backgroundColor: colors.card, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
+  suggestionChipText: { fontSize: 13, color: colors.foreground },
+  suggestionsLoading: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
+  suggestionsLoadingText: { fontSize: 13, color: colors.mutedForeground },
+  input: { backgroundColor: colors.card, borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 14, fontSize: 15, color: colors.foreground },
+  fieldLabel: { fontSize: 14, fontWeight: '500', color: colors.foreground, marginBottom: 6 },
+  primaryButton: { backgroundColor: colors.primary },
+  primaryButtonText: { fontSize: 15, fontWeight: '600', color: colors.primaryForeground },
 });
 
 export default function CreateQuoteScreen() {
@@ -428,6 +441,10 @@ export default function CreateQuoteScreen() {
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  
+  // Prefill suggestions state
+  const [prefillSuggestions, setPrefillSuggestions] = useState<any>(null);
+  const [loadingPrefill, setLoadingPrefill] = useState(false);
   
   // Quick Add Client state
   const [showQuickAddClient, setShowQuickAddClient] = useState(false);
@@ -464,6 +481,39 @@ export default function CreateQuoteScreen() {
 
   const selectedClient = clients.find((c) => c.id === clientId);
   const selectedJob = jobs.find((j) => j.id === jobId);
+
+  const handleClientSelect = async (id: string) => {
+    setClientId(id);
+    setPrefillSuggestions(null);
+    setLoadingPrefill(false);
+    
+    if (!id) return;
+    
+    // Fetch prefill suggestions for quotes
+    setLoadingPrefill(true);
+    try {
+      const response = await api.get<any>(`/api/clients/${id}/prefill-suggestions?type=quote`);
+      if (response.data) {
+        setPrefillSuggestions(response.data);
+      }
+    } catch (error) {
+      console.log('Pre-fill suggestions not available:', error);
+      setPrefillSuggestions(null);
+    } finally {
+      setLoadingPrefill(false);
+    }
+  };
+
+  const addSuggestedLineItem = (item: { description: string; unitPrice?: number; quantity?: number }) => {
+    const newItem: LineItem = {
+      id: generateId(),
+      description: item.description,
+      quantity: item.quantity || 1,
+      unitPrice: item.unitPrice || 0,
+      cost: 0,
+    };
+    setLineItems([...lineItems, newItem]);
+  };
 
   const addLineItem = () => {
     setLineItems([
@@ -714,6 +764,44 @@ export default function CreateQuoteScreen() {
             </View>
           )}
 
+          {/* Suggested Line Items */}
+          {clientId && loadingPrefill && (
+            <View style={styles.suggestionsLoading}>
+              <ActivityIndicator size="small" color={colors.success} />
+              <Text style={styles.suggestionsLoadingText}>Loading suggestions...</Text>
+            </View>
+          )}
+          
+          {clientId && prefillSuggestions && prefillSuggestions.suggestedLineItems?.length > 0 && (
+            <View style={styles.suggestionsCard}>
+              <View style={styles.suggestionsHeader}>
+                <Feather name="zap" size={16} color={colors.success} />
+                <Text style={styles.suggestionsTitle}>Suggested Items</Text>
+              </View>
+              
+              <Text style={styles.suggestionsLabel}>Tap to add to quote:</Text>
+              <View style={styles.suggestionsChipsContainer}>
+                {prefillSuggestions.suggestedLineItems.slice(0, 6).map((item: any, idx: number) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.suggestionChip}
+                    onPress={() => addSuggestedLineItem({
+                      description: item.description || item.name,
+                      unitPrice: item.unitPrice ? Math.round(parseFloat(item.unitPrice) * 100) : 0,
+                      quantity: item.quantity || 1,
+                    })}
+                    testID={`suggestion-line-item-${idx}`}
+                  >
+                    <Text style={styles.suggestionChipText}>
+                      {item.description || item.name}
+                      {item.unitPrice ? ` ($${parseFloat(item.unitPrice).toFixed(0)})` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
           {/* Line Items */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -921,7 +1009,7 @@ export default function CreateQuoteScreen() {
       <ClientSelector
         clients={clients}
         selectedId={clientId}
-        onSelect={setClientId}
+        onSelect={handleClientSelect}
         visible={showClientPicker}
         onClose={() => setShowClientPicker(false)}
         colors={colors}

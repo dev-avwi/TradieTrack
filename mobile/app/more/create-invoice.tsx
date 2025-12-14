@@ -123,6 +123,97 @@ function ClientSelector({
   );
 }
 
+function CompletedJobSelector({
+  jobs,
+  selectedId,
+  onSelect,
+  visible,
+  onClose,
+  colors,
+  styles,
+}: {
+  jobs: any[];
+  selectedId: string | null;
+  onSelect: (job: any | null) => void;
+  visible: boolean;
+  onClose: () => void;
+  colors: any;
+  styles: any;
+}) {
+  const [search, setSearch] = useState('');
+
+  const completedJobs = jobs.filter(
+    (j) => j.status === 'done' && 
+      (j.title?.toLowerCase().includes(search.toLowerCase()) ||
+       j.description?.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Link to Completed Job</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.clientItem, { marginHorizontal: 16, marginTop: 16 }, !selectedId && styles.clientItemSelected]}
+            onPress={() => {
+              onSelect(null);
+              onClose();
+            }}
+          >
+            <Text style={styles.clientItemName}>No Job</Text>
+            {!selectedId && <Feather name="check" size={20} color={colors.primary} />}
+          </TouchableOpacity>
+
+          <TextInput
+            style={styles.modalSearch}
+            placeholder="Search completed jobs..."
+            placeholderTextColor={colors.mutedForeground}
+            value={search}
+            onChangeText={setSearch}
+          />
+
+          <ScrollView style={styles.modalList}>
+            {completedJobs.map((job) => (
+              <TouchableOpacity
+                key={job.id}
+                style={[
+                  styles.clientItem,
+                  selectedId === job.id && styles.clientItemSelected,
+                ]}
+                onPress={() => {
+                  onSelect(job);
+                  onClose();
+                }}
+              >
+                <View style={styles.clientItemContent}>
+                  <Text style={styles.clientItemName}>{job.title}</Text>
+                  <Text style={styles.clientItemEmail}>
+                    Completed {job.completedAt && `• ${new Date(job.completedAt).toLocaleDateString()}`}
+                  </Text>
+                </View>
+                {selectedId === job.id && (
+                  <Feather name="check" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+            {completedJobs.length === 0 && (
+              <View style={styles.emptyList}>
+                <Text style={styles.emptyListText}>No completed jobs found</Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function LineItemRow({
   item,
   onUpdate,
@@ -276,6 +367,7 @@ export default function CreateInvoiceScreen() {
   const [depositPaid, setDepositPaid] = useState(0);
 
   const [showClientPicker, setShowClientPicker] = useState(false);
+  const [showJobPicker, setShowJobPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
@@ -350,6 +442,30 @@ export default function CreateInvoiceScreen() {
   }, [params.jobId, params.quoteId, jobs]);
 
   const selectedClient = clients.find((c) => c.id === clientId);
+  const selectedJob = jobs.find((j) => j.id === jobId);
+
+  const handleJobSelect = (job: any | null) => {
+    if (job) {
+      setJobId(job.id);
+      if (job.clientId) {
+        setClientId(job.clientId);
+      }
+      if (job.title && lineItems.length === 1 && (!lineItems[0].description || lineItems[0].description === '')) {
+        setLineItems([{
+          id: generateId(),
+          description: job.title,
+          quantity: 1,
+          unitPrice: 0,
+        }]);
+      }
+    } else {
+      setJobId(null);
+    }
+  };
+
+  const clearSelectedJob = () => {
+    setJobId(null);
+  };
 
   const addLineItem = () => {
     setLineItems([
@@ -581,6 +697,40 @@ export default function CreateInvoiceScreen() {
             </TouchableOpacity>
           </View>
 
+          {!quoteId && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Link to Completed Job (Optional)</Text>
+              <TouchableOpacity
+                style={styles.selector}
+                onPress={() => setShowJobPicker(true)}
+              >
+                {selectedJob ? (
+                  <View style={styles.selectedItem}>
+                    <View style={[styles.clientAvatar, { backgroundColor: `${colors.success}15` }]}>
+                      <Feather name="check-circle" size={18} color={colors.success} />
+                    </View>
+                    <View style={styles.selectedItemText}>
+                      <Text style={styles.selectedItemName}>{selectedJob.title}</Text>
+                      <Text style={styles.selectedItemDetail}>Completed</Text>
+                    </View>
+                    <TouchableOpacity 
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        clearSelectedJob();
+                      }}
+                      style={{ padding: 4 }}
+                    >
+                      <Feather name="x" size={18} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <Text style={styles.selectorPlaceholder}>Select a completed job</Text>
+                )}
+                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Line Items</Text>
@@ -694,6 +844,16 @@ export default function CreateInvoiceScreen() {
         colors={colors}
         styles={styles}
         onQuickAdd={() => setShowQuickAddClient(true)}
+      />
+
+      <CompletedJobSelector
+        jobs={jobs}
+        selectedId={jobId}
+        onSelect={handleJobSelect}
+        visible={showJobPicker}
+        onClose={() => setShowJobPicker(false)}
+        colors={colors}
+        styles={styles}
       />
       
       {/* Quick Add Client Modal */}

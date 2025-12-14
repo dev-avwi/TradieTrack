@@ -45,20 +45,11 @@ export function JobProgressBar({ status }: JobProgressBarProps) {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <View style={styles.headerIcon}>
-          <Feather name="git-branch" size={iconSizes.md} color={colors.primary} />
-        </View>
-        <Text style={styles.headerTitle}>Job Workflow</Text>
-      </View>
-
-      {/* Progress Steps */}
+      {/* Simple Progress Steps - no header, cleaner design */}
       <View style={styles.stepsRow}>
         {WORKFLOW_STEPS.map((step, index) => {
           const isPassed = index < currentIndex;
           const isCurrent = index === currentIndex;
-          const isUpcoming = index > currentIndex;
 
           return (
             <View key={step.id} style={styles.stepContainer}>
@@ -66,32 +57,32 @@ export function JobProgressBar({ status }: JobProgressBarProps) {
                 <View 
                   style={[
                     styles.connector,
-                    isPassed || isCurrent ? styles.connectorActive : styles.connectorInactive
+                    isPassed ? styles.connectorComplete : 
+                    isCurrent ? styles.connectorActive : 
+                    styles.connectorInactive
                   ]} 
                 />
               )}
               <View
                 style={[
                   styles.stepCircle,
-                  isPassed && styles.stepCirclePassed,
+                  isPassed && styles.stepCircleComplete,
                   isCurrent && styles.stepCircleCurrent,
-                  isUpcoming && styles.stepCircleUpcoming,
                 ]}
               >
-                <Feather 
-                  name={isPassed ? 'check' : step.icon} 
-                  size={16} 
-                  color={
-                    isCurrent ? colors.primaryForeground :
-                    isPassed ? colors.primary :
-                    colors.mutedForeground
-                  } 
-                />
+                {isPassed ? (
+                  <Feather name="check" size={14} color="#FFFFFF" />
+                ) : (
+                  <View style={[
+                    styles.stepDot,
+                    isCurrent && styles.stepDotCurrent,
+                  ]} />
+                )}
               </View>
               <Text 
                 style={[
                   styles.stepLabel,
-                  isPassed && styles.stepLabelPassed,
+                  isPassed && styles.stepLabelComplete,
                   isCurrent && styles.stepLabelCurrent,
                 ]}
                 numberOfLines={1}
@@ -109,38 +100,16 @@ export function JobProgressBar({ status }: JobProgressBarProps) {
 const createProgressStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  headerIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    backgroundColor: `${colors.primary}15`,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.foreground,
-    flex: 1,
   },
   stepsRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingTop: spacing.sm,
   },
   stepContainer: {
     flex: 1,
@@ -149,57 +118,64 @@ const createProgressStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   connector: {
     position: 'absolute',
-    top: 16,
+    top: 12,
     right: '50%',
     width: '100%',
-    height: 3,
+    height: 2,
     zIndex: -1,
+    backgroundColor: colors.muted,
+  },
+  connectorComplete: {
+    backgroundColor: colors.success,
   },
   connectorActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.border,
   },
   connectorInactive: {
     backgroundColor: colors.muted,
   },
   stepCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
+    backgroundColor: colors.muted,
   },
-  stepCirclePassed: {
-    backgroundColor: `${colors.primary}25`,
-    borderWidth: 2,
-    borderColor: colors.primary,
+  stepCircleComplete: {
+    backgroundColor: colors.success,
   },
   stepCircleCurrent: {
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderColor: colors.foreground,
   },
-  stepCircleUpcoming: {
-    backgroundColor: colors.muted,
-    borderWidth: 1,
-    borderColor: colors.border,
+  stepDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.mutedForeground,
+  },
+  stepDotCurrent: {
+    backgroundColor: colors.foreground,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   stepLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
     color: colors.mutedForeground,
     textAlign: 'center',
   },
-  stepLabelPassed: {
-    color: colors.primary,
+  stepLabelComplete: {
+    color: colors.success,
     fontWeight: '600',
   },
   stepLabelCurrent: {
     color: colors.foreground,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });
 

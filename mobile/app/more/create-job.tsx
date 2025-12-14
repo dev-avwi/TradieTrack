@@ -284,6 +284,57 @@ function createStyles(colors: ThemeColors) {
       fontSize: 14,
       color: colors.mutedForeground,
     },
+    suggestionsCard: {
+      backgroundColor: colors.successLight || colors.success + '15',
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: colors.success + '30',
+    },
+    suggestionsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 10,
+    },
+    suggestionsTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.success,
+    },
+    suggestionsLabel: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      marginBottom: 6,
+    },
+    suggestionsChipsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    suggestionChip: {
+      backgroundColor: colors.card,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    suggestionChipText: {
+      fontSize: 13,
+      color: colors.foreground,
+    },
+    suggestionsLoading: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 8,
+    },
+    suggestionsLoadingText: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+    },
   });
 }
 
@@ -727,50 +778,39 @@ export default function CreateJobScreen() {
               </View>
             </View>
 
-            {/* Smart Pre-fill Suggestions */}
-            {loadingPrefill && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 }}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={{ fontSize: 13, color: colors.mutedForeground }}>Loading suggestions...</Text>
+            {/* Past Job Suggestions */}
+            {clientId && loadingPrefill && (
+              <View style={styles.suggestionsLoading}>
+                <ActivityIndicator size="small" color={colors.success} />
+                <Text style={styles.suggestionsLoadingText}>Loading suggestions...</Text>
               </View>
             )}
             
-            {prefillSuggestions && (prefillSuggestions.frequentItems?.length > 0 || prefillSuggestions.jobHistory?.length > 0) && (
-              <View style={[styles.section, { backgroundColor: colors.primaryLight, borderRadius: 12, padding: 12 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <Feather name="zap" size={16} color={colors.primary} />
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Smart Suggestions</Text>
+            {clientId && prefillSuggestions && prefillSuggestions.recentJobDescriptions?.length > 0 && (
+              <View style={styles.suggestionsCard}>
+                <View style={styles.suggestionsHeader}>
+                  <Feather name="clock" size={16} color={colors.success} />
+                  <Text style={styles.suggestionsTitle}>Past Jobs</Text>
                 </View>
                 
-                {prefillSuggestions.frequentItems?.length > 0 && (
-                  <View style={{ marginBottom: 8 }}>
-                    <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 4 }}>
-                      Frequently used for this client:
-                    </Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                      {prefillSuggestions.frequentItems.slice(0, 5).map((item: any, idx: number) => (
-                        <View key={idx} style={{ 
-                          backgroundColor: colors.card, 
-                          paddingHorizontal: 10, 
-                          paddingVertical: 4, 
-                          borderRadius: 6,
-                          borderWidth: 1,
-                          borderColor: colors.border 
-                        }}>
-                          <Text style={{ fontSize: 12, color: colors.foreground }}>{item.name}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-                
-                {prefillSuggestions.jobHistory?.length > 0 && (
-                  <View>
-                    <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 4 }}>
-                      Recent jobs: {prefillSuggestions.jobHistory.slice(0, 2).map((j: any) => j.title).join(', ')}
-                    </Text>
-                  </View>
-                )}
+                <Text style={styles.suggestionsLabel}>Tap to use as job title:</Text>
+                <View style={styles.suggestionsChipsContainer}>
+                  {prefillSuggestions.recentJobDescriptions.slice(0, 6).map((jobDesc: string, idx: number) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.suggestionChip}
+                      onPress={() => {
+                        setTitle(jobDesc);
+                        if (!description) {
+                          setDescription(`Repeat work: ${jobDesc}`);
+                        }
+                      }}
+                      testID={`suggestion-chip-${idx}`}
+                    >
+                      <Text style={styles.suggestionChipText}>{jobDesc}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             )}
 

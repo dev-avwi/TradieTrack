@@ -14,6 +14,7 @@ import { useInvoicesStore, useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, sizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'paid' | 'overdue';
 
@@ -216,7 +217,7 @@ export default function InvoicesScreen() {
               filteredInvoices.map(invoice => {
                 const getAccentColor = () => {
                   switch (invoice.status) {
-                    case 'draft': return colors.mutedForeground;
+                    case 'draft': return colors.warning;
                     case 'sent': return colors.info;
                     case 'paid': return colors.success;
                     case 'overdue': return colors.destructive;
@@ -224,10 +225,9 @@ export default function InvoicesScreen() {
                   }
                 };
                 return (
-                  <TouchableOpacity
+                  <AnimatedCardPressable
                     key={invoice.id}
                     style={styles.invoiceCard}
-                    activeOpacity={0.7}
                     onPress={() => router.push(`/more/invoice/${invoice.id}`)}
                   >
                     <View style={[styles.invoiceCardAccent, { backgroundColor: getAccentColor() }]} />
@@ -248,7 +248,7 @@ export default function InvoicesScreen() {
                         <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
                       </View>
                     </View>
-                  </TouchableOpacity>
+                  </AnimatedCardPressable>
                 );
               })
             )}

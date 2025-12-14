@@ -260,7 +260,7 @@ export default function PaymentHubScreen() {
       default: { bg: colors.card, border: colors.cardBorder },
       success: { bg: `${colors.success}15`, border: `${colors.success}30` },
       warning: { bg: `${colors.warning}15`, border: `${colors.warning}30` },
-      danger: { bg: `${colors.error}15`, border: `${colors.error}30` },
+      danger: { bg: `${colors.destructive}15`, border: `${colors.destructive}30` },
     };
     const style = variantStyles[variant];
 
@@ -396,12 +396,12 @@ export default function PaymentHubScreen() {
     const daysOverdue = invoice.dueDate ? Math.abs(differenceInDays(new Date(), new Date(invoice.dueDate))) : 0;
 
     const statusColors: Record<string, string> = {
-      draft: colors.mutedForeground,
-      sent: colors.primary,
-      viewed: colors.primary,
+      draft: colors.warning,
+      sent: colors.info,
+      viewed: colors.info,
       partial: colors.warning,
       paid: colors.success,
-      overdue: colors.error,
+      overdue: colors.destructive,
     };
     const status = isOverdue ? 'overdue' : invoice.status;
     const statusColor = statusColors[status] || colors.mutedForeground;
@@ -434,7 +434,7 @@ export default function PaymentHubScreen() {
         <View style={styles.documentRight}>
           <Text style={styles.documentAmount}>{formatCurrency(invoice.total)}</Text>
           {invoice.dueDate && (
-            <Text style={[styles.documentDue, isOverdue && { color: colors.error }]}>
+            <Text style={[styles.documentDue, isOverdue && { color: colors.destructive }]}>
               {isOverdue ? `${daysOverdue}d overdue` : `Due ${format(new Date(invoice.dueDate), 'dd MMM')}`}
             </Text>
           )}
@@ -447,11 +447,11 @@ export default function PaymentHubScreen() {
   const renderQuoteRow = (quote: Quote) => {
     const client = clientMap.get(quote.clientId);
     const statusColors: Record<string, string> = {
-      draft: colors.mutedForeground,
-      sent: colors.primary,
-      viewed: colors.primary,
+      draft: colors.warning,
+      sent: colors.info,
+      viewed: colors.info,
       accepted: colors.success,
-      declined: colors.error,
+      declined: colors.destructive,
       expired: colors.mutedForeground,
     };
     const statusColor = statusColors[quote.status] || colors.mutedForeground;
@@ -517,7 +517,7 @@ export default function PaymentHubScreen() {
   const renderOverview = () => (
     <View style={styles.overviewContainer}>
       <View style={styles.sectionHeader}>
-        <Feather name="alert-triangle" size={iconSizes.md} color={colors.error} />
+        <Feather name="alert-triangle" size={iconSizes.md} color={colors.destructive} />
         <Text style={styles.sectionTitle}>Needs Attention</Text>
       </View>
       <View style={styles.sectionContent}>
@@ -646,10 +646,10 @@ export default function PaymentHubScreen() {
   const renderPayoutRow = (payout: StripePayout) => {
     const statusColors: Record<string, string> = {
       paid: colors.success,
-      pending: colors.primary,
+      pending: colors.warning,
       in_transit: colors.scheduled,
-      canceled: colors.error,
-      failed: colors.error,
+      canceled: colors.destructive,
+      failed: colors.destructive,
     };
     const statusLabels: Record<string, string> = {
       paid: 'Completed',
@@ -857,7 +857,7 @@ export default function PaymentHubScreen() {
             formatCurrency(stats.overdueTotal),
             `${stats.overdueCount} invoices`,
             'alert-triangle',
-            colors.error,
+            colors.destructive,
             stats.overdueCount > 0 ? 'danger' : 'default'
           )}
           {renderKPICard(

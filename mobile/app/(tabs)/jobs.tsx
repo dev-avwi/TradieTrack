@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
 
@@ -105,9 +106,8 @@ function JobCard({
   };
 
   return (
-    <TouchableOpacity
+    <AnimatedCardPressable
       onPress={onPress}
-      activeOpacity={0.9}
       style={styles.jobCard}
     >
       <View style={[styles.jobCardAccent, { backgroundColor: getAccentColor() }]} />
@@ -156,7 +156,7 @@ function JobCard({
       <View style={styles.jobCardChevronContainer}>
         <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
       </View>
-    </TouchableOpacity>
+    </AnimatedCardPressable>
   );
 }
 

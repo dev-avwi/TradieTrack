@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -7,7 +7,8 @@ import {
   Modal,
   Pressable,
   Animated,
-  Dimensions
+  Dimensions,
+  Easing
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -121,6 +122,25 @@ export function FloatingActionButton() {
   const [isOpen, setIsOpen] = useState(false);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.timing(scaleAnim, {
+      toValue: 0.92,
+      duration: 100,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 5,
+      tension: 400,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const actions: FABAction[] = [
     {
@@ -163,17 +183,25 @@ export function FloatingActionButton() {
 
   return (
     <>
-      <TouchableOpacity
-        style={[styles.fabButton, isOpen && styles.fabButtonActive]}
+      <Pressable
         onPress={() => setIsOpen(true)}
-        activeOpacity={0.8}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
       >
-        <Feather 
-          name={isOpen ? 'x' : 'star'} 
-          size={24} 
-          color={isOpen ? colors.background : '#FFFFFF'} 
-        />
-      </TouchableOpacity>
+        <Animated.View 
+          style={[
+            styles.fabButton, 
+            isOpen && styles.fabButtonActive,
+            { transform: [{ scale: scaleAnim }] }
+          ]}
+        >
+          <Feather 
+            name={isOpen ? 'x' : 'star'} 
+            size={24} 
+            color={isOpen ? colors.background : '#FFFFFF'} 
+          />
+        </Animated.View>
+      </Pressable>
 
       <Modal
         visible={isOpen}
