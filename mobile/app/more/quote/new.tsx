@@ -560,6 +560,12 @@ export default function NewQuoteScreen() {
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showLineItemEditor, setShowLineItemEditor] = useState(false);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
+  const [showCatalog, setShowCatalog] = useState(false);
+  const [aiDescription, setAiDescription] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [catalogItems, setCatalogItems] = useState<any[]>([]);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [jobId, setJobId] = useState<string | null>(params.jobId || null);
@@ -711,6 +717,64 @@ export default function NewQuoteScreen() {
       Alert.alert('Error', 'Network error. Please try again.');
     }
     setIsLoading(false);
+  };
+
+  const handleGenerateAI = async () => {
+    if (!aiDescription.trim()) {
+      Alert.alert('Error', 'Please describe the job');
+      return;
+    }
+    setIsGeneratingAI(true);
+    try {
+      const response = await api.post('/api/ai/generate-quote', {
+        jobId: jobId || undefined,
+        jobDescription: aiDescription.trim(),
+      });
+      if (response.data && response.data.lineItems) {
+        const aiItems = response.data.lineItems.map((item: any) => ({
+          id: Date.now().toString() + Math.random(),
+          description: item.description,
+          quantity: String(item.quantity || 1),
+          unitPrice: String(item.unitPrice || 0),
+        }));
+        setLineItems([...lineItems, ...aiItems]);
+        if (response.data.suggestedTitle && !form.title) {
+          setForm({ ...form, title: response.data.suggestedTitle });
+        }
+        setShowAIGenerator(false);
+        setAiDescription('');
+        Alert.alert('Success', `Added ${aiItems.length} items from AI`);
+      } else {
+        Alert.alert('Error', response.data?.notes?.[0] || 'Could not generate quote');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to generate quote. Please try again.');
+    }
+    setIsGeneratingAI(false);
+  };
+
+  const handleOpenCatalog = async () => {
+    setShowCatalog(true);
+    setIsLoadingCatalog(true);
+    try {
+      const response = await api.get('/api/catalog');
+      if (response.data) {
+        setCatalogItems(response.data);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load catalog');
+    }
+    setIsLoadingCatalog(false);
+  };
+
+  const handleAddCatalogItem = (catalogItem: any) => {
+    setLineItems([...lineItems, {
+      id: Date.now().toString(),
+      description: catalogItem.name || catalogItem.description,
+      quantity: '1',
+      unitPrice: String(catalogItem.price || catalogItem.unitPrice || 0),
+    }]);
+    setShowCatalog(false);
   };
 
   const businessInfo = {
@@ -978,8 +1042,17 @@ export default function NewQuoteScreen() {
                     <Feather name="plus" size={16} color={colors.foreground} />
                     <Text style={styles.addItemText}>Add Item</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.catalogButton}>
+                  <TouchableOpacity 
+                    style={styles.catalogButton}
+                    onPress={handleOpenCatalog}
+                  >
                     <Feather name="book-open" size={16} color={colors.foreground} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.catalogButton, { backgroundColor: colors.primaryLight }]}
+                    onPress={() => setShowAIGenerator(true)}
+                  >
+                    <Feather name="zap" size={16} color={colors.primary} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1220,6 +1293,105 @@ export default function NewQuoteScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* AI Generator Modal */}
+      <Modal
+        visible={showAIGenerator}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAIGenerator(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>AI Quote Generator</Text>
+            <TouchableOpacity onPress={() => setShowAIGenerator(false)}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.modalContent}>
+            <Text style={{ fontSize: 14, color: colors.mutedForeground, marginBottom: 16 }}>
+              Describe the job and AI will generate quote line items with realistic pricing.
+            </Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Job Description</Text>
+              <TextInput
+                style={[styles.input, styles.textArea, { minHeight: 120 }]}
+                value={aiDescription}
+                onChangeText={setAiDescription}
+                placeholder="e.g., Full bathroom renovation including new tiles, toilet, vanity and shower..."
+                placeholderTextColor={colors.mutedForeground}
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.saveItemButton, isGeneratingAI && { opacity: 0.6 }]}
+              onPress={handleGenerateAI}
+              disabled={isGeneratingAI}
+            >
+              {isGeneratingAI ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Feather name="zap" size={18} color={colors.white} />
+                  <Text style={styles.saveItemButtonText}>Generate Quote Items</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Catalog Picker Modal */}
+      <Modal
+        visible={showCatalog}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCatalog(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Product Catalog</Text>
+            <TouchableOpacity onPress={() => setShowCatalog(false)}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalContent}>
+            {isLoadingCatalog ? (
+              <View style={styles.emptyState}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : catalogItems.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Feather name="book-open" size={48} color={colors.mutedForeground} />
+                <Text style={styles.emptyStateText}>No catalog items found</Text>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, textAlign: 'center' }}>
+                  Add items to your catalog from the web app
+                </Text>
+              </View>
+            ) : (
+              catalogItems.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.clientOption}
+                  onPress={() => handleAddCatalogItem(item)}
+                >
+                  <View style={[styles.clientOptionAvatar, { backgroundColor: colors.muted }]}>
+                    <Feather name="package" size={18} color={colors.foreground} />
+                  </View>
+                  <View style={styles.clientOptionInfo}>
+                    <Text style={styles.clientOptionName}>{item.name || item.description}</Text>
+                    <Text style={styles.clientOptionEmail}>
+                      {formatCurrency(item.price || item.unitPrice || 0)}
+                    </Text>
+                  </View>
+                  <Feather name="plus" size={20} color={colors.primary} />
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
         </View>
       </Modal>
     </>

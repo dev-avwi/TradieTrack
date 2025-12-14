@@ -635,12 +635,20 @@ export default function DashboardScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   
+  // Job Scheduler state for team owners
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [unassignedJobs, setUnassignedJobs] = useState<any[]>([]);
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [allJobs, setAllJobs] = useState<any[]>([]);
+  
   // Determine if user is staff (team member with limited permissions)
   const isStaffUser = isStaff();
   const isOwnerUser = isOwner();
   // Match web's canViewMap logic: only owners and managers can see the map
   const isManager = roleInfo?.roleName?.toLowerCase() === 'manager';
   const canViewMap = isOwnerUser || isManager;
+  const hasActiveTeam = teamMembers.length > 0;
   
   const handleNavigateToItem = (type: string, id: string) => {
     switch (type) {
@@ -672,6 +680,72 @@ export default function DashboardScreen() {
   useEffect(() => {
     refreshData();
   }, []);
+
+  // Fetch team data for job scheduler (owners only)
+  const fetchTeamData = useCallback(async () => {
+    if (!isOwnerUser) return;
+    try {
+      const { default: api } = await import('../../src/lib/api');
+      const [teamRes, jobsRes, unassignedRes] = await Promise.all([
+        api.get('/api/team/members'),
+        api.get('/api/jobs'),
+        api.get('/api/jobs?unassigned=true'),
+      ]);
+      if (teamRes.data) {
+        setTeamMembers(teamRes.data.filter((m: any) => m.inviteStatus === 'accepted'));
+      }
+      if (jobsRes.data) {
+        setAllJobs(jobsRes.data);
+      }
+      if (unassignedRes.data) {
+        setUnassignedJobs(unassignedRes.data);
+      }
+    } catch (error) {
+      console.log('Error fetching team data:', error);
+    }
+  }, [isOwnerUser]);
+
+  useEffect(() => {
+    fetchTeamData();
+  }, [fetchTeamData]);
+
+  const handleAssignJob = async (jobId: string, userId: string) => {
+    setIsAssigning(true);
+    try {
+      const { default: api } = await import('../../src/lib/api');
+      await api.post(`/api/jobs/${jobId}/assign`, { assignedTo: userId });
+      Alert.alert('Success', 'Job assigned successfully');
+      setSelectedJob(null);
+      // Refresh team data and today's jobs (cache invalidation like web)
+      await Promise.all([
+        fetchTeamData(),
+        fetchTodaysJobs(),
+      ]);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to assign job');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const getJobsForMember = (memberId: string) => {
+    return allJobs.filter((job: any) => 
+      job.assignedTo === memberId && job.status !== 'done' && job.status !== 'invoiced'
+    );
+  };
+
+  const getMemberName = (member: any) => {
+    if (member.firstName || member.lastName) {
+      return `${member.firstName || ''} ${member.lastName || ''}`.trim();
+    }
+    return member.email?.split('@')[0] || 'Team Member';
+  };
+
+  const getMemberInitials = (member: any) => {
+    const first = member.firstName?.charAt(0) || '';
+    const last = member.lastName?.charAt(0) || '';
+    return (first + last).toUpperCase() || member.email?.charAt(0).toUpperCase() || 'T';
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -838,14 +912,6 @@ export default function DashboardScreen() {
           ) : (
             <>
               <KPICard
-                title="Outstanding"
-                value={outstandingAmount}
-                icon="dollar-sign"
-                iconBg={colors.warningLight}
-                iconColor={colors.warning}
-                onPress={() => router.push('/more/invoices')}
-              />
-              <KPICard
                 title="Overdue"
                 value={overdueCount}
                 icon="alert-circle"
@@ -853,114 +919,186 @@ export default function DashboardScreen() {
                 iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
                 onPress={() => router.push('/more/invoices')}
               />
+              {hasActiveTeam ? (
+                <KPICard
+                  title="Team Members"
+                  value={teamMembers.length}
+                  icon="users"
+                  iconBg={colors.infoLight}
+                  iconColor={colors.info}
+                  onPress={() => router.push('/more/team-management')}
+                />
+              ) : (
+                <KPICard
+                  title="Quotes Pending"
+                  value={quotesCount}
+                  icon="file-text"
+                  iconBg={colors.infoLight}
+                  iconColor={colors.info}
+                  onPress={() => router.push('/more/quotes')}
+                />
+              )}
               <KPICard
-                title="Paid (30d)"
-                value={paidLast30Days}
-                icon="check-circle"
+                title="This Month"
+                value={monthRevenue}
+                icon="trending-up"
                 iconBg={colors.successLight}
                 iconColor={colors.success}
                 onPress={() => router.push('/more/invoices')}
-              />
-              <KPICard
-                title="Quotes"
-                value={quotesCount}
-                icon="file-text"
-                iconBg={colors.muted}
-                iconColor={colors.mutedForeground}
-                onPress={() => router.push('/more/quotes')}
               />
             </>
           )}
         </View>
       </View>
 
-      {/* Quick Actions - Different for staff vs owner */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Quick Actions</Text>
-        <View style={styles.quickActionsCard}>
-          <View style={styles.quickActionsRow}>
-            {isStaffUser ? (
-              <>
-                <QuickActionButton
-                  title="My Jobs"
-                  icon="briefcase"
-                  variant="primary"
-                  onPress={() => router.push('/(tabs)/jobs')}
-                />
-                <QuickActionButton
-                  title="Map"
-                  icon="map"
-                  onPress={() => router.push('/(tabs)/map')}
-                />
-                <QuickActionButton
-                  title="Time"
-                  icon="clock"
-                  onPress={() => router.push('/more/time-tracking')}
-                />
-              </>
-            ) : (
-              <>
-                <QuickActionButton
-                  title="Job"
-                  icon="briefcase"
-                  variant="primary"
-                  onPress={() => router.push('/more/create-job')}
-                />
-                <QuickActionButton
-                  title="Quote"
-                  icon="file-text"
-                  onPress={() => router.push('/more/quote/new')}
-                />
-                <QuickActionButton
-                  title="Invoice"
-                  icon="dollar-sign"
-                  onPress={() => router.push('/more/invoice/new')}
-                />
-              </>
-            )}
+      {/* Job Scheduler - Team Owners Only */}
+      {isOwnerUser && hasActiveTeam && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <View style={[styles.sectionTitleIcon, { backgroundColor: `${colors.info}15` }]}>
+                <Feather name="users" size={iconSizes.md} color={colors.info} />
+              </View>
+              <Text style={styles.sectionTitle}>Job Scheduler</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.viewAllButton}
+              onPress={() => router.push('/more/team')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.viewAllText}>Manage Team</Text>
+              <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
+            </TouchableOpacity>
           </View>
-          {/* Second row - role-specific actions */}
-          <View style={[styles.quickActionsRow, { marginTop: spacing.sm }]}>
-            {isStaffUser ? (
-              <>
-                <QuickActionButton
-                  title="Team Chat"
-                  icon="message-circle"
-                  onPress={() => router.push('/more/team-chat')}
-                />
-                <QuickActionButton
-                  title="Calendar"
-                  icon="calendar"
-                  onPress={() => router.push('/more/calendar')}
-                />
-                <QuickActionButton
-                  title="History"
-                  icon="file-text"
-                  onPress={() => router.push('/(tabs)/jobs')}
-                />
-              </>
-            ) : (
-              <>
-                <QuickActionButton
-                  title="Schedule"
-                  icon="calendar"
-                  onPress={() => router.push('/more/dispatch-board')}
-                />
-                <QuickActionButton
-                  title="Team"
-                  icon="users"
-                  onPress={() => router.push('/more/team-management')}
-                />
-                <QuickActionButton
-                  title="Clients"
-                  icon="user"
-                  onPress={() => router.push('/more/clients')}
-                />
-              </>
-            )}
+
+          <Text style={styles.schedulerCaption}>
+            Tap a job, then tap a team member to assign
+          </Text>
+
+          {/* Selected Job Banner */}
+          {selectedJob && (
+            <View style={styles.selectionBanner}>
+              <View style={styles.selectionBannerContent}>
+                {isAssigning ? (
+                  <>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={styles.selectionBannerText}>
+                      Assigning "{selectedJob.title}"...
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Feather name="briefcase" size={14} color={colors.primary} />
+                    <Text style={styles.selectionBannerText}>
+                      Tap a team member to assign "{selectedJob.title}"
+                    </Text>
+                  </>
+                )}
+              </View>
+              <TouchableOpacity
+                style={styles.cancelSelectionButton}
+                onPress={() => setSelectedJob(null)}
+                disabled={isAssigning}
+              >
+                <Feather name="x" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Unassigned Jobs */}
+          {unassignedJobs.length > 0 && (
+            <View style={styles.unassignedJobsCard}>
+              <View style={styles.unassignedJobsHeader}>
+                <View style={styles.unassignedBadge}>
+                  <Text style={styles.unassignedBadgeText}>{unassignedJobs.length}</Text>
+                </View>
+                <Text style={styles.unassignedLabel}>Unassigned Jobs</Text>
+              </View>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.unassignedJobsScroll}
+              >
+                {unassignedJobs.slice(0, 5).map((job: any) => (
+                  <TouchableOpacity
+                    key={job.id}
+                    style={[
+                      styles.unassignedJobItem,
+                      selectedJob?.id === job.id && styles.unassignedJobItemSelected
+                    ]}
+                    onPress={() => setSelectedJob(selectedJob?.id === job.id ? null : job)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.unassignedJobTitle} numberOfLines={1}>{job.title}</Text>
+                    {job.scheduledAt && (
+                      <Text style={styles.unassignedJobMeta}>
+                        {new Date(job.scheduledAt).toLocaleDateString('en-AU', { 
+                          weekday: 'short', day: 'numeric', month: 'short' 
+                        })}
+                      </Text>
+                    )}
+                    {job.clientName && (
+                      <Text style={styles.unassignedJobMeta} numberOfLines={1}>{job.clientName}</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Team Members */}
+          <View style={styles.teamMembersList}>
+            {teamMembers.map((member: any) => {
+              const memberJobs = getJobsForMember(member.userId || member.id);
+              const isClickable = !!selectedJob && !isAssigning;
+              
+              return (
+                <TouchableOpacity
+                  key={member.id}
+                  style={[
+                    styles.teamMemberCard,
+                    isClickable && styles.teamMemberCardClickable
+                  ]}
+                  onPress={() => {
+                    if (isClickable && (member.userId || member.id)) {
+                      handleAssignJob(selectedJob.id, member.userId || member.id);
+                    }
+                  }}
+                  activeOpacity={isClickable ? 0.7 : 1}
+                  disabled={!isClickable}
+                >
+                  <View style={styles.teamMemberHeader}>
+                    <View style={styles.teamMemberAvatar}>
+                      <Text style={styles.teamMemberAvatarText}>{getMemberInitials(member)}</Text>
+                    </View>
+                    <View style={styles.teamMemberInfo}>
+                      <Text style={styles.teamMemberName}>{getMemberName(member)}</Text>
+                      <Text style={styles.teamMemberJobCount}>
+                        {memberJobs.length} active job{memberJobs.length !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                    {isClickable && (
+                      <View style={styles.tapToAssignBadge}>
+                        <Text style={styles.tapToAssignText}>Tap to assign</Text>
+                      </View>
+                    )}
+                  </View>
+                  {memberJobs.length > 0 && (
+                    <View style={styles.memberJobsList}>
+                      {memberJobs.slice(0, 2).map((job: any) => (
+                        <View key={job.id} style={styles.memberJobItem}>
+                          <Text style={styles.memberJobTitle} numberOfLines={1}>{job.title}</Text>
+                          <StatusBadge status={job.status} size="small" />
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
-      </View>
+      )}
 
       {/* Today's Schedule */}
       <View style={styles.section}>
@@ -1258,6 +1396,170 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   quickActionTextPrimary: {
     color: colors.primaryForeground,
+  },
+
+  // Job Scheduler styles
+  schedulerCaption: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginBottom: spacing.md,
+  },
+  selectionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: `${colors.primary}15`,
+    borderWidth: 1,
+    borderColor: `${colors.primary}30`,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  selectionBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  selectionBannerText: {
+    ...typography.bodySmall,
+    fontWeight: '500',
+    color: colors.foreground,
+    flex: 1,
+  },
+  cancelSelectionButton: {
+    padding: spacing.xs,
+  },
+  unassignedJobsCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderStyle: 'dashed',
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  unassignedJobsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  unassignedBadge: {
+    backgroundColor: colors.muted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  unassignedBadgeText: {
+    ...typography.captionSmall,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+  },
+  unassignedLabel: {
+    ...typography.bodySmall,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  unassignedJobsScroll: {
+    gap: spacing.sm,
+  },
+  unassignedJobItem: {
+    width: 160,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.md,
+  },
+  unassignedJobItemSelected: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+    backgroundColor: `${colors.primary}08`,
+  },
+  unassignedJobTitle: {
+    ...typography.bodySmall,
+    fontWeight: '500',
+    color: colors.foreground,
+    marginBottom: spacing.xs,
+  },
+  unassignedJobMeta: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+  teamMembersList: {
+    gap: spacing.sm,
+  },
+  teamMemberCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.md,
+  },
+  teamMemberCardClickable: {
+    borderColor: `${colors.primary}40`,
+  },
+  teamMemberHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  teamMemberAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: `${colors.primary}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  teamMemberAvatarText: {
+    ...typography.bodySmall,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  teamMemberInfo: {
+    flex: 1,
+  },
+  teamMemberName: {
+    ...typography.body,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  teamMemberJobCount: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+  tapToAssignBadge: {
+    backgroundColor: `${colors.primary}15`,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  tapToAssignText: {
+    ...typography.captionSmall,
+    fontWeight: '500',
+    color: colors.primary,
+  },
+  memberJobsList: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  memberJobItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+  },
+  memberJobTitle: {
+    ...typography.captionSmall,
+    color: colors.foreground,
+    flex: 1,
+    marginRight: spacing.sm,
   },
 
   // Job Cards - with left accent bar
