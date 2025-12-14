@@ -471,6 +471,32 @@ function createStyles(colors: ThemeColors) {
       fontWeight: '600',
       color: colors.white,
     },
+    previewHeadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+      paddingHorizontal: 16,
+    },
+    previewHeadingTitle: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.mutedForeground,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    previewHeadingBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      backgroundColor: colors.muted,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    previewHeadingBadgeText: {
+      fontSize: 10,
+      color: colors.mutedForeground,
+    },
   });
 }
 
