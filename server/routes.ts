@@ -4009,7 +4009,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const data = insertJobSchema.parse(req.body);
+      // Preprocess date fields from ISO strings to Date objects (mobile sends strings)
+      const body = { ...req.body };
+      if (body.scheduledAt && typeof body.scheduledAt === 'string') {
+        body.scheduledAt = new Date(body.scheduledAt);
+      }
+      if (body.completedAt && typeof body.completedAt === 'string') {
+        body.completedAt = new Date(body.completedAt);
+      }
+      if (body.startedAt && typeof body.startedAt === 'string') {
+        body.startedAt = new Date(body.startedAt);
+      }
+
+      const data = insertJobSchema.parse(body);
       
       // Auto-geocode address if provided but lat/lng missing
       let jobData = { ...data, userId: effectiveUserId };
@@ -4047,7 +4059,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[PATCH /api/jobs/:id] Job ID:', req.params.id);
       console.log('[PATCH /api/jobs/:id] assignedTo value in request:', req.body.assignedTo);
       
-      const data = insertJobSchema.partial().parse(req.body);
+      // Preprocess date fields from ISO strings to Date objects (mobile sends strings)
+      const body = { ...req.body };
+      if (body.scheduledAt && typeof body.scheduledAt === 'string') {
+        body.scheduledAt = new Date(body.scheduledAt);
+      }
+      if (body.completedAt && typeof body.completedAt === 'string') {
+        body.completedAt = new Date(body.completedAt);
+      }
+      if (body.startedAt && typeof body.startedAt === 'string') {
+        body.startedAt = new Date(body.startedAt);
+      }
+      
+      const data = insertJobSchema.partial().parse(body);
       console.log('[PATCH /api/jobs/:id] Parsed data after validation:', JSON.stringify(data, null, 2));
       
       const existingJob = await storage.getJob(req.params.id, effectiveUserId);
