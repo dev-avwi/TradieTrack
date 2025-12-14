@@ -86,6 +86,14 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
+      // Configure audio mode for iOS recording
+      if (typeof Audio?.setAudioModeAsync === 'function') {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+      }
+
       try {
         await audioRecorder.prepareToRecordAsync(RecordingPresets.HIGH_QUALITY);
       } catch (prepareError: any) {

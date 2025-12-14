@@ -1238,7 +1238,7 @@ export default function JobDetailScreen() {
       // Use action.id for more specific routing when needed
       switch (action.id) {
         case 'create_invoice':
-          router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`);
+          router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`);
           return true;
 
         case 'create_quote':
@@ -1852,7 +1852,7 @@ export default function JobDetailScreen() {
     if (!action) return;
 
     if (action.next === 'invoiced') {
-      router.push(`/more/create-invoice?jobId=${job.id}`);
+      router.push(`/more/invoice/new?jobId=${job.id}`);
       return;
     }
 
@@ -2096,7 +2096,7 @@ export default function JobDetailScreen() {
         jobStatus={job.status}
         hasInvoice={!!invoice}
         hasQuote={!!quote}
-        onCreateInvoice={() => router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+        onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />
 
@@ -2270,7 +2270,7 @@ export default function JobDetailScreen() {
         onViewQuote={handleViewQuote}
         onViewInvoice={handleViewInvoice}
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
-        onCreateInvoice={() => router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+        onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />
 
       {/* Job Costing Section */}
@@ -2361,7 +2361,7 @@ export default function JobDetailScreen() {
         onViewQuote={handleViewQuote}
         onViewInvoice={handleViewInvoice}
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
-        onCreateInvoice={() => router.push(`/more/create-invoice?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+        onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />
 
       {/* Custom Forms Section */}
