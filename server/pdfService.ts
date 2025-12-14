@@ -2016,11 +2016,22 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
 // Convert HTML to actual PDF using Puppeteer
 export const generatePDFBuffer = async (html: string): Promise<Buffer> => {
   const puppeteer = await import('puppeteer');
+  const { execSync } = await import('child_process');
   
   console.log('[PDF] Starting PDF generation...');
   
+  // Find system-installed Chromium executable
+  let chromiumPath: string | undefined;
+  try {
+    chromiumPath = execSync('which chromium').toString().trim();
+    console.log('[PDF] Found Chromium at:', chromiumPath);
+  } catch {
+    console.log('[PDF] Chromium not found in PATH, using Puppeteer default');
+  }
+  
   const browser = await puppeteer.default.launch({
     headless: true,
+    executablePath: chromiumPath,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
