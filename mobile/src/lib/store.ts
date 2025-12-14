@@ -345,6 +345,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   fetchRoleInfo: async () => {
+    const { isOnline } = useOfflineStore.getState();
+    if (!isOnline) {
+      // Offline - keep existing roleInfo, don't make API call
+      return;
+    }
+    
     // Try to fetch role info (for team members)
     const roleResponse = await api.get<{
       roleId: string;
@@ -381,6 +387,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   clearError: () => set({ error: null }),
 
   fetchBusinessSettings: async () => {
+    const { isOnline } = useOfflineStore.getState();
+    if (!isOnline) {
+      // Offline - keep existing cached settings
+      return;
+    }
+    
     const settingsResponse = await api.get<BusinessSettings>('/api/business-settings');
     if (settingsResponse.data) {
       set({ businessSettings: settingsResponse.data });
@@ -449,10 +461,28 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   fetchJobs: async () => {
     set({ isLoading: true, error: null });
     
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    if (!isOnline) {
+      try {
+        const cachedJobs = await offlineStorage.getCachedJobs();
+        set({ 
+          jobs: cachedJobs as Job[], 
+          isLoading: false, 
+          isOfflineData: true,
+          error: null 
+        });
+        return;
+      } catch (e) {
+        console.log('[JobsStore] Offline cache read failed:', e);
+        set({ isLoading: false, error: null, isOfflineData: true });
+        return;
+      }
+    }
+    
     const response = await api.get<Job[]>('/api/jobs');
     
     if (response.error) {
-      // Fall back to cached data when offline
       try {
         const cachedJobs = await offlineStorage.getCachedJobs();
         if (cachedJobs.length > 0) {
@@ -467,11 +497,10 @@ export const useJobsStore = create<JobsState>((set, get) => ({
       } catch (e) {
         console.log('[JobsStore] Cache fallback failed:', e);
       }
-      set({ isLoading: false, error: response.error });
+      set({ isLoading: false, error: null, isOfflineData: true });
       return;
     }
 
-    // Cache the data for offline use
     try {
       await offlineStorage.cacheJobs(response.data || []);
     } catch (e) {
@@ -484,29 +513,48 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   fetchTodaysJobs: async () => {
     set({ isLoading: true, error: null });
     
-    const response = await api.get<Job[]>('/api/jobs/today');
+    const isOnline = useOfflineStore.getState().isOnline;
+    const today = new Date().toDateString();
     
-    if (response.error) {
-      // Fall back to cached data filtered for today
+    if (!isOnline) {
       try {
         const cachedJobs = await offlineStorage.getCachedJobs();
-        const today = new Date().toDateString();
         const todaysJobs = cachedJobs.filter(j => 
           j.scheduledAt && new Date(j.scheduledAt).toDateString() === today
         );
-        if (cachedJobs.length > 0) {
-          set({ 
-            todaysJobs: todaysJobs as Job[], 
-            isLoading: false,
-            isOfflineData: true,
-            error: null 
-          });
-          return;
-        }
+        set({ 
+          todaysJobs: todaysJobs as Job[], 
+          isLoading: false,
+          isOfflineData: true,
+          error: null 
+        });
+        return;
+      } catch (e) {
+        console.log('[JobsStore] Offline cache read failed:', e);
+        set({ isLoading: false, error: null, isOfflineData: true });
+        return;
+      }
+    }
+    
+    const response = await api.get<Job[]>('/api/jobs/today');
+    
+    if (response.error) {
+      try {
+        const cachedJobs = await offlineStorage.getCachedJobs();
+        const todaysJobs = cachedJobs.filter(j => 
+          j.scheduledAt && new Date(j.scheduledAt).toDateString() === today
+        );
+        set({ 
+          todaysJobs: todaysJobs as Job[], 
+          isLoading: false,
+          isOfflineData: true,
+          error: null 
+        });
+        return;
       } catch (e) {
         console.log('[JobsStore] Cache fallback failed:', e);
       }
-      set({ isLoading: false, error: response.error });
+      set({ isLoading: false, error: null, isOfflineData: true });
       return;
     }
 
@@ -514,12 +562,22 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   },
 
   getJob: async (id: string) => {
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    if (!isOnline) {
+      try {
+        const cached = await offlineStorage.getCachedJob(id);
+        return cached as Job | null;
+      } catch (e) {
+        return null;
+      }
+    }
+    
     const response = await api.get<Job>(`/api/jobs/${id}`);
     if (response.data) {
       return response.data;
     }
     
-    // Fall back to cache
     try {
       const cached = await offlineStorage.getCachedJob(id);
       return cached as Job | null;
@@ -637,10 +695,30 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
   fetchClients: async () => {
     set({ isLoading: true, error: null });
     
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Check offline FIRST - use cache silently, NO errors
+    if (!isOnline) {
+      try {
+        const cachedClients = await offlineStorage.getCachedClients();
+        set({ 
+          clients: cachedClients as Client[], 
+          isLoading: false,
+          isOfflineData: true,
+          error: null
+        });
+        return;
+      } catch (e) {
+        console.log('[ClientsStore] Offline cache read failed:', e);
+        set({ isLoading: false, error: null, isOfflineData: true });
+        return;
+      }
+    }
+    
     const response = await api.get<Client[]>('/api/clients');
     
     if (response.error) {
-      // Fall back to cached data
+      // Fall back to cached data silently
       try {
         const cachedClients = await offlineStorage.getCachedClients();
         if (cachedClients.length > 0) {
@@ -655,7 +733,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
       } catch (e) {
         console.log('[ClientsStore] Cache fallback failed:', e);
       }
-      set({ isLoading: false, error: response.error });
+      set({ isLoading: false, error: null, isOfflineData: true });
       return;
     }
 
@@ -670,12 +748,25 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
   },
 
   getClient: async (id: string) => {
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Check offline FIRST - use cache silently
+    if (!isOnline) {
+      try {
+        const cached = await offlineStorage.getCachedClient(id);
+        return cached as Client | null;
+      } catch (e) {
+        console.log('[ClientsStore] Offline cache read failed:', e);
+        return null;
+      }
+    }
+    
     const response = await api.get<Client>(`/api/clients/${id}`);
     if (response.data) {
       return response.data;
     }
     
-    // Fall back to cache
+    // Fall back to cache on API error
     try {
       const cached = await offlineStorage.getCachedClient(id);
       return cached as Client | null;
@@ -820,10 +911,30 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
   fetchQuotes: async () => {
     set({ isLoading: true, error: null });
     
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Check offline FIRST - use cache silently, NO errors
+    if (!isOnline) {
+      try {
+        const cachedQuotes = await offlineStorage.getCachedQuotes();
+        set({ 
+          quotes: cachedQuotes as Quote[], 
+          isLoading: false,
+          isOfflineData: true,
+          error: null
+        });
+        return;
+      } catch (e) {
+        console.log('[QuotesStore] Offline cache read failed:', e);
+        set({ isLoading: false, error: null, isOfflineData: true });
+        return;
+      }
+    }
+    
     const response = await api.get<Quote[]>('/api/quotes');
     
     if (response.error) {
-      // Fall back to cached data
+      // Fall back to cached data silently
       try {
         const cachedQuotes = await offlineStorage.getCachedQuotes();
         if (cachedQuotes.length > 0) {
@@ -838,7 +949,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
       } catch (e) {
         console.log('[QuotesStore] Cache fallback failed:', e);
       }
-      set({ isLoading: false, error: response.error });
+      set({ isLoading: false, error: null, isOfflineData: true });
       return;
     }
 
@@ -853,12 +964,25 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
   },
 
   getQuote: async (id: string) => {
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Check offline FIRST - use cache silently
+    if (!isOnline) {
+      try {
+        const cached = await offlineStorage.getCachedQuote(id);
+        return cached as Quote | null;
+      } catch (e) {
+        console.log('[QuotesStore] Offline cache read failed:', e);
+        return null;
+      }
+    }
+    
     const response = await api.get<Quote>(`/api/quotes/${id}`);
     if (response.data) {
       return response.data;
     }
     
-    // Fall back to cache
+    // Fall back to cache on API error
     try {
       const cached = await offlineStorage.getCachedQuote(id);
       return cached as Quote | null;
@@ -1030,10 +1154,30 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
   fetchInvoices: async () => {
     set({ isLoading: true, error: null });
     
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Check offline FIRST - use cache silently, NO errors
+    if (!isOnline) {
+      try {
+        const cachedInvoices = await offlineStorage.getCachedInvoices();
+        set({ 
+          invoices: cachedInvoices as Invoice[], 
+          isLoading: false,
+          isOfflineData: true,
+          error: null
+        });
+        return;
+      } catch (e) {
+        console.log('[InvoicesStore] Offline cache read failed:', e);
+        set({ isLoading: false, error: null, isOfflineData: true });
+        return;
+      }
+    }
+    
     const response = await api.get<Invoice[]>('/api/invoices');
     
     if (response.error) {
-      // Fall back to cached data
+      // Fall back to cached data silently
       try {
         const cachedInvoices = await offlineStorage.getCachedInvoices();
         if (cachedInvoices.length > 0) {
@@ -1048,7 +1192,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
       } catch (e) {
         console.log('[InvoicesStore] Cache fallback failed:', e);
       }
-      set({ isLoading: false, error: response.error });
+      set({ isLoading: false, error: null, isOfflineData: true });
       return;
     }
 
@@ -1063,12 +1207,25 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
   },
 
   getInvoice: async (id: string) => {
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Check offline FIRST - use cache silently
+    if (!isOnline) {
+      try {
+        const cached = await offlineStorage.getCachedInvoice(id);
+        return cached as Invoice | null;
+      } catch (e) {
+        console.log('[InvoicesStore] Offline cache read failed:', e);
+        return null;
+      }
+    }
+    
     const response = await api.get<Invoice>(`/api/invoices/${id}`);
     if (response.data) {
       return response.data;
     }
     
-    // Fall back to cache
+    // Fall back to cache on API error
     try {
       const cached = await offlineStorage.getCachedInvoice(id);
       return cached as Invoice | null;
@@ -1249,16 +1406,58 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   fetchStats: async () => {
     set({ isLoading: true });
     
-    // Fetch all data in parallel
-    const [jobsRes, quotesRes, invoicesRes] = await Promise.all([
-      api.get<Job[]>('/api/jobs'),
-      api.get<Quote[]>('/api/quotes'),
-      api.get<Invoice[]>('/api/invoices'),
-    ]);
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    let jobs: Job[] = [];
+    let quotes: Quote[] = [];
+    let invoices: Invoice[] = [];
+    
+    // Check offline FIRST - use cached data silently
+    if (!isOnline) {
+      try {
+        const [cachedJobs, cachedQuotes, cachedInvoices] = await Promise.all([
+          offlineStorage.getCachedJobs(),
+          offlineStorage.getCachedQuotes(),
+          offlineStorage.getCachedInvoices(),
+        ]);
+        jobs = cachedJobs as Job[];
+        quotes = cachedQuotes as Quote[];
+        invoices = cachedInvoices as Invoice[];
+      } catch (e) {
+        console.log('[DashboardStore] Offline cache read failed:', e);
+        set({ isLoading: false });
+        return;
+      }
+    } else {
+      // Online - fetch from API
+      const [jobsRes, quotesRes, invoicesRes] = await Promise.all([
+        api.get<Job[]>('/api/jobs'),
+        api.get<Quote[]>('/api/quotes'),
+        api.get<Invoice[]>('/api/invoices'),
+      ]);
 
-    const jobs = jobsRes.data || [];
-    const quotes = quotesRes.data || [];
-    const invoices = invoicesRes.data || [];
+      // If any API call failed, fall back to cached data
+      if (jobsRes.error || quotesRes.error || invoicesRes.error) {
+        try {
+          const [cachedJobs, cachedQuotes, cachedInvoices] = await Promise.all([
+            offlineStorage.getCachedJobs(),
+            offlineStorage.getCachedQuotes(),
+            offlineStorage.getCachedInvoices(),
+          ]);
+          jobs = cachedJobs as Job[];
+          quotes = cachedQuotes as Quote[];
+          invoices = cachedInvoices as Invoice[];
+        } catch (e) {
+          console.log('[DashboardStore] Cache fallback failed:', e);
+          set({ isLoading: false });
+          return;
+        }
+      } else {
+        jobs = jobsRes.data || [];
+        quotes = quotesRes.data || [];
+        invoices = invoicesRes.data || [];
+      }
+    }
 
     // Calculate stats
     const today = new Date().toDateString();
@@ -1341,6 +1540,15 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
 
   fetchActiveTimer: async () => {
     set({ isLoading: true, error: null });
+    
+    const isOnline = useOfflineStore.getState().isOnline;
+    
+    // Check offline FIRST - silently return null when offline
+    if (!isOnline) {
+      set({ activeTimer: null, isLoading: false, error: null });
+      return;
+    }
+    
     try {
       const response = await api.get<TimeEntry>('/api/time-entries/active');
       set({ activeTimer: response.data || null, isLoading: false, error: null });
@@ -1349,8 +1557,8 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
       if (error.response?.status === 404) {
         set({ activeTimer: null, isLoading: false, error: null });
       } else {
-        const errorMessage = error.response?.data?.error || 'Failed to fetch active timer';
-        set({ activeTimer: null, isLoading: false, error: errorMessage });
+        // Silently fail - don't show errors for timer fetch failures
+        set({ activeTimer: null, isLoading: false, error: null });
       }
     }
   },

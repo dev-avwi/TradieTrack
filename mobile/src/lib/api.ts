@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+import { useOfflineStore } from './offline-storage';
 
 const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl || 
   process.env.EXPO_PUBLIC_API_URL || 
@@ -10,6 +11,7 @@ export const API_URL = API_BASE_URL;
 interface ApiResponse<T> {
   data?: T;
   error?: string;
+  isOffline?: boolean;
 }
 
 interface LoginResponse {
@@ -25,6 +27,10 @@ class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+  }
+
+  async isOnline(): Promise<boolean> {
+    return useOfflineStore.getState().isOnline;
   }
 
   async loadToken(): Promise<string | null> {
@@ -131,7 +137,12 @@ class ApiClient {
       const data = await response.json();
       return { data };
     } catch (error) {
-      console.error(`[API] Network Error [${method} ${endpoint}]:`, error);
+      const online = await this.isOnline();
+      if (!online) {
+        console.log(`[API] Offline - skipping ${method} ${endpoint}`);
+        return { error: 'offline', isOffline: true };
+      }
+      console.warn(`[API] Network Error [${method} ${endpoint}]:`, error);
       return { error: error instanceof Error ? error.message : 'Network error' };
     }
   }
@@ -196,7 +207,12 @@ class ApiClient {
       const data = await response.json();
       return { data };
     } catch (error) {
-      console.error(`[API] Upload Error [${endpoint}]:`, error);
+      const online = await this.isOnline();
+      if (!online) {
+        console.log(`[API] Offline - skipping upload ${endpoint}`);
+        return { error: 'offline', isOffline: true };
+      }
+      console.warn(`[API] Upload Error [${endpoint}]:`, error);
       return { error: error instanceof Error ? error.message : 'Upload failed' };
     }
   }
