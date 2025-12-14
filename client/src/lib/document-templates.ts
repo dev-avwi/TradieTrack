@@ -24,13 +24,16 @@ export interface DocumentTemplate {
   noteStyle: 'bordered' | 'highlighted' | 'simple';
 }
 
+// All templates use Inter font for consistent modern appearance
+const INTER_FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
 export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
   professional: {
     id: 'professional',
     name: 'Professional',
-    description: 'Classic serif fonts with traditional layout. Perfect for formal business documents.',
-    fontFamily: 'Georgia, "Times New Roman", Times, serif',
-    headingFont: 'Georgia, "Times New Roman", Times, serif',
+    description: 'Traditional layout with bordered tables. Perfect for formal business documents.',
+    fontFamily: INTER_FONT,
+    headingFont: INTER_FONT,
     headerLayout: 'classic',
     colorScheme: 'neutral',
     tableStyle: 'bordered',
@@ -45,9 +48,9 @@ export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
   modern: {
     id: 'modern',
     name: 'Modern',
-    description: 'Clean sans-serif design with bold brand colors. Great for contemporary businesses.',
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-    headingFont: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+    description: 'Clean design with bold brand colors. Great for contemporary businesses.',
+    fontFamily: INTER_FONT,
+    headingFont: INTER_FONT,
     headerLayout: 'modern',
     colorScheme: 'brand',
     tableStyle: 'striped',
@@ -63,8 +66,8 @@ export const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
     id: 'minimal',
     name: 'Minimal',
     description: 'Ultra-clean design with subtle styling. Lets your content speak for itself.',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    headingFont: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontFamily: INTER_FONT,
+    headingFont: INTER_FONT,
     headerLayout: 'minimal',
     colorScheme: 'neutral',
     tableStyle: 'minimal',

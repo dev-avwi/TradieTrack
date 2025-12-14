@@ -18,10 +18,13 @@ interface DocumentTemplate {
 // This must match DOCUMENT_ACCENT_COLOR in client/src/lib/document-templates.ts
 const DOCUMENT_ACCENT_COLOR = '#1e3a5f';
 
+// All templates use Inter font for consistent modern appearance
+const INTER_FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
 const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
   professional: {
     id: 'professional',
-    fontFamily: 'Georgia, "Times New Roman", Times, serif',
+    fontFamily: INTER_FONT,
     tableStyle: 'bordered',
     headerBorderWidth: '2px',
     showHeaderDivider: true,
@@ -31,7 +34,7 @@ const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
   },
   modern: {
     id: 'modern',
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+    fontFamily: INTER_FONT,
     tableStyle: 'striped',
     headerBorderWidth: '3px',
     showHeaderDivider: true,
@@ -41,7 +44,7 @@ const DOCUMENT_TEMPLATES: Record<TemplateId, DocumentTemplate> = {
   },
   minimal: {
     id: 'minimal',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontFamily: INTER_FONT,
     tableStyle: 'minimal',
     headerBorderWidth: '1px',
     showHeaderDivider: false,
@@ -2014,15 +2017,38 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
 export const generatePDFBuffer = async (html: string): Promise<Buffer> => {
   const puppeteer = await import('puppeteer');
   
+  console.log('[PDF] Starting PDF generation...');
+  
   const browser = await puppeteer.default.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-software-rasterizer',
+      '--single-process',
+    ],
+    timeout: 60000,
   });
   
   try {
+    console.log('[PDF] Browser launched, creating page...');
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
     
+    // Set longer timeout for content loading
+    page.setDefaultTimeout(30000);
+    
+    console.log('[PDF] Setting page content...');
+    await page.setContent(html, { 
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    });
+    
+    // Wait a bit for fonts to load
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    console.log('[PDF] Generating PDF buffer...');
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -2032,10 +2058,16 @@ export const generatePDFBuffer = async (html: string): Promise<Buffer> => {
         bottom: '10mm',
         left: '10mm',
       },
+      timeout: 30000,
     });
     
+    console.log('[PDF] PDF generated successfully, size:', pdfBuffer.length);
     return Buffer.from(pdfBuffer);
+  } catch (error) {
+    console.error('[PDF] Error generating PDF:', error);
+    throw error;
   } finally {
+    console.log('[PDF] Closing browser...');
     await browser.close();
   }
 };
