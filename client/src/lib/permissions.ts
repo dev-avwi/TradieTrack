@@ -83,8 +83,6 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Time Tracking - all roles
   { path: '/time-tracking', label: 'Time Tracking', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   
-  // Templates - owner/manager only
-  { path: '/templates', label: 'Templates', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   
   // Team - owner/manager only (hidden for solo)
   { path: '/team', label: 'Team', allowedRoles: ['owner', 'manager'], showInNav: true },

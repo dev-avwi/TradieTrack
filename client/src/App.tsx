@@ -45,7 +45,6 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import ResetPassword from "@/pages/ResetPassword";
 import QuoteModal from "@/components/QuoteModal";
 import InvoiceModal from "@/components/InvoiceModal";
-import TemplateManagement from "@/components/TemplateManagement";
 import TimeTrackingPage from "@/pages/TimeTracking";
 import TeamManagement from "@/pages/TeamManagement";
 import PaymentPage from "@/pages/PaymentPage";
@@ -373,9 +372,7 @@ function Router({
         <Redirect to="/schedule" />
       </Route>
       
-      <Route path="/templates" component={() => (
-        <TemplateManagement />
-      )} />
+      {/* Templates route removed - template customization is now in Settings > Documents */}
       
       <Route path="/settings" component={SettingsWrapper} />
       

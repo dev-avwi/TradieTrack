@@ -14,7 +14,6 @@ import {
   Clock,
   Zap,
   ChevronRight,
-  FileText,
   DollarSign
 } from "lucide-react";
 
@@ -57,12 +56,6 @@ export default function More({
       description: "Track hours and earnings",
       icon: Clock,
       path: "/time-tracking"
-    },
-    {
-      title: "Templates",
-      description: "Quote and invoice templates",
-      icon: FileText,
-      path: "/templates"
     },
     {
       title: "Integrations",
