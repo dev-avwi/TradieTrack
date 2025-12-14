@@ -872,8 +872,8 @@ function AppLayout() {
                 onAddClick={() => console.log('Add button clicked')}
                 onThemeToggle={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                 isDarkMode={theme === 'dark'}
-                onProfileClick={() => console.log('Profile')}
-                onSettingsClick={() => console.log('Settings')}
+                onProfileClick={() => setLocation('/settings')}
+                onSettingsClick={() => setLocation('/settings')}
                 onLogoutClick={handleLogout}
               />
               {/* Demo Mode Indicator */}

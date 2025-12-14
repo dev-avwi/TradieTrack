@@ -209,9 +209,6 @@ export default function Header({
             <DropdownMenuItem onClick={onProfileClick} data-testid="menu-profile">
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onSettingsClick} data-testid="menu-settings">
-              Settings
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onLogoutClick} data-testid="menu-logout">
               Logout
