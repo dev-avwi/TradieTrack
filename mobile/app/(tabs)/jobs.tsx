@@ -476,8 +476,8 @@ export default function JobsScreen() {
         {/* Header Section */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.pageTitle}>Jobs</Text>
-            <Text style={styles.pageSubtitle}>{jobs.length} total</Text>
+            <Text style={styles.pageTitle}>Work</Text>
+            <Text style={styles.pageSubtitle}>{jobs.length} jobs total</Text>
           </View>
           <TouchableOpacity
             activeOpacity={0.8}

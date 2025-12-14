@@ -303,8 +303,8 @@ export default function MoreScreen() {
         />
       </View>
 
-      {/* Business Tools Section */}
-      <Text style={styles.sectionTitle}>Business Tools</Text>
+      {/* Work Section - matches web sidebar "Work" group */}
+      <Text style={styles.sectionTitle}>Work</Text>
       <View style={styles.section}>
         {canAccessClients && (
           <MenuItem
@@ -316,32 +316,12 @@ export default function MoreScreen() {
             onPress={() => router.push('/more/clients')}
           />
         )}
-        {canAccessQuotes && (
-          <MenuItem
-            icon="file-text"
-            iconBg={colors.infoLight}
-            iconColor={colors.info}
-            title="Quotes"
-            subtitle="Create and manage quotes"
-            onPress={() => router.push('/more/quotes')}
-          />
-        )}
-        {canAccessInvoices && (
-          <MenuItem
-            icon="file-text"
-            iconBg={colors.successLight}
-            iconColor={colors.success}
-            title="Invoices"
-            subtitle="Send and track invoices"
-            onPress={() => router.push('/more/invoices')}
-          />
-        )}
         <MenuItem
           icon="calendar"
           iconBg={colors.warningLight}
           iconColor={colors.warning}
-          title="Calendar"
-          subtitle="Schedule and track jobs"
+          title="Schedule"
+          subtitle="Calendar and appointments"
           onPress={() => router.push('/more/calendar')}
         />
         <MenuItem
@@ -354,32 +334,13 @@ export default function MoreScreen() {
         />
         {canManageTemplates && (
           <MenuItem
-            icon="file"
-            iconBg={colors.infoLight}
-            iconColor={colors.info}
-            title="Templates"
-            subtitle="Quote and invoice templates"
-            onPress={() => router.push('/more/templates')}
-          />
-        )}
-        {canManageTemplates && (
-          <MenuItem
             icon="clipboard"
-            iconBg={colors.warningLight}
-            iconColor={colors.warning}
-            title="Custom Forms"
-            subtitle="Create form templates for jobs"
-            onPress={() => router.push('/more/custom-forms')}
-          />
-        )}
-        {canCollectPayments && (
-          <MenuItem
-            icon="credit-card"
             iconBg={colors.primaryLight}
             iconColor={colors.primary}
-            title="Collect Payment"
-            subtitle="Tap to Pay, QR codes, links"
-            onPress={() => router.push('/(tabs)/collect')}
+            title="Custom Forms"
+            subtitle="Create form templates for jobs"
+            badge="Popular"
+            onPress={() => router.push('/more/custom-forms')}
           />
         )}
         {canAccessReports && (
@@ -390,26 +351,6 @@ export default function MoreScreen() {
             title="Reports"
             subtitle="Business analytics and insights"
             onPress={() => router.push('/more/reports')}
-          />
-        )}
-        {canAccessBilling && (
-          <MenuItem
-            icon="dollar-sign"
-            iconBg={colors.successLight}
-            iconColor={colors.success}
-            title="Payouts"
-            subtitle="Track earnings and transfers"
-            onPress={() => router.push('/more/payouts')}
-          />
-        )}
-        {!isStaff && (
-          <MenuItem
-            icon="file-text"
-            iconBg={colors.warningLight}
-            iconColor={colors.warning}
-            title="Expense Tracking"
-            subtitle="Monitor business expenses"
-            onPress={() => router.push('/more/expense-tracking')}
             isLast={!isStaff}
           />
         )}
@@ -426,10 +367,94 @@ export default function MoreScreen() {
         )}
       </View>
 
-      {/* Team & Operations Section - Only show for owners and managers */}
+      {/* Money Hub Section - matches web sidebar "Payment Hub" */}
+      {!isStaff && (
+        <>
+          <Text style={styles.sectionTitle}>Money Hub</Text>
+          <View style={styles.section}>
+            <MenuItem
+              icon="dollar-sign"
+              iconBg={colors.successLight}
+              iconColor={colors.success}
+              title="Payment Hub"
+              subtitle="Track all payments in one place"
+              onPress={() => router.push('/more/payment-hub')}
+            />
+            {canAccessQuotes && (
+              <MenuItem
+                icon="file-text"
+                iconBg={colors.infoLight}
+                iconColor={colors.info}
+                title="Quotes"
+                subtitle="Create and manage quotes"
+                onPress={() => router.push('/more/quotes')}
+              />
+            )}
+            {canAccessInvoices && (
+              <MenuItem
+                icon="file-text"
+                iconBg={colors.successLight}
+                iconColor={colors.success}
+                title="Invoices"
+                subtitle="Send and track invoices"
+                onPress={() => router.push('/more/invoices')}
+              />
+            )}
+            {canCollectPayments && (
+              <MenuItem
+                icon="credit-card"
+                iconBg={colors.primaryLight}
+                iconColor={colors.primary}
+                title="Collect Payment"
+                subtitle="Tap to Pay, QR codes, links"
+                onPress={() => router.push('/(tabs)/collect')}
+              />
+            )}
+            {canAccessBilling && (
+              <MenuItem
+                icon="trending-up"
+                iconBg={colors.successLight}
+                iconColor={colors.success}
+                title="Payouts"
+                subtitle="Track earnings and transfers"
+                onPress={() => router.push('/more/payouts')}
+              />
+            )}
+            <MenuItem
+              icon="file-minus"
+              iconBg={colors.warningLight}
+              iconColor={colors.warning}
+              title="Expense Tracking"
+              subtitle="Monitor business expenses"
+              onPress={() => router.push('/more/expense-tracking')}
+              isLast
+            />
+          </View>
+        </>
+      )}
+
+      {/* Templates Section */}
+      {canManageTemplates && (
+        <>
+          <Text style={styles.sectionTitle}>Templates</Text>
+          <View style={styles.section}>
+            <MenuItem
+              icon="file"
+              iconBg={colors.infoLight}
+              iconColor={colors.info}
+              title="Document Templates"
+              subtitle="Quote and invoice templates"
+              onPress={() => router.push('/more/templates')}
+              isLast
+            />
+          </View>
+        </>
+      )}
+
+      {/* Team Section - matches web sidebar Team & Automations */}
       {hasTeamAccess && !isSolo && (
         <>
-          <Text style={styles.sectionTitle}>Team & Operations</Text>
+          <Text style={styles.sectionTitle}>Team</Text>
           <View style={styles.section}>
             {canAccessTeamManagement && (
               <MenuItem
@@ -449,20 +474,28 @@ export default function MoreScreen() {
                 title="Dispatch Board"
                 subtitle="Schedule and assign jobs"
                 onPress={() => router.push('/more/dispatch-board')}
+                isLast={isStaff}
               />
             )}
-            {!isStaff && (
-              <MenuItem
-                icon="zap"
-                iconBg={colors.warningLight}
-                iconColor={colors.warning}
-                title="Automations"
-                subtitle="Set up automatic workflows"
-                badge="New"
-                onPress={() => router.push('/more/automations')}
-                isLast
-              />
-            )}
+          </View>
+        </>
+      )}
+
+      {/* Automations Section - matches web sidebar */}
+      {!isStaff && (
+        <>
+          <Text style={styles.sectionTitle}>Automations</Text>
+          <View style={styles.section}>
+            <MenuItem
+              icon="zap"
+              iconBg={colors.warningLight}
+              iconColor={colors.warning}
+              title="Workflow Automations"
+              subtitle="Set up automatic workflows"
+              badge="New"
+              onPress={() => router.push('/more/automations')}
+              isLast
+            />
           </View>
         </>
       )}

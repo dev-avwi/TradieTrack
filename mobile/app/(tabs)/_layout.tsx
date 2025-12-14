@@ -24,13 +24,19 @@ export default function TabLayout() {
       <Tabs.Screen
         name="jobs"
         options={{
-          title: 'Jobs',
+          title: 'Work',
         }}
       />
       <Tabs.Screen
         name="map"
         options={{
           title: 'Map',
+        }}
+      />
+      <Tabs.Screen
+        name="money"
+        options={{
+          title: 'Money',
         }}
       />
       <Tabs.Screen
