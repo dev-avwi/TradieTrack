@@ -53,8 +53,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.lg,
-    paddingTop: spacing.sm,
+    marginBottom: spacing.md,
+    paddingTop: spacing.xs,
   },
   headerLeft: {
     flex: 1,
@@ -608,7 +608,7 @@ export default function CustomFormsScreen() {
       
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + spacing.md }]}
+        contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top }]}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
         }
