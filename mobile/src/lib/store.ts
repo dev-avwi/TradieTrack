@@ -22,6 +22,16 @@ interface User {
   gstEnabled?: boolean;
 }
 
+interface TemplateCustomization {
+  tableStyle?: 'bordered' | 'striped' | 'minimal';
+  noteStyle?: 'bordered' | 'highlighted' | 'simple';
+  headerBorderWidth?: '1px' | '2px' | '3px' | '4px';
+  showHeaderDivider?: boolean;
+  bodyWeight?: 400 | 500 | 600 | 700;
+  headingWeight?: 600 | 700 | 800;
+  accentColor?: string;
+}
+
 interface BusinessSettings {
   id: string;
   businessName: string;
@@ -32,6 +42,8 @@ interface BusinessSettings {
   logoUrl?: string;
   primaryColor?: string;
   teamSize?: string;
+  documentTemplate?: 'professional' | 'modern' | 'minimal';
+  documentTemplateSettings?: TemplateCustomization;
 }
 
 interface Job {
