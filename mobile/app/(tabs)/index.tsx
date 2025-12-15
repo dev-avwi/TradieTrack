@@ -78,7 +78,7 @@ function ActivityFeed({ activities }: { activities: any[] }) {
           <View style={[styles.activityIcon, { backgroundColor: `${getActivityColor(activity.type)}12` }]}>
             <Feather 
               name={getActivityIcon(activity.type)} 
-              size={12} 
+              size={iconSizes.md} 
               color={getActivityColor(activity.type)} 
             />
           </View>
@@ -372,7 +372,7 @@ function QuickActionButton({
     >
       <Feather 
         name={icon} 
-        size={14} 
+        size={iconSizes.md} 
         color={variant === 'primary' ? colors.white : colors.foreground} 
       />
       <Text style={[
@@ -1018,7 +1018,7 @@ export default function DashboardScreen() {
                   </>
                 ) : (
                   <>
-                    <Feather name="briefcase" size={14} color={colors.primary} />
+                    <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
                     <Text style={styles.selectionBannerText}>
                       Tap a team member to assign "{selectedJob.title}"
                     </Text>
@@ -1126,7 +1126,7 @@ export default function DashboardScreen() {
                           <Text style={styles.memberJobTitle} numberOfLines={1}>{job.title}</Text>
                           <View style={styles.memberJobActions}>
                             <StatusBadge status={job.status} size="small" />
-                            <Feather name="x-circle" size={14} color={colors.mutedForeground} style={{ marginLeft: 6 }} />
+                            <Feather name="x-circle" size={iconSizes.md} color={colors.mutedForeground} style={{ marginLeft: 6 }} />
                           </View>
                         </TouchableOpacity>
                       ))}
@@ -1318,12 +1318,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing['3xl'],
   },
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: '500',
+    ...typography.label,
     color: colors.mutedForeground,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1345,18 +1342,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.subtitle,
     color: colors.foreground,
-    letterSpacing: -0.2,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.lg,
+    minHeight: 44,
   },
   viewAllText: {
     ...typography.captionSmall,
@@ -1367,7 +1363,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   kpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: spacing.md,
   },
   kpiCard: {
     flex: 1,
@@ -1381,8 +1377,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   kpiCardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 16,
+    gap: spacing.md,
+    padding: spacing.lg,
   },
   kpiIconContainer: {
     width: 44,
@@ -1402,11 +1398,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     letterSpacing: -0.5,
   },
   kpiTitle: {
-    fontSize: 11,
-    fontWeight: '500',
+    ...typography.label,
     color: colors.mutedForeground,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
     marginTop: 2,
   },
 
@@ -1416,34 +1409,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    padding: 16,
+    padding: spacing.lg,
     ...shadows.sm,
   },
   quickActionsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.md,
   },
   quickActionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     backgroundColor: colors.background,
-    minHeight: 40,
+    minHeight: 44,
   },
   quickActionButtonPrimary: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   quickActionText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.button,
     color: colors.foreground,
   },
   quickActionTextPrimary: {
@@ -1620,7 +1612,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
   // Job Cards - with left accent bar
   jobsList: {
-    gap: 10,
+    gap: spacing.md,
   },
   jobCard: {
     flexDirection: 'row',
@@ -1638,7 +1630,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   jobCardContent: {
     flex: 1,
-    padding: 16,
+    padding: spacing.lg,
   },
   jobCardHeader: {
     flexDirection: 'row',
@@ -1722,7 +1714,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 2,
   },
   jobCardDetails: {
-    gap: spacing.xs,
+    gap: spacing.sm,
     marginBottom: spacing.md,
   },
   jobDetailRow: {
@@ -1745,12 +1737,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     backgroundColor: colors.muted,
+    minHeight: 44,
   },
   quickContactButtonFull: {
     flex: 1,
@@ -1768,6 +1761,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: radius.md,
     backgroundColor: colors.success,
+    minHeight: 44,
   },
   completeActionButton: {
     backgroundColor: colors.primary,
@@ -1785,6 +1779,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    minHeight: 44,
   },
   outlineActionButtonText: {
     ...typography.caption,
@@ -1825,6 +1820,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: radius.md,
+    minHeight: 44,
   },
   scheduleJobButtonText: {
     ...typography.caption,
@@ -1891,10 +1887,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: radius.lg,
+    minHeight: 44,
   },
   stopTimerText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.button,
     color: colors.white,
   },
 
@@ -1906,8 +1902,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.sm,
   },
   weekBadgeText: {
-    fontSize: 11,
-    fontWeight: '500',
+    ...typography.label,
     color: colors.mutedForeground,
   },
   thisWeekCard: {
@@ -1921,6 +1916,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     padding: spacing.md,
     backgroundColor: 'transparent',
+    minHeight: 44,
   },
   weekJobItemBorder: {
     borderBottomWidth: 1,
@@ -1944,6 +1940,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.md,
     alignItems: 'center',
     backgroundColor: colors.background,
+    minHeight: 44,
   },
   viewAllWeekText: {
     ...typography.caption,

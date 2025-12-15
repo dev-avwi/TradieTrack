@@ -104,18 +104,18 @@ function JobCard({
         <View style={styles.jobCardDetails}>
           {job.clientName && (
             <View style={styles.jobDetailRow}>
-              <Feather name="user" size={11} color={colors.mutedForeground} />
+              <Feather name="user" size={iconSizes.sm} color={colors.mutedForeground} />
               <Text style={styles.jobDetailText} numberOfLines={1}>{job.clientName}</Text>
             </View>
           )}
           {job.address && (
             <View style={styles.jobDetailRow}>
-              <Feather name="map-pin" size={11} color={colors.mutedForeground} />
+              <Feather name="map-pin" size={iconSizes.sm} color={colors.mutedForeground} />
               <Text style={styles.jobDetailText} numberOfLines={1}>{job.address.split(',')[0]}</Text>
             </View>
           )}
           <View style={styles.jobDetailRow}>
-            <Feather name="calendar" size={11} color={colors.mutedForeground} />
+            <Feather name="calendar" size={iconSizes.sm} color={colors.mutedForeground} />
             <Text style={styles.jobDetailText} numberOfLines={1}>
               {job.scheduledAt ? formatDate(job.scheduledAt) : 'Not scheduled'}
             </Text>
@@ -129,7 +129,7 @@ function JobCard({
             onPress={() => router.push(`/more/create-invoice?jobId=${job.id}`)}
             activeOpacity={0.8}
           >
-            <Feather name="file-text" size={11} color={colors.white} />
+            <Feather name="file-text" size={iconSizes.sm} color={colors.white} />
             <Text style={styles.invoiceBtnText}>Invoice</Text>
           </TouchableOpacity>
         )}
@@ -442,7 +442,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   filtersScroll: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     marginHorizontal: -pageShell.paddingHorizontal,
   },
   filtersContent: {
@@ -452,9 +452,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    minHeight: sizes.filterChipHeight,
+    borderRadius: radius.xl,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -465,7 +465,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.primary,
   },
   filterPillText: {
-    ...typography.captionSmall,
+    ...typography.caption,
     fontWeight: '500',
     color: colors.foreground,
   },
@@ -484,7 +484,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.25)',
   },
   filterCountText: {
-    fontSize: 11,
+    ...typography.captionSmall,
     fontWeight: '600',
     color: colors.foreground,
   },
@@ -537,19 +537,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   jobsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   jobCard: {
-    width: (SCREEN_WIDTH - pageShell.paddingHorizontal * 2 - spacing.md) / 2,
+    width: (SCREEN_WIDTH - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    overflow: 'hidden',
+    ...shadows.sm,
   },
   jobCardAccent: {
-    height: 3,
-    backgroundColor: colors.primary,
+    display: 'none',
   },
   jobCardContent: {
     padding: spacing.md,
@@ -558,14 +557,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.xs,
   },
   jobTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.bodySemibold,
     color: colors.foreground,
     marginBottom: spacing.sm,
-    lineHeight: 18,
   },
   jobCardDetails: {
-    gap: 3,
+    gap: spacing.xs,
   },
   jobDetailRow: {
     flexDirection: 'row',
@@ -573,7 +570,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.xs,
   },
   jobDetailText: {
-    fontSize: 11,
+    ...typography.captionSmall,
     color: colors.mutedForeground,
     flex: 1,
   },
@@ -581,15 +578,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     alignSelf: 'flex-start',
     marginTop: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    minHeight: 32,
   },
   invoiceBtnText: {
-    fontSize: 11,
+    ...typography.captionSmall,
     fontWeight: '600',
     color: colors.white,
   },

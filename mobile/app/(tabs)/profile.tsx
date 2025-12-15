@@ -35,11 +35,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.lg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    minHeight: 80,
     ...shadows.sm,
   },
   avatar: {
@@ -62,7 +63,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   userName: {
     ...typography.subtitle,
     color: colors.foreground,
-    marginBottom: 2,
+    marginBottom: spacing.xs,
   },
   userEmail: {
     ...typography.caption,
@@ -81,7 +82,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   section: {
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     marginBottom: spacing.lg,
@@ -102,10 +103,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.lg,
+    minHeight: 52,
   },
   menuItemIcon: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -127,17 +129,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   menuItemSubtitle: {
     ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   badge: {
     backgroundColor: colors.successLight,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: spacing.xs,
     borderRadius: radius.sm,
   },
   badgeText: {
-    fontSize: 10,
-    fontWeight: '600',
+    ...typography.badge,
     color: colors.success,
   },
   footer: {
@@ -194,7 +195,7 @@ function MenuItem({
       ]}
     >
       <View style={[styles.menuItemIcon, { backgroundColor: effectiveIconBg }]}>
-        <Feather name={icon} size={iconSizes.lg} color={effectiveIconColor} />
+        <Feather name={icon} size={iconSizes.xl} color={effectiveIconColor} />
       </View>
       <View style={styles.menuItemContent}>
         <View style={styles.menuItemTitleRow}>
@@ -216,7 +217,7 @@ function MenuItem({
       </View>
       <Feather 
         name="chevron-right" 
-        size={iconSizes.lg} 
+        size={iconSizes.xl} 
         color={destructive ? colors.destructive : colors.mutedForeground} 
       />
     </TouchableOpacity>
@@ -369,12 +370,12 @@ export default function MoreScreen() {
           <Text style={styles.userEmail}>{user?.email}</Text>
           {businessSettings?.businessName && (
             <View style={styles.businessRow}>
-              <Feather name="briefcase" size={iconSizes.sm} color={colors.primary} />
+              <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
               <Text style={styles.businessName}>{businessSettings.businessName}</Text>
             </View>
           )}
         </View>
-        <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
+        <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
       </TouchableOpacity>
 
       {/* Render all categories in order (except account which has special handling) */}
