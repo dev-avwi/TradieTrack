@@ -27,6 +27,27 @@ interface LineItem {
   cost: number; // Cost for profit margin calculation (in cents)
 }
 
+interface DocumentTemplate {
+  id: string;
+  name: string;
+  type: 'quote' | 'invoice' | 'job';
+  tradeType: string;
+  defaults: {
+    title?: string;
+    description?: string;
+    terms?: string;
+    depositPct?: number;
+    dueTermDays?: number;
+    gstEnabled?: boolean;
+  };
+  defaultLineItems: Array<{
+    description: string;
+    qty: number;
+    unitPrice: number;
+    unit: string;
+  }>;
+}
+
 function generateId() {
   return `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
@@ -204,6 +225,92 @@ function JobSelector({
               </TouchableOpacity>
             ))}
           </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function TemplateSelector({
+  templates,
+  onSelect,
+  visible,
+  onClose,
+  colors,
+  styles,
+  isLoading,
+}: {
+  templates: DocumentTemplate[];
+  onSelect: (template: DocumentTemplate) => void;
+  visible: boolean;
+  onClose: () => void;
+  colors: any;
+  styles: any;
+  isLoading: boolean;
+}) {
+  const [search, setSearch] = useState('');
+
+  const filteredTemplates = templates.filter(
+    (t) =>
+      t.name?.toLowerCase().includes(search.toLowerCase()) ||
+      t.tradeType?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Template</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+
+          <TextInput
+            style={styles.modalSearch}
+            placeholder="Search templates..."
+            placeholderTextColor={colors.mutedForeground}
+            value={search}
+            onChangeText={setSearch}
+          />
+
+          {isLoading ? (
+            <View style={styles.emptyList}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.emptyListText, { marginTop: 8 }]}>Loading templates...</Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.modalList}>
+              {filteredTemplates.map((template) => (
+                <TouchableOpacity
+                  key={template.id}
+                  style={styles.clientItem}
+                  onPress={() => {
+                    onSelect(template);
+                    onClose();
+                  }}
+                  testID={`template-item-${template.id}`}
+                >
+                  <View style={styles.clientItemContent}>
+                    <Text style={styles.clientItemName}>{template.name}</Text>
+                    <Text style={styles.clientItemEmail}>
+                      {template.tradeType} • {template.defaultLineItems?.length || 0} items
+                      {template.defaults?.depositPct ? ` • ${template.defaults.depositPct}% deposit` : ''}
+                    </Text>
+                  </View>
+                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              ))}
+              {filteredTemplates.length === 0 && (
+                <View style={styles.emptyList}>
+                  <Text style={styles.emptyListText}>
+                    {templates.length === 0 ? 'No templates available' : 'No templates found'}
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          )}
         </View>
       </View>
     </Modal>
@@ -442,6 +549,11 @@ export default function CreateQuoteScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   
+  // Template picker state
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  
   // Prefill suggestions state
   const [prefillSuggestions, setPrefillSuggestions] = useState<any>(null);
   const [loadingPrefill, setLoadingPrefill] = useState(false);
@@ -459,7 +571,48 @@ export default function CreateQuoteScreen() {
   useEffect(() => {
     fetchClients();
     fetchJobs();
+    fetchTemplates();
   }, []);
+
+  const fetchTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const response = await api.get<DocumentTemplate[]>('/api/templates?type=quote');
+      if (response.data) {
+        setTemplates(response.data);
+      }
+    } catch (error) {
+      console.log('Failed to fetch templates:', error);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  const applyTemplate = (template: DocumentTemplate) => {
+    // Set line items from template
+    if (template.defaultLineItems && template.defaultLineItems.length > 0) {
+      const newLineItems: LineItem[] = template.defaultLineItems.map((item) => ({
+        id: generateId(),
+        description: item.description,
+        quantity: item.qty || 1,
+        unitPrice: item.unitPrice, // Already in cents
+        cost: 0,
+      }));
+      setLineItems(newLineItems);
+    }
+
+    // Set terms and conditions
+    if (template.defaults?.terms) {
+      setTermsAndConditions(template.defaults.terms);
+    }
+
+    // Set deposit percentage
+    if (template.defaults?.depositPct) {
+      setDepositPercentage(template.defaults.depositPct);
+    }
+
+    Alert.alert('Template Applied', `"${template.name}" template has been applied to your quote.`);
+  };
 
   // Handle jobId param - prefill client and line items from job (only once)
   useEffect(() => {
@@ -820,6 +973,26 @@ export default function CreateQuoteScreen() {
             </View>
           )}
 
+          {/* Use Template Button */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={[styles.selector, { backgroundColor: `${colors.primary}08` }]}
+              onPress={() => setShowTemplatePicker(true)}
+              testID="button-use-template"
+            >
+              <View style={styles.selectedItem}>
+                <View style={[styles.clientAvatar, { backgroundColor: `${colors.primary}15` }]}>
+                  <Feather name="layers" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.selectedItemText}>
+                  <Text style={[styles.selectedItemName, { color: colors.primary }]}>Use Template</Text>
+                  <Text style={styles.selectedItemDetail}>Pre-fill items, terms & deposit</Text>
+                </View>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+
           {/* Line Items */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -1114,6 +1287,16 @@ export default function CreateQuoteScreen() {
         onClose={() => setShowJobPicker(false)}
         colors={colors}
         styles={styles}
+      />
+
+      <TemplateSelector
+        templates={templates}
+        onSelect={applyTemplate}
+        visible={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        colors={colors}
+        styles={styles}
+        isLoading={loadingTemplates}
       />
     </>
   );

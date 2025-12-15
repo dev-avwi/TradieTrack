@@ -26,6 +26,27 @@ interface LineItem {
   unitPrice: number;
 }
 
+interface DocumentTemplate {
+  id: string;
+  name: string;
+  type: 'quote' | 'invoice' | 'job';
+  tradeType: string;
+  defaults: {
+    title?: string;
+    description?: string;
+    terms?: string;
+    depositPct?: number;
+    dueTermDays?: number;
+    gstEnabled?: boolean;
+  };
+  defaultLineItems: Array<{
+    description: string;
+    qty: number;
+    unitPrice: number;
+    unit: string;
+  }>;
+}
+
 function generateId() {
   return `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
@@ -214,6 +235,90 @@ function CompletedJobSelector({
   );
 }
 
+function TemplateSelector({
+  templates,
+  onSelect,
+  visible,
+  onClose,
+  colors,
+  styles,
+  loading,
+}: {
+  templates: DocumentTemplate[];
+  onSelect: (template: DocumentTemplate) => void;
+  visible: boolean;
+  onClose: () => void;
+  colors: any;
+  styles: any;
+  loading: boolean;
+}) {
+  const [search, setSearch] = useState('');
+
+  const filteredTemplates = templates.filter(
+    (t) =>
+      t.name?.toLowerCase().includes(search.toLowerCase()) ||
+      t.tradeType?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Template</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+
+          <TextInput
+            style={styles.modalSearch}
+            placeholder="Search templates..."
+            placeholderTextColor={colors.mutedForeground}
+            value={search}
+            onChangeText={setSearch}
+          />
+
+          {loading ? (
+            <View style={styles.emptyList}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.emptyListText, { marginTop: 8 }]}>Loading templates...</Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.modalList}>
+              {filteredTemplates.map((template) => (
+                <TouchableOpacity
+                  key={template.id}
+                  style={styles.clientItem}
+                  onPress={() => {
+                    onSelect(template);
+                    onClose();
+                  }}
+                >
+                  <View style={styles.clientItemContent}>
+                    <Text style={styles.clientItemName}>{template.name}</Text>
+                    <Text style={styles.clientItemEmail}>
+                      {template.tradeType} • {template.defaultLineItems?.length || 0} items
+                    </Text>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              ))}
+              {filteredTemplates.length === 0 && (
+                <View style={styles.emptyList}>
+                  <Text style={styles.emptyListText}>
+                    {templates.length === 0 ? 'No invoice templates found' : 'No matching templates'}
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function LineItemRow({
   item,
   onUpdate,
@@ -342,6 +447,11 @@ const createStyles = (colors: any) => StyleSheet.create({
   clientItemEmail: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
   emptyList: { alignItems: 'center', paddingVertical: 32 },
   emptyListText: { fontSize: 14, color: colors.mutedForeground },
+  templateButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 14, gap: 12 },
+  templateButtonIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' },
+  templateButtonContent: { flex: 1 },
+  templateButtonTitle: { fontSize: 15, fontWeight: '600', color: colors.foreground },
+  templateButtonSubtitle: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
 });
 
 export default function CreateInvoiceScreen() {
@@ -368,9 +478,13 @@ export default function CreateInvoiceScreen() {
 
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showJobPicker, setShowJobPicker] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
   
   // Quick Add Client state
   const [showQuickAddClient, setShowQuickAddClient] = useState(false);
@@ -387,6 +501,21 @@ export default function CreateInvoiceScreen() {
     fetchClients();
     fetchJobs();
     fetchQuotes();
+    
+    const fetchTemplates = async () => {
+      setLoadingTemplates(true);
+      try {
+        const response = await api.get<DocumentTemplate[]>('/api/templates?type=invoice');
+        if (response.data) {
+          setTemplates(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch templates:', error);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+    fetchTemplates();
   }, []);
 
   // Handle quoteId param - prefill from quote (only once)
@@ -472,6 +601,33 @@ export default function CreateInvoiceScreen() {
 
   const clearSelectedJob = () => {
     setJobId(null);
+  };
+
+  const applyTemplate = (template: DocumentTemplate) => {
+    if (template.defaultLineItems && template.defaultLineItems.length > 0) {
+      const newLineItems = template.defaultLineItems.map((item) => ({
+        id: generateId(),
+        description: item.description || '',
+        quantity: item.qty || 1,
+        unitPrice: item.unitPrice || 0,
+      }));
+      setLineItems(newLineItems);
+    }
+    
+    if (template.defaults?.terms) {
+      setNotes(template.defaults.terms);
+    }
+    
+    if (template.defaults?.dueTermDays) {
+      const newDueDate = new Date();
+      newDueDate.setDate(newDueDate.getDate() + template.defaults.dueTermDays);
+      setDueDate(newDueDate);
+    }
+    
+    Alert.alert(
+      'Template Applied',
+      `"${template.name}" template has been applied. Line items and settings have been updated.`
+    );
   };
 
   const addLineItem = () => {
@@ -738,6 +894,24 @@ export default function CreateInvoiceScreen() {
             </View>
           )}
 
+          {!quoteId && (
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={styles.templateButton}
+                onPress={() => setShowTemplatePicker(true)}
+              >
+                <View style={styles.templateButtonIcon}>
+                  <Feather name="layers" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.templateButtonContent}>
+                  <Text style={styles.templateButtonTitle}>Use Template</Text>
+                  <Text style={styles.templateButtonSubtitle}>Pre-fill line items, terms & due date</Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Line Items</Text>
@@ -861,6 +1035,16 @@ export default function CreateInvoiceScreen() {
         onClose={() => setShowJobPicker(false)}
         colors={colors}
         styles={styles}
+      />
+
+      <TemplateSelector
+        templates={templates}
+        onSelect={applyTemplate}
+        visible={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        colors={colors}
+        styles={styles}
+        loading={loadingTemplates}
       />
       
       {/* Quick Add Client Modal */}

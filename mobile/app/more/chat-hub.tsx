@@ -111,8 +111,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   filterContainer: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 0,
+    paddingTop: 12,
+    paddingBottom: 12,
     gap: 8,
     flexDirection: 'row',
   },
@@ -161,7 +161,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-    marginTop: 8,
+    marginTop: 0,
   },
   listContent: {
     paddingBottom: 24,
