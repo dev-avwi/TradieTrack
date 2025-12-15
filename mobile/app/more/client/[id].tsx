@@ -7,13 +7,23 @@ import {
   StyleSheet,
   ActivityIndicator,
   Linking,
-  Alert
+  Alert,
+  Image
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useClientsStore, useJobsStore, useQuotesStore, useInvoicesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../../src/lib/design-tokens';
+
+interface ActivityItem {
+  id: string;
+  type: 'job' | 'quote' | 'invoice';
+  title: string;
+  date: Date;
+  status?: string;
+  amount?: number;
+}
 
 export default function ClientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -41,6 +51,60 @@ export default function ClientDetailScreen() {
   const clientJobs = jobs.filter(j => j.clientId === id);
   const clientQuotes = quotes.filter(q => q.clientId === id);
   const clientInvoices = invoices.filter(i => i.clientId === id);
+
+  const activityTimeline = useMemo(() => {
+    const activities: ActivityItem[] = [];
+    
+    clientJobs.forEach(job => {
+      activities.push({
+        id: `job-${job.id}`,
+        type: 'job',
+        title: job.title,
+        date: new Date(job.scheduledAt || job.createdAt || Date.now()),
+        status: job.status,
+      });
+    });
+    
+    clientQuotes.forEach(quote => {
+      activities.push({
+        id: `quote-${quote.id}`,
+        type: 'quote',
+        title: `Quote #${quote.quoteNumber || quote.id.slice(0,6)}`,
+        date: new Date(quote.createdAt || Date.now()),
+        amount: quote.total,
+      });
+    });
+    
+    clientInvoices.forEach(invoice => {
+      activities.push({
+        id: `invoice-${invoice.id}`,
+        type: 'invoice',
+        title: `Invoice #${invoice.invoiceNumber || invoice.id.slice(0,6)}`,
+        date: new Date(invoice.createdAt || Date.now()),
+        amount: invoice.total,
+      });
+    });
+    
+    return activities.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
+  }, [clientJobs, clientQuotes, clientInvoices]);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-AU', {
+      style: 'currency',
+      currency: 'AUD',
+    }).format(amount);
+  };
+
+  const getTimelineIcon = (type: 'job' | 'quote' | 'invoice') => {
+    switch (type) {
+      case 'job':
+        return { name: 'briefcase' as const, color: colors.primary };
+      case 'quote':
+        return { name: 'file-text' as const, color: colors.info };
+      case 'invoice':
+        return { name: 'credit-card' as const, color: colors.success };
+    }
+  };
 
   const handleCall = () => {
     if (client?.phone) {
@@ -214,6 +278,51 @@ export default function ClientDetailScreen() {
             </View>
           </View>
 
+          {/* Activity Timeline */}
+          {activityTimeline.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
+              <View style={styles.timelineCard}>
+                {activityTimeline.map((activity, index) => {
+                  const icon = getTimelineIcon(activity.type);
+                  return (
+                    <View 
+                      key={activity.id} 
+                      style={[
+                        styles.timelineItem,
+                        index === activityTimeline.length - 1 && { borderBottomWidth: 0 }
+                      ]}
+                    >
+                      <View style={[styles.timelineIcon, { backgroundColor: icon.color + '20' }]}>
+                        <Feather name={icon.name} size={16} color={icon.color} />
+                      </View>
+                      <View style={styles.timelineContent}>
+                        <Text style={styles.timelineTitle}>{activity.title}</Text>
+                        <Text style={styles.timelineDate}>
+                          {activity.date.toLocaleDateString('en-AU', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </Text>
+                      </View>
+                      {activity.status && (
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(activity.status, colors).bg }]}>
+                          <Text style={[styles.statusText, { color: getStatusColor(activity.status, colors).text }]}>
+                            {activity.status.replace('_', ' ')}
+                          </Text>
+                        </View>
+                      )}
+                      {activity.amount !== undefined && (
+                        <Text style={styles.timelineAmount}>{formatCurrency(activity.amount)}</Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
           {/* Past Jobs - Clickable List */}
           {clientJobs.length > 0 && (
             <>
@@ -254,6 +363,38 @@ export default function ClientDetailScreen() {
               ))}
             </>
           )}
+
+          {/* Photos Section */}
+          <Text style={styles.sectionTitle}>Photos</Text>
+          <View style={styles.photosSection}>
+            {clientJobs.some(job => job.attachments && job.attachments.length > 0) ? (
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.photosScroll}
+                contentContainerStyle={{ gap: spacing.sm }}
+              >
+                {clientJobs.flatMap(job => 
+                  (job.attachments || []).map((attachment: any, index: number) => {
+                    const imageUrl = typeof attachment === 'string' ? attachment : attachment?.url;
+                    if (!imageUrl) return null;
+                    return (
+                      <Image
+                        key={`${job.id}-${index}`}
+                        source={{ uri: imageUrl }}
+                        style={styles.photoThumbnail}
+                        resizeMode="cover"
+                      />
+                    );
+                  }).filter(Boolean)
+                )}
+              </ScrollView>
+            ) : (
+              <View style={styles.card}>
+                <Text style={styles.noPhotosText}>No photos from jobs yet</Text>
+              </View>
+            )}
+          </View>
 
           {/* Notes */}
           {client.notes && (
@@ -513,5 +654,65 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
     textTransform: 'capitalize',
+  },
+  photosSection: {
+    marginBottom: spacing.xl,
+  },
+  photosScroll: {
+    flexDirection: 'row',
+  },
+  photoThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.lg,
+    backgroundColor: colors.muted,
+  },
+  noPhotosText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    paddingVertical: spacing.sm,
+  },
+  timelineCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  timelineIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  timelineContent: {
+    flex: 1,
+  },
+  timelineTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  timelineDate: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  timelineAmount: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.foreground,
   },
 });
