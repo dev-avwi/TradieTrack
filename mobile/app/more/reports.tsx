@@ -8,11 +8,12 @@ import {
   StyleSheet,
   Dimensions,
   Share,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useJobsStore, useInvoicesStore, useQuotesStore } from '../../src/lib/store';
+import { useReportsStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -204,6 +205,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
     color: colors.foreground,
   },
+  chartSubtitle: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginLeft: 'auto',
+  },
   chartContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -237,6 +243,68 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.foreground,
     fontWeight: '500',
     marginTop: 2,
+  },
+  chartYearTotal: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  chartYearLabel: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+  },
+  chartYearValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  topClientsSection: {
+    marginBottom: 24,
+  },
+  clientCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  clientRank: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  clientRankText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  clientInfo: {
+    flex: 1,
+  },
+  clientName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  clientMeta: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  clientRevenue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.success,
   },
   quickReportsSection: {
     marginBottom: 24,
@@ -295,73 +363,136 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 8,
     lineHeight: 20,
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 12,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 24,
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.destructive,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primaryForeground,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 24,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: 12,
+  },
 });
 
 export default function ReportsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
-  const { jobs, fetchJobs, isLoading: jobsLoading } = useJobsStore();
-  const { invoices, fetchInvoices, isLoading: invoicesLoading } = useInvoicesStore();
-  const { quotes, fetchQuotes, isLoading: quotesLoading } = useQuotesStore();
-  const [period, setPeriod] = useState<ReportPeriod>('month');
+  const { 
+    summary, 
+    revenueReport, 
+    clientReport,
+    period, 
+    setPeriod,
+    fetchAllReports, 
+    isLoading,
+    error 
+  } = useReportsStore();
+  
   const [showPeriodPicker, setShowPeriodPicker] = useState(false);
 
   const refreshData = useCallback(async () => {
-    await Promise.all([fetchJobs(), fetchInvoices(), fetchQuotes()]);
-  }, [fetchJobs, fetchInvoices, fetchQuotes]);
+    await fetchAllReports();
+  }, [fetchAllReports]);
 
   useEffect(() => {
     refreshData();
   }, []);
 
   const formatCurrency = (amount: number) => {
-    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 0 })}`;
+    return `$${amount.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
-  const totalRevenue = invoices
-    .filter(i => i.status === 'paid')
-    .reduce((sum, i) => sum + (i.total || 0), 0);
-
-  const outstandingAmount = invoices
-    .filter(i => i.status === 'sent' || i.status === 'overdue')
-    .reduce((sum, i) => sum + ((i.total || 0) - (i.amountPaid || 0)), 0);
-
-  const completedJobs = jobs.filter(j => j.status === 'done' || j.status === 'invoiced').length;
-  const acceptedQuotes = quotes.filter(q => q.status === 'accepted').length;
-  const conversionRate = quotes.length > 0 ? Math.round((acceptedQuotes / quotes.length) * 100) : 0;
-
-  const generateMonthlyData = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const now = new Date();
-    
-    return months.map((label, index) => {
-      const monthInvoices = invoices.filter(inv => {
-        if (!inv.createdAt) return false;
-        const invDate = new Date(inv.createdAt);
-        return invDate.getMonth() === index && inv.status === 'paid';
-      });
-      const value = monthInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
-      return {
-        label,
-        value: value / 100,
-        amount: value > 0 ? `$${(value / 100 / 1000).toFixed(1)}k` : '$0'
-      };
-    });
+  const formatCurrencyShort = (amount: number) => {
+    if (amount >= 1000000) {
+      return `$${(amount / 1000000).toFixed(1)}M`;
+    } else if (amount >= 1000) {
+      return `$${(amount / 1000).toFixed(1)}k`;
+    }
+    return `$${amount.toFixed(0)}`;
   };
 
-  const monthlyData = generateMonthlyData();
-  const maxValue = Math.max(...monthlyData.map(d => d.value), 1);
-
-  const isLoading = jobsLoading || invoicesLoading || quotesLoading;
+  const handlePeriodChange = (newPeriod: ReportPeriod) => {
+    setPeriod(newPeriod);
+    setShowPeriodPicker(false);
+  };
 
   const handleExport = async () => {
+    if (!summary) {
+      Alert.alert('No Data', 'Please wait for the report to load');
+      return;
+    }
+
     const reportText = `TradieTrack Report - ${PERIODS.find(p => p.key === period)?.label}
 
-Total Revenue: ${formatCurrency(totalRevenue)}
-Outstanding: ${formatCurrency(outstandingAmount)}
-Jobs Completed: ${completedJobs}
-Quote Conversion: ${conversionRate}% (${acceptedQuotes}/${quotes.length})
+REVENUE
+Total Revenue: ${formatCurrency(summary.revenue.total)}
+Pending Revenue: ${formatCurrency(summary.revenue.pending)}
+Overdue: ${formatCurrency(summary.revenue.overdue)}
+GST Collected: ${formatCurrency(summary.revenue.gstCollected)}
+
+JOBS
+Total Jobs: ${summary.jobs.total}
+Completed: ${summary.jobs.completed}
+In Progress: ${summary.jobs.inProgress}
+
+QUOTES
+Total Quotes: ${summary.quotes.total}
+Accepted: ${summary.quotes.accepted}
+Pending: ${summary.quotes.pending}
+Conversion Rate: ${summary.quotes.conversionRate.toFixed(1)}%
+
+INVOICES
+Total Invoices: ${summary.invoices.total}
+Paid: ${summary.invoices.paid}
+Unpaid: ${summary.invoices.unpaid}
+Overdue: ${summary.invoices.overdue}
 
 Generated: ${new Date().toLocaleDateString('en-AU')}`;
 
@@ -376,22 +507,56 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
   };
 
   const handleReportDownload = (reportType: string) => {
+    if (!summary) {
+      Alert.alert('No Data', 'Please wait for the report to load');
+      return;
+    }
+
     let reportData = '';
     
     switch (reportType) {
       case 'income':
-        const paidInvoices = invoices.filter(i => i.status === 'paid');
-        reportData = `Income Report\n\nTotal Paid Invoices: ${paidInvoices.length}\nTotal Revenue: ${formatCurrency(totalRevenue)}\n\nDetails:\n${paidInvoices.map(i => `- Invoice #${i.invoiceNumber}: ${formatCurrency(i.total || 0)}`).join('\n')}`;
+        reportData = `Income Report - ${PERIODS.find(p => p.key === period)?.label}
+
+Total Revenue: ${formatCurrency(summary.revenue.total)}
+Pending Revenue: ${formatCurrency(summary.revenue.pending)}
+Overdue Revenue: ${formatCurrency(summary.revenue.overdue)}
+
+Invoices Paid: ${summary.invoices.paid}
+Invoices Outstanding: ${summary.invoices.unpaid + summary.invoices.overdue}
+
+Generated: ${new Date().toLocaleDateString('en-AU')}`;
         break;
       case 'jobs':
-        reportData = `Jobs Report\n\nTotal Jobs: ${jobs.length}\nCompleted: ${completedJobs}\nIn Progress: ${jobs.filter(j => j.status === 'in_progress').length}\nPending: ${jobs.filter(j => j.status === 'pending').length}`;
+        reportData = `Jobs Report - ${PERIODS.find(p => p.key === period)?.label}
+
+Total Jobs: ${summary.jobs.total}
+Completed: ${summary.jobs.completed}
+In Progress: ${summary.jobs.inProgress}
+Completion Rate: ${summary.jobs.total > 0 ? ((summary.jobs.completed / summary.jobs.total) * 100).toFixed(1) : 0}%
+
+Generated: ${new Date().toLocaleDateString('en-AU')}`;
         break;
-      case 'time':
-        reportData = `Time Tracking Report\n\nTotal Jobs with Time: ${jobs.filter(j => j.totalHours).length}\nTotal Hours: ${jobs.reduce((sum, j) => sum + (j.totalHours || 0), 0).toFixed(1)}`;
+      case 'quotes':
+        reportData = `Quotes Report - ${PERIODS.find(p => p.key === period)?.label}
+
+Total Quotes: ${summary.quotes.total}
+Accepted: ${summary.quotes.accepted}
+Pending: ${summary.quotes.pending}
+Conversion Rate: ${summary.quotes.conversionRate.toFixed(1)}%
+
+Generated: ${new Date().toLocaleDateString('en-AU')}`;
         break;
       case 'tax':
-        const gstCollected = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + (i.gstAmount || 0), 0);
-        reportData = `Tax Summary\n\nGST Collected: ${formatCurrency(gstCollected)}\nTotal Taxable Revenue: ${formatCurrency(totalRevenue)}`;
+        reportData = `Tax Summary - ${PERIODS.find(p => p.key === period)?.label}
+
+GST Collected: ${formatCurrency(summary.revenue.gstCollected)}
+Total Revenue (incl GST): ${formatCurrency(summary.revenue.total)}
+
+Note: GST calculations are estimates based on 10% GST.
+Consult your accountant for accurate tax reporting.
+
+Generated: ${new Date().toLocaleDateString('en-AU')}`;
         break;
     }
 
@@ -400,6 +565,21 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
       title: `TradieTrack ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`
     }).catch(() => Alert.alert('Error', 'Failed to share report'));
   };
+
+  const monthlyData = useMemo(() => {
+    if (!revenueReport?.months) return [];
+    return revenueReport.months.slice(0, 6).map(m => ({
+      label: m.month.substring(0, 3),
+      value: m.revenue,
+      amount: formatCurrencyShort(m.revenue)
+    }));
+  }, [revenueReport]);
+
+  const maxChartValue = useMemo(() => {
+    return Math.max(...monthlyData.map(d => d.value), 1);
+  }, [monthlyData]);
+
+  const conversionRate = summary?.quotes.conversionRate || 0;
 
   return (
     <>
@@ -422,9 +602,13 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
               <Text style={styles.pageTitle}>Reports</Text>
               <Text style={styles.pageSubtitle}>Business analytics and insights</Text>
             </View>
-            <TouchableOpacity style={styles.exportButton} onPress={handleExport}>
-              <Feather name="share" size={18} color={colors.foreground} />
-              <Text style={styles.exportButtonText}>Share</Text>
+            <TouchableOpacity 
+              style={styles.exportButton} 
+              onPress={handleExport}
+              disabled={!summary}
+            >
+              <Feather name="share" size={18} color={summary ? colors.foreground : colors.mutedForeground} />
+              <Text style={[styles.exportButtonText, !summary && { color: colors.mutedForeground }]}>Share</Text>
             </TouchableOpacity>
           </View>
 
@@ -436,22 +620,20 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
             <Text style={styles.periodSelectorText}>
               {PERIODS.find(p => p.key === period)?.label}
             </Text>
-            <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+            <Feather name={showPeriodPicker ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
           </TouchableOpacity>
 
           {showPeriodPicker && (
             <View style={styles.periodPicker}>
-              {PERIODS.map((p) => (
+              {PERIODS.map((p, index) => (
                 <TouchableOpacity
                   key={p.key}
                   style={[
                     styles.periodOption,
-                    period === p.key && styles.periodOptionActive
+                    period === p.key && styles.periodOptionActive,
+                    index === PERIODS.length - 1 && { borderBottomWidth: 0 }
                   ]}
-                  onPress={() => {
-                    setPeriod(p.key);
-                    setShowPeriodPicker(false);
-                  }}
+                  onPress={() => handlePeriodChange(p.key)}
                 >
                   <Text style={[
                     styles.periodOptionText,
@@ -464,85 +646,143 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
             </View>
           )}
 
-          <Text style={styles.sectionTitle}>KEY METRICS</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <View style={styles.statHeader}>
-                  <View style={styles.statIconContainer}>
-                    <Feather name="dollar-sign" size={22} color={colors.success} />
-                  </View>
-                  <View style={[styles.trendBadge, styles.trendBadgeUp]}>
-                    <Feather name="trending-up" size={12} color={colors.success} />
-                  </View>
-                </View>
-                <Text style={styles.statValue}>{formatCurrency(totalRevenue)}</Text>
-                <Text style={styles.statTitle}>TOTAL REVENUE</Text>
-              </View>
-              <View style={styles.statCard}>
-                <View style={styles.statHeader}>
-                  <View style={styles.statIconContainer}>
-                    <Feather name="clock" size={22} color={colors.warning} />
-                  </View>
-                  <View style={styles.trendBadge}>
-                    <Feather name="minus" size={12} color={colors.mutedForeground} />
-                  </View>
-                </View>
-                <Text style={styles.statValue}>{formatCurrency(outstandingAmount)}</Text>
-                <Text style={styles.statTitle}>OUTSTANDING</Text>
-              </View>
+          {error && (
+            <View style={styles.errorContainer}>
+              <Feather name="alert-circle" size={40} color={colors.destructive} />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={refreshData}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <View style={styles.statHeader}>
-                  <View style={styles.statIconContainer}>
-                    <Feather name="briefcase" size={22} color={colors.primary} />
-                  </View>
-                  <View style={[styles.trendBadge, styles.trendBadgeUp]}>
-                    <Feather name="trending-up" size={12} color={colors.success} />
-                  </View>
-                </View>
-                <Text style={styles.statValue}>{completedJobs}</Text>
-                <Text style={styles.statTitle}>JOBS COMPLETED</Text>
-              </View>
-              <View style={styles.statCard}>
-                <View style={styles.statHeader}>
-                  <View style={styles.statIconContainer}>
-                    <Feather name="file-text" size={22} color={colors.info} />
-                  </View>
-                  <View style={[styles.trendBadge, conversionRate >= 50 ? styles.trendBadgeUp : styles.trendBadgeDown]}>
-                    <Feather 
-                      name="trending-up" 
-                      size={12} 
-                      color={conversionRate >= 50 ? colors.success : colors.destructive}
-                      style={conversionRate < 50 ? { transform: [{ rotate: '180deg' }] } : undefined}
-                    />
-                  </View>
-                </View>
-                <Text style={styles.statValue}>{conversionRate}%</Text>
-                <Text style={styles.statTitle}>QUOTE CONVERSION</Text>
-                <Text style={styles.statSubValue}>{acceptedQuotes} of {quotes.length}</Text>
-              </View>
-            </View>
-          </View>
+          )}
 
-          <View style={styles.chartSection}>
-            <View style={styles.chartHeader}>
-              <Feather name="bar-chart-2" size={20} color={colors.foreground} />
-              <Text style={styles.chartTitle}>Revenue Overview</Text>
+          {isLoading && !summary && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Loading reports...</Text>
             </View>
-            <View style={styles.chartContainer}>
-              {monthlyData.map((data, index) => (
-                <View key={index} style={styles.chartBarContainer}>
-                  <View style={styles.chartBarWrapper}>
-                    <View style={[styles.chartBar, { height: `${maxValue > 0 ? (data.value / maxValue) * 100 : 0}%` }]} />
+          )}
+
+          {summary && (
+            <>
+              <Text style={styles.sectionTitle}>KEY METRICS</Text>
+              <View style={styles.statsGrid}>
+                <View style={styles.statsRow}>
+                  <View style={styles.statCard}>
+                    <View style={styles.statHeader}>
+                      <View style={[styles.statIconContainer, { backgroundColor: colors.successLight }]}>
+                        <Feather name="dollar-sign" size={22} color={colors.success} />
+                      </View>
+                      {summary.revenue.total > 0 && (
+                        <View style={[styles.trendBadge, styles.trendBadgeUp]}>
+                          <Feather name="trending-up" size={12} color={colors.success} />
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.statValue}>{formatCurrency(summary.revenue.total)}</Text>
+                    <Text style={styles.statTitle}>TOTAL REVENUE</Text>
+                    {summary.revenue.gstCollected > 0 && (
+                      <Text style={styles.statSubValue}>GST: {formatCurrency(summary.revenue.gstCollected)}</Text>
+                    )}
                   </View>
-                  <Text style={styles.chartBarLabel}>{data.label}</Text>
-                  <Text style={styles.chartBarAmount}>{data.amount}</Text>
+                  <View style={styles.statCard}>
+                    <View style={styles.statHeader}>
+                      <View style={[styles.statIconContainer, { backgroundColor: colors.warningLight }]}>
+                        <Feather name="clock" size={22} color={colors.warning} />
+                      </View>
+                      {summary.revenue.overdue > 0 && (
+                        <View style={[styles.trendBadge, styles.trendBadgeDown]}>
+                          <Feather name="alert-circle" size={12} color={colors.destructive} />
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.statValue}>{formatCurrency(summary.revenue.pending + summary.revenue.overdue)}</Text>
+                    <Text style={styles.statTitle}>OUTSTANDING</Text>
+                    {summary.invoices.overdue > 0 && (
+                      <Text style={styles.statSubValue}>{summary.invoices.overdue} overdue</Text>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.statsRow}>
+                  <View style={styles.statCard}>
+                    <View style={styles.statHeader}>
+                      <View style={styles.statIconContainer}>
+                        <Feather name="briefcase" size={22} color={colors.primary} />
+                      </View>
+                      <View style={[styles.trendBadge, summary.jobs.completed > 0 ? styles.trendBadgeUp : {}]}>
+                        <Feather name="check" size={12} color={summary.jobs.completed > 0 ? colors.success : colors.mutedForeground} />
+                      </View>
+                    </View>
+                    <Text style={styles.statValue}>{summary.jobs.completed}</Text>
+                    <Text style={styles.statTitle}>JOBS COMPLETED</Text>
+                    <Text style={styles.statSubValue}>{summary.jobs.inProgress} in progress</Text>
+                  </View>
+                  <View style={styles.statCard}>
+                    <View style={styles.statHeader}>
+                      <View style={[styles.statIconContainer, { backgroundColor: colors.infoLight }]}>
+                        <Feather name="file-text" size={22} color={colors.info} />
+                      </View>
+                      <View style={[styles.trendBadge, conversionRate >= 50 ? styles.trendBadgeUp : conversionRate > 0 ? styles.trendBadgeDown : {}]}>
+                        <Feather 
+                          name={conversionRate >= 50 ? "trending-up" : "trending-down"} 
+                          size={12} 
+                          color={conversionRate >= 50 ? colors.success : conversionRate > 0 ? colors.destructive : colors.mutedForeground}
+                        />
+                      </View>
+                    </View>
+                    <Text style={styles.statValue}>{conversionRate.toFixed(0)}%</Text>
+                    <Text style={styles.statTitle}>QUOTE CONVERSION</Text>
+                    <Text style={styles.statSubValue}>{summary.quotes.accepted} of {summary.quotes.total}</Text>
+                  </View>
+                </View>
+              </View>
+            </>
+          )}
+
+          {revenueReport && monthlyData.length > 0 && (
+            <View style={styles.chartSection}>
+              <View style={styles.chartHeader}>
+                <Feather name="bar-chart-2" size={20} color={colors.foreground} />
+                <Text style={styles.chartTitle}>Revenue Overview</Text>
+                <Text style={styles.chartSubtitle}>{revenueReport.year}</Text>
+              </View>
+              <View style={styles.chartContainer}>
+                {monthlyData.map((data, index) => (
+                  <View key={index} style={styles.chartBarContainer}>
+                    <View style={styles.chartBarWrapper}>
+                      <View style={[styles.chartBar, { height: `${maxChartValue > 0 ? (data.value / maxChartValue) * 100 : 0}%` }]} />
+                    </View>
+                    <Text style={styles.chartBarLabel}>{data.label}</Text>
+                    <Text style={styles.chartBarAmount}>{data.amount}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.chartYearTotal}>
+                <Text style={styles.chartYearLabel}>Year Total</Text>
+                <Text style={styles.chartYearValue}>{formatCurrency(revenueReport.yearTotal)}</Text>
+              </View>
+            </View>
+          )}
+
+          {clientReport && clientReport.clients.length > 0 && (
+            <View style={styles.topClientsSection}>
+              <Text style={styles.sectionTitle}>TOP CLIENTS</Text>
+              {clientReport.clients.slice(0, 5).map((client, index) => (
+                <View key={client.id} style={styles.clientCard}>
+                  <View style={styles.clientRank}>
+                    <Text style={styles.clientRankText}>{index + 1}</Text>
+                  </View>
+                  <View style={styles.clientInfo}>
+                    <Text style={styles.clientName} numberOfLines={1}>{client.name}</Text>
+                    <Text style={styles.clientMeta}>
+                      {client.jobsCompleted} jobs • {client.invoicesPaid} invoices paid
+                    </Text>
+                  </View>
+                  <Text style={styles.clientRevenue}>{formatCurrency(client.totalRevenue)}</Text>
                 </View>
               ))}
             </View>
-          </View>
+          )}
 
           <View style={styles.quickReportsSection}>
             <Text style={styles.sectionTitle}>QUICK REPORTS</Text>
@@ -569,20 +809,20 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
               <Feather name="share" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('time')}>
-              <View style={[styles.reportCardIcon, { backgroundColor: colors.warningLight }]}>
-                <Feather name="clock" size={20} color={colors.warning} />
+            <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('quotes')}>
+              <View style={[styles.reportCardIcon, { backgroundColor: colors.infoLight }]}>
+                <Feather name="file-text" size={20} color={colors.info} />
               </View>
               <View style={styles.reportCardContent}>
-                <Text style={styles.reportCardTitle}>Time Tracking Report</Text>
-                <Text style={styles.reportCardSubtitle}>Hours worked and billable time</Text>
+                <Text style={styles.reportCardTitle}>Quotes Report</Text>
+                <Text style={styles.reportCardSubtitle}>Quote conversion and acceptance rates</Text>
               </View>
               <Feather name="share" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('tax')}>
-              <View style={[styles.reportCardIcon, { backgroundColor: colors.infoLight }]}>
-                <Feather name="file-text" size={20} color={colors.info} />
+              <View style={[styles.reportCardIcon, { backgroundColor: colors.warningLight }]}>
+                <Feather name="percent" size={20} color={colors.warning} />
               </View>
               <View style={styles.reportCardContent}>
                 <Text style={styles.reportCardTitle}>Tax Summary</Text>
@@ -591,6 +831,16 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
               <Feather name="share" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
+
+          {summary && summary.jobs.total === 0 && summary.quotes.total === 0 && summary.invoices.total === 0 && (
+            <View style={styles.emptyCard}>
+              <Feather name="bar-chart" size={40} color={colors.mutedForeground} />
+              <Text style={styles.emptyText}>
+                No data available for this period.{'\n'}
+                Create jobs, quotes, and invoices to see your business insights.
+              </Text>
+            </View>
+          )}
 
           <View style={styles.insightsCard}>
             <Feather name="zap" size={32} color={colors.primary} />

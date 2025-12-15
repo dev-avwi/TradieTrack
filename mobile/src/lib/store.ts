@@ -1636,3 +1636,231 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
     }
   },
 }));
+
+// ============ REPORTS STORE ============
+
+interface ReportSummary {
+  period: { start: string; end: string };
+  revenue: {
+    total: number;
+    pending: number;
+    overdue: number;
+    gstCollected: number;
+  };
+  jobs: {
+    total: number;
+    completed: number;
+    inProgress: number;
+  };
+  quotes: {
+    total: number;
+    accepted: number;
+    pending: number;
+    conversionRate: number;
+  };
+  invoices: {
+    total: number;
+    paid: number;
+    unpaid: number;
+    overdue: number;
+  };
+}
+
+interface RevenueReport {
+  year: number;
+  months: {
+    month: string;
+    revenue: number;
+    gst: number;
+    invoicesPaid: number;
+  }[];
+  yearTotal: number;
+  yearGst: number;
+}
+
+interface ClientReport {
+  clients: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    totalRevenue: number;
+    outstandingBalance: number;
+    jobsCompleted: number;
+    invoicesPaid: number;
+    invoicesOutstanding: number;
+  }[];
+  totals: {
+    totalRevenue: number;
+    totalOutstanding: number;
+  };
+}
+
+type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
+
+interface ReportsState {
+  summary: ReportSummary | null;
+  revenueReport: RevenueReport | null;
+  clientReport: ClientReport | null;
+  period: ReportPeriod;
+  isLoading: boolean;
+  error: string | null;
+  
+  setPeriod: (period: ReportPeriod) => void;
+  fetchSummary: () => Promise<void>;
+  fetchRevenueReport: (year?: number) => Promise<void>;
+  fetchClientReport: (limit?: number) => Promise<void>;
+  fetchAllReports: () => Promise<void>;
+}
+
+function getDateRangeForPeriod(period: ReportPeriod): { startDate: string; endDate: string } {
+  const now = new Date();
+  const end = now.toISOString();
+  let start: Date;
+  
+  switch (period) {
+    case 'week':
+      start = new Date(now);
+      start.setDate(start.getDate() - 7);
+      break;
+    case 'month':
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case 'quarter':
+      const quarterMonth = Math.floor(now.getMonth() / 3) * 3;
+      start = new Date(now.getFullYear(), quarterMonth, 1);
+      break;
+    case 'year':
+      start = new Date(now.getFullYear(), 0, 1);
+      break;
+    default:
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+  
+  return { startDate: start.toISOString(), endDate: end };
+}
+
+export const useReportsStore = create<ReportsState>((set, get) => ({
+  summary: null,
+  revenueReport: null,
+  clientReport: null,
+  period: 'month',
+  isLoading: false,
+  error: null,
+
+  setPeriod: (period: ReportPeriod) => {
+    set({ period });
+    get().fetchSummary();
+  },
+
+  fetchSummary: async () => {
+    set({ isLoading: true, error: null });
+    
+    const isOnline = useOfflineStore.getState().isOnline;
+    if (!isOnline) {
+      set({ isLoading: false, error: 'Reports require an internet connection' });
+      return;
+    }
+    
+    const { period } = get();
+    const { startDate, endDate } = getDateRangeForPeriod(period);
+    
+    try {
+      const response = await api.get<ReportSummary>(`/api/reports/summary?startDate=${startDate}&endDate=${endDate}`);
+      
+      if (response.error) {
+        set({ isLoading: false, error: 'Failed to load report summary' });
+        return;
+      }
+      
+      set({ summary: response.data, isLoading: false, error: null });
+    } catch (e) {
+      console.log('[ReportsStore] Error fetching summary:', e);
+      set({ isLoading: false, error: 'Failed to load report summary' });
+    }
+  },
+
+  fetchRevenueReport: async (year?: number) => {
+    set({ isLoading: true, error: null });
+    
+    const isOnline = useOfflineStore.getState().isOnline;
+    if (!isOnline) {
+      set({ isLoading: false, error: 'Reports require an internet connection' });
+      return;
+    }
+    
+    const targetYear = year || new Date().getFullYear();
+    
+    try {
+      const response = await api.get<RevenueReport>(`/api/reports/revenue?year=${targetYear}`);
+      
+      if (response.error) {
+        set({ isLoading: false, error: 'Failed to load revenue report' });
+        return;
+      }
+      
+      set({ revenueReport: response.data, isLoading: false, error: null });
+    } catch (e) {
+      console.log('[ReportsStore] Error fetching revenue report:', e);
+      set({ isLoading: false, error: 'Failed to load revenue report' });
+    }
+  },
+
+  fetchClientReport: async (limit?: number) => {
+    set({ isLoading: true, error: null });
+    
+    const isOnline = useOfflineStore.getState().isOnline;
+    if (!isOnline) {
+      set({ isLoading: false, error: 'Reports require an internet connection' });
+      return;
+    }
+    
+    try {
+      const url = limit ? `/api/reports/clients?limit=${limit}` : '/api/reports/clients';
+      const response = await api.get<ClientReport>(url);
+      
+      if (response.error) {
+        set({ isLoading: false, error: 'Failed to load client report' });
+        return;
+      }
+      
+      set({ clientReport: response.data, isLoading: false, error: null });
+    } catch (e) {
+      console.log('[ReportsStore] Error fetching client report:', e);
+      set({ isLoading: false, error: 'Failed to load client report' });
+    }
+  },
+
+  fetchAllReports: async () => {
+    set({ isLoading: true, error: null });
+    
+    const isOnline = useOfflineStore.getState().isOnline;
+    if (!isOnline) {
+      set({ isLoading: false, error: 'Reports require an internet connection' });
+      return;
+    }
+    
+    const { period } = get();
+    const { startDate, endDate } = getDateRangeForPeriod(period);
+    const currentYear = new Date().getFullYear();
+    
+    try {
+      const [summaryRes, revenueRes, clientRes] = await Promise.all([
+        api.get<ReportSummary>(`/api/reports/summary?startDate=${startDate}&endDate=${endDate}`),
+        api.get<RevenueReport>(`/api/reports/revenue?year=${currentYear}`),
+        api.get<ClientReport>('/api/reports/clients?limit=5'),
+      ]);
+      
+      set({
+        summary: summaryRes.data || null,
+        revenueReport: revenueRes.data || null,
+        clientReport: clientRes.data || null,
+        isLoading: false,
+        error: null,
+      });
+    } catch (e) {
+      console.log('[ReportsStore] Error fetching all reports:', e);
+      set({ isLoading: false, error: 'Failed to load reports' });
+    }
+  },
+}));

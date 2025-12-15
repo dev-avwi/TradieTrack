@@ -41,11 +41,12 @@ interface ScheduleSuggestionsResponse {
 
 interface TeamMember {
   id: string;
-  userId: string;
-  user?: {
-    firstName: string;
-    lastName: string;
-  };
+  memberId: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  roleId: string;
+  inviteStatus: string;
 }
 
 const TIME_SLOTS = [
@@ -819,9 +820,9 @@ export default function DispatchBoardScreen() {
   const dragDropTeamMembers = useMemo(() => {
     return teamMembers.map(member => ({
       id: member.id,
-      userId: member.userId,
-      name: member.user?.firstName 
-        ? `${member.user.firstName} ${member.user.lastName || ''}`.trim()
+      userId: member.memberId,
+      name: member.firstName 
+        ? `${member.firstName} ${member.lastName || ''}`.trim()
         : 'Team Member',
     }));
   }, [teamMembers]);
@@ -1097,15 +1098,15 @@ export default function DispatchBoardScreen() {
                             key={member.id}
                             style={[
                               styles.teamChip,
-                              selectedTeamMember === member.id && styles.teamChipSelected
+                              selectedTeamMember === member.memberId && styles.teamChipSelected
                             ]}
-                            onPress={() => setSelectedTeamMember(member.id)}
+                            onPress={() => setSelectedTeamMember(member.memberId)}
                           >
                             <Text style={[
                               styles.teamChipText,
-                              selectedTeamMember === member.id && styles.teamChipTextSelected
+                              selectedTeamMember === member.memberId && styles.teamChipTextSelected
                             ]}>
-                              {member.user?.firstName || 'Team Member'}
+                              {member.firstName || 'Team Member'}
                             </Text>
                           </TouchableOpacity>
                         ))}

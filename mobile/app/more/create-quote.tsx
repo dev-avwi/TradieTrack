@@ -11,13 +11,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Dimensions,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { DatePicker } from '../../src/components/ui/DatePicker';
-import { useClientsStore, useQuotesStore, useJobsStore } from '../../src/lib/store';
+import { useClientsStore, useQuotesStore, useJobsStore, useAuthStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
+import LiveDocumentPreview from '../../src/components/LiveDocumentPreview';
+import { DOCUMENT_TEMPLATES, TemplateId, DEFAULT_TEMPLATE } from '../../src/lib/document-templates';
 
 interface LineItem {
   id: string;
@@ -518,6 +521,67 @@ const createStyles = (colors: any) => StyleSheet.create({
   fieldLabel: { fontSize: 14, fontWeight: '500', color: colors.foreground, marginBottom: 6 },
   primaryButton: { backgroundColor: colors.primary },
   primaryButtonText: { fontSize: 15, fontWeight: '600', color: colors.primaryForeground },
+  tabContainer: { 
+    flexDirection: 'row', 
+    backgroundColor: colors.card, 
+    borderBottomWidth: 1, 
+    borderBottomColor: colors.border, 
+    paddingHorizontal: 16, 
+    paddingVertical: 8,
+    gap: 8,
+  },
+  tab: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 10, 
+    borderRadius: 10, 
+    gap: 6, 
+    backgroundColor: colors.muted,
+  },
+  tabActive: { 
+    backgroundColor: colors.primary,
+  },
+  tabText: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    color: colors.foreground,
+  },
+  tabTextActive: { 
+    color: colors.primaryForeground,
+  },
+  templateStyleContainer: {
+    flexDirection: 'column',
+    gap: 8,
+  },
+  templateStyleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 12,
+  },
+  templateStyleCardSelected: {
+    backgroundColor: `${colors.primary}10`,
+    borderColor: colors.primary,
+  },
+  templateStyleIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: `${colors.primary}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  templateStyleName: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
 });
 
 export default function CreateQuoteScreen() {
@@ -529,6 +593,8 @@ export default function CreateQuoteScreen() {
   const { jobs, fetchJobs } = useJobsStore();
   const { fetchQuotes } = useQuotesStore();
 
+  const { businessSettings } = useAuthStore();
+  
   const [clientId, setClientId] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(params.jobId || null);
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -549,10 +615,14 @@ export default function CreateQuoteScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   
-  // Template picker state
+  // Template picker state (for pre-filling content)
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+  
+  // Template style and preview state
+  const [selectedTemplateStyle, setSelectedTemplateStyle] = useState<TemplateId>(DEFAULT_TEMPLATE);
+  const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit');
   
   // Prefill suggestions state
   const [prefillSuggestions, setPrefillSuggestions] = useState<any>(null);
@@ -845,6 +915,35 @@ export default function CreateQuoteScreen() {
     }
   };
 
+  // Business info for preview
+  const businessInfo = {
+    businessName: businessSettings?.businessName,
+    abn: businessSettings?.abn,
+    address: businessSettings?.address,
+    phone: businessSettings?.phone,
+    email: businessSettings?.email,
+    logoUrl: businessSettings?.logoUrl,
+    brandColor: businessSettings?.brandColor,
+    gstEnabled: true,
+  };
+
+  // Client info for preview
+  const clientInfo = selectedClient ? {
+    name: selectedClient.name,
+    email: selectedClient.email,
+    phone: selectedClient.phone,
+    address: selectedClient.address,
+  } : null;
+
+  // Line items for preview
+  const previewLineItems = lineItems
+    .filter(item => item.description.trim())
+    .map(item => ({
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice / 100, // Convert cents to dollars for preview
+    }));
+
   return (
     <>
       <Stack.Screen
@@ -856,6 +955,77 @@ export default function CreateQuoteScreen() {
         }}
       />
 
+      {/* Tab Switcher - Edit / Preview */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, mobileView === 'edit' && styles.tabActive]}
+          onPress={() => setMobileView('edit')}
+          testID="tab-edit"
+        >
+          <Feather name="edit-2" size={16} color={mobileView === 'edit' ? colors.primaryForeground : colors.foreground} />
+          <Text style={[styles.tabText, mobileView === 'edit' && styles.tabTextActive]}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, mobileView === 'preview' && styles.tabActive]}
+          onPress={() => setMobileView('preview')}
+          testID="tab-preview"
+        >
+          <Feather name="eye" size={16} color={mobileView === 'preview' ? colors.primaryForeground : colors.foreground} />
+          <Text style={[styles.tabText, mobileView === 'preview' && styles.tabTextActive]}>Preview</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Preview Mode */}
+      {mobileView === 'preview' ? (
+        <View style={{ flex: 1 }}>
+          <LiveDocumentPreview
+            type="quote"
+            title={selectedClient ? `Quote for ${selectedClient.name}` : 'New Quote'}
+            date={new Date().toISOString()}
+            validUntil={validUntil.toISOString()}
+            lineItems={previewLineItems}
+            notes={notes}
+            terms={termsAndConditions}
+            business={businessInfo}
+            client={clientInfo}
+            showDepositSection={depositPercentage > 0}
+            depositPercent={depositPercentage}
+            gstEnabled={true}
+            templateId={selectedTemplateStyle}
+          />
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.saveDraftButton]}
+              onPress={() => saveQuote('draft')}
+              disabled={isSaving || isSending}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color={colors.foreground} />
+              ) : (
+                <>
+                  <Feather name="save" size={18} color={colors.foreground} />
+                  <Text style={styles.saveDraftText}>Save Draft</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.sendButton]}
+              onPress={() => saveQuote('sent')}
+              disabled={isSaving || isSending}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Feather name="send" size={18} color="#FFFFFF" />
+                  <Text style={styles.sendText}>Save & Send</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}
@@ -866,6 +1036,48 @@ export default function CreateQuoteScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Template Style Selector */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Document Style</Text>
+            <View style={styles.templateStyleContainer}>
+              {(Object.keys(DOCUMENT_TEMPLATES) as TemplateId[]).map((templateId) => {
+                const template = DOCUMENT_TEMPLATES[templateId];
+                const isSelected = selectedTemplateStyle === templateId;
+                return (
+                  <TouchableOpacity
+                    key={templateId}
+                    style={[
+                      styles.templateStyleCard,
+                      isSelected && styles.templateStyleCardSelected,
+                    ]}
+                    onPress={() => setSelectedTemplateStyle(templateId)}
+                    testID={`template-style-${templateId}`}
+                  >
+                    <View style={[
+                      styles.templateStyleIcon,
+                      isSelected && { backgroundColor: colors.primary },
+                    ]}>
+                      <Feather 
+                        name={templateId === 'professional' ? 'briefcase' : templateId === 'modern' ? 'zap' : 'feather'} 
+                        size={18} 
+                        color={isSelected ? '#FFFFFF' : colors.primary} 
+                      />
+                    </View>
+                    <Text style={[
+                      styles.templateStyleName,
+                      isSelected && { color: colors.primary, fontWeight: '600' },
+                    ]}>
+                      {template.name}
+                    </Text>
+                    {isSelected && (
+                      <Feather name="check-circle" size={16} color={colors.primary} style={{ marginLeft: 'auto' }} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           {/* Client Selection */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Client *</Text>
@@ -1196,6 +1408,7 @@ export default function CreateQuoteScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      )}
 
       <ClientSelector
         clients={clients}

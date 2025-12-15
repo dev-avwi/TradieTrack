@@ -16,7 +16,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useQuotesStore, useClientsStore, useAuthStore } from '../../../src/lib/store';
 import { colors } from '../../../src/lib/colors';
-import { DocumentPreview } from '../../../src/components/DocumentPreview';
+import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { API_URL } from '../../../src/lib/api';
 
@@ -88,7 +88,12 @@ export default function QuoteDetailScreen() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
+    // Database stores dollars, not cents - no division needed
+    return new Intl.NumberFormat('en-AU', {
+      style: 'currency',
+      currency: 'AUD',
+      minimumFractionDigits: 2,
+    }).format(Number(amount) || 0);
   };
 
   const formatDate = (dateStr?: string) => {
@@ -538,14 +543,56 @@ export default function QuoteDetailScreen() {
       </ScrollView>
 
       {/* Document Preview Modal */}
-      <DocumentPreview
+      <Modal
         visible={showPreview}
-        onClose={() => setShowPreview(false)}
-        type="quote"
-        document={previewDocument}
-        templateId={businessSettings?.documentTemplate}
-        templateCustomization={businessSettings?.documentTemplateSettings}
-      />
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPreview(false)}
+      >
+        <View style={styles.previewModalContainer}>
+          <View style={styles.previewModalHeader}>
+            <TouchableOpacity onPress={() => setShowPreview(false)} style={styles.previewCloseButton}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+            <Text style={styles.previewModalTitle}>Quote Preview</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <LiveDocumentPreview
+            type="quote"
+            documentNumber={quote.quoteNumber}
+            date={quote.createdAt}
+            validUntil={quote.validUntil}
+            lineItems={lineItems.map((item: any) => ({
+              description: item.description,
+              quantity: Number(item.quantity),
+              unitPrice: Number(item.unitPrice),
+            }))}
+            notes={quote.notes}
+            business={{
+              businessName: businessSettings?.businessName || user?.businessName,
+              abn: businessSettings?.abn || user?.abn,
+              address: businessSettings?.address || user?.address,
+              phone: businessSettings?.phone || user?.phone,
+              email: businessSettings?.email || user?.email,
+              logoUrl: businessSettings?.logoUrl || user?.logoUrl,
+              brandColor: brandColor,
+              gstEnabled: user?.gstEnabled !== false,
+            }}
+            client={client ? {
+              name: client.name,
+              email: client.email,
+              phone: client.phone,
+              address: client.address,
+            } : null}
+            showDepositSection={!!quote.depositAmount && quote.depositAmount > 0}
+            depositPercent={quote.depositAmount && quote.total ? Math.round((quote.depositAmount / quote.total) * 100) : 0}
+            gstEnabled={user?.gstEnabled !== false}
+            status={quote.status}
+            templateId={businessSettings?.documentTemplate}
+            templateCustomization={businessSettings?.documentTemplateSettings}
+          />
+        </View>
+      </Modal>
 
       {/* Email Compose Modal */}
       <EmailComposeModal
@@ -1070,5 +1117,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.mutedForeground,
     marginTop: 2,
+  },
+  previewModalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  previewModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  previewCloseButton: {
+    padding: 8,
+    width: 40,
+  },
+  previewModalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.foreground,
   },
 });

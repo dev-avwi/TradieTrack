@@ -9,7 +9,8 @@ import {
   Alert,
   TextInput,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  Dimensions
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -17,6 +18,8 @@ import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { API_URL } from '../../src/lib/api';
 import { spacing, radius, shadows } from '../../src/lib/design-tokens';
+import LiveDocumentPreview from '../../src/components/LiveDocumentPreview';
+import { TemplateId, DOCUMENT_TEMPLATES } from '../../src/lib/document-templates';
 
 interface DocumentTemplate {
   id: string;
@@ -29,6 +32,7 @@ interface DocumentTemplate {
   styling: {
     brandColor?: string;
     logoDisplay?: boolean;
+    templateStyle?: TemplateId;
   };
   sections: {
     showHeader?: boolean;
@@ -58,6 +62,12 @@ interface DocumentTemplate {
 const tradeTypes = [
   'plumbing', 'electrical', 'carpentry', 'painting', 'hvac', 'roofing', 
   'landscaping', 'tiling', 'flooring', 'renovation', 'handyman', 'general'
+];
+
+const templateStyles: { id: TemplateId; name: string; description: string }[] = [
+  { id: 'professional', name: 'Professional', description: 'Traditional layout with bordered tables' },
+  { id: 'modern', name: 'Modern', description: 'Clean design with bold brand colors' },
+  { id: 'minimal', name: 'Minimal', description: 'Ultra-clean with subtle styling' },
 ];
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
@@ -302,7 +312,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -311,9 +321,48 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
     color: colors.foreground,
   },
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: 4,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.md,
+  },
+  tabActive: {
+    backgroundColor: colors.card,
+    ...shadows.sm,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  tabTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
   modalContent: {
     flex: 1,
     padding: spacing.lg,
+  },
+  previewContainer: {
+    flex: 1,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+  },
+  previewScrollView: {
+    flex: 1,
   },
   inputGroup: {
     marginBottom: spacing.lg + 4,
@@ -399,6 +448,103 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.md,
   },
+  styleCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  styleCardActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  styleCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  styleName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  styleDescription: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 4,
+  },
+  colorPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  colorPreview: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  colorInput: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    fontSize: 14,
+    color: colors.foreground,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  colorPresets: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  colorPreset: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorPresetActive: {
+    borderColor: colors.foreground,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.card,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
+    marginBottom: spacing.sm,
+  },
+  switchLabel: {
+    fontSize: 14,
+    color: colors.foreground,
+  },
+  switchTrack: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.muted,
+    padding: 2,
+  },
+  switchTrackActive: {
+    backgroundColor: colors.primary,
+  },
+  switchThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.card,
+  },
+  switchThumbActive: {
+    marginLeft: 20,
+  },
   lineItemRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -439,16 +585,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.sm,
     justifyContent: 'center',
   },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-  },
-  switchLabel: {
-    fontSize: 14,
-    color: colors.foreground,
-  },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -472,6 +608,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: spacing['4xl'],
+  },
+  previewTotalBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+  },
+  previewTotalText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
   },
 });
 
@@ -510,6 +657,11 @@ interface NewTemplate {
   name: string;
   type: 'quote' | 'invoice' | 'job';
   tradeType: string;
+  styling: {
+    brandColor: string;
+    logoDisplay: boolean;
+    templateStyle: TemplateId;
+  };
   defaults: {
     title: string;
     description: string;
@@ -520,19 +672,44 @@ interface NewTemplate {
   defaultLineItems: LineItem[];
 }
 
+const colorPresets = [
+  '#1e3a5f',
+  '#2563eb',
+  '#059669',
+  '#d97706',
+  '#dc2626',
+  '#7c3aed',
+  '#db2777',
+  '#0891b2',
+];
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 2,
+  }).format(amount);
+}
+
 export default function TemplatesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { token } = useAuthStore();
+  const { token, businessSettings } = useAuthStore();
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<'all' | 'quote' | 'invoice' | 'job'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<DocumentTemplate | null>(null);
+  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [newTemplate, setNewTemplate] = useState<NewTemplate>({
     name: '',
     type: 'quote',
     tradeType: 'general',
+    styling: {
+      brandColor: '#1e3a5f',
+      logoDisplay: true,
+      templateStyle: 'minimal',
+    },
     defaults: {
       title: '',
       description: '',
@@ -575,16 +752,22 @@ export default function TemplatesScreen() {
       name: '',
       type: 'quote',
       tradeType: 'general',
+      styling: {
+        brandColor: businessSettings?.brandColor || '#1e3a5f',
+        logoDisplay: true,
+        templateStyle: 'minimal',
+      },
       defaults: {
         title: '',
         description: '',
         terms: '',
         depositPct: 0,
-        gstEnabled: true,
+        gstEnabled: businessSettings?.gstEnabled ?? true,
       },
       defaultLineItems: []
     });
     setEditingTemplate(null);
+    setActiveTab('edit');
   };
 
   const handleCreateTemplate = async () => {
@@ -613,7 +796,7 @@ export default function TemplatesScreen() {
           familyKey: newTemplate.tradeType,
           defaults: newTemplate.defaults,
           defaultLineItems: newTemplate.defaultLineItems.filter(item => item.description.trim()),
-          styling: {},
+          styling: newTemplate.styling,
           sections: {
             showHeader: true,
             showLineItems: true,
@@ -645,6 +828,11 @@ export default function TemplatesScreen() {
       name: template.name,
       type: template.type,
       tradeType: template.tradeType,
+      styling: {
+        brandColor: template.styling?.brandColor || '#1e3a5f',
+        logoDisplay: template.styling?.logoDisplay ?? true,
+        templateStyle: (template.styling?.templateStyle as TemplateId) || 'minimal',
+      },
       defaults: {
         title: template.defaults?.title || '',
         description: template.defaults?.description || '',
@@ -654,6 +842,7 @@ export default function TemplatesScreen() {
       },
       defaultLineItems: template.defaultLineItems || [],
     });
+    setActiveTab('edit');
     setShowCreateModal(true);
   };
 
@@ -739,6 +928,51 @@ export default function TemplatesScreen() {
     setNewTemplate({ ...newTemplate, defaultLineItems: items });
   };
 
+  const subtotal = useMemo(() => {
+    return newTemplate.defaultLineItems.reduce((sum, item) => {
+      return sum + (item.qty || 0) * (item.unitPrice || 0);
+    }, 0);
+  }, [newTemplate.defaultLineItems]);
+
+  const gst = newTemplate.defaults.gstEnabled ? subtotal * 0.1 : 0;
+  const total = subtotal + gst;
+
+  const previewLineItems = useMemo(() => {
+    const items = newTemplate.defaultLineItems
+      .filter(item => item.description.trim())
+      .map(item => ({
+        description: item.description,
+        quantity: item.qty || 1,
+        unitPrice: item.unitPrice || 0,
+      }));
+    
+    if (items.length === 0) {
+      return [
+        { description: 'Sample Service Item', quantity: 2, unitPrice: 150 },
+        { description: 'Materials & Supplies', quantity: 1, unitPrice: 85 },
+      ];
+    }
+    return items;
+  }, [newTemplate.defaultLineItems]);
+
+  const businessInfo = useMemo(() => ({
+    businessName: businessSettings?.businessName || 'Your Business Name',
+    abn: businessSettings?.abn,
+    address: businessSettings?.address,
+    phone: businessSettings?.phone,
+    email: businessSettings?.email,
+    logoUrl: newTemplate.styling.logoDisplay ? businessSettings?.logoUrl : undefined,
+    brandColor: newTemplate.styling.brandColor,
+    gstEnabled: newTemplate.defaults.gstEnabled,
+  }), [businessSettings, newTemplate.styling, newTemplate.defaults.gstEnabled]);
+
+  const sampleClient = useMemo(() => ({
+    name: 'John Smith',
+    email: 'john.smith@example.com',
+    phone: '0400 123 456',
+    address: '123 Sample Street, Sydney NSW 2000',
+  }), []);
+
   const filteredTemplates = templates;
   const quoteTemplates = templates.filter(t => t.type === 'quote').length;
   const invoiceTemplates = templates.filter(t => t.type === 'invoice').length;
@@ -761,6 +995,329 @@ export default function TemplatesScreen() {
       default: return colors.primary;
     }
   };
+
+  const renderEditTab = () => (
+    <ScrollView 
+      style={styles.modalContent}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Template Name *</Text>
+        <TextInput
+          style={styles.input}
+          value={newTemplate.name}
+          onChangeText={(text) => setNewTemplate({ ...newTemplate, name: text })}
+          placeholder="e.g., Plumbing Quote Template"
+          placeholderTextColor={colors.mutedForeground}
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Template Type</Text>
+        <View style={styles.typeButtons}>
+          {(['quote', 'invoice', 'job'] as const).map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.typeButton,
+                newTemplate.type === type && styles.typeButtonActive
+              ]}
+              onPress={() => setNewTemplate({ ...newTemplate, type })}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.typeButtonText,
+                newTemplate.type === type && styles.typeButtonTextActive
+              ]}>
+                {type}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Trade Type</Text>
+        <View style={styles.tradeTypeContainer}>
+          {tradeTypes.map((trade) => (
+            <TouchableOpacity
+              key={trade}
+              style={[
+                styles.tradeChip,
+                newTemplate.tradeType === trade && styles.tradeChipActive
+              ]}
+              onPress={() => setNewTemplate({ ...newTemplate, tradeType: trade })}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.tradeChipText,
+                newTemplate.tradeType === trade && styles.tradeChipTextActive
+              ]}>
+                {trade}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <Text style={styles.sectionHeader}>Document Style</Text>
+      
+      {templateStyles.map((style) => (
+        <TouchableOpacity
+          key={style.id}
+          style={[
+            styles.styleCard,
+            newTemplate.styling.templateStyle === style.id && styles.styleCardActive
+          ]}
+          onPress={() => setNewTemplate({
+            ...newTemplate,
+            styling: { ...newTemplate.styling, templateStyle: style.id }
+          })}
+          activeOpacity={0.7}
+        >
+          <View style={styles.styleCardHeader}>
+            <Text style={styles.styleName}>{style.name}</Text>
+            {newTemplate.styling.templateStyle === style.id && (
+              <Feather name="check-circle" size={20} color={colors.primary} />
+            )}
+          </View>
+          <Text style={styles.styleDescription}>{style.description}</Text>
+        </TouchableOpacity>
+      ))}
+
+      <Text style={styles.sectionHeader}>Brand Color</Text>
+      
+      <View style={styles.inputGroup}>
+        <View style={styles.colorPickerRow}>
+          <View 
+            style={[styles.colorPreview, { backgroundColor: newTemplate.styling.brandColor }]}
+          />
+          <TextInput
+            style={styles.colorInput}
+            value={newTemplate.styling.brandColor}
+            onChangeText={(text) => setNewTemplate({
+              ...newTemplate,
+              styling: { ...newTemplate.styling, brandColor: text }
+            })}
+            placeholder="#1e3a5f"
+            placeholderTextColor={colors.mutedForeground}
+            autoCapitalize="none"
+          />
+        </View>
+        <View style={styles.colorPresets}>
+          {colorPresets.map((color) => (
+            <TouchableOpacity
+              key={color}
+              style={[
+                styles.colorPreset,
+                { backgroundColor: color },
+                newTemplate.styling.brandColor === color && styles.colorPresetActive
+              ]}
+              onPress={() => setNewTemplate({
+                ...newTemplate,
+                styling: { ...newTemplate.styling, brandColor: color }
+              })}
+              activeOpacity={0.7}
+            />
+          ))}
+        </View>
+      </View>
+
+      <Text style={styles.sectionHeader}>Display Options</Text>
+
+      <TouchableOpacity
+        style={styles.switchRow}
+        onPress={() => setNewTemplate({
+          ...newTemplate,
+          styling: { ...newTemplate.styling, logoDisplay: !newTemplate.styling.logoDisplay }
+        })}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.switchLabel}>Show Logo on Documents</Text>
+        <View style={[
+          styles.switchTrack,
+          newTemplate.styling.logoDisplay && styles.switchTrackActive
+        ]}>
+          <View style={[
+            styles.switchThumb,
+            newTemplate.styling.logoDisplay && styles.switchThumbActive
+          ]} />
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.switchRow}
+        onPress={() => setNewTemplate({
+          ...newTemplate,
+          defaults: { ...newTemplate.defaults, gstEnabled: !newTemplate.defaults.gstEnabled }
+        })}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.switchLabel}>Include GST (10%)</Text>
+        <View style={[
+          styles.switchTrack,
+          newTemplate.defaults.gstEnabled && styles.switchTrackActive
+        ]}>
+          <View style={[
+            styles.switchThumb,
+            newTemplate.defaults.gstEnabled && styles.switchThumbActive
+          ]} />
+        </View>
+      </TouchableOpacity>
+
+      <Text style={styles.sectionHeader}>Default Content</Text>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Default Title</Text>
+        <TextInput
+          style={styles.input}
+          value={newTemplate.defaults.title}
+          onChangeText={(text) => setNewTemplate({ 
+            ...newTemplate, 
+            defaults: { ...newTemplate.defaults, title: text } 
+          })}
+          placeholder="e.g., Plumbing Service Quote"
+          placeholderTextColor={colors.mutedForeground}
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Default Description</Text>
+        <TextInput
+          style={[styles.input, styles.inputMultiline]}
+          value={newTemplate.defaults.description}
+          onChangeText={(text) => setNewTemplate({ 
+            ...newTemplate, 
+            defaults: { ...newTemplate.defaults, description: text } 
+          })}
+          placeholder="Brief description..."
+          placeholderTextColor={colors.mutedForeground}
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Default Terms</Text>
+        <TextInput
+          style={[styles.input, styles.inputMultiline]}
+          value={newTemplate.defaults.terms}
+          onChangeText={(text) => setNewTemplate({ 
+            ...newTemplate, 
+            defaults: { ...newTemplate.defaults, terms: text } 
+          })}
+          placeholder="Payment terms, conditions..."
+          placeholderTextColor={colors.mutedForeground}
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Default Deposit (%)</Text>
+        <TextInput
+          style={[styles.input, { width: 100 }]}
+          value={String(newTemplate.defaults.depositPct || '')}
+          onChangeText={(text) => setNewTemplate({ 
+            ...newTemplate, 
+            defaults: { ...newTemplate.defaults, depositPct: parseInt(text) || 0 } 
+          })}
+          placeholder="0"
+          placeholderTextColor={colors.mutedForeground}
+          keyboardType="numeric"
+        />
+      </View>
+
+      <Text style={styles.sectionHeader}>Default Line Items</Text>
+
+      {newTemplate.defaultLineItems.map((item, index) => (
+        <View key={index} style={styles.lineItemRow}>
+          <TextInput
+            style={styles.lineItemInput}
+            value={item.description}
+            onChangeText={(text) => updateLineItem(index, 'description', text)}
+            placeholder="Description"
+            placeholderTextColor={colors.mutedForeground}
+          />
+          <TextInput
+            style={[styles.lineItemInput, styles.lineItemQty]}
+            value={String(item.qty || '')}
+            onChangeText={(text) => updateLineItem(index, 'qty', parseInt(text) || 1)}
+            placeholder="Qty"
+            placeholderTextColor={colors.mutedForeground}
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={[styles.lineItemInput, styles.lineItemPrice]}
+            value={String(item.unitPrice || '')}
+            onChangeText={(text) => updateLineItem(index, 'unitPrice', parseFloat(text) || 0)}
+            placeholder="Price"
+            placeholderTextColor={colors.mutedForeground}
+            keyboardType="decimal-pad"
+          />
+          <TouchableOpacity
+            style={styles.removeLineItemButton}
+            onPress={() => removeLineItem(index)}
+            activeOpacity={0.7}
+          >
+            <Feather name="x" size={20} color={colors.destructive} />
+          </TouchableOpacity>
+        </View>
+      ))}
+
+      <TouchableOpacity
+        style={styles.addLineItemButton}
+        onPress={addLineItem}
+        activeOpacity={0.7}
+      >
+        <Feather name="plus" size={18} color={colors.primary} />
+        <Text style={styles.addLineItemText}>Add Line Item</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.saveButton, isCreating && styles.saveButtonDisabled]}
+        onPress={handleCreateTemplate}
+        disabled={isCreating}
+        activeOpacity={0.7}
+      >
+        <Feather name="check" size={18} color="#FFFFFF" />
+        <Text style={styles.saveButtonText}>
+          {isCreating ? 'Saving...' : (editingTemplate ? 'Update Template' : 'Create Template')}
+        </Text>
+      </TouchableOpacity>
+
+      <View style={{ height: 40 }} />
+    </ScrollView>
+  );
+
+  const renderPreviewTab = () => (
+    <View style={styles.previewContainer}>
+      <LiveDocumentPreview
+        type={newTemplate.type === 'job' ? 'quote' : newTemplate.type}
+        documentNumber={newTemplate.type === 'quote' ? 'Q-PREVIEW' : 'INV-PREVIEW'}
+        title={newTemplate.defaults.title || `Sample ${newTemplate.type === 'quote' ? 'Quote' : 'Invoice'}`}
+        description={newTemplate.defaults.description || 'This is a preview of how your document will look with the selected template style and settings.'}
+        date={new Date().toISOString()}
+        validUntil={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()}
+        dueDate={new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()}
+        lineItems={previewLineItems}
+        notes="Thank you for your business!"
+        terms={newTemplate.defaults.terms || 'Payment due within 14 days. Late payments may incur additional fees.'}
+        business={businessInfo}
+        client={sampleClient}
+        showDepositSection={newTemplate.defaults.depositPct > 0}
+        depositPercent={newTemplate.defaults.depositPct}
+        gstEnabled={newTemplate.defaults.gstEnabled}
+        templateId={newTemplate.styling.templateStyle}
+        templateCustomization={{
+          accentColor: newTemplate.styling.brandColor,
+        }}
+      />
+    </View>
+  );
 
   return (
     <>
@@ -832,7 +1389,7 @@ export default function TemplatesScreen() {
                   styles.filterChipText,
                   typeFilter === type && styles.filterChipTextActive
                 ]}>
-                  {type === 'all' ? 'All Types' : type + 's'}
+                  {type === 'all' ? 'All' : type}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -845,11 +1402,11 @@ export default function TemplatesScreen() {
           ) : filteredTemplates.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconContainer}>
-                <Feather name="file-text" size={48} color={colors.mutedForeground} />
+                <Feather name="file-text" size={32} color={colors.mutedForeground} />
               </View>
-              <Text style={styles.emptyTitle}>No templates yet</Text>
+              <Text style={styles.emptyTitle}>No Templates Yet</Text>
               <Text style={styles.emptySubtitle}>
-                Create templates to speed up creating quotes, invoices, and jobs
+                Create templates to quickly generate quotes, invoices, and jobs with pre-filled information.
               </Text>
               <TouchableOpacity
                 style={styles.emptyButton}
@@ -860,20 +1417,18 @@ export default function TemplatesScreen() {
                 activeOpacity={0.7}
               >
                 <Feather name="plus" size={18} color={colors.primary} />
-                <Text style={styles.emptyButtonText}>Create First Template</Text>
+                <Text style={styles.emptyButtonText}>Create Template</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.templateList}>
-              {filteredTemplates.map(template => (
+              {filteredTemplates.map((template) => (
                 <View key={template.id} style={styles.templateCard}>
                   <View style={styles.templateHeader}>
                     <View style={styles.templateInfo}>
                       <Text style={styles.templateName}>{template.name}</Text>
                       <View style={styles.templateMeta}>
-                        <Text style={[styles.templateType, { backgroundColor: getTypeColor(template.type) + '20', color: getTypeColor(template.type) }]}>
-                          {template.type}
-                        </Text>
+                        <Text style={styles.templateType}>{template.type}</Text>
                         <Text style={styles.templateTrade}>{template.tradeType}</Text>
                       </View>
                     </View>
@@ -902,33 +1457,26 @@ export default function TemplatesScreen() {
                     </View>
                   </View>
                   
-                  <View style={styles.templateDetails}>
-                    {template.defaults?.title && (
-                      <Text style={styles.templateTitle} numberOfLines={1}>
-                        {template.defaults.title}
+                  {template.defaults?.title && (
+                    <View style={styles.templateDetails}>
+                      <Text style={styles.templateTitle}>{template.defaults.title}</Text>
+                    </View>
+                  )}
+                  
+                  <View style={styles.badgeRow}>
+                    {template.defaultLineItems?.length > 0 && (
+                      <Text style={styles.badge}>
+                        {template.defaultLineItems.length} item{template.defaultLineItems.length !== 1 ? 's' : ''}
                       </Text>
                     )}
-                    
-                    <View style={styles.badgeRow}>
-                      {template.defaultLineItems?.length > 0 && (
-                        <Text style={styles.badge}>
-                          {template.defaultLineItems.length} line items
-                        </Text>
-                      )}
-                      {template.defaults?.depositPct > 0 && (
-                        <Text style={styles.badge}>
-                          {template.defaults.depositPct}% deposit
-                        </Text>
-                      )}
-                      {template.defaults?.gstEnabled && (
-                        <Text style={styles.badge}>GST</Text>
-                      )}
-                    </View>
-
-                    {template.defaults?.terms && (
-                      <Text style={styles.templateTerms} numberOfLines={2}>
-                        {template.defaults.terms}
-                      </Text>
+                    {template.defaults?.gstEnabled && (
+                      <Text style={styles.badge}>GST included</Text>
+                    )}
+                    {template.defaults?.depositPct > 0 && (
+                      <Text style={styles.badge}>{template.defaults.depositPct}% deposit</Text>
+                    )}
+                    {template.styling?.templateStyle && (
+                      <Text style={styles.badge}>{template.styling.templateStyle} style</Text>
                     )}
                   </View>
                 </View>
@@ -941,14 +1489,18 @@ export default function TemplatesScreen() {
           visible={showCreateModal}
           animationType="slide"
           presentationStyle="pageSheet"
+          onRequestClose={() => {
+            setShowCreateModal(false);
+            resetForm();
+          }}
         >
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => {
                   setShowCreateModal(false);
                   resetForm();
-                }} 
+                }}
                 activeOpacity={0.7}
               >
                 <Feather name="x" size={24} color={colors.foreground} />
@@ -956,194 +1508,43 @@ export default function TemplatesScreen() {
               <Text style={styles.modalTitle}>
                 {editingTemplate ? 'Edit Template' : 'New Template'}
               </Text>
-              <View style={{ width: 24 }} />
+              <View style={styles.previewTotalBadge}>
+                <Text style={styles.previewTotalText}>{formatCurrency(total)}</Text>
+              </View>
             </View>
 
-            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Template Name</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newTemplate.name}
-                  onChangeText={(text) => setNewTemplate({ ...newTemplate, name: text })}
-                  placeholder="e.g., Standard Plumbing Quote"
-                  placeholderTextColor={colors.mutedForeground}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Template Type</Text>
-                <View style={styles.typeButtons}>
-                  {(['quote', 'invoice', 'job'] as const).map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      style={[
-                        styles.typeButton,
-                        newTemplate.type === type && styles.typeButtonActive
-                      ]}
-                      onPress={() => setNewTemplate({ ...newTemplate, type })}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[
-                        styles.typeButtonText,
-                        newTemplate.type === type && styles.typeButtonTextActive
-                      ]}>
-                        {type}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Trade Type</Text>
-                <View style={styles.tradeTypeContainer}>
-                  {tradeTypes.map((trade) => (
-                    <TouchableOpacity
-                      key={trade}
-                      style={[
-                        styles.tradeChip,
-                        newTemplate.tradeType === trade && styles.tradeChipActive
-                      ]}
-                      onPress={() => setNewTemplate({ ...newTemplate, tradeType: trade })}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[
-                        styles.tradeChipText,
-                        newTemplate.tradeType === trade && styles.tradeChipTextActive
-                      ]}>
-                        {trade}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <Text style={styles.sectionHeader}>Default Values</Text>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Default Title</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newTemplate.defaults.title}
-                  onChangeText={(text) => setNewTemplate({ 
-                    ...newTemplate, 
-                    defaults: { ...newTemplate.defaults, title: text } 
-                  })}
-                  placeholder="e.g., Plumbing Service Quote"
-                  placeholderTextColor={colors.mutedForeground}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Default Description</Text>
-                <TextInput
-                  style={[styles.input, styles.inputMultiline]}
-                  value={newTemplate.defaults.description}
-                  onChangeText={(text) => setNewTemplate({ 
-                    ...newTemplate, 
-                    defaults: { ...newTemplate.defaults, description: text } 
-                  })}
-                  placeholder="Brief description..."
-                  placeholderTextColor={colors.mutedForeground}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Default Terms</Text>
-                <TextInput
-                  style={[styles.input, styles.inputMultiline]}
-                  value={newTemplate.defaults.terms}
-                  onChangeText={(text) => setNewTemplate({ 
-                    ...newTemplate, 
-                    defaults: { ...newTemplate.defaults, terms: text } 
-                  })}
-                  placeholder="Payment terms, conditions..."
-                  placeholderTextColor={colors.mutedForeground}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Default Deposit (%)</Text>
-                <TextInput
-                  style={[styles.input, { width: 100 }]}
-                  value={String(newTemplate.defaults.depositPct || '')}
-                  onChangeText={(text) => setNewTemplate({ 
-                    ...newTemplate, 
-                    defaults: { ...newTemplate.defaults, depositPct: parseInt(text) || 0 } 
-                  })}
-                  placeholder="0"
-                  placeholderTextColor={colors.mutedForeground}
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <Text style={styles.sectionHeader}>Default Line Items</Text>
-
-              {newTemplate.defaultLineItems.map((item, index) => (
-                <View key={index} style={styles.lineItemRow}>
-                  <TextInput
-                    style={styles.lineItemInput}
-                    value={item.description}
-                    onChangeText={(text) => updateLineItem(index, 'description', text)}
-                    placeholder="Description"
-                    placeholderTextColor={colors.mutedForeground}
-                  />
-                  <TextInput
-                    style={[styles.lineItemInput, styles.lineItemQty]}
-                    value={String(item.qty || '')}
-                    onChangeText={(text) => updateLineItem(index, 'qty', parseInt(text) || 1)}
-                    placeholder="Qty"
-                    placeholderTextColor={colors.mutedForeground}
-                    keyboardType="numeric"
-                  />
-                  <TextInput
-                    style={[styles.lineItemInput, styles.lineItemPrice]}
-                    value={String(item.unitPrice || '')}
-                    onChangeText={(text) => updateLineItem(index, 'unitPrice', parseFloat(text) || 0)}
-                    placeholder="Price"
-                    placeholderTextColor={colors.mutedForeground}
-                    keyboardType="decimal-pad"
-                  />
-                  <TouchableOpacity
-                    style={styles.removeLineItemButton}
-                    onPress={() => removeLineItem(index)}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="x" size={20} color={colors.destructive} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-
+            <View style={styles.tabsContainer}>
               <TouchableOpacity
-                style={styles.addLineItemButton}
-                onPress={addLineItem}
+                style={[styles.tab, activeTab === 'edit' && styles.tabActive]}
+                onPress={() => setActiveTab('edit')}
                 activeOpacity={0.7}
               >
-                <Feather name="plus" size={18} color={colors.primary} />
-                <Text style={styles.addLineItemText}>Add Line Item</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.saveButton, isCreating && styles.saveButtonDisabled]}
-                onPress={handleCreateTemplate}
-                disabled={isCreating}
-                activeOpacity={0.7}
-              >
-                <Feather name="check" size={18} color="#FFFFFF" />
-                <Text style={styles.saveButtonText}>
-                  {isCreating ? 'Saving...' : (editingTemplate ? 'Update Template' : 'Create Template')}
+                <Feather 
+                  name="edit-2" 
+                  size={16} 
+                  color={activeTab === 'edit' ? colors.primary : colors.mutedForeground} 
+                />
+                <Text style={[styles.tabText, activeTab === 'edit' && styles.tabTextActive]}>
+                  Edit
                 </Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'preview' && styles.tabActive]}
+                onPress={() => setActiveTab('preview')}
+                activeOpacity={0.7}
+              >
+                <Feather 
+                  name="eye" 
+                  size={16} 
+                  color={activeTab === 'preview' ? colors.primary : colors.mutedForeground} 
+                />
+                <Text style={[styles.tabText, activeTab === 'preview' && styles.tabTextActive]}>
+                  Preview
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-              <View style={{ height: 40 }} />
-            </ScrollView>
+            {activeTab === 'edit' ? renderEditTab() : renderPreviewTab()}
           </View>
         </Modal>
       </View>
