@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -21,6 +21,7 @@ import {
   type FilterOptions,
   type UserRole,
 } from '../../src/lib/navigation-config';
+import { useScrollToTop } from '../../src/contexts/ScrollContext';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -251,6 +252,15 @@ export default function MoreScreen() {
   const { user, businessSettings, logout } = useAuthStore();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const { scrollToTopTrigger } = useScrollToTop();
+  
+  useEffect(() => {
+    if (scrollToTopTrigger > 0) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  }, [scrollToTopTrigger]);
+  
   const { 
     role,
     isStaff, 
@@ -338,6 +348,7 @@ export default function MoreScreen() {
 
   return (
     <ScrollView 
+      ref={scrollRef}
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}

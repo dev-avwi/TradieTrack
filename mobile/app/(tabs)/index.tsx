@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -18,6 +18,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
+import { useScrollToTop } from '../../src/contexts/ScrollContext';
 
 // Activity Feed Component - matches web Recent Activity section
 function ActivityFeed({ activities }: { activities: any[] }) {
@@ -627,6 +628,14 @@ function EmptyTodayState({ onCreateJob }: { onCreateJob: () => void }) {
 export default function DashboardScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const { scrollToTopTrigger } = useScrollToTop();
+  
+  useEffect(() => {
+    if (scrollToTopTrigger > 0) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  }, [scrollToTopTrigger]);
   
   const { user, businessSettings, roleInfo, isOwner, isStaff } = useAuthStore();
   const { todaysJobs, fetchTodaysJobs, isLoading: jobsLoading, updateJobStatus } = useJobsStore();
@@ -840,6 +849,7 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView 
+      ref={scrollRef}
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
       refreshControl={

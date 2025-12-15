@@ -18,6 +18,7 @@ import { TerminalProvider } from '../src/providers/StripeTerminalProvider';
 import { OfflineBanner, OfflineIndicator } from '../src/components/OfflineIndicator';
 import { useOfflineStore } from '../src/lib/offline-storage';
 import offlineStorage from '../src/lib/offline-storage';
+import { ScrollProvider } from '../src/contexts/ScrollContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -206,9 +207,11 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <TerminalProvider>
-            <RootLayoutContent />
-          </TerminalProvider>
+          <ScrollProvider>
+            <TerminalProvider>
+              <RootLayoutContent />
+            </TerminalProvider>
+          </ScrollProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </QueryClientProvider>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -19,6 +19,7 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
+import { useScrollToTop } from '../../src/contexts/ScrollContext';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
@@ -140,6 +141,14 @@ function JobCard({
 export default function JobsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const { scrollToTopTrigger } = useScrollToTop();
+  
+  useEffect(() => {
+    if (scrollToTopTrigger > 0) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  }, [scrollToTopTrigger]);
   
   const { jobs, fetchJobs, isLoading } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
@@ -242,6 +251,7 @@ export default function JobsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView 
+        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}

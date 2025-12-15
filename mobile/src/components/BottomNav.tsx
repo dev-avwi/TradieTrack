@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../lib/theme';
+import { useScrollToTop } from '../contexts/ScrollContext';
 
 interface NavItem {
   title: string;
@@ -125,6 +126,7 @@ export function BottomNav() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { triggerScrollToTop } = useScrollToTop();
 
   const isActive = (item: NavItem) => {
     // Chat-specific routes should only highlight Chat, not More
@@ -142,8 +144,12 @@ export function BottomNav() {
     return pathname === item.path;
   };
 
-  const handlePress = (path: string) => {
-    router.push(path as any);
+  const handlePress = (item: NavItem) => {
+    if (isActive(item)) {
+      triggerScrollToTop();
+    } else {
+      router.push(item.path as any);
+    }
   };
 
   return (
@@ -154,7 +160,7 @@ export function BottomNav() {
             key={item.title}
             item={item}
             active={isActive(item)}
-            onPress={() => handlePress(item.path)}
+            onPress={() => handlePress(item)}
             colors={colors}
             styles={styles}
           />
