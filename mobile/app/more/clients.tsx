@@ -240,14 +240,28 @@ export default function ClientsScreen() {
                 </Text>
               </View>
             ) : (
-              <View style={styles.clientsList}>
-                {filteredClients.map((client) => (
-                  <ClientCard
-                    key={client.id}
-                    client={client}
-                    onPress={() => router.push(`/more/client/${client.id}`)}
-                  />
-                ))}
+              <View style={styles.clientsGrid}>
+                {/* Create rows of 2 cards each */}
+                {Array.from({ length: Math.ceil(filteredClients.length / 2) }, (_, rowIndex) => {
+                  const client1 = filteredClients[rowIndex * 2];
+                  const client2 = filteredClients[rowIndex * 2 + 1];
+                  return (
+                    <View key={rowIndex} style={styles.gridRow}>
+                      <ClientCard
+                        client={client1}
+                        onPress={() => router.push(`/more/client/${client1.id}`)}
+                      />
+                      {client2 ? (
+                        <ClientCard
+                          client={client2}
+                          onPress={() => router.push(`/more/client/${client2.id}`)}
+                        />
+                      ) : (
+                        <View style={styles.gridPlaceholder} />
+                      )}
+                    </View>
+                  );
+                })}
               </View>
             )}
           </View>
@@ -417,14 +431,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
 
-  clientsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  clientsGrid: {
     gap: spacing.md,
   },
+  gridRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  gridPlaceholder: {
+    flex: 1,
+  },
   clientCard: {
-    width: '48%',
+    flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',
