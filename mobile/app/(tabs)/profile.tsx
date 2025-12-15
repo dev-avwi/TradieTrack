@@ -600,6 +600,28 @@ export default function MoreScreen() {
         />
       </View>
 
+      {/* Legal Section */}
+      <Text style={styles.sectionTitle}>Legal</Text>
+      <View style={styles.section}>
+        <MenuItem
+          icon="shield"
+          iconBg={colors.infoLight}
+          iconColor={colors.info}
+          title="Privacy Policy"
+          subtitle="How we protect your data"
+          onPress={() => router.push('/more/privacy-policy')}
+        />
+        <MenuItem
+          icon="file-text"
+          iconBg={colors.muted}
+          iconColor={colors.foreground}
+          title="Terms of Service"
+          subtitle="Terms and conditions"
+          onPress={() => router.push('/more/terms-of-service')}
+          isLast
+        />
+      </View>
+
       {/* Account Section */}
       <Text style={styles.sectionTitle}>Account</Text>
       <View style={styles.section}>

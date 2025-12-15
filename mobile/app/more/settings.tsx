@@ -37,6 +37,53 @@ const SETTINGS_TABS = [
 ];
 
 const GEOFENCE_STORAGE_KEY = '@tradietrack/global_geofence_settings';
+const NOTIFICATION_SETTINGS_KEY = '@tradietrack/notification_settings';
+
+interface NotificationSettings {
+  push: {
+    newJobAssignments: boolean;
+    jobStatusChanges: boolean;
+    paymentReceived: boolean;
+    quoteAccepted: boolean;
+    teamMessages: boolean;
+  };
+  email: {
+    dailyDigest: boolean;
+    weeklySummary: boolean;
+    paymentReceipts: boolean;
+    overdueReminders: boolean;
+  };
+  sms: {
+    urgentJobAlerts: boolean;
+    paymentConfirmations: boolean;
+  };
+}
+
+const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  push: {
+    newJobAssignments: true,
+    jobStatusChanges: true,
+    paymentReceived: true,
+    quoteAccepted: true,
+    teamMessages: true,
+  },
+  email: {
+    dailyDigest: false,
+    weeklySummary: true,
+    paymentReceipts: true,
+    overdueReminders: true,
+  },
+  sms: {
+    urgentJobAlerts: false,
+    paymentConfirmations: false,
+  },
+};
+
+interface IntegrationStatus {
+  stripe: boolean;
+  gmail: boolean;
+  calendar: boolean;
+}
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -304,6 +351,165 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     lineHeight: 20,
   },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
+    marginBottom: spacing.md,
+    marginTop: spacing.lg,
+    textTransform: 'uppercase',
+  },
+  integrationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  integrationRowLast: {
+    borderBottomWidth: 0,
+  },
+  integrationLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+  },
+  integrationIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  integrationInfo: {
+    flex: 1,
+  },
+  integrationName: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  integrationStatus: {
+    ...typography.caption,
+    marginTop: 2,
+  },
+  statusConnected: {
+    color: colors.success || '#22c55e',
+  },
+  statusNotConnected: {
+    color: colors.mutedForeground,
+  },
+  connectButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primaryLight,
+  },
+  connectButtonText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  appStoreCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  appStoreBadges: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  storeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.foreground,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+  },
+  storeBadgeText: {
+    ...typography.caption,
+    color: colors.background,
+    fontWeight: '600',
+  },
+  qrCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  qrPlaceholder: {
+    width: 120,
+    height: 120,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: spacing.md,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    marginTop: spacing.md,
+  },
+  shareButtonText: {
+    ...typography.body,
+    color: colors.primaryForeground,
+    fontWeight: '600',
+  },
+  notificationToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  notificationToggleRowLast: {
+    borderBottomWidth: 0,
+  },
+  notificationToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+  },
+  notificationToggleIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationToggleInfo: {
+    flex: 1,
+  },
+  notificationToggleTitle: {
+    ...typography.body,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  notificationToggleSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
 });
 
 export default function SettingsScreen() {
@@ -319,6 +525,16 @@ export default function SettingsScreen() {
   const [geofenceRadius, setGeofenceRadius] = useState(100);
   const [autoClockIn, setAutoClockIn] = useState(true);
   const [autoClockOut, setAutoClockOut] = useState(true);
+
+  // Notification settings
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
+
+  // Integration status (mock - would come from API in production)
+  const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatus>({
+    stripe: false,
+    gmail: false,
+    calendar: false,
+  });
 
   const loadGeofenceSettings = useCallback(async () => {
     try {
@@ -410,11 +626,56 @@ export default function SettingsScreen() {
     });
   }, [saveGeofenceSettings]);
 
+  // Notification settings handlers
+  const loadNotificationSettings = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem(NOTIFICATION_SETTINGS_KEY);
+      if (stored) {
+        const settings = JSON.parse(stored) as NotificationSettings;
+        setNotificationSettings(settings);
+      }
+    } catch (error) {
+      console.error('Failed to load notification settings:', error);
+    }
+  }, []);
+
+  const saveNotificationSettings = useCallback(async (settings: NotificationSettings) => {
+    try {
+      await AsyncStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.error('Failed to save notification settings:', error);
+    }
+  }, []);
+
+  const updatePushSetting = useCallback((key: keyof NotificationSettings['push'], value: boolean) => {
+    setNotificationSettings(prev => {
+      const updated = { ...prev, push: { ...prev.push, [key]: value } };
+      saveNotificationSettings(updated);
+      return updated;
+    });
+  }, [saveNotificationSettings]);
+
+  const updateEmailSetting = useCallback((key: keyof NotificationSettings['email'], value: boolean) => {
+    setNotificationSettings(prev => {
+      const updated = { ...prev, email: { ...prev.email, [key]: value } };
+      saveNotificationSettings(updated);
+      return updated;
+    });
+  }, [saveNotificationSettings]);
+
+  const updateSmsSetting = useCallback((key: keyof NotificationSettings['sms'], value: boolean) => {
+    setNotificationSettings(prev => {
+      const updated = { ...prev, sms: { ...prev.sms, [key]: value } };
+      saveNotificationSettings(updated);
+      return updated;
+    });
+  }, [saveNotificationSettings]);
+
   const refreshData = useCallback(async () => {
     setIsLoading(true);
-    await loadGeofenceSettings();
+    await Promise.all([loadGeofenceSettings(), loadNotificationSettings()]);
     setIsLoading(false);
-  }, [loadGeofenceSettings]);
+  }, [loadGeofenceSettings, loadNotificationSettings]);
 
   useEffect(() => {
     refreshData();
@@ -662,49 +923,425 @@ export default function SettingsScreen() {
 
           {activeTab === 'apps' && (
             <View style={styles.tabContentSection}>
+              {/* Connected Apps Card */}
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="link" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Connected Apps</Text>
+                </View>
+
+                {/* Stripe Integration */}
+                <View style={styles.integrationRow}>
+                  <View style={styles.integrationLeft}>
+                    <View style={[styles.integrationIconContainer, { backgroundColor: '#635bff20' }]}>
+                      <Feather name="credit-card" size={20} color="#635bff" />
+                    </View>
+                    <View style={styles.integrationInfo}>
+                      <Text style={styles.integrationName}>Stripe Connect</Text>
+                      <Text style={[
+                        styles.integrationStatus,
+                        integrationStatus.stripe ? styles.statusConnected : styles.statusNotConnected
+                      ]}>
+                        {integrationStatus.stripe ? 'Connected' : 'Not connected'}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.connectButton}
+                    onPress={() => router.push('/more/payments')}
+                    data-testid="button-stripe-connect"
+                  >
+                    <Text style={styles.connectButtonText}>
+                      {integrationStatus.stripe ? 'Manage' : 'Connect'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Gmail Integration */}
+                <View style={styles.integrationRow}>
+                  <View style={styles.integrationLeft}>
+                    <View style={[styles.integrationIconContainer, { backgroundColor: '#ea433520' }]}>
+                      <Feather name="mail" size={20} color="#ea4335" />
+                    </View>
+                    <View style={styles.integrationInfo}>
+                      <Text style={styles.integrationName}>Gmail / Email</Text>
+                      <Text style={[
+                        styles.integrationStatus,
+                        integrationStatus.gmail ? styles.statusConnected : styles.statusNotConnected
+                      ]}>
+                        {integrationStatus.gmail ? 'Connected' : 'Not connected'}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.connectButton}
+                    onPress={() => router.push('/more/integrations')}
+                    data-testid="button-gmail-connect"
+                  >
+                    <Text style={styles.connectButtonText}>
+                      {integrationStatus.gmail ? 'Manage' : 'Connect'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Google Calendar Integration */}
+                <View style={[styles.integrationRow, styles.integrationRowLast]}>
+                  <View style={styles.integrationLeft}>
+                    <View style={[styles.integrationIconContainer, { backgroundColor: '#4285f420' }]}>
+                      <Feather name="calendar" size={20} color="#4285f4" />
+                    </View>
+                    <View style={styles.integrationInfo}>
+                      <Text style={styles.integrationName}>Google Calendar</Text>
+                      <Text style={[
+                        styles.integrationStatus,
+                        integrationStatus.calendar ? styles.statusConnected : styles.statusNotConnected
+                      ]}>
+                        {integrationStatus.calendar ? 'Connected' : 'Not connected'}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.connectButton}
+                    onPress={() => router.push('/more/integrations')}
+                    data-testid="button-calendar-connect"
+                  >
+                    <Text style={styles.connectButtonText}>
+                      {integrationStatus.calendar ? 'Manage' : 'Connect'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* App Store Links */}
+              <View style={styles.appStoreCard}>
+                <Feather name="download" size={24} color={colors.primary} />
+                <Text style={styles.settingsCardTitle}>Get the App</Text>
+                <Text style={[styles.settingsCardSubtitle, { textAlign: 'center' }]}>
+                  Download TradieTrack on your mobile device
+                </Text>
+                <View style={styles.appStoreBadges}>
+                  <TouchableOpacity 
+                    style={styles.storeBadge}
+                    onPress={() => Linking.openURL('https://apps.apple.com')}
+                    data-testid="button-app-store"
+                  >
+                    <Feather name="smartphone" size={16} color={colors.background} />
+                    <Text style={styles.storeBadgeText}>App Store</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.storeBadge}
+                    onPress={() => Linking.openURL('https://play.google.com')}
+                    data-testid="button-play-store"
+                  >
+                    <Feather name="play" size={16} color={colors.background} />
+                    <Text style={styles.storeBadgeText}>Google Play</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* QR Code for App Share */}
+              <View style={styles.qrCard}>
+                <Text style={styles.settingsCardTitle}>Share App</Text>
+                <Text style={[styles.settingsCardSubtitle, { textAlign: 'center' }]}>
+                  Scan to download TradieTrack
+                </Text>
+                <View style={styles.qrPlaceholder}>
+                  <Feather name="grid" size={48} color={colors.mutedForeground} />
+                </View>
+                <TouchableOpacity 
+                  style={styles.shareButton}
+                  onPress={() => {}}
+                  data-testid="button-share-app"
+                >
+                  <Feather name="share-2" size={18} color={colors.primaryForeground} />
+                  <Text style={styles.shareButtonText}>Share Download Link</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* More Integrations Link */}
               <TouchableOpacity 
                 style={styles.settingsCard}
                 onPress={() => router.push('/more/integrations')}
+                data-testid="button-more-integrations"
               >
                 <View style={styles.settingsCardHeader}>
-                  <Feather name="smartphone" size={20} color={colors.primary} />
+                  <Feather name="plus-circle" size={20} color={colors.primary} />
                   <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>Integrations</Text>
-                    <Text style={styles.settingsCardSubtitle}>Connect Stripe, Gmail, and more</Text>
+                    <Text style={styles.settingsCardTitle}>More Integrations</Text>
+                    <Text style={styles.settingsCardSubtitle}>Browse all available integrations</Text>
                   </View>
                 </View>
-                <Feather name="external-link" size={18} color={colors.mutedForeground} />
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
-
-              <View style={styles.settingsInfoCard}>
-                <Text style={styles.settingsInfoTitle}>Connected Apps</Text>
-                <Text style={styles.settingsInfoText}>
-                  Manage your connected services and integrations. Add payment processing, email automation, and more.
-                </Text>
-              </View>
             </View>
           )}
 
           {activeTab === 'alerts' && (
             <View style={styles.tabContentSection}>
+              {/* Push Notifications Section */}
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="smartphone" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Push Notifications</Text>
+                </View>
+
+                {/* New Job Assignments */}
+                <View style={styles.notificationToggleRow}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: colors.primaryLight }]}>
+                      <Feather name="briefcase" size={16} color={colors.primary} />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>New Job Assignments</Text>
+                      <Text style={styles.notificationToggleSubtitle}>Get notified when assigned to a job</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notificationSettings.push.newJobAssignments}
+                    onValueChange={(value) => updatePushSetting('newJobAssignments', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={notificationSettings.push.newJobAssignments ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-push-new-job"
+                  />
+                </View>
+
+                {/* Job Status Changes */}
+                <View style={styles.notificationToggleRow}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: colors.primaryLight }]}>
+                      <Feather name="refresh-cw" size={16} color={colors.primary} />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>Job Status Changes</Text>
+                      <Text style={styles.notificationToggleSubtitle}>Updates when job status changes</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notificationSettings.push.jobStatusChanges}
+                    onValueChange={(value) => updatePushSetting('jobStatusChanges', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={notificationSettings.push.jobStatusChanges ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-push-job-status"
+                  />
+                </View>
+
+                {/* Payment Received */}
+                <View style={styles.notificationToggleRow}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: '#22c55e20' }]}>
+                      <Feather name="dollar-sign" size={16} color="#22c55e" />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>Payment Received</Text>
+                      <Text style={styles.notificationToggleSubtitle}>Alert when a payment is received</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notificationSettings.push.paymentReceived}
+                    onValueChange={(value) => updatePushSetting('paymentReceived', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={notificationSettings.push.paymentReceived ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-push-payment"
+                  />
+                </View>
+
+                {/* Quote Accepted */}
+                <View style={styles.notificationToggleRow}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: '#f59e0b20' }]}>
+                      <Feather name="check-circle" size={16} color="#f59e0b" />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>Quote Accepted</Text>
+                      <Text style={styles.notificationToggleSubtitle}>Notify when client accepts a quote</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notificationSettings.push.quoteAccepted}
+                    onValueChange={(value) => updatePushSetting('quoteAccepted', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={notificationSettings.push.quoteAccepted ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-push-quote"
+                  />
+                </View>
+
+                {/* Team Messages */}
+                <View style={[styles.notificationToggleRow, styles.notificationToggleRowLast]}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: '#8b5cf620' }]}>
+                      <Feather name="message-circle" size={16} color="#8b5cf6" />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>Team Messages</Text>
+                      <Text style={styles.notificationToggleSubtitle}>Notifications for team chat messages</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notificationSettings.push.teamMessages}
+                    onValueChange={(value) => updatePushSetting('teamMessages', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={notificationSettings.push.teamMessages ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-push-team"
+                  />
+                </View>
+              </View>
+
+              {/* Email Notifications Section */}
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="mail" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Email Notifications</Text>
+                </View>
+
+                {/* Daily Digest */}
+                <View style={styles.notificationToggleRow}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: colors.primaryLight }]}>
+                      <Feather name="sun" size={16} color={colors.primary} />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>Daily Digest</Text>
+                      <Text style={styles.notificationToggleSubtitle}>Daily summary of activity</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notificationSettings.email.dailyDigest}
+                    onValueChange={(value) => updateEmailSetting('dailyDigest', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={notificationSettings.email.dailyDigest ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-email-daily"
+                  />
+                </View>
+
+                {/* Weekly Summary */}
+                <View style={styles.notificationToggleRow}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: colors.primaryLight }]}>
+                      <Feather name="calendar" size={16} color={colors.primary} />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>Weekly Summary</Text>
+                      <Text style={styles.notificationToggleSubtitle}>Weekly business overview email</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notificationSettings.email.weeklySummary}
+                    onValueChange={(value) => updateEmailSetting('weeklySummary', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={notificationSettings.email.weeklySummary ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-email-weekly"
+                  />
+                </View>
+
+                {/* Payment Receipts */}
+                <View style={styles.notificationToggleRow}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: '#22c55e20' }]}>
+                      <Feather name="file-text" size={16} color="#22c55e" />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>Payment Receipts</Text>
+                      <Text style={styles.notificationToggleSubtitle}>Email receipt when payment received</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notificationSettings.email.paymentReceipts}
+                    onValueChange={(value) => updateEmailSetting('paymentReceipts', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={notificationSettings.email.paymentReceipts ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-email-receipts"
+                  />
+                </View>
+
+                {/* Overdue Reminders */}
+                <View style={[styles.notificationToggleRow, styles.notificationToggleRowLast]}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: '#ef444420' }]}>
+                      <Feather name="alert-circle" size={16} color="#ef4444" />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>Overdue Reminders</Text>
+                      <Text style={styles.notificationToggleSubtitle}>Reminders for overdue invoices</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notificationSettings.email.overdueReminders}
+                    onValueChange={(value) => updateEmailSetting('overdueReminders', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={notificationSettings.email.overdueReminders ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-email-overdue"
+                  />
+                </View>
+              </View>
+
+              {/* SMS Notifications Section */}
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="message-square" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>SMS Notifications</Text>
+                </View>
+
+                {/* Urgent Job Alerts */}
+                <View style={styles.notificationToggleRow}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: '#ef444420' }]}>
+                      <Feather name="alert-triangle" size={16} color="#ef4444" />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>Urgent Job Alerts</Text>
+                      <Text style={styles.notificationToggleSubtitle}>SMS for urgent job notifications</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notificationSettings.sms.urgentJobAlerts}
+                    onValueChange={(value) => updateSmsSetting('urgentJobAlerts', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={notificationSettings.sms.urgentJobAlerts ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-sms-urgent"
+                  />
+                </View>
+
+                {/* Payment Confirmations */}
+                <View style={[styles.notificationToggleRow, styles.notificationToggleRowLast]}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: '#22c55e20' }]}>
+                      <Feather name="check-square" size={16} color="#22c55e" />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>Payment Confirmations</Text>
+                      <Text style={styles.notificationToggleSubtitle}>SMS when payments are confirmed</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notificationSettings.sms.paymentConfirmations}
+                    onValueChange={(value) => updateSmsSetting('paymentConfirmations', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={notificationSettings.sms.paymentConfirmations ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-sms-payment"
+                  />
+                </View>
+              </View>
+
+              {/* Link to full notification settings */}
               <TouchableOpacity 
                 style={styles.settingsCard}
                 onPress={() => router.push('/more/notifications')}
+                data-testid="button-notification-settings"
               >
                 <View style={styles.settingsCardHeader}>
-                  <Feather name="bell" size={20} color={colors.primary} />
+                  <Feather name="settings" size={20} color={colors.primary} />
                   <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>Notification Settings</Text>
-                    <Text style={styles.settingsCardSubtitle}>Push, email, SMS alerts</Text>
+                    <Text style={styles.settingsCardTitle}>Advanced Settings</Text>
+                    <Text style={styles.settingsCardSubtitle}>Manage device permissions and inbox</Text>
                   </View>
                 </View>
-                <Feather name="external-link" size={18} color={colors.mutedForeground} />
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
 
               <View style={styles.settingsInfoCard}>
                 <Text style={styles.settingsInfoTitle}>Stay Informed</Text>
                 <Text style={styles.settingsInfoText}>
-                  Configure how and when you receive notifications about jobs, payments, and team activity.
+                  Configure how and when you receive notifications about jobs, payments, and team activity. SMS notifications may incur additional charges.
                 </Text>
               </View>
             </View>
