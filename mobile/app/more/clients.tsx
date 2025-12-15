@@ -48,6 +48,8 @@ function ClientCard({
       .toUpperCase();
   };
 
+  const primaryContact = client.email || client.phone || null;
+
   return (
     <AnimatedCardPressable
       onPress={onPress}
@@ -58,42 +60,15 @@ function ClientCard({
           <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
         </View>
         
-        <View style={styles.clientInfo}>
-          <View style={styles.clientNameRow}>
-            <Text style={styles.clientName} numberOfLines={1}>{client.name}</Text>
-            {client.jobsCount !== undefined && client.jobsCount > 0 && (
-              <View style={styles.jobsBadge}>
-                <Text style={styles.jobsBadgeText}>{client.jobsCount} {client.jobsCount === 1 ? 'job' : 'jobs'}</Text>
-              </View>
-            )}
-          </View>
-          
-          <View style={styles.contactRow}>
-            {client.email && (
-              <View style={styles.contactItem}>
-                <Feather name="mail" size={iconSizes.lg} color={colors.mutedForeground} />
-                <Text style={styles.contactText} numberOfLines={2}>{client.email}</Text>
-              </View>
-            )}
-            {client.phone && (
-              <View style={styles.contactItem}>
-                <Feather name="phone" size={iconSizes.lg} color={colors.mutedForeground} />
-                <Text style={styles.contactText} numberOfLines={1}>{client.phone}</Text>
-              </View>
-            )}
-          </View>
-          
-          {client.address && (
-            <View style={styles.addressRow}>
-              <Feather name="map-pin" size={iconSizes.lg} color={colors.mutedForeground} />
-              <Text style={styles.contactText} numberOfLines={2}>{client.address}</Text>
-            </View>
-          )}
-        </View>
+        <Text style={styles.clientName} numberOfLines={2}>{client.name}</Text>
         
-        <View style={styles.chevronContainer}>
-          <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
-        </View>
+        {primaryContact && (
+          <Text style={styles.contactText} numberOfLines={1}>{primaryContact}</Text>
+        )}
+        
+        {client.jobsCount !== undefined && client.jobsCount > 0 && (
+          <Text style={styles.jobsText}>{client.jobsCount} {client.jobsCount === 1 ? 'job' : 'jobs'}</Text>
+        )}
       </View>
     </AnimatedCardPressable>
   );
@@ -136,6 +111,30 @@ export default function ClientsScreen() {
     
     return matchesSearch && matchesFilter;
   });
+
+  const renderClientGrid = () => {
+    const rows: any[][] = [];
+    for (let i = 0; i < filteredClients.length; i += 2) {
+      rows.push(filteredClients.slice(i, i + 2));
+    }
+
+    return (
+      <View style={styles.clientsGrid}>
+        {rows.map((row, rowIndex) => (
+          <View key={rowIndex} style={styles.clientRow}>
+            {row.map((client) => (
+              <ClientCard
+                key={client.id}
+                client={client}
+                onPress={() => router.push(`/more/client/${client.id}`)}
+              />
+            ))}
+            {row.length === 1 && <View style={styles.placeholderCard} />}
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   return (
     <>
@@ -244,15 +243,7 @@ export default function ClientsScreen() {
                 </Text>
               </View>
             ) : (
-              <View style={styles.clientsList}>
-                {filteredClients.map((client) => (
-                  <ClientCard
-                    key={client.id}
-                    client={client}
-                    onPress={() => router.push(`/more/client/${client.id}`)}
-                  />
-                ))}
-              </View>
+              renderClientGrid()
             )}
           </View>
         </ScrollView>
@@ -421,86 +412,59 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
 
-  clientsList: {
-    gap: spacing.lg,
+  clientsGrid: {
+    gap: 12,
+  },
+  clientRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  placeholderCard: {
+    flex: 1,
   },
   clientCard: {
-    width: '100%',
+    flex: 1,
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
   clientCardContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: spacing.xl,
-    gap: spacing.lg,
+    alignItems: 'center',
+    padding: 12,
+    gap: 6,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 4,
   },
   avatarText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.primaryForeground,
   },
-  clientInfo: {
-    flex: 1,
-    gap: spacing.md,
-  },
-  clientNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    flexWrap: 'wrap',
-  },
   clientName: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.foreground,
-  },
-  jobsBadge: {
-    backgroundColor: colors.muted,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
-  },
-  jobsBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-  },
-  contactRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.lg,
-  },
-  contactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    minHeight: 24,
-  },
-  addressRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    marginTop: spacing.xs,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   contactText: {
-    fontSize: 15,
+    fontSize: 12,
     color: colors.mutedForeground,
-    flexShrink: 1,
+    textAlign: 'center',
   },
-  chevronContainer: {
-    alignSelf: 'center',
+  jobsText: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+    marginTop: 2,
   },
 });
