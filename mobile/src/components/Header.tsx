@@ -1,9 +1,10 @@
 import { useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Image, Animated, Easing } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { useAuthStore } from '../lib/store';
 import { useTheme, ThemeColors } from '../lib/theme';
+import { useNotificationsStore } from '../lib/notifications-store';
 
 interface HeaderProps {
   title?: string;
@@ -114,9 +115,12 @@ export function Header({
   showBackButton = false,
   onBackPress,
 }: HeaderProps) {
-  const { user } = useAuthStore();
+  const { user, isOwner, isManager } = useAuthStore();
   const { colors, isDark, setThemeMode, themeMode } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { unreadCount } = useNotificationsStore();
+  const pathname = usePathname();
+  const canViewMap = isOwner() || isManager();
   
   const avatarScale = useRef(new Animated.Value(1)).current;
   
@@ -203,10 +207,27 @@ export function Header({
             />
           )}
           
+          {canViewMap && (
+            <HeaderIconButton
+              icon="map-pin"
+              onPress={() => router.push('/(tabs)/map')}
+              color={pathname === '/map' || pathname === '/(tabs)/map' ? colors.primary : colors.mutedForeground}
+              colors={colors}
+            />
+          )}
+          
           <HeaderIconButton
             icon={isDark ? 'sun' : 'moon'}
             onPress={toggleTheme}
             color={colors.mutedForeground}
+            colors={colors}
+          />
+          
+          <HeaderIconButton
+            icon="bell"
+            onPress={() => router.push('/more/notifications-inbox')}
+            color={colors.mutedForeground}
+            badge={unreadCount}
             colors={colors}
           />
           
