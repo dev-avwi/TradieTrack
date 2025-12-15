@@ -307,7 +307,7 @@ function ThisWeekSection({ jobs, onViewJob }: { jobs: any[]; onViewJob: (id: str
   );
 }
 
-// KPI Stat Card Component - compact modern design
+// KPI Stat Card Component - matches web feed-card styling
 function KPICard({ 
   title, 
   value, 
@@ -330,13 +330,13 @@ function KPICard({
     <TouchableOpacity
       style={styles.kpiCard}
       onPress={onPress}
-      activeOpacity={0.9}
+      activeOpacity={0.95}
     >
       <View style={styles.kpiCardContent}>
         <View style={[styles.kpiIconContainer, { backgroundColor: iconBg }]}>
-          <Feather name={icon} size={14} color={iconColor} />
+          <Feather name={icon} size={20} color={iconColor} />
         </View>
-        <View>
+        <View style={styles.kpiTextContainer}>
           <Text style={styles.kpiValue}>{value}</Text>
           <Text style={styles.kpiTitle}>{title}</Text>
         </View>
@@ -1308,33 +1308,37 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing['3xl'],
   },
   sectionLabel: {
-    ...typography.label,
+    fontSize: 11,
+    fontWeight: '500',
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: 12,
   },
   sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   sectionTitleIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.sm,
-    backgroundColor: `${colors.primary}10`,
+    width: 28,
+    height: 28,
+    borderRadius: radius.md,
+    backgroundColor: `${colors.primary}12`,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: colors.foreground,
+    letterSpacing: -0.2,
   },
   viewAllButton: {
     flexDirection: 'row',
@@ -1349,17 +1353,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
 
-  // KPI Grid - 2-col with 10-12px gap
+  // KPI Grid - matches web grid-cols-2 gap-3
   kpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
   },
   kpiCard: {
     flex: 1,
-    minWidth: '45%',
+    minWidth: '46%',
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -1371,28 +1375,35 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: 16,
   },
   kpiIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: radius.xl,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  kpiTextContainer: {
+    flex: 1,
+  },
   kpiValue: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.foreground,
+    letterSpacing: -0.5,
   },
   kpiTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     color: colors.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 2,
   },
 
-  // Quick Actions - matches web Card p-4 (16px)
+  // Quick Actions - matches web feed-card styling
   quickActionsCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     padding: 16,
@@ -1408,18 +1419,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 12,
-    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.background,
+    minHeight: 40,
   },
   quickActionButtonPrimary: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   quickActionText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
     color: colors.foreground,
   },
