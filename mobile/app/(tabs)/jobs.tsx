@@ -198,16 +198,46 @@ export default function JobsScreen() {
 
   const filteredJobs = getFilteredJobs();
 
-  const sortedJobs = [...filteredJobs].sort((a, b) => {
-    const dateA = a.createdAt || a.scheduledAt;
-    const dateB = b.createdAt || b.scheduledAt;
-    if (dateA && dateB) {
-      return new Date(dateB).getTime() - new Date(dateA).getTime();
+  // Get the canonical date for a job (scheduled > completed > created)
+  const getJobDate = (job: any): Date | null => {
+    const dateStr = job.scheduledAt || job.completedAt || job.createdAt;
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? null : date;
+  };
+
+  // Get start of today for comparison
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Split jobs into upcoming/today and past
+  const upcomingJobs: typeof filteredJobs = [];
+  const pastJobs: typeof filteredJobs = [];
+
+  filteredJobs.forEach(job => {
+    const jobDate = getJobDate(job);
+    if (!jobDate || jobDate < today) {
+      pastJobs.push(job);
+    } else {
+      upcomingJobs.push(job);
     }
-    if (dateA) return -1;
-    if (dateB) return 1;
-    return 0;
   });
+
+  // Sort each group ascending (earliest first)
+  const sortAscending = (a: any, b: any) => {
+    const dateA = getJobDate(a);
+    const dateB = getJobDate(b);
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+    return dateA.getTime() - dateB.getTime();
+  };
+
+  upcomingJobs.sort(sortAscending);
+  pastJobs.sort(sortAscending);
+
+  // Upcoming/today jobs first, then past jobs at the bottom
+  const sortedJobs = [...upcomingJobs, ...pastJobs];
 
   return (
     <View style={styles.container}>
