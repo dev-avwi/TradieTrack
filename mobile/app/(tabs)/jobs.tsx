@@ -7,8 +7,11 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  ActivityIndicator
+  ActivityIndicator,
+  Dimensions
 } from 'react-native';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
@@ -84,32 +87,34 @@ function JobCard({
       onPress={onPress}
       style={styles.jobCard}
     >
-      {/* Left accent bar like web */}
+      {/* Top accent bar for 2-column cards */}
       <View style={[styles.jobCardAccent, { backgroundColor: getAccentColor() }]} />
       
       <View style={styles.jobCardContent}>
-        {/* Header: Title + Status */}
-        <View style={styles.jobCardHeader}>
-          <Text style={styles.jobTitle} numberOfLines={1}>{job.title || 'Untitled Job'}</Text>
+        {/* Status badge at top */}
+        <View style={styles.jobCardStatusRow}>
           <StatusBadge status={job.status} size="sm" />
         </View>
 
-        {/* Details section like web */}
+        {/* Title */}
+        <Text style={styles.jobTitle} numberOfLines={2}>{job.title || 'Untitled Job'}</Text>
+
+        {/* Details section */}
         <View style={styles.jobCardDetails}>
           {job.clientName && (
             <View style={styles.jobDetailRow}>
-              <Feather name="user" size={12} color={colors.mutedForeground} />
+              <Feather name="user" size={11} color={colors.mutedForeground} />
               <Text style={styles.jobDetailText} numberOfLines={1}>{job.clientName}</Text>
             </View>
           )}
           {job.address && (
             <View style={styles.jobDetailRow}>
-              <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-              <Text style={styles.jobDetailText} numberOfLines={1}>{job.address}</Text>
+              <Feather name="map-pin" size={11} color={colors.mutedForeground} />
+              <Text style={styles.jobDetailText} numberOfLines={1}>{job.address.split(',')[0]}</Text>
             </View>
           )}
           <View style={styles.jobDetailRow}>
-            <Feather name="calendar" size={12} color={colors.mutedForeground} />
+            <Feather name="calendar" size={11} color={colors.mutedForeground} />
             <Text style={styles.jobDetailText} numberOfLines={1}>
               {job.scheduledAt ? formatDate(job.scheduledAt) : 'Not scheduled'}
             </Text>
@@ -123,15 +128,10 @@ function JobCard({
             onPress={() => router.push(`/more/create-invoice?jobId=${job.id}`)}
             activeOpacity={0.8}
           >
-            <Feather name="file-text" size={12} color={colors.white} />
-            <Text style={styles.invoiceBtnText}>Create Invoice</Text>
+            <Feather name="file-text" size={11} color={colors.white} />
+            <Text style={styles.invoiceBtnText}>Invoice</Text>
           </TouchableOpacity>
         )}
-      </View>
-      
-      {/* Chevron for navigation */}
-      <View style={styles.jobCardChevron}>
-        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </View>
     </AnimatedCardPressable>
   );
@@ -318,7 +318,7 @@ export default function JobsScreen() {
               </Text>
             </View>
           ) : (
-            <View style={styles.jobsList}>
+            <View style={styles.jobsGrid}>
               {sortedJobs.map((job) => (
                 <JobCard
                   key={job.id}
@@ -494,69 +494,62 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
 
-  jobsList: {
+  jobsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.md,
   },
   jobCard: {
-    width: '100%',
+    width: (SCREEN_WIDTH - pageShell.paddingHorizontal * 2 - spacing.md) / 2,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    flexDirection: 'row',
     overflow: 'hidden',
   },
   jobCardAccent: {
-    width: 4,
+    height: 3,
     backgroundColor: colors.primary,
   },
   jobCardContent: {
-    flex: 1,
     padding: spacing.md,
   },
-  jobCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
+  jobCardStatusRow: {
+    marginBottom: spacing.xs,
   },
   jobTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.foreground,
-    flex: 1,
+    marginBottom: spacing.sm,
+    lineHeight: 18,
   },
   jobCardDetails: {
-    gap: spacing.xs,
+    gap: 3,
   },
   jobDetailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   jobDetailText: {
-    fontSize: 13,
+    fontSize: 11,
     color: colors.mutedForeground,
     flex: 1,
   },
-  jobCardChevron: {
-    justifyContent: 'center',
-    paddingRight: spacing.md,
-  },
   invoiceBtn: {
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
     alignSelf: 'flex-start',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
   },
   invoiceBtnText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.white,
   },
