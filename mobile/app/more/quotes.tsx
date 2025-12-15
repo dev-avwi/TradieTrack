@@ -7,13 +7,15 @@ import {
   RefreshControl,
   StyleSheet,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useQuotesStore, useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, sizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected';
 
@@ -28,6 +30,112 @@ const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
 const navigateToCreateQuote = () => {
   router.push('/more/quote/new');
 };
+
+function QuoteCard({ 
+  quote, 
+  clientName,
+  onPress 
+}: { 
+  quote: any;
+  clientName: string;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const formatCurrency = (amount: number) => {
+    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-AU', {
+      day: 'numeric',
+      month: 'short',
+    });
+  };
+
+  const getAccentColor = () => {
+    switch (quote.status) {
+      case 'draft': return colors.warning;
+      case 'sent': return colors.info;
+      case 'accepted': return colors.success;
+      case 'rejected': return colors.destructive;
+      default: return colors.primary;
+    }
+  };
+
+  const getNextAction = () => {
+    switch (quote.status) {
+      case 'draft':
+        return { 
+          label: 'Send', 
+          icon: 'send' as const, 
+          color: colors.primary,
+        };
+      case 'sent':
+        return { 
+          label: 'View', 
+          icon: 'eye' as const, 
+          color: colors.info,
+        };
+      case 'accepted':
+        return { 
+          label: 'Job', 
+          icon: 'briefcase' as const, 
+          color: colors.success,
+        };
+      default:
+        return { 
+          label: 'View', 
+          icon: 'eye' as const, 
+          color: colors.primary,
+        };
+    }
+  };
+
+  const nextAction = getNextAction();
+
+  return (
+    <AnimatedCardPressable
+      onPress={onPress}
+      style={styles.quoteCard}
+    >
+      <View style={[styles.quoteCardAccent, { backgroundColor: getAccentColor() }]} />
+      <View style={styles.quoteCardContent}>
+        <View style={styles.quoteCardHeader}>
+          <Text style={styles.quoteNumber} numberOfLines={1}>{quote.quoteNumber || 'Draft'}</Text>
+          <StatusBadge status={quote.status} size="sm" />
+        </View>
+
+        <View style={styles.quoteAmountRow}>
+          <Text style={styles.quoteTotal}>{formatCurrency(quote.total || 0)}</Text>
+        </View>
+
+        <View style={styles.quoteMetaRow}>
+          <View style={styles.quoteDetailRow}>
+            <Feather name="user" size={12} color={colors.mutedForeground} />
+            <Text style={styles.quoteDetailText} numberOfLines={1}>{clientName}</Text>
+          </View>
+          <View style={styles.quoteDetailRow}>
+            <Feather name="calendar" size={12} color={colors.mutedForeground} />
+            <Text style={styles.quoteDetailText} numberOfLines={1}>{formatDate(quote.createdAt)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.inlineActionsRow}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: nextAction.color }]}
+            onPress={onPress}
+            activeOpacity={0.8}
+          >
+            <Feather name={nextAction.icon} size={12} color={colors.white} />
+            <Text style={styles.actionBtnText}>{nextAction.label}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </AnimatedCardPressable>
+  );
+}
 
 export default function QuotesScreen() {
   const { colors } = useTheme();
@@ -51,18 +159,6 @@ export default function QuotesScreen() {
     return client?.name || 'Unknown Client';
   };
 
-  const formatCurrency = (amount: number) => {
-    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-AU', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
   const filterCounts = {
     all: quotes.length,
     draft: quotes.filter(q => q.status === 'draft').length,
@@ -83,6 +179,10 @@ export default function QuotesScreen() {
     return matchesSearch && matchesFilter;
   });
 
+  const sortedQuotes = [...filteredQuotes].sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -99,35 +199,32 @@ export default function QuotesScreen() {
             />
           }
         >
-          {/* Header Section */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={styles.pageTitle}>Quotes</Text>
-              <Text style={styles.pageSubtitle}>Manage your quotes and proposals</Text>
+              <Text style={styles.pageSubtitle}>{quotes.length} total</Text>
             </View>
             <TouchableOpacity
               activeOpacity={0.8}
               style={styles.newButton}
               onPress={navigateToCreateQuote}
             >
-              <Feather name="plus" size={18} color={colors.white} />
+              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
               <Text style={styles.newButtonText}>New Quote</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Search Bar */}
           <View style={styles.searchBar}>
-            <Feather name="search" size={20} color={colors.mutedForeground} />
+            <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search quotes by number, client, or job..."
+              placeholder="Search quotes..."
               placeholderTextColor={colors.mutedForeground}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
           </View>
 
-          {/* Filter Pills with Counts */}
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
@@ -148,13 +245,6 @@ export default function QuotesScreen() {
                     isActive && styles.filterPillActive
                   ]}
                 >
-                  {filter.icon && (
-                    <Feather 
-                      name={filter.icon as any}
-                      size={14} 
-                      color={isActive ? colors.white : colors.foreground} 
-                    />
-                  )}
                   <Text style={[
                     styles.filterPillText,
                     isActive && styles.filterPillTextActive
@@ -177,46 +267,39 @@ export default function QuotesScreen() {
             })}
           </ScrollView>
 
-          {/* All Quotes Section */}
-          <View style={styles.sectionContainer}>
+          <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>All Quotes</Text>
-              <Text style={styles.sectionCount}>{filteredQuotes.length} quotes</Text>
+              <Feather name="file-text" size={iconSizes.md} color={colors.primary} />
+              <Text style={styles.sectionTitle}>ALL QUOTES</Text>
             </View>
             
-            {filteredQuotes.length === 0 ? (
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : sortedQuotes.length === 0 ? (
               <View style={styles.emptyState}>
-                <Feather name="file-text" size={48} color={colors.mutedForeground} />
-                <Text style={styles.emptyTitle}>No quotes found</Text>
-                <Text style={styles.emptySubtitle}>
-                  {searchQuery ? 'Try a different search' : 'Create your first quote to get started'}
+                <View style={styles.emptyStateIcon}>
+                  <Feather name="file-text" size={iconSizes['4xl']} color={colors.mutedForeground} />
+                </View>
+                <Text style={styles.emptyStateTitle}>No quotes found</Text>
+                <Text style={styles.emptyStateSubtitle}>
+                  {searchQuery || activeFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Create your first quote to get started'}
                 </Text>
               </View>
             ) : (
-              filteredQuotes.map(quote => (
-                <TouchableOpacity
-                  key={quote.id}
-                  style={styles.quoteCard}
-                  activeOpacity={0.7}
-                  onPress={() => router.push(`/more/quote/${quote.id}`)}
-                >
-                  <View style={styles.quoteHeader}>
-                    <View style={styles.quoteInfo}>
-                      <Text style={styles.quoteNumber}>{quote.quoteNumber || 'Draft'}</Text>
-                      <StatusBadge status={quote.status} size="sm" />
-                    </View>
-                    <Text style={styles.quoteTotal}>{formatCurrency(quote.total || 0)}</Text>
-                  </View>
-                  <Text style={styles.clientName}>{getClientName(quote.clientId)}</Text>
-                  <View style={styles.quoteFooter}>
-                    <View style={styles.dateRow}>
-                      <Feather name="clock" size={14} color={colors.mutedForeground} />
-                      <Text style={styles.dateText}>{formatDate(quote.createdAt)}</Text>
-                    </View>
-                    <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-                  </View>
-                </TouchableOpacity>
-              ))
+              <View style={styles.quotesList}>
+                {sortedQuotes.map((quote) => (
+                  <QuoteCard
+                    key={quote.id}
+                    quote={quote}
+                    clientName={getClientName(quote.clientId)}
+                    onPress={() => router.push(`/more/quote/${quote.id}`)}
+                  />
+                ))}
+              </View>
             )}
           </View>
         </ScrollView>
@@ -234,42 +317,43 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
-    paddingBottom: 100,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
+    paddingBottom: pageShell.paddingBottom,
   },
 
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
-    paddingTop: 8,
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+    paddingTop: spacing.sm,
   },
   headerLeft: {
     flex: 1,
   },
   pageTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...typography.pageTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   newButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 6,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    gap: spacing.xs,
+    ...shadows.sm,
   },
   newButtonText: {
     color: colors.primaryForeground,
-    fontSize: 14,
+    ...typography.caption,
     fontWeight: '600',
   },
 
@@ -277,159 +361,193 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 44,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    height: sizes.searchBarHeight,
+    marginBottom: spacing.lg,
+    gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    gap: 10,
-    marginBottom: 16,
+    borderColor: colors.cardBorder,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    ...typography.body,
     color: colors.foreground,
   },
 
   filtersScroll: {
-    marginBottom: 16,
-    marginHorizontal: -16,
+    marginBottom: spacing.lg,
+    marginHorizontal: -pageShell.paddingHorizontal,
   },
   filtersContent: {
-    paddingHorizontal: 16,
-    gap: 8,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    gap: spacing.sm,
   },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
     backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
-    gap: 6,
+    borderColor: colors.cardBorder,
+    gap: spacing.xs,
   },
   filterPillActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   filterPillText: {
-    fontSize: 13,
+    ...typography.captionSmall,
     fontWeight: '500',
     color: colors.foreground,
   },
   filterPillTextActive: {
-    color: colors.primaryForeground,
+    color: colors.white,
   },
   filterCount: {
     backgroundColor: colors.muted,
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 2,
-    borderRadius: 999,
-    minWidth: 20,
+    borderRadius: radius.sm,
+    minWidth: sizes.filterCountMin,
     alignItems: 'center',
   },
   filterCountActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   filterCountText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.mutedForeground,
+    color: colors.foreground,
   },
   filterCountTextActive: {
-    color: colors.primaryForeground,
+    color: colors.white,
   },
 
-  sectionContainer: {
+  section: {
     marginBottom: spacing.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.foreground,
-  },
-  sectionCount: {
-    fontSize: 12,
-    color: colors.mutedForeground,
+    letterSpacing: 0.5,
   },
 
-  quoteCard: {
+  loadingContainer: {
+    paddingVertical: spacing['3xl'],
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing['4xl'],
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.xl,
-    marginBottom: 10,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  emptyStateIcon: {
+    marginBottom: spacing.lg,
+  },
+  emptyStateTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    marginBottom: spacing.xs,
+  },
+  emptyStateSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+
+  quotesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  quoteCard: {
+    width: '48.5%',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
-  quoteHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
+  quoteCardAccent: {
+    height: 3,
+    width: '100%',
   },
-  quoteInfo: {
+  quoteCardContent: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  quoteCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
     gap: spacing.sm,
   },
   quoteNumber: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.foreground,
+    flex: 1,
+  },
+  quoteAmountRow: {
+    marginBottom: spacing.sm,
   },
   quoteTotal: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.foreground,
   },
-  clientName: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginBottom: spacing.md,
+  quoteMetaRow: {
+    flexDirection: 'column',
+    gap: 2,
+    marginBottom: spacing.sm,
   },
-  quoteFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dateRow: {
+  quoteDetailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 4,
+    marginBottom: 2,
   },
-  dateText: {
+  quoteDetailText: {
     fontSize: 11,
     color: colors.mutedForeground,
+    flex: 1,
   },
-
-  emptyState: {
+  inlineActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingVertical: spacing['3xl'],
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.foreground,
-    marginTop: spacing.md,
-  },
-  emptySubtitle: {
-    fontSize: 12,
-    color: colors.mutedForeground,
     marginTop: spacing.xs,
-    textAlign: 'center',
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.cardBorder,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.md,
+    gap: 4,
+  },
+  actionBtnText: {
+    fontSize: 11,
+    color: colors.white,
+    fontWeight: '600',
   },
 });

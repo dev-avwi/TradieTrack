@@ -7,12 +7,13 @@ import {
   RefreshControl,
   StyleSheet,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useInvoicesStore, useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, sizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 
@@ -29,6 +30,117 @@ const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
 const navigateToCreateInvoice = () => {
   router.push('/more/invoice/new');
 };
+
+function InvoiceCard({ 
+  invoice, 
+  clientName,
+  onPress 
+}: { 
+  invoice: any;
+  clientName: string;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const formatCurrency = (amount: number) => {
+    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-AU', {
+      day: 'numeric',
+      month: 'short',
+    });
+  };
+
+  const getAccentColor = () => {
+    switch (invoice.status) {
+      case 'draft': return colors.warning;
+      case 'sent': return colors.info;
+      case 'paid': return colors.success;
+      case 'overdue': return colors.destructive;
+      default: return colors.primary;
+    }
+  };
+
+  const getNextAction = () => {
+    switch (invoice.status) {
+      case 'draft':
+        return { 
+          label: 'Send', 
+          icon: 'send' as const, 
+          color: colors.primary,
+        };
+      case 'sent':
+        return { 
+          label: 'Collect', 
+          icon: 'credit-card' as const, 
+          color: colors.success,
+        };
+      case 'overdue':
+        return { 
+          label: 'Remind', 
+          icon: 'bell' as const, 
+          color: colors.destructive,
+        };
+      default:
+        return { 
+          label: 'View', 
+          icon: 'eye' as const, 
+          color: colors.primary,
+        };
+    }
+  };
+
+  const nextAction = getNextAction();
+  const gstAmount = (invoice.total || 0) / 11;
+  const subtotal = (invoice.total || 0) - gstAmount;
+
+  return (
+    <AnimatedCardPressable
+      onPress={onPress}
+      style={styles.invoiceCard}
+    >
+      <View style={[styles.invoiceCardAccent, { backgroundColor: getAccentColor() }]} />
+      <View style={styles.invoiceCardContent}>
+        <View style={styles.invoiceCardHeader}>
+          <Text style={styles.invoiceNumber} numberOfLines={1}>{invoice.invoiceNumber || 'Draft'}</Text>
+          <StatusBadge status={invoice.status || 'draft'} size="sm" />
+        </View>
+
+        <View style={styles.invoiceAmountRow}>
+          <Text style={styles.invoiceTotal}>{formatCurrency(invoice.total || 0)}</Text>
+          <Text style={styles.invoiceGst}>inc. GST</Text>
+        </View>
+
+        <View style={styles.invoiceMetaRow}>
+          <View style={styles.invoiceDetailRow}>
+            <Feather name="user" size={12} color={colors.mutedForeground} />
+            <Text style={styles.invoiceDetailText} numberOfLines={1}>{clientName}</Text>
+          </View>
+          <View style={styles.invoiceDetailRow}>
+            <Feather name="calendar" size={12} color={colors.mutedForeground} />
+            <Text style={styles.invoiceDetailText} numberOfLines={1}>
+              Due: {formatDate(invoice.dueDate || invoice.createdAt)}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.inlineActionsRow}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: nextAction.color }]}
+            onPress={onPress}
+            activeOpacity={0.8}
+          >
+            <Feather name={nextAction.icon} size={12} color={colors.white} />
+            <Text style={styles.actionBtnText}>{nextAction.label}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </AnimatedCardPressable>
+  );
+}
 
 export default function InvoicesScreen() {
   const { colors } = useTheme();
@@ -53,14 +165,6 @@ export default function InvoicesScreen() {
 
   const formatCurrency = (amount: number) => {
     return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-AU', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
   };
 
   const totalOutstanding = invoices
@@ -91,6 +195,10 @@ export default function InvoicesScreen() {
     return matchesSearch && matchesFilter;
   });
 
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -107,23 +215,21 @@ export default function InvoicesScreen() {
             />
           }
         >
-          {/* Header Section */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={styles.pageTitle}>Invoices</Text>
-              <Text style={styles.pageSubtitle}>Send and track invoices</Text>
+              <Text style={styles.pageSubtitle}>{invoices.length} total</Text>
             </View>
             <TouchableOpacity
               activeOpacity={0.8}
               style={styles.newButton}
               onPress={navigateToCreateInvoice}
             >
-              <Feather name="plus" size={18} color={colors.white} />
+              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
               <Text style={styles.newButtonText}>New Invoice</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Summary Card */}
           <View style={styles.summaryCard}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Outstanding</Text>
@@ -131,24 +237,22 @@ export default function InvoicesScreen() {
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Paid This Month</Text>
+              <Text style={styles.summaryLabel}>Paid</Text>
               <Text style={[styles.summaryValue, { color: colors.success }]}>{formatCurrency(totalPaid)}</Text>
             </View>
           </View>
 
-          {/* Search Bar */}
           <View style={styles.searchBar}>
-            <Feather name="search" size={20} color={colors.mutedForeground} />
+            <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search invoices by number, client..."
+              placeholder="Search invoices..."
               placeholderTextColor={colors.mutedForeground}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
           </View>
 
-          {/* Filter Pills with Counts */}
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
@@ -169,13 +273,6 @@ export default function InvoicesScreen() {
                     isActive && styles.filterPillActive
                   ]}
                 >
-                  {filter.icon && (
-                    <Feather 
-                      name={filter.icon as any}
-                      size={14} 
-                      color={isActive ? colors.white : colors.foreground} 
-                    />
-                  )}
                   <Text style={[
                     styles.filterPillText,
                     isActive && styles.filterPillTextActive
@@ -198,59 +295,39 @@ export default function InvoicesScreen() {
             })}
           </ScrollView>
 
-          {/* All Invoices Section */}
-          <View style={styles.sectionContainer}>
+          <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>All Invoices</Text>
-              <Text style={styles.sectionCount}>{filteredInvoices.length} invoices</Text>
+              <Feather name="file-text" size={iconSizes.md} color={colors.primary} />
+              <Text style={styles.sectionTitle}>ALL INVOICES</Text>
             </View>
             
-            {filteredInvoices.length === 0 ? (
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : sortedInvoices.length === 0 ? (
               <View style={styles.emptyState}>
-                <Feather name="file-text" size={48} color={colors.mutedForeground} />
-                <Text style={styles.emptyTitle}>No invoices found</Text>
-                <Text style={styles.emptySubtitle}>
-                  {searchQuery ? 'Try a different search' : 'Create your first invoice to get started'}
+                <View style={styles.emptyStateIcon}>
+                  <Feather name="file-text" size={iconSizes['4xl']} color={colors.mutedForeground} />
+                </View>
+                <Text style={styles.emptyStateTitle}>No invoices found</Text>
+                <Text style={styles.emptyStateSubtitle}>
+                  {searchQuery || activeFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Create your first invoice to get started'}
                 </Text>
               </View>
             ) : (
-              filteredInvoices.map(invoice => {
-                const getAccentColor = () => {
-                  switch (invoice.status) {
-                    case 'draft': return colors.warning;
-                    case 'sent': return colors.info;
-                    case 'paid': return colors.success;
-                    case 'overdue': return colors.destructive;
-                    default: return colors.primary;
-                  }
-                };
-                return (
-                  <AnimatedCardPressable
+              <View style={styles.invoicesList}>
+                {sortedInvoices.map((invoice) => (
+                  <InvoiceCard
                     key={invoice.id}
-                    style={styles.invoiceCard}
+                    invoice={invoice}
+                    clientName={getClientName(invoice.clientId)}
                     onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-                  >
-                    <View style={[styles.invoiceCardAccent, { backgroundColor: getAccentColor() }]} />
-                    <View style={styles.invoiceCardContent}>
-                      <View style={styles.invoiceHeader}>
-                        <View style={styles.invoiceInfo}>
-                          <Text style={styles.invoiceNumber}>{invoice.invoiceNumber || 'Draft'}</Text>
-                          <StatusBadge status={invoice.status || 'draft'} size="sm" />
-                        </View>
-                        <Text style={styles.invoiceTotal}>{formatCurrency(invoice.total || 0)}</Text>
-                      </View>
-                      <Text style={styles.clientName}>{getClientName(invoice.clientId)}</Text>
-                      <View style={styles.invoiceFooter}>
-                        <View style={styles.dateRow}>
-                          <Feather name="clock" size={14} color={colors.mutedForeground} />
-                          <Text style={styles.dateText}>Due: {formatDate(invoice.dueDate || invoice.createdAt)}</Text>
-                        </View>
-                        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-                      </View>
-                    </View>
-                  </AnimatedCardPressable>
-                );
-              })
+                  />
+                ))}
+              </View>
             )}
           </View>
         </ScrollView>
@@ -268,240 +345,274 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
-    paddingBottom: 100,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
+    paddingBottom: pageShell.paddingBottom,
   },
 
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
-    paddingTop: 8,
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+    paddingTop: spacing.sm,
   },
   headerLeft: {
     flex: 1,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    ...typography.pageTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   newButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 6,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    gap: spacing.xs,
+    ...shadows.sm,
   },
   newButtonText: {
     color: colors.primaryForeground,
-    fontSize: 14,
+    ...typography.caption,
     fontWeight: '600',
   },
 
   summaryCard: {
     flexDirection: 'row',
     backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   summaryItem: {
     flex: 1,
     alignItems: 'center',
   },
   summaryLabel: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   summaryValue: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...typography.statValue,
     color: colors.foreground,
   },
   summaryDivider: {
     width: 1,
-    backgroundColor: colors.border,
-    marginHorizontal: 16,
+    backgroundColor: colors.cardBorder,
+    marginHorizontal: spacing.lg,
   },
 
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 48,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    height: sizes.searchBarHeight,
+    marginBottom: spacing.lg,
+    gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    gap: 10,
-    marginBottom: 16,
+    borderColor: colors.cardBorder,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    ...typography.body,
     color: colors.foreground,
   },
 
   filtersScroll: {
-    marginBottom: 16,
-    marginHorizontal: -16,
+    marginBottom: spacing.lg,
+    marginHorizontal: -pageShell.paddingHorizontal,
   },
   filtersContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-    flexDirection: 'row',
+    paddingHorizontal: pageShell.paddingHorizontal,
+    gap: spacing.sm,
   },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
     backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
-    gap: 6,
+    borderColor: colors.cardBorder,
+    gap: spacing.xs,
   },
   filterPillActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   filterPillText: {
-    fontSize: 13,
+    ...typography.captionSmall,
     fontWeight: '500',
     color: colors.foreground,
   },
   filterPillTextActive: {
-    color: colors.primaryForeground,
+    color: colors.white,
   },
   filterCount: {
     backgroundColor: colors.muted,
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 2,
-    borderRadius: 999,
-    minWidth: 20,
+    borderRadius: radius.sm,
+    minWidth: sizes.filterCountMin,
     alignItems: 'center',
   },
   filterCountActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   filterCountText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.mutedForeground,
+    color: colors.foreground,
   },
   filterCountTextActive: {
-    color: colors.primaryForeground,
+    color: colors.white,
   },
 
-  sectionContainer: {
+  section: {
     marginBottom: spacing.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.foreground,
-  },
-  sectionCount: {
-    fontSize: 12,
-    color: colors.mutedForeground,
+    letterSpacing: 0.5,
   },
 
-  invoiceCard: {
-    flexDirection: 'row',
+  loadingContainer: {
+    paddingVertical: spacing['3xl'],
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing['4xl'],
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  emptyStateIcon: {
+    marginBottom: spacing.lg,
+  },
+  emptyStateTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    marginBottom: spacing.xs,
+  },
+  emptyStateSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+
+  invoicesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  invoiceCard: {
+    width: '48.5%',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-    marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
   invoiceCardAccent: {
-    width: 4,
+    height: 3,
+    width: '100%',
   },
   invoiceCardContent: {
     flex: 1,
-    padding: 16,
+    padding: spacing.md,
   },
-  invoiceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
-  },
-  invoiceInfo: {
+  invoiceCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
     gap: spacing.sm,
   },
   invoiceNumber: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.foreground,
+    flex: 1,
+  },
+  invoiceAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
   },
   invoiceTotal: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.foreground,
   },
-  clientName: {
-    fontSize: 12,
+  invoiceGst: {
+    fontSize: 10,
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
+    fontWeight: '500',
   },
-  invoiceFooter: {
+  invoiceMetaRow: {
+    flexDirection: 'column',
+    gap: 2,
+    marginBottom: spacing.sm,
+  },
+  invoiceDetailRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
   },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  dateText: {
+  invoiceDetailText: {
     fontSize: 11,
     color: colors.mutedForeground,
+    flex: 1,
   },
-
-  emptyState: {
+  inlineActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingVertical: spacing['3xl'],
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.foreground,
-    marginTop: spacing.md,
-  },
-  emptySubtitle: {
-    fontSize: 12,
-    color: colors.mutedForeground,
     marginTop: spacing.xs,
-    textAlign: 'center',
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.cardBorder,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.md,
+    gap: 4,
+  },
+  actionBtnText: {
+    fontSize: 11,
+    color: colors.white,
+    fontWeight: '600',
   },
 });

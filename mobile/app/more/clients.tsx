@@ -7,12 +7,13 @@ import {
   RefreshControl,
   StyleSheet,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 
 type FilterKey = 'all' | 'with_email' | 'with_phone' | 'with_address';
@@ -27,6 +28,75 @@ const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
 const handleCreateClient = () => {
   router.push('/more/client/new');
 };
+
+function ClientCard({ 
+  client, 
+  onPress 
+}: { 
+  client: any; 
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
+  return (
+    <AnimatedCardPressable
+      onPress={onPress}
+      style={styles.clientCard}
+    >
+      <View style={[styles.clientCardAccent, { backgroundColor: colors.primary }]} />
+      <View style={styles.clientCardContent}>
+        <View style={styles.clientCardHeader}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
+          </View>
+          <Text style={styles.clientName} numberOfLines={1}>{client.name}</Text>
+        </View>
+
+        <View style={styles.clientMetaRow}>
+          {client.email && (
+            <View style={styles.clientDetailRow}>
+              <Feather name="mail" size={12} color={colors.mutedForeground} />
+              <Text style={styles.clientDetailText} numberOfLines={1}>{client.email}</Text>
+            </View>
+          )}
+          {client.phone && (
+            <View style={styles.clientDetailRow}>
+              <Feather name="phone" size={12} color={colors.mutedForeground} />
+              <Text style={styles.clientDetailText} numberOfLines={1}>{client.phone}</Text>
+            </View>
+          )}
+          {client.address && (
+            <View style={styles.clientDetailRow}>
+              <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+              <Text style={styles.clientDetailText} numberOfLines={1}>{client.address}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.inlineActionsRow}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+            onPress={onPress}
+            activeOpacity={0.8}
+          >
+            <Feather name="eye" size={12} color={colors.white} />
+            <Text style={styles.actionBtnText}>View</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </AnimatedCardPressable>
+  );
+}
 
 export default function ClientsScreen() {
   const { clients, fetchClients, isLoading } = useClientsStore();
@@ -66,15 +136,6 @@ export default function ClientsScreen() {
     return matchesSearch && matchesFilter;
   });
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
-  };
-
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -91,7 +152,6 @@ export default function ClientsScreen() {
             />
           }
         >
-          {/* Header Section */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={styles.pageTitle}>Clients</Text>
@@ -102,24 +162,22 @@ export default function ClientsScreen() {
               style={styles.newButton}
               onPress={handleCreateClient}
             >
-              <Feather name="plus" size={18} color={colors.primaryForeground} />
+              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
               <Text style={styles.newButtonText}>New Client</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Search Bar */}
           <View style={styles.searchBar}>
-            <Feather name="search" size={20} color={colors.mutedForeground} />
+            <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search clients by name, email, phone, or address..."
+              placeholder="Search clients..."
               placeholderTextColor={colors.mutedForeground}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
           </View>
 
-          {/* Filter Pills with Counts */}
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
@@ -140,13 +198,6 @@ export default function ClientsScreen() {
                     isActive && styles.filterPillActive
                   ]}
                 >
-                  {filter.icon && (
-                    <Feather 
-                      name={filter.icon as any}
-                      size={14} 
-                      color={isActive ? colors.primaryForeground : colors.foreground} 
-                    />
-                  )}
                   <Text style={[
                     styles.filterPillText,
                     isActive && styles.filterPillTextActive
@@ -169,49 +220,38 @@ export default function ClientsScreen() {
             })}
           </ScrollView>
 
-          {/* All Clients Section */}
-          <View style={styles.sectionContainer}>
+          <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>All Clients</Text>
-              <Text style={styles.sectionCount}>{filteredClients.length} clients</Text>
+              <Feather name="users" size={iconSizes.md} color={colors.primary} />
+              <Text style={styles.sectionTitle}>ALL CLIENTS</Text>
             </View>
             
-            {filteredClients.length === 0 ? (
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : filteredClients.length === 0 ? (
               <View style={styles.emptyState}>
-                <Feather name="users" size={48} color={colors.mutedForeground} />
-                <Text style={styles.emptyTitle}>No clients found</Text>
-                <Text style={styles.emptySubtitle}>
-                  {searchQuery ? 'Try a different search' : 'Add your first client to get started'}
+                <View style={styles.emptyStateIcon}>
+                  <Feather name="users" size={iconSizes['4xl']} color={colors.mutedForeground} />
+                </View>
+                <Text style={styles.emptyStateTitle}>No clients found</Text>
+                <Text style={styles.emptyStateSubtitle}>
+                  {searchQuery || activeFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Add your first client to get started'}
                 </Text>
               </View>
             ) : (
-              filteredClients.map(client => (
-                <AnimatedCardPressable
-                  key={client.id}
-                  style={styles.clientCard}
-                  onPress={() => router.push(`/more/client/${client.id}`)}
-                >
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
-                  </View>
-                  <View style={styles.clientInfo}>
-                    <Text style={styles.clientName}>{client.name}</Text>
-                    {client.email && (
-                      <View style={styles.contactRow}>
-                        <Feather name="mail" size={14} color={colors.mutedForeground} />
-                        <Text style={styles.contactText}>{client.email}</Text>
-                      </View>
-                    )}
-                    {client.phone && (
-                      <View style={styles.contactRow}>
-                        <Feather name="phone" size={14} color={colors.mutedForeground} />
-                        <Text style={styles.contactText}>{client.phone}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-                </AnimatedCardPressable>
-              ))
+              <View style={styles.clientsList}>
+                {filteredClients.map((client) => (
+                  <ClientCard
+                    key={client.id}
+                    client={client}
+                    onPress={() => router.push(`/more/client/${client.id}`)}
+                  />
+                ))}
+              </View>
             )}
           </View>
         </ScrollView>
@@ -229,14 +269,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: spacing.lg,
-    paddingBottom: 100,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
+    paddingBottom: pageShell.paddingBottom,
   },
 
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
     marginBottom: spacing.lg,
     paddingTop: spacing.sm,
   },
@@ -250,7 +291,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   pageSubtitle: {
     ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   newButton: {
     flexDirection: 'row',
@@ -272,13 +313,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     paddingHorizontal: spacing.lg,
     height: sizes.searchBarHeight,
+    marginBottom: spacing.lg,
+    gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    gap: spacing.md,
-    marginBottom: spacing.lg,
   },
   searchInput: {
     flex: 1,
@@ -288,16 +329,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
   filtersScroll: {
     marginBottom: spacing.lg,
-    marginHorizontal: -spacing.lg,
+    marginHorizontal: -pageShell.paddingHorizontal,
   },
   filtersContent: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: pageShell.paddingHorizontal,
     gap: spacing.sm,
   },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radius.full,
     backgroundColor: colors.card,
@@ -315,7 +356,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   filterPillTextActive: {
-    color: colors.primaryForeground,
+    color: colors.white,
   },
   filterCount: {
     backgroundColor: colors.muted,
@@ -334,27 +375,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   filterCountTextActive: {
-    color: colors.primaryForeground,
+    color: colors.white,
   },
 
-  sectionContainer: {
+  section: {
     marginBottom: spacing.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
   sectionTitle: {
-    ...typography.subtitle,
+    ...typography.label,
     color: colors.foreground,
-  },
-  sectionCount: {
-    ...typography.caption,
-    color: colors.mutedForeground,
+    letterSpacing: 0.5,
   },
 
+  loadingContainer: {
+    paddingVertical: spacing['3xl'],
+    alignItems: 'center',
+  },
   emptyState: {
     alignItems: 'center',
     paddingVertical: spacing['4xl'],
@@ -362,61 +404,106 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
   },
-  emptyTitle: {
+  emptyStateIcon: {
+    marginBottom: spacing.lg,
+  },
+  emptyStateTitle: {
     ...typography.subtitle,
     color: colors.foreground,
-    marginTop: spacing.lg,
+    marginBottom: spacing.xs,
   },
-  emptySubtitle: {
+  emptyStateSubtitle: {
     ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
     textAlign: 'center',
+    paddingHorizontal: spacing.xl,
   },
 
-  clientCard: {
+  clientsList: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  clientCard: {
+    width: '48.5%',
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
+  clientCardAccent: {
+    height: 3,
+    width: '100%',
+  },
+  clientCardContent: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  clientCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
   avatar: {
-    width: sizes.avatarMd,
-    height: sizes.avatarMd,
-    borderRadius: sizes.avatarMd / 2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
   },
   avatarText: {
-    ...typography.subtitle,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.primaryForeground,
   },
-  clientInfo: {
+  clientName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
     flex: 1,
   },
-  clientName: {
-    ...typography.cardTitle,
-    color: colors.foreground,
-    marginBottom: spacing.xs,
+  clientMetaRow: {
+    flexDirection: 'column',
+    gap: 2,
+    marginBottom: spacing.sm,
   },
-  contactRow: {
+  clientDetailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: 2,
+    gap: 4,
+    marginBottom: 2,
   },
-  contactText: {
-    ...typography.caption,
+  clientDetailText: {
+    fontSize: 11,
     color: colors.mutedForeground,
+    flex: 1,
+  },
+  inlineActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.cardBorder,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.md,
+    gap: 4,
+  },
+  actionBtnText: {
+    fontSize: 11,
+    color: colors.white,
+    fontWeight: '600',
   },
 });
