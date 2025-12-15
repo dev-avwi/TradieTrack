@@ -68,32 +68,6 @@ function JobCard({
     }) + ', ' + formatTime(dateStr);
   };
 
-  const getNextAction = () => {
-    // Match web behavior: all status-related actions navigate to job view
-    switch (job.status) {
-      case 'pending':
-      case 'scheduled':
-      case 'in_progress':
-        return { 
-          label: 'View', 
-          icon: 'briefcase' as const, 
-          color: colors.primary,
-          action: () => onPress()
-        };
-      case 'done':
-        return { 
-          label: 'Invoice', 
-          icon: 'file-text' as const, 
-          color: colors.invoiced,
-          action: () => router.push(`/more/create-invoice?jobId=${job.id}`)
-        };
-      default:
-        return null;
-    }
-  };
-
-  const nextAction = getNextAction();
-
   const getAccentColor = () => {
     switch (job.status) {
       case 'pending': return colors.pending;
@@ -110,25 +84,54 @@ function JobCard({
       onPress={onPress}
       style={styles.jobCard}
     >
+      {/* Left accent bar like web */}
+      <View style={[styles.jobCardAccent, { backgroundColor: getAccentColor() }]} />
+      
       <View style={styles.jobCardContent}>
+        {/* Header: Title + Status */}
         <View style={styles.jobCardHeader}>
-          <Text style={styles.jobTitle} numberOfLines={2}>{job.title || 'Untitled Job'}</Text>
+          <Text style={styles.jobTitle} numberOfLines={1}>{job.title || 'Untitled Job'}</Text>
           <StatusBadge status={job.status} size="sm" />
         </View>
 
-        <Text style={styles.jobDate} numberOfLines={1}>
-          {job.scheduledAt ? formatDate(job.scheduledAt) : 'Not scheduled'}
-        </Text>
+        {/* Details section like web */}
+        <View style={styles.jobCardDetails}>
+          {job.clientName && (
+            <View style={styles.jobDetailRow}>
+              <Feather name="user" size={12} color={colors.mutedForeground} />
+              <Text style={styles.jobDetailText} numberOfLines={1}>{job.clientName}</Text>
+            </View>
+          )}
+          {job.address && (
+            <View style={styles.jobDetailRow}>
+              <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+              <Text style={styles.jobDetailText} numberOfLines={1}>{job.address}</Text>
+            </View>
+          )}
+          <View style={styles.jobDetailRow}>
+            <Feather name="calendar" size={12} color={colors.mutedForeground} />
+            <Text style={styles.jobDetailText} numberOfLines={1}>
+              {job.scheduledAt ? formatDate(job.scheduledAt) : 'Not scheduled'}
+            </Text>
+          </View>
+        </View>
 
+        {/* Action button for done jobs */}
         {job.status === 'done' && (
           <TouchableOpacity
             style={styles.invoiceBtn}
             onPress={() => router.push(`/more/create-invoice?jobId=${job.id}`)}
             activeOpacity={0.8}
           >
-            <Text style={styles.invoiceBtnText}>Invoice</Text>
+            <Feather name="file-text" size={12} color={colors.white} />
+            <Text style={styles.invoiceBtnText}>Create Invoice</Text>
           </TouchableOpacity>
         )}
+      </View>
+      
+      {/* Chevron for navigation */}
+      <View style={styles.jobCardChevron}>
+        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </View>
     </AnimatedCardPressable>
   );
@@ -492,51 +495,68 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   jobsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: spacing.md,
   },
   jobCard: {
-    width: '48%',
+    width: '100%',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    minHeight: 120,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  jobCardAccent: {
+    width: 4,
+    backgroundColor: colors.primary,
   },
   jobCardContent: {
+    flex: 1,
     padding: spacing.md,
   },
   jobCardHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.sm,
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   jobTitle: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.foreground,
-    lineHeight: 18,
     flex: 1,
   },
-  jobDate: {
-    fontSize: 12,
+  jobCardDetails: {
+    gap: spacing.xs,
+  },
+  jobDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  jobDetailText: {
+    fontSize: 13,
     color: colors.mutedForeground,
-    marginBottom: spacing.sm,
+    flex: 1,
+  },
+  jobCardChevron: {
+    justifyContent: 'center',
+    paddingRight: spacing.md,
   },
   invoiceBtn: {
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
     borderRadius: radius.md,
     alignSelf: 'flex-start',
-    marginTop: spacing.xs,
+    marginTop: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   invoiceBtnText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.white,
   },

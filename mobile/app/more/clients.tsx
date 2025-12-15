@@ -53,7 +53,6 @@ function ClientCard({
       onPress={onPress}
       style={styles.clientCard}
     >
-      <View style={[styles.clientCardAccent, { backgroundColor: colors.primary }]} />
       <View style={styles.clientCardContent}>
         <View style={styles.clientCardHeader}>
           <View style={styles.avatar}>
@@ -67,6 +66,29 @@ function ClientCard({
               </View>
             )}
           </View>
+          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+        </View>
+        
+        {/* Contact details like web */}
+        <View style={styles.clientDetails}>
+          {client.email && (
+            <View style={styles.clientDetailRow}>
+              <Feather name="mail" size={12} color={colors.mutedForeground} />
+              <Text style={styles.clientDetailText} numberOfLines={1}>{client.email}</Text>
+            </View>
+          )}
+          {client.phone && (
+            <View style={styles.clientDetailRow}>
+              <Feather name="phone" size={12} color={colors.mutedForeground} />
+              <Text style={styles.clientDetailText} numberOfLines={1}>{client.phone}</Text>
+            </View>
+          )}
+          {client.address && (
+            <View style={styles.clientDetailRow}>
+              <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+              <Text style={styles.clientDetailText} numberOfLines={1}>{client.address}</Text>
+            </View>
+          )}
         </View>
       </View>
     </AnimatedCardPressable>
@@ -410,10 +432,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
-  clientCardAccent: {
-    height: 3,
-    width: '100%',
-  },
   clientCardContent: {
     flex: 1,
     padding: spacing.md,
@@ -456,5 +474,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
     color: colors.mutedForeground,
+  },
+  clientDetails: {
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  clientDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  clientDetailText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    flex: 1,
   },
 });

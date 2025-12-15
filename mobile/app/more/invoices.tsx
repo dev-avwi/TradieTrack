@@ -105,14 +105,34 @@ function InvoiceCard({
       <View style={[styles.invoiceCardAccent, { backgroundColor: getAccentColor() }]} />
       <View style={styles.invoiceCardContent}>
         <View style={styles.invoiceCardHeader}>
-          <Text style={styles.invoiceNumber} numberOfLines={1}>{invoice.invoiceNumber || 'Draft'}</Text>
-          <StatusBadge status={invoice.status || 'draft'} size="sm" />
+          <View style={styles.invoiceHeaderLeft}>
+            <Text style={styles.invoiceNumber} numberOfLines={1}>{invoice.invoiceNumber || 'Draft'}</Text>
+            <StatusBadge status={invoice.status || 'draft'} size="sm" />
+          </View>
+          <View style={styles.invoiceAmountCol}>
+            <Text style={styles.invoiceTotal}>{formatCurrency(invoice.total || 0)}</Text>
+            <Text style={styles.invoiceGst}>inc. GST</Text>
+          </View>
         </View>
 
-        <View style={styles.invoiceAmountRow}>
-          <Text style={styles.invoiceTotal}>{formatCurrency(invoice.total || 0)}</Text>
-          <Text style={styles.invoiceGst}>inc. GST</Text>
+        {/* Details section like web */}
+        <View style={styles.invoiceDetails}>
+          {clientName && (
+            <View style={styles.invoiceDetailRow}>
+              <Feather name="user" size={12} color={colors.mutedForeground} />
+              <Text style={styles.invoiceDetailText} numberOfLines={1}>{clientName}</Text>
+            </View>
+          )}
+          <View style={styles.invoiceDetailRow}>
+            <Feather name="calendar" size={12} color={colors.mutedForeground} />
+            <Text style={styles.invoiceDetailText} numberOfLines={1}>
+              {invoice.dueDate ? `Due ${formatDate(invoice.dueDate)}` : 'No due date'}
+            </Text>
+          </View>
         </View>
+      </View>
+      <View style={styles.invoiceCardChevron}>
+        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </View>
     </AnimatedCardPressable>
   );
@@ -502,23 +522,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   invoicesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: spacing.md,
   },
   invoiceCard: {
-    width: '48%',
+    width: '100%',
+    flexDirection: 'row',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
-  },
-  invoiceCardAccent: {
-    height: 3,
-    width: '100%',
   },
   invoiceCardContent: {
     flex: 1,
@@ -537,10 +551,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     flex: 1,
   },
-  invoiceAmountRow: {
+  invoiceHeaderLeft: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.xs,
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  invoiceAmountCol: {
+    alignItems: 'flex-end',
   },
   invoiceTotal: {
     fontSize: 18,
@@ -551,5 +569,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 10,
     color: colors.mutedForeground,
     fontWeight: '500',
+  },
+  invoiceDetails: {
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  invoiceDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  invoiceDetailText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    flex: 1,
+  },
+  invoiceCardChevron: {
+    justifyContent: 'center',
+    paddingRight: spacing.md,
   },
 });

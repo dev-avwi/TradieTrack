@@ -103,13 +103,32 @@ function QuoteCard({
       <View style={[styles.quoteCardAccent, { backgroundColor: getAccentColor() }]} />
       <View style={styles.quoteCardContent}>
         <View style={styles.quoteCardHeader}>
-          <Text style={styles.quoteNumber} numberOfLines={1}>{quote.quoteNumber || 'Draft'}</Text>
-          <StatusBadge status={quote.status} size="sm" />
-        </View>
-
-        <View style={styles.quoteAmountRow}>
+          <View style={styles.quoteHeaderLeft}>
+            <Text style={styles.quoteNumber} numberOfLines={1}>{quote.quoteNumber || 'Draft'}</Text>
+            <StatusBadge status={quote.status} size="sm" />
+          </View>
           <Text style={styles.quoteTotal}>{formatCurrency(quote.total || 0)}</Text>
         </View>
+
+        {/* Details section like web */}
+        <View style={styles.quoteDetails}>
+          {clientName && (
+            <View style={styles.quoteDetailRow}>
+              <Feather name="user" size={12} color={colors.mutedForeground} />
+              <Text style={styles.quoteDetailText} numberOfLines={1}>{clientName}</Text>
+            </View>
+          )}
+          <View style={styles.quoteDetailRow}>
+            <Feather name="calendar" size={12} color={colors.mutedForeground} />
+            <Text style={styles.quoteDetailText} numberOfLines={1}>
+              {quote.createdAt ? formatDate(quote.createdAt) : 'No date'}
+              {quote.expiryDate && ` • Expires ${formatDate(quote.expiryDate)}`}
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View style={styles.quoteCardChevron}>
+        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </View>
     </AnimatedCardPressable>
   );
@@ -447,23 +466,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   quotesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: spacing.md,
   },
   quoteCard: {
-    width: '48%',
+    width: '100%',
+    flexDirection: 'row',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
-  },
-  quoteCardAccent: {
-    height: 3,
-    width: '100%',
   },
   quoteCardContent: {
     flex: 1,
@@ -482,10 +495,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     flex: 1,
   },
-  quoteAmountRow: {},
+  quoteHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
   quoteTotal: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.foreground,
+  },
+  quoteDetails: {
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  quoteDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  quoteDetailText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    flex: 1,
+  },
+  quoteCardChevron: {
+    justifyContent: 'center',
+    paddingRight: spacing.md,
   },
 });
