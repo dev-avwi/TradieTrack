@@ -113,27 +113,27 @@ function JobCard({
       <View style={[styles.jobCardAccent, { backgroundColor: getAccentColor() }]} />
       <View style={styles.jobCardContent}>
         <View style={styles.jobCardHeader}>
-          <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
+          <Text style={styles.jobTitle} numberOfLines={2}>{job.title}</Text>
           <StatusBadge status={job.status} size="sm" />
         </View>
 
         {job.clientName && (
           <View style={styles.jobDetailRow}>
-            <Feather name="user" size={iconSizes.sm} color={colors.mutedForeground} />
-            <Text style={styles.jobDetailText}>{job.clientName}</Text>
+            <Feather name="user" size={12} color={colors.mutedForeground} />
+            <Text style={styles.jobDetailText} numberOfLines={1}>{job.clientName}</Text>
           </View>
         )}
 
         <View style={styles.jobMetaRow}>
           {job.scheduledAt && (
             <View style={styles.jobDetailRow}>
-              <Feather name="clock" size={iconSizes.sm} color={colors.mutedForeground} />
-              <Text style={styles.jobDetailText}>{formatDate(job.scheduledAt)}</Text>
+              <Feather name="clock" size={12} color={colors.mutedForeground} />
+              <Text style={styles.jobDetailText} numberOfLines={1}>{formatDate(job.scheduledAt)}</Text>
             </View>
           )}
           {job.address && (
-            <View style={[styles.jobDetailRow, { flex: 1 }]}>
-              <Feather name="map-pin" size={iconSizes.sm} color={colors.mutedForeground} />
+            <View style={styles.jobDetailRow}>
+              <Feather name="map-pin" size={12} color={colors.mutedForeground} />
               <Text style={styles.jobDetailText} numberOfLines={1}>{job.address}</Text>
             </View>
           )}
@@ -146,15 +146,11 @@ function JobCard({
               onPress={nextAction.action}
               activeOpacity={0.8}
             >
-              <Feather name={nextAction.icon} size={iconSizes.sm} color={colors.white} />
+              <Feather name={nextAction.icon} size={12} color={colors.white} />
               <Text style={styles.statusActionText}>{nextAction.label}</Text>
             </TouchableOpacity>
           </View>
         )}
-      </View>
-
-      <View style={styles.jobCardChevronContainer}>
-        <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
       </View>
     </AnimatedCardPressable>
   );
@@ -518,76 +514,77 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   jobsList: {
-    gap: spacing.md,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   jobCard: {
-    flexDirection: 'row',
+    width: '48.5%',
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
   jobCardAccent: {
-    width: 4,
+    height: 3,
+    width: '100%',
   },
   jobCardContent: {
     flex: 1,
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   jobCardChevronContainer: {
-    justifyContent: 'center',
-    paddingRight: spacing.md,
+    display: 'none',
   },
   jobCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
     alignItems: 'flex-start',
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
+    marginBottom: spacing.xs,
+    gap: spacing.xs,
   },
   jobTitle: {
-    ...typography.cardTitle,
+    fontSize: 14,
+    fontWeight: '600',
     color: colors.foreground,
-    flex: 1,
+    lineHeight: 18,
   },
   jobDetailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
+    gap: 4,
+    marginBottom: 2,
   },
   jobDetailText: {
-    ...typography.caption,
+    fontSize: 11,
     color: colors.mutedForeground,
     flex: 1,
   },
   jobMetaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.md,
+    flexDirection: 'column',
+    gap: 2,
+    marginBottom: spacing.sm,
   },
   inlineActionsRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
     borderTopWidth: 1,
     borderTopColor: colors.cardBorder,
   },
   statusActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
-    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.md,
+    gap: 4,
   },
   statusActionText: {
-    ...typography.captionSmall,
+    fontSize: 11,
     color: colors.white,
     fontWeight: '600',
   },
