@@ -526,13 +526,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   invoicesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
     gap: spacing.md,
   },
   invoiceCard: {
-    width: '48.5%',
+    width: '100%',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',

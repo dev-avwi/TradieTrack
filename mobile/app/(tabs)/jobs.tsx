@@ -514,13 +514,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   jobsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
     gap: spacing.md,
   },
   jobCard: {
-    width: '48.5%',
+    width: '100%',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',
