@@ -108,7 +108,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.white,
+    color: colors.primaryForeground,
   },
 });
 

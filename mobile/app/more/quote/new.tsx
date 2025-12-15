@@ -427,7 +427,7 @@ function createStyles(colors: ThemeColors) {
     submitButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.primaryForeground,
     },
     modalContainer: {
       flex: 1,
@@ -536,7 +536,7 @@ function createStyles(colors: ThemeColors) {
     saveItemButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.primaryForeground,
     },
     previewHeadingRow: {
       flexDirection: 'row',

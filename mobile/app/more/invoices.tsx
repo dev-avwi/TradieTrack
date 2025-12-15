@@ -302,7 +302,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 6,
   },
   newButtonText: {
-    color: colors.white,
+    color: colors.primaryForeground,
     fontSize: 14,
     fontWeight: '600',
   },

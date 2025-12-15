@@ -190,7 +190,7 @@ function createStyles(colors: ThemeColors) {
     saveButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.white,
+      color: colors.primaryForeground,
     },
     modalOverlay: {
       flex: 1,

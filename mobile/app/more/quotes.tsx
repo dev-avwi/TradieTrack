@@ -268,7 +268,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 6,
   },
   newButtonText: {
-    color: colors.white,
+    color: colors.primaryForeground,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -320,7 +320,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   filterPillTextActive: {
-    color: colors.white,
+    color: colors.primaryForeground,
   },
   filterCount: {
     backgroundColor: colors.muted,
