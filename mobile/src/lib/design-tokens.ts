@@ -23,9 +23,12 @@ export const spacing = {
 export const pageShell = {
   paddingHorizontal: spacing.xl, // 16px - web's px-4
   paddingTop: spacing.xl,        // 16px - web's pt-4
-  paddingBottom: 100,            // bottom nav clearance (64px nav + 36px spacing)
+  paddingBottom: spacing['3xl'], // 24px - reduced from 100px to prevent large gaps
   sectionGap: spacing['3xl'],    // 24px - web's space-y-6
 } as const;
+
+// Bottom tab bar clearance - use this ONLY on screens that have bottom tabs visible
+export const bottomTabClearance = 80; // 64px nav + 16px spacing
 
 // === BORDER RADIUS (matches web's tailwind radius) ===
 export const radius = {
@@ -263,112 +266,13 @@ export const pressScale = {
   subtle: 0.995,
 } as const;
 
-// === SHARED COMPONENT STYLES (compact modern styling) ===
+// === SHARED COMPONENT STYLES (layout only - NO hardcoded colors) ===
+// IMPORTANT: Colors should come from useTheme() hook, not from here
+// These styles only define layout, spacing, and structural properties
 export const componentStyles = StyleSheet.create({
-  // Feed card - light background, subtle border, minimal shadow
-  feedCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    ...shadows.xs,
-  },
-  
-  // Card with press effect - clean and minimal
-  cardPress: {
-    backgroundColor: '#ffffff',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    ...shadows.xs,
-  },
-  
   // Card padding - tighter
   cardPadding: {
     padding: spacing.lg, // 12px
-  },
-  
-  // Promo card - subtle blue tint
-  promoCard: {
-    backgroundColor: '#f8fafc',
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    padding: spacing.lg,
-  },
-  
-  // Primary button - compact height
-  primaryButton: {
-    backgroundColor: '#3b82f6',
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexDirection: 'row' as const,
-    gap: spacing.sm,
-    minHeight: 36,
-  },
-  
-  // Secondary/outline button - compact
-  outlineButton: {
-    backgroundColor: 'transparent',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexDirection: 'row' as const,
-    gap: spacing.sm,
-    minHeight: 36,
-  },
-  
-  // Ghost button - minimal
-  ghostButton: {
-    backgroundColor: 'transparent',
-    borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexDirection: 'row' as const,
-    gap: spacing.xs,
-  },
-  
-  // Icon button - smaller
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.lg,
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  
-  // Quick action button - compact
-  quickActionButton: {
-    flex: 1,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    minHeight: 36,
-  },
-  
-  // Quick action button active state
-  quickActionButtonActive: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
   },
   
   // Badge - smaller padding
@@ -378,16 +282,6 @@ export const componentStyles = StyleSheet.create({
     borderRadius: radius.sm,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-  },
-  
-  // Empty state - tighter
-  emptyState: {
-    alignItems: 'center' as const,
-    paddingVertical: spacing['3xl'],
-    backgroundColor: '#f8fafc',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
   },
   
   // Section header - tighter margin
@@ -409,12 +303,6 @@ export const componentStyles = StyleSheet.create({
   grid2: {
     flexDirection: 'row' as const,
     gap: spacing.md,
-  },
-  
-  // Screen container
-  screenContainer: {
-    flex: 1,
-    backgroundColor: '#ffffff',
   },
   
   // Scroll content
