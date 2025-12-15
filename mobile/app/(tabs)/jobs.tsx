@@ -110,47 +110,41 @@ function JobCard({
       onPress={onPress}
       style={styles.jobCard}
     >
-      <View style={[styles.jobCardAccent, { backgroundColor: getAccentColor() }]} />
       <View style={styles.jobCardContent}>
-        <View style={styles.jobCardHeader}>
-          <Text style={styles.jobTitle} numberOfLines={2}>{job.title}</Text>
-          <StatusBadge status={job.status} size="sm" />
-        </View>
-
-        {job.clientName && (
-          <View style={styles.jobDetailRow}>
-            <Feather name="user" size={12} color={colors.mutedForeground} />
-            <Text style={styles.jobDetailText} numberOfLines={1}>{job.clientName}</Text>
-          </View>
-        )}
-
-        <View style={styles.jobMetaRow}>
-          {job.scheduledAt && (
-            <View style={styles.jobDetailRow}>
-              <Feather name="clock" size={12} color={colors.mutedForeground} />
-              <Text style={styles.jobDetailText} numberOfLines={1}>{formatDate(job.scheduledAt)}</Text>
+        <View style={styles.jobCardRow}>
+          <View style={styles.jobCardMain}>
+            <View style={styles.jobCardHeader}>
+              <Text style={styles.jobTitle} numberOfLines={1}>{job.title || 'Untitled Job'}</Text>
+              <StatusBadge status={job.status} size="sm" />
             </View>
-          )}
-          {job.address && (
-            <View style={styles.jobDetailRow}>
-              <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-              <Text style={styles.jobDetailText} numberOfLines={1}>{job.address}</Text>
-            </View>
-          )}
-        </View>
 
-        {nextAction && (
-          <View style={styles.inlineActionsRow}>
-            <TouchableOpacity
-              style={[styles.statusActionBtn, { backgroundColor: nextAction.color }]}
-              onPress={nextAction.action}
-              activeOpacity={0.8}
-            >
-              <Feather name={nextAction.icon} size={12} color={colors.white} />
-              <Text style={styles.statusActionText}>{nextAction.label}</Text>
-            </TouchableOpacity>
+            {job.clientName && (
+              <View style={styles.jobDetailRow}>
+                <Feather name="user" size={14} color={colors.mutedForeground} />
+                <Text style={styles.jobClientText} numberOfLines={1}>{job.clientName}</Text>
+              </View>
+            )}
+
+            <View style={styles.jobMetaRow}>
+              {job.scheduledAt && (
+                <View style={styles.jobMetaItem}>
+                  <Feather name="clock" size={14} color={colors.mutedForeground} />
+                  <Text style={styles.jobMetaText}>{formatDate(job.scheduledAt)}</Text>
+                </View>
+              )}
+              {job.address && (
+                <View style={styles.jobMetaItem}>
+                  <Feather name="map-pin" size={14} color={colors.mutedForeground} />
+                  <Text style={styles.jobMetaText} numberOfLines={1}>{job.address}</Text>
+                </View>
+              )}
+            </View>
           </View>
-        )}
+          
+          <View style={styles.jobCardChevron}>
+            <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+          </View>
+        </View>
       </View>
     </AnimatedCardPressable>
   );
