@@ -7,13 +7,20 @@ import {
   RefreshControl,
   StyleSheet,
   Linking,
-  Switch
+  Switch,
+  TextInput,
+  Modal,
+  ActivityIndicator,
+  Alert,
+  Image
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { API_URL } from '../../src/lib/api';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import AppTour from '../../src/components/AppTour';
 import { Slider } from '../../src/components/ui/Slider';
@@ -28,16 +35,25 @@ const PLAN_FEATURES = [
 ];
 
 const SETTINGS_TABS = [
-  { key: 'jobs', label: 'Jobs', icon: 'briefcase' },
-  { key: 'pay', label: 'Pay', icon: 'credit-card' },
-  { key: 'apps', label: 'Apps', icon: 'smartphone' },
+  { key: 'account', label: 'Account', icon: 'user' },
+  { key: 'brand', label: 'Brand', icon: 'palette' },
+  { key: 'templates', label: 'Templates', icon: 'file-text' },
   { key: 'alerts', label: 'Alerts', icon: 'bell' },
   { key: 'plan', label: 'Plan', icon: 'award' },
   { key: 'help', label: 'Help', icon: 'help-circle' },
 ];
 
+const BRAND_COLORS = [
+  '#3B5998', '#1877F2', '#0A66C2', '#2563EB', '#3B82F6',
+  '#059669', '#10B981', '#22C55E', '#84CC16', '#EAB308',
+  '#F59E0B', '#F97316', '#EF4444', '#DC2626', '#E11D48',
+  '#EC4899', '#D946EF', '#A855F7', '#8B5CF6', '#6366F1',
+  '#475569', '#334155', '#1E293B', '#0F172A', '#000000',
+];
+
 const GEOFENCE_STORAGE_KEY = '@tradietrack/global_geofence_settings';
 const NOTIFICATION_SETTINGS_KEY = '@tradietrack/notification_settings';
+const BRAND_SETTINGS_KEY = '@tradietrack/brand_settings';
 
 interface NotificationSettings {
   push: {
@@ -79,11 +95,68 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   },
 };
 
-interface IntegrationStatus {
-  stripe: boolean;
-  gmail: boolean;
-  calendar: boolean;
+interface DocumentTemplate {
+  id: string;
+  userId: string;
+  type: 'quote' | 'invoice' | 'job';
+  familyKey: string;
+  name: string;
+  tradeType: string;
+  rateCardId: string | null;
+  styling: {
+    brandColor?: string;
+    logoDisplay?: boolean;
+  };
+  sections: {
+    showHeader?: boolean;
+    showLineItems?: boolean;
+    showTotals?: boolean;
+    showTerms?: boolean;
+    showSignature?: boolean;
+  };
+  defaults: {
+    title?: string;
+    description?: string;
+    terms?: string;
+    depositPct?: number;
+    dueTermDays?: number;
+    gstEnabled?: boolean;
+  };
+  defaultLineItems: Array<{
+    description: string;
+    qty: number;
+    unitPrice: number;
+    unit: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
 }
+
+interface LineItem {
+  description: string;
+  qty: number;
+  unitPrice: number;
+  unit: string;
+}
+
+interface NewTemplate {
+  name: string;
+  type: 'quote' | 'invoice' | 'job';
+  tradeType: string;
+  defaults: {
+    title: string;
+    description: string;
+    terms: string;
+    depositPct: number;
+    gstEnabled: boolean;
+  };
+  defaultLineItems: LineItem[];
+}
+
+const tradeTypes = [
+  'plumbing', 'electrical', 'carpentry', 'painting', 'hvac', 'roofing', 
+  'landscaping', 'tiling', 'flooring', 'renovation', 'handyman', 'general'
+];
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -360,119 +433,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.lg,
     textTransform: 'uppercase',
   },
-  integrationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  integrationRowLast: {
-    borderBottomWidth: 0,
-  },
-  integrationLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    flex: 1,
-  },
-  integrationIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  integrationInfo: {
-    flex: 1,
-  },
-  integrationName: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.foreground,
-  },
-  integrationStatus: {
-    ...typography.caption,
-    marginTop: 2,
-  },
-  statusConnected: {
-    color: colors.success || '#22c55e',
-  },
-  statusNotConnected: {
-    color: colors.mutedForeground,
-  },
-  connectButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
-  },
-  connectButtonText: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  appStoreCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  appStoreBadges: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.sm,
-  },
-  storeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.foreground,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-  },
-  storeBadgeText: {
-    ...typography.caption,
-    color: colors.background,
-    fontWeight: '600',
-  },
-  qrCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  qrPlaceholder: {
-    width: 120,
-    height: 120,
-    backgroundColor: colors.muted,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: spacing.md,
-  },
-  shareButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-    marginTop: spacing.md,
-  },
-  shareButtonText: {
-    ...typography.body,
-    color: colors.primaryForeground,
-    fontWeight: '600',
-  },
   notificationToggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -510,32 +470,460 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: 2,
   },
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  colorSwatch: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colorSwatchSelected: {
+    borderWidth: 3,
+    borderColor: colors.foreground,
+  },
+  logoSection: {
+    marginTop: spacing.lg,
+  },
+  logoPreview: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.lg,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+  },
+  uploadButtonText: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  templateStatsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  templateStatCard: {
+    flex: 1,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  templateStatValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  templateStatLabel: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+  },
+  filtersRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+    flexWrap: 'wrap',
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    fontSize: 13,
+    color: colors.foreground,
+    textTransform: 'capitalize',
+  },
+  filterChipTextActive: {
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  templateList: {
+    gap: spacing.md,
+  },
+  templateCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  templateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  templateInfo: {
+    flex: 1,
+  },
+  templateName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  templateMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 4,
+  },
+  templateType: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.primary,
+    textTransform: 'capitalize',
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  templateTrade: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    textTransform: 'capitalize',
+  },
+  templateActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  actionButton: {
+    padding: spacing.sm,
+    borderRadius: radius.md,
+  },
+  templateDetails: {
+    marginTop: spacing.sm,
+  },
+  templateTitle: {
+    fontSize: 14,
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  badge: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+    backgroundColor: colors.muted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  templateTerms: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing['2xl'] + 16,
+    paddingHorizontal: spacing.xl,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.lg + 4,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    gap: spacing.sm,
+  },
+  emptyButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  createTemplateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    marginBottom: spacing.lg,
+  },
+  createTemplateButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  modalContent: {
+    flex: 1,
+    padding: spacing.lg,
+  },
+  inputGroup: {
+    marginBottom: spacing.lg + 4,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  input: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md + 2,
+    fontSize: 16,
+    color: colors.foreground,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  inputMultiline: {
+    minHeight: 80,
+    paddingTop: spacing.md + 2,
+  },
+  typeButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  typeButton: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  typeButtonActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
+  typeButtonText: {
+    fontSize: 14,
+    color: colors.foreground,
+    textTransform: 'capitalize',
+  },
+  typeButtonTextActive: {
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  tradeTypeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  tradeChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tradeChipActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
+  tradeChipText: {
+    fontSize: 13,
+    color: colors.foreground,
+    textTransform: 'capitalize',
+  },
+  tradeChipTextActive: {
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  lineItemRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  lineItemInput: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    padding: spacing.sm + 2,
+    fontSize: 14,
+    color: colors.foreground,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  lineItemQty: {
+    width: 60,
+  },
+  lineItemPrice: {
+    width: 80,
+  },
+  addLineItemButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  addLineItemText: {
+    fontSize: 14,
+    color: colors.primary,
+  },
+  removeLineItemButton: {
+    padding: spacing.sm,
+    justifyContent: 'center',
+  },
+  modalSaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
+    marginTop: spacing.xl,
+  },
+  modalSaveButtonDisabled: {
+    opacity: 0.7,
+  },
+  modalSaveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing['4xl'],
+  },
 });
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { businessSettings } = useAuthStore();
+  const { businessSettings, token } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('jobs');
+  const [activeTab, setActiveTab] = useState('account');
   const [showTour, setShowTour] = useState(false);
   
-  // Global geofence settings
+  // Account tab - Geofence settings
   const [geofenceEnabled, setGeofenceEnabled] = useState(false);
   const [geofenceRadius, setGeofenceRadius] = useState(100);
   const [autoClockIn, setAutoClockIn] = useState(true);
   const [autoClockOut, setAutoClockOut] = useState(true);
 
+  // Brand tab settings
+  const [selectedColor, setSelectedColor] = useState('#3B5998');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+
   // Notification settings
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
 
-  // Integration status (mock - would come from API in production)
-  const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatus>({
-    stripe: false,
-    gmail: false,
-    calendar: false,
+  // Templates tab
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'quote' | 'invoice' | 'job'>('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<DocumentTemplate | null>(null);
+  const [newTemplate, setNewTemplate] = useState<NewTemplate>({
+    name: '',
+    type: 'quote',
+    tradeType: 'general',
+    defaults: {
+      title: '',
+      description: '',
+      terms: '',
+      depositPct: 0,
+      gstEnabled: true,
+    },
+    defaultLineItems: []
   });
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
 
+  // Load geofence settings
   const loadGeofenceSettings = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem(GEOFENCE_STORAGE_KEY);
@@ -566,65 +954,83 @@ export default function SettingsScreen() {
 
   const handleGeofenceEnabledChange = useCallback((value: boolean) => {
     setGeofenceEnabled(value);
-    setGeofenceRadius(prev => {
-      setAutoClockIn(prevIn => {
-        setAutoClockOut(prevOut => {
-          saveGeofenceSettings({ enabled: value, radius: prev, autoClockIn: prevIn, autoClockOut: prevOut });
-          return prevOut;
-        });
-        return prevIn;
-      });
-      return prev;
-    });
-  }, [saveGeofenceSettings]);
+    saveGeofenceSettings({ enabled: value, radius: geofenceRadius, autoClockIn, autoClockOut });
+  }, [saveGeofenceSettings, geofenceRadius, autoClockIn, autoClockOut]);
 
   const handleRadiusChange = useCallback((value: number | number[]) => {
-    // Slider can return array or single value, normalize to number
     const numValue = Array.isArray(value) ? value[0] : value;
     setGeofenceRadius(numValue);
   }, []);
 
   const handleRadiusChangeComplete = useCallback((value: number | number[]) => {
     const numValue = Array.isArray(value) ? value[0] : value;
-    setGeofenceEnabled(prev => {
-      setAutoClockIn(prevIn => {
-        setAutoClockOut(prevOut => {
-          saveGeofenceSettings({ enabled: prev, radius: numValue, autoClockIn: prevIn, autoClockOut: prevOut });
-          return prevOut;
-        });
-        return prevIn;
-      });
-      return prev;
-    });
-  }, [saveGeofenceSettings]);
+    saveGeofenceSettings({ enabled: geofenceEnabled, radius: numValue, autoClockIn, autoClockOut });
+  }, [saveGeofenceSettings, geofenceEnabled, autoClockIn, autoClockOut]);
 
   const handleAutoClockInChange = useCallback((value: boolean) => {
     setAutoClockIn(value);
-    setGeofenceEnabled(prev => {
-      setGeofenceRadius(prevRadius => {
-        setAutoClockOut(prevOut => {
-          saveGeofenceSettings({ enabled: prev, radius: prevRadius, autoClockIn: value, autoClockOut: prevOut });
-          return prevOut;
-        });
-        return prevRadius;
-      });
-      return prev;
-    });
-  }, [saveGeofenceSettings]);
+    saveGeofenceSettings({ enabled: geofenceEnabled, radius: geofenceRadius, autoClockIn: value, autoClockOut });
+  }, [saveGeofenceSettings, geofenceEnabled, geofenceRadius, autoClockOut]);
 
   const handleAutoClockOutChange = useCallback((value: boolean) => {
     setAutoClockOut(value);
-    setGeofenceEnabled(prev => {
-      setGeofenceRadius(prevRadius => {
-        setAutoClockIn(prevIn => {
-          saveGeofenceSettings({ enabled: prev, radius: prevRadius, autoClockIn: prevIn, autoClockOut: value });
-          return prevIn;
-        });
-        return prevRadius;
+    saveGeofenceSettings({ enabled: geofenceEnabled, radius: geofenceRadius, autoClockIn, autoClockOut: value });
+  }, [saveGeofenceSettings, geofenceEnabled, geofenceRadius, autoClockIn]);
+
+  // Load brand settings
+  const loadBrandSettings = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem(BRAND_SETTINGS_KEY);
+      if (stored) {
+        const settings = JSON.parse(stored);
+        setSelectedColor(settings.color || '#3B5998');
+        setLogoUrl(settings.logoUrl || null);
+      }
+    } catch (error) {
+      console.error('Failed to load brand settings:', error);
+    }
+  }, []);
+
+  const saveBrandSettings = useCallback(async (color: string, logo: string | null) => {
+    try {
+      await AsyncStorage.setItem(BRAND_SETTINGS_KEY, JSON.stringify({ color, logoUrl: logo }));
+    } catch (error) {
+      console.error('Failed to save brand settings:', error);
+    }
+  }, []);
+
+  const handleColorSelect = useCallback((color: string) => {
+    setSelectedColor(color);
+    saveBrandSettings(color, logoUrl);
+  }, [saveBrandSettings, logoUrl]);
+
+  const handlePickLogo = useCallback(async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your photo library to upload a logo.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
       });
-      return prev;
-    });
-  }, [saveGeofenceSettings]);
+
+      if (!result.canceled && result.assets[0]) {
+        setIsUploadingLogo(true);
+        setLogoUrl(result.assets[0].uri);
+        await saveBrandSettings(selectedColor, result.assets[0].uri);
+        setIsUploadingLogo(false);
+      }
+    } catch (error) {
+      console.error('Failed to pick logo:', error);
+      setIsUploadingLogo(false);
+      Alert.alert('Error', 'Failed to upload logo. Please try again.');
+    }
+  }, [selectedColor, saveBrandSettings]);
 
   // Notification settings handlers
   const loadNotificationSettings = useCallback(async () => {
@@ -671,15 +1077,231 @@ export default function SettingsScreen() {
     });
   }, [saveNotificationSettings]);
 
+  // Templates handlers
+  const loadTemplates = useCallback(async () => {
+    setTemplatesLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (typeFilter !== 'all') params.append('type', typeFilter);
+      
+      const url = `${API_URL}/api/templates${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch templates:', error);
+    }
+    setTemplatesLoading(false);
+  }, [token, typeFilter]);
+
+  const resetTemplateForm = () => {
+    setNewTemplate({
+      name: '',
+      type: 'quote',
+      tradeType: 'general',
+      defaults: {
+        title: '',
+        description: '',
+        terms: '',
+        depositPct: 0,
+        gstEnabled: true,
+      },
+      defaultLineItems: []
+    });
+    setEditingTemplate(null);
+  };
+
+  const handleCreateTemplate = async () => {
+    if (!newTemplate.name.trim()) {
+      Alert.alert('Error', 'Template name is required');
+      return;
+    }
+
+    setIsCreatingTemplate(true);
+    try {
+      const method = editingTemplate ? 'PATCH' : 'POST';
+      const url = editingTemplate 
+        ? `${API_URL}/api/templates/${editingTemplate.id}`
+        : `${API_URL}/api/templates`;
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newTemplate.name,
+          type: newTemplate.type,
+          tradeType: newTemplate.tradeType,
+          familyKey: newTemplate.tradeType,
+          defaults: newTemplate.defaults,
+          defaultLineItems: newTemplate.defaultLineItems.filter(item => item.description.trim()),
+          styling: {},
+          sections: {
+            showHeader: true,
+            showLineItems: true,
+            showTotals: true,
+            showTerms: true,
+            showSignature: false,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        await loadTemplates();
+        setShowCreateModal(false);
+        resetTemplateForm();
+        Alert.alert('Success', editingTemplate ? 'Template updated successfully' : 'Template created successfully');
+      } else {
+        const error = await response.text();
+        Alert.alert('Error', error || 'Failed to save template');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Network error. Please try again.');
+    }
+    setIsCreatingTemplate(false);
+  };
+
+  const handleEditTemplate = (template: DocumentTemplate) => {
+    setEditingTemplate(template);
+    setNewTemplate({
+      name: template.name,
+      type: template.type,
+      tradeType: template.tradeType,
+      defaults: {
+        title: template.defaults?.title || '',
+        description: template.defaults?.description || '',
+        terms: template.defaults?.terms || '',
+        depositPct: template.defaults?.depositPct || 0,
+        gstEnabled: template.defaults?.gstEnabled ?? true,
+      },
+      defaultLineItems: template.defaultLineItems || [],
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleDuplicateTemplate = async (template: DocumentTemplate) => {
+    try {
+      const response = await fetch(`${API_URL}/api/templates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: `${template.name} (Copy)`,
+          type: template.type,
+          tradeType: template.tradeType,
+          familyKey: template.familyKey,
+          defaults: template.defaults,
+          defaultLineItems: template.defaultLineItems,
+          styling: template.styling,
+          sections: template.sections,
+        }),
+      });
+
+      if (response.ok) {
+        await loadTemplates();
+        Alert.alert('Success', 'Template duplicated successfully');
+      } else {
+        Alert.alert('Error', 'Failed to duplicate template');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Network error. Please try again.');
+    }
+  };
+
+  const handleDeleteTemplate = (template: DocumentTemplate) => {
+    Alert.alert(
+      'Delete Template',
+      `Are you sure you want to delete "${template.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await fetch(`${API_URL}/api/templates/${template.id}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                },
+              });
+              if (response.ok) {
+                await loadTemplates();
+                Alert.alert('Success', 'Template deleted');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete template');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const addLineItem = () => {
+    setNewTemplate({
+      ...newTemplate,
+      defaultLineItems: [
+        ...newTemplate.defaultLineItems,
+        { description: '', qty: 1, unitPrice: 0, unit: 'each' }
+      ]
+    });
+  };
+
+  const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
+    const items = [...newTemplate.defaultLineItems];
+    items[index] = { ...items[index], [field]: value };
+    setNewTemplate({ ...newTemplate, defaultLineItems: items });
+  };
+
+  const removeLineItem = (index: number) => {
+    const items = newTemplate.defaultLineItems.filter((_, i) => i !== index);
+    setNewTemplate({ ...newTemplate, defaultLineItems: items });
+  };
+
+  const quoteTemplates = templates.filter(t => t.type === 'quote').length;
+  const invoiceTemplates = templates.filter(t => t.type === 'invoice').length;
+  const jobTemplates = templates.filter(t => t.type === 'job').length;
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'quote': return colors.info;
+      case 'invoice': return colors.success;
+      case 'job': return colors.warning;
+      default: return colors.primary;
+    }
+  };
+
   const refreshData = useCallback(async () => {
     setIsLoading(true);
-    await Promise.all([loadGeofenceSettings(), loadNotificationSettings()]);
+    await Promise.all([
+      loadGeofenceSettings(), 
+      loadNotificationSettings(),
+      loadBrandSettings(),
+      loadTemplates(),
+    ]);
     setIsLoading(false);
-  }, [loadGeofenceSettings, loadNotificationSettings]);
+  }, [loadGeofenceSettings, loadNotificationSettings, loadBrandSettings, loadTemplates]);
 
   useEffect(() => {
     refreshData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'templates') {
+      loadTemplates();
+    }
+  }, [typeFilter, activeTab]);
 
   const currentPlan = 'free';
 
@@ -708,14 +1330,15 @@ export default function SettingsScreen() {
               <Text style={styles.pageTitle}>Settings</Text>
               <Text style={styles.pageSubtitle}>Manage your business profile and preferences</Text>
             </View>
-            <TouchableOpacity style={styles.saveButton}>
+            <TouchableOpacity style={styles.saveButton} data-testid="button-save-settings">
               <Text style={styles.saveButtonText}>Save Changes</Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity 
             style={styles.subscriptionLink}
-            onPress={() => {}}
+            onPress={() => router.push('/more/subscription')}
+            data-testid="button-manage-subscription"
           >
             <View style={styles.subscriptionLinkContent}>
               <Feather name="award" size={20} color={colors.primary} />
@@ -740,6 +1363,7 @@ export default function SettingsScreen() {
                   key={tab.key}
                   style={[styles.tab, isActive && styles.tabActive]}
                   onPress={() => setActiveTab(tab.key)}
+                  data-testid={`tab-${tab.key}`}
                 >
                   <Feather 
                     name={tab.icon as any}
@@ -754,7 +1378,7 @@ export default function SettingsScreen() {
             })}
           </ScrollView>
 
-          {activeTab === 'jobs' && (
+          {activeTab === 'account' && (
             <View style={styles.tabContentSection}>
               <View style={styles.subscriptionCard}>
                 <View style={styles.subscriptionHeader}>
@@ -775,38 +1399,34 @@ export default function SettingsScreen() {
                     onValueChange={handleGeofenceEnabledChange}
                     trackColor={{ false: colors.muted, true: colors.primaryLight }}
                     thumbColor={geofenceEnabled ? colors.primary : colors.mutedForeground}
+                    data-testid="switch-geofence-enabled"
                   />
                 </View>
 
                 {geofenceEnabled && (
                   <>
-                    <View style={{ marginTop: spacing.lg, paddingTop: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border }}>
-                      <Text style={styles.featureText}>Default Radius: {geofenceRadius}m</Text>
-                      <View style={{ marginTop: spacing.md }}>
-                        <Slider
-                          minimumValue={50}
-                          maximumValue={500}
-                          step={25}
-                          value={geofenceRadius}
-                          onValueChange={handleRadiusChange}
-                          onSlidingComplete={handleRadiusChangeComplete}
-                          minimumTrackTintColor={colors.primary}
-                          maximumTrackTintColor={colors.muted}
-                          thumbTintColor={colors.primary}
-                        />
-                      </View>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs }}>
-                        <Text style={styles.planDescription}>50m</Text>
-                        <Text style={styles.planDescription}>500m</Text>
-                      </View>
+                    <View style={{ marginTop: spacing.lg }}>
+                      <Text style={styles.settingsCardTitle}>Default Radius: {geofenceRadius}m</Text>
+                      <Text style={[styles.planDescription, { marginTop: 2 }]}>
+                        Distance from job site to trigger clock-in/out
+                      </Text>
+                      <Slider
+                        value={geofenceRadius}
+                        onValueChange={handleRadiusChange}
+                        onSlidingComplete={handleRadiusChangeComplete}
+                        minimumValue={50}
+                        maximumValue={500}
+                        step={10}
+                        style={{ marginTop: spacing.md }}
+                      />
                     </View>
 
-                    <View style={[styles.featureRow, { justifyContent: 'space-between', marginTop: spacing.md }]}>
+                    <View style={[styles.featureRow, { justifyContent: 'space-between', marginTop: spacing.lg }]}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
                         <Feather name="log-in" size={16} color={colors.mutedForeground} />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.featureText}>Auto Clock-In</Text>
-                          <Text style={[styles.planDescription, { marginTop: 2 }]}>Start timer when entering job site</Text>
+                          <Text style={[styles.planDescription, { marginTop: 2 }]}>Automatically start time when entering geofence</Text>
                         </View>
                       </View>
                       <Switch
@@ -814,15 +1434,16 @@ export default function SettingsScreen() {
                         onValueChange={handleAutoClockInChange}
                         trackColor={{ false: colors.muted, true: colors.primaryLight }}
                         thumbColor={autoClockIn ? colors.primary : colors.mutedForeground}
+                        data-testid="switch-auto-clock-in"
                       />
                     </View>
 
-                    <View style={[styles.featureRow, { justifyContent: 'space-between', marginTop: spacing.sm }]}>
+                    <View style={[styles.featureRow, { justifyContent: 'space-between' }]}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
                         <Feather name="log-out" size={16} color={colors.mutedForeground} />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.featureText}>Auto Clock-Out</Text>
-                          <Text style={[styles.planDescription, { marginTop: 2 }]}>Stop timer when leaving job site</Text>
+                          <Text style={[styles.planDescription, { marginTop: 2 }]}>Automatically stop time when leaving geofence</Text>
                         </View>
                       </View>
                       <Switch
@@ -830,245 +1451,38 @@ export default function SettingsScreen() {
                         onValueChange={handleAutoClockOutChange}
                         trackColor={{ false: colors.muted, true: colors.primaryLight }}
                         thumbColor={autoClockOut ? colors.primary : colors.mutedForeground}
+                        data-testid="switch-auto-clock-out"
                       />
                     </View>
                   </>
                 )}
               </View>
 
-              <View style={styles.settingsInfoCard}>
-                <Text style={styles.settingsInfoTitle}>About Geofencing</Text>
-                <Text style={styles.settingsInfoText}>
-                  Geofencing uses your phone's location to automatically track when you arrive at and leave job sites. These settings apply as defaults for all new jobs you create.
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {activeTab === 'plan' && (
-            <View style={styles.planSection}>
-              <View style={styles.subscriptionCard}>
-                <View style={styles.subscriptionHeader}>
-                  <Feather name="award" size={20} color={colors.primary} />
-                  <Text style={styles.subscriptionTitle}>Your Subscription</Text>
-                </View>
-
-                <View style={styles.planInfo}>
-                  <View style={styles.planBadge}>
-                    <View style={styles.planIconContainer}>
-                      <Feather name="award" size={20} color={colors.primary} />
-                    </View>
-                    <View>
-                      <Text style={styles.planName}>Free Plan</Text>
-                      <Text style={styles.planDescription}>Limited features</Text>
-                    </View>
-                  </View>
-                  <View style={styles.planPriceBadge}>
-                    <Text style={styles.planPriceText}>Free</Text>
-                  </View>
-                </View>
-
-                <Text style={styles.proFeaturesTitle}>PRO FEATURES INCLUDE</Text>
-
-                {PLAN_FEATURES.map((feature, index) => {
-                  return (
-                    <View key={index} style={styles.featureRow}>
-                      <Feather name={feature.icon as any} size={16} color={colors.mutedForeground} />
-                      <Text style={styles.featureText}>{feature.text}</Text>
-                      {feature.pro && (
-                        <View style={styles.proBadge}>
-                          <Text style={styles.proBadgeText}>Pro</Text>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
-
-                <TouchableOpacity style={styles.upgradeButton}>
-                  <Text style={styles.upgradeButtonText}>Upgrade to Pro - $39/month</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.manageBillingButton}>
-                  <Feather name="dollar-sign" size={16} color={colors.foreground} />
-                  <Text style={styles.manageBillingText}>Manage Billing</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {activeTab === 'pay' && (
-            <View style={styles.tabContentSection}>
               <TouchableOpacity 
                 style={styles.settingsCard}
-                onPress={() => router.push('/more/payments')}
+                onPress={() => router.push('/more/business-settings')}
+                data-testid="button-business-settings"
               >
                 <View style={styles.settingsCardHeader}>
-                  <Feather name="credit-card" size={20} color={colors.primary} />
+                  <Feather name="briefcase" size={20} color={colors.primary} />
                   <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>Payment Settings</Text>
-                    <Text style={styles.settingsCardSubtitle}>Stripe connection, fees, payout settings</Text>
+                    <Text style={styles.settingsCardTitle}>Business Details</Text>
+                    <Text style={styles.settingsCardSubtitle}>Update your business information</Text>
                   </View>
                 </View>
-                <Feather name="external-link" size={18} color={colors.mutedForeground} />
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
 
-              <View style={styles.settingsInfoCard}>
-                <Text style={styles.settingsInfoTitle}>Payment Processing</Text>
-                <Text style={styles.settingsInfoText}>
-                  Accept payments directly from your invoices. Customers can pay by card through secure Stripe links.
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {activeTab === 'apps' && (
-            <View style={styles.tabContentSection}>
-              {/* Connected Apps Card */}
-              <View style={styles.subscriptionCard}>
-                <View style={styles.subscriptionHeader}>
-                  <Feather name="link" size={20} color={colors.primary} />
-                  <Text style={styles.subscriptionTitle}>Connected Apps</Text>
-                </View>
-
-                {/* Stripe Integration */}
-                <View style={styles.integrationRow}>
-                  <View style={styles.integrationLeft}>
-                    <View style={[styles.integrationIconContainer, { backgroundColor: '#635bff20' }]}>
-                      <Feather name="credit-card" size={20} color="#635bff" />
-                    </View>
-                    <View style={styles.integrationInfo}>
-                      <Text style={styles.integrationName}>Stripe Connect</Text>
-                      <Text style={[
-                        styles.integrationStatus,
-                        integrationStatus.stripe ? styles.statusConnected : styles.statusNotConnected
-                      ]}>
-                        {integrationStatus.stripe ? 'Connected' : 'Not connected'}
-                      </Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.connectButton}
-                    onPress={() => router.push('/more/payments')}
-                    data-testid="button-stripe-connect"
-                  >
-                    <Text style={styles.connectButtonText}>
-                      {integrationStatus.stripe ? 'Manage' : 'Connect'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Gmail Integration */}
-                <View style={styles.integrationRow}>
-                  <View style={styles.integrationLeft}>
-                    <View style={[styles.integrationIconContainer, { backgroundColor: '#ea433520' }]}>
-                      <Feather name="mail" size={20} color="#ea4335" />
-                    </View>
-                    <View style={styles.integrationInfo}>
-                      <Text style={styles.integrationName}>Gmail / Email</Text>
-                      <Text style={[
-                        styles.integrationStatus,
-                        integrationStatus.gmail ? styles.statusConnected : styles.statusNotConnected
-                      ]}>
-                        {integrationStatus.gmail ? 'Connected' : 'Not connected'}
-                      </Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.connectButton}
-                    onPress={() => router.push('/more/integrations')}
-                    data-testid="button-gmail-connect"
-                  >
-                    <Text style={styles.connectButtonText}>
-                      {integrationStatus.gmail ? 'Manage' : 'Connect'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Google Calendar Integration */}
-                <View style={[styles.integrationRow, styles.integrationRowLast]}>
-                  <View style={styles.integrationLeft}>
-                    <View style={[styles.integrationIconContainer, { backgroundColor: '#4285f420' }]}>
-                      <Feather name="calendar" size={20} color="#4285f4" />
-                    </View>
-                    <View style={styles.integrationInfo}>
-                      <Text style={styles.integrationName}>Google Calendar</Text>
-                      <Text style={[
-                        styles.integrationStatus,
-                        integrationStatus.calendar ? styles.statusConnected : styles.statusNotConnected
-                      ]}>
-                        {integrationStatus.calendar ? 'Connected' : 'Not connected'}
-                      </Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.connectButton}
-                    onPress={() => router.push('/more/integrations')}
-                    data-testid="button-calendar-connect"
-                  >
-                    <Text style={styles.connectButtonText}>
-                      {integrationStatus.calendar ? 'Manage' : 'Connect'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* App Store Links */}
-              <View style={styles.appStoreCard}>
-                <Feather name="download" size={24} color={colors.primary} />
-                <Text style={styles.settingsCardTitle}>Get the App</Text>
-                <Text style={[styles.settingsCardSubtitle, { textAlign: 'center' }]}>
-                  Download TradieTrack on your mobile device
-                </Text>
-                <View style={styles.appStoreBadges}>
-                  <TouchableOpacity 
-                    style={styles.storeBadge}
-                    onPress={() => Linking.openURL('https://apps.apple.com')}
-                    data-testid="button-app-store"
-                  >
-                    <Feather name="smartphone" size={16} color={colors.background} />
-                    <Text style={styles.storeBadgeText}>App Store</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.storeBadge}
-                    onPress={() => Linking.openURL('https://play.google.com')}
-                    data-testid="button-play-store"
-                  >
-                    <Feather name="play" size={16} color={colors.background} />
-                    <Text style={styles.storeBadgeText}>Google Play</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* QR Code for App Share */}
-              <View style={styles.qrCard}>
-                <Text style={styles.settingsCardTitle}>Share App</Text>
-                <Text style={[styles.settingsCardSubtitle, { textAlign: 'center' }]}>
-                  Scan to download TradieTrack
-                </Text>
-                <View style={styles.qrPlaceholder}>
-                  <Feather name="grid" size={48} color={colors.mutedForeground} />
-                </View>
-                <TouchableOpacity 
-                  style={styles.shareButton}
-                  onPress={() => {}}
-                  data-testid="button-share-app"
-                >
-                  <Feather name="share-2" size={18} color={colors.primaryForeground} />
-                  <Text style={styles.shareButtonText}>Share Download Link</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* More Integrations Link */}
               <TouchableOpacity 
                 style={styles.settingsCard}
-                onPress={() => router.push('/more/integrations')}
-                data-testid="button-more-integrations"
+                onPress={() => router.push('/more/profile-edit')}
+                data-testid="button-profile-settings"
               >
                 <View style={styles.settingsCardHeader}>
-                  <Feather name="plus-circle" size={20} color={colors.primary} />
+                  <Feather name="user" size={20} color={colors.primary} />
                   <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>More Integrations</Text>
-                    <Text style={styles.settingsCardSubtitle}>Browse all available integrations</Text>
+                    <Text style={styles.settingsCardTitle}>Profile Settings</Text>
+                    <Text style={styles.settingsCardSubtitle}>Manage your personal information</Text>
                   </View>
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
@@ -1076,16 +1490,235 @@ export default function SettingsScreen() {
             </View>
           )}
 
+          {activeTab === 'brand' && (
+            <View style={styles.tabContentSection}>
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="droplet" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>App Color</Text>
+                </View>
+                <Text style={styles.planDescription}>
+                  Choose a brand color for your app theme
+                </Text>
+
+                <View style={styles.colorGrid}>
+                  {BRAND_COLORS.map((color) => (
+                    <TouchableOpacity
+                      key={color}
+                      style={[
+                        styles.colorSwatch,
+                        { backgroundColor: color },
+                        selectedColor === color && styles.colorSwatchSelected
+                      ]}
+                      onPress={() => handleColorSelect(color)}
+                      data-testid={`color-swatch-${color.replace('#', '')}`}
+                    >
+                      {selectedColor === color && (
+                        <Feather name="check" size={20} color="#FFFFFF" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="image" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Business Logo</Text>
+                </View>
+                <Text style={styles.planDescription}>
+                  Upload your business logo to personalize documents
+                </Text>
+
+                <View style={styles.logoSection}>
+                  <View style={styles.logoPreview}>
+                    {logoUrl ? (
+                      <Image source={{ uri: logoUrl }} style={styles.logoImage} />
+                    ) : (
+                      <Feather name="image" size={32} color={colors.mutedForeground} />
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.uploadButton}
+                    onPress={handlePickLogo}
+                    disabled={isUploadingLogo}
+                    data-testid="button-upload-logo"
+                  >
+                    <Feather name="upload" size={18} color={colors.primary} />
+                    <Text style={styles.uploadButtonText}>
+                      {isUploadingLogo ? 'Uploading...' : (logoUrl ? 'Change Logo' : 'Upload Logo')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.settingsInfoCard}>
+                <Text style={styles.settingsInfoTitle}>Brand Customization</Text>
+                <Text style={styles.settingsInfoText}>
+                  Your brand color and logo will appear on quotes, invoices, and other documents sent to clients.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {activeTab === 'templates' && (
+            <View style={styles.tabContentSection}>
+              <TouchableOpacity
+                style={styles.createTemplateButton}
+                onPress={() => {
+                  resetTemplateForm();
+                  setShowCreateModal(true);
+                }}
+                data-testid="button-create-template"
+              >
+                <Feather name="plus" size={18} color={colors.primaryForeground} />
+                <Text style={styles.createTemplateButtonText}>Create New Template</Text>
+              </TouchableOpacity>
+
+              <View style={styles.templateStatsRow}>
+                <View style={styles.templateStatCard}>
+                  <Text style={styles.templateStatValue}>{quoteTemplates}</Text>
+                  <Text style={styles.templateStatLabel}>Quotes</Text>
+                </View>
+                <View style={styles.templateStatCard}>
+                  <Text style={styles.templateStatValue}>{invoiceTemplates}</Text>
+                  <Text style={styles.templateStatLabel}>Invoices</Text>
+                </View>
+                <View style={styles.templateStatCard}>
+                  <Text style={styles.templateStatValue}>{jobTemplates}</Text>
+                  <Text style={styles.templateStatLabel}>Jobs</Text>
+                </View>
+              </View>
+
+              <View style={styles.filtersRow}>
+                {(['all', 'quote', 'invoice', 'job'] as const).map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.filterChip,
+                      typeFilter === type && styles.filterChipActive
+                    ]}
+                    onPress={() => setTypeFilter(type)}
+                    data-testid={`filter-${type}`}
+                  >
+                    <Text style={[
+                      styles.filterChipText,
+                      typeFilter === type && styles.filterChipTextActive
+                    ]}>
+                      {type === 'all' ? 'All Types' : type + 's'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {templatesLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+              ) : templates.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyIconContainer}>
+                    <Feather name="file-text" size={48} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={styles.emptyTitle}>No templates yet</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Create templates to speed up creating quotes, invoices, and jobs
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.emptyButton}
+                    onPress={() => {
+                      resetTemplateForm();
+                      setShowCreateModal(true);
+                    }}
+                  >
+                    <Feather name="plus" size={18} color={colors.primary} />
+                    <Text style={styles.emptyButtonText}>Create First Template</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.templateList}>
+                  {templates.map(template => (
+                    <View key={template.id} style={styles.templateCard}>
+                      <View style={styles.templateHeader}>
+                        <View style={styles.templateInfo}>
+                          <Text style={styles.templateName}>{template.name}</Text>
+                          <View style={styles.templateMeta}>
+                            <Text style={[styles.templateType, { backgroundColor: getTypeColor(template.type) + '20', color: getTypeColor(template.type) }]}>
+                              {template.type}
+                            </Text>
+                            <Text style={styles.templateTrade}>{template.tradeType}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.templateActions}>
+                          <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => handleEditTemplate(template)}
+                            data-testid={`button-edit-template-${template.id}`}
+                          >
+                            <Feather name="edit-2" size={18} color={colors.primary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => handleDuplicateTemplate(template)}
+                            data-testid={`button-duplicate-template-${template.id}`}
+                          >
+                            <Feather name="copy" size={18} color={colors.mutedForeground} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => handleDeleteTemplate(template)}
+                            data-testid={`button-delete-template-${template.id}`}
+                          >
+                            <Feather name="trash-2" size={18} color={colors.destructive} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.templateDetails}>
+                        {template.defaults?.title && (
+                          <Text style={styles.templateTitle} numberOfLines={1}>
+                            {template.defaults.title}
+                          </Text>
+                        )}
+                        
+                        <View style={styles.badgeRow}>
+                          {template.defaultLineItems?.length > 0 && (
+                            <Text style={styles.badge}>
+                              {template.defaultLineItems.length} line items
+                            </Text>
+                          )}
+                          {template.defaults?.depositPct > 0 && (
+                            <Text style={styles.badge}>
+                              {template.defaults.depositPct}% deposit
+                            </Text>
+                          )}
+                          {template.defaults?.gstEnabled && (
+                            <Text style={styles.badge}>GST</Text>
+                          )}
+                        </View>
+
+                        {template.defaults?.terms && (
+                          <Text style={styles.templateTerms} numberOfLines={2}>
+                            {template.defaults.terms}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
           {activeTab === 'alerts' && (
             <View style={styles.tabContentSection}>
-              {/* Push Notifications Section */}
               <View style={styles.subscriptionCard}>
                 <View style={styles.subscriptionHeader}>
                   <Feather name="smartphone" size={20} color={colors.primary} />
                   <Text style={styles.subscriptionTitle}>Push Notifications</Text>
                 </View>
 
-                {/* New Job Assignments */}
                 <View style={styles.notificationToggleRow}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: colors.primaryLight }]}>
@@ -1105,7 +1738,6 @@ export default function SettingsScreen() {
                   />
                 </View>
 
-                {/* Job Status Changes */}
                 <View style={styles.notificationToggleRow}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: colors.primaryLight }]}>
@@ -1125,7 +1757,6 @@ export default function SettingsScreen() {
                   />
                 </View>
 
-                {/* Payment Received */}
                 <View style={styles.notificationToggleRow}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: '#22c55e20' }]}>
@@ -1145,7 +1776,6 @@ export default function SettingsScreen() {
                   />
                 </View>
 
-                {/* Quote Accepted */}
                 <View style={styles.notificationToggleRow}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: '#f59e0b20' }]}>
@@ -1165,7 +1795,6 @@ export default function SettingsScreen() {
                   />
                 </View>
 
-                {/* Team Messages */}
                 <View style={[styles.notificationToggleRow, styles.notificationToggleRowLast]}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: '#8b5cf620' }]}>
@@ -1186,14 +1815,12 @@ export default function SettingsScreen() {
                 </View>
               </View>
 
-              {/* Email Notifications Section */}
               <View style={styles.subscriptionCard}>
                 <View style={styles.subscriptionHeader}>
                   <Feather name="mail" size={20} color={colors.primary} />
                   <Text style={styles.subscriptionTitle}>Email Notifications</Text>
                 </View>
 
-                {/* Daily Digest */}
                 <View style={styles.notificationToggleRow}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: colors.primaryLight }]}>
@@ -1213,7 +1840,6 @@ export default function SettingsScreen() {
                   />
                 </View>
 
-                {/* Weekly Summary */}
                 <View style={styles.notificationToggleRow}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: colors.primaryLight }]}>
@@ -1233,7 +1859,6 @@ export default function SettingsScreen() {
                   />
                 </View>
 
-                {/* Payment Receipts */}
                 <View style={styles.notificationToggleRow}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: '#22c55e20' }]}>
@@ -1253,7 +1878,6 @@ export default function SettingsScreen() {
                   />
                 </View>
 
-                {/* Overdue Reminders */}
                 <View style={[styles.notificationToggleRow, styles.notificationToggleRowLast]}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: '#ef444420' }]}>
@@ -1274,14 +1898,12 @@ export default function SettingsScreen() {
                 </View>
               </View>
 
-              {/* SMS Notifications Section */}
               <View style={styles.subscriptionCard}>
                 <View style={styles.subscriptionHeader}>
                   <Feather name="message-square" size={20} color={colors.primary} />
                   <Text style={styles.subscriptionTitle}>SMS Notifications</Text>
                 </View>
 
-                {/* Urgent Job Alerts */}
                 <View style={styles.notificationToggleRow}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: '#ef444420' }]}>
@@ -1301,7 +1923,6 @@ export default function SettingsScreen() {
                   />
                 </View>
 
-                {/* Payment Confirmations */}
                 <View style={[styles.notificationToggleRow, styles.notificationToggleRowLast]}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: '#22c55e20' }]}>
@@ -1322,7 +1943,6 @@ export default function SettingsScreen() {
                 </View>
               </View>
 
-              {/* Link to full notification settings */}
               <TouchableOpacity 
                 style={styles.settingsCard}
                 onPress={() => router.push('/more/notifications')}
@@ -1347,11 +1967,94 @@ export default function SettingsScreen() {
             </View>
           )}
 
+          {activeTab === 'plan' && (
+            <View style={styles.planSection}>
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="award" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Your Subscription</Text>
+                </View>
+
+                <View style={styles.planInfo}>
+                  <View style={styles.planBadge}>
+                    <View style={styles.planIconContainer}>
+                      <Feather 
+                        name={currentPlan === 'pro' ? 'star' : 'user'} 
+                        size={22} 
+                        color={colors.primary} 
+                      />
+                    </View>
+                    <View>
+                      <Text style={styles.planName}>
+                        {currentPlan === 'pro' ? 'Pro Plan' : 'Free Plan'}
+                      </Text>
+                      <Text style={styles.planDescription}>
+                        {currentPlan === 'pro' ? 'Full access to all features' : 'Basic features'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.planPriceBadge}>
+                    <Text style={styles.planPriceText}>
+                      {currentPlan === 'pro' ? '$29/mo' : 'Free'}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles.proFeaturesTitle}>PRO FEATURES</Text>
+
+                {PLAN_FEATURES.map((feature, index) => (
+                  <View key={index} style={styles.featureRow}>
+                    <Feather 
+                      name={feature.icon as any} 
+                      size={18} 
+                      color={currentPlan === 'pro' ? colors.primary : colors.mutedForeground} 
+                    />
+                    <Text style={[
+                      styles.featureText,
+                      currentPlan !== 'pro' && { color: colors.mutedForeground }
+                    ]}>
+                      {feature.text}
+                    </Text>
+                    {feature.pro && currentPlan !== 'pro' && (
+                      <View style={styles.proBadge}>
+                        <Text style={styles.proBadgeText}>PRO</Text>
+                      </View>
+                    )}
+                    {currentPlan === 'pro' && (
+                      <Feather name="check" size={18} color={colors.primary} />
+                    )}
+                  </View>
+                ))}
+
+                {currentPlan !== 'pro' && (
+                  <TouchableOpacity 
+                    style={styles.upgradeButton}
+                    onPress={() => router.push('/more/subscription')}
+                    data-testid="button-upgrade"
+                  >
+                    <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+                  </TouchableOpacity>
+                )}
+
+                {currentPlan === 'pro' && (
+                  <TouchableOpacity 
+                    style={styles.manageBillingButton}
+                    onPress={() => {}}
+                  >
+                    <Feather name="external-link" size={16} color={colors.foreground} />
+                    <Text style={styles.manageBillingText}>Manage Billing</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+
           {activeTab === 'help' && (
             <View style={styles.tabContentSection}>
               <TouchableOpacity 
                 style={[styles.settingsCard, { borderColor: colors.primary, borderWidth: 2 }]}
                 onPress={() => setShowTour(true)}
+                data-testid="button-start-tour"
               >
                 <View style={styles.settingsCardHeader}>
                   <Feather name="compass" size={20} color={colors.primary} />
@@ -1366,6 +2069,7 @@ export default function SettingsScreen() {
               <TouchableOpacity 
                 style={styles.settingsCard}
                 onPress={() => Linking.openURL('mailto:support@tradietrack.com.au')}
+                data-testid="button-contact-support"
               >
                 <View style={styles.settingsCardHeader}>
                   <Feather name="mail" size={20} color={colors.primary} />
@@ -1380,6 +2084,7 @@ export default function SettingsScreen() {
               <TouchableOpacity 
                 style={styles.settingsCard}
                 onPress={() => Linking.openURL('https://tradietrack.com.au/help')}
+                data-testid="button-help-centre"
               >
                 <View style={styles.settingsCardHeader}>
                   <Feather name="help-circle" size={20} color={colors.primary} />
@@ -1400,6 +2105,210 @@ export default function SettingsScreen() {
             </View>
           )}
         </ScrollView>
+
+        <Modal
+          visible={showCreateModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowCreateModal(false);
+                  resetTemplateForm();
+                }} 
+              >
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>
+                {editingTemplate ? 'Edit Template' : 'New Template'}
+              </Text>
+              <View style={{ width: 24 }} />
+            </View>
+
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Template Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newTemplate.name}
+                  onChangeText={(text) => setNewTemplate({ ...newTemplate, name: text })}
+                  placeholder="e.g., Standard Plumbing Quote"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Template Type</Text>
+                <View style={styles.typeButtons}>
+                  {(['quote', 'invoice', 'job'] as const).map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.typeButton,
+                        newTemplate.type === type && styles.typeButtonActive
+                      ]}
+                      onPress={() => setNewTemplate({ ...newTemplate, type })}
+                    >
+                      <Text style={[
+                        styles.typeButtonText,
+                        newTemplate.type === type && styles.typeButtonTextActive
+                      ]}>
+                        {type}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Trade Type</Text>
+                <View style={styles.tradeTypeContainer}>
+                  {tradeTypes.map((trade) => (
+                    <TouchableOpacity
+                      key={trade}
+                      style={[
+                        styles.tradeChip,
+                        newTemplate.tradeType === trade && styles.tradeChipActive
+                      ]}
+                      onPress={() => setNewTemplate({ ...newTemplate, tradeType: trade })}
+                    >
+                      <Text style={[
+                        styles.tradeChipText,
+                        newTemplate.tradeType === trade && styles.tradeChipTextActive
+                      ]}>
+                        {trade}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <Text style={styles.sectionHeader}>Default Values</Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Default Title</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newTemplate.defaults.title}
+                  onChangeText={(text) => setNewTemplate({ 
+                    ...newTemplate, 
+                    defaults: { ...newTemplate.defaults, title: text } 
+                  })}
+                  placeholder="e.g., Plumbing Service Quote"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Default Description</Text>
+                <TextInput
+                  style={[styles.input, styles.inputMultiline]}
+                  value={newTemplate.defaults.description}
+                  onChangeText={(text) => setNewTemplate({ 
+                    ...newTemplate, 
+                    defaults: { ...newTemplate.defaults, description: text } 
+                  })}
+                  placeholder="Brief description..."
+                  placeholderTextColor={colors.mutedForeground}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Default Terms</Text>
+                <TextInput
+                  style={[styles.input, styles.inputMultiline]}
+                  value={newTemplate.defaults.terms}
+                  onChangeText={(text) => setNewTemplate({ 
+                    ...newTemplate, 
+                    defaults: { ...newTemplate.defaults, terms: text } 
+                  })}
+                  placeholder="Payment terms, conditions..."
+                  placeholderTextColor={colors.mutedForeground}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Default Deposit (%)</Text>
+                <TextInput
+                  style={[styles.input, { width: 100 }]}
+                  value={String(newTemplate.defaults.depositPct || '')}
+                  onChangeText={(text) => setNewTemplate({ 
+                    ...newTemplate, 
+                    defaults: { ...newTemplate.defaults, depositPct: parseInt(text) || 0 } 
+                  })}
+                  placeholder="0"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <Text style={styles.sectionHeader}>Default Line Items</Text>
+
+              {newTemplate.defaultLineItems.map((item, index) => (
+                <View key={index} style={styles.lineItemRow}>
+                  <TextInput
+                    style={styles.lineItemInput}
+                    value={item.description}
+                    onChangeText={(text) => updateLineItem(index, 'description', text)}
+                    placeholder="Description"
+                    placeholderTextColor={colors.mutedForeground}
+                  />
+                  <TextInput
+                    style={[styles.lineItemInput, styles.lineItemQty]}
+                    value={String(item.qty || '')}
+                    onChangeText={(text) => updateLineItem(index, 'qty', parseInt(text) || 1)}
+                    placeholder="Qty"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.lineItemInput, styles.lineItemPrice]}
+                    value={String(item.unitPrice || '')}
+                    onChangeText={(text) => updateLineItem(index, 'unitPrice', parseFloat(text) || 0)}
+                    placeholder="Price"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="decimal-pad"
+                  />
+                  <TouchableOpacity
+                    style={styles.removeLineItemButton}
+                    onPress={() => removeLineItem(index)}
+                  >
+                    <Feather name="x" size={20} color={colors.destructive} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              <TouchableOpacity
+                style={styles.addLineItemButton}
+                onPress={addLineItem}
+              >
+                <Feather name="plus" size={18} color={colors.primary} />
+                <Text style={styles.addLineItemText}>Add Line Item</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalSaveButton, isCreatingTemplate && styles.modalSaveButtonDisabled]}
+                onPress={handleCreateTemplate}
+                disabled={isCreatingTemplate}
+              >
+                <Feather name="check" size={18} color="#FFFFFF" />
+                <Text style={styles.modalSaveButtonText}>
+                  {isCreatingTemplate ? 'Saving...' : (editingTemplate ? 'Update Template' : 'Create Template')}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </View>
+        </Modal>
 
         <AppTour 
           visible={showTour} 
