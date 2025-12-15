@@ -54,11 +54,12 @@ function ClientCard({
       style={styles.clientCard}
     >
       <View style={styles.clientCardContent}>
-        <View style={styles.clientCardHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
-          </View>
-          <View style={styles.clientInfo}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
+        </View>
+        
+        <View style={styles.clientInfo}>
+          <View style={styles.clientNameRow}>
             <Text style={styles.clientName} numberOfLines={1}>{client.name}</Text>
             {client.jobsCount !== undefined && client.jobsCount > 0 && (
               <View style={styles.jobsBadge}>
@@ -66,29 +67,32 @@ function ClientCard({
               </View>
             )}
           </View>
-          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          
+          <View style={styles.contactRow}>
+            {client.email && (
+              <View style={styles.contactItem}>
+                <Feather name="mail" size={iconSizes.lg} color={colors.mutedForeground} />
+                <Text style={styles.contactText} numberOfLines={2}>{client.email}</Text>
+              </View>
+            )}
+            {client.phone && (
+              <View style={styles.contactItem}>
+                <Feather name="phone" size={iconSizes.lg} color={colors.mutedForeground} />
+                <Text style={styles.contactText} numberOfLines={1}>{client.phone}</Text>
+              </View>
+            )}
+          </View>
+          
+          {client.address && (
+            <View style={styles.addressRow}>
+              <Feather name="map-pin" size={iconSizes.lg} color={colors.mutedForeground} />
+              <Text style={styles.contactText} numberOfLines={2}>{client.address}</Text>
+            </View>
+          )}
         </View>
         
-        {/* Contact details like web */}
-        <View style={styles.clientDetails}>
-          {client.email && (
-            <View style={styles.clientDetailRow}>
-              <Feather name="mail" size={12} color={colors.mutedForeground} />
-              <Text style={styles.clientDetailText} numberOfLines={1}>{client.email}</Text>
-            </View>
-          )}
-          {client.phone && (
-            <View style={styles.clientDetailRow}>
-              <Feather name="phone" size={12} color={colors.mutedForeground} />
-              <Text style={styles.clientDetailText} numberOfLines={1}>{client.phone}</Text>
-            </View>
-          )}
-          {client.address && (
-            <View style={styles.clientDetailRow}>
-              <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-              <Text style={styles.clientDetailText} numberOfLines={1}>{client.address}</Text>
-            </View>
-          )}
+        <View style={styles.chevronContainer}>
+          <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
         </View>
       </View>
     </AnimatedCardPressable>
@@ -240,28 +244,14 @@ export default function ClientsScreen() {
                 </Text>
               </View>
             ) : (
-              <View style={styles.clientsGrid}>
-                {/* Create rows of 2 cards each */}
-                {Array.from({ length: Math.ceil(filteredClients.length / 2) }, (_, rowIndex) => {
-                  const client1 = filteredClients[rowIndex * 2];
-                  const client2 = filteredClients[rowIndex * 2 + 1];
-                  return (
-                    <View key={rowIndex} style={styles.gridRow}>
-                      <ClientCard
-                        client={client1}
-                        onPress={() => router.push(`/more/client/${client1.id}`)}
-                      />
-                      {client2 ? (
-                        <ClientCard
-                          client={client2}
-                          onPress={() => router.push(`/more/client/${client2.id}`)}
-                        />
-                      ) : (
-                        <View style={styles.gridPlaceholder} />
-                      )}
-                    </View>
-                  );
-                })}
+              <View style={styles.clientsList}>
+                {filteredClients.map((client) => (
+                  <ClientCard
+                    key={client.id}
+                    client={client}
+                    onPress={() => router.push(`/more/client/${client.id}`)}
+                  />
+                ))}
               </View>
             )}
           </View>
@@ -431,80 +421,86 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
 
-  clientsGrid: {
-    gap: spacing.md,
-  },
-  gridRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  gridPlaceholder: {
-    flex: 1,
+  clientsList: {
+    gap: spacing.lg,
   },
   clientCard: {
-    flex: 1,
+    width: '100%',
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
   clientCardContent: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  clientCardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+    alignItems: 'flex-start',
+    padding: spacing.xl,
+    gap: spacing.lg,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.primaryForeground,
   },
   clientInfo: {
     flex: 1,
-    gap: spacing.xs,
+    gap: spacing.md,
+  },
+  clientNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flexWrap: 'wrap',
   },
   clientName: {
-    fontSize: 14,
+    fontSize: 17,
     fontWeight: '600',
     color: colors.foreground,
   },
   jobsBadge: {
     backgroundColor: colors.muted,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
     borderRadius: radius.sm,
-    alignSelf: 'flex-start',
   },
   jobsBadgeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '500',
     color: colors.mutedForeground,
   },
-  clientDetails: {
-    gap: spacing.xs,
-    marginTop: spacing.sm,
+  contactRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.lg,
   },
-  clientDetailRow: {
+  contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
+    minHeight: 24,
   },
-  clientDetailText: {
-    fontSize: 13,
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginTop: spacing.xs,
+  },
+  contactText: {
+    fontSize: 15,
     color: colors.mutedForeground,
-    flex: 1,
+    flexShrink: 1,
+  },
+  chevronContainer: {
+    alignSelf: 'center',
   },
 });
