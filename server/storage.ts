@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { eq, desc, asc, sql, and, or, lt, gte, lte, isNull, isNotNull } from "drizzle-orm";
+import { eq, desc, asc, sql, and, or, lt, gte, lte, isNull, isNotNull, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import {
   type User,
@@ -407,6 +407,7 @@ export interface IStorage {
   // Automation Logs
   hasAutomationProcessed(automationId: string, entityType: string, entityId: string): Promise<boolean>;
   logAutomationProcessed(automationId: string, entityType: string, entityId: string, result: string, errorMessage?: string): Promise<void>;
+  getAutomationLogs(userId: string, limit?: number): Promise<AutomationLog[]>;
 
   // Custom Forms
   getCustomForms(userId: string): Promise<CustomForm[]>;
@@ -2679,6 +2680,25 @@ export class PostgresStorage implements IStorage {
       }).onConflictDoNothing();
     } catch (error) {
       console.error(`[Storage] Error logging automation:`, error);
+    }
+  }
+
+  async getAutomationLogs(userId: string, limit: number = 50): Promise<AutomationLog[]> {
+    try {
+      const userAutomations = await this.getAutomations(userId);
+      const automationIds = userAutomations.map(a => a.id);
+      
+      if (automationIds.length === 0) return [];
+      
+      const result = await db.select()
+        .from(automationLogs)
+        .where(inArray(automationLogs.automationId, automationIds))
+        .orderBy(desc(automationLogs.processedAt))
+        .limit(limit);
+      return result;
+    } catch (error) {
+      console.error(`[Storage] Error getting automation logs:`, error);
+      return [];
     }
   }
 

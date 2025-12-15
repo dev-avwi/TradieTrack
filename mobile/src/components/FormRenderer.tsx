@@ -483,9 +483,9 @@ export function JobForms({ jobId, readOnly = false }: JobFormsProps) {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={[styles.headerIcon, { backgroundColor: `${colors.primary}15` }]}>
-          <Feather name="clipboard" size={iconSizes.lg} color={colors.primary} />
+          <Feather name="check-square" size={iconSizes.lg} color={colors.primary} />
         </View>
-        <Text style={styles.headerLabel}>Forms</Text>
+        <Text style={styles.headerLabel}>Checklist</Text>
         {submissions.length > 0 && (
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{submissions.length}</Text>
@@ -544,11 +544,11 @@ export function JobForms({ jobId, readOnly = false }: JobFormsProps) {
           activeOpacity={0.7}
         >
           <Feather name="plus" size={18} color={colors.primaryForeground} />
-          <Text style={styles.addFormButtonText}>Fill Out Form</Text>
+          <Text style={styles.addFormButtonText}>Add Checklist</Text>
         </TouchableOpacity>
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No forms available</Text>
+          <Text style={styles.emptyText}>No checklists available</Text>
         </View>
       )}
 
@@ -560,7 +560,7 @@ export function JobForms({ jobId, readOnly = false }: JobFormsProps) {
       >
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select Form</Text>
+            <Text style={styles.modalTitle}>Select Checklist</Text>
             <TouchableOpacity onPress={() => setShowFormSelector(false)}>
               <Feather name="x" size={24} color={colors.foreground} />
             </TouchableOpacity>

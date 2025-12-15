@@ -24,6 +24,8 @@ interface TeamMember {
   firstName?: string;
   lastName?: string;
   email: string;
+  phone?: string;
+  hourlyRate?: string;
   role: 'owner' | 'admin' | 'supervisor' | 'staff';
   permissions: string[];
   inviteStatus: 'pending' | 'accepted' | 'rejected';
@@ -49,7 +51,54 @@ interface UserRole {
   id: string;
   name: string;
   permissions: string[];
+  description?: string;
 }
+
+interface Job {
+  id: string;
+  title: string;
+  status: string;
+  address?: string;
+  scheduledAt?: string;
+  completedAt?: string;
+  assignedTo?: string;
+}
+
+interface TimeEntry {
+  id: string;
+  startTime: string;
+  endTime?: string;
+  duration?: number;
+  jobId?: string;
+  notes?: string;
+}
+
+const ROLE_PERMISSION_SUMMARY = {
+  owner: [
+    'Full access to all features',
+    'Manage team members & roles',
+    'Manage payments & billing',
+    'View all reports',
+  ],
+  admin: [
+    'Manage jobs, quotes & invoices',
+    'Manage clients & team',
+    'View reports & templates',
+    'Access time tracking',
+  ],
+  supervisor: [
+    'Manage jobs & time entries',
+    'View quotes & invoices',
+    'View clients & reports',
+    'Limited write access',
+  ],
+  staff: [
+    'View assigned jobs',
+    'Manage own time entries',
+    'View client info',
+    'Basic access only',
+  ],
+};
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
@@ -142,16 +191,17 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   roleInfoRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
     gap: spacing.sm,
   },
   roleInfoBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 2,
   },
   roleInfoContent: {
     flex: 1,
@@ -160,10 +210,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.caption,
     color: colors.foreground,
     fontWeight: '600',
+    marginBottom: 4,
   },
   roleInfoDescription: {
     ...typography.captionSmall,
     color: colors.mutedForeground,
+    lineHeight: 16,
   },
   section: {
     paddingHorizontal: spacing.lg,
@@ -227,6 +279,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    flexWrap: 'wrap',
   },
   roleBadge: {
     flexDirection: 'row',
@@ -248,10 +301,11 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   memberActions: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    flexWrap: 'wrap',
   },
   actionButton: {
     flexDirection: 'row',
@@ -262,11 +316,15 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.primary,
+    minHeight: 36,
   },
   actionButtonText: {
     ...typography.caption,
     color: colors.primary,
     fontWeight: '500',
+  },
+  viewButton: {
+    backgroundColor: colors.primary + '10',
   },
   removeButton: {
     borderColor: colors.destructive,
@@ -323,6 +381,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   modalTitle: {
     ...typography.subtitle,
     color: colors.foreground,
+    flex: 1,
   },
   modalBody: {
     padding: spacing.lg,
@@ -333,6 +392,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.xs,
     marginTop: spacing.md,
   },
+  inputLabelFirst: {
+    marginTop: 0,
+  },
   input: {
     backgroundColor: colors.background,
     borderWidth: 1,
@@ -341,6 +403,13 @@ const createStyles = (colors: any) => StyleSheet.create({
     padding: spacing.md,
     ...typography.body,
     color: colors.foreground,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  inputHalf: {
+    flex: 1,
   },
   roleOptions: {
     marginTop: spacing.md,
@@ -355,24 +424,51 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   roleOptionSelected: {
     borderWidth: 2,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primary + '10',
+  },
+  roleOptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
   },
   roleOptionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginRight: spacing.sm,
   },
   roleOptionLabel: {
     ...typography.subtitle,
     color: colors.foreground,
+    flex: 1,
+  },
+  roleOptionCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   roleOptionDesc: {
     ...typography.caption,
     color: colors.mutedForeground,
+    marginBottom: spacing.sm,
+  },
+  rolePermissionsList: {
     marginTop: spacing.xs,
+  },
+  rolePermissionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: 4,
+  },
+  rolePermissionText: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
   },
   modalFooter: {
     flexDirection: 'row',
@@ -410,6 +506,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
   },
+  deleteButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.destructive,
+  },
   permissionsButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -434,7 +540,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingVertical: 2,
     borderRadius: radius.full,
     backgroundColor: colors.primary + '20',
-    marginLeft: spacing.xs,
   },
   customBadgeText: {
     ...typography.captionSmall,
@@ -570,6 +675,169 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
     marginLeft: 'auto',
   },
+  detailSection: {
+    marginBottom: spacing.lg,
+  },
+  detailSectionTitle: {
+    ...typography.label,
+    color: colors.foreground,
+    marginBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  detailCard: {
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  detailRowLast: {
+    borderBottomWidth: 0,
+  },
+  detailIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  detailLabel: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    flex: 1,
+  },
+  detailValue: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '500',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  statusIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  statusText: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '500',
+  },
+  jobItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  jobItemLast: {
+    borderBottomWidth: 0,
+  },
+  jobInfo: {
+    flex: 1,
+  },
+  jobTitle: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '500',
+  },
+  jobAddress: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  jobStatus: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+  },
+  jobStatusText: {
+    ...typography.captionSmall,
+    fontWeight: '600',
+  },
+  timeStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  timeStat: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  timeStatValue: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    fontWeight: '700',
+  },
+  timeStatLabel: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  emptyDetail: {
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  emptyDetailText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: spacing.sm,
+  },
+  memberDetailHeader: {
+    alignItems: 'center',
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    marginBottom: spacing.lg,
+  },
+  memberDetailAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  memberDetailAvatarText: {
+    ...typography.pageTitle,
+    fontWeight: '700',
+  },
+  memberDetailName: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  memberDetailRole: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+    marginTop: spacing.sm,
+  },
+  memberDetailRoleText: {
+    ...typography.caption,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
 });
 
 export default function TeamManagementScreen() {
@@ -609,18 +877,46 @@ export default function TeamManagementScreen() {
     rejected: { label: 'Rejected', color: colors.destructive },
   }), [colors]);
 
+  const JOB_STATUS_CONFIG = useMemo(() => ({
+    todo: { label: 'To Do', color: colors.muted, textColor: colors.foreground },
+    in_progress: { label: 'In Progress', color: colors.info, textColor: '#FFFFFF' },
+    done: { label: 'Done', color: colors.success, textColor: '#FFFFFF' },
+    cancelled: { label: 'Cancelled', color: colors.destructive, textColor: '#FFFFFF' },
+  }), [colors]);
+
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [availablePermissions, setAvailablePermissions] = useState<PermissionItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('');
+  
+  // Invite modal state
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteFirstName, setInviteFirstName] = useState('');
+  const [inviteLastName, setInviteLastName] = useState('');
   const [inviteRole, setInviteRole] = useState('staff');
+  const [inviteHourlyRate, setInviteHourlyRate] = useState('');
   const [isSending, setIsSending] = useState(false);
+  
+  // Member detail modal state
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [memberJobs, setMemberJobs] = useState<Job[]>([]);
+  const [memberTimeStats, setMemberTimeStats] = useState({ today: 0, week: 0, month: 0 });
+  const [memberStatus, setMemberStatus] = useState<'active' | 'offline' | 'on_job'>('offline');
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  
+  // Edit member modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editHourlyRate, setEditHourlyRate] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   
   // Permissions modal state
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [useCustomPermissions, setUseCustomPermissions] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
@@ -628,10 +924,11 @@ export default function TeamManagementScreen() {
   const fetchTeam = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [membersRes, rolesRes, permissionsRes] = await Promise.all([
+      const [membersRes, rolesRes, permissionsRes, myRoleRes] = await Promise.all([
         api.get<TeamMember[]>('/api/team/members'),
         api.get<UserRole[]>('/api/team/roles'),
         api.get<PermissionItem[]>('/api/team/permissions'),
+        api.get<{ isOwner: boolean; role?: string }>('/api/team/my-role'),
       ]);
       
       if (membersRes.data) {
@@ -643,6 +940,9 @@ export default function TeamManagementScreen() {
       if (permissionsRes.data) {
         setAvailablePermissions(permissionsRes.data);
       }
+      if (myRoleRes.data) {
+        setCurrentUserRole(myRoleRes.data.isOwner ? 'owner' : (myRoleRes.data.role || ''));
+      }
     } catch (error) {
       console.log('Error fetching team:', error);
     }
@@ -653,13 +953,11 @@ export default function TeamManagementScreen() {
     fetchTeam();
   }, []);
   
-  // Get role permissions for a member
   const getRolePermissions = useCallback((roleId: string): string[] => {
     const role = roles.find(r => r.id === roleId);
     return (role?.permissions as string[]) || [];
   }, [roles]);
   
-  // Group permissions by category
   const groupedPermissions = useMemo(() => {
     return availablePermissions.reduce((acc, perm) => {
       if (!acc[perm.category]) {
@@ -669,8 +967,73 @@ export default function TeamManagementScreen() {
       return acc;
     }, {} as Record<string, PermissionItem[]>);
   }, [availablePermissions]);
-  
-  // Open permissions modal for a member
+
+  const currentUserIsOwner = currentUserRole === 'owner';
+
+  const fetchMemberDetails = useCallback(async (member: TeamMember) => {
+    setIsLoadingDetail(true);
+    try {
+      const [jobsRes, timeRes] = await Promise.all([
+        api.get<Job[]>(`/api/jobs?assignedTo=${member.userId}`).catch(() => ({ data: [] })),
+        api.get<TimeEntry[]>(`/api/time-entries?userId=${member.userId}`).catch(() => ({ data: [] })),
+      ]);
+      
+      const jobs = jobsRes.data || [];
+      setMemberJobs(jobs.slice(0, 5));
+      
+      const timeEntries = timeRes.data || [];
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      let todayHours = 0, weekHours = 0, monthHours = 0;
+      timeEntries.forEach((entry: TimeEntry) => {
+        const entryDate = new Date(entry.startTime);
+        const duration = entry.duration || 0;
+        const hours = duration / 60;
+        
+        if (entryDate >= todayStart) todayHours += hours;
+        if (entryDate >= weekStart) weekHours += hours;
+        if (entryDate >= monthStart) monthHours += hours;
+      });
+      
+      setMemberTimeStats({
+        today: Math.round(todayHours * 10) / 10,
+        week: Math.round(weekHours * 10) / 10,
+        month: Math.round(monthHours * 10) / 10,
+      });
+      
+      const activeJobs = jobs.filter((j: Job) => j.status === 'in_progress');
+      if (activeJobs.length > 0) {
+        setMemberStatus('on_job');
+      } else if (member.inviteStatus === 'accepted') {
+        setMemberStatus('active');
+      } else {
+        setMemberStatus('offline');
+      }
+      
+    } catch (error) {
+      console.log('Error fetching member details:', error);
+    }
+    setIsLoadingDetail(false);
+  }, []);
+
+  const openDetailModal = useCallback((member: TeamMember) => {
+    setSelectedMember(member);
+    setShowDetailModal(true);
+    fetchMemberDetails(member);
+  }, [fetchMemberDetails]);
+
+  const openEditModal = useCallback((member: TeamMember) => {
+    setSelectedMember(member);
+    setEditFirstName(member.firstName || member.user?.firstName || '');
+    setEditLastName(member.lastName || member.user?.lastName || '');
+    setEditPhone(member.phone || member.user?.phone || '');
+    setEditHourlyRate(member.hourlyRate || '');
+    setShowEditModal(true);
+  }, []);
+
   const openPermissionsModal = useCallback((member: TeamMember) => {
     setSelectedMember(member);
     setUseCustomPermissions(member.useCustomPermissions || false);
@@ -678,7 +1041,6 @@ export default function TeamManagementScreen() {
     setShowPermissionsModal(true);
   }, []);
   
-  // Handle permission toggle
   const togglePermission = useCallback((permKey: string) => {
     setSelectedPermissions(prev => 
       prev.includes(permKey) 
@@ -687,7 +1049,6 @@ export default function TeamManagementScreen() {
     );
   }, []);
   
-  // Handle select all for a category
   const toggleCategory = useCallback((category: string) => {
     const categoryPerms = groupedPermissions[category]?.map(p => p.key) || [];
     const allSelected = categoryPerms.every(p => selectedPermissions.includes(p));
@@ -699,7 +1060,6 @@ export default function TeamManagementScreen() {
     }
   }, [groupedPermissions, selectedPermissions]);
   
-  // Apply role defaults
   const applyRoleDefaults = useCallback(() => {
     if (selectedMember) {
       const rolePerms = getRolePermissions(selectedMember.roleId);
@@ -707,7 +1067,6 @@ export default function TeamManagementScreen() {
     }
   }, [selectedMember, getRolePermissions]);
   
-  // Save permissions
   const savePermissions = useCallback(async () => {
     if (!selectedMember) return;
     
@@ -718,7 +1077,6 @@ export default function TeamManagementScreen() {
         useCustomPermissions: useCustomPermissions,
       });
       
-      // Update local state
       setTeamMembers(prev => 
         prev.map(m => m.id === selectedMember.id 
           ? { ...m, useCustomPermissions, customPermissions: selectedPermissions }
@@ -734,24 +1092,34 @@ export default function TeamManagementScreen() {
     setIsSavingPermissions(false);
   }, [selectedMember, selectedPermissions, useCustomPermissions]);
 
-  const currentUserIsOwner = teamMembers.some(m => m.role === 'owner');
-
   const handleInvite = async () => {
     if (!inviteEmail) {
       Alert.alert('Required', 'Please enter an email address');
       return;
     }
+    if (!inviteFirstName || !inviteLastName) {
+      Alert.alert('Required', 'Please enter first and last name');
+      return;
+    }
     
     setIsSending(true);
     try {
-      await api.post('/api/team/invite', {
+      const roleObj = roles.find(r => r.name.toLowerCase() === inviteRole.toLowerCase());
+      
+      await api.post('/api/team/members/invite', {
         email: inviteEmail,
-        role: inviteRole,
+        firstName: inviteFirstName,
+        lastName: inviteLastName,
+        roleId: roleObj?.id,
+        hourlyRate: inviteHourlyRate ? parseFloat(inviteHourlyRate) : undefined,
       });
       Alert.alert('Invite Sent', `Invitation sent to ${inviteEmail}`);
       setShowInviteModal(false);
       setInviteEmail('');
+      setInviteFirstName('');
+      setInviteLastName('');
       setInviteRole('staff');
+      setInviteHourlyRate('');
       fetchTeam();
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to send invitation');
@@ -759,11 +1127,48 @@ export default function TeamManagementScreen() {
     setIsSending(false);
   };
 
+  const handleSaveEdit = async () => {
+    if (!selectedMember) return;
+    
+    setIsSavingEdit(true);
+    try {
+      await api.patch(`/api/team/members/${selectedMember.id}`, {
+        firstName: editFirstName,
+        lastName: editLastName,
+        phone: editPhone,
+        hourlyRate: editHourlyRate ? parseFloat(editHourlyRate) : undefined,
+      });
+      
+      setTeamMembers(prev => 
+        prev.map(m => m.id === selectedMember.id 
+          ? { 
+              ...m, 
+              firstName: editFirstName, 
+              lastName: editLastName,
+              phone: editPhone,
+              hourlyRate: editHourlyRate,
+            }
+          : m
+        )
+      );
+      
+      Alert.alert('Success', 'Member details updated');
+      setShowEditModal(false);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update member');
+    }
+    setIsSavingEdit(false);
+  };
+
   const handleRoleChange = async (memberId: string, newRole: string) => {
     try {
-      await api.patch(`/api/team/members/${memberId}`, { role: newRole });
+      const roleObj = roles.find(r => r.name.toLowerCase() === newRole.toLowerCase());
+      await api.patch(`/api/team/members/${memberId}`, { 
+        role: newRole,
+        roleId: roleObj?.id,
+      });
       setTeamMembers(prev => 
-        prev.map(m => m.id === memberId ? { ...m, role: newRole as any } : m)
+        prev.map(m => m.id === memberId ? { ...m, role: newRole as any, roleId: roleObj?.id || m.roleId } : m)
       );
       Alert.alert('Updated', 'Role changed successfully');
     } catch (error) {
@@ -772,13 +1177,15 @@ export default function TeamManagementScreen() {
   };
 
   const handleRemove = async (member: TeamMember) => {
-    const userName = member.user 
-      ? `${member.user.firstName} ${member.user.lastName}`
-      : 'this member';
+    const userName = member.firstName && member.lastName
+      ? `${member.firstName} ${member.lastName}`
+      : member.user 
+        ? `${member.user.firstName} ${member.user.lastName}`
+        : 'this member';
       
     Alert.alert(
       'Remove Team Member',
-      `Are you sure you want to remove ${userName} from the team?`,
+      `Are you sure you want to remove ${userName} from the team? This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -788,7 +1195,7 @@ export default function TeamManagementScreen() {
             try {
               await api.delete(`/api/team/members/${member.id}`);
               setTeamMembers(prev => prev.filter(m => m.id !== member.id));
-              Alert.alert('Removed', 'Team member removed');
+              Alert.alert('Removed', 'Team member has been removed');
             } catch (error) {
               Alert.alert('Error', 'Failed to remove member');
             }
@@ -823,7 +1230,12 @@ export default function TeamManagementScreen() {
     };
 
     return (
-      <View key={member.id} style={styles.memberCard}>
+      <TouchableOpacity 
+        key={member.id} 
+        style={styles.memberCard}
+        onPress={() => openDetailModal(member)}
+        activeOpacity={0.7}
+      >
         <View style={styles.memberHeader}>
           <View style={[styles.avatar, { backgroundColor: roleConfig.color + '20' }]}>
             <Text style={[styles.avatarText, { color: roleConfig.color }]}>{getInitials()}</Text>
@@ -851,12 +1263,28 @@ export default function TeamManagementScreen() {
                 <Text style={styles.customBadgeText}>Custom</Text>
               </View>
             )}
-            <Text style={styles.roleDescription}>{roleConfig.description}</Text>
+            <Text style={styles.roleDescription} numberOfLines={1}>{roleConfig.description}</Text>
           </View>
         </View>
 
         {member.role !== 'owner' && currentUserIsOwner && (
           <View style={styles.memberActions}>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.viewButton]}
+              onPress={() => openDetailModal(member)}
+            >
+              <Feather name="eye" size={14} color={colors.primary} />
+              <Text style={styles.actionButtonText}>View</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => openEditModal(member)}
+            >
+              <Feather name="edit-2" size={14} color={colors.primary} />
+              <Text style={styles.actionButtonText}>Edit</Text>
+            </TouchableOpacity>
+            
             {member.inviteStatus === 'accepted' && (
               <TouchableOpacity 
                 style={styles.permissionsButton}
@@ -866,35 +1294,82 @@ export default function TeamManagementScreen() {
                 <Text style={styles.permissionsButtonText}>Permissions</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => {
-                Alert.alert(
-                  'Change Role',
-                  `Select new role for ${userName}`,
-                  [
-                    { text: 'Admin', onPress: () => handleRoleChange(member.id, 'admin') },
-                    { text: 'Supervisor', onPress: () => handleRoleChange(member.id, 'supervisor') },
-                    { text: 'Staff', onPress: () => handleRoleChange(member.id, 'staff') },
-                    { text: 'Cancel', style: 'cancel' },
-                  ]
-                );
-              }}
-            >
-              <Feather name="edit-2" size={14} color={colors.primary} />
-              <Text style={styles.actionButtonText}>Change Role</Text>
-            </TouchableOpacity>
+            
             <TouchableOpacity 
               style={[styles.actionButton, styles.removeButton]}
               onPress={() => handleRemove(member)}
             >
               <Feather name="user-minus" size={14} color={colors.destructive} />
-              <Text style={[styles.actionButtonText, { color: colors.destructive }]}>Remove</Text>
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </TouchableOpacity>
     );
+  };
+
+  const renderRoleOption = (roleKey: string) => {
+    const config = ROLE_CONFIG[roleKey as keyof typeof ROLE_CONFIG];
+    const permissions = ROLE_PERMISSION_SUMMARY[roleKey as keyof typeof ROLE_PERMISSION_SUMMARY] || [];
+    const isSelected = inviteRole === roleKey;
+    
+    return (
+      <TouchableOpacity
+        key={roleKey}
+        style={[
+          styles.roleOption,
+          isSelected && styles.roleOptionSelected,
+          isSelected && { borderColor: config.color }
+        ]}
+        onPress={() => setInviteRole(roleKey)}
+      >
+        <View style={styles.roleOptionHeader}>
+          <View style={[styles.roleOptionIcon, { backgroundColor: config.color + '20' }]}>
+            <Feather name={config.icon as any} size={16} color={config.color} />
+          </View>
+          <Text style={styles.roleOptionLabel}>{config.label}</Text>
+          <View style={[
+            styles.roleOptionCheck, 
+            { 
+              borderColor: isSelected ? config.color : colors.border,
+              backgroundColor: isSelected ? config.color : 'transparent',
+            }
+          ]}>
+            {isSelected && <Feather name="check" size={12} color="#FFFFFF" />}
+          </View>
+        </View>
+        <Text style={styles.roleOptionDesc}>{config.description}</Text>
+        <View style={styles.rolePermissionsList}>
+          {permissions.slice(0, 3).map((perm, idx) => (
+            <View key={idx} style={styles.rolePermissionItem}>
+              <Feather name="check" size={10} color={colors.success} />
+              <Text style={styles.rolePermissionText}>{perm}</Text>
+            </View>
+          ))}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const getMemberName = (member: TeamMember | null) => {
+    if (!member) return '';
+    if (member.firstName && member.lastName) {
+      return `${member.firstName} ${member.lastName}`;
+    }
+    if (member.user) {
+      return `${member.user.firstName} ${member.user.lastName}`;
+    }
+    return 'Unknown';
+  };
+
+  const getMemberInitials = (member: TeamMember | null) => {
+    if (!member) return '??';
+    if (member.firstName && member.lastName) {
+      return (member.firstName[0] + member.lastName[0]).toUpperCase();
+    }
+    if (member.user) {
+      return ((member.user.firstName?.[0] || '') + (member.user.lastName?.[0] || '')).toUpperCase();
+    }
+    return '??';
   };
 
   return (
@@ -917,12 +1392,14 @@ export default function TeamManagementScreen() {
               <Text style={styles.headerTitle}>Team Management</Text>
               <Text style={styles.headerSubtitle}>{teamMembers.length} team members</Text>
             </View>
-            <TouchableOpacity 
-              style={styles.inviteButton}
-              onPress={() => setShowInviteModal(true)}
-            >
-              <Feather name="user-plus" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
+            {currentUserIsOwner && (
+              <TouchableOpacity 
+                style={styles.inviteButton}
+                onPress={() => setShowInviteModal(true)}
+              >
+                <Feather name="user-plus" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.statsRow}>
@@ -950,15 +1427,17 @@ export default function TeamManagementScreen() {
           </View>
 
           <View style={styles.rolesInfoCard}>
-            <Text style={styles.rolesInfoTitle}>Role Permissions</Text>
+            <Text style={styles.rolesInfoTitle}>Role Permissions Overview</Text>
             {Object.entries(ROLE_CONFIG).map(([key, config]) => (
               <View key={key} style={styles.roleInfoRow}>
                 <View style={[styles.roleInfoBadge, { backgroundColor: config.color }]}>
-                  <Feather name={config.icon as any} size={12} color="#FFFFFF" />
+                  <Feather name={config.icon as any} size={14} color="#FFFFFF" />
                 </View>
                 <View style={styles.roleInfoContent}>
                   <Text style={styles.roleInfoLabel}>{config.label}</Text>
-                  <Text style={styles.roleInfoDescription}>{config.description}</Text>
+                  <Text style={styles.roleInfoDescription}>
+                    {ROLE_PERMISSION_SUMMARY[key as keyof typeof ROLE_PERMISSION_SUMMARY]?.slice(0, 2).join(' • ')}
+                  </Text>
                 </View>
               </View>
             ))}
@@ -973,20 +1452,23 @@ export default function TeamManagementScreen() {
                 <Feather name="users" size={48} color={colors.mutedForeground} />
                 <Text style={styles.emptyStateTitle}>No Team Members</Text>
                 <Text style={styles.emptyStateText}>
-                  Invite your first team member to get started
+                  Invite your first team member to get started with team collaboration
                 </Text>
-                <TouchableOpacity 
-                  style={styles.emptyStateButton}
-                  onPress={() => setShowInviteModal(true)}
-                >
-                  <Feather name="user-plus" size={18} color="#FFFFFF" />
-                  <Text style={styles.emptyStateButtonText}>Invite Member</Text>
-                </TouchableOpacity>
+                {currentUserIsOwner && (
+                  <TouchableOpacity 
+                    style={styles.emptyStateButton}
+                    onPress={() => setShowInviteModal(true)}
+                  >
+                    <Feather name="user-plus" size={18} color="#FFFFFF" />
+                    <Text style={styles.emptyStateButtonText}>Invite Member</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </View>
         </ScrollView>
 
+        {/* Invite Modal */}
         <Modal visible={showInviteModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -997,7 +1479,30 @@ export default function TeamManagementScreen() {
                 </TouchableOpacity>
               </View>
               
-              <View style={styles.modalBody}>
+              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                <View style={styles.inputRow}>
+                  <View style={styles.inputHalf}>
+                    <Text style={[styles.inputLabel, styles.inputLabelFirst]}>First Name *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={inviteFirstName}
+                      onChangeText={setInviteFirstName}
+                      placeholder="John"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                  </View>
+                  <View style={styles.inputHalf}>
+                    <Text style={[styles.inputLabel, styles.inputLabelFirst]}>Last Name *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={inviteLastName}
+                      onChangeText={setInviteLastName}
+                      placeholder="Smith"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                  </View>
+                </View>
+
                 <Text style={styles.inputLabel}>Email Address *</Text>
                 <TextInput
                   style={styles.input}
@@ -1009,30 +1514,21 @@ export default function TeamManagementScreen() {
                   placeholderTextColor={colors.mutedForeground}
                 />
 
-                <Text style={styles.inputLabel}>Role</Text>
+                <Text style={styles.inputLabel}>Hourly Rate (Optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={inviteHourlyRate}
+                  onChangeText={setInviteHourlyRate}
+                  placeholder="$0.00"
+                  keyboardType="decimal-pad"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+
+                <Text style={styles.inputLabel}>Select Role</Text>
                 <View style={styles.roleOptions}>
-                  {['admin', 'supervisor', 'staff'].map(role => {
-                    const config = ROLE_CONFIG[role as keyof typeof ROLE_CONFIG];
-                    return (
-                      <TouchableOpacity
-                        key={role}
-                        style={[
-                          styles.roleOption,
-                          inviteRole === role && styles.roleOptionSelected,
-                          inviteRole === role && { borderColor: config.color }
-                        ]}
-                        onPress={() => setInviteRole(role)}
-                      >
-                        <View style={[styles.roleOptionIcon, { backgroundColor: config.color + '20' }]}>
-                          <Feather name={config.icon as any} size={16} color={config.color} />
-                        </View>
-                        <Text style={styles.roleOptionLabel}>{config.label}</Text>
-                        <Text style={styles.roleOptionDesc} numberOfLines={2}>{config.description}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                  {['admin', 'supervisor', 'staff'].map(renderRoleOption)}
                 </View>
-              </View>
+              </ScrollView>
 
               <View style={styles.modalFooter}>
                 <TouchableOpacity 
@@ -1060,13 +1556,322 @@ export default function TeamManagementScreen() {
           </View>
         </Modal>
 
+        {/* Member Detail Modal */}
+        <Modal visible={showDetailModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Team Member Details</Text>
+                <TouchableOpacity onPress={() => setShowDetailModal(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                {isLoadingDetail ? (
+                  <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing.xl }} />
+                ) : selectedMember && (
+                  <>
+                    {/* Header with avatar and name */}
+                    <View style={styles.memberDetailHeader}>
+                      <View style={[
+                        styles.memberDetailAvatar, 
+                        { backgroundColor: (ROLE_CONFIG[selectedMember.role]?.color || colors.primary) + '20' }
+                      ]}>
+                        <Text style={[
+                          styles.memberDetailAvatarText, 
+                          { color: ROLE_CONFIG[selectedMember.role]?.color || colors.primary }
+                        ]}>
+                          {getMemberInitials(selectedMember)}
+                        </Text>
+                      </View>
+                      <Text style={styles.memberDetailName}>{getMemberName(selectedMember)}</Text>
+                      <Text style={styles.memberEmail}>
+                        {selectedMember.email || selectedMember.user?.email || 'No email'}
+                      </Text>
+                      <View style={[
+                        styles.memberDetailRole,
+                        { backgroundColor: ROLE_CONFIG[selectedMember.role]?.color || colors.primary }
+                      ]}>
+                        <Feather 
+                          name={(ROLE_CONFIG[selectedMember.role]?.icon || 'user') as any} 
+                          size={12} 
+                          color="#FFFFFF" 
+                        />
+                        <Text style={styles.memberDetailRoleText}>
+                          {ROLE_CONFIG[selectedMember.role]?.label || 'Staff'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Status */}
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>Current Status</Text>
+                      <View style={styles.statusRow}>
+                        <View style={[
+                          styles.statusIndicator,
+                          { 
+                            backgroundColor: memberStatus === 'on_job' 
+                              ? colors.success 
+                              : memberStatus === 'active' 
+                                ? colors.info 
+                                : colors.muted 
+                          }
+                        ]} />
+                        <Text style={styles.statusText}>
+                          {memberStatus === 'on_job' 
+                            ? 'Currently on a job' 
+                            : memberStatus === 'active' 
+                              ? 'Active' 
+                              : 'Offline'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Contact Info */}
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>Contact Information</Text>
+                      <View style={styles.detailCard}>
+                        <View style={styles.detailRow}>
+                          <View style={[styles.detailIcon, { backgroundColor: colors.primary + '15' }]}>
+                            <Feather name="mail" size={14} color={colors.primary} />
+                          </View>
+                          <Text style={styles.detailLabel}>Email</Text>
+                          <Text style={styles.detailValue}>
+                            {selectedMember.email || selectedMember.user?.email || 'Not set'}
+                          </Text>
+                        </View>
+                        <View style={[styles.detailRow, styles.detailRowLast]}>
+                          <View style={[styles.detailIcon, { backgroundColor: colors.success + '15' }]}>
+                            <Feather name="phone" size={14} color={colors.success} />
+                          </View>
+                          <Text style={styles.detailLabel}>Phone</Text>
+                          <Text style={styles.detailValue}>
+                            {selectedMember.phone || selectedMember.user?.phone || 'Not set'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Time Tracking Summary */}
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>Time Tracking</Text>
+                      <View style={styles.timeStats}>
+                        <View style={styles.timeStat}>
+                          <Text style={styles.timeStatValue}>{memberTimeStats.today}h</Text>
+                          <Text style={styles.timeStatLabel}>Today</Text>
+                        </View>
+                        <View style={styles.timeStat}>
+                          <Text style={styles.timeStatValue}>{memberTimeStats.week}h</Text>
+                          <Text style={styles.timeStatLabel}>This Week</Text>
+                        </View>
+                        <View style={styles.timeStat}>
+                          <Text style={styles.timeStatValue}>{memberTimeStats.month}h</Text>
+                          <Text style={styles.timeStatLabel}>This Month</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Recent Jobs */}
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>Recent Jobs</Text>
+                      {memberJobs.length > 0 ? (
+                        <View style={styles.detailCard}>
+                          {memberJobs.map((job, idx) => {
+                            const statusConfig = JOB_STATUS_CONFIG[job.status as keyof typeof JOB_STATUS_CONFIG] || JOB_STATUS_CONFIG.todo;
+                            return (
+                              <View 
+                                key={job.id} 
+                                style={[
+                                  styles.jobItem,
+                                  idx === memberJobs.length - 1 && styles.jobItemLast
+                                ]}
+                              >
+                                <View style={styles.jobInfo}>
+                                  <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
+                                  {job.address && (
+                                    <Text style={styles.jobAddress} numberOfLines={1}>{job.address}</Text>
+                                  )}
+                                </View>
+                                <View style={[styles.jobStatus, { backgroundColor: statusConfig.color }]}>
+                                  <Text style={[styles.jobStatusText, { color: statusConfig.textColor }]}>
+                                    {statusConfig.label}
+                                  </Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      ) : (
+                        <View style={styles.emptyDetail}>
+                          <Feather name="briefcase" size={32} color={colors.mutedForeground} />
+                          <Text style={styles.emptyDetailText}>No jobs assigned yet</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Role Permissions */}
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>Permissions</Text>
+                      <View style={styles.detailCard}>
+                        {(selectedMember.useCustomPermissions 
+                          ? selectedMember.customPermissions || []
+                          : ROLE_PERMISSION_SUMMARY[selectedMember.role as keyof typeof ROLE_PERMISSION_SUMMARY] || []
+                        ).map((perm, idx) => (
+                          <View key={idx} style={styles.rolePermissionItem}>
+                            <Feather name="check" size={12} color={colors.success} />
+                            <Text style={[styles.permissionLabel, { fontSize: 13 }]}>
+                              {typeof perm === 'string' ? perm.replace(/_/g, ' ') : perm}
+                            </Text>
+                          </View>
+                        ))}
+                        {selectedMember.useCustomPermissions && (
+                          <View style={[styles.customBadge, { marginTop: spacing.sm }]}>
+                            <Feather name="key" size={10} color={colors.primary} />
+                            <Text style={styles.customBadgeText}>Custom Permissions</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </>
+                )}
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                {currentUserIsOwner && selectedMember && selectedMember.role !== 'owner' && (
+                  <>
+                    <TouchableOpacity 
+                      style={styles.cancelButton}
+                      onPress={() => {
+                        setShowDetailModal(false);
+                        openEditModal(selectedMember);
+                      }}
+                    >
+                      <Text style={styles.cancelButtonText}>Edit Details</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.saveButton}
+                      onPress={() => {
+                        setShowDetailModal(false);
+                        Alert.alert(
+                          'Change Role',
+                          `Select new role for ${getMemberName(selectedMember)}`,
+                          [
+                            { text: 'Admin', onPress: () => handleRoleChange(selectedMember.id, 'admin') },
+                            { text: 'Supervisor', onPress: () => handleRoleChange(selectedMember.id, 'supervisor') },
+                            { text: 'Staff', onPress: () => handleRoleChange(selectedMember.id, 'staff') },
+                            { text: 'Cancel', style: 'cancel' },
+                          ]
+                        );
+                      }}
+                    >
+                      <Feather name="edit-2" size={16} color="#FFFFFF" />
+                      <Text style={styles.saveButtonText}>Change Role</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+                {(!currentUserIsOwner || !selectedMember || selectedMember.role === 'owner') && (
+                  <TouchableOpacity 
+                    style={[styles.saveButton, { flex: 1 }]}
+                    onPress={() => setShowDetailModal(false)}
+                  >
+                    <Text style={styles.saveButtonText}>Close</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Edit Member Modal */}
+        <Modal visible={showEditModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Team Member</Text>
+                <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.modalBody}>
+                <View style={styles.inputRow}>
+                  <View style={styles.inputHalf}>
+                    <Text style={[styles.inputLabel, styles.inputLabelFirst]}>First Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editFirstName}
+                      onChangeText={setEditFirstName}
+                      placeholder="First name"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                  </View>
+                  <View style={styles.inputHalf}>
+                    <Text style={[styles.inputLabel, styles.inputLabelFirst]}>Last Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editLastName}
+                      onChangeText={setEditLastName}
+                      placeholder="Last name"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                  </View>
+                </View>
+
+                <Text style={styles.inputLabel}>Phone Number</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editPhone}
+                  onChangeText={setEditPhone}
+                  placeholder="+61 400 000 000"
+                  keyboardType="phone-pad"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+
+                <Text style={styles.inputLabel}>Hourly Rate</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editHourlyRate}
+                  onChangeText={setEditHourlyRate}
+                  placeholder="$0.00"
+                  keyboardType="decimal-pad"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+              </View>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => setShowEditModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.saveButton}
+                  onPress={handleSaveEdit}
+                  disabled={isSavingEdit}
+                >
+                  {isSavingEdit ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Feather name="save" size={16} color="#FFFFFF" />
+                      <Text style={styles.saveButtonText}>Save Changes</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         {/* Permissions Modal */}
         <Modal visible={showPermissionsModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
-                  Permissions for {selectedMember?.firstName || selectedMember?.user?.firstName || ''}
+                <Text style={styles.modalTitle} numberOfLines={1}>
+                  Permissions: {getMemberName(selectedMember)}
                 </Text>
                 <TouchableOpacity onPress={() => setShowPermissionsModal(false)}>
                   <Feather name="x" size={24} color={colors.foreground} />
@@ -1080,7 +1885,7 @@ export default function TeamManagementScreen() {
                     <Text style={styles.customToggleLabelTitle}>Use Custom Permissions</Text>
                     <Text style={styles.customToggleLabelSubtitle}>
                       {useCustomPermissions 
-                        ? 'This member has custom permissions'
+                        ? 'Custom permissions enabled'
                         : 'Using role default permissions'
                       }
                     </Text>
@@ -1114,7 +1919,6 @@ export default function TeamManagementScreen() {
 
                 {useCustomPermissions ? (
                   <>
-                    {/* Quick Actions */}
                     <TouchableOpacity 
                       style={styles.applyDefaultsButton}
                       onPress={applyRoleDefaults}
@@ -1124,7 +1928,6 @@ export default function TeamManagementScreen() {
                       <Text style={styles.permissionCount}>{selectedPermissions.length} selected</Text>
                     </TouchableOpacity>
 
-                    {/* Permission Categories */}
                     {Object.entries(groupedPermissions).map(([category, perms]) => {
                       const allSelected = perms.every(p => selectedPermissions.includes(p.key));
                       const rolePerms = selectedMember ? getRolePermissions(selectedMember.roleId) : [];

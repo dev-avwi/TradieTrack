@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -9,7 +9,10 @@ import {
   ActivityIndicator,
   Linking,
   Alert,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -62,6 +65,12 @@ interface StripeBalance {
   error?: string;
 }
 
+interface ExpenseSummary {
+  totalExpenses: number;
+  thisMonthExpenses: number;
+  expenseCount: number;
+}
+
 interface StripePayout {
   id: string;
   amount: number;
@@ -85,7 +94,7 @@ const formatCurrency = (amount: number) => {
   }).format(amount / 100);
 };
 
-export default function PaymentHubScreen() {
+export default function MoneyHubScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
@@ -104,6 +113,7 @@ export default function PaymentHubScreen() {
   
   const [invoiceFilter, setInvoiceFilter] = useState<InvoiceFilterType>('all');
   const [timeRange, setTimeRange] = useState<TimeRangeType>('30d');
+  const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary>({ totalExpenses: 0, thisMonthExpenses: 0, expenseCount: 0 });
 
   const clientMap = useMemo(() => {
     return new Map(clients.map(c => [c.id, c]));
@@ -131,14 +141,32 @@ export default function PaymentHubScreen() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [invoicesRes, quotesRes, clientsRes] = await Promise.all([
+      const [invoicesRes, quotesRes, clientsRes, expensesRes] = await Promise.all([
         api.get('/api/invoices'),
         api.get('/api/quotes'),
         api.get('/api/clients'),
+        api.get('/api/expenses').catch(() => ({ data: [] })),
       ]);
       setInvoices(invoicesRes.data || []);
       setQuotes(quotesRes.data || []);
       setClients(clientsRes.data || []);
+      
+      const expenses = expensesRes.data || [];
+      const now = new Date();
+      const thisMonth = now.getMonth();
+      const thisYear = now.getFullYear();
+      const totalExpenses = expenses.reduce((sum: number, e: any) => sum + (parseFloat(e.amount) || 0), 0);
+      const thisMonthExpenses = expenses
+        .filter((e: any) => {
+          const d = new Date(e.expenseDate);
+          return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+        })
+        .reduce((sum: number, e: any) => sum + (parseFloat(e.amount) || 0), 0);
+      setExpenseSummary({
+        totalExpenses: totalExpenses * 100,
+        thisMonthExpenses: thisMonthExpenses * 100,
+        expenseCount: expenses.length,
+      });
     } catch (error) {
       console.error('Failed to fetch money hub data:', error);
     } finally {
@@ -147,10 +175,33 @@ export default function PaymentHubScreen() {
     }
   }, []);
 
+  const appState = useRef(AppState.currentState);
+  const wasConnecting = useRef(false);
+
   useEffect(() => {
     fetchData();
     fetchStripeData();
   }, [fetchData, fetchStripeData]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (
+        appState.current.match(/inactive|background/) && 
+        nextAppState === 'active' && 
+        wasConnecting.current
+      ) {
+        console.log('App has come to the foreground after Stripe connect - refreshing status');
+        setStripeLoading(true);
+        fetchStripeData();
+        wasConnecting.current = false;
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [fetchStripeData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -162,54 +213,75 @@ export default function PaymentHubScreen() {
     setIsConnecting(true);
     try {
       const response = await api.post('/api/stripe-connect/onboard');
-      if (response.data?.url) {
-        const url = response.data.url;
-        const canOpen = await Linking.canOpenURL(url);
-        if (!canOpen) {
-          Alert.alert('Error', 'Unable to open Stripe onboarding. Please check your browser settings.');
-          return;
-        }
+      const url = response.data?.onboardingUrl || response.data?.url;
+      
+      if (url) {
+        wasConnecting.current = true;
         try {
-          await Linking.openURL(url);
-        } catch (linkError) {
-          console.error('Failed to open Stripe URL:', linkError);
-          Alert.alert('Error', 'Failed to open Stripe onboarding page. Please try again.');
+          await WebBrowser.openBrowserAsync(url);
+          setStripeLoading(true);
+          fetchStripeData();
+        } catch (browserError) {
+          console.log('WebBrowser failed, trying Linking:', browserError);
+          const canOpen = await Linking.canOpenURL(url);
+          if (canOpen) {
+            await Linking.openURL(url);
+          } else {
+            Alert.alert('Error', 'Unable to open Stripe onboarding. Please check your browser settings.');
+            wasConnecting.current = false;
+          }
         }
+      } else if (response.data?.error) {
+        Alert.alert('Error', response.data.error);
       } else {
-        Alert.alert('Error', 'Could not start Stripe onboarding');
+        Alert.alert('Error', 'Could not start Stripe onboarding. Please try again.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to connect Stripe:', error);
-      Alert.alert('Error', 'Failed to connect Stripe. Please try again.');
+      const errorMessage = error?.response?.data?.error || error?.message || 'Failed to connect Stripe. Please try again.';
+      Alert.alert('Error', errorMessage);
+      wasConnecting.current = false;
     } finally {
       setIsConnecting(false);
     }
-  }, []);
+  }, [fetchStripeData]);
 
   const handleOpenStripeDashboard = useCallback(async () => {
     try {
       const response = await api.get('/api/stripe-connect/dashboard');
-      if (response.data?.url) {
-        const url = response.data.url;
-        const canOpen = await Linking.canOpenURL(url);
-        if (!canOpen) {
-          Alert.alert('Error', 'Unable to open Stripe dashboard. Please check your browser settings.');
-          return;
+      const url = response.data?.url;
+      
+      if (url) {
+        if (response.data?.isOnboarding) {
+          wasConnecting.current = true;
         }
+        
         try {
-          await Linking.openURL(url);
-        } catch (linkError) {
-          console.error('Failed to open Stripe dashboard URL:', linkError);
-          Alert.alert('Error', 'Failed to open Stripe dashboard page. Please try again.');
+          await WebBrowser.openBrowserAsync(url);
+          if (response.data?.isOnboarding) {
+            setStripeLoading(true);
+            fetchStripeData();
+          }
+        } catch (browserError) {
+          console.log('WebBrowser failed, trying Linking:', browserError);
+          const canOpen = await Linking.canOpenURL(url);
+          if (canOpen) {
+            await Linking.openURL(url);
+          } else {
+            Alert.alert('Error', 'Unable to open Stripe dashboard. Please check your browser settings.');
+          }
         }
+      } else if (response.data?.error) {
+        Alert.alert('Error', response.data.error);
       } else {
-        Alert.alert('Error', 'Could not open Stripe dashboard');
+        Alert.alert('Error', 'Could not open Stripe dashboard. Please try again.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to open Stripe dashboard:', error);
-      Alert.alert('Error', 'Failed to open Stripe dashboard. Please try again.');
+      const errorMessage = error?.response?.data?.error || error?.message || 'Failed to open Stripe dashboard. Please try again.';
+      Alert.alert('Error', errorMessage);
     }
-  }, []);
+  }, [fetchStripeData]);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -247,6 +319,46 @@ export default function PaymentHubScreen() {
       pendingQuotesCount: pendingQuotes.length,
     };
   }, [invoices, quotes]);
+
+  const renderQuickActions = () => (
+    <View style={styles.quickActionsContainer}>
+      <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+      <View style={styles.quickActionsGrid}>
+        <TouchableOpacity 
+          style={styles.quickActionCard}
+          onPress={() => router.push('/more/invoice/new')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: `${colors.primary}15` }]}>
+            <Feather name="file-plus" size={iconSizes.lg} color={colors.primary} />
+          </View>
+          <Text style={styles.quickActionLabel}>Create Invoice</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.quickActionCard}
+          onPress={() => router.push('/more/quote/new')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: `${colors.scheduled}15` }]}>
+            <Feather name="file-text" size={iconSizes.lg} color={colors.scheduled} />
+          </View>
+          <Text style={styles.quickActionLabel}>Create Quote</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.quickActionCard}
+          onPress={() => router.push('/(tabs)/collect')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: `${colors.success}15` }]}>
+            <Feather name="credit-card" size={iconSizes.lg} color={colors.success} />
+          </View>
+          <Text style={styles.quickActionLabel}>Collect Payment</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   const renderKPICard = (
     title: string, 
@@ -568,6 +680,33 @@ export default function PaymentHubScreen() {
           </View>
         )}
       </View>
+
+      <View style={styles.sectionHeader}>
+        <Feather name="credit-card" size={iconSizes.md} color={colors.destructive} />
+        <Text style={styles.sectionTitle}>Expenses Summary</Text>
+      </View>
+      <View style={styles.sectionContent}>
+        <TouchableOpacity 
+          style={styles.expenseSummaryCard}
+          onPress={() => router.push('/more/expense-tracking')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.expenseSummaryRow}>
+            <View>
+              <Text style={styles.expenseSummaryLabel}>This Month</Text>
+              <Text style={styles.expenseSummaryValue}>{formatCurrency(expenseSummary.thisMonthExpenses)}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.expenseSummaryLabel}>All Time</Text>
+              <Text style={styles.expenseSummaryValue}>{formatCurrency(expenseSummary.totalExpenses)}</Text>
+            </View>
+          </View>
+          <View style={styles.expenseSummaryFooter}>
+            <Text style={styles.expenseSummaryCount}>{expenseSummary.expenseCount} expenses recorded</Text>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          </View>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -823,8 +962,8 @@ export default function PaymentHubScreen() {
           <Feather name="arrow-left" size={24} color={colors.foreground} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Payment Hub</Text>
-          <Text style={styles.headerSubtitle}>Track invoices, payments & quotes</Text>
+          <Text style={styles.headerTitle}>Money Hub</Text>
+          <Text style={styles.headerSubtitle}>Invoices, quotes & payments</Text>
         </View>
       </View>
 
@@ -842,6 +981,8 @@ export default function PaymentHubScreen() {
         showsVerticalScrollIndicator={false}
       >
         {renderStripeConnectCard()}
+        
+        {renderQuickActions()}
         
         <View style={styles.kpiGrid}>
           {renderKPICard(
@@ -946,6 +1087,43 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   scrollContent: {
     padding: spacing.lg,
     paddingBottom: spacing['3xl'],
+  },
+  quickActionsContainer: {
+    marginBottom: spacing.lg,
+  },
+  quickActionsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  quickActionCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  quickActionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  quickActionLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.foreground,
+    textAlign: 'center',
   },
   kpiGrid: {
     flexDirection: 'row',
@@ -1142,6 +1320,41 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.primaryForeground,
+  },
+  expenseSummaryCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  expenseSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  expenseSummaryLabel: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginBottom: spacing.xs,
+  },
+  expenseSummaryValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  expenseSummaryFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  expenseSummaryCount: {
+    fontSize: 13,
+    color: colors.mutedForeground,
   },
   stripeCard: {
     backgroundColor: colors.card,

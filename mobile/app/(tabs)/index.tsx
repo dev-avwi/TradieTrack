@@ -801,7 +801,8 @@ export default function DashboardScreen() {
     setIsUpdating(true);
     try {
       await updateJobStatus(jobId, 'in_progress');
-      Alert.alert('Job Started', 'Timer started. You\'re on the clock!');
+      // Navigate to job detail page to show time tracking, notes, etc.
+      router.push(`/job/${jobId}`);
     } catch (error) {
       Alert.alert('Error', 'Failed to start job');
     } finally {
@@ -810,15 +811,29 @@ export default function DashboardScreen() {
   };
 
   const handleCompleteJob = async (jobId: string) => {
-    setIsUpdating(true);
-    try {
-      await updateJobStatus(jobId, 'done');
-      Alert.alert('Job Complete', 'Nice work! Job marked as done.');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to complete job');
-    } finally {
-      setIsUpdating(false);
-    }
+    // Show confirmation then navigate to job for final review
+    Alert.alert(
+      'Complete Job?',
+      'This will mark the job as done. You can add final notes or photos before completing.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Review & Complete',
+          onPress: async () => {
+            setIsUpdating(true);
+            try {
+              await updateJobStatus(jobId, 'done');
+              // Navigate to job detail page for final review
+              router.push(`/job/${jobId}`);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to complete job');
+            } finally {
+              setIsUpdating(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const userName = user?.firstName || 'there';
@@ -974,7 +989,7 @@ export default function DashboardScreen() {
                 icon="dollar-sign"
                 iconBg={colors.successLight}
                 iconColor={colors.success}
-                onPress={() => router.push('/more/payment-hub')}
+                onPress={() => router.push('/more/money-hub')}
               />
             </>
           )}

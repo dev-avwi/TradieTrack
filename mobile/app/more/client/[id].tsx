@@ -221,7 +221,7 @@ export default function ClientDetailScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButtonSecondary}
-                onPress={() => router.push(`/more/create-quote?clientId=${id}`)}
+                onPress={() => router.push(`/more/quote/new?clientId=${id}`)}
               >
                 <Feather name="file-text" size={18} color={colors.primary} />
                 <Text style={styles.actionButtonSecondaryText}>Quote</Text>

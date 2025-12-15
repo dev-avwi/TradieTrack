@@ -7,6 +7,8 @@ import {
   Platform,
   ActivityIndicator,
   Dimensions,
+  Modal,
+  Alert,
 } from 'react-native';
 import MapView, { Marker, Callout, PROVIDER_GOOGLE, Region, MapStyleElement } from 'react-native-maps';
 import { Feather } from '@expo/vector-icons';
@@ -68,6 +70,7 @@ interface JobWithLocation {
   clientName?: string;
   latitude?: number;
   longitude?: number;
+  assignedTo?: string;
 }
 
 interface TeamMember {
@@ -89,7 +92,6 @@ interface TeamMember {
   activityStatus?: 'online' | 'driving' | 'working' | 'offline';
 }
 
-type ViewMode = 'jobs' | 'team';
 type StatusFilter = 'all' | 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 
 const DEFAULT_REGION: Region = {
@@ -168,6 +170,7 @@ const createStyles = (colors: ThemeColors) => {
         alignItems: 'center',
         marginTop: spacing.md,
         gap: spacing.sm,
+        flexWrap: 'wrap',
       },
       filterButton: {
         flexDirection: 'row',
@@ -185,24 +188,22 @@ const createStyles = (colors: ThemeColors) => {
         fontWeight: '500',
         color: colors.foreground,
       },
-      toggleContainer: {
-        flexDirection: 'row',
-        backgroundColor: colors.muted,
-        borderRadius: radius.lg,
-        padding: 3,
-        borderWidth: 1,
-        borderColor: colors.border,
-      },
       toggleButton: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: spacing.md,
-        paddingVertical: spacing.xs,
-        borderRadius: radius.md,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.lg,
         gap: spacing.xs,
+        borderWidth: 1,
+        borderColor: colors.border,
       },
       toggleButtonActive: {
         backgroundColor: colors.primary,
+        borderColor: colors.primary,
+      },
+      toggleButtonInactive: {
+        backgroundColor: colors.muted,
       },
       toggleButtonText: {
         fontSize: 13,
@@ -316,6 +317,12 @@ const createStyles = (colors: ThemeColors) => {
         borderColor: colors.white,
         ...shadows.lg,
       },
+      teamMarkerSelected: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        borderWidth: 4,
+      },
       activityDot: {
         position: 'absolute',
         top: -2,
@@ -419,6 +426,119 @@ const createStyles = (colors: ThemeColors) => {
         alignItems: 'center',
         justifyContent: 'center',
       },
+      assignModeBanner: {
+        position: 'absolute',
+        left: spacing.md,
+        right: spacing.md,
+        backgroundColor: colors.primary,
+        borderRadius: radius.xl,
+        padding: spacing.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        ...shadows.lg,
+      },
+      assignModeBannerText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+        flex: 1,
+      },
+      assignModeBannerSubtext: {
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 12,
+        marginTop: 2,
+      },
+      cancelButton: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.md,
+      },
+      cancelButtonText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 13,
+      },
+      modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: spacing.lg,
+      },
+      modalContent: {
+        backgroundColor: colors.card,
+        borderRadius: radius['2xl'],
+        padding: spacing.xl,
+        width: '100%',
+        maxWidth: 340,
+        ...shadows.xl,
+      },
+      modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: colors.foreground,
+        textAlign: 'center',
+        marginBottom: spacing.md,
+      },
+      modalText: {
+        fontSize: 14,
+        color: colors.mutedForeground,
+        textAlign: 'center',
+        marginBottom: spacing.lg,
+        lineHeight: 20,
+      },
+      modalHighlight: {
+        color: colors.foreground,
+        fontWeight: '600',
+      },
+      modalButtons: {
+        flexDirection: 'row',
+        gap: spacing.md,
+      },
+      modalButton: {
+        flex: 1,
+        paddingVertical: spacing.md,
+        borderRadius: radius.lg,
+        alignItems: 'center',
+        justifyContent: 'center',
+      },
+      modalButtonCancel: {
+        backgroundColor: colors.muted,
+      },
+      modalButtonConfirm: {
+        backgroundColor: colors.primary,
+      },
+      modalButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+      },
+      modalButtonTextCancel: {
+        color: colors.foreground,
+      },
+      modalButtonTextConfirm: {
+        color: '#fff',
+      },
+      nameLabel: {
+        position: 'absolute',
+        bottom: -20,
+        left: '50%',
+        transform: [{ translateX: -40 }],
+        backgroundColor: colors.card,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 2,
+        borderRadius: radius.sm,
+        minWidth: 80,
+        alignItems: 'center',
+        ...shadows.sm,
+      },
+      nameLabelText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: colors.foreground,
+        textAlign: 'center',
+      },
     }),
   };
 };
@@ -435,22 +555,15 @@ export default function MapScreen() {
   const { user } = useAuthStore();
   const { isStaff, canAccessMap, isLoading: roleLoading, isSolo, isOwner, isManager } = useUserRole();
   
-  // Map access: All authenticated users can view jobs on the map (core tradie functionality)
-  // Team tracking mode is restricted to owners/managers with view_map permission
-  // The user must be authenticated to reach this screen (enforced by app auth flow)
   const isAuthenticated = !!user;
-  
-  // Everyone sees their jobs on the map - staff see assigned jobs, owners see all jobs
-  // This is core functionality - tradies need to see job locations on a map
   const hasMapAccess = isAuthenticated;
-  
-  // Only show team toggle if user has permission for team tracking (not solo owners)
   const showTeamToggle = isAuthenticated && !isSolo && (isOwner || isManager || canAccessMap);
-  
-  // Only owners/managers can view team tracking mode
   const canViewTeamMode = isAuthenticated && (isOwner || isManager || canAccessMap);
+  const canAssignJobs = isOwner || isManager;
   
-  const [viewMode, setViewMode] = useState<ViewMode>('jobs');
+  // Filter states - both can be active simultaneously
+  const [showJobs, setShowJobs] = useState(true);
+  const [showTeamMembers, setShowTeamMembers] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showLegend, setShowLegend] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -458,6 +571,11 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  
+  // Tap-to-assign state
+  const [selectedWorker, setSelectedWorker] = useState<TeamMember | null>(null);
+  const [pendingAssignment, setPendingAssignment] = useState<{ worker: TeamMember; job: JobWithLocation } | null>(null);
+  const [isAssigning, setIsAssigning] = useState(false);
 
   const getClientName = useCallback((clientId?: string) => {
     if (!clientId) return undefined;
@@ -477,6 +595,7 @@ export default function MapScreen() {
         clientName: getClientName(job.clientId),
         latitude: job.latitude,
         longitude: job.longitude,
+        assignedTo: job.assignedTo,
       }));
   }, [jobs, getClientName]);
 
@@ -515,7 +634,7 @@ export default function MapScreen() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await Promise.all([fetchJobs(), fetchClients()]);
-    if (viewMode === 'team') {
+    if (showTeamMembers && canViewTeamMode) {
       await fetchTeamLocations();
     }
     setIsRefreshing(false);
@@ -536,23 +655,29 @@ export default function MapScreen() {
     
     let coordinates: { latitude: number; longitude: number }[] = [];
     
-    if (viewMode === 'jobs') {
-      coordinates = filteredJobs
-        .filter(job => job.latitude && job.longitude)
-        .map(job => ({ latitude: job.latitude!, longitude: job.longitude! }));
-    } else {
-      coordinates = teamMembers
-        .filter(member => member.lastLocation)
-        .map(member => ({
-          latitude: member.lastLocation!.latitude,
-          longitude: member.lastLocation!.longitude,
-        }));
+    if (showJobs) {
+      coordinates = coordinates.concat(
+        filteredJobs
+          .filter(job => job.latitude && job.longitude)
+          .map(job => ({ latitude: job.latitude!, longitude: job.longitude! }))
+      );
+    }
+    
+    if (showTeamMembers && canViewTeamMode) {
+      coordinates = coordinates.concat(
+        teamMembers
+          .filter(member => member.lastLocation)
+          .map(member => ({
+            latitude: member.lastLocation!.latitude,
+            longitude: member.lastLocation!.longitude,
+          }))
+      );
     }
     
     if (coordinates.length > 0) {
       mapRef.current.fitToCoordinates(coordinates, {
         edgePadding: { 
-          top: headerCollapsed ? 100 : 180, 
+          top: headerCollapsed ? 100 : 200, 
           right: 60, 
           bottom: bottomNavHeight + 100, 
           left: 60 
@@ -560,7 +685,7 @@ export default function MapScreen() {
         animated: true,
       });
     }
-  }, [viewMode, filteredJobs, teamMembers, bottomNavHeight, headerCollapsed]);
+  }, [showJobs, showTeamMembers, filteredJobs, teamMembers, bottomNavHeight, headerCollapsed, canViewTeamMode]);
 
   useEffect(() => {
     fetchJobs();
@@ -569,20 +694,20 @@ export default function MapScreen() {
   }, []);
 
   useEffect(() => {
-    if (viewMode === 'team') {
+    if (showTeamMembers && canViewTeamMode) {
       fetchTeamLocations();
       const interval = setInterval(fetchTeamLocations, 30000);
       return () => clearInterval(interval);
     }
-  }, [viewMode, fetchTeamLocations]);
+  }, [showTeamMembers, fetchTeamLocations, canViewTeamMode]);
 
   useEffect(() => {
-    const hasData = viewMode === 'jobs' ? filteredJobs.length > 0 : teamMembers.length > 0;
+    const hasData = (showJobs && filteredJobs.length > 0) || (showTeamMembers && teamMembers.length > 0);
     if (hasData && mapRef.current) {
       const timeout = setTimeout(fitToMarkers, 300);
       return () => clearTimeout(timeout);
     }
-  }, [viewMode, statusFilter, filteredJobs.length, teamMembers.length, fitToMarkers]);
+  }, [showJobs, showTeamMembers, statusFilter, filteredJobs.length, teamMembers.length, fitToMarkers]);
 
   const navigateToJob = (jobId: string) => {
     router.push(`/job/${jobId}`);
@@ -600,6 +725,70 @@ export default function MapScreen() {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     return date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
+
+  // Handle worker selection for assignment
+  const handleWorkerTap = (member: TeamMember) => {
+    if (!canAssignJobs) return;
+    
+    if (selectedWorker?.id === member.id) {
+      // Deselect if tapping same worker
+      setSelectedWorker(null);
+    } else {
+      setSelectedWorker(member);
+    }
+  };
+
+  // Handle job tap when worker is selected
+  const handleJobTapForAssignment = (job: JobWithLocation) => {
+    if (!selectedWorker || !canAssignJobs) {
+      navigateToJob(job.id);
+      return;
+    }
+    
+    // Show confirmation modal
+    setPendingAssignment({ worker: selectedWorker, job });
+  };
+
+  // Confirm assignment
+  const confirmAssignment = async () => {
+    if (!pendingAssignment) return;
+    
+    setIsAssigning(true);
+    
+    try {
+      const response = await api.post(`/api/jobs/${pendingAssignment.job.id}/assign`, {
+        assignedTo: pendingAssignment.worker.userId,
+      });
+      
+      if (response.ok) {
+        Alert.alert(
+          'Job Assigned',
+          `${pendingAssignment.job.title} has been assigned to ${pendingAssignment.worker.user?.firstName} ${pendingAssignment.worker.user?.lastName}`,
+          [{ text: 'OK' }]
+        );
+        // Refresh jobs to reflect the assignment
+        await fetchJobs();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        Alert.alert('Assignment Failed', errorData.error || 'Failed to assign job. Please try again.');
+      }
+    } catch (error) {
+      console.error('Assignment error:', error);
+      Alert.alert('Error', 'An error occurred while assigning the job.');
+    } finally {
+      setIsAssigning(false);
+      setPendingAssignment(null);
+      setSelectedWorker(null);
+    }
+  };
+
+  const cancelAssignment = () => {
+    setPendingAssignment(null);
+  };
+
+  const clearWorkerSelection = () => {
+    setSelectedWorker(null);
   };
 
   // Show restricted view for staff without map access
@@ -641,6 +830,8 @@ export default function MapScreen() {
     );
   }
 
+  const activeTeamCount = teamMembers.filter(m => m.activityStatus !== 'offline').length;
+
   return (
     <View style={styles.container}>
       <MapView
@@ -655,19 +846,25 @@ export default function MapScreen() {
         customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
         userInterfaceStyle={isDark ? 'dark' : 'light'}
         onMapReady={() => {
-          if (filteredJobs.length > 0) {
+          if (filteredJobs.length > 0 || teamMembers.length > 0) {
             fitToMarkers();
           }
         }}
       >
-        {viewMode === 'jobs' && filteredJobs.map((job) => (
+        {/* Job Markers */}
+        {showJobs && filteredJobs.map((job) => (
           job.latitude && job.longitude && (
             <Marker
-              key={job.id}
+              key={`job-${job.id}`}
               coordinate={{ latitude: job.latitude, longitude: job.longitude }}
+              onPress={() => handleJobTapForAssignment(job)}
               onCalloutPress={() => navigateToJob(job.id)}
             >
-              <View style={[styles.markerContainer, { backgroundColor: getMarkerColor(job.status) }]}>
+              <View style={[
+                styles.markerContainer, 
+                { backgroundColor: getMarkerColor(job.status) },
+                selectedWorker && { opacity: 0.9 }
+              ]}>
                 <Feather name="file-text" size={14} color="#fff" />
               </View>
               <Callout tooltip onPress={() => navigateToJob(job.id)}>
@@ -679,31 +876,66 @@ export default function MapScreen() {
                   <View style={[styles.calloutBadge, { backgroundColor: getMarkerColor(job.status) }]}>
                     <Text style={styles.calloutBadgeText}>{STATUS_LABELS[job.status]}</Text>
                   </View>
-                  <Text style={styles.calloutHint}>Tap for details</Text>
+                  {selectedWorker ? (
+                    <Text style={[styles.calloutHint, { color: colors.primary }]}>
+                      Tap to assign to {selectedWorker.user?.firstName}
+                    </Text>
+                  ) : (
+                    <Text style={styles.calloutHint}>Tap for details</Text>
+                  )}
                 </View>
               </Callout>
             </Marker>
           )
         ))}
 
-        {viewMode === 'team' && teamMembers.map((member) => {
+        {/* Team Member Markers */}
+        {showTeamMembers && canViewTeamMode && teamMembers.map((member) => {
           const memberColor = member.themeColor || getActivityColor(member.activityStatus);
           const activityColor = getActivityColor(member.activityStatus);
           const initials = `${member.user?.firstName?.[0] || '?'}${member.user?.lastName?.[0] || '?'}`;
+          const isSelected = selectedWorker?.id === member.id;
+          const fullName = `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim();
           
           return member.lastLocation && (
             <Marker
-              key={member.id}
+              key={`team-${member.id}`}
               coordinate={{
                 latitude: member.lastLocation.latitude,
                 longitude: member.lastLocation.longitude,
               }}
+              onPress={() => handleWorkerTap(member)}
             >
-              <View style={[styles.teamMarkerOuter, { borderColor: memberColor, backgroundColor: memberColor }]}>
-                <Text style={styles.teamMarkerText}>{initials}</Text>
-                {member.themeColor && (
-                  <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
-                )}
+              <View style={{ alignItems: 'center' }}>
+                <View style={[
+                  styles.teamMarkerOuter, 
+                  { 
+                    borderColor: isSelected ? colors.primary : memberColor, 
+                    backgroundColor: memberColor,
+                    transform: [{ scale: isSelected ? 1.15 : 1 }],
+                  },
+                  isSelected && { 
+                    borderWidth: 4,
+                    borderColor: colors.primary,
+                  }
+                ]}>
+                  <Text style={styles.teamMarkerText}>{initials}</Text>
+                  {member.themeColor && (
+                    <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
+                  )}
+                </View>
+                {/* Name label below marker */}
+                <View style={[
+                  styles.nameLabel,
+                  isSelected && { backgroundColor: colors.primary }
+                ]}>
+                  <Text style={[
+                    styles.nameLabelText,
+                    isSelected && { color: '#fff' }
+                  ]} numberOfLines={1}>
+                    {fullName}
+                  </Text>
+                </View>
               </View>
               <Callout tooltip>
                 <View style={styles.callout}>
@@ -716,7 +948,7 @@ export default function MapScreen() {
                       size={12} 
                       color={getActivityColor(member.activityStatus)} 
                     />
-                    <Text style={[styles.calloutSubtitle, { color: getActivityColor(member.activityStatus) }]}>
+                    <Text style={[styles.calloutSubtitle, { color: getActivityColor(member.activityStatus), marginBottom: 0 }]}>
                       {activityConfig[member.activityStatus || 'offline'].label}
                     </Text>
                   </View>
@@ -738,6 +970,11 @@ export default function MapScreen() {
                   <Text style={styles.calloutHint}>
                     Last updated: {formatTime(member.lastLocation.timestamp)}
                   </Text>
+                  {canAssignJobs && (
+                    <Text style={[styles.calloutHint, { color: colors.primary, marginTop: spacing.xs }]}>
+                      Tap to select for assignment
+                    </Text>
+                  )}
                 </View>
               </Callout>
             </Marker>
@@ -745,7 +982,7 @@ export default function MapScreen() {
         })}
       </MapView>
 
-      {/* Floating Header Card - positioned higher */}
+      {/* Floating Header Card */}
       <View style={[styles.headerCard, { top: insets.top + 8 }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerIconContainer}>
@@ -755,6 +992,7 @@ export default function MapScreen() {
             <Text style={styles.headerTitle}>Job Map</Text>
             <Text style={styles.headerSubtitle}>
               {filteredJobs.length} jobs
+              {showTeamMembers && canViewTeamMode && ` • ${activeTeamCount} active`}
             </Text>
           </View>
           <TouchableOpacity 
@@ -796,40 +1034,47 @@ export default function MapScreen() {
               <Feather name="chevron-down" size={14} color={colors.mutedForeground} />
             </TouchableOpacity>
 
-            {showTeamToggle ? (
-              <View style={styles.toggleContainer}>
-                <TouchableOpacity
-                  style={[styles.toggleButton, viewMode === 'jobs' && styles.toggleButtonActive]}
-                  onPress={() => setViewMode('jobs')}
-                  activeOpacity={0.7}
-                >
-                  <Feather 
-                    name="briefcase" 
-                    size={14} 
-                    color={viewMode === 'jobs' ? '#fff' : colors.foreground} 
-                  />
-                  <Text style={[
-                    styles.toggleButtonText,
-                    viewMode === 'jobs' && styles.toggleButtonTextActive
-                  ]}>Jobs</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.toggleButton, viewMode === 'team' && styles.toggleButtonActive]}
-                  onPress={() => setViewMode('team')}
-                  activeOpacity={0.7}
-                >
-                  <Feather 
-                    name="users" 
-                    size={14} 
-                    color={viewMode === 'team' ? '#fff' : colors.foreground} 
-                  />
-                  <Text style={[
-                    styles.toggleButtonText,
-                    viewMode === 'team' && styles.toggleButtonTextActive
-                  ]}>Team</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
+            {/* Toggle Buttons - Both can be active */}
+            <TouchableOpacity
+              style={[
+                styles.toggleButton, 
+                showJobs ? styles.toggleButtonActive : styles.toggleButtonInactive
+              ]}
+              onPress={() => setShowJobs(!showJobs)}
+              activeOpacity={0.7}
+            >
+              <Feather 
+                name="briefcase" 
+                size={14} 
+                color={showJobs ? '#fff' : colors.foreground} 
+              />
+              <Text style={[
+                styles.toggleButtonText,
+                showJobs && styles.toggleButtonTextActive
+              ]}>Jobs</Text>
+            </TouchableOpacity>
+
+            {showTeamToggle && (
+              <TouchableOpacity
+                style={[
+                  styles.toggleButton, 
+                  showTeamMembers ? styles.toggleButtonActive : styles.toggleButtonInactive,
+                  showTeamMembers && { backgroundColor: colors.success }
+                ]}
+                onPress={() => setShowTeamMembers(!showTeamMembers)}
+                activeOpacity={0.7}
+              >
+                <Feather 
+                  name="users" 
+                  size={14} 
+                  color={showTeamMembers ? '#fff' : colors.foreground} 
+                />
+                <Text style={[
+                  styles.toggleButtonText,
+                  showTeamMembers && styles.toggleButtonTextActive
+                ]}>Team</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity 
               style={styles.legendButton}
@@ -879,8 +1124,9 @@ export default function MapScreen() {
         )}
       </View>
 
+      {/* Legend Card */}
       {showLegend && (
-        <View style={[styles.legendCard, { top: insets.top + (headerCollapsed ? 80 : 150) }]}>
+        <View style={[styles.legendCard, { top: insets.top + (headerCollapsed ? 80 : 180) }]}>
           <Text style={styles.legendTitle}>Job Status</Text>
           {Object.entries(STATUS_LABELS).map(([status, label]) => (
             <View key={status} style={styles.legendItem}>
@@ -888,9 +1134,42 @@ export default function MapScreen() {
               <Text style={styles.legendLabel}>{label}</Text>
             </View>
           ))}
+          {showTeamMembers && canViewTeamMode && (
+            <>
+              <Text style={[styles.legendTitle, { marginTop: spacing.md }]}>Team Status</Text>
+              {Object.entries(activityConfig).map(([status, config]) => (
+                <View key={status} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: config.color }]} />
+                  <Text style={styles.legendLabel}>{config.label}</Text>
+                </View>
+              ))}
+            </>
+          )}
         </View>
       )}
 
+      {/* Selected Worker Banner */}
+      {selectedWorker && (
+        <View style={[styles.assignModeBanner, { bottom: bottomNavHeight + spacing.lg + 70 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.assignModeBannerText}>
+              {selectedWorker.user?.firstName} {selectedWorker.user?.lastName} selected
+            </Text>
+            <Text style={styles.assignModeBannerSubtext}>
+              Tap a job to assign
+            </Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.cancelButton}
+            onPress={clearWorkerSelection}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* FAB Container */}
       <View style={[styles.fabContainer, { bottom: bottomNavHeight + spacing.lg }]}>
         <TouchableOpacity 
           style={styles.fabSecondary}
@@ -911,11 +1190,57 @@ export default function MapScreen() {
         )}
       </View>
 
+      {/* Loading Overlay */}
       {jobsLoading && !filteredJobs.length && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       )}
+
+      {/* Assignment Confirmation Modal */}
+      <Modal
+        visible={!!pendingAssignment}
+        transparent
+        animationType="fade"
+        onRequestClose={cancelAssignment}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Assign Job?</Text>
+            <Text style={styles.modalText}>
+              Assign{' '}
+              <Text style={styles.modalHighlight}>{pendingAssignment?.job.title}</Text>
+              {'\n'}to{' '}
+              <Text style={styles.modalHighlight}>
+                {pendingAssignment?.worker.user?.firstName} {pendingAssignment?.worker.user?.lastName}
+              </Text>
+              ?
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={cancelAssignment}
+                disabled={isAssigning}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.modalButtonText, styles.modalButtonTextCancel]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.modalButtonConfirm]}
+                onPress={confirmAssignment}
+                disabled={isAssigning}
+                activeOpacity={0.7}
+              >
+                {isAssigning ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={[styles.modalButtonText, styles.modalButtonTextConfirm]}>Assign</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

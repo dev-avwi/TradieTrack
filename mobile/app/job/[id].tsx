@@ -132,6 +132,18 @@ interface DigitalSignature {
   documentType: string;
 }
 
+interface JobExpense {
+  id: string;
+  categoryId: string;
+  categoryName?: string;
+  amount: string;
+  gstAmount?: string;
+  description: string;
+  vendor?: string;
+  expenseDate: string;
+  isBillable: boolean;
+}
+
 const STATUS_ACTIONS = {
   pending: { next: 'scheduled', label: 'Schedule Job', icon: 'calendar' as const, iconSize: 20 },
   scheduled: { next: 'in_progress', label: 'Start Job', icon: 'play' as const, iconSize: 20 },
@@ -1302,6 +1314,9 @@ export default function JobDetailScreen() {
   const [smartActions, setSmartActions] = useState<SmartAction[]>([]);
   const [isExecutingActions, setIsExecutingActions] = useState(false);
   
+  const [jobExpenses, setJobExpenses] = useState<JobExpense[]>([]);
+  const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
+  
   const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes'>('overview');
   
   const [showCompletionModal, setShowCompletionModal] = useState(false);
@@ -1329,6 +1344,7 @@ export default function JobDetailScreen() {
     loadRelatedDocuments();
     loadTimeEntries();
     loadActivityLog();
+    loadJobExpenses();
   }, [id]);
 
   useEffect(() => {
@@ -1803,6 +1819,21 @@ export default function JobDetailScreen() {
     }
   };
 
+  const loadJobExpenses = async () => {
+    setIsLoadingExpenses(true);
+    try {
+      const response = await api.get<any[]>(`/api/expenses?jobId=${id}`);
+      if (response.data && Array.isArray(response.data)) {
+        setJobExpenses(response.data);
+      }
+    } catch (error) {
+      console.log('Error loading job expenses:', error);
+      setJobExpenses([]);
+    } finally {
+      setIsLoadingExpenses(false);
+    }
+  };
+
   const handleConvertToInvoice = async () => {
     if (!quote?.id) return;
     
@@ -1829,7 +1860,8 @@ export default function JobDetailScreen() {
       loadSignatures(),
       loadRelatedDocuments(),
       loadTimeEntries(),
-      loadActivityLog()
+      loadActivityLog(),
+      loadJobExpenses()
     ]);
     setRefreshing(false);
   };
@@ -2444,6 +2476,98 @@ export default function JobDetailScreen() {
         </View>
       )}
 
+      {/* Job Expenses Section */}
+      <View style={styles.costingCard}>
+        <View style={styles.costingHeader}>
+          <View style={[styles.costingIconContainer, { backgroundColor: `${colors.destructive}15` }]}>
+            <Feather name="credit-card" size={iconSizes.lg} color={colors.destructive} />
+          </View>
+          <Text style={styles.costingTitle}>Job Expenses</Text>
+          <TouchableOpacity
+            onPress={() => router.push(`/more/expense-tracking?jobId=${job.id}`)}
+            style={{ marginLeft: 'auto', padding: spacing.xs }}
+          >
+            <Feather name="plus" size={iconSizes.lg} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+        
+        {jobExpenses.length > 0 ? (
+          <>
+            <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
+              {jobExpenses.slice(0, 3).map((expense) => (
+                <View 
+                  key={expense.id} 
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    paddingVertical: spacing.sm,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, color: colors.foreground, fontWeight: '500' }}>
+                      {expense.description}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                      {expense.categoryName || 'Expense'} • {new Date(expense.expenseDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
+                    {formatCurrency(parseFloat(expense.amount) || 0)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            {jobExpenses.length > 3 && (
+              <TouchableOpacity onPress={() => router.push(`/more/expense-tracking?jobId=${job.id}`)}>
+                <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>
+                  +{jobExpenses.length - 3} more expenses
+                </Text>
+              </TouchableOpacity>
+            )}
+            <View style={{ 
+              flexDirection: 'row', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              paddingTop: spacing.md,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+              marginTop: spacing.sm,
+            }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
+                Total Expenses
+              </Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.destructive }}>
+                {formatCurrency(jobExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0))}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+            <Text style={{ fontSize: 14, color: colors.mutedForeground, marginBottom: spacing.md }}>
+              No expenses recorded for this job
+            </Text>
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.xs,
+                backgroundColor: colors.primary,
+                paddingVertical: spacing.sm,
+                paddingHorizontal: spacing.lg,
+                borderRadius: radius.lg,
+              }}
+              onPress={() => router.push(`/more/expense-tracking?jobId=${job.id}`)}
+            >
+              <Feather name="plus" size={16} color={colors.primaryForeground} />
+              <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Add Expense</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
       {/* Main Action Button */}
       <View style={styles.actionButtonContainer}>
         {action ? (
@@ -2487,12 +2611,10 @@ export default function JobDetailScreen() {
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />
 
-      {/* Custom Forms Section */}
-      {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
-        <View style={styles.photosCard}>
-          <JobForms jobId={job.id} readOnly={job.status === 'invoiced'} />
-        </View>
-      )}
+      {/* Job Checklist Section - available for all job statuses */}
+      <View style={styles.photosCard}>
+        <JobForms jobId={job.id} readOnly={job.status === 'invoiced'} />
+      </View>
 
       {/* Client Signature Section */}
       {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (

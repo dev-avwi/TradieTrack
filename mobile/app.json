@@ -8,9 +8,12 @@
     "scheme": "tradietrack",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/tradietrack-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#fafafa",
+      "dark": {
+        "backgroundColor": "#121417"
+      }
     },
     "assetBundlePatterns": [
       "**/*"

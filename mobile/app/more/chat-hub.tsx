@@ -109,19 +109,24 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 15,
     color: colors.foreground,
   },
+  filterWrapper: {
+    height: 52,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
   filterContainer: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingVertical: 8,
     gap: 8,
     flexDirection: 'row',
+    alignItems: 'center',
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 44,
+    height: 36,
     paddingHorizontal: 14,
-    borderRadius: 22,
+    borderRadius: 18,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
@@ -464,65 +469,67 @@ export default function ChatHubScreen() {
           />
         </View>
 
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterContainer}
-        >
-          <TouchableOpacity
-            onPress={() => setFilter('all')}
-            style={[styles.filterChip, filter === 'all' && styles.filterChipActive]}
-            activeOpacity={0.7}
+        <View style={styles.filterWrapper}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterContainer}
           >
-            <Text style={[styles.filterChipText, filter === 'all' && styles.filterChipTextActive]}>
-              All
-            </Text>
-            {totalUnread > 0 && (
-              <View style={[styles.filterBadge, filter === 'all' && styles.filterBadgeActive]}>
-                <Text style={[styles.filterBadgeText, filter === 'all' && styles.filterBadgeTextActive]}>
-                  {totalUnread}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setFilter('team')}
-            style={[styles.filterChip, filter === 'team' && styles.filterChipActive]}
-            activeOpacity={0.7}
-          >
-            <Feather name="users" size={14} color={filter === 'team' ? colors.primaryForeground : colors.foreground} />
-            <Text style={[styles.filterChipText, filter === 'team' && styles.filterChipTextActive]}>
-              Team
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setFilter('direct')}
-            style={[styles.filterChip, filter === 'direct' && styles.filterChipActive]}
-            activeOpacity={0.7}
-          >
-            <Feather name="mail" size={14} color={filter === 'direct' ? colors.primaryForeground : colors.foreground} />
-            <Text style={[styles.filterChipText, filter === 'direct' && styles.filterChipTextActive]}>
-              Direct
-            </Text>
-            {totalUnread > 0 && (
-              <View style={[styles.filterBadge, filter === 'direct' && styles.filterBadgeActive]}>
-                <Text style={[styles.filterBadgeText, filter === 'direct' && styles.filterBadgeTextActive]}>
-                  {totalUnread}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setFilter('jobs')}
-            style={[styles.filterChip, filter === 'jobs' && styles.filterChipActive]}
-            activeOpacity={0.7}
-          >
-            <Feather name="briefcase" size={14} color={filter === 'jobs' ? colors.primaryForeground : colors.foreground} />
-            <Text style={[styles.filterChipText, filter === 'jobs' && styles.filterChipTextActive]}>
-              Jobs
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
+            <TouchableOpacity
+              onPress={() => setFilter('all')}
+              style={[styles.filterChip, filter === 'all' && styles.filterChipActive]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filterChipText, filter === 'all' && styles.filterChipTextActive]}>
+                All
+              </Text>
+              {totalUnread > 0 && (
+                <View style={[styles.filterBadge, filter === 'all' && styles.filterBadgeActive]}>
+                  <Text style={[styles.filterBadgeText, filter === 'all' && styles.filterBadgeTextActive]}>
+                    {totalUnread}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setFilter('team')}
+              style={[styles.filterChip, filter === 'team' && styles.filterChipActive]}
+              activeOpacity={0.7}
+            >
+              <Feather name="users" size={14} color={filter === 'team' ? colors.primaryForeground : colors.foreground} />
+              <Text style={[styles.filterChipText, filter === 'team' && styles.filterChipTextActive]}>
+                Team
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setFilter('direct')}
+              style={[styles.filterChip, filter === 'direct' && styles.filterChipActive]}
+              activeOpacity={0.7}
+            >
+              <Feather name="mail" size={14} color={filter === 'direct' ? colors.primaryForeground : colors.foreground} />
+              <Text style={[styles.filterChipText, filter === 'direct' && styles.filterChipTextActive]}>
+                Direct
+              </Text>
+              {totalUnread > 0 && (
+                <View style={[styles.filterBadge, filter === 'direct' && styles.filterBadgeActive]}>
+                  <Text style={[styles.filterBadgeText, filter === 'direct' && styles.filterBadgeTextActive]}>
+                    {totalUnread}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setFilter('jobs')}
+              style={[styles.filterChip, filter === 'jobs' && styles.filterChipActive]}
+              activeOpacity={0.7}
+            >
+              <Feather name="briefcase" size={14} color={filter === 'jobs' ? colors.primaryForeground : colors.foreground} />
+              <Text style={[styles.filterChipText, filter === 'jobs' && styles.filterChipTextActive]}>
+                Jobs
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
 
         <ScrollView 
           style={styles.listContainer}

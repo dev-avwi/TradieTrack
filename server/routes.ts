@@ -69,6 +69,7 @@ import { notifyJobAssigned, notifyPaymentReceived, notifyQuoteAccepted, notifyQu
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
 import { geocodeAddress } from "./geocoding";
+import { processStatusChangeAutomation, processPaymentReceivedAutomation, processTimeBasedAutomations } from "./automationService";
 
 // Utility function for formatting relative time
 function formatRelativeTime(date: Date | string): string {
@@ -4229,6 +4230,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error('Failed to send job completion email:', emailError);
           }
         }
+        
+        // Trigger automation rules for job status change
+        processStatusChangeAutomation(effectiveUserId, 'job', job.id, existingJob.status, status)
+          .catch(err => console.error('[Automations] Error processing job status change:', err));
       }
       
       res.json(job);
@@ -4730,6 +4735,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quotes/:id/accept", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
+      // Get existing quote for status comparison
+      const existingQuote = await storage.getQuote(req.params.id, req.userId);
+      const previousStatus = existingQuote?.status || 'draft';
+      
       const quote = await storage.updateQuote(req.params.id, req.userId, {
         status: 'accepted',
         acceptedAt: new Date()
@@ -4737,6 +4746,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
       }
+      
+      // Trigger automation rules for quote acceptance
+      processStatusChangeAutomation(req.userId, 'quote', quote.id, previousStatus, 'accepted')
+        .catch(err => console.error('[Automations] Error processing quote acceptance:', err));
+      
       res.json(quote);
     } catch (error) {
       console.error("Error accepting quote:", error);
@@ -4746,6 +4760,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quotes/:id/reject", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
+      // Get existing quote for status comparison
+      const existingQuote = await storage.getQuote(req.params.id, req.userId);
+      const previousStatus = existingQuote?.status || 'draft';
+      
       const quote = await storage.updateQuote(req.params.id, req.userId, {
         status: 'declined',
         rejectedAt: new Date()
@@ -4753,6 +4771,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
       }
+      
+      // Trigger automation rules for quote rejection
+      processStatusChangeAutomation(req.userId, 'quote', quote.id, previousStatus, 'declined')
+        .catch(err => console.error('[Automations] Error processing quote rejection:', err));
+      
       res.json(quote);
     } catch (error) {
       console.error("Error rejecting quote:", error);
@@ -5112,6 +5135,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send push notification for payment received
       const amountInCents = Math.round(parsedAmount * 100);
       await notifyPaymentReceived(req.userId, amountInCents, invoice.number || `INV-${invoice.id}`, invoice.id);
+      
+      // Trigger automation rules for payment received
+      processPaymentReceivedAutomation(req.userId, invoice.id)
+        .catch(err => console.error('[Automations] Error processing payment received:', err));
       
       res.json({
         ...updatedInvoice,
@@ -6602,7 +6629,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/expense-categories", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const categories = await storage.getExpenseCategories(userId);
+      let categories = await storage.getExpenseCategories(userId);
+      
+      if (categories.length === 0) {
+        const defaultCategories = [
+          { name: 'Materials', description: 'Construction materials, parts, supplies' },
+          { name: 'Equipment', description: 'Tools, machinery, equipment hire' },
+          { name: 'Travel', description: 'Fuel, mileage, transport costs' },
+          { name: 'Subcontractor', description: 'Payments to subcontractors' },
+          { name: 'Other', description: 'Miscellaneous expenses' },
+        ];
+        for (const cat of defaultCategories) {
+          await storage.createExpenseCategory({ ...cat, userId, isActive: true });
+        }
+        categories = await storage.getExpenseCategories(userId);
+      }
+      
       res.json(categories);
     } catch (error) {
       console.error("Get expense categories error:", error);
@@ -11216,6 +11258,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get automation execution history/logs
+  app.get("/api/automations/history", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const logs = await storage.getAutomationLogs(userId, limit);
+      
+      // Enrich logs with automation names
+      const automations = await storage.getAutomations(userId);
+      const automationMap = new Map(automations.map(a => [a.id, a]));
+      
+      const enrichedLogs = logs.map(log => ({
+        ...log,
+        automationName: automationMap.get(log.automationId)?.name || 'Unknown Automation',
+      }));
+      
+      res.json(enrichedLogs);
+    } catch (error: any) {
+      console.error('Error fetching automation history:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Manually trigger time-based automation processing (for testing)
+  app.post("/api/automations/process-time-based", requireAuth, async (req: any, res) => {
+    try {
+      const result = await processTimeBasedAutomations();
+      res.json({
+        message: 'Time-based automations processed',
+        processed: result.processed,
+        errors: result.errors,
+      });
+    } catch (error: any) {
+      console.error('Error processing time-based automations:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ============================================
   // AUTOMATION TEMPLATES (Pre-built workflows)
   // ============================================
@@ -11417,6 +11498,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(submissions);
     } catch (error: any) {
       console.error('Error fetching job form submissions:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create form submission for a specific job (checklist)
+  app.post("/api/jobs/:jobId/form-submissions", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      const submission = await storage.createFormSubmission({
+        ...req.body,
+        jobId,
+        submittedBy: userId,
+        submittedAt: new Date(),
+      });
+      
+      res.status(201).json(submission);
+    } catch (error: any) {
+      console.error('Error creating job form submission:', error);
       res.status(500).json({ error: error.message });
     }
   });

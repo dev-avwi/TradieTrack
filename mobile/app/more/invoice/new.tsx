@@ -543,12 +543,47 @@ export default function NewInvoiceScreen() {
     quantity: '1',
     unitPrice: ''
   });
+  const [jobExpenses, setJobExpenses] = useState<any[]>([]);
+  const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
 
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
 
   useEffect(() => {
     fetchClients();
+    if (params.jobId) {
+      fetchJobExpenses(params.jobId);
+    }
   }, []);
+
+  const fetchJobExpenses = async (jId: string) => {
+    setIsLoadingExpenses(true);
+    try {
+      const response = await api.get(`/api/expenses?jobId=${jId}`);
+      if (response.data && Array.isArray(response.data)) {
+        setJobExpenses(response.data);
+      }
+    } catch (error) {
+      console.log('Error fetching job expenses:', error);
+    } finally {
+      setIsLoadingExpenses(false);
+    }
+  };
+
+  const handleImportExpenses = () => {
+    if (jobExpenses.length === 0) {
+      Alert.alert('No Expenses', 'No expenses recorded for this job');
+      return;
+    }
+    const newItems: LineItem[] = jobExpenses.map(exp => ({
+      id: `exp-${exp.id}`,
+      description: `${exp.categoryName || 'Expense'}: ${exp.description}`,
+      quantity: '1',
+      unitPrice: String(parseFloat(exp.amount) || 0),
+    }));
+    setLineItems([...lineItems, ...newItems]);
+    setJobExpenses([]);
+    Alert.alert('Expenses Added', `${newItems.length} expense(s) added as line items`);
+  };
 
   const handleAddLineItem = () => {
     setEditForm({ description: '', quantity: '1', unitPrice: '' });
@@ -1000,6 +1035,18 @@ export default function NewInvoiceScreen() {
                     <Feather name="book-open" size={16} color={colors.foreground} />
                   </TouchableOpacity>
                 </View>
+
+                {jobId && jobExpenses.length > 0 && (
+                  <TouchableOpacity
+                    style={[styles.addItemButton, { marginTop: 8, backgroundColor: colors.primaryLight }]}
+                    onPress={handleImportExpenses}
+                  >
+                    <Feather name="credit-card" size={16} color={colors.primary} />
+                    <Text style={[styles.addItemText, { color: colors.primary }]}>
+                      Import {jobExpenses.length} Job Expense{jobExpenses.length !== 1 ? 's' : ''} ({formatCurrency(jobExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0))})
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {/* Totals Card */}

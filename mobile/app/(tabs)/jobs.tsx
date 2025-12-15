@@ -126,7 +126,7 @@ function JobCard({
         {job.status === 'done' && (
           <TouchableOpacity
             style={styles.invoiceBtn}
-            onPress={() => router.push(`/more/create-invoice?jobId=${job.id}`)}
+            onPress={() => router.push(`/more/invoice/new?jobId=${job.id}`)}
             activeOpacity={0.8}
           >
             <Feather name="file-text" size={iconSizes.sm} color={colors.white} />

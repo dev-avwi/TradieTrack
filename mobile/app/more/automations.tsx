@@ -9,6 +9,8 @@ import {
   Alert,
   Switch,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -35,6 +37,17 @@ interface AutomationRule {
     newStatus?: string;
   }>;
   createdAt: string;
+}
+
+interface AutomationLog {
+  id: string;
+  automationId: string;
+  automationName?: string;
+  entityType: string;
+  entityId: string;
+  result: string;
+  errorMessage?: string | null;
+  processedAt: string;
 }
 
 const TRIGGER_ICONS: Record<string, string> = {
@@ -267,6 +280,80 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.caption,
     color: colors.destructive,
   },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    padding: spacing.sm,
+    marginRight: spacing.sm,
+  },
+  editButtonText: {
+    ...typography.caption,
+    color: colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalContent: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  modalTitle: {
+    ...typography.h3,
+    color: colors.foreground,
+  },
+  modalLabel: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginBottom: spacing.xs,
+  },
+  modalInput: {
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    ...typography.body,
+    color: colors.foreground,
+    marginBottom: spacing.lg,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+  },
+  modalButtonCancel: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+    backgroundColor: colors.muted,
+  },
+  modalButtonSave: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+  },
+  modalButtonCancelText: {
+    ...typography.body,
+    color: colors.foreground,
+  },
+  modalButtonSaveText: {
+    ...typography.body,
+    color: colors.primaryForeground,
+    fontWeight: '600',
+  },
   presetCard: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
@@ -350,6 +437,45 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.success,
     marginTop: spacing.sm,
   },
+  historyCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  historyIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyContent: {
+    flex: 1,
+  },
+  historyName: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '500',
+  },
+  historyDetails: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  historyTime: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+  historyError: {
+    ...typography.captionSmall,
+    color: colors.destructive,
+    marginTop: 2,
+  },
 });
 
 export default function AutomationsScreen() {
@@ -357,10 +483,13 @@ export default function AutomationsScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const [automations, setAutomations] = useState<AutomationRule[]>([]);
+  const [history, setHistory] = useState<AutomationLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [addingPreset, setAddingPreset] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'active' | 'presets'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'presets' | 'history'>('active');
+  const [editingAutomation, setEditingAutomation] = useState<AutomationRule | null>(null);
+  const [editDelayDays, setEditDelayDays] = useState('');
 
   const fetchAutomations = useCallback(async () => {
     setIsLoading(true);
@@ -375,8 +504,20 @@ export default function AutomationsScreen() {
     setIsLoading(false);
   }, []);
 
+  const fetchHistory = useCallback(async () => {
+    try {
+      const response = await api.get<AutomationLog[]>('/api/automations/history');
+      if (response.data) {
+        setHistory(response.data);
+      }
+    } catch (error) {
+      console.log('Error fetching automation history:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAutomations();
+    fetchHistory();
   }, []);
 
   const toggleAutomation = async (id: string, isActive: boolean) => {
@@ -414,6 +555,37 @@ export default function AutomationsScreen() {
         },
       ]
     );
+  };
+
+  const openEditModal = (automation: AutomationRule) => {
+    if (!automation.id) {
+      Alert.alert('Error', 'Cannot edit unsaved automation');
+      return;
+    }
+    setEditingAutomation(automation);
+    setEditDelayDays(automation.trigger.delayDays?.toString() || '');
+  };
+
+  const saveAutomationEdit = async () => {
+    if (!editingAutomation) return;
+    
+    setIsUpdating(true);
+    try {
+      const updatedTrigger = {
+        ...editingAutomation.trigger,
+        delayDays: editDelayDays ? parseInt(editDelayDays, 10) : undefined,
+      };
+      
+      await api.patch(`/api/automations/${editingAutomation.id}`, {
+        trigger: updatedTrigger,
+      });
+      
+      await fetchAutomations();
+      setEditingAutomation(null);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update automation');
+    }
+    setIsUpdating(false);
   };
 
   const addPreset = async (preset: typeof PRESET_AUTOMATIONS[0]) => {
@@ -499,6 +671,15 @@ export default function AutomationsScreen() {
         </View>
 
         <View style={styles.automationFooter}>
+          {(automation.trigger.type === 'time_delay' || automation.trigger.type === 'no_response') && (
+            <TouchableOpacity 
+              style={styles.editButton} 
+              onPress={() => openEditModal(automation)}
+            >
+              <Feather name="edit-2" size={14} color={colors.primary} />
+              <Text style={styles.editButtonText}>Edit Timing</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.deleteButton} onPress={() => deleteAutomation(automation.id)}>
             <Feather name="trash-2" size={14} color={colors.destructive} />
             <Text style={styles.deleteButtonText}>Delete</Text>
@@ -541,6 +722,35 @@ export default function AutomationsScreen() {
     );
   };
 
+  const renderHistoryCard = (log: AutomationLog) => {
+    const isSuccess = log.result === 'success';
+    
+    return (
+      <View key={log.id} style={styles.historyCard}>
+        <View style={[
+          styles.historyIconCircle, 
+          { backgroundColor: isSuccess ? colors.successLight || colors.primaryLight : colors.destructiveLight || colors.muted }
+        ]}>
+          <Feather 
+            name={isSuccess ? 'check' : 'alert-circle'} 
+            size={16} 
+            color={isSuccess ? colors.success : colors.destructive} 
+          />
+        </View>
+        <View style={styles.historyContent}>
+          <Text style={styles.historyName}>{log.automationName || 'Automation'}</Text>
+          <Text style={styles.historyDetails}>
+            {log.entityType.charAt(0).toUpperCase() + log.entityType.slice(1)} processed
+          </Text>
+          {log.errorMessage && (
+            <Text style={styles.historyError}>{log.errorMessage}</Text>
+          )}
+        </View>
+        <Text style={styles.historyTime}>{formatRelativeTime(log.processedAt)}</Text>
+      </View>
+    );
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -574,11 +784,11 @@ export default function AutomationsScreen() {
             >
               <Feather 
                 name="zap" 
-                size={16} 
+                size={14} 
                 color={activeTab === 'active' ? colors.primary : colors.mutedForeground} 
               />
               <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>
-                My Automations ({automations.length})
+                Active ({automations.length})
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -587,11 +797,24 @@ export default function AutomationsScreen() {
             >
               <Feather 
                 name="package" 
-                size={16} 
+                size={14} 
                 color={activeTab === 'presets' ? colors.primary : colors.mutedForeground} 
               />
               <Text style={[styles.tabText, activeTab === 'presets' && styles.tabTextActive]}>
-                Templates ({availablePresets.length})
+                Templates
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'history' && styles.tabActive]}
+              onPress={() => { setActiveTab('history'); fetchHistory(); }}
+            >
+              <Feather 
+                name="clock" 
+                size={14} 
+                color={activeTab === 'history' ? colors.primary : colors.mutedForeground} 
+              />
+              <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>
+                History
               </Text>
             </TouchableOpacity>
           </View>
@@ -629,7 +852,7 @@ export default function AutomationsScreen() {
                 </View>
               )}
             </>
-          ) : (
+          ) : activeTab === 'presets' ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Available Templates</Text>
               {availablePresets.length > 0 ? (
@@ -641,9 +864,105 @@ export default function AutomationsScreen() {
                 </View>
               )}
             </View>
+          ) : (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Automation History</Text>
+              {history.length > 0 ? (
+                history.map(renderHistoryCard)
+              ) : (
+                <View style={styles.emptyState}>
+                  <Feather name="clock" size={48} color={colors.mutedForeground} />
+                  <Text style={styles.emptyStateTitle}>No History Yet</Text>
+                  <Text style={styles.emptyStateText}>
+                    Automation executions will appear here when they run
+                  </Text>
+                </View>
+              )}
+            </View>
           )}
         </ScrollView>
       </View>
+
+      <Modal
+        visible={editingAutomation !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingAutomation(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Automation</Text>
+              <TouchableOpacity onPress={() => setEditingAutomation(null)}>
+                <Feather name="x" size={24} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            {editingAutomation?.trigger.type === 'time_delay' && (
+              <>
+                <Text style={styles.modalLabel}>Delay (days)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editDelayDays}
+                  onChangeText={setEditDelayDays}
+                  placeholder="Enter number of days"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="number-pad"
+                />
+              </>
+            )}
+
+            {editingAutomation?.trigger.type === 'no_response' && (
+              <>
+                <Text style={styles.modalLabel}>Wait for response (days)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editDelayDays}
+                  onChangeText={setEditDelayDays}
+                  placeholder="Days before follow-up"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="number-pad"
+                />
+              </>
+            )}
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.modalButtonCancel} 
+                onPress={() => setEditingAutomation(null)}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.modalButtonSave} 
+                onPress={saveAutomationEdit}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <Text style={styles.modalButtonSaveText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
+}
+
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-AU');
 }

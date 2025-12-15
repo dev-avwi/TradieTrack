@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
@@ -362,6 +362,7 @@ const createStyles = (colors: any) => StyleSheet.create({
 export default function ExpenseTrackingScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const params = useLocalSearchParams<{ jobId?: string }>();
   
   const { jobs, fetchJobs } = useJobsStore();
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
@@ -370,17 +371,25 @@ export default function ExpenseTrackingScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedJob, setSelectedJob] = useState<string>('all');
+  const [selectedJob, setSelectedJob] = useState<string>(params.jobId || 'all');
   
   const [newExpense, setNewExpense] = useState({
     categoryId: '',
-    jobId: '',
+    jobId: params.jobId || '',
     amount: '',
     description: '',
     vendor: '',
   });
   const [newCategory, setNewCategory] = useState({ name: '', description: '' });
   const [isSaving, setIsSaving] = useState(false);
+  const [autoShowAddModal, setAutoShowAddModal] = useState(!!params.jobId);
+
+  useEffect(() => {
+    if (autoShowAddModal && !isLoading && categories.length > 0) {
+      setShowAddModal(true);
+      setAutoShowAddModal(false);
+    }
+  }, [autoShowAddModal, isLoading, categories.length]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
