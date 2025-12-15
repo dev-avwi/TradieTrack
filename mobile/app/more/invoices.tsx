@@ -113,30 +113,6 @@ function InvoiceCard({
           <Text style={styles.invoiceTotal}>{formatCurrency(invoice.total || 0)}</Text>
           <Text style={styles.invoiceGst}>inc. GST</Text>
         </View>
-
-        <View style={styles.invoiceMetaRow}>
-          <View style={styles.invoiceDetailRow}>
-            <Feather name="user" size={12} color={colors.mutedForeground} />
-            <Text style={styles.invoiceDetailText} numberOfLines={1}>{clientName}</Text>
-          </View>
-          <View style={styles.invoiceDetailRow}>
-            <Feather name="calendar" size={12} color={colors.mutedForeground} />
-            <Text style={styles.invoiceDetailText} numberOfLines={1}>
-              Due: {formatDate(invoice.dueDate || invoice.createdAt)}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.inlineActionsRow}>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: nextAction.color }]}
-            onPress={onPress}
-            activeOpacity={0.8}
-          >
-            <Feather name={nextAction.icon} size={12} color={colors.white} />
-            <Text style={styles.actionBtnText}>{nextAction.label}</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </AnimatedCardPressable>
   );
@@ -564,7 +540,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   invoiceAmountRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: spacing.sm,
     gap: spacing.xs,
   },
   invoiceTotal: {
@@ -576,43 +551,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 10,
     color: colors.mutedForeground,
     fontWeight: '500',
-  },
-  invoiceMetaRow: {
-    flexDirection: 'column',
-    gap: 2,
-    marginBottom: spacing.sm,
-  },
-  invoiceDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-  },
-  invoiceDetailText: {
-    fontSize: 11,
-    color: colors.mutedForeground,
-    flex: 1,
-  },
-  inlineActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.cardBorder,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.md,
-    gap: 4,
-  },
-  actionBtnText: {
-    fontSize: 11,
-    color: colors.white,
-    fontWeight: '600',
   },
 });

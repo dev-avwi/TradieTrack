@@ -110,28 +110,6 @@ function QuoteCard({
         <View style={styles.quoteAmountRow}>
           <Text style={styles.quoteTotal}>{formatCurrency(quote.total || 0)}</Text>
         </View>
-
-        <View style={styles.quoteMetaRow}>
-          <View style={styles.quoteDetailRow}>
-            <Feather name="user" size={12} color={colors.mutedForeground} />
-            <Text style={styles.quoteDetailText} numberOfLines={1}>{clientName}</Text>
-          </View>
-          <View style={styles.quoteDetailRow}>
-            <Feather name="calendar" size={12} color={colors.mutedForeground} />
-            <Text style={styles.quoteDetailText} numberOfLines={1}>{formatDate(quote.createdAt)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.inlineActionsRow}>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: nextAction.color }]}
-            onPress={onPress}
-            activeOpacity={0.8}
-          >
-            <Feather name={nextAction.icon} size={12} color={colors.white} />
-            <Text style={styles.actionBtnText}>{nextAction.label}</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </AnimatedCardPressable>
   );
@@ -504,50 +482,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     flex: 1,
   },
-  quoteAmountRow: {
-    marginBottom: spacing.sm,
-  },
+  quoteAmountRow: {},
   quoteTotal: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.foreground,
-  },
-  quoteMetaRow: {
-    flexDirection: 'column',
-    gap: 2,
-    marginBottom: spacing.sm,
-  },
-  quoteDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-  },
-  quoteDetailText: {
-    fontSize: 11,
-    color: colors.mutedForeground,
-    flex: 1,
-  },
-  inlineActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.cardBorder,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.md,
-    gap: 4,
-  },
-  actionBtnText: {
-    fontSize: 11,
-    color: colors.white,
-    fontWeight: '600',
   },
 });

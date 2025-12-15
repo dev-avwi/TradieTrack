@@ -59,39 +59,14 @@ function ClientCard({
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
           </View>
-          <Text style={styles.clientName} numberOfLines={1}>{client.name}</Text>
-        </View>
-
-        <View style={styles.clientMetaRow}>
-          {client.email && (
-            <View style={styles.clientDetailRow}>
-              <Feather name="mail" size={12} color={colors.mutedForeground} />
-              <Text style={styles.clientDetailText} numberOfLines={1}>{client.email}</Text>
-            </View>
-          )}
-          {client.phone && (
-            <View style={styles.clientDetailRow}>
-              <Feather name="phone" size={12} color={colors.mutedForeground} />
-              <Text style={styles.clientDetailText} numberOfLines={1}>{client.phone}</Text>
-            </View>
-          )}
-          {client.address && (
-            <View style={styles.clientDetailRow}>
-              <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-              <Text style={styles.clientDetailText} numberOfLines={1}>{client.address}</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.inlineActionsRow}>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: colors.primary }]}
-            onPress={onPress}
-            activeOpacity={0.8}
-          >
-            <Feather name="eye" size={12} color={colors.white} />
-            <Text style={styles.actionBtnText}>View</Text>
-          </TouchableOpacity>
+          <View style={styles.clientInfo}>
+            <Text style={styles.clientName} numberOfLines={1}>{client.name}</Text>
+            {client.jobsCount !== undefined && client.jobsCount > 0 && (
+              <View style={styles.jobsBadge}>
+                <Text style={styles.jobsBadgeText}>{client.jobsCount} {client.jobsCount === 1 ? 'job' : 'jobs'}</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
     </AnimatedCardPressable>
@@ -446,64 +421,40 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   clientCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
     gap: spacing.sm,
   },
   avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.primaryForeground,
+  },
+  clientInfo: {
+    flex: 1,
+    gap: spacing.xs,
   },
   clientName: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.foreground,
-    flex: 1,
   },
-  clientMetaRow: {
-    flexDirection: 'column',
-    gap: 2,
-    marginBottom: spacing.sm,
-  },
-  clientDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-  },
-  clientDetailText: {
-    fontSize: 11,
-    color: colors.mutedForeground,
-    flex: 1,
-  },
-  inlineActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.cardBorder,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  jobsBadge: {
+    backgroundColor: colors.muted,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.md,
-    gap: 4,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    alignSelf: 'flex-start',
   },
-  actionBtnText: {
-    fontSize: 11,
-    color: colors.white,
-    fontWeight: '600',
+  jobsBadgeText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: colors.mutedForeground,
   },
 });
