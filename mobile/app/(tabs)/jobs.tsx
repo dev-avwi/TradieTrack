@@ -397,7 +397,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...shadows.sm,
   },
   newJobButtonText: {
-    color: colors.white,
+    color: colors.primaryForeground,
     ...typography.caption,
     fontWeight: '600',
   },
@@ -514,12 +514,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   jobsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    flexDirection: 'column',
+    gap: spacing.md,
   },
   jobCard: {
-    width: '48.5%',
+    width: '100%',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',
@@ -539,16 +538,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     display: 'none',
   },
   jobCardHeader: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    marginBottom: spacing.xs,
-    gap: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   jobTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.foreground,
-    lineHeight: 18,
+    lineHeight: 22,
+    flex: 1,
   },
   jobDetailRow: {
     flexDirection: 'row',
