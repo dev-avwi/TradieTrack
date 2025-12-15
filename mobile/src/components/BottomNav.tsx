@@ -144,9 +144,20 @@ export function BottomNav() {
     return pathname === item.path;
   };
 
+  const isOnMainPage = (item: NavItem) => {
+    // Check if we're on the exact main page for this tab (not a subpage)
+    return pathname === item.path || 
+           (item.path === '/' && (pathname === '/' || pathname === '/index'));
+  };
+
   const handlePress = (item: NavItem) => {
     if (isActive(item)) {
-      triggerScrollToTop();
+      // If on a subpage, navigate to main page; if already on main page, scroll to top
+      if (isOnMainPage(item)) {
+        triggerScrollToTop();
+      } else {
+        router.push(item.path as any);
+      }
     } else {
       router.push(item.path as any);
     }
