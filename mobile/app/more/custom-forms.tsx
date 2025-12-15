@@ -46,7 +46,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
     paddingBottom: 100,
   },
   header: {
@@ -608,7 +608,7 @@ export default function CustomFormsScreen() {
       
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top }]}
+        contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 8 }]}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
         }

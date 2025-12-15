@@ -548,15 +548,9 @@ export default function LiveDocumentPreview({
           <View style={styles.header}>
             {/* Company Info - Left Side */}
             <View style={styles.companyInfo}>
-              {business.logoUrl ? (
+              {business.logoUrl && (
                 <Image 
                   source={{ uri: business.logoUrl }} 
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-              ) : (
-                <Image 
-                  source={tradieTrackLogo}
                   style={styles.logo}
                   resizeMode="contain"
                 />

@@ -452,20 +452,26 @@ export default function CreateQuoteScreen() {
   const [quickClientEmail, setQuickClientEmail] = useState('');
   const [quickClientPhone, setQuickClientPhone] = useState('');
   const [isAddingClient, setIsAddingClient] = useState(false);
+  
+  // Track if we've already prefilled from jobId to prevent race conditions
+  const [hasPrefilledFromJob, setHasPrefilledFromJob] = useState(false);
 
   useEffect(() => {
     fetchClients();
     fetchJobs();
   }, []);
 
+  // Handle jobId param - prefill client and line items from job (only once)
   useEffect(() => {
-    if (params.jobId && jobs.length > 0) {
+    if (params.jobId && jobs.length > 0 && !hasPrefilledFromJob) {
       const job = jobs.find(j => j.id === params.jobId);
       if (job) {
+        setHasPrefilledFromJob(true);
         setJobId(job.id);
         if (job.clientId) {
           setClientId(job.clientId);
         }
+        // Only prefill line items if user hasn't started editing (single empty item)
         if (job.title && lineItems.length === 1 && !lineItems[0].description) {
           setLineItems([{
             id: generateId(),
@@ -477,7 +483,7 @@ export default function CreateQuoteScreen() {
         }
       }
     }
-  }, [params.jobId, jobs]);
+  }, [params.jobId, jobs, hasPrefilledFromJob]);
 
   const selectedClient = clients.find((c) => c.id === clientId);
   const selectedJob = jobs.find((j) => j.id === jobId);

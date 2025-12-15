@@ -378,6 +378,10 @@ export default function CreateInvoiceScreen() {
   const [quickClientEmail, setQuickClientEmail] = useState('');
   const [quickClientPhone, setQuickClientPhone] = useState('');
   const [isAddingClient, setIsAddingClient] = useState(false);
+  
+  // Track if we've already prefilled to prevent race conditions
+  const [hasPrefilledFromQuote, setHasPrefilledFromQuote] = useState(false);
+  const [hasPrefilledFromJob, setHasPrefilledFromJob] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -385,10 +389,12 @@ export default function CreateInvoiceScreen() {
     fetchQuotes();
   }, []);
 
+  // Handle quoteId param - prefill from quote (only once)
   useEffect(() => {
-    if (params.quoteId && quotes.length > 0) {
+    if (params.quoteId && quotes.length > 0 && !hasPrefilledFromQuote) {
       const quote = quotes.find(q => q.id === params.quoteId);
       if (quote) {
+        setHasPrefilledFromQuote(true);
         setIsLoadingQuote(true);
         setClientId(quote.clientId);
         setJobId(quote.jobId || null);
@@ -417,18 +423,19 @@ export default function CreateInvoiceScreen() {
         setIsLoadingQuote(false);
       }
     }
-  }, [params.quoteId, quotes]);
+  }, [params.quoteId, quotes, hasPrefilledFromQuote]);
 
-  // Handle jobId param (when no quote exists) - prefill client from job
+  // Handle jobId param (when no quote exists) - prefill client from job (only once)
   useEffect(() => {
-    if (params.jobId && !params.quoteId && jobs.length > 0) {
+    if (params.jobId && !params.quoteId && jobs.length > 0 && !hasPrefilledFromJob) {
       const job = jobs.find(j => j.id === params.jobId);
       if (job) {
+        setHasPrefilledFromJob(true);
         setJobId(job.id);
         if (job.clientId) {
           setClientId(job.clientId);
         }
-        // Use job title/description as a starting point for line items
+        // Only prefill line items if user hasn't started editing (single empty item)
         if (job.title && lineItems.length === 1 && !lineItems[0].description) {
           setLineItems([{
             id: generateId(),
@@ -439,7 +446,7 @@ export default function CreateInvoiceScreen() {
         }
       }
     }
-  }, [params.jobId, params.quoteId, jobs]);
+  }, [params.jobId, params.quoteId, jobs, hasPrefilledFromJob]);
 
   const selectedClient = clients.find((c) => c.id === clientId);
   const selectedJob = jobs.find((j) => j.id === jobId);
