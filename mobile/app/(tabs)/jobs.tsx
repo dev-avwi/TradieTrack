@@ -442,7 +442,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   filtersScroll: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
     marginHorizontal: -pageShell.paddingHorizontal,
   },
   filtersContent: {

@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../../src/lib/api';
@@ -2991,8 +2992,10 @@ export default function JobDetailScreen() {
       <View style={styles.container}>
         <Stack.Screen 
         options={{ 
+          headerShown: true,
           title: '',
-          headerBackTitle: 'Back',
+          headerBackVisible: false,
+          headerLeft: () => <IOSBackButton />,
           headerStyle: {
             backgroundColor: colors.background,
           },

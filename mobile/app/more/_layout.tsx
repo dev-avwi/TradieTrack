@@ -1,34 +1,6 @@
-import { Stack, router } from 'expo-router';
-import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Stack } from 'expo-router';
 import { useTheme } from '../../src/lib/theme';
-
-function IOSBackButton() {
-  const { colors } = useTheme();
-  
-  return (
-    <TouchableOpacity 
-      onPress={() => router.back()}
-      activeOpacity={0.7}
-      style={styles.backButton}
-    >
-      <Feather name="chevron-left" size={24} color={colors.primary} />
-      <Text style={[styles.backText, { color: colors.primary }]}>Back</Text>
-    </TouchableOpacity>
-  );
-}
-
-const styles = StyleSheet.create({
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: -8,
-  },
-  backText: {
-    fontSize: 17,
-    fontWeight: '400',
-  },
-});
+import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 
 export default function MoreLayout() {
   const { colors } = useTheme();
