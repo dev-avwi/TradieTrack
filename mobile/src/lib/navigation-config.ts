@@ -411,17 +411,20 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
   const isStaffTradie = options.isTradie && !isOwnerOrManager;
   
   return items.filter(item => {
+    // Use allowedRoles if specified (new permission system)
+    // Match web's filtering logic from client/src/lib/navigation-config.ts
     if (item.allowedRoles && options.userRole) {
-      const normalizedRole = options.userRole === 'staff' ? 'staff_tradie' : options.userRole;
-      if (!item.allowedRoles.includes(normalizedRole) && !item.allowedRoles.includes(options.userRole as UserRole)) {
+      if (!item.allowedRoles.includes(options.userRole)) {
         return false;
       }
     }
     
+    // Hide from staff tradies (staff who are not owners/managers)
     if (item.hideForStaff && isStaffTradie) {
       return false;
     }
     
+    // Legacy checks for backwards compatibility
     if (item.requiresTeam && !options.isTeam) {
       return false;
     }
