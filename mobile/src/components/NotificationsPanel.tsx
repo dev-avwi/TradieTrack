@@ -659,6 +659,6 @@ const createBellStyles = (colors: ThemeColors) => StyleSheet.create({
   badgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.destructiveForeground,
   },
 });

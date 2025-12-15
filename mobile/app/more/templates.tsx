@@ -102,7 +102,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.xs,
   },
   createButtonText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -465,7 +465,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
   },
   loadingContainer: {
     flex: 1,
@@ -791,7 +791,7 @@ export default function TemplatesScreen() {
                 setShowCreateModal(true);
               }}
             >
-              <Feather name="plus" size={18} color="#FFFFFF" />
+              <Feather name="plus" size={18} color={colors.primaryForeground} />
               <Text style={styles.createButtonText}>New</Text>
             </TouchableOpacity>
           </View>

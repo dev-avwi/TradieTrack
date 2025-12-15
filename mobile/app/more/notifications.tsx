@@ -83,7 +83,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 20,
   },
   inboxButtonText: {
-    color: '#fff',
+    color: colors.primaryForeground,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -190,7 +190,7 @@ export default function NotificationsScreen() {
             onPress={() => router.push('/more/notifications-inbox')}
             data-testid="button-view-inbox"
           >
-            <Feather name="inbox" size={20} color="#fff" />
+            <Feather name="inbox" size={20} color={colors.primaryForeground} />
             <Text style={styles.inboxButtonText}>
               View Inbox {unreadCount > 0 ? `(${unreadCount})` : ''}
             </Text>

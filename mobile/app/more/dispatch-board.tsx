@@ -510,7 +510,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   appliedBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.successForeground,
   },
   applyAllButton: {
     backgroundColor: colors.primary,

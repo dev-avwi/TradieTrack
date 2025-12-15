@@ -198,7 +198,7 @@ export function FloatingActionButton() {
           <Feather 
             name={isOpen ? 'x' : 'star'} 
             size={24} 
-            color={isOpen ? colors.background : '#FFFFFF'} 
+            color={isOpen ? colors.background : colors.primaryForeground} 
           />
         </Animated.View>
       </Pressable>

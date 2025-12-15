@@ -89,7 +89,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.warning,
   },
   pinnedFilterTextActive: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
   },
   messagesContainer: {
     flex: 1,
@@ -167,7 +167,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     lineHeight: 20,
   },
   messageTextUser: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
   },
   messageTime: {
     fontSize: 11,
@@ -418,7 +418,7 @@ export default function TeamChatScreen() {
               ]}
               onPress={() => setShowPinnedOnly(!showPinnedOnly)}
             >
-              <Feather name="bookmark" size={14} color={showPinnedOnly ? '#FFFFFF' : colors.warning} />
+              <Feather name="bookmark" size={14} color={showPinnedOnly ? colors.primaryForeground : colors.warning} />
               <Text style={[
                 styles.pinnedFilterText,
                 showPinnedOnly && styles.pinnedFilterTextActive
@@ -531,9 +531,9 @@ export default function TeamChatScreen() {
             ]}
           >
             {isSending ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.primaryForeground} />
             ) : (
-              <Feather name="send" size={20} color="#FFFFFF" />
+              <Feather name="send" size={20} color={colors.primaryForeground} />
             )}
           </TouchableOpacity>
         </View>

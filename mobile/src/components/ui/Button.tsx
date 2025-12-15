@@ -81,7 +81,7 @@ export function Button({
         return {
           backgroundColor: pressed ? '#2563EB' : '#3B82F6',
           borderColor: '#2563EB',
-          textColor: '#FFFFFF',
+          textColor: colors.white,
           overlayColor: 'transparent',
         };
       default:

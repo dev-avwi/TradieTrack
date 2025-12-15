@@ -338,7 +338,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyStateButtonText: {
     ...typography.body,
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontWeight: '600',
   },
   allAddedState: {
@@ -468,7 +468,7 @@ export default function AutomationsScreen() {
             onValueChange={() => toggleAutomation(automation.id, automation.isActive)}
             disabled={isUpdating}
             trackColor={{ false: colors.muted, true: colors.primary }}
-            thumbColor="#FFFFFF"
+            thumbColor={colors.white}
           />
         </View>
 
@@ -623,7 +623,7 @@ export default function AutomationsScreen() {
                     style={styles.emptyStateButton}
                     onPress={() => setActiveTab('presets')}
                   >
-                    <Feather name="plus" size={18} color="#FFFFFF" />
+                    <Feather name="plus" size={18} color={colors.primaryForeground} />
                     <Text style={styles.emptyStateButtonText}>Browse Templates</Text>
                   </TouchableOpacity>
                 </View>

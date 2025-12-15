@@ -137,7 +137,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.foreground,
   },
   filterChipTextActive: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
   },
   filterBadge: {
     backgroundColor: colors.muted,
@@ -149,7 +149,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: 6,
   },
   filterBadgeActive: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: colors.isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
   },
   filterBadgeText: {
     fontSize: 11,
@@ -157,7 +157,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.foreground,
   },
   filterBadgeTextActive: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
   },
   listContainer: {
     flex: 1,
@@ -223,7 +223,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginLeft: 8,
   },
   unreadBadgeText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -489,7 +489,7 @@ export default function ChatHubScreen() {
             style={[styles.filterChip, filter === 'team' && styles.filterChipActive]}
             activeOpacity={0.7}
           >
-            <Feather name="users" size={14} color={filter === 'team' ? '#FFFFFF' : colors.foreground} />
+            <Feather name="users" size={14} color={filter === 'team' ? colors.primaryForeground : colors.foreground} />
             <Text style={[styles.filterChipText, filter === 'team' && styles.filterChipTextActive]}>
               Team
             </Text>
@@ -499,7 +499,7 @@ export default function ChatHubScreen() {
             style={[styles.filterChip, filter === 'direct' && styles.filterChipActive]}
             activeOpacity={0.7}
           >
-            <Feather name="mail" size={14} color={filter === 'direct' ? '#FFFFFF' : colors.foreground} />
+            <Feather name="mail" size={14} color={filter === 'direct' ? colors.primaryForeground : colors.foreground} />
             <Text style={[styles.filterChipText, filter === 'direct' && styles.filterChipTextActive]}>
               Direct
             </Text>
@@ -516,7 +516,7 @@ export default function ChatHubScreen() {
             style={[styles.filterChip, filter === 'jobs' && styles.filterChipActive]}
             activeOpacity={0.7}
           >
-            <Feather name="briefcase" size={14} color={filter === 'jobs' ? '#FFFFFF' : colors.foreground} />
+            <Feather name="briefcase" size={14} color={filter === 'jobs' ? colors.primaryForeground : colors.foreground} />
             <Text style={[styles.filterChipText, filter === 'jobs' && styles.filterChipTextActive]}>
               Jobs
             </Text>

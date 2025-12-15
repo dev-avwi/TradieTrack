@@ -113,7 +113,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginRight: 12,
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontWeight: '600',
   },
   conversationContent: {
@@ -161,7 +161,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginLeft: 8,
   },
   unreadBadgeText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -264,7 +264,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     lineHeight: 20,
   },
   messageTextOwn: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
   },
   messageTime: {
     fontSize: 11,
@@ -711,9 +711,9 @@ function ChatView({
           ]}
         >
           {isSending ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={colors.primaryForeground} />
           ) : (
-            <Feather name="send" size={20} color="#FFFFFF" />
+            <Feather name="send" size={20} color={colors.primaryForeground} />
           )}
         </TouchableOpacity>
       </View>
