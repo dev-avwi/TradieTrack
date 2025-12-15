@@ -588,6 +588,14 @@ export default function MoreScreen() {
           title="App Settings"
           subtitle="Theme and preferences"
           onPress={() => router.push('/more/app-settings')}
+        />
+        <MenuItem
+          icon="help-circle"
+          iconBg={colors.infoLight}
+          iconColor={colors.info}
+          title="Help & Support"
+          subtitle="FAQs, guides, and contact us"
+          onPress={() => router.push('/more/support')}
           isLast
         />
       </View>
