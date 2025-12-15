@@ -421,11 +421,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   clientsList: {
-    flexDirection: 'column',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: spacing.md,
   },
   clientCard: {
-    width: '100%',
+    width: '48%',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',

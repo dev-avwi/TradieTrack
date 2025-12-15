@@ -469,11 +469,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   quotesList: {
-    flexDirection: 'column',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: spacing.md,
   },
   quoteCard: {
-    width: '100%',
+    width: '48%',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',

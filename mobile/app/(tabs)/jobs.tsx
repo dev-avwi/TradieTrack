@@ -111,40 +111,24 @@ function JobCard({
       style={styles.jobCard}
     >
       <View style={styles.jobCardContent}>
-        <View style={styles.jobCardRow}>
-          <View style={styles.jobCardMain}>
-            <View style={styles.jobCardHeader}>
-              <Text style={styles.jobTitle} numberOfLines={1}>{job.title || 'Untitled Job'}</Text>
-              <StatusBadge status={job.status} size="sm" />
-            </View>
-
-            {job.clientName && (
-              <View style={styles.jobDetailRow}>
-                <Feather name="user" size={14} color={colors.mutedForeground} />
-                <Text style={styles.jobClientText} numberOfLines={1}>{job.clientName}</Text>
-              </View>
-            )}
-
-            <View style={styles.jobMetaRow}>
-              {job.scheduledAt && (
-                <View style={styles.jobMetaItem}>
-                  <Feather name="clock" size={14} color={colors.mutedForeground} />
-                  <Text style={styles.jobMetaText}>{formatDate(job.scheduledAt)}</Text>
-                </View>
-              )}
-              {job.address && (
-                <View style={styles.jobMetaItem}>
-                  <Feather name="map-pin" size={14} color={colors.mutedForeground} />
-                  <Text style={styles.jobMetaText} numberOfLines={1}>{job.address}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-          
-          <View style={styles.jobCardChevron}>
-            <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-          </View>
+        <View style={styles.jobCardHeader}>
+          <Text style={styles.jobTitle} numberOfLines={2}>{job.title || 'Untitled Job'}</Text>
+          <StatusBadge status={job.status} size="sm" />
         </View>
+
+        <Text style={styles.jobDate} numberOfLines={1}>
+          {job.scheduledAt ? formatDate(job.scheduledAt) : 'Not scheduled'}
+        </Text>
+
+        {job.status === 'done' && (
+          <TouchableOpacity
+            style={styles.invoiceBtn}
+            onPress={() => router.push(`/more/create-invoice?jobId=${job.id}`)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.invoiceBtnText}>Invoice</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </AnimatedCardPressable>
   );
@@ -508,79 +492,52 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   jobsList: {
-    flexDirection: 'column',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: spacing.md,
   },
   jobCard: {
-    width: '100%',
+    width: '48%',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  jobCardAccent: {
-    height: 3,
-    width: '100%',
+    minHeight: 120,
   },
   jobCardContent: {
-    flex: 1,
     padding: spacing.md,
-  },
-  jobCardChevronContainer: {
-    display: 'none',
   },
   jobCardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: spacing.sm,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   jobTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
     color: colors.foreground,
-    lineHeight: 22,
+    lineHeight: 18,
     flex: 1,
   },
-  jobDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-  },
-  jobDetailText: {
-    fontSize: 11,
+  jobDate: {
+    fontSize: 12,
     color: colors.mutedForeground,
-    flex: 1,
-  },
-  jobMetaRow: {
-    flexDirection: 'column',
-    gap: 2,
     marginBottom: spacing.sm,
   },
-  inlineActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.cardBorder,
-  },
-  statusActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+  invoiceBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
     borderRadius: radius.md,
-    gap: 4,
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
   },
-  statusActionText: {
-    fontSize: 11,
-    color: colors.white,
+  invoiceBtnText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: colors.white,
   },
 });
