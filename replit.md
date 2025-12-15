@@ -68,6 +68,9 @@ Key architectural features include:
 - **Automation Templates**: 12 pre-built trade-specific sequences (quote follow-ups, invoice reminders, job confirmations) with full email/SMS content for plumbing, electrical, HVAC, landscaping
 - **Stripe Terminal Mobile**: SDK integration complete with connection token fetching, simulator fallback for Expo Go testing
 - **Offline Auth Flow**: checkAuth() properly falls back to cached auth data when offline or API fails
+- **Mobile Template Picker Integration**: Quote and Invoice creation screens now include "Use Template" button that opens a searchable template picker modal. Selecting a template pre-fills line items, terms, deposit percentage (quotes) or due date (invoices). Uses `/api/templates?type=quote|invoice` endpoints.
+- **Mobile Chat Hub Spacing Fix**: Fixed gap between filter chips and conversation list by adjusting paddingTop/Bottom to 12px and removing marginTop on list container.
+- **Mobile JobForms Integration**: Custom forms (JobForms) component properly integrated into job detail page Documents tab, displaying for in_progress/done/invoiced jobs with readOnly mode when invoiced.
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)
