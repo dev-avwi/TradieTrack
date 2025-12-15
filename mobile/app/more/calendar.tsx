@@ -15,7 +15,14 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows } from '../../src/lib/design-tokens';
 
-type ViewMode = 'week' | 'month';
+type ViewMode = 'week' | 'month' | 'today';
+
+const SCHEDULE_TABS = [
+  { key: 'week', label: 'Week', icon: 'calendar' },
+  { key: 'month', label: 'Month', icon: 'grid' },
+  { key: 'dispatch', label: 'Dispatch', icon: 'clipboard' },
+  { key: 'today', label: 'Today', icon: 'sun' },
+] as const;
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -70,66 +77,32 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  headerButtons: {
-    flexDirection: 'column',
-    gap: spacing.sm,
-  },
-  aiButton: {
+  tabsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    gap: spacing.xs,
-  },
-  aiButtonText: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  viewToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: colors.muted,
     borderRadius: radius.lg,
     padding: 4,
     marginBottom: spacing.lg,
-    gap: 4,
   },
-  viewToggleButton: {
+  tabButton: {
     flex: 1,
-    paddingVertical: spacing.sm + 2,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm + 2,
     borderRadius: radius.md,
+    gap: spacing.xs,
   },
-  viewToggleButtonActive: {
+  tabButtonActive: {
     backgroundColor: colors.primary,
   },
-  viewToggleText: {
-    fontSize: 14,
+  tabText: {
+    fontSize: 13,
     fontWeight: '500',
     color: colors.foreground,
   },
-  viewToggleTextActive: {
+  tabTextActive: {
     color: colors.primaryForeground,
-  },
-  todayButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: radius.md,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.xs,
-  },
-  todayButtonText: {
-    fontSize: 13,
-    color: colors.foreground,
   },
   dateNavigation: {
     flexDirection: 'row',
@@ -363,6 +336,49 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     flex: 1,
   },
+  todayViewContainer: {
+    marginBottom: spacing.xl,
+  },
+  todayViewHeader: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  todayViewDate: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  todayViewWeekday: {
+    fontSize: 18,
+    color: colors.primary,
+    fontWeight: '600',
+    marginTop: spacing.xs,
+  },
+  todayViewSubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: spacing.sm,
+  },
+  todayJobsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  todayJobsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  todayJobsCount: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '500',
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+    borderRadius: radius.lg,
+  },
 });
 
 export default function CalendarScreen() {
@@ -510,70 +526,118 @@ export default function CalendarScreen() {
         >
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={styles.pageTitle}>Calendar</Text>
+              <Text style={styles.pageTitle}>Schedule</Text>
               <Text style={styles.pageSubtitle}>Schedule and track your jobs</Text>
             </View>
-            <View style={styles.headerButtons}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.scheduleButton}
-                onPress={handleScheduleJob}
-              >
-                <Feather name="plus" size={18} color={colors.primaryForeground} />
-                <Text style={styles.scheduleButtonText}>Schedule Job</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.aiButton}
-                onPress={() => router.push('/more/dispatch-board')}
-              >
-                <Feather name="zap" size={14} color={colors.primary} />
-                <Text style={styles.aiButtonText}>AI Schedule</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.viewToggle}>
             <TouchableOpacity
-              style={[styles.viewToggleButton, viewMode === 'week' && styles.viewToggleButtonActive]}
-              onPress={() => setViewMode('week')}
               activeOpacity={0.7}
+              style={styles.scheduleButton}
+              onPress={handleScheduleJob}
             >
-              <Text style={[styles.viewToggleText, viewMode === 'week' && styles.viewToggleTextActive]}>
-                Week
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.viewToggleButton, viewMode === 'month' && styles.viewToggleButtonActive]}
-              onPress={() => setViewMode('month')}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.viewToggleText, viewMode === 'month' && styles.viewToggleTextActive]}>
-                Month
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.todayButton}
-              onPress={goToToday}
-              activeOpacity={0.7}
-            >
-              <Feather name="calendar" size={14} color={colors.foreground} />
-              <Text style={styles.todayButtonText}>Today</Text>
+              <Feather name="plus" size={18} color={colors.primaryForeground} />
+              <Text style={styles.scheduleButtonText}>New Job</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.dateNavigation}>
-            <TouchableOpacity onPress={goToPrevious} style={styles.navButton} activeOpacity={0.7}>
-              <Feather name="chevron-left" size={20} color={colors.foreground} />
-            </TouchableOpacity>
-            <View style={styles.dateRangeContainer}>
-              <Text style={styles.dateRangeText}>{getDateRangeLabel()}</Text>
-              <Text style={styles.jobsCountText}>{scheduledJobsCount} jobs scheduled</Text>
-            </View>
-            <TouchableOpacity onPress={goToNext} style={styles.navButton} activeOpacity={0.7}>
-              <Feather name="chevron-right" size={20} color={colors.foreground} />
-            </TouchableOpacity>
+          <View style={styles.tabsContainer}>
+            {SCHEDULE_TABS.map(tab => (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.tabButton, viewMode === tab.key && styles.tabButtonActive]}
+                onPress={() => {
+                  if (tab.key === 'dispatch') {
+                    router.push('/more/dispatch-board');
+                  } else if (tab.key === 'today') {
+                    setViewMode('today');
+                    setCurrentDate(new Date());
+                    setSelectedDate(new Date());
+                  } else {
+                    setViewMode(tab.key as ViewMode);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Feather 
+                  name={tab.icon as any} 
+                  size={14} 
+                  color={viewMode === tab.key ? colors.primaryForeground : colors.foreground} 
+                />
+                <Text style={[styles.tabText, viewMode === tab.key && styles.tabTextActive]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
+
+          {viewMode !== 'today' && (
+            <View style={styles.dateNavigation}>
+              <TouchableOpacity onPress={goToPrevious} style={styles.navButton} activeOpacity={0.7}>
+                <Feather name="chevron-left" size={20} color={colors.foreground} />
+              </TouchableOpacity>
+              <View style={styles.dateRangeContainer}>
+                <Text style={styles.dateRangeText}>{getDateRangeLabel()}</Text>
+                <Text style={styles.jobsCountText}>{scheduledJobsCount} jobs scheduled</Text>
+              </View>
+              <TouchableOpacity onPress={goToNext} style={styles.navButton} activeOpacity={0.7}>
+                <Feather name="chevron-right" size={20} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {viewMode === 'today' && (
+            <View style={styles.todayViewContainer}>
+              <View style={styles.todayViewHeader}>
+                <Text style={styles.todayViewDate}>
+                  {today.toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
+                </Text>
+                <Text style={styles.todayViewWeekday}>
+                  {today.toLocaleDateString('en-AU', { weekday: 'long' })}
+                </Text>
+                <Text style={styles.todayViewSubtitle}>
+                  {selectedDateJobs.length} job{selectedDateJobs.length !== 1 ? 's' : ''} scheduled today
+                </Text>
+              </View>
+
+              {selectedDateJobs.length === 0 ? (
+                <View style={styles.noJobsCard}>
+                  <Feather name="sun" size={32} color={colors.mutedForeground} />
+                  <Text style={styles.noJobsText}>No jobs scheduled for today</Text>
+                </View>
+              ) : (
+                selectedDateJobs.map(job => (
+                  <TouchableOpacity
+                    key={job.id}
+                    style={styles.jobCard}
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/job/${job.id}`)}
+                  >
+                    <View style={styles.jobCardLeft}>
+                      <View style={styles.jobTimeContainer}>
+                        <Feather name="clock" size={14} color={colors.primary} />
+                        <Text style={styles.jobTime}>{formatTime(job.scheduledAt)}</Text>
+                      </View>
+                      <StatusBadge status={job.status} size="sm" />
+                    </View>
+                    <View style={styles.jobCardContent}>
+                      <Text style={styles.jobTitle}>{job.title}</Text>
+                      {getClientName(job.clientId) && (
+                        <View style={styles.jobDetailRow}>
+                          <Feather name="user" size={12} color={colors.mutedForeground} />
+                          <Text style={styles.jobDetailText}>{getClientName(job.clientId)}</Text>
+                        </View>
+                      )}
+                      {job.address && (
+                        <View style={styles.jobDetailRow}>
+                          <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                          <Text style={styles.jobDetailText} numberOfLines={1}>{job.address}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          )}
 
           {viewMode === 'week' && (
             <View style={styles.weekView}>
@@ -666,60 +730,62 @@ export default function CalendarScreen() {
             </View>
           )}
 
-          <View style={styles.selectedDayContainer}>
-            <View style={styles.selectedDayHeader}>
-              <View style={styles.selectedDayTitleRow}>
-                <Feather name="calendar" size={18} color={colors.foreground} />
-                <Text style={styles.selectedDayTitle}>
-                  {selectedDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}
-                </Text>
-              </View>
-              {isToday(selectedDate) && (
-                <View style={styles.todayBadge}>
-                  <Text style={styles.todayBadgeText}>Today</Text>
+          {viewMode !== 'today' && (
+            <View style={styles.selectedDayContainer}>
+              <View style={styles.selectedDayHeader}>
+                <View style={styles.selectedDayTitleRow}>
+                  <Feather name="calendar" size={18} color={colors.foreground} />
+                  <Text style={styles.selectedDayTitle}>
+                    {selectedDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}
+                  </Text>
                 </View>
+                {isToday(selectedDate) && (
+                  <View style={styles.todayBadge}>
+                    <Text style={styles.todayBadgeText}>Today</Text>
+                  </View>
+                )}
+              </View>
+
+              {selectedDateJobs.length === 0 ? (
+                <View style={styles.noJobsCard}>
+                  <Feather name="calendar" size={32} color={colors.mutedForeground} />
+                  <Text style={styles.noJobsText}>No jobs scheduled</Text>
+                </View>
+              ) : (
+                selectedDateJobs.map(job => (
+                  <TouchableOpacity
+                    key={job.id}
+                    style={styles.jobCard}
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/job/${job.id}`)}
+                  >
+                    <View style={styles.jobCardLeft}>
+                      <View style={styles.jobTimeContainer}>
+                        <Feather name="clock" size={14} color={colors.primary} />
+                        <Text style={styles.jobTime}>{formatTime(job.scheduledAt)}</Text>
+                      </View>
+                      <StatusBadge status={job.status} size="sm" />
+                    </View>
+                    <View style={styles.jobCardContent}>
+                      <Text style={styles.jobTitle}>{job.title}</Text>
+                      {getClientName(job.clientId) && (
+                        <View style={styles.jobDetailRow}>
+                          <Feather name="user" size={12} color={colors.mutedForeground} />
+                          <Text style={styles.jobDetailText}>{getClientName(job.clientId)}</Text>
+                        </View>
+                      )}
+                      {job.address && (
+                        <View style={styles.jobDetailRow}>
+                          <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                          <Text style={styles.jobDetailText} numberOfLines={1}>{job.address}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))
               )}
             </View>
-
-            {selectedDateJobs.length === 0 ? (
-              <View style={styles.noJobsCard}>
-                <Feather name="calendar" size={32} color={colors.mutedForeground} />
-                <Text style={styles.noJobsText}>No jobs scheduled</Text>
-              </View>
-            ) : (
-              selectedDateJobs.map(job => (
-                <TouchableOpacity
-                  key={job.id}
-                  style={styles.jobCard}
-                  activeOpacity={0.7}
-                  onPress={() => router.push(`/job/${job.id}`)}
-                >
-                  <View style={styles.jobCardLeft}>
-                    <View style={styles.jobTimeContainer}>
-                      <Feather name="clock" size={14} color={colors.primary} />
-                      <Text style={styles.jobTime}>{formatTime(job.scheduledAt)}</Text>
-                    </View>
-                    <StatusBadge status={job.status} size="sm" />
-                  </View>
-                  <View style={styles.jobCardContent}>
-                    <Text style={styles.jobTitle}>{job.title}</Text>
-                    {getClientName(job.clientId) && (
-                      <View style={styles.jobDetailRow}>
-                        <Feather name="user" size={12} color={colors.mutedForeground} />
-                        <Text style={styles.jobDetailText}>{getClientName(job.clientId)}</Text>
-                      </View>
-                    )}
-                    {job.address && (
-                      <View style={styles.jobDetailRow}>
-                        <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-                        <Text style={styles.jobDetailText} numberOfLines={1}>{job.address}</Text>
-                      </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
+          )}
         </ScrollView>
       </View>
     </>
