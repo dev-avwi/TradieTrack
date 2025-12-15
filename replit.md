@@ -76,6 +76,11 @@ Key architectural features include:
 - **Mobile Template Picker Integration**: Quote and Invoice creation screens now include "Use Template" button that opens a searchable template picker modal. Selecting a template pre-fills line items, terms, deposit percentage (quotes) or due date (invoices). Uses `/api/templates?type=quote|invoice` endpoints.
 - **Mobile Chat Hub Spacing Fix**: Fixed gap between filter chips and conversation list by adjusting paddingTop/Bottom to 12px and removing marginTop on list container.
 - **Mobile JobForms Integration**: Custom forms (JobForms) component properly integrated into job detail page Documents tab, displaying for in_progress/done/invoiced jobs with readOnly mode when invoiced.
+- **Mobile Currency Handling Fix**: Fixed critical bug in quote/invoice detail screens where dollar amounts from API were incorrectly divided by 100. Architecture clarified:
+  - Database stores dollars (decimal 10,2), NOT cents
+  - Create screens: internal state in cents → convert to dollars for preview/API (divide by 100)
+  - Detail screens: receive dollars from API → display directly using `Intl.NumberFormat` (no conversion)
+  - LiveDocumentPreview component expects dollar values for unitPrice
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)
