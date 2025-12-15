@@ -864,17 +864,7 @@ export default function DashboardScreen() {
             </Text>
           </View>
           <View style={styles.headerRight}>
-            {canViewMap && (
-              <TouchableOpacity
-                style={styles.headerMapButton}
-                onPress={() => router.push('/(tabs)/map')}
-                activeOpacity={0.7}
-                testID="button-header-map"
-              >
-                <Feather name="map" size={iconSizes.lg} color={colors.primary} />
-              </TouchableOpacity>
-            )}
-            <NotificationBell onPress={() => setShowNotifications(true)} />
+            {/* Map and Notifications are now in the global Header component */}
           </View>
         </View>
       </View>

@@ -210,7 +210,7 @@ export function Header({
           
           {canViewMap && (
             <HeaderIconButton
-              icon="map-pin"
+              icon="map"
               onPress={() => router.push('/(tabs)/map')}
               color={pathname === '/map' || pathname === '/(tabs)/map' ? colors.primary : colors.mutedForeground}
               colors={colors}
