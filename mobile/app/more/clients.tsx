@@ -8,6 +8,7 @@ import {
   StyleSheet,
   TextInput,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -28,6 +29,11 @@ const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
 const handleCreateClient = () => {
   router.push('/more/client/new');
 };
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CARD_GAP = 12;
+const HORIZONTAL_PADDING = 16;
+const CARD_WIDTH = (SCREEN_WIDTH - (HORIZONTAL_PADDING * 2) - CARD_GAP) / 2;
 
 function ClientCard({ 
   client, 
@@ -53,7 +59,7 @@ function ClientCard({
   return (
     <AnimatedCardPressable
       onPress={onPress}
-      style={styles.clientCard}
+      style={[styles.clientCard, { width: CARD_WIDTH }]}
     >
       <View style={styles.clientCardContent}>
         <View style={styles.avatar}>
@@ -420,10 +426,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 12,
   },
   placeholderCard: {
-    flex: 1,
+    width: CARD_WIDTH,
   },
   clientCard: {
-    flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     overflow: 'hidden',

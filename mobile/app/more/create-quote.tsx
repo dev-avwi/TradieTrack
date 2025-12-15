@@ -727,8 +727,20 @@ export default function CreateQuoteScreen() {
                   </View>
                   <View style={styles.selectedItemText}>
                     <Text style={styles.selectedItemName}>{selectedClient.name}</Text>
-                    <Text style={styles.selectedItemDetail}>{selectedClient.email}</Text>
+                    <Text style={styles.selectedItemDetail}>{selectedClient.email || selectedClient.phone || ''}</Text>
                   </View>
+                </View>
+              ) : clientId && clients.length === 0 ? (
+                <View style={styles.selectedItem}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={[styles.selectorPlaceholder, { marginLeft: 8 }]}>Loading client...</Text>
+                </View>
+              ) : clientId ? (
+                <View style={styles.selectedItem}>
+                  <View style={styles.clientAvatar}>
+                    <Feather name="user" size={18} color={colors.primary} />
+                  </View>
+                  <Text style={styles.selectedItemName}>Client selected</Text>
                 </View>
               ) : (
                 <Text style={styles.selectorPlaceholder}>Select a client</Text>

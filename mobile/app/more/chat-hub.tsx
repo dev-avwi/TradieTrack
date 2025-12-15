@@ -161,6 +161,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   listContainer: {
     flex: 1,
+    marginTop: 8,
   },
   listContent: {
     paddingBottom: 24,

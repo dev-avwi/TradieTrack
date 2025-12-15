@@ -121,36 +121,48 @@ export default function ClientDetailScreen() {
       />
       <ScrollView style={styles.container}>
         <View style={styles.content}>
-          {/* Profile Header */}
-          <View style={styles.profileHeader}>
+          {/* Profile Header Card */}
+          <View style={styles.profileCard}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
             </View>
             <Text style={styles.clientName}>{client.name}</Text>
-          </View>
-
-          {/* Quick Actions */}
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={[styles.actionButton, !client.phone && styles.actionButtonDisabled]}
-              onPress={handleCall}
-              disabled={!client.phone}
-            >
-              <Feather name="phone" size={20} color={client.phone ? colors.primaryForeground : colors.mutedForeground} />
-              <Text style={[styles.actionButtonText, !client.phone && styles.actionButtonTextDisabled]}>
-                Call
+            {(client.email || client.phone) && (
+              <Text style={styles.clientSubtitle}>
+                {client.email || client.phone}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, !client.email && styles.actionButtonDisabled]}
-              onPress={handleEmail}
-              disabled={!client.email}
-            >
-              <Feather name="mail" size={20} color={client.email ? colors.primaryForeground : colors.mutedForeground} />
-              <Text style={[styles.actionButtonText, !client.email && styles.actionButtonTextDisabled]}>
-                Email
-              </Text>
-            </TouchableOpacity>
+            )}
+            
+            {/* Quick Actions inside profile card */}
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={[styles.actionButton, !client.phone && styles.actionButtonDisabled]}
+                onPress={handleCall}
+                disabled={!client.phone}
+              >
+                <Feather name="phone" size={18} color={client.phone ? colors.primaryForeground : colors.mutedForeground} />
+                <Text style={[styles.actionButtonText, !client.phone && styles.actionButtonTextDisabled]}>
+                  Call
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, !client.email && styles.actionButtonDisabled]}
+                onPress={handleEmail}
+                disabled={!client.email}
+              >
+                <Feather name="mail" size={18} color={client.email ? colors.primaryForeground : colors.mutedForeground} />
+                <Text style={[styles.actionButtonText, !client.email && styles.actionButtonTextDisabled]}>
+                  Email
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButtonSecondary}
+                onPress={() => router.push(`/more/create-quote?clientId=${id}`)}
+              >
+                <Feather name="file-text" size={18} color={colors.primary} />
+                <Text style={styles.actionButtonSecondaryText}>Quote</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Contact Info */}
@@ -303,9 +315,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerButton: {
     padding: spacing.sm,
   },
-  profileHeader: {
+  profileCard: {
     alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
     marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   avatar: {
     width: sizes.avatarLg,
@@ -324,33 +342,57 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   clientName: {
     ...typography.largeTitle,
     color: colors.foreground,
+    textAlign: 'center',
+  },
+  clientSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
+    textAlign: 'center',
   },
   actionsRow: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    width: '100%',
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
     backgroundColor: colors.primary,
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
-    ...shadows.sm,
+    paddingHorizontal: spacing.sm,
   },
   actionButtonDisabled: {
     backgroundColor: colors.muted,
   },
   actionButtonText: {
-    ...typography.body,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.primaryForeground,
   },
   actionButtonTextDisabled: {
     color: colors.mutedForeground,
+  },
+  actionButtonSecondary: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  actionButtonSecondaryText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
   },
   sectionTitle: {
     ...typography.caption,

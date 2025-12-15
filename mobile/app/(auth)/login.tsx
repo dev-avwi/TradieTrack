@@ -176,6 +176,7 @@ export default function LoginScreen() {
                 loading={isLoading}
                 fullWidth
                 size="xl"
+                style={{ backgroundColor: '#3B82F6' }}
               >
                 Sign In
               </Button>
