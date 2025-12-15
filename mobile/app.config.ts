@@ -12,7 +12,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   splash: {
     image: './assets/splash.png',
     resizeMode: 'contain',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
   },
   assetBundlePatterns: ['**/*'],
   ios: {
@@ -31,7 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#0f172a',
+      backgroundColor: '#ffffff',
     },
     package: 'com.tradietrack.app',
     newArchEnabled: true,

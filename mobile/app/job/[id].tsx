@@ -31,7 +31,7 @@ import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../.
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
-import SmartActionsPanel, { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
+import { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
 import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from '../../src/components/JobWorkflowComponents';
 
 interface Job {
@@ -2239,23 +2239,6 @@ export default function JobDetailScreen() {
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />
-
-      {/* Smart Actions Panel - Show when job has suggested actions */}
-      {smartActions.length > 0 && (
-        <View style={{ marginBottom: spacing.md }}>
-          <SmartActionsPanel
-            title="Next Steps"
-            subtitle="Suggested actions for this job"
-            actions={smartActions}
-            onActionToggle={handleSmartActionToggle}
-            onActionExecute={handleSmartActionExecute}
-            onExecuteAll={handleExecuteAllActions}
-            onSkipAll={handleSkipAllActions}
-            isExecuting={isExecutingActions}
-            entityType="job"
-          />
-        </View>
-      )}
 
       {/* Address Card */}
       {job.address && (

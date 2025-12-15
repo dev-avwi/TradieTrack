@@ -993,7 +993,7 @@ export default function DashboardScreen() {
             </View>
             <TouchableOpacity 
               style={styles.viewAllButton}
-              onPress={() => router.push('/more/team')}
+              onPress={() => router.push('/more/team-management')}
               activeOpacity={0.7}
             >
               <Text style={styles.viewAllText}>Manage Team</Text>

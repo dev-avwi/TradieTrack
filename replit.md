@@ -26,6 +26,11 @@ Key architectural features include:
 - **Mobile App**: A React Native mobile app (Expo SDK 52) with full API integration, Zustand for state management, and an SQLite-based offline mode with background sync and conflict resolution. It features permission-aware navigation and dedicated stores for auth, jobs, clients, quotes, and invoices.
 
 ### Recent Changes (December 2025)
+- **Mobile UX Fixes (December 15)**:
+  - Fixed "Manage Team" routing in dashboard (was routing to /more/team, now /more/team-management)
+  - Updated splash screen configuration from dark navy (#0f172a) to clean white (#ffffff) theme
+  - Fixed chat hub filter chips height to 44px for proper touch targets (was 36px)
+  - Removed duplicate "Next Steps" SmartActionsPanel from job detail page (kept single red NextActionCard CTA)
 - **Mobile Nav Parity with Web**: Updated mobile app navigation to match web app:
   - Bottom nav reduced to 4 items (Dashboard, Work, Chat, More) - removed Money tab to match web
   - Header now includes Map icon (owner/manager only), Notifications bell with unread badge, matching web header
