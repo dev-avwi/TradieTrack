@@ -115,12 +115,13 @@ export function Header({
   showBackButton = false,
   onBackPress,
 }: HeaderProps) {
-  const { user, isOwner, isManager } = useAuthStore();
+  const { user, isOwner, roleInfo } = useAuthStore();
   const { colors, isDark, setThemeMode, themeMode } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { unreadCount } = useNotificationsStore();
   const pathname = usePathname();
-  const canViewMap = isOwner() || isManager();
+  const isManager = roleInfo?.roleName === 'MANAGER' || roleInfo?.roleName === 'manager';
+  const canViewMap = isOwner() || isManager;
   
   const avatarScale = useRef(new Animated.Value(1)).current;
   

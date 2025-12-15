@@ -26,6 +26,10 @@ Key architectural features include:
 - **Mobile App**: A React Native mobile app (Expo SDK 52) with full API integration, Zustand for state management, and an SQLite-based offline mode with background sync and conflict resolution. It features permission-aware navigation and dedicated stores for auth, jobs, clients, quotes, and invoices.
 
 ### Recent Changes (December 2025)
+- **Mobile Nav Parity with Web**: Updated mobile app navigation to match web app:
+  - Bottom nav reduced to 4 items (Dashboard, Work, Chat, More) - removed Money tab to match web
+  - Header now includes Map icon (owner/manager only), Notifications bell with unread badge, matching web header
+  - Money-related screens are now accessible via More menu instead of dedicated tab
 - **Money Hub Dashboard**: New unified financial dashboard (`/money-hub`) combining invoices, quotes, and payments in one view with KPI cards (Outstanding, Overdue, Paid 30d, Pending Quotes), tabbed interface, and quick actions. Mobile parity via `mobile/app/more/money-hub.tsx`.
 - **AI Assistant Proactive Notifications**: Enhanced mobile AI assistant with real-time notifications for overdue invoices, pending quotes, and today's jobs. Color-coded priority indicators (high/medium/low) with dismissible cards. Matches web `/api/ai/notifications` endpoint functionality.
 - **Job Workflow Validation**: Backend now validates job status transitions - jobs cannot be set to "invoiced" without a linked invoice record. Added efficient `/api/jobs/:id/linked-documents` endpoint for fetching quote/invoice linkage.
