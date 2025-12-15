@@ -1124,6 +1124,141 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.md,
     paddingLeft: spacing.xs,
   },
+  completionModal: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  completionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
+  },
+  completionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  completionScrollContent: {
+    padding: spacing.lg,
+    paddingBottom: 120,
+  },
+  completionSection: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  completionSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  completionSectionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  completionSectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+    flex: 1,
+  },
+  completionSectionStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  completionStatusText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  completionSectionContent: {
+    paddingLeft: 48,
+  },
+  completionSectionDetail: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+  },
+  completionWarning: {
+    backgroundColor: colors.warning + '15',
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.warning + '30',
+  },
+  completionWarningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  completionWarningTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.warning,
+  },
+  completionWarningText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    lineHeight: 20,
+  },
+  completionFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? 34 : spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.cardBorder,
+    gap: spacing.md,
+  },
+  completionButton: {
+    paddingVertical: spacing.lg,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completionButtonPrimary: {
+    backgroundColor: colors.success,
+  },
+  completionButtonSecondary: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  completionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  completionButtonTextSecondary: {
+    color: colors.foreground,
+  },
+  photoThumbnailsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  photoThumbnail: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.md,
+    backgroundColor: colors.muted,
+  },
 });
 
 export default function JobDetailScreen() {
@@ -1167,6 +1302,9 @@ export default function JobDetailScreen() {
   const [isExecutingActions, setIsExecutingActions] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes'>('overview');
+  
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [isCompletingJob, setIsCompletingJob] = useState(false);
   
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { 
@@ -1246,9 +1384,8 @@ export default function JobDetailScreen() {
           return true;
 
         case 'mark_complete':
-          await api.patch(`/api/jobs/${job.id}/status`, { status: 'done' });
-          await loadJob();
-          Alert.alert('Success', 'Job marked as complete');
+          // Route through completion modal for review instead of direct completion
+          setShowCompletionModal(true);
           return true;
 
         case 'send_invoice_email':
@@ -1856,37 +1993,10 @@ export default function JobDetailScreen() {
       return;
     }
 
-    // Guardrail: Warn if completing an "empty" job (no photos, notes, or time tracked)
+    // Show completion summary modal when completing a job
     if (action.next === 'done') {
-      const hasPhotos = photos.length > 0;
-      const hasNotes = job.notes && job.notes.trim().length > 0;
-      // Count ANY time entries (active or completed) - not just completed ones
-      const hasTimeTracked = timeEntries.length > 0;
-      const hasSignatures = signatures.length > 0;
-      const hasVoiceNotes = voiceNotes.length > 0;
-      
-      const isEmptyJob = !hasPhotos && !hasNotes && !hasTimeTracked && !hasSignatures && !hasVoiceNotes;
-      
-      if (isEmptyJob) {
-        Alert.alert(
-          'Complete Job?',
-          'This job has no photos, notes, time tracked, or signatures. Are you sure you want to mark it as complete?\n\nConsider adding documentation before completing.',
-          [
-            { text: 'Go Back', style: 'cancel' },
-            {
-              text: 'Complete Anyway',
-              style: 'destructive',
-              onPress: async () => {
-                const success = await updateJobStatus(job.id, 'done');
-                if (success) {
-                  setJob({ ...job, status: 'done' });
-                }
-              }
-            }
-          ]
-        );
-        return;
-      }
+      setShowCompletionModal(true);
+      return;
     }
 
     Alert.alert(
@@ -1905,6 +2015,21 @@ export default function JobDetailScreen() {
         }
       ]
     );
+  };
+
+  const handleConfirmComplete = async () => {
+    if (!job) return;
+    setIsCompletingJob(true);
+    try {
+      const success = await updateJobStatus(job.id, 'done');
+      if (success) {
+        setJob({ ...job, status: 'done' });
+        setShowCompletionModal(false);
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to complete job. Please try again.');
+    }
+    setIsCompletingJob(false);
   };
 
   const handleSaveNotes = async () => {
@@ -3057,6 +3182,193 @@ export default function JobDetailScreen() {
           )}
         </View>
       </Modal>
+
+      {/* Job Completion Summary Modal */}
+      {job && (
+        <Modal visible={showCompletionModal} animationType="slide">
+          <View style={styles.completionModal}>
+            <View style={styles.completionHeader}>
+              <Text style={styles.completionTitle}>Complete Job</Text>
+              <TouchableOpacity onPress={() => setShowCompletionModal(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView contentContainerStyle={styles.completionScrollContent}>
+              {/* Job Title */}
+              <View style={[styles.completionSection, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '30' }]}>
+                <Text style={[styles.completionSectionTitle, { color: colors.primary }]}>{job.title}</Text>
+                {job.description && (
+                  <Text style={[styles.completionSectionDetail, { marginTop: spacing.xs }]}>{job.description}</Text>
+                )}
+              </View>
+
+              {/* Photos Section */}
+              <View style={styles.completionSection}>
+                <View style={styles.completionSectionHeader}>
+                  <View style={[styles.completionSectionIcon, { backgroundColor: photos.length > 0 ? colors.success + '15' : colors.destructive + '15' }]}>
+                    <Feather name="camera" size={18} color={photos.length > 0 ? colors.success : colors.destructive} />
+                  </View>
+                  <Text style={styles.completionSectionTitle}>Photos</Text>
+                  <View style={styles.completionSectionStatus}>
+                    <Feather 
+                      name={photos.length > 0 ? 'check-circle' : 'x-circle'} 
+                      size={18} 
+                      color={photos.length > 0 ? colors.success : colors.destructive} 
+                    />
+                    <Text style={[styles.completionStatusText, { color: photos.length > 0 ? colors.success : colors.destructive }]}>
+                      {photos.length > 0 ? `${photos.length} photo${photos.length !== 1 ? 's' : ''}` : 'None'}
+                    </Text>
+                  </View>
+                </View>
+                {photos.length > 0 && (
+                  <View style={styles.photoThumbnailsRow}>
+                    {photos.slice(0, 4).map((photo, idx) => (
+                      <Image 
+                        key={photo.id || idx} 
+                        source={{ uri: photo.signedUrl || photo.url || photo.thumbnailUrl }} 
+                        style={styles.photoThumbnail} 
+                      />
+                    ))}
+                    {photos.length > 4 && (
+                      <View style={[styles.photoThumbnail, { alignItems: 'center', justifyContent: 'center' }]}>
+                        <Text style={{ color: colors.mutedForeground, fontWeight: '600' }}>+{photos.length - 4}</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              {/* Notes Section */}
+              <View style={styles.completionSection}>
+                <View style={styles.completionSectionHeader}>
+                  <View style={[styles.completionSectionIcon, { backgroundColor: (job.notes && job.notes.trim()) ? colors.success + '15' : colors.destructive + '15' }]}>
+                    <Feather name="file-text" size={18} color={(job.notes && job.notes.trim()) ? colors.success : colors.destructive} />
+                  </View>
+                  <Text style={styles.completionSectionTitle}>Notes</Text>
+                  <View style={styles.completionSectionStatus}>
+                    <Feather 
+                      name={(job.notes && job.notes.trim()) ? 'check-circle' : 'x-circle'} 
+                      size={18} 
+                      color={(job.notes && job.notes.trim()) ? colors.success : colors.destructive} 
+                    />
+                    <Text style={[styles.completionStatusText, { color: (job.notes && job.notes.trim()) ? colors.success : colors.destructive }]}>
+                      {(job.notes && job.notes.trim()) ? 'Added' : 'None'}
+                    </Text>
+                  </View>
+                </View>
+                {job.notes && job.notes.trim() && (
+                  <Text style={[styles.completionSectionDetail, { marginTop: spacing.xs }]} numberOfLines={3}>
+                    {job.notes}
+                  </Text>
+                )}
+              </View>
+
+              {/* Time Tracked Section */}
+              <View style={styles.completionSection}>
+                <View style={styles.completionSectionHeader}>
+                  <View style={[styles.completionSectionIcon, { backgroundColor: timeEntries.length > 0 ? colors.success + '15' : colors.destructive + '15' }]}>
+                    <Feather name="clock" size={18} color={timeEntries.length > 0 ? colors.success : colors.destructive} />
+                  </View>
+                  <Text style={styles.completionSectionTitle}>Time Tracked</Text>
+                  <View style={styles.completionSectionStatus}>
+                    <Feather 
+                      name={timeEntries.length > 0 ? 'check-circle' : 'x-circle'} 
+                      size={18} 
+                      color={timeEntries.length > 0 ? colors.success : colors.destructive} 
+                    />
+                    <Text style={[styles.completionStatusText, { color: timeEntries.length > 0 ? colors.success : colors.destructive }]}>
+                      {timeEntries.length > 0 ? (() => {
+                        const totalMs = timeEntries.reduce((sum, entry) => {
+                          if (!entry.startTime || !entry.endTime) return sum;
+                          return sum + (new Date(entry.endTime).getTime() - new Date(entry.startTime).getTime());
+                        }, 0);
+                        const hours = Math.floor(totalMs / (1000 * 60 * 60));
+                        const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
+                        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                      })() : 'None'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Signatures Section */}
+              <View style={styles.completionSection}>
+                <View style={styles.completionSectionHeader}>
+                  <View style={[styles.completionSectionIcon, { backgroundColor: signatures.length > 0 ? colors.success + '15' : colors.destructive + '15' }]}>
+                    <Feather name="edit-3" size={18} color={signatures.length > 0 ? colors.success : colors.destructive} />
+                  </View>
+                  <Text style={styles.completionSectionTitle}>Signatures</Text>
+                  <View style={styles.completionSectionStatus}>
+                    <Feather 
+                      name={signatures.length > 0 ? 'check-circle' : 'x-circle'} 
+                      size={18} 
+                      color={signatures.length > 0 ? colors.success : colors.destructive} 
+                    />
+                    <Text style={[styles.completionStatusText, { color: signatures.length > 0 ? colors.success : colors.destructive }]}>
+                      {signatures.length > 0 ? `${signatures.length} signature${signatures.length !== 1 ? 's' : ''}` : 'None'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Voice Notes Section */}
+              <View style={styles.completionSection}>
+                <View style={styles.completionSectionHeader}>
+                  <View style={[styles.completionSectionIcon, { backgroundColor: voiceNotes.length > 0 ? colors.success + '15' : colors.destructive + '15' }]}>
+                    <Feather name="mic" size={18} color={voiceNotes.length > 0 ? colors.success : colors.destructive} />
+                  </View>
+                  <Text style={styles.completionSectionTitle}>Voice Notes</Text>
+                  <View style={styles.completionSectionStatus}>
+                    <Feather 
+                      name={voiceNotes.length > 0 ? 'check-circle' : 'x-circle'} 
+                      size={18} 
+                      color={voiceNotes.length > 0 ? colors.success : colors.destructive} 
+                    />
+                    <Text style={[styles.completionStatusText, { color: voiceNotes.length > 0 ? colors.success : colors.destructive }]}>
+                      {voiceNotes.length > 0 ? `${voiceNotes.length} recording${voiceNotes.length !== 1 ? 's' : ''}` : 'None'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Empty Job Warning */}
+              {photos.length === 0 && (!job.notes || !job.notes.trim()) && timeEntries.length === 0 && signatures.length === 0 && voiceNotes.length === 0 && (
+                <View style={styles.completionWarning}>
+                  <View style={styles.completionWarningHeader}>
+                    <Feather name="alert-triangle" size={20} color={colors.warning} />
+                    <Text style={styles.completionWarningTitle}>No Documentation</Text>
+                  </View>
+                  <Text style={styles.completionWarningText}>
+                    This job has no photos, notes, time tracked, signatures, or voice notes. Consider adding documentation before completing to keep accurate records.
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+            
+            {/* Footer Buttons */}
+            <View style={styles.completionFooter}>
+              <TouchableOpacity 
+                style={[styles.completionButton, styles.completionButtonSecondary]} 
+                onPress={() => setShowCompletionModal(false)}
+              >
+                <Text style={[styles.completionButtonText, styles.completionButtonTextSecondary]}>Go Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.completionButton, styles.completionButtonPrimary]} 
+                onPress={handleConfirmComplete}
+                disabled={isCompletingJob}
+              >
+                {isCompletingJob ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.completionButtonText}>Complete Job</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </>
   );
 }
