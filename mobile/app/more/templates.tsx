@@ -8,7 +8,8 @@ import {
   StyleSheet,
   Alert,
   TextInput,
-  Modal
+  Modal,
+  ActivityIndicator
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -16,6 +17,48 @@ import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { API_URL } from '../../src/lib/api';
 import { spacing, radius, shadows } from '../../src/lib/design-tokens';
+
+interface DocumentTemplate {
+  id: string;
+  userId: string;
+  type: 'quote' | 'invoice' | 'job';
+  familyKey: string;
+  name: string;
+  tradeType: string;
+  rateCardId: string | null;
+  styling: {
+    brandColor?: string;
+    logoDisplay?: boolean;
+  };
+  sections: {
+    showHeader?: boolean;
+    showLineItems?: boolean;
+    showTotals?: boolean;
+    showTerms?: boolean;
+    showSignature?: boolean;
+  };
+  defaults: {
+    title?: string;
+    description?: string;
+    terms?: string;
+    depositPct?: number;
+    dueTermDays?: number;
+    gstEnabled?: boolean;
+  };
+  defaultLineItems: Array<{
+    description: string;
+    qty: number;
+    unitPrice: number;
+    unit: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const tradeTypes = [
+  'plumbing', 'electrical', 'carpentry', 'painting', 'hvac', 'roofing', 
+  'landscaping', 'tiling', 'flooring', 'renovation', 'handyman', 'general'
+];
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -95,22 +138,30 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.xl,
+    flexWrap: 'wrap',
   },
-  filterDropdown: {
+  filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: spacing.xs,
   },
-  filterDropdownText: {
-    fontSize: 14,
+  filterChipActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    fontSize: 13,
     color: colors.foreground,
     textTransform: 'capitalize',
+  },
+  filterChipTextActive: {
+    color: colors.primary,
+    fontWeight: '500',
   },
   emptyState: {
     alignItems: 'center',
@@ -170,6 +221,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    marginBottom: spacing.sm,
   },
   templateInfo: {
     flex: 1,
@@ -179,29 +231,67 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
     color: colors.foreground,
   },
-  templateCategory: {
-    fontSize: 13,
+  templateMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 4,
+  },
+  templateType: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.primary,
+    textTransform: 'capitalize',
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  templateTrade: {
+    fontSize: 12,
     color: colors.mutedForeground,
     textTransform: 'capitalize',
-    marginTop: 2,
   },
   templateActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.xs,
   },
-  templatePrice: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.success,
-  },
-  deleteButton: {
+  actionButton: {
     padding: spacing.sm,
+    borderRadius: radius.md,
   },
-  templateDescription: {
-    fontSize: 14,
-    color: colors.mutedForeground,
+  templateDetails: {
     marginTop: spacing.sm,
+  },
+  templateTitle: {
+    fontSize: 14,
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  templateItemsCount: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  templateTerms: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  badge: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+    backgroundColor: colors.muted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
   },
   modalContainer: {
     flex: 1,
@@ -247,11 +337,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     minHeight: 80,
     paddingTop: spacing.md + 2,
   },
-  categoryButtons: {
+  typeButtons: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
-  categoryButton: {
+  typeButton: {
     flex: 1,
     paddingVertical: spacing.md,
     alignItems: 'center',
@@ -260,17 +350,104 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  categoryButtonActive: {
+  typeButtonActive: {
     backgroundColor: colors.primaryLight,
     borderColor: colors.primary,
   },
-  categoryButtonText: {
+  typeButtonText: {
     fontSize: 14,
     color: colors.foreground,
+    textTransform: 'capitalize',
   },
-  categoryButtonTextActive: {
+  typeButtonTextActive: {
     color: colors.primary,
     fontWeight: '500',
+  },
+  tradeTypeScroll: {
+    marginBottom: spacing.lg,
+  },
+  tradeTypeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  tradeChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tradeChipActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
+  tradeChipText: {
+    fontSize: 13,
+    color: colors.foreground,
+    textTransform: 'capitalize',
+  },
+  tradeChipTextActive: {
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  lineItemRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  lineItemInput: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    padding: spacing.sm + 2,
+    fontSize: 14,
+    color: colors.foreground,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  lineItemQty: {
+    width: 60,
+  },
+  lineItemPrice: {
+    width: 80,
+  },
+  addLineItemButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  addLineItemText: {
+    fontSize: 14,
+    color: colors.primary,
+  },
+  removeLineItemButton: {
+    padding: spacing.sm,
+    justifyContent: 'center',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  switchLabel: {
+    fontSize: 14,
+    color: colors.foreground,
   },
   saveButton: {
     flexDirection: 'row',
@@ -289,6 +466,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing['4xl'],
   },
 });
 
@@ -316,26 +499,59 @@ function StatCard({
   );
 }
 
+interface LineItem {
+  description: string;
+  qty: number;
+  unitPrice: number;
+  unit: string;
+}
+
+interface NewTemplate {
+  name: string;
+  type: 'quote' | 'invoice' | 'job';
+  tradeType: string;
+  defaults: {
+    title: string;
+    description: string;
+    terms: string;
+    depositPct: number;
+    gstEnabled: boolean;
+  };
+  defaultLineItems: LineItem[];
+}
+
 export default function TemplatesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { token } = useAuthStore();
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [typeFilter, setTypeFilter] = useState('all');
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'quote' | 'invoice' | 'job'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newTemplate, setNewTemplate] = useState({
+  const [editingTemplate, setEditingTemplate] = useState<DocumentTemplate | null>(null);
+  const [newTemplate, setNewTemplate] = useState<NewTemplate>({
     name: '',
     type: 'quote',
-    description: '',
-    items: [] as { description: string; quantity: number; unitPrice: number }[]
+    tradeType: 'general',
+    defaults: {
+      title: '',
+      description: '',
+      terms: '',
+      depositPct: 0,
+      gstEnabled: true,
+    },
+    defaultLineItems: []
   });
   const [isCreating, setIsCreating] = useState(false);
 
   const refreshData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/catalog`, {
+      const params = new URLSearchParams();
+      if (typeFilter !== 'all') params.append('type', typeFilter);
+      
+      const url = `${API_URL}/api/templates${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -348,11 +564,28 @@ export default function TemplatesScreen() {
       console.error('Failed to fetch templates:', error);
     }
     setIsLoading(false);
-  }, [token]);
+  }, [token, typeFilter]);
 
   useEffect(() => {
     refreshData();
-  }, []);
+  }, [typeFilter]);
+
+  const resetForm = () => {
+    setNewTemplate({
+      name: '',
+      type: 'quote',
+      tradeType: 'general',
+      defaults: {
+        title: '',
+        description: '',
+        terms: '',
+        depositPct: 0,
+        gstEnabled: true,
+      },
+      defaultLineItems: []
+    });
+    setEditingTemplate(null);
+  };
 
   const handleCreateTemplate = async () => {
     if (!newTemplate.name.trim()) {
@@ -362,27 +595,43 @@ export default function TemplatesScreen() {
 
     setIsCreating(true);
     try {
-      const response = await fetch(`${API_URL}/api/catalog`, {
-        method: 'POST',
+      const method = editingTemplate ? 'PATCH' : 'POST';
+      const url = editingTemplate 
+        ? `${API_URL}/api/templates/${editingTemplate.id}`
+        : `${API_URL}/api/templates`;
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: newTemplate.name,
-          description: newTemplate.description,
-          category: newTemplate.type,
-          unitPrice: 0,
+          type: newTemplate.type,
+          tradeType: newTemplate.tradeType,
+          familyKey: newTemplate.tradeType,
+          defaults: newTemplate.defaults,
+          defaultLineItems: newTemplate.defaultLineItems.filter(item => item.description.trim()),
+          styling: {},
+          sections: {
+            showHeader: true,
+            showLineItems: true,
+            showTotals: true,
+            showTerms: true,
+            showSignature: false,
+          },
         }),
       });
 
       if (response.ok) {
         await refreshData();
         setShowCreateModal(false);
-        setNewTemplate({ name: '', type: 'quote', description: '', items: [] });
-        Alert.alert('Success', 'Template created successfully');
+        resetForm();
+        Alert.alert('Success', editingTemplate ? 'Template updated successfully' : 'Template created successfully');
       } else {
-        Alert.alert('Error', 'Failed to create template');
+        const error = await response.text();
+        Alert.alert('Error', error || 'Failed to save template');
       }
     } catch (error) {
       Alert.alert('Error', 'Network error. Please try again.');
@@ -390,10 +639,59 @@ export default function TemplatesScreen() {
     setIsCreating(false);
   };
 
-  const handleDeleteTemplate = (id: string) => {
+  const handleEditTemplate = (template: DocumentTemplate) => {
+    setEditingTemplate(template);
+    setNewTemplate({
+      name: template.name,
+      type: template.type,
+      tradeType: template.tradeType,
+      defaults: {
+        title: template.defaults?.title || '',
+        description: template.defaults?.description || '',
+        terms: template.defaults?.terms || '',
+        depositPct: template.defaults?.depositPct || 0,
+        gstEnabled: template.defaults?.gstEnabled ?? true,
+      },
+      defaultLineItems: template.defaultLineItems || [],
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleDuplicateTemplate = async (template: DocumentTemplate) => {
+    try {
+      const response = await fetch(`${API_URL}/api/templates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: `${template.name} (Copy)`,
+          type: template.type,
+          tradeType: template.tradeType,
+          familyKey: template.familyKey,
+          defaults: template.defaults,
+          defaultLineItems: template.defaultLineItems,
+          styling: template.styling,
+          sections: template.sections,
+        }),
+      });
+
+      if (response.ok) {
+        await refreshData();
+        Alert.alert('Success', 'Template duplicated successfully');
+      } else {
+        Alert.alert('Error', 'Failed to duplicate template');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Network error. Please try again.');
+    }
+  };
+
+  const handleDeleteTemplate = (template: DocumentTemplate) => {
     Alert.alert(
       'Delete Template',
-      'Are you sure you want to delete this template?',
+      `Are you sure you want to delete "${template.name}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
@@ -401,7 +699,7 @@ export default function TemplatesScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await fetch(`${API_URL}/api/catalog/${id}`, {
+              const response = await fetch(`${API_URL}/api/templates/${template.id}`, {
                 method: 'DELETE',
                 headers: {
                   'Authorization': `Bearer ${token}`,
@@ -409,6 +707,7 @@ export default function TemplatesScreen() {
               });
               if (response.ok) {
                 await refreshData();
+                Alert.alert('Success', 'Template deleted');
               }
             } catch (error) {
               Alert.alert('Error', 'Failed to delete template');
@@ -419,16 +718,48 @@ export default function TemplatesScreen() {
     );
   };
 
-  const filteredTemplates = templates.filter(t => 
-    typeFilter === 'all' || t.category === typeFilter
-  );
+  const addLineItem = () => {
+    setNewTemplate({
+      ...newTemplate,
+      defaultLineItems: [
+        ...newTemplate.defaultLineItems,
+        { description: '', qty: 1, unitPrice: 0, unit: 'each' }
+      ]
+    });
+  };
 
-  const quoteTemplates = templates.filter(t => t.category === 'quote' || t.category === 'service').length;
-  const invoiceTemplates = templates.filter(t => t.category === 'invoice' || t.category === 'material').length;
-  const jobTemplates = templates.filter(t => t.category === 'job' || t.category === 'labour').length;
+  const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
+    const items = [...newTemplate.defaultLineItems];
+    items[index] = { ...items[index], [field]: value };
+    setNewTemplate({ ...newTemplate, defaultLineItems: items });
+  };
 
-  const formatPrice = (price: number) => {
-    return `$${(price / 100).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
+  const removeLineItem = (index: number) => {
+    const items = newTemplate.defaultLineItems.filter((_, i) => i !== index);
+    setNewTemplate({ ...newTemplate, defaultLineItems: items });
+  };
+
+  const filteredTemplates = templates;
+  const quoteTemplates = templates.filter(t => t.type === 'quote').length;
+  const invoiceTemplates = templates.filter(t => t.type === 'invoice').length;
+  const jobTemplates = templates.filter(t => t.type === 'job').length;
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'quote': return 'file-text';
+      case 'invoice': return 'file-text';
+      case 'job': return 'briefcase';
+      default: return 'file';
+    }
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'quote': return colors.info;
+      case 'invoice': return colors.success;
+      case 'job': return colors.warning;
+      default: return colors.primary;
+    }
   };
 
   return (
@@ -449,34 +780,37 @@ export default function TemplatesScreen() {
         >
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={styles.pageTitle}>Catalog</Text>
-              <Text style={styles.pageSubtitle}>Manage your service and product catalog</Text>
+              <Text style={styles.pageTitle}>Templates</Text>
+              <Text style={styles.pageSubtitle}>Manage document templates for quotes, invoices, and jobs</Text>
             </View>
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.createButton}
-              onPress={() => setShowCreateModal(true)}
+              onPress={() => {
+                resetForm();
+                setShowCreateModal(true);
+              }}
             >
               <Feather name="plus" size={18} color="#FFFFFF" />
-              <Text style={styles.createButtonText}>Add Item</Text>
+              <Text style={styles.createButtonText}>New</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.statsRow}>
             <StatCard
-              title="Services"
+              title="Quotes"
               value={quoteTemplates}
-              icon={<Feather name="file-text" size={14} color={colors.primary} />}
+              icon={<Feather name="file-text" size={14} color={colors.info} />}
               colors={colors}
             />
             <StatCard
-              title="Materials"
+              title="Invoices"
               value={invoiceTemplates}
               icon={<Feather name="file-text" size={14} color={colors.success} />}
               colors={colors}
             />
             <StatCard
-              title="Labour"
+              title="Jobs"
               value={jobTemplates}
               icon={<Feather name="briefcase" size={14} color={colors.warning} />}
               colors={colors}
@@ -484,39 +818,49 @@ export default function TemplatesScreen() {
           </View>
 
           <View style={styles.filtersRow}>
-            <TouchableOpacity
-              style={styles.filterDropdown}
-              onPress={() => {
-                const types = ['all', 'service', 'material', 'labour'];
-                const currentIndex = types.indexOf(typeFilter);
-                const nextIndex = (currentIndex + 1) % types.length;
-                setTypeFilter(types[nextIndex]);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.filterDropdownText}>
-                {typeFilter === 'all' ? 'All Types' : typeFilter}
-              </Text>
-              <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            {(['all', 'quote', 'invoice', 'job'] as const).map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.filterChip,
+                  typeFilter === type && styles.filterChipActive
+                ]}
+                onPress={() => setTypeFilter(type)}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  typeFilter === type && styles.filterChipTextActive
+                ]}>
+                  {type === 'all' ? 'All Types' : type + 's'}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
-          {filteredTemplates.length === 0 ? (
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : filteredTemplates.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconContainer}>
                 <Feather name="file-text" size={48} color={colors.mutedForeground} />
               </View>
-              <Text style={styles.emptyTitle}>No catalog items</Text>
+              <Text style={styles.emptyTitle}>No templates yet</Text>
               <Text style={styles.emptySubtitle}>
-                Add services, materials and labour to speed up quoting
+                Create templates to speed up creating quotes, invoices, and jobs
               </Text>
               <TouchableOpacity
                 style={styles.emptyButton}
-                onPress={() => setShowCreateModal(true)}
+                onPress={() => {
+                  resetForm();
+                  setShowCreateModal(true);
+                }}
                 activeOpacity={0.7}
               >
                 <Feather name="plus" size={18} color={colors.primary} />
-                <Text style={styles.emptyButtonText}>Add First Item</Text>
+                <Text style={styles.emptyButtonText}>Create First Template</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -526,26 +870,67 @@ export default function TemplatesScreen() {
                   <View style={styles.templateHeader}>
                     <View style={styles.templateInfo}>
                       <Text style={styles.templateName}>{template.name}</Text>
-                      <Text style={styles.templateCategory}>{template.category}</Text>
+                      <View style={styles.templateMeta}>
+                        <Text style={[styles.templateType, { backgroundColor: getTypeColor(template.type) + '20', color: getTypeColor(template.type) }]}>
+                          {template.type}
+                        </Text>
+                        <Text style={styles.templateTrade}>{template.tradeType}</Text>
+                      </View>
                     </View>
                     <View style={styles.templateActions}>
-                      <Text style={styles.templatePrice}>
-                        {formatPrice(template.unitPrice || 0)}
-                      </Text>
                       <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={() => handleDeleteTemplate(template.id)}
+                        style={styles.actionButton}
+                        onPress={() => handleEditTemplate(template)}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="edit-2" size={18} color={colors.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => handleDuplicateTemplate(template)}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="copy" size={18} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => handleDeleteTemplate(template)}
                         activeOpacity={0.7}
                       >
                         <Feather name="trash-2" size={18} color={colors.destructive} />
                       </TouchableOpacity>
                     </View>
                   </View>
-                  {template.description && (
-                    <Text style={styles.templateDescription} numberOfLines={2}>
-                      {template.description}
-                    </Text>
-                  )}
+                  
+                  <View style={styles.templateDetails}>
+                    {template.defaults?.title && (
+                      <Text style={styles.templateTitle} numberOfLines={1}>
+                        {template.defaults.title}
+                      </Text>
+                    )}
+                    
+                    <View style={styles.badgeRow}>
+                      {template.defaultLineItems?.length > 0 && (
+                        <Text style={styles.badge}>
+                          {template.defaultLineItems.length} line items
+                        </Text>
+                      )}
+                      {template.defaults?.depositPct > 0 && (
+                        <Text style={styles.badge}>
+                          {template.defaults.depositPct}% deposit
+                        </Text>
+                      )}
+                      {template.defaults?.gstEnabled && (
+                        <Text style={styles.badge}>GST</Text>
+                      )}
+                    </View>
+
+                    {template.defaults?.terms && (
+                      <Text style={styles.templateTerms} numberOfLines={2}>
+                        {template.defaults.terms}
+                      </Text>
+                    )}
+                  </View>
                 </View>
               ))}
             </View>
@@ -559,43 +944,51 @@ export default function TemplatesScreen() {
         >
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowCreateModal(false)} activeOpacity={0.7}>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowCreateModal(false);
+                  resetForm();
+                }} 
+                activeOpacity={0.7}
+              >
                 <Feather name="x" size={24} color={colors.foreground} />
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Add Catalog Item</Text>
+              <Text style={styles.modalTitle}>
+                {editingTemplate ? 'Edit Template' : 'New Template'}
+              </Text>
               <View style={{ width: 24 }} />
             </View>
 
-            <ScrollView style={styles.modalContent}>
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Name</Text>
+                <Text style={styles.inputLabel}>Template Name</Text>
                 <TextInput
                   style={styles.input}
                   value={newTemplate.name}
                   onChangeText={(text) => setNewTemplate({ ...newTemplate, name: text })}
-                  placeholder="e.g., Labour - Per Hour"
+                  placeholder="e.g., Standard Plumbing Quote"
                   placeholderTextColor={colors.mutedForeground}
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Category</Text>
-                <View style={styles.categoryButtons}>
-                  {['service', 'material', 'labour'].map((cat) => (
+                <Text style={styles.inputLabel}>Template Type</Text>
+                <View style={styles.typeButtons}>
+                  {(['quote', 'invoice', 'job'] as const).map((type) => (
                     <TouchableOpacity
-                      key={cat}
+                      key={type}
                       style={[
-                        styles.categoryButton,
-                        newTemplate.type === cat && styles.categoryButtonActive
+                        styles.typeButton,
+                        newTemplate.type === type && styles.typeButtonActive
                       ]}
-                      onPress={() => setNewTemplate({ ...newTemplate, type: cat })}
+                      onPress={() => setNewTemplate({ ...newTemplate, type })}
                       activeOpacity={0.7}
                     >
                       <Text style={[
-                        styles.categoryButtonText,
-                        newTemplate.type === cat && styles.categoryButtonTextActive
+                        styles.typeButtonText,
+                        newTemplate.type === type && styles.typeButtonTextActive
                       ]}>
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                        {type}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -603,11 +996,54 @@ export default function TemplatesScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Description (optional)</Text>
+                <Text style={styles.inputLabel}>Trade Type</Text>
+                <View style={styles.tradeTypeContainer}>
+                  {tradeTypes.map((trade) => (
+                    <TouchableOpacity
+                      key={trade}
+                      style={[
+                        styles.tradeChip,
+                        newTemplate.tradeType === trade && styles.tradeChipActive
+                      ]}
+                      onPress={() => setNewTemplate({ ...newTemplate, tradeType: trade })}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.tradeChipText,
+                        newTemplate.tradeType === trade && styles.tradeChipTextActive
+                      ]}>
+                        {trade}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <Text style={styles.sectionHeader}>Default Values</Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Default Title</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newTemplate.defaults.title}
+                  onChangeText={(text) => setNewTemplate({ 
+                    ...newTemplate, 
+                    defaults: { ...newTemplate.defaults, title: text } 
+                  })}
+                  placeholder="e.g., Plumbing Service Quote"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Default Description</Text>
                 <TextInput
                   style={[styles.input, styles.inputMultiline]}
-                  value={newTemplate.description}
-                  onChangeText={(text) => setNewTemplate({ ...newTemplate, description: text })}
+                  value={newTemplate.defaults.description}
+                  onChangeText={(text) => setNewTemplate({ 
+                    ...newTemplate, 
+                    defaults: { ...newTemplate.defaults, description: text } 
+                  })}
                   placeholder="Brief description..."
                   placeholderTextColor={colors.mutedForeground}
                   multiline
@@ -615,6 +1051,84 @@ export default function TemplatesScreen() {
                   textAlignVertical="top"
                 />
               </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Default Terms</Text>
+                <TextInput
+                  style={[styles.input, styles.inputMultiline]}
+                  value={newTemplate.defaults.terms}
+                  onChangeText={(text) => setNewTemplate({ 
+                    ...newTemplate, 
+                    defaults: { ...newTemplate.defaults, terms: text } 
+                  })}
+                  placeholder="Payment terms, conditions..."
+                  placeholderTextColor={colors.mutedForeground}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Default Deposit (%)</Text>
+                <TextInput
+                  style={[styles.input, { width: 100 }]}
+                  value={String(newTemplate.defaults.depositPct || '')}
+                  onChangeText={(text) => setNewTemplate({ 
+                    ...newTemplate, 
+                    defaults: { ...newTemplate.defaults, depositPct: parseInt(text) || 0 } 
+                  })}
+                  placeholder="0"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <Text style={styles.sectionHeader}>Default Line Items</Text>
+
+              {newTemplate.defaultLineItems.map((item, index) => (
+                <View key={index} style={styles.lineItemRow}>
+                  <TextInput
+                    style={styles.lineItemInput}
+                    value={item.description}
+                    onChangeText={(text) => updateLineItem(index, 'description', text)}
+                    placeholder="Description"
+                    placeholderTextColor={colors.mutedForeground}
+                  />
+                  <TextInput
+                    style={[styles.lineItemInput, styles.lineItemQty]}
+                    value={String(item.qty || '')}
+                    onChangeText={(text) => updateLineItem(index, 'qty', parseInt(text) || 1)}
+                    placeholder="Qty"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.lineItemInput, styles.lineItemPrice]}
+                    value={String(item.unitPrice || '')}
+                    onChangeText={(text) => updateLineItem(index, 'unitPrice', parseFloat(text) || 0)}
+                    placeholder="Price"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="decimal-pad"
+                  />
+                  <TouchableOpacity
+                    style={styles.removeLineItemButton}
+                    onPress={() => removeLineItem(index)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="x" size={20} color={colors.destructive} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              <TouchableOpacity
+                style={styles.addLineItemButton}
+                onPress={addLineItem}
+                activeOpacity={0.7}
+              >
+                <Feather name="plus" size={18} color={colors.primary} />
+                <Text style={styles.addLineItemText}>Add Line Item</Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.saveButton, isCreating && styles.saveButtonDisabled]}
@@ -624,9 +1138,11 @@ export default function TemplatesScreen() {
               >
                 <Feather name="check" size={18} color="#FFFFFF" />
                 <Text style={styles.saveButtonText}>
-                  {isCreating ? 'Creating...' : 'Create Item'}
+                  {isCreating ? 'Saving...' : (editingTemplate ? 'Update Template' : 'Create Template')}
                 </Text>
               </TouchableOpacity>
+
+              <View style={{ height: 40 }} />
             </ScrollView>
           </View>
         </Modal>
