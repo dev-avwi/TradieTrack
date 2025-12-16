@@ -188,9 +188,10 @@ function getSafeForegroundColor(bgHex: string): string {
 const MIN_BUTTON_CONTRAST = 4.5;
 
 // Default fallback colors when brand color lacks contrast
+// Uses vibrant blue that's universally visible in both light and dark modes
 const FALLBACK_BUTTON = {
-  light: { bg: '#1f2733', bgPressed: '#171a1d', border: '#171a1d', text: '#ffffff' },
-  dark: { bg: '#eef2f5', bgPressed: '#d4dce3', border: '#d4dce3', text: '#1f2733' },
+  light: { bg: '#2563EB', bgPressed: '#1D4ED8', border: '#1D4ED8', text: '#ffffff' },
+  dark: { bg: '#3B82F6', bgPressed: '#2563EB', border: '#2563EB', text: '#ffffff' },
 };
 
 // Get button colors that are guaranteed to be visible

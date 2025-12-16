@@ -639,7 +639,7 @@ export default function NewInvoiceScreen() {
   const { user, businessSettings } = useAuthStore();
   const { clients, fetchClients } = useClientsStore();
   const { fetchInvoices } = useInvoicesStore();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [isLoading, setIsLoading] = useState(false);
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -1385,7 +1385,7 @@ export default function NewInvoiceScreen() {
                     colors.primaryDark,
                     colors.primaryForeground,
                     colors.card,
-                    colors.isDark
+                    isDark
                   );
                   return [
                     styles.submitButton,
@@ -1405,7 +1405,7 @@ export default function NewInvoiceScreen() {
                     colors.primaryDark,
                     colors.primaryForeground,
                     colors.card,
-                    colors.isDark
+                    isDark
                   );
                   return isLoading ? (
                     <ActivityIndicator size="small" color={btnColors.text} />

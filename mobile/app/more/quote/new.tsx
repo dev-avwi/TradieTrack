@@ -582,7 +582,7 @@ export default function NewQuoteScreen() {
   const { user, businessSettings } = useAuthStore();
   const { clients, fetchClients } = useClientsStore();
   const { fetchQuotes } = useQuotesStore();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [isLoading, setIsLoading] = useState(false);
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -1237,7 +1237,7 @@ export default function NewQuoteScreen() {
                     colors.primaryDark,
                     colors.primaryForeground,
                     colors.card,
-                    colors.isDark
+                    isDark
                   );
                   return [
                     styles.submitButton,
@@ -1257,7 +1257,7 @@ export default function NewQuoteScreen() {
                     colors.primaryDark,
                     colors.primaryForeground,
                     colors.card,
-                    colors.isDark
+                    isDark
                   );
                   return isLoading ? (
                     <ActivityIndicator size="small" color={btnColors.text} />
