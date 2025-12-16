@@ -25,6 +25,10 @@ Key architectural features include:
 -   **Role-Based Access Control (RBAC)**: Granular permissions and role templates (OWNER, ADMIN, SUPERVISOR, STAFF) enforced by middleware.
 -   **Workflow-Integrated Smart Actions**: Contextual automation suggestions with user approval, previews, and toggle controls, including next-action indicators and pre-fill APIs.
 -   **Mobile App (React Native/Expo)**: Full API integration, Zustand for state management, SQLite-based offline mode with background sync (15-min intervals), conflict resolution UI, quote/invoice line items caching, max 10 retry attempts with exponential backoff, and permission-aware navigation.
+-   **Photo Markup/Annotation**: WebView-based canvas editor with pen, arrow, text, and rectangle tools. Color picker, stroke width selector, undo/clear functionality. Integrated into job photo viewer with Markup button.
+-   **Video Capture**: Record videos up to 60 seconds or select from gallery. Video player modal with HTML5 playback. Videos displayed alongside photos with play icon overlay.
+-   **Route Optimization**: Haversine distance calculation with nearest-neighbor algorithm. "Optimize Route" button reorders daily jobs by proximity starting from GPS location. Per-job "Get Directions" and multi-stop "Start Route" navigation to native maps apps.
+-   **Recurring Invoices**: Toggle in invoice creation with frequency picker (weekly, fortnightly, monthly, quarterly, yearly). Optional end date. Recurring filter in invoices list with badges and next generation date display. Stop Recurring control in invoice detail.
 -   **Financial Management**: Unified financial dashboard (`/money-hub`) combining invoices, quotes, and payments with KPI cards and quick actions. Supports recording on-site payments and generating Stripe payment links.
 -   **Automation**: Rule-based SMS automation for reminders and follow-ups.
 -   **Client Asset Library & Smart Pre-fill**: API endpoints for retrieving and reusing job photos, quote items, invoice items, and notes. Smart pre-fill suggestions for new jobs/quotes/invoices.
