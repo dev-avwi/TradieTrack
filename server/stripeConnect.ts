@@ -74,7 +74,7 @@ export async function createConnectOnboardingLink(
   accountId: string,
   returnUrl: string,
   refreshUrl: string
-): Promise<{ url?: string; error?: string }> {
+): Promise<{ url?: string; error?: string; isConfigurationError?: boolean }> {
   const stripe = await getUncachableStripeClient();
   if (!stripe) {
     return { error: 'Stripe not configured' };
@@ -90,6 +90,15 @@ export async function createConnectOnboardingLink(
     return { url: accountLink.url };
   } catch (error: any) {
     console.error('Error creating onboarding link:', error);
+    
+    // Check for Australia country not enabled error
+    if (error.message?.includes('not enabled for Express') || error.message?.includes('Country and Capabilities')) {
+      return { 
+        error: 'Stripe payment setup is being configured. Please try again shortly or contact support.',
+        isConfigurationError: true
+      };
+    }
+    
     return { error: error.message };
   }
 }
