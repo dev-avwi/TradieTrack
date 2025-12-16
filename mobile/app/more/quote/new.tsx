@@ -1229,46 +1229,32 @@ export default function NewQuoteScreen() {
                 />
               </View>
 
-              {/* Submit Button - Uses theme colors with smart fallback */}
-              <Pressable
-                style={({ pressed }) => {
-                  const btnColors = getVisibleButtonColors(
-                    colors.primary,
-                    colors.primaryDark,
-                    colors.primaryForeground,
-                    colors.card,
-                    isDark
-                  );
-                  return [
-                    styles.submitButton,
-                    { 
-                      backgroundColor: pressed && !isLoading ? btnColors.bgPressed : btnColors.bg,
-                      borderColor: btnColors.border,
-                    },
-                    isLoading && styles.submitButtonDisabled,
-                  ];
+              {/* Submit Button - Uses business primary color */}
+              <TouchableOpacity
+                style={{
+                  backgroundColor: colors.primary,
+                  paddingVertical: 14,
+                  paddingHorizontal: 20,
+                  borderRadius: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  opacity: isLoading ? 0.6 : 1,
                 }}
                 onPress={handleSave}
                 disabled={isLoading}
+                activeOpacity={0.8}
               >
-                {({ pressed }) => {
-                  const btnColors = getVisibleButtonColors(
-                    colors.primary,
-                    colors.primaryDark,
-                    colors.primaryForeground,
-                    colors.card,
-                    isDark
-                  );
-                  return isLoading ? (
-                    <ActivityIndicator size="small" color={btnColors.text} />
-                  ) : (
-                    <>
-                      <Feather name="check" size={20} color={btnColors.text} />
-                      <Text style={[styles.submitButtonText, { color: btnColors.text }]}>Create Quote</Text>
-                    </>
-                  );
-                }}
-              </Pressable>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <>
+                    <Feather name="check" size={18} color={colors.primaryForeground} />
+                    <Text style={{ color: colors.primaryForeground, fontSize: 16, fontWeight: '600' }}>Create Quote</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
         )}
