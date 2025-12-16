@@ -184,6 +184,10 @@ export async function sendQuickAction(options: QuickActionOptions): Promise<SmsM
 
 /**
  * Handle incoming SMS from Twilio webhook
+ * 
+ * Multi-tenant safety: When multiple businesses serve the same client,
+ * we resolve to the most recent conversation that has had an outbound message.
+ * This ensures replies go to the business that most recently contacted the client.
  */
 export async function handleIncomingSms(
   fromPhone: string,
@@ -193,7 +197,7 @@ export async function handleIncomingSms(
 ): Promise<SmsMessage | null> {
   const formattedFromPhone = formatPhoneNumber(fromPhone);
   
-  // Find conversation by phone number (to any business)
+  // Find all conversations with this client phone number
   const conversations = await storage.getSmsConversationsByClientPhone(formattedFromPhone);
   
   if (conversations.length === 0) {
@@ -201,14 +205,38 @@ export async function handleIncomingSms(
     return null;
   }
   
-  // Use the most recent conversation
-  const conversation = conversations.sort((a, b) => 
-    new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
-  )[0];
+  // Multi-tenant safety: Find the conversation that most recently sent an outbound message
+  // This ensures replies go to the business that last contacted the client
+  let targetConversation = null;
+  let latestOutboundTime = new Date(0);
+  
+  for (const conv of conversations) {
+    // Get the most recent outbound message for this conversation
+    const messages = await storage.getSmsMessages(conv.id);
+    const lastOutbound = messages
+      .filter(m => m.direction === 'outbound')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    
+    if (lastOutbound) {
+      const outboundTime = new Date(lastOutbound.createdAt);
+      if (outboundTime > latestOutboundTime) {
+        latestOutboundTime = outboundTime;
+        targetConversation = conv;
+      }
+    }
+  }
+  
+  // Fallback: if no outbound messages found, use the most recent conversation
+  if (!targetConversation) {
+    targetConversation = conversations.sort((a, b) => 
+      new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
+    )[0];
+    console.log(`[SMS] No outbound messages found for ${formattedFromPhone}, using most recent conversation`);
+  }
   
   // Create inbound message
   const message = await storage.createSmsMessage({
-    conversationId: conversation.id,
+    conversationId: targetConversation.id,
     direction: 'inbound',
     body,
     senderUserId: null,
@@ -221,10 +249,12 @@ export async function handleIncomingSms(
   });
   
   // Update conversation
-  await storage.updateSmsConversation(conversation.id, {
+  await storage.updateSmsConversation(targetConversation.id, {
     lastMessageAt: new Date(),
-    unreadCount: (conversation.unreadCount || 0) + 1,
+    unreadCount: (targetConversation.unreadCount || 0) + 1,
   });
+  
+  console.log(`[SMS] Inbound message routed to conversation ${targetConversation.id} (business: ${targetConversation.businessOwnerId})`);
   
   return message;
 }
