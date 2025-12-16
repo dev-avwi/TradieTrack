@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { useTodaysJobs } from "@/hooks/use-dashboard-data";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
@@ -10,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState, useEffect, useRef } from "react";
 import UpgradeToTeamCard from "./UpgradeToTeamCard";
+import AIAssistant from "./AIAssistant";
 import { 
   Briefcase, 
   MapPin,
@@ -28,7 +30,8 @@ import {
   Navigation,
   PhoneCall,
   Wrench,
-  Flag
+  Flag,
+  ChevronDown
 } from "lucide-react";
 
 interface TradieDashboardProps {
@@ -52,6 +55,7 @@ export default function TradieDashboard({
   const { isTeam, shouldShowLocationCheckin } = useAppMode();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const { data: myJobs = [] } = useQuery<any[]>({
@@ -570,6 +574,43 @@ export default function TradieDashboard({
           </div>
         </CardContent>
       </Card>
+
+      {/* AI Assistant - Collapsible Section */}
+      <section data-testid="ai-assistant-section">
+        <Collapsible open={isAIAssistantOpen} onOpenChange={setIsAIAssistantOpen}>
+          <Card className="overflow-hidden">
+            <CollapsibleTrigger asChild>
+              <div 
+                className="flex items-center justify-between p-4 cursor-pointer hover-elevate"
+                style={{ 
+                  background: 'linear-gradient(135deg, hsl(var(--trade) / 0.1) 0%, hsl(var(--trade) / 0.05) 100%)'
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}
+                  >
+                    <Sparkles className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-base">AI Assistant</h2>
+                    <p className="text-xs text-muted-foreground">Ask me anything about your business</p>
+                  </div>
+                </div>
+                <ChevronDown 
+                  className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${isAIAssistantOpen ? 'rotate-180' : ''}`} 
+                />
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="p-0">
+                <AIAssistant onNavigate={onNavigate} />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      </section>
 
       {/* Next Job Card - Real-World Actions */}
       {nextJob ? (
