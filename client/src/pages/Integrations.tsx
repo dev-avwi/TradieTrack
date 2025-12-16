@@ -10,6 +10,8 @@ import { EmailIntegration } from "@/components/EmailIntegration";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import StripeSetupGuide from "@/components/StripeSetupGuide";
+import XeroSetupGuide from "@/components/XeroSetupGuide";
+import MyobSetupGuide from "@/components/MyobSetupGuide";
 import { 
   Dialog,
   DialogContent,
@@ -767,19 +769,12 @@ export default function Integrations() {
                 </div>
               </>
             ) : xeroStatus?.configured === false ? (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  Xero integration requires configuration. Contact support to enable this feature.
-                </p>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground">
-                      Xero integration syncs your invoices, contacts, and payments between TradieTrack and your Xero account.
-                    </p>
-                  </div>
-                </div>
-              </>
+              <XeroSetupGuide
+                isConnected={false}
+                isConfigured={false}
+                onConnect={() => connectXeroMutation.mutate()}
+                isConnecting={connectXeroMutation.isPending}
+              />
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
@@ -953,19 +948,13 @@ export default function Integrations() {
                 
               </>
             ) : myobStatus?.configured === false ? (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  MYOB integration requires configuration. Contact support to enable this feature.
-                </p>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground">
-                      MYOB integration syncs your invoices, contacts, and payments between TradieTrack and your MYOB AccountRight account.
-                    </p>
-                  </div>
-                </div>
-              </>
+              <MyobSetupGuide
+                isConnected={false}
+                isConfigured={false}
+                cfCredentialsSet={false}
+                onConnect={() => connectMyobMutation.mutate()}
+                isConnecting={connectMyobMutation.isPending}
+              />
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
