@@ -133,6 +133,12 @@ import {
   type InsertFormSubmission,
   customForms,
   formSubmissions,
+  smsConversations,
+  smsMessages,
+  type SmsConversation,
+  type InsertSmsConversation,
+  type SmsMessage,
+  type InsertSmsMessage,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -423,6 +429,21 @@ export interface IStorage {
   createFormSubmission(submission: InsertFormSubmission): Promise<FormSubmission>;
   updateFormSubmission(id: string, userId: string, submission: Partial<InsertFormSubmission>): Promise<FormSubmission | undefined>;
   deleteFormSubmission(id: string, userId: string): Promise<boolean>;
+
+  // SMS Conversations
+  getSmsConversation(id: string): Promise<SmsConversation | undefined>;
+  getSmsConversationByPhone(businessOwnerId: string, clientPhone: string): Promise<SmsConversation | undefined>;
+  getSmsConversationsByBusiness(businessOwnerId: string): Promise<SmsConversation[]>;
+  getSmsConversationsByClientPhone(clientPhone: string): Promise<SmsConversation[]>;
+  getSmsConversationsByJobIds(jobIds: string[]): Promise<SmsConversation[]>;
+  createSmsConversation(conversation: InsertSmsConversation): Promise<SmsConversation>;
+  updateSmsConversation(id: string, updates: Partial<InsertSmsConversation>): Promise<SmsConversation>;
+
+  // SMS Messages  
+  getSmsMessages(conversationId: string): Promise<SmsMessage[]>;
+  createSmsMessage(message: InsertSmsMessage): Promise<SmsMessage>;
+  updateSmsMessage(id: string, updates: Partial<InsertSmsMessage>): Promise<SmsMessage>;
+  markSmsMessagesAsRead(conversationId: string): Promise<void>;
 }
 
 // Initialize database connection
@@ -2792,6 +2813,95 @@ export class PostgresStorage implements IStorage {
       .where(eq(formSubmissions.id, id))
       .returning();
     return result.length > 0;
+  }
+
+  // SMS Conversations
+  async getSmsConversation(id: string): Promise<SmsConversation | undefined> {
+    const result = await db.select().from(smsConversations)
+      .where(and(eq(smsConversations.id, id), isNull(smsConversations.deletedAt)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getSmsConversationByPhone(businessOwnerId: string, clientPhone: string): Promise<SmsConversation | undefined> {
+    const result = await db.select().from(smsConversations)
+      .where(and(
+        eq(smsConversations.businessOwnerId, businessOwnerId),
+        eq(smsConversations.clientPhone, clientPhone),
+        isNull(smsConversations.deletedAt)
+      ))
+      .limit(1);
+    return result[0];
+  }
+
+  async getSmsConversationsByBusiness(businessOwnerId: string): Promise<SmsConversation[]> {
+    return await db.select().from(smsConversations)
+      .where(and(
+        eq(smsConversations.businessOwnerId, businessOwnerId),
+        isNull(smsConversations.deletedAt)
+      ))
+      .orderBy(desc(smsConversations.lastMessageAt));
+  }
+
+  async getSmsConversationsByClientPhone(clientPhone: string): Promise<SmsConversation[]> {
+    return await db.select().from(smsConversations)
+      .where(and(
+        eq(smsConversations.clientPhone, clientPhone),
+        isNull(smsConversations.deletedAt)
+      ))
+      .orderBy(desc(smsConversations.lastMessageAt));
+  }
+
+  async getSmsConversationsByJobIds(jobIds: string[]): Promise<SmsConversation[]> {
+    if (jobIds.length === 0) return [];
+    return await db.select().from(smsConversations)
+      .where(and(
+        inArray(smsConversations.jobId, jobIds),
+        isNull(smsConversations.deletedAt)
+      ))
+      .orderBy(desc(smsConversations.lastMessageAt));
+  }
+
+  async createSmsConversation(conversation: InsertSmsConversation): Promise<SmsConversation> {
+    const [result] = await db.insert(smsConversations).values(conversation).returning();
+    return result;
+  }
+
+  async updateSmsConversation(id: string, updates: Partial<InsertSmsConversation>): Promise<SmsConversation> {
+    const [result] = await db.update(smsConversations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(smsConversations.id, id))
+      .returning();
+    return result;
+  }
+
+  // SMS Messages
+  async getSmsMessages(conversationId: string): Promise<SmsMessage[]> {
+    return await db.select().from(smsMessages)
+      .where(eq(smsMessages.conversationId, conversationId))
+      .orderBy(asc(smsMessages.createdAt));
+  }
+
+  async createSmsMessage(message: InsertSmsMessage): Promise<SmsMessage> {
+    const [result] = await db.insert(smsMessages).values(message).returning();
+    return result;
+  }
+
+  async updateSmsMessage(id: string, updates: Partial<InsertSmsMessage>): Promise<SmsMessage> {
+    const [result] = await db.update(smsMessages)
+      .set(updates)
+      .where(eq(smsMessages.id, id))
+      .returning();
+    return result;
+  }
+
+  async markSmsMessagesAsRead(conversationId: string): Promise<void> {
+    await db.update(smsMessages)
+      .set({ read: true })
+      .where(and(
+        eq(smsMessages.conversationId, conversationId),
+        eq(smsMessages.read, false)
+      ));
   }
 }
 

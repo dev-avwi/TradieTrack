@@ -1772,6 +1772,53 @@ export const insertDirectMessageSchema = createInsertSchema(directMessages).omit
 export type InsertDirectMessage = z.infer<typeof insertDirectMessageSchema>;
 export type DirectMessage = typeof directMessages.$inferSelect;
 
+// SMS Conversations - Two-way SMS with clients via Twilio
+export const smsConversations = pgTable("sms_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  clientPhone: varchar("client_phone", { length: 20 }).notNull(),
+  clientName: varchar("client_name", { length: 255 }),
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+  unreadCount: integer("unread_count").default(0),
+  isArchived: boolean("is_archived").default(false),
+  deletedAt: timestamp("deleted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSmsConversationSchema = createInsertSchema(smsConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSmsConversation = z.infer<typeof insertSmsConversationSchema>;
+export type SmsConversation = typeof smsConversations.$inferSelect;
+
+// SMS Messages - Individual messages within conversations
+export const smsMessages = pgTable("sms_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => smsConversations.id, { onDelete: 'cascade' }),
+  direction: text("direction").notNull(), // 'inbound' or 'outbound'
+  body: text("body").notNull(),
+  senderUserId: varchar("sender_user_id").references(() => users.id, { onDelete: 'set null' }),
+  status: text("status").default('pending'), // pending, sent, delivered, failed
+  twilioSid: varchar("twilio_sid", { length: 50 }),
+  errorMessage: text("error_message"),
+  isQuickAction: boolean("is_quick_action").default(false),
+  quickActionType: text("quick_action_type"), // on_my_way, job_finished, etc.
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSmsMessageSchema = createInsertSchema(smsMessages).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSmsMessage = z.infer<typeof insertSmsMessageSchema>;
+export type SmsMessage = typeof smsMessages.$inferSelect;
+
 // Automation Rules - ServiceM8-style workflow automation
 export const automations = pgTable("automations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
