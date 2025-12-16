@@ -321,6 +321,21 @@ export default function Automations() {
     createAutomationMutation.mutate({ ...preset, isActive: true });
   };
 
+  const getQuickSetupIcon = (name: string) => {
+    if (name.includes("Quote Accepted")) return Briefcase;
+    if (name.includes("Job Completed")) return Receipt;
+    if (name.includes("Invoice Reminder")) return Timer;
+    if (name.includes("Payment Received")) return CheckCircle2;
+    return Zap;
+  };
+
+  const QUICK_SETUP_AUTOMATIONS = [
+    PRESET_AUTOMATIONS[0],
+    PRESET_AUTOMATIONS[1],
+    PRESET_AUTOMATIONS[7],
+    PRESET_AUTOMATIONS[9],
+  ];
+
   const activeAutomations = automations.filter(a => a.isActive);
   const inactiveAutomations = automations.filter(a => !a.isActive);
 
@@ -362,6 +377,74 @@ export default function Automations() {
           </Dialog>
         }
       />
+
+      <Card className="mb-6 bg-muted/30" data-testid="quick-setup-section">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg" data-testid="quick-setup-title">Recommended for Most Tradies</CardTitle>
+          <CardDescription data-testid="quick-setup-subtitle">
+            Enable these automations to save hours every week
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {QUICK_SETUP_AUTOMATIONS.map((preset, idx) => {
+              const existingAutomation = automations.find(a => a.name === preset.name);
+              const isActive = existingAutomation?.isActive ?? false;
+              const isAdded = !!existingAutomation;
+              const Icon = getQuickSetupIcon(preset.name);
+
+              return (
+                <Card 
+                  key={idx} 
+                  className="hover-elevate"
+                  data-testid={`quick-setup-card-${idx}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className={`p-2 rounded-lg ${
+                        isActive 
+                          ? 'bg-green-100 dark:bg-green-900/30' 
+                          : 'bg-primary/10'
+                      }`}>
+                        <Icon className={`h-4 w-4 ${
+                          isActive ? 'text-green-600' : ''
+                        }`} style={isActive ? {} : { color: 'hsl(var(--trade))' }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm leading-tight" data-testid={`quick-setup-name-${idx}`}>
+                          {preset.name}
+                        </h4>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2" data-testid={`quick-setup-desc-${idx}`}>
+                      {preset.description}
+                    </p>
+                    {isActive ? (
+                      <div 
+                        className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-medium"
+                        data-testid={`quick-setup-active-${idx}`}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Active
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        disabled={createAutomationMutation.isPending}
+                        onClick={() => handleAddPreset(preset)}
+                        data-testid={`quick-setup-enable-${idx}`}
+                      >
+                        Enable
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
