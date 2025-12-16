@@ -11,7 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import StripeSetupGuide from "@/components/StripeSetupGuide";
 import XeroSetupGuide from "@/components/XeroSetupGuide";
-import MyobSetupGuide from "@/components/MyobSetupGuide";
+// MYOB integration removed per user request - focusing on Xero
+// import MyobSetupGuide from "@/components/MyobSetupGuide";
 import { 
   Dialog,
   DialogContent,
@@ -39,7 +40,7 @@ import {
   FileText,
   BarChart3
 } from "lucide-react";
-import { SiStripe, SiGmail, SiXero, SiMyob } from "react-icons/si";
+import { SiStripe, SiGmail, SiXero } from "react-icons/si";
 import { RefreshCw, Link2Off } from "lucide-react";
 
 interface XeroStatus {
@@ -52,16 +53,17 @@ interface XeroStatus {
   message?: string;
 }
 
-interface MyobStatus {
-  configured: boolean;
-  connected: boolean;
-  companyName?: string;
-  businessId?: string;
-  lastSyncAt?: string;
-  status?: string;
-  message?: string;
-  cfCredentialsSet?: boolean;
-}
+// MYOB interface - kept for future use
+// interface MyobStatus {
+//   configured: boolean;
+//   connected: boolean;
+//   companyName?: string;
+//   businessId?: string;
+//   lastSyncAt?: string;
+//   status?: string;
+//   message?: string;
+//   cfCredentialsSet?: boolean;
+// }
 
 interface ServiceHealth {
   name: string;
@@ -268,100 +270,8 @@ export default function Integrations() {
     },
   });
 
-  // MYOB integration queries and mutations
-  const { data: myobStatus, refetch: refetchMyob } = useQuery<MyobStatus>({
-    queryKey: ['/api/integrations/myob/status'],
-  });
-
-  const connectMyobMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/integrations/myob/connect');
-      return response;
-    },
-    onSuccess: (data: any) => {
-      if (data.authUrl) {
-        window.location.href = data.authUrl;
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Connection Failed",
-        description: error.message || "Failed to start MYOB connection",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const disconnectMyobMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/integrations/myob/disconnect');
-      return response;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Disconnected",
-        description: "MYOB has been disconnected successfully",
-      });
-      refetchMyob();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to disconnect MYOB",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const syncMyobMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/integrations/myob/sync');
-      return response;
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Sync Complete",
-        description: "Data has been synced with MYOB",
-      });
-      refetchMyob();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Sync Failed",
-        description: error.message || "Failed to sync with MYOB",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const [myobCfUsername, setMyobCfUsername] = useState("");
-  const [myobCfPassword, setMyobCfPassword] = useState("");
-
-  const saveMyobCredentialsMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/integrations/myob/credentials', {
-        cfUsername: myobCfUsername,
-        cfPassword: myobCfPassword,
-      });
-      return response;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Credentials Saved",
-        description: "MYOB company file credentials have been saved securely",
-      });
-      setMyobCfUsername("");
-      setMyobCfPassword("");
-      refetchMyob();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save MYOB credentials",
-        variant: "destructive",
-      });
-    },
-  });
+  // MYOB integration - Removed from UI per user request (focusing on Xero)
+  // Backend routes remain available for future use
 
   if (isLoading) {
     return (
@@ -817,185 +727,7 @@ export default function Integrations() {
           </CardContent>
         </Card>
 
-        {/* MYOB Accounting Integration */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  myobStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
-                  myobStatus?.configured ? 'bg-gray-100 dark:bg-gray-800/50' :
-                  'bg-gray-100 dark:bg-gray-800/50'
-                }`}>
-                  <SiMyob className={`w-5 h-5 ${
-                    myobStatus?.connected ? 'text-green-600 dark:text-green-400' :
-                    'text-gray-500 dark:text-gray-400'
-                  }`} />
-                </div>
-                <div>
-                  <CardTitle className="text-base">MYOB AccountRight</CardTitle>
-                  <p className="text-xs text-muted-foreground">Sync invoices and contacts with MYOB</p>
-                </div>
-              </div>
-              {myobStatus?.connected ? (
-                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Connected
-                </Badge>
-              ) : myobStatus?.configured === false ? (
-                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                  Not Configured
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                  Not Connected
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-4">
-            {myobStatus?.connected ? (
-              <>
-                <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
-                      {myobStatus.companyName || 'MYOB Company File'}
-                    </span>
-                  </div>
-                  {myobStatus.lastSyncAt && (
-                    <p className="text-xs text-green-700 dark:text-green-300">
-                      Last synced: {new Date(myobStatus.lastSyncAt).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-                
-                {!myobStatus.cfCredentialsSet ? (
-                  <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg space-y-3">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                          Company File Credentials Required
-                        </p>
-                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                          Enter your MYOB company file username and password to enable sync. These are the credentials you use to access your company file in MYOB, not your MYOB login.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="myob-cf-username" className="text-xs">Company File Username</Label>
-                        <Input
-                          id="myob-cf-username"
-                          type="text"
-                          placeholder="Administrator"
-                          value={myobCfUsername}
-                          onChange={(e) => setMyobCfUsername(e.target.value)}
-                          data-testid="input-myob-cf-username"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="myob-cf-password" className="text-xs">Company File Password</Label>
-                        <Input
-                          id="myob-cf-password"
-                          type="password"
-                          placeholder="Enter password"
-                          value={myobCfPassword}
-                          onChange={(e) => setMyobCfPassword(e.target.value)}
-                          data-testid="input-myob-cf-password"
-                        />
-                      </div>
-                      <Button
-                        onClick={() => saveMyobCredentialsMutation.mutate()}
-                        disabled={saveMyobCredentialsMutation.isPending || !myobCfUsername || !myobCfPassword}
-                        className="w-full"
-                        data-testid="button-save-myob-credentials"
-                      >
-                        {saveMyobCredentialsMutation.isPending ? (
-                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        ) : (
-                          <Settings className="w-4 h-4 mr-2" />
-                        )}
-                        Save Credentials
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => syncMyobMutation.mutate()}
-                      disabled={syncMyobMutation.isPending}
-                      data-testid="button-sync-myob"
-                    >
-                      {syncMyobMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Sync Now
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      onClick={() => disconnectMyobMutation.mutate()}
-                      disabled={disconnectMyobMutation.isPending}
-                      data-testid="button-disconnect-myob"
-                    >
-                      {disconnectMyobMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Link2Off className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                )}
-                
-              </>
-            ) : myobStatus?.configured === false ? (
-              <MyobSetupGuide
-                isConnected={false}
-                isConfigured={false}
-                cfCredentialsSet={false}
-                onConnect={() => connectMyobMutation.mutate()}
-                isConnecting={connectMyobMutation.isPending}
-              />
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  Connect your MYOB AccountRight account to automatically sync invoices and contacts.
-                </p>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p><strong>Two-way sync:</strong> Contacts and invoices stay in sync</p>
-                      <p><strong>Automatic updates:</strong> Changes sync between platforms</p>
-                      <p><strong>Australian business:</strong> Works with MYOB AccountRight</p>
-                    </div>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => connectMyobMutation.mutate()}
-                  disabled={connectMyobMutation.isPending}
-                  className="w-full"
-                  data-testid="button-connect-myob"
-                >
-                  {connectMyobMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <SiMyob className="w-4 h-4 mr-2" />
-                  )}
-                  Connect to MYOB
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        {/* MYOB Accounting Integration - Removed per user request, focusing on Xero */}
       </div>
 
       {/* Communication Services Section */}
