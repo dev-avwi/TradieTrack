@@ -184,8 +184,8 @@ function getSafeForegroundColor(bgHex: string): string {
   return whiteContrast > blackContrast ? '#ffffff' : '#1f2733';
 }
 
-// Minimum contrast ratio for button visibility (WCAG AA for large text)
-const MIN_BUTTON_CONTRAST = 3.0;
+// Minimum contrast ratio for button visibility (WCAG AA for normal text)
+const MIN_BUTTON_CONTRAST = 4.5;
 
 // Default fallback colors when brand color lacks contrast
 const FALLBACK_BUTTON = {
@@ -202,10 +202,24 @@ export function getVisibleButtonColors(
   cardBg: string,
   isDark: boolean
 ): { bg: string; bgPressed: string; border: string; text: string } {
-  const contrast = getContrastRatio(primary, cardBg);
+  // Check 1: Button background must have sufficient contrast against card surface
+  const bgContrast = getContrastRatio(primary, cardBg);
   
-  // If brand color has sufficient contrast, use it
-  if (contrast >= MIN_BUTTON_CONTRAST) {
+  // Check 2: Text must have sufficient contrast against button background
+  const textContrast = getContrastRatio(primaryForeground, primary);
+  
+  // Check 3: Pressed state must also have sufficient contrast
+  const pressedBgContrast = getContrastRatio(primaryDark, cardBg);
+  const pressedTextContrast = getContrastRatio(primaryForeground, primaryDark);
+  
+  // All checks must pass for brand colors to be used
+  const allChecksPass = 
+    bgContrast >= MIN_BUTTON_CONTRAST &&
+    textContrast >= MIN_BUTTON_CONTRAST &&
+    pressedBgContrast >= MIN_BUTTON_CONTRAST &&
+    pressedTextContrast >= MIN_BUTTON_CONTRAST;
+  
+  if (allChecksPass) {
     return {
       bg: primary,
       bgPressed: primaryDark,
@@ -214,7 +228,7 @@ export function getVisibleButtonColors(
     };
   }
   
-  // Otherwise use fallback colors
+  // Otherwise use fallback colors that are guaranteed visible
   return isDark ? FALLBACK_BUTTON.dark : FALLBACK_BUTTON.light;
 }
 
