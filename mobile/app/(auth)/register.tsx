@@ -251,10 +251,10 @@ export default function RegisterScreen() {
 
               <TouchableOpacity
                 style={{
-                  backgroundColor: '#2563EB',
-                  paddingVertical: 16,
-                  paddingHorizontal: 24,
-                  borderRadius: 12,
+                  backgroundColor: '#1e3a5f',
+                  paddingVertical: 14,
+                  paddingHorizontal: 20,
+                  borderRadius: 10,
                   alignItems: 'center',
                   justifyContent: 'center',
                   width: '100%',
@@ -266,7 +266,7 @@ export default function RegisterScreen() {
                 {isLoading ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '600' }}>Create Account</Text>
+                  <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Create Account</Text>
                 )}
               </TouchableOpacity>
             </CardContent>
