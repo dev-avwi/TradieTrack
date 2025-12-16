@@ -286,6 +286,7 @@ function Router({
           onCreateJobForClient={(id) => onNavigate(`/jobs/new?clientId=${id}`)}
           onCallClient={(phone) => window.open(`tel:${phone}`)}
           onEmailClient={(email) => window.open(`mailto:${email}`)}
+          onSmsClient={(clientId, phone) => onNavigate(`/chat?smsClientId=${clientId}&phone=${encodeURIComponent(phone)}`)}
         />
       )} />
       

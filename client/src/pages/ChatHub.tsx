@@ -20,6 +20,7 @@ import {
   Send,
   Check,
   CheckCheck,
+  Phone,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
@@ -88,14 +89,41 @@ interface UnreadCounts {
   teamChat: number;
   directMessages: number;
   jobChats: number;
+  sms: number;
 }
 
-type FilterType = 'all' | 'team' | 'direct' | 'jobs';
-type ViewType = 'list' | 'team-chat' | 'direct-message' | 'job-chat';
+interface SmsConversation {
+  id: string;
+  businessOwnerId: string;
+  clientId: string | null;
+  clientPhone: string;
+  clientName: string | null;
+  jobId: string | null;
+  lastMessageAt: string | null;
+  unreadCount: number;
+  deletedAt: string | null;
+}
+
+interface SmsMessage {
+  id: string;
+  conversationId: string;
+  direction: 'inbound' | 'outbound';
+  body: string;
+  senderUserId: string | null;
+  status: string;
+  twilioSid: string | null;
+  isQuickAction: boolean;
+  quickActionType: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+type FilterType = 'all' | 'team' | 'direct' | 'jobs' | 'sms';
+type ViewType = 'list' | 'team-chat' | 'direct-message' | 'job-chat' | 'sms-chat';
 
 interface ConversationItem {
   id: string;
-  type: 'team' | 'direct' | 'job';
+  type: 'team' | 'direct' | 'job' | 'sms';
   title: string;
   subtitle?: string;
   avatar?: string | null;
@@ -132,13 +160,15 @@ export default function ChatHub() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDirectUser, setSelectedDirectUser] = useState<User | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [selectedSmsConversation, setSelectedSmsConversation] = useState<SmsConversation | null>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [smsNewMessage, setSmsNewMessage] = useState('');
 
   const { data: currentUser } = useQuery<User>({
     queryKey: ['/api/auth/me'],
   });
 
-  const { data: unreadCounts = { teamChat: 0, directMessages: 0, jobChats: 0 } } = useQuery<UnreadCounts>({
+  const { data: unreadCounts = { teamChat: 0, directMessages: 0, jobChats: 0, sms: 0 } } = useQuery<UnreadCounts>({
     queryKey: ['/api/chat/unread-counts'],
     refetchInterval: 10000,
   });
@@ -162,9 +192,19 @@ export default function ChatHub() {
     queryKey: ['/api/jobs'],
   });
 
+  const { data: smsConversations = [], isLoading: smsLoading } = useQuery<SmsConversation[]>({
+    queryKey: ['/api/sms/conversations'],
+    refetchInterval: 30000,
+  });
+
   const { data: directMessages = [], refetch: refetchDirectMessages } = useQuery<DirectMessage[]>({
     queryKey: ['/api/direct-messages', selectedDirectUser?.id],
     enabled: !!selectedDirectUser && view === 'direct-message',
+  });
+
+  const { data: smsMessages = [], refetch: refetchSmsMessages } = useQuery<SmsMessage[]>({
+    queryKey: ['/api/sms/conversations', selectedSmsConversation?.id, 'messages'],
+    enabled: !!selectedSmsConversation && view === 'sms-chat',
   });
 
   const sendTeamMessageMutation = useMutation({
@@ -220,11 +260,82 @@ export default function ChatHub() {
     },
   });
 
+  const sendSmsMutation = useMutation({
+    mutationFn: async ({ clientId, clientPhone, message }: { clientId?: string; clientPhone: string; message: string }) => {
+      const response = await apiRequest('POST', '/api/sms/send', {
+        clientId,
+        clientPhone,
+        message,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      setSmsNewMessage('');
+      queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
+      if (selectedSmsConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', selectedSmsConversation.id, 'messages'] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to send SMS",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const markSmsReadMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      await apiRequest('POST', `/api/sms/conversations/${conversationId}/read`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
+    },
+  });
+
   // Handle deep-link navigation
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const targetUserId = params.get('to');
     const targetType = params.get('type');
+    const smsClientId = params.get('smsClientId');
+    const smsPhone = params.get('phone');
+    
+    // Handle SMS deep link
+    if (smsClientId || smsPhone) {
+      // Check if conversation already exists
+      const existingConvo = smsConversations.find(c => 
+        (smsClientId && c.clientId === smsClientId) || 
+        (smsPhone && c.clientPhone === smsPhone)
+      );
+      
+      if (existingConvo) {
+        setSelectedSmsConversation(existingConvo);
+        setView('sms-chat');
+        markSmsReadMutation.mutate(existingConvo.id);
+        setLocation('/chat', { replace: true });
+      } else if (smsPhone) {
+        // Create a temporary conversation object for new SMS
+        const tempConvo: SmsConversation = {
+          id: 'new',
+          businessOwnerId: '',
+          clientId: smsClientId || null,
+          clientPhone: smsPhone,
+          clientName: null,
+          jobId: null,
+          lastMessageAt: null,
+          unreadCount: 0,
+          deletedAt: null,
+        };
+        setSelectedSmsConversation(tempConvo);
+        setView('sms-chat');
+        setLocation('/chat', { replace: true });
+      }
+      return;
+    }
     
     if (targetUserId && targetType === 'direct') {
       const convo = dmConversations.find(c => c.otherUser.id === targetUserId);
@@ -247,7 +358,7 @@ export default function ChatHub() {
         }
       }
     }
-  }, [searchString, dmConversations, teamMembers, setLocation]);
+  }, [searchString, dmConversations, teamMembers, smsConversations, setLocation]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -273,6 +384,14 @@ export default function ChatHub() {
       return () => clearInterval(interval);
     }
   }, [view, selectedDirectUser, refetchDirectMessages]);
+
+  // Polling for SMS messages
+  useEffect(() => {
+    if (view === 'sms-chat' && selectedSmsConversation && selectedSmsConversation.id !== 'new') {
+      const interval = setInterval(() => refetchSmsMessages(), 3000);
+      return () => clearInterval(interval);
+    }
+  }, [view, selectedSmsConversation, refetchSmsMessages]);
 
   const formatTime = (date: string) => {
     const d = new Date(date);
@@ -349,6 +468,22 @@ export default function ChatHub() {
       });
     }
 
+    // SMS conversations
+    if (filter === 'all' || filter === 'sms') {
+      smsConversations.forEach(convo => {
+        items.push({
+          id: `sms-${convo.id}`,
+          type: 'sms',
+          title: convo.clientName || convo.clientPhone,
+          subtitle: convo.clientName ? convo.clientPhone : undefined,
+          avatarFallback: (convo.clientName || convo.clientPhone)[0]?.toUpperCase() || 'S',
+          lastMessageTime: convo.lastMessageAt || undefined,
+          unreadCount: convo.unreadCount,
+          data: convo,
+        });
+      });
+    }
+
     // Sort by last message time (most recent first), with team chat at top
     items.sort((a, b) => {
       if (a.id === 'team-chat') return -1;
@@ -379,6 +514,12 @@ export default function ChatHub() {
       setView('direct-message');
     } else if (item.type === 'job') {
       setLocation(`/jobs/${item.data.id}?tab=chat`);
+    } else if (item.type === 'sms') {
+      setSelectedSmsConversation(item.data);
+      setView('sms-chat');
+      if (item.data.id !== 'new' && item.unreadCount > 0) {
+        markSmsReadMutation.mutate(item.data.id);
+      }
     }
   };
 
@@ -386,7 +527,9 @@ export default function ChatHub() {
     setView('list');
     setSelectedDirectUser(null);
     setSelectedJob(null);
+    setSelectedSmsConversation(null);
     setNewMessage('');
+    setSmsNewMessage('');
   };
 
   const handleSendTeamMessage = (message: string) => {
@@ -405,9 +548,28 @@ export default function ChatHub() {
     }
   };
 
+  const handleSendSms = () => {
+    if (!smsNewMessage.trim() || !selectedSmsConversation) return;
+    sendSmsMutation.mutate({
+      clientId: selectedSmsConversation.clientId || undefined,
+      clientPhone: selectedSmsConversation.clientPhone,
+      message: smsNewMessage.trim(),
+    });
+  };
+
+  const handleSmsKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendSms();
+    }
+  };
+
+  // Calculate total SMS unread count
+  const smsUnreadCount = smsConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+
   const pinnedMessages = teamMessages.filter(m => m.isPinned);
   const conversationList = buildConversationList();
-  const isLoading = teamLoading || (showDirectFilter && dmLoading) || jobsLoading;
+  const isLoading = teamLoading || (showDirectFilter && dmLoading) || jobsLoading || smsLoading;
 
   // Team Chat View
   if (view === 'team-chat') {
@@ -561,6 +723,95 @@ export default function ChatHub() {
     );
   }
 
+  // SMS Chat View
+  if (view === 'sms-chat' && selectedSmsConversation) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="shrink-0 p-4 border-b bg-background flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={handleBack} data-testid="button-back-sms">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+            <Phone className="h-5 w-5 text-green-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-semibold truncate">
+              {selectedSmsConversation.clientName || selectedSmsConversation.clientPhone}
+            </h2>
+            <p className="text-xs text-muted-foreground truncate">
+              {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS Conversation'}
+            </p>
+          </div>
+          <Badge variant="outline" className="shrink-0 gap-1">
+            <Phone className="h-3 w-3" />
+            SMS
+          </Badge>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-2">
+          {smsMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full py-8">
+              <Phone className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No messages yet</p>
+              <p className="text-sm text-muted-foreground">Send your first SMS!</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {smsMessages.map((msg) => {
+                const isOwn = msg.direction === 'outbound';
+                return (
+                  <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                        isOwn ? 'bg-green-600 text-white' : 'bg-muted'
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                      <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : ''}`}>
+                        <span className={`text-xs ${isOwn ? 'text-white/70' : 'text-muted-foreground'}`}>
+                          {formatTime(msg.createdAt)}
+                        </span>
+                        {isOwn && msg.status === 'delivered' && (
+                          <CheckCheck className="h-3 w-3 text-white/70" />
+                        )}
+                        {isOwn && msg.status === 'sent' && (
+                          <Check className="h-3 w-3 text-white/70" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0 p-4 border-t bg-background">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Type an SMS message..."
+              value={smsNewMessage}
+              onChange={(e) => setSmsNewMessage(e.target.value)}
+              onKeyPress={handleSmsKeyPress}
+              className="flex-1"
+              data-testid="input-sms-message"
+            />
+            <Button
+              onClick={handleSendSms}
+              disabled={!smsNewMessage.trim() || sendSmsMutation.isPending}
+              size="icon"
+              className="bg-green-600 hover:bg-green-700"
+              data-testid="button-send-sms"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Main Conversation List View
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -603,9 +854,9 @@ export default function ChatHub() {
             data-testid="filter-all"
           >
             All
-            {(unreadCounts.teamChat + unreadCounts.directMessages + unreadCounts.jobChats) > 0 && (
+            {(unreadCounts.teamChat + unreadCounts.directMessages + unreadCounts.jobChats + smsUnreadCount) > 0 && (
               <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5">
-                {unreadCounts.teamChat + unreadCounts.directMessages + unreadCounts.jobChats}
+                {unreadCounts.teamChat + unreadCounts.directMessages + unreadCounts.jobChats + smsUnreadCount}
               </Badge>
             )}
           </Button>
@@ -656,6 +907,21 @@ export default function ChatHub() {
               </Badge>
             )}
           </Button>
+          <Button
+            variant={filter === 'sms' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('sms')}
+            className="shrink-0 gap-1.5"
+            data-testid="filter-sms"
+          >
+            <Phone className="h-3.5 w-3.5" />
+            SMS
+            {smsUnreadCount > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
+                {smsUnreadCount}
+              </Badge>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -676,6 +942,8 @@ export default function ChatHub() {
                 ? 'Start a conversation with a team member'
                 : filter === 'jobs'
                 ? 'Create a job to start chatting'
+                : filter === 'sms'
+                ? 'Send an SMS to a client to start chatting'
                 : 'Your messages will appear here'}
             </p>
           </div>
@@ -703,6 +971,10 @@ export default function ChatHub() {
                       style={{ color: STATUS_COLORS[item.status || 'pending'] || '#6B7280' }} 
                     />
                   </div>
+                ) : item.type === 'sms' ? (
+                  <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+                    <Phone className="h-6 w-6 text-green-600" />
+                  </div>
                 ) : (
                   <Avatar className="h-12 w-12 shrink-0">
                     <AvatarImage src={item.avatar || undefined} />
@@ -716,7 +988,7 @@ export default function ChatHub() {
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-medium truncate">{item.title}</span>
                       <Badge variant="outline" className="shrink-0 text-xs px-1.5 py-0">
-                        {item.type === 'team' ? 'Team' : item.type === 'direct' ? 'DM' : 'Job'}
+                        {item.type === 'team' ? 'Team' : item.type === 'direct' ? 'DM' : item.type === 'sms' ? 'SMS' : 'Job'}
                       </Badge>
                     </div>
                     {item.lastMessageTime && (
