@@ -18,7 +18,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore, useClientsStore, useInvoicesStore } from '../../../src/lib/store';
-import { useTheme, ThemeColors } from '../../../src/lib/theme';
+import { useTheme, ThemeColors, getVisibleButtonColors } from '../../../src/lib/theme';
 import api from '../../../src/lib/api';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { getBottomNavHeight } from '../../../src/components/BottomNav';
@@ -343,16 +343,18 @@ function createStyles(colors: ThemeColors) {
       color: colors.foreground,
     },
     submitButton: {
-      overflow: 'hidden',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
       borderRadius: 12,
+      paddingVertical: 16,
+      borderWidth: 1,
       shadowColor: '#000000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 6,
-      elevation: 8,
-    },
-    submitButtonPressed: {
-      // Handled by inner View
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 4,
     },
     submitButtonDisabled: {
       opacity: 0.6,
@@ -1375,37 +1377,45 @@ export default function NewInvoiceScreen() {
                 />
               </View>
 
-              {/* Submit Button - Uses hardcoded blue for guaranteed visibility */}
+              {/* Submit Button - Uses theme colors with smart fallback */}
               <Pressable
-                style={({ pressed }) => [
-                  styles.submitButton, 
-                  isLoading && styles.submitButtonDisabled,
-                  pressed && !isLoading && styles.submitButtonPressed,
-                ]}
+                style={({ pressed }) => {
+                  const btnColors = getVisibleButtonColors(
+                    colors.primary,
+                    colors.primaryDark,
+                    colors.primaryForeground,
+                    colors.card,
+                    colors.isDark
+                  );
+                  return [
+                    styles.submitButton,
+                    { 
+                      backgroundColor: pressed && !isLoading ? btnColors.bgPressed : btnColors.bg,
+                      borderColor: btnColors.border,
+                    },
+                    isLoading && styles.submitButtonDisabled,
+                  ];
+                }}
                 onPress={handleSave}
                 disabled={isLoading}
               >
-                {({ pressed }) => (
-                  <View style={{ 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    gap: 8,
-                    width: '100%',
-                    backgroundColor: pressed && !isLoading ? '#1D4ED8' : '#2563EB',
-                    paddingVertical: 16,
-                    borderRadius: 12,
-                  }}>
-                    {isLoading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <Feather name="check" size={20} color="#FFFFFF" />
-                        <Text style={[styles.submitButtonText, { color: '#FFFFFF' }]}>Create Invoice</Text>
-                      </>
-                    )}
-                  </View>
-                )}
+                {({ pressed }) => {
+                  const btnColors = getVisibleButtonColors(
+                    colors.primary,
+                    colors.primaryDark,
+                    colors.primaryForeground,
+                    colors.card,
+                    colors.isDark
+                  );
+                  return isLoading ? (
+                    <ActivityIndicator size="small" color={btnColors.text} />
+                  ) : (
+                    <>
+                      <Feather name="check" size={20} color={btnColors.text} />
+                      <Text style={[styles.submitButtonText, { color: btnColors.text }]}>Create Invoice</Text>
+                    </>
+                  );
+                }}
               </Pressable>
             </ScrollView>
           </KeyboardAvoidingView>

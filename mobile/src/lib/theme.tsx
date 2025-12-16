@@ -184,6 +184,40 @@ function getSafeForegroundColor(bgHex: string): string {
   return whiteContrast > blackContrast ? '#ffffff' : '#1f2733';
 }
 
+// Minimum contrast ratio for button visibility (WCAG AA for large text)
+const MIN_BUTTON_CONTRAST = 3.0;
+
+// Default fallback colors when brand color lacks contrast
+const FALLBACK_BUTTON = {
+  light: { bg: '#1f2733', bgPressed: '#171a1d', border: '#171a1d', text: '#ffffff' },
+  dark: { bg: '#eef2f5', bgPressed: '#d4dce3', border: '#d4dce3', text: '#1f2733' },
+};
+
+// Get button colors that are guaranteed to be visible
+// Uses brand colors when they have sufficient contrast, otherwise falls back
+export function getVisibleButtonColors(
+  primary: string,
+  primaryDark: string,
+  primaryForeground: string,
+  cardBg: string,
+  isDark: boolean
+): { bg: string; bgPressed: string; border: string; text: string } {
+  const contrast = getContrastRatio(primary, cardBg);
+  
+  // If brand color has sufficient contrast, use it
+  if (contrast >= MIN_BUTTON_CONTRAST) {
+    return {
+      bg: primary,
+      bgPressed: primaryDark,
+      border: primaryDark,
+      text: primaryForeground,
+    };
+  }
+  
+  // Otherwise use fallback colors
+  return isDark ? FALLBACK_BUTTON.dark : FALLBACK_BUTTON.light;
+}
+
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result

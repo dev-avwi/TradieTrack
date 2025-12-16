@@ -1,17 +1,9 @@
-import { Pressable, Text, ActivityIndicator, View, StyleSheet, ViewStyle, Platform } from 'react-native';
+import { Pressable, Text, ActivityIndicator, View, StyleSheet, ViewStyle } from 'react-native';
 import { ReactNode } from 'react';
-import { useTheme } from '../../lib/theme';
+import { useTheme, getVisibleButtonColors } from '../../lib/theme';
 
 type ButtonVariant = 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'brand';
 type ButtonSize = 'default' | 'sm' | 'lg' | 'xl' | 'icon';
-
-// Brand button colors - fixed blue for guaranteed visibility
-const BRAND_COLORS = {
-  background: '#2563EB',
-  backgroundPressed: '#1D4ED8',
-  border: '#1D4ED8',
-  text: '#FFFFFF',
-};
 
 interface ButtonProps {
   children: ReactNode;
@@ -84,19 +76,19 @@ export function Button({
           overlayColor: 'transparent',
         };
       case 'brand':
-        // Brand button uses FIXED blue color for GUARANTEED visibility
-        // This is critical for auth screens before user theme loads
+        // Brand button uses theme colors with smart fallback for visibility
+        const buttonColors = getVisibleButtonColors(
+          colors.primary,
+          colors.primaryDark,
+          colors.primaryForeground,
+          colors.card,
+          isDark
+        );
         return {
-          backgroundColor: pressed ? BRAND_COLORS.backgroundPressed : BRAND_COLORS.background,
-          borderColor: BRAND_COLORS.border,
-          textColor: BRAND_COLORS.text,
-          overlayColor: 'transparent',
-          // Shadow for better visibility on light backgrounds
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 6,
-          elevation: 8,
+          backgroundColor: pressed ? buttonColors.bgPressed : buttonColors.bg,
+          borderColor: buttonColors.border,
+          textColor: buttonColors.text,
+          overlayColor: elevateColor,
         };
       default:
         return {
@@ -195,18 +187,6 @@ export function Button({
         const variantStyles = getVariantStyles(pressed);
         return (
           <>
-            {/* Force background for brand variant with absolute fill */}
-            {variant === 'brand' && (
-              <View 
-                style={[
-                  StyleSheet.absoluteFill, 
-                  { 
-                    backgroundColor: pressed ? BRAND_COLORS.backgroundPressed : BRAND_COLORS.background,
-                    borderRadius: sizeStyles.borderRadius,
-                  }
-                ]} 
-              />
-            )}
             {pressed && variantStyles.overlayColor !== 'transparent' && (
               <View 
                 style={[
