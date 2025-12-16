@@ -184,53 +184,48 @@ function getSafeForegroundColor(bgHex: string): string {
   return whiteContrast > blackContrast ? '#ffffff' : '#1f2733';
 }
 
-// Minimum contrast ratio for button visibility (WCAG AA for normal text)
-const MIN_BUTTON_CONTRAST = 4.5;
+// Minimum contrast ratio for button visibility (WCAG AA large text / UI components)
+const MIN_BG_CONTRAST = 3.0;
+const MIN_TEXT_CONTRAST = 4.5;
 
-// Default fallback colors when brand color lacks contrast
-// Uses vibrant blue that's universally visible in both light and dark modes
+// Guaranteed visible fallback - vibrant blue works on any background
 const FALLBACK_BUTTON = {
-  light: { bg: '#2563EB', bgPressed: '#1D4ED8', border: '#1D4ED8', text: '#ffffff' },
-  dark: { bg: '#3B82F6', bgPressed: '#2563EB', border: '#2563EB', text: '#ffffff' },
+  bg: '#2563EB',
+  bgPressed: '#1D4ED8', 
+  border: '#1D4ED8',
+  text: '#ffffff',
 };
 
 // Get button colors that are guaranteed to be visible
-// Uses brand colors when they have sufficient contrast, otherwise falls back
+// Tries to use brand colors with computed safe text, falls back to blue if needed
 export function getVisibleButtonColors(
   primary: string,
   primaryDark: string,
-  primaryForeground: string,
+  _primaryForeground: string, // Ignored - we compute our own safe text color
   cardBg: string,
-  isDark: boolean
+  _isDark: boolean
 ): { bg: string; bgPressed: string; border: string; text: string } {
-  // Check 1: Button background must have sufficient contrast against card surface
+  // Check if brand color has enough contrast against card background
   const bgContrast = getContrastRatio(primary, cardBg);
   
-  // Check 2: Text must have sufficient contrast against button background
-  const textContrast = getContrastRatio(primaryForeground, primary);
-  
-  // Check 3: Pressed state must also have sufficient contrast
-  const pressedBgContrast = getContrastRatio(primaryDark, cardBg);
-  const pressedTextContrast = getContrastRatio(primaryForeground, primaryDark);
-  
-  // All checks must pass for brand colors to be used
-  const allChecksPass = 
-    bgContrast >= MIN_BUTTON_CONTRAST &&
-    textContrast >= MIN_BUTTON_CONTRAST &&
-    pressedBgContrast >= MIN_BUTTON_CONTRAST &&
-    pressedTextContrast >= MIN_BUTTON_CONTRAST;
-  
-  if (allChecksPass) {
-    return {
-      bg: primary,
-      bgPressed: primaryDark,
-      border: primaryDark,
-      text: primaryForeground,
-    };
+  if (bgContrast >= MIN_BG_CONTRAST) {
+    // Brand color is visible against card - compute safe text color
+    const safeText = getSafeForegroundColor(primary);
+    const textContrast = getContrastRatio(safeText, primary);
+    
+    // Verify text is readable
+    if (textContrast >= MIN_TEXT_CONTRAST) {
+      return {
+        bg: primary,
+        bgPressed: primaryDark,
+        border: primaryDark,
+        text: safeText,
+      };
+    }
   }
   
-  // Otherwise use fallback colors that are guaranteed visible
-  return isDark ? FALLBACK_BUTTON.dark : FALLBACK_BUTTON.light;
+  // Fallback to guaranteed visible blue
+  return FALLBACK_BUTTON;
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
