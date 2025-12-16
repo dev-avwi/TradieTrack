@@ -671,7 +671,26 @@ export default function QuoteDetailScreen() {
               <Feather name="x" size={24} color={colors.foreground} />
             </TouchableOpacity>
             <Text style={styles.previewModalTitle}>Quote Preview</Text>
-            <View style={{ width: 40 }} />
+            <View style={styles.previewActionButtons}>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowPreview(false);
+                  setTimeout(() => setShowEmailCompose(true), 300);
+                }}
+                style={styles.previewActionButton}
+                data-testid="button-preview-email"
+              >
+                <Feather name="mail" size={20} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={handleSharePdf}
+                style={styles.previewActionButton}
+                disabled={isDownloadingPdf}
+                data-testid="button-preview-share"
+              >
+                <Feather name="share-2" size={20} color={isDownloadingPdf ? colors.mutedForeground : colors.primary} />
+              </TouchableOpacity>
+            </View>
           </View>
           <LiveDocumentPreview
             type="quote"
@@ -1324,6 +1343,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   previewCloseButton: {
     padding: 8,
     width: 40,
+  },
+  previewActionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  previewActionButton: {
+    padding: 8,
+    borderRadius: 8,
   },
   previewModalTitle: {
     fontSize: 17,
