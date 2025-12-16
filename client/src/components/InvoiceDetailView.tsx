@@ -43,10 +43,13 @@ export default function InvoiceDetailView({
 
   const connectEnabled = businessSettings?.connectChargesEnabled === true;
 
-  const { data: invoice, isLoading } = useQuery({
+  const { data: invoice, isLoading, refetch: refetchInvoice } = useQuery({
     queryKey: ['/api/invoices', invoiceId],
     queryFn: async () => {
-      const response = await fetch(`/api/invoices/${invoiceId}`);
+      // Add cache buster to prevent browser caching issues
+      const response = await fetch(`/api/invoices/${invoiceId}?_t=${Date.now()}`, {
+        cache: 'no-store'
+      });
       if (!response.ok) throw new Error('Failed to fetch invoice');
       return response.json();
     }
@@ -436,7 +439,12 @@ export default function InvoiceDetailView({
             clientName={client?.name || 'Client'}
             isOpen={showDemoPayment}
             onClose={() => setShowDemoPayment(false)}
-            onPaymentComplete={() => queryClient.invalidateQueries({ queryKey: ['/api/invoices'] })}
+            onPaymentComplete={async () => {
+              // Force refetch the specific invoice to update UI immediately
+              await refetchInvoice();
+              // Also invalidate the list for other views
+              queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+            }}
           />
         )}
 

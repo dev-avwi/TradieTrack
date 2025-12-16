@@ -30,7 +30,7 @@ interface DemoPaymentSimulatorProps {
   clientName: string;
   isOpen: boolean;
   onClose: () => void;
-  onPaymentComplete: () => void;
+  onPaymentComplete: () => Promise<void> | void;
 }
 
 export default function DemoPaymentSimulator({
@@ -58,8 +58,13 @@ export default function DemoPaymentSimulator({
           status: 'paid',
           paidAt: new Date().toISOString()
         });
-        queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/invoices', invoiceId] });
+        
+        // Force refetch of invoice data to update UI
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['/api/invoices'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/invoices', invoiceId] }),
+          queryClient.refetchQueries({ queryKey: ['/api/invoices', invoiceId] })
+        ]);
         
         setStep('success');
         toast({
@@ -81,12 +86,20 @@ export default function DemoPaymentSimulator({
     setIsProcessing(false);
   };
 
-  const handleClose = () => {
-    if (step === 'success') {
-      onPaymentComplete();
+  const handleClose = async () => {
+    try {
+      if (step === 'success') {
+        // Wait for the parent to refetch invoice data before closing
+        await onPaymentComplete();
+      }
+    } catch (error) {
+      // Log but don't block dialog close on refetch failure
+      console.error('Failed to refresh invoice data:', error);
+    } finally {
+      // Always reset state and close dialog
+      setStep('intro');
+      onClose();
     }
-    setStep('intro');
-    onClose();
   };
 
   const handleOpenChange = (open: boolean) => {
