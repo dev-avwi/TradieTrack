@@ -14,7 +14,6 @@ import {
   RecordingPresets,
   useAudioPlayer,
   useAudioPlayerStatus,
-  Audio,
   setAudioModeAsync,
 } from 'expo-audio';
 import { useTheme } from '../lib/theme';
@@ -87,13 +86,13 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
-      // Configure audio mode for iOS recording using expo-audio setAudioModeAsync
+      // Configure audio mode for iOS recording using setAudioModeAsync from expo-audio
       // This is required on iOS to enable recording mode
       try {
         await setAudioModeAsync({
           playsInSilentMode: true,
           shouldPlayInBackground: false,
-          interruptionModeIOS: 'doNotMix',
+          interruptionMode: 'doNotMix',
         });
         console.log('[VoiceRecorder] Audio mode configured for iOS recording');
       } catch (audioModeError) {

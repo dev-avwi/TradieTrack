@@ -350,6 +350,13 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.primary,
       borderRadius: 12,
       paddingVertical: 16,
+      borderWidth: 1,
+      borderColor: colors.primaryDark,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
     },
     submitButtonPressed: {
       backgroundColor: colors.primaryDark,
