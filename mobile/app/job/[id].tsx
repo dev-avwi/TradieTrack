@@ -16,7 +16,9 @@ import {
   FlatList,
   Switch,
   KeyboardAvoidingView,
+  Dimensions,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
@@ -93,7 +95,17 @@ interface JobPhoto {
   fileName?: string;
   category?: string;
   takenAt?: string;
+  mimeType?: string;
 }
+
+const isVideo = (photo: JobPhoto) => {
+  const mimeType = photo.mimeType || '';
+  const fileName = photo.fileName || '';
+  return mimeType.startsWith('video/') || 
+         fileName.endsWith('.mp4') || 
+         fileName.endsWith('.mov') || 
+         fileName.endsWith('.m4v');
+};
 
 interface CompletedTimeEntry {
   id: string;
@@ -1290,6 +1302,78 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.muted,
   },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.lg,
+  },
+  videoPlayIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordVideoButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.destructive,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    marginRight: spacing.sm,
+    minHeight: 44,
+  },
+  recordVideoButtonIcon: {
+    marginRight: spacing.sm,
+  },
+  recordVideoText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+  videoPlayerModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoPlayerContainer: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.6,
+    backgroundColor: '#000',
+  },
+  closeVideoButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteVideoButton: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 60 : 40,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.destructive,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+  },
 });
 
 export default function JobDetailScreen() {
@@ -1313,6 +1397,8 @@ export default function JobDetailScreen() {
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<JobPhoto | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<JobPhoto | null>(null);
   
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
@@ -2115,7 +2201,49 @@ export default function JobDetailScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      uploadPhoto(result.assets[0].uri);
+      uploadMedia(result.assets[0].uri, 'image');
+    }
+  };
+
+  const handleRecordVideo = async () => {
+    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+    if (cameraPermission.status !== 'granted') {
+      Alert.alert('Permission Required', 'Camera access is needed to record videos.');
+      return;
+    }
+
+    const microphonePermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      videoMaxDuration: 60,
+      videoQuality: ImagePicker.UIImagePickerControllerQualityType.Medium,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      uploadMedia(result.assets[0].uri, 'video');
+    }
+  };
+
+  const handlePickMedia = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Media library access is needed to select photos and videos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      const isVideoFile = asset.type === 'video' || 
+                          asset.uri.endsWith('.mp4') || 
+                          asset.uri.endsWith('.mov') || 
+                          asset.uri.endsWith('.m4v');
+      uploadMedia(asset.uri, isVideoFile ? 'video' : 'image');
     }
   };
 
@@ -2134,60 +2262,69 @@ export default function JobDetailScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      uploadPhoto(result.assets[0].uri);
+      uploadMedia(result.assets[0].uri, 'image');
     }
   };
 
-  const uploadPhoto = async (uri: string) => {
+  const uploadMedia = async (uri: string, mediaType: 'image' | 'video') => {
     if (!job) return;
     
     setIsUploadingPhoto(true);
     
-    // Create optimistic photo entry immediately for instant UI feedback
+    // Create optimistic entry immediately for instant UI feedback
     const tempId = `temp-${Date.now()}`;
-    const optimisticPhoto: JobPhoto = {
+    const optimisticMedia: JobPhoto = {
       id: tempId,
       url: uri,
-      signedUrl: uri, // Use local URI as signedUrl for display
+      signedUrl: uri,
       createdAt: new Date().toISOString(),
+      mimeType: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
     };
     
-    // Add photo optimistically
-    setPhotos(prev => [...prev, optimisticPhoto]);
+    // Add media optimistically
+    setPhotos(prev => [...prev, optimisticMedia]);
     
     try {
       const formData = new FormData();
-      const filename = uri.split('/').pop() || 'photo.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      const filename = uri.split('/').pop() || (mediaType === 'video' ? 'video.mp4' : 'photo.jpg');
+      const ext = filename.split('.').pop()?.toLowerCase() || (mediaType === 'video' ? 'mp4' : 'jpg');
+      
+      let mimeType: string;
+      if (mediaType === 'video') {
+        mimeType = ext === 'mov' ? 'video/quicktime' : `video/${ext}`;
+      } else {
+        mimeType = ext === 'png' ? 'image/png' : `image/${ext}`;
+      }
       
       formData.append('photo', {
         uri,
         name: filename,
-        type,
+        type: mimeType,
       } as any);
       formData.append('jobId', job.id);
+      formData.append('mimeType', mimeType);
 
       const response = await api.post(`/api/jobs/${job.id}/photos`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (response.data) {
-        // Remove temp photo first, then reload all photos from server
         setPhotos(prev => prev.filter(p => p.id !== tempId));
         await loadPhotos();
-        Alert.alert('Success', 'Photo uploaded successfully');
+        Alert.alert('Success', `${mediaType === 'video' ? 'Video' : 'Photo'} uploaded successfully`);
       } else {
-        // Remove temp photo if upload had no response
         setPhotos(prev => prev.filter(p => p.id !== tempId));
-        Alert.alert('Error', 'Failed to upload photo. Please try again.');
+        Alert.alert('Error', `Failed to upload ${mediaType}. Please try again.`);
       }
     } catch (error: any) {
       console.error('Upload error:', error);
-      // Keep the temp photo for offline scenarios - user can see it locally
-      Alert.alert('Photo Saved', 'Photo saved locally. Will sync when online.');
+      Alert.alert('Saved', `${mediaType === 'video' ? 'Video' : 'Photo'} saved locally. Will sync when online.`);
     }
     setIsUploadingPhoto(false);
+  };
+
+  const uploadPhoto = async (uri: string) => {
+    uploadMedia(uri, 'image');
   };
 
   const handleDeletePhoto = async (photo: JobPhoto) => {
@@ -2821,7 +2958,14 @@ export default function JobDetailScreen() {
                 <TouchableOpacity 
                   key={photo.id}
                   style={styles.inlinePhotoItem}
-                  onPress={() => setSelectedPhoto(photo)}
+                  onPress={() => {
+                    if (isVideo(photo)) {
+                      setSelectedVideo(photo);
+                      setShowVideoPlayer(true);
+                    } else {
+                      setSelectedPhoto(photo);
+                    }
+                  }}
                   activeOpacity={0.8}
                 >
                   <Image 
@@ -2829,6 +2973,13 @@ export default function JobDetailScreen() {
                     style={styles.inlinePhotoImage}
                     resizeMode="cover"
                   />
+                  {isVideo(photo) && (
+                    <View style={styles.videoOverlay}>
+                      <View style={styles.videoPlayIcon}>
+                        <Feather name="play" size={16} color={colors.foreground} />
+                      </View>
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))}
               <TouchableOpacity 
@@ -2839,9 +2990,9 @@ export default function JobDetailScreen() {
                 <Feather name="plus" size={iconSizes.xl} color={colors.primary} />
               </TouchableOpacity>
             </ScrollView>
-            <View style={[styles.emptyPhotosContainer, { marginTop: spacing.md }]}>
+            <View style={[styles.emptyPhotosContainer, { marginTop: spacing.md, flexWrap: 'wrap', gap: spacing.sm }]}>
               <TouchableOpacity 
-                style={styles.takePhotoInlineButton}
+                style={[styles.takePhotoInlineButton, { flex: 0, minWidth: '30%', paddingHorizontal: spacing.md }]}
                 onPress={handleTakePhoto}
                 disabled={isUploadingPhoto}
                 activeOpacity={0.7}
@@ -2850,30 +3001,36 @@ export default function JobDetailScreen() {
                   <ActivityIndicator size="small" color={colors.primaryForeground} />
                 ) : (
                   <>
-                    <View style={styles.takePhotoInlineButtonIcon}>
-                      <Feather name="camera" size={18} color={colors.primaryForeground} />
-                    </View>
-                    <Text style={styles.takePhotoInlineText}>Take Photo</Text>
+                    <Feather name="camera" size={18} color={colors.primaryForeground} style={{ marginRight: spacing.xs }} />
+                    <Text style={styles.takePhotoInlineText}>Photo</Text>
                   </>
                 )}
               </TouchableOpacity>
               <TouchableOpacity 
-                style={styles.galleryInlineButton}
-                onPress={handlePickPhoto}
+                style={styles.recordVideoButton}
+                onPress={handleRecordVideo}
+                disabled={isUploadingPhoto}
+                activeOpacity={0.7}
+                data-testid="button-record-video"
+              >
+                <Feather name="video" size={18} color={colors.primaryForeground} style={styles.recordVideoButtonIcon} />
+                <Text style={styles.recordVideoText}>Video</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.galleryInlineButton, { flex: 1, marginRight: 0 }]}
+                onPress={handlePickMedia}
                 disabled={isUploadingPhoto}
                 activeOpacity={0.7}
               >
-                <View style={styles.galleryInlineButtonIcon}>
-                  <Feather name="image" size={18} color={colors.foreground} />
-                </View>
+                <Feather name="image" size={18} color={colors.foreground} style={{ marginRight: spacing.xs }} />
                 <Text style={styles.galleryInlineText}>Gallery</Text>
               </TouchableOpacity>
             </View>
           </>
         ) : (
-          <View style={styles.emptyPhotosContainer}>
+          <View style={[styles.emptyPhotosContainer, { flexWrap: 'wrap', gap: spacing.sm }]}>
             <TouchableOpacity 
-              style={styles.takePhotoInlineButton}
+              style={[styles.takePhotoInlineButton, { flex: 0, minWidth: '30%', paddingHorizontal: spacing.md }]}
               onPress={handleTakePhoto}
               disabled={isUploadingPhoto}
               activeOpacity={0.7}
@@ -2882,22 +3039,28 @@ export default function JobDetailScreen() {
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
                 <>
-                  <View style={styles.takePhotoInlineButtonIcon}>
-                    <Feather name="camera" size={18} color={colors.primaryForeground} />
-                  </View>
-                  <Text style={styles.takePhotoInlineText}>Take Photo</Text>
+                  <Feather name="camera" size={18} color={colors.primaryForeground} style={{ marginRight: spacing.xs }} />
+                  <Text style={styles.takePhotoInlineText}>Photo</Text>
                 </>
               )}
             </TouchableOpacity>
             <TouchableOpacity 
-              style={styles.galleryInlineButton}
-              onPress={handlePickPhoto}
+              style={styles.recordVideoButton}
+              onPress={handleRecordVideo}
+              disabled={isUploadingPhoto}
+              activeOpacity={0.7}
+              data-testid="button-record-video"
+            >
+              <Feather name="video" size={18} color={colors.primaryForeground} style={styles.recordVideoButtonIcon} />
+              <Text style={styles.recordVideoText}>Video</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.galleryInlineButton, { flex: 1, marginRight: 0 }]}
+              onPress={handlePickMedia}
               disabled={isUploadingPhoto}
               activeOpacity={0.7}
             >
-              <View style={styles.galleryInlineButtonIcon}>
-                <Feather name="image" size={18} color={colors.foreground} />
-              </View>
+              <Feather name="image" size={18} color={colors.foreground} style={{ marginRight: spacing.xs }} />
               <Text style={styles.galleryInlineText}>Gallery</Text>
             </TouchableOpacity>
           </View>
@@ -3272,7 +3435,7 @@ export default function JobDetailScreen() {
               {photos.length === 0 ? (
                 <View style={styles.photosEmpty}>
                   <Feather name="image" size={48} color={colors.mutedForeground} />
-                  <Text style={styles.photosEmptyText}>No photos yet</Text>
+                  <Text style={styles.photosEmptyText}>No photos or videos yet</Text>
                 </View>
               ) : (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -3280,20 +3443,35 @@ export default function JobDetailScreen() {
                     <TouchableOpacity 
                       key={photo.id}
                       style={styles.photoItem}
-                      onPress={() => setSelectedPhoto(photo)}
+                      onPress={() => {
+                        if (isVideo(photo)) {
+                          setShowPhotosModal(false);
+                          setSelectedVideo(photo);
+                          setShowVideoPlayer(true);
+                        } else {
+                          setSelectedPhoto(photo);
+                        }
+                      }}
                     >
                       <Image 
                         source={{ uri: photo.signedUrl || photo.url || photo.thumbnailUrl || '' }} 
                         style={styles.photoImage}
                         resizeMode="cover"
                       />
+                      {isVideo(photo) && (
+                        <View style={styles.videoOverlay}>
+                          <View style={styles.videoPlayIcon}>
+                            <Feather name="play" size={16} color={colors.foreground} />
+                          </View>
+                        </View>
+                      )}
                     </TouchableOpacity>
                   ))}
                 </View>
               )}
-              <View style={styles.photoActions}>
+              <View style={[styles.photoActions, { flexWrap: 'wrap', gap: spacing.sm }]}>
                 <TouchableOpacity 
-                  style={styles.photoActionButton}
+                  style={[styles.photoActionButton, { flex: 0, minWidth: '30%' }]}
                   onPress={handleTakePhoto}
                   disabled={isUploadingPhoto}
                 >
@@ -3302,13 +3480,21 @@ export default function JobDetailScreen() {
                   ) : (
                     <>
                       <Feather name="camera" size={18} color={colors.primaryForeground} />
-                      <Text style={styles.photoActionText}>Take Photo</Text>
+                      <Text style={styles.photoActionText}>Photo</Text>
                     </>
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={[styles.photoActionButton, styles.photoActionButtonSecondary]}
-                  onPress={handlePickPhoto}
+                  style={[styles.photoActionButton, { flex: 1, backgroundColor: colors.destructive }]}
+                  onPress={handleRecordVideo}
+                  disabled={isUploadingPhoto}
+                >
+                  <Feather name="video" size={18} color={colors.primaryForeground} />
+                  <Text style={styles.photoActionText}>Video</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.photoActionButton, styles.photoActionButtonSecondary, { flex: 1 }]}
+                  onPress={handlePickMedia}
                   disabled={isUploadingPhoto}
                 >
                   <Feather name="image" size={18} color={colors.foreground} />
@@ -3367,6 +3553,69 @@ export default function JobDetailScreen() {
           visible={showAnnotationEditor}
         />
       )}
+
+      {/* Video Player Modal */}
+      <Modal visible={showVideoPlayer && !!selectedVideo} animationType="fade" transparent>
+        <View style={styles.videoPlayerModal}>
+          {selectedVideo && (
+            <>
+              <View style={styles.videoPlayerContainer}>
+                <WebView
+                  source={{
+                    html: `
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+                        <style>
+                          * { margin: 0; padding: 0; }
+                          html, body { width: 100%; height: 100%; background: #000; }
+                          video { width: 100%; height: 100%; object-fit: contain; }
+                        </style>
+                      </head>
+                      <body>
+                        <video controls autoplay playsinline>
+                          <source src="${selectedVideo.signedUrl || selectedVideo.url || ''}" type="${selectedVideo.mimeType || 'video/mp4'}">
+                          Your browser does not support the video tag.
+                        </video>
+                      </body>
+                      </html>
+                    `,
+                  }}
+                  style={{ flex: 1, backgroundColor: '#000' }}
+                  allowsInlineMediaPlayback
+                  mediaPlaybackRequiresUserAction={false}
+                  javaScriptEnabled
+                />
+              </View>
+              <TouchableOpacity 
+                style={styles.closeVideoButton}
+                onPress={() => {
+                  setShowVideoPlayer(false);
+                  setSelectedVideo(null);
+                }}
+                data-testid="button-close-video"
+              >
+                <Feather name="x" size={24} color={colors.primaryForeground} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.deleteVideoButton}
+                onPress={() => {
+                  if (selectedVideo) {
+                    handleDeletePhoto(selectedVideo);
+                    setShowVideoPlayer(false);
+                    setSelectedVideo(null);
+                  }
+                }}
+                data-testid="button-delete-video"
+              >
+                <Feather name="trash-2" size={18} color={colors.primaryForeground} />
+                <Text style={styles.deletePhotoText}>Delete Video</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </Modal>
 
       {/* Job Completion Summary Modal */}
       {job && (
