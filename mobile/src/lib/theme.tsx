@@ -410,7 +410,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const { businessSettings } = useAuthStore();
-  const brandColor = businessSettings?.primaryColor || null;
+  const brandColor = businessSettings?.brandColor || businessSettings?.primaryColor || null;
 
   useEffect(() => {
     SecureStore.getItemAsync('theme_mode').then(stored => {

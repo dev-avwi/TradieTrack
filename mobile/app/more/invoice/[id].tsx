@@ -68,7 +68,7 @@ export default function InvoiceDetailScreen() {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   
-  const brandColor = businessSettings?.primaryColor || user?.brandColor || '#2563eb';
+  const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
 
   useEffect(() => {
     loadData();
@@ -327,7 +327,7 @@ export default function InvoiceDetailScreen() {
     
     setIsGeneratingPaymentLink(true);
     try {
-      const response = await fetch(`${API_URL}/api/invoices/${id}/payment-link`, {
+      const response = await fetch(`${API_URL}/api/invoices/${id}/generate-payment-link`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -353,13 +353,25 @@ export default function InvoiceDetailScreen() {
     return null;
   };
 
+  const getPaymentLinkUrl = () => {
+    // Prefer Stripe payment link, fall back to internal payment page
+    if (invoice?.stripePaymentLink) {
+      return invoice.stripePaymentLink;
+    }
+    if (invoice?.paymentToken) {
+      const baseUrl = API_URL.replace(/\/api.*$/, '');
+      return `${baseUrl}/pay/${invoice.paymentToken}`;
+    }
+    return null;
+  };
+
   const sharePaymentLink = async () => {
-    if (!invoice?.paymentToken) {
-      Alert.alert('Error', 'No payment link available');
+    const paymentUrl = getPaymentLinkUrl();
+    if (!paymentUrl) {
+      Alert.alert('Error', 'No payment link available. Please generate one first.');
       return;
     }
     
-    const paymentUrl = `${API_URL}/public/invoice/${invoice.paymentToken}/pay`;
     try {
       await Share.share({
         message: `Pay Invoice ${invoice.invoiceNumber}: ${paymentUrl}`,
@@ -370,6 +382,17 @@ export default function InvoiceDetailScreen() {
       console.log('Error sharing payment link:', error);
       Alert.alert('Error', 'Failed to share link');
     }
+  };
+
+  const copyPaymentLinkToClipboard = () => {
+    const paymentUrl = getPaymentLinkUrl();
+    if (!paymentUrl) {
+      Alert.alert('Error', 'No payment link available. Please generate one first.');
+      return;
+    }
+    
+    Clipboard.setString(paymentUrl);
+    Alert.alert('Copied', 'Payment link copied to clipboard');
   };
 
   const handleCollectPayment = () => {
@@ -486,13 +509,13 @@ export default function InvoiceDetailScreen() {
   };
 
   const handleCopyPaymentLink = async () => {
-    if (!invoice?.paymentToken) {
-      Alert.alert('No Payment Link', 'Enable online payments first to get a payment link.');
+    const paymentUrl = getPaymentLinkUrl();
+    if (!paymentUrl) {
+      Alert.alert('No Payment Link', 'Generate a payment link first to share it.');
       return;
     }
     
     setShowShareSheet(false);
-    const paymentUrl = `${API_URL}/public/invoice/${invoice.paymentToken}/pay`;
     Clipboard.setString(paymentUrl);
     Alert.alert('Copied', 'Payment link copied to clipboard');
   };
@@ -806,8 +829,8 @@ export default function InvoiceDetailScreen() {
                     onValueChange={async () => {
                       const newValue = !invoice.allowOnlinePayment;
                       await toggleOnlinePayment();
-                      // If enabling and no payment token exists, generate one
-                      if (newValue && !invoice.paymentToken) {
+                      // If enabling and no payment link exists, generate one
+                      if (newValue && !invoice.stripePaymentLink && !invoice.paymentToken) {
                         await generatePaymentLink();
                       }
                     }}
@@ -820,7 +843,7 @@ export default function InvoiceDetailScreen() {
                 {/* Payment Link Section */}
                 {invoice.allowOnlinePayment && (
                   <>
-                    {invoice.paymentToken ? (
+                    {(invoice.stripePaymentLink || invoice.paymentToken) ? (
                       <View style={styles.paymentLinkSection}>
                         <View style={styles.paymentLinkInfo}>
                           <Feather name="check-circle" size={16} color={colors.success} />
@@ -828,13 +851,22 @@ export default function InvoiceDetailScreen() {
                             Payment link active
                           </Text>
                         </View>
-                        <TouchableOpacity 
-                          style={styles.copyLinkButton}
-                          onPress={sharePaymentLink}
-                        >
-                          <Feather name="share-2" size={16} color={colors.primary} />
-                          <Text style={styles.copyLinkButtonText}>Share Payment Link</Text>
-                        </TouchableOpacity>
+                        <View style={styles.paymentLinkActions}>
+                          <TouchableOpacity 
+                            style={styles.copyLinkButton}
+                            onPress={sharePaymentLink}
+                          >
+                            <Feather name="share-2" size={16} color={colors.primary} />
+                            <Text style={styles.copyLinkButtonText}>Share</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={styles.copyLinkButton}
+                            onPress={copyPaymentLinkToClipboard}
+                          >
+                            <Feather name="copy" size={16} color={colors.primary} />
+                            <Text style={styles.copyLinkButtonText}>Copy</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     ) : (
                       <View style={styles.paymentLinkSection}>
@@ -1124,7 +1156,7 @@ export default function InvoiceDetailScreen() {
                 <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
               </TouchableOpacity>
 
-              {invoice?.allowOnlinePayment && invoice?.paymentToken && (
+              {invoice?.allowOnlinePayment && (invoice?.stripePaymentLink || invoice?.paymentToken) && (
                 <TouchableOpacity 
                   style={styles.shareOption}
                   onPress={handleCopyPaymentLink}
@@ -1445,6 +1477,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     gap: 12,
+  },
+  paymentLinkActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   copyLinkButton: {
     flexDirection: 'row',

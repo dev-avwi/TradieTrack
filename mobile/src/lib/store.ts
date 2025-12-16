@@ -40,6 +40,7 @@ interface BusinessSettings {
   email?: string;
   address?: string;
   logoUrl?: string;
+  brandColor?: string;
   primaryColor?: string;
   teamSize?: string;
   documentTemplate?: 'professional' | 'modern' | 'minimal';

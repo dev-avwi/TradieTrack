@@ -410,6 +410,7 @@ export const invoices = pgTable("invoices", {
   stripeInvoiceId: text("stripe_invoice_id"),
   allowOnlinePayment: boolean("allow_online_payment").default(false), // Enable card payment via Stripe Connect
   paymentToken: text("payment_token").unique(), // Secure token for public payment URL
+  stripePaymentLink: text("stripe_payment_link"), // Pre-generated Stripe checkout session URL
   notes: text("notes"),
   photos: jsonb("photos").default([]),
   templateId: varchar("template_id"),

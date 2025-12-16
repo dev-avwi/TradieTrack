@@ -767,7 +767,7 @@ export default function NewInvoiceScreen() {
     phone: businessSettings?.phone,
     address: businessSettings?.address,
     logoUrl: businessSettings?.logoUrl,
-    brandColor: businessSettings?.primaryColor,
+    brandColor: businessSettings?.brandColor,
   };
 
   const clientInfo = selectedClient ? {

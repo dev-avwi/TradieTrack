@@ -473,7 +473,7 @@ export const createReceiptEmailHtml = (invoice: any, client: any, business: any)
 };
 
 // Send quote email
-export const sendQuoteEmail = async (quote: any, client: any, business: any = {}, acceptanceUrl?: string | null) => {
+export const sendQuoteEmail = async (quote: any, client: any, business: any = {}, acceptanceUrl?: string | null, pdfBuffer?: Buffer) => {
   const sendGridInitialized = initializeSendGrid();
 
   if (!client.email) {
@@ -482,6 +482,16 @@ export const sendQuoteEmail = async (quote: any, client: any, business: any = {}
 
   try {
     const emailData = createQuoteEmail(quote, client, business, acceptanceUrl);
+    
+    // Add PDF attachment if provided
+    if (pdfBuffer) {
+      (emailData as any).attachments = [{
+        content: pdfBuffer.toString('base64'),
+        filename: `Quote-${quote.number || quote.id?.substring(0, 8).toUpperCase()}.pdf`,
+        type: 'application/pdf',
+        disposition: 'attachment'
+      }];
+    }
     
     if (sendGridInitialized) {
       await sgMail.send(emailData);
@@ -501,7 +511,7 @@ export const sendQuoteEmail = async (quote: any, client: any, business: any = {}
 };
 
 // Send invoice email
-export const sendInvoiceEmail = async (invoice: any, client: any, business: any = {}, paymentUrl?: string | null) => {
+export const sendInvoiceEmail = async (invoice: any, client: any, business: any = {}, paymentUrl?: string | null, pdfBuffer?: Buffer) => {
   const sendGridInitialized = initializeSendGrid();
 
   if (!client.email) {
@@ -510,6 +520,16 @@ export const sendInvoiceEmail = async (invoice: any, client: any, business: any 
 
   try {
     const emailData = createInvoiceEmail(invoice, client, business, paymentUrl);
+    
+    // Add PDF attachment if provided
+    if (pdfBuffer) {
+      (emailData as any).attachments = [{
+        content: pdfBuffer.toString('base64'),
+        filename: `Invoice-${invoice.number || invoice.id?.substring(0, 8).toUpperCase()}.pdf`,
+        type: 'application/pdf',
+        disposition: 'attachment'
+      }];
+    }
     
     if (sendGridInitialized) {
       await sgMail.send(emailData);

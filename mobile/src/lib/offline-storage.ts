@@ -24,6 +24,9 @@ import api from './api';
 // Background task name
 const BACKGROUND_SYNC_TASK = 'background-sync-task';
 
+// Max retry attempts before giving up on a sync item
+const MAX_RETRY_ATTEMPTS = 10;
+
 // ============ TYPES ============
 
 export interface CachedJob {
@@ -111,6 +114,26 @@ export interface CachedTimeEntry {
   localId?: string;
 }
 
+export interface CachedQuoteLineItem {
+  id: string;
+  quoteId: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  cachedAt: number;
+}
+
+export interface CachedInvoiceLineItem {
+  id: string;
+  invoiceId: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  cachedAt: number;
+}
+
 export interface CachedAttachment {
   id: string;
   jobId?: string;
@@ -188,7 +211,13 @@ export const useOfflineStore = create<OfflineState>((set) => ({
   setOnline: (online) => set({ isOnline: online }),
   setInitialized: (initialized) => set({ isInitialized: initialized }),
   setSyncing: (syncing) => set({ isSyncing: syncing }),
-  setLastSyncTime: (time) => set({ lastSyncTime: time }),
+  setLastSyncTime: (time) => {
+    set({ lastSyncTime: time });
+    // Persist to metadata (fire and forget)
+    if (time !== null) {
+      offlineStorage.setMetadata('last_sync_time', time.toString()).catch(() => {});
+    }
+  },
   setPendingSyncCount: (count) => set({ pendingSyncCount: count }),
   setSyncError: (error) => set({ syncError: error }),
   setUnresolvedConflictCount: (count) => set({ unresolvedConflictCount: count }),
@@ -369,6 +398,32 @@ class OfflineStorageService {
           last_synced_at INTEGER NOT NULL,
           last_server_timestamp TEXT
         );
+        
+        -- Quote line items table for offline access
+        CREATE TABLE IF NOT EXISTS quote_line_items (
+          id TEXT PRIMARY KEY,
+          quote_id TEXT NOT NULL,
+          description TEXT NOT NULL,
+          quantity REAL DEFAULT 1,
+          unit_price REAL DEFAULT 0,
+          total REAL DEFAULT 0,
+          cached_at INTEGER NOT NULL
+        );
+        
+        -- Invoice line items table for offline access
+        CREATE TABLE IF NOT EXISTS invoice_line_items (
+          id TEXT PRIMARY KEY,
+          invoice_id TEXT NOT NULL,
+          description TEXT NOT NULL,
+          quantity REAL DEFAULT 1,
+          unit_price REAL DEFAULT 0,
+          total REAL DEFAULT 0,
+          cached_at INTEGER NOT NULL
+        );
+        
+        -- Create indexes for line items
+        CREATE INDEX IF NOT EXISTS idx_quote_line_items_quote_id ON quote_line_items(quote_id);
+        CREATE INDEX IF NOT EXISTS idx_invoice_line_items_invoice_id ON invoice_line_items(invoice_id);
       `);
       
       // Run migrations to fix old schemas with NOT NULL constraints
@@ -385,6 +440,15 @@ class OfflineStorageService {
       // Update pending count and conflict count
       await this.updatePendingSyncCount();
       await this.updateUnresolvedConflictCount();
+      
+      // Load last sync time from metadata
+      const lastSyncStr = await this.getMetadata('last_sync_time');
+      if (lastSyncStr) {
+        useOfflineStore.getState().setLastSyncTime(parseInt(lastSyncStr, 10));
+      }
+      
+      // Clean up permanently failed sync items (exceeded max retries)
+      await this.cleanupFailedSyncItems();
       
       // Register background sync (non-blocking)
       this.registerBackgroundSync().catch(err => {
@@ -914,6 +978,47 @@ class OfflineStorageService {
     }
   }
 
+  // ============ QUOTE LINE ITEMS ============
+
+  async cacheQuoteLineItems(quoteId: string, lineItems: any[]): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    
+    // Clear existing line items for this quote
+    await this.db.runAsync('DELETE FROM quote_line_items WHERE quote_id = ?', [quoteId]);
+    
+    for (const item of lineItems) {
+      await this.db.runAsync(
+        `INSERT INTO quote_line_items 
+         (id, quote_id, description, quantity, unit_price, total, cached_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [item.id, quoteId, item.description, item.quantity || 1, item.unitPrice || 0, item.total || 0, now]
+      );
+    }
+    
+    console.log(`[OfflineStorage] Cached ${lineItems.length} line items for quote ${quoteId}`);
+  }
+
+  async getCachedQuoteLineItems(quoteId: string): Promise<CachedQuoteLineItem[]> {
+    if (!this.db) return [];
+    
+    const rows = await this.db.getAllAsync(
+      'SELECT * FROM quote_line_items WHERE quote_id = ?',
+      [quoteId]
+    );
+    
+    return rows.map((row: any) => ({
+      id: row.id,
+      quoteId: row.quote_id,
+      description: row.description,
+      quantity: row.quantity,
+      unitPrice: row.unit_price,
+      total: row.total,
+      cachedAt: row.cached_at,
+    }));
+  }
+
   // ============ INVOICES ============
 
   async cacheInvoices(invoices: any[]): Promise<void> {
@@ -1022,6 +1127,47 @@ class OfflineStorageService {
       await this.addToSyncQueue('invoice', 'update', { id: invoiceId, ...updates });
       await this.updatePendingSyncCount();
     }
+  }
+
+  // ============ INVOICE LINE ITEMS ============
+
+  async cacheInvoiceLineItems(invoiceId: string, lineItems: any[]): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    
+    // Clear existing line items for this invoice
+    await this.db.runAsync('DELETE FROM invoice_line_items WHERE invoice_id = ?', [invoiceId]);
+    
+    for (const item of lineItems) {
+      await this.db.runAsync(
+        `INSERT INTO invoice_line_items 
+         (id, invoice_id, description, quantity, unit_price, total, cached_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [item.id, invoiceId, item.description, item.quantity || 1, item.unitPrice || 0, item.total || 0, now]
+      );
+    }
+    
+    console.log(`[OfflineStorage] Cached ${lineItems.length} line items for invoice ${invoiceId}`);
+  }
+
+  async getCachedInvoiceLineItems(invoiceId: string): Promise<CachedInvoiceLineItem[]> {
+    if (!this.db) return [];
+    
+    const rows = await this.db.getAllAsync(
+      'SELECT * FROM invoice_line_items WHERE invoice_id = ?',
+      [invoiceId]
+    );
+    
+    return rows.map((row: any) => ({
+      id: row.id,
+      invoiceId: row.invoice_id,
+      description: row.description,
+      quantity: row.quantity,
+      unitPrice: row.unit_price,
+      total: row.total,
+      cachedAt: row.cached_at,
+    }));
   }
 
   // ============ TIME ENTRIES ============
@@ -1328,6 +1474,9 @@ class OfflineStorageService {
         lastAttemptedAt: row.last_attempted_at,
       }))
       .filter((item) => {
+        // Skip items that have exceeded max retries
+        if (item.retryCount >= MAX_RETRY_ATTEMPTS) return false;
+        
         // First attempt - always ready
         if (!item.lastAttemptedAt || item.retryCount === 0) return true;
         
@@ -1338,6 +1487,53 @@ class OfflineStorageService {
         // Check if enough time has passed
         return now >= nextRetryTime;
       });
+  }
+
+  /**
+   * Clean up sync items that have permanently failed (exceeded max retries)
+   * Moves them to a failed state and notifies the user
+   */
+  private async cleanupFailedSyncItems(): Promise<void> {
+    if (!this.db) return;
+    
+    try {
+      const failedItems = await this.db.getAllAsync(
+        `SELECT * FROM sync_queue WHERE retry_count >= ?`,
+        [MAX_RETRY_ATTEMPTS]
+      ) as any[];
+      
+      if (failedItems.length === 0) return;
+      
+      console.log(`[OfflineStorage] Cleaning up ${failedItems.length} permanently failed sync items`);
+      
+      for (const item of failedItems) {
+        // Log the failed item for debugging
+        console.warn(`[OfflineStorage] Permanently failed: ${item.type} ${item.action} - ${item.last_error}`);
+        
+        // Mark the cached item as having a sync failure
+        const data = JSON.parse(item.data);
+        const tableMap: Record<string, string> = {
+          job: 'jobs', client: 'clients', quote: 'quotes',
+          invoice: 'invoices', timeEntry: 'time_entries', attachment: 'attachments'
+        };
+        const table = tableMap[item.type];
+        
+        if (table && data.id) {
+          // Keep the local data but clear the sync action (user can retry manually)
+          await this.db.runAsync(
+            `UPDATE ${table} SET pending_sync = 0, sync_action = 'failed' WHERE id = ?`,
+            [data.id]
+          );
+        }
+        
+        // Remove from sync queue
+        await this.db.runAsync('DELETE FROM sync_queue WHERE id = ?', [item.id]);
+      }
+      
+      await this.updatePendingSyncCount();
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to cleanup failed sync items:', error);
+    }
   }
 
   private async updatePendingSyncCount(): Promise<void> {

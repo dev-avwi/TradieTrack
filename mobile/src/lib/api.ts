@@ -264,6 +264,7 @@ class ApiClient {
     gstEnabled?: boolean;
     defaultHourlyRate?: number;
     calloutFee?: number;
+    brandColor?: string;
   }): Promise<ApiResponse<any>> {
     return this.patch<any>('/api/business-settings', data);
   }

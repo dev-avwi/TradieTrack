@@ -53,7 +53,7 @@ export default function QuoteDetailScreen() {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   
-  const brandColor = businessSettings?.primaryColor || user?.brandColor || '#2563eb';
+  const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
 
   useEffect(() => {
     loadData();

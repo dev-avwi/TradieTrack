@@ -94,7 +94,7 @@ export function DocumentPreview({
 
   const effectiveTemplateId = templateId || businessSettings?.documentTemplate || 'minimal';
   const effectiveCustomization = templateCustomization || businessSettings?.documentTemplateSettings;
-  const brandColor = businessSettings?.primaryColor || '#3b82f6';
+  const brandColor = businessSettings?.brandColor || '#3b82f6';
   
   const templateStyles = getTemplateStyles(
     effectiveTemplateId as TemplateId,

@@ -5523,6 +5523,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate and persist Stripe payment link for invoice
+  app.post("/api/invoices/:id/generate-payment-link", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      // Get invoice with line items
+      const invoice = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      // Don't generate for already paid invoices
+      if (invoice.status === 'paid') {
+        return res.status(400).json({ error: "Invoice is already paid" });
+      }
+
+      // Get client and business settings
+      const client = await storage.getClient(invoice.clientId, req.userId);
+      const business = await storage.getBusinessSettings(req.userId);
+      
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      if (!business) {
+        return res.status(404).json({ error: "Business settings not found" });
+      }
+
+      const totalAmountCents = Math.round(parseFloat(invoice.total) * 100);
+      const stripe = await getUncachableStripeClient();
+
+      if (stripe) {
+        // Determine base URL for success/cancel redirects
+        const baseUrl = process.env.APP_BASE_URL 
+          || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+            ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+            : req.headers.origin || 'http://localhost:5000');
+
+        // Build checkout session config
+        const sessionConfig: any = {
+          payment_method_types: ['card'],
+          line_items: [
+            {
+              price_data: {
+                currency: 'aud',
+                product_data: {
+                  name: `Invoice #${invoice.number || invoice.id.substring(0, 8).toUpperCase()}`,
+                  description: invoice.title || 'Invoice payment',
+                },
+                unit_amount: totalAmountCents,
+              },
+              quantity: 1,
+            },
+          ],
+          mode: 'payment',
+          success_url: `${baseUrl}/invoices/${invoice.id}?payment=success`,
+          cancel_url: `${baseUrl}/invoices/${invoice.id}?payment=cancelled`,
+          client_reference_id: invoice.id,
+          customer_email: client.email || undefined,
+          metadata: {
+            invoiceId: invoice.id,
+            userId: req.userId,
+            businessName: business.businessName || '',
+          },
+        };
+
+        // Add Stripe Connect destination charges if tradie has Connect account
+        if (business.stripeConnectAccountId && business.connectChargesEnabled) {
+          const platformFee = Math.max(Math.round(totalAmountCents * 0.025), 50);
+          sessionConfig.payment_intent_data = {
+            application_fee_amount: platformFee,
+            transfer_data: {
+              destination: business.stripeConnectAccountId,
+            },
+            metadata: {
+              invoiceId: invoice.id,
+              tradieUserId: req.userId,
+              clientId: client.id || '',
+              clientName: client.name || '',
+            },
+          };
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
+
+        // Save the payment link to the invoice
+        await storage.updateInvoice(invoice.id, req.userId, {
+          stripePaymentLink: session.url,
+          allowOnlinePayment: true,
+        });
+
+        console.log(`✅ Payment link generated for invoice ${invoice.number}: ${session.url}`);
+
+        res.json({ 
+          paymentUrl: session.url,
+          sessionId: session.id,
+          saved: true,
+          message: 'Payment link generated and saved to invoice'
+        });
+      } else {
+        // Mock payment for testing when Stripe is not configured
+        const mockPaymentUrl = `${req.headers.origin || 'http://localhost:5000'}/pay/mock-${invoice.id}`;
+        
+        await storage.updateInvoice(invoice.id, req.userId, {
+          stripePaymentLink: mockPaymentUrl,
+          allowOnlinePayment: true,
+        });
+        
+        res.json({ 
+          paymentUrl: mockPaymentUrl,
+          sessionId: `mock_session_${invoice.id}`,
+          saved: true,
+          mode: 'mock',
+          message: 'Mock payment link created for testing'
+        });
+      }
+    } catch (error) {
+      console.error("Error generating payment link:", error);
+      res.status(500).json({ error: "Failed to generate payment link" });
+    }
+  });
+
   // Convert quote to invoice
   app.post("/api/quotes/:id/convert-to-invoice", requireAuth, createPermissionMiddleware([PERMISSIONS.WRITE_QUOTES, PERMISSIONS.WRITE_INVOICES]), async (req: any, res) => {
     try {

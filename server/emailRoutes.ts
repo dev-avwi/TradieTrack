@@ -364,10 +364,14 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
       });
     }
 
-    // 6.5. Generate payment token and URL if online payment is enabled
+    // 6.5. Determine payment URL for email - prioritize pre-generated Stripe payment link
     let paymentUrl: string | null = null;
-    if (invoiceWithItems.allowOnlinePayment) {
-      // Generate payment token if not already present (12 chars alphanumeric for shorter URLs)
+    
+    // First, check if there's a pre-generated Stripe payment link
+    if (invoiceWithItems.stripePaymentLink) {
+      paymentUrl = invoiceWithItems.stripePaymentLink;
+    } else if (invoiceWithItems.allowOnlinePayment) {
+      // Fallback: Generate payment token if not already present (12 chars alphanumeric for shorter URLs)
       if (!invoiceWithItems.paymentToken) {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
         const bytes = crypto.randomBytes(12);

@@ -16,6 +16,7 @@ import { useNotificationsStore } from '../src/lib/notifications-store';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
 import { TerminalProvider } from '../src/providers/StripeTerminalProvider';
 import { OfflineBanner, OfflineIndicator } from '../src/components/OfflineIndicator';
+import { ConflictResolutionPanel } from '../src/components/ConflictResolutionPanel';
 import { useOfflineStore } from '../src/lib/offline-storage';
 import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
@@ -153,6 +154,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <Header />
       <OfflineBanner />
+      <ConflictResolutionPanel />
       <OfflineIndicator />
       <View style={[styles.content, { paddingBottom: bottomNavHeight }]}>
         {children}

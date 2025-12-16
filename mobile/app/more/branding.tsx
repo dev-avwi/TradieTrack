@@ -349,13 +349,13 @@ export default function BrandingScreen() {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
-  const [customColor, setCustomColor] = useState(brandColor || businessSettings?.primaryColor || '#3b82f6');
+  const [customColor, setCustomColor] = useState(brandColor || businessSettings?.brandColor || '#3b82f6');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [logoUrl, setLogoUrl] = useState(businessSettings?.logoUrl || '');
   const [showAdvancedTheme, setShowAdvancedTheme] = useState(false);
 
-  const currentColor = brandColor || businessSettings?.primaryColor || '#3b82f6';
+  const currentColor = brandColor || businessSettings?.brandColor || '#3b82f6';
 
   const isValidHex = (hex: string) => /^#[0-9A-Fa-f]{6}$/.test(hex);
 
@@ -371,7 +371,7 @@ export default function BrandingScreen() {
 
     setIsSaving(true);
     try {
-      const success = await updateBusinessSettings({ primaryColor: customColor });
+      const success = await updateBusinessSettings({ brandColor: customColor });
       
       if (success) {
         Alert.alert('Success', 'Brand color updated! The new color will appear throughout the app.');
