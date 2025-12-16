@@ -1,8 +1,8 @@
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pin, Trash2, AlertCircle, Image as ImageIcon, FileText, Info } from "lucide-react";
+import { Pin, Trash2, AlertCircle, FileText, Info } from "lucide-react";
 
 interface ChatMessageProps {
   id: string;
@@ -49,6 +49,7 @@ export function ChatMessage({
   };
 
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: true });
+  const timeOnly = format(new Date(createdAt), 'h:mm a');
 
   if (isSystemMessage) {
     return (
@@ -84,30 +85,34 @@ export function ChatMessage({
 
   return (
     <div
-      className={`flex gap-3 py-2 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
+      className={`flex gap-2 py-0.5 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
       data-testid={`chat-message-${id}`}
     >
-      <Avatar className="w-8 h-8 shrink-0">
-        {senderAvatar && <AvatarImage src={senderAvatar} alt={senderName} />}
-        <AvatarFallback className="text-xs">{getInitials(senderName)}</AvatarFallback>
-      </Avatar>
+      {!isCurrentUser && (
+        <Avatar className="w-7 h-7 shrink-0">
+          {senderAvatar && <AvatarImage src={senderAvatar} alt={senderName} />}
+          <AvatarFallback className="text-[10px]">{getInitials(senderName)}</AvatarFallback>
+        </Avatar>
+      )}
       
-      <div className={`flex flex-col max-w-[75%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-medium text-muted-foreground">{senderName}</span>
-          <span className="text-xs text-muted-foreground">{timeAgo}</span>
-          {isPinned && <Pin className="w-3 h-3 text-primary" />}
-        </div>
+      <div className={`flex flex-col max-w-[80%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
+        {!isCurrentUser && (
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-[10px] font-medium text-muted-foreground">{senderName}</span>
+            <span className="text-[10px] text-muted-foreground/70">{timeAgo}</span>
+            {isPinned && <Pin className="w-2.5 h-2.5 text-primary" />}
+          </div>
+        )}
         
         <div
-          className={`rounded-2xl px-4 py-2 ${
+          className={`rounded-2xl px-3 py-1.5 ${
             isCurrentUser
-              ? 'bg-primary text-primary-foreground rounded-br-md'
-              : 'bg-muted rounded-bl-md'
+              ? 'bg-primary text-primary-foreground rounded-br-sm'
+              : 'bg-muted/60 rounded-bl-sm'
           }`}
         >
           {messageType === 'image' && attachmentUrl && (
-            <div className="mb-2">
+            <div className="mb-1.5">
               <img
                 src={attachmentUrl}
                 alt={attachmentName || 'Attached image'}
@@ -121,38 +126,43 @@ export function ChatMessage({
               href={attachmentUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 mb-2 p-2 bg-background/20 rounded-lg hover:bg-background/30"
+              className="flex items-center gap-2 mb-1.5 p-2 bg-background/20 rounded-lg hover:bg-background/30"
             >
               <FileText className="w-4 h-4" />
               <span className="text-sm underline">{attachmentName || 'Download file'}</span>
             </a>
           )}
           
-          <p className="text-sm whitespace-pre-wrap break-words">{message}</p>
+          <div className="flex items-end gap-2">
+            <p className="text-sm whitespace-pre-wrap break-words">{message}</p>
+            {isCurrentUser && (
+              <span className="text-[10px] opacity-70 whitespace-nowrap shrink-0">{timeOnly}</span>
+            )}
+          </div>
         </div>
         
         {(isCurrentUser || canPin) && (
-          <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
             {canPin && onPin && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="h-5 w-5"
                 onClick={() => onPin(id, !isPinned)}
                 data-testid={`button-pin-${id}`}
               >
-                <Pin className={`w-3 h-3 ${isPinned ? 'text-primary' : ''}`} />
+                <Pin className={`w-2.5 h-2.5 ${isPinned ? 'text-primary' : ''}`} />
               </Button>
             )}
             {isCurrentUser && onDelete && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 text-destructive hover:text-destructive"
+                className="h-5 w-5 text-destructive hover:text-destructive"
                 onClick={() => onDelete(id)}
                 data-testid={`button-delete-${id}`}
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-2.5 h-2.5" />
               </Button>
             )}
           </div>

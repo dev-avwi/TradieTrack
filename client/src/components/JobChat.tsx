@@ -5,10 +5,8 @@ import { ChatMessage } from "./ChatMessage";
 import { ChatComposer } from "./ChatComposer";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Loader2, Users, Eye, User, Phone, Mail } from "lucide-react";
+import { MessageCircle, Loader2, User, Phone, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface JobChatMessage {
   id: string;
@@ -124,92 +122,46 @@ export function JobChat({ jobId, currentUserId, className }: JobChatProps) {
 
   return (
     <Card className={className} data-testid="job-chat-container">
-      <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-3">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="w-5 h-5 text-primary" />
-          <CardTitle className="text-lg">Job Discussion</CardTitle>
-        </div>
-        <Badge variant="secondary" className="text-xs">
-          {messages.length} {messages.length === 1 ? 'message' : 'messages'}
-        </Badge>
+      <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
+        <MessageCircle className="w-4 h-4 text-primary" />
+        <CardTitle className="text-base">Messages</CardTitle>
       </CardHeader>
       
-      {/* Client Banner - Who this job is for */}
+      {/* Client Banner - Subtle version */}
       {participantsData?.client && (
-        <div className="mx-4 mb-3 px-3 py-2.5 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-100 dark:border-green-900/50">
-          <div className="flex items-start gap-2">
-            <User className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-green-800 dark:text-green-300 mb-1">
-                Client for this job:
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium text-green-700 dark:text-green-200">
-                  {participantsData.client.name}
-                </span>
-                {participantsData.client.phone && (
-                  <a 
-                    href={`tel:${participantsData.client.phone}`}
-                    className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:underline"
-                    data-testid="client-phone-link"
-                  >
-                    <Phone className="h-3 w-3" />
-                    {participantsData.client.phone}
-                  </a>
-                )}
-                {participantsData.client.email && (
-                  <a 
-                    href={`mailto:${participantsData.client.email}`}
-                    className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:underline"
-                    data-testid="client-email-link"
-                  >
-                    <Mail className="h-3 w-3" />
-                    {participantsData.client.email}
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Participants Banner - Who can see these messages */}
-      {participantsData && participantsData.participants.length > 0 && (
-        <div className="mx-4 mb-3 px-3 py-2.5 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-900/50">
-          <div className="flex items-start gap-2">
-            <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1.5">
-                Who can see these messages:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {participantsData.participants.map((p) => (
-                  <div 
-                    key={p.id} 
-                    className="inline-flex items-center gap-1.5 bg-white dark:bg-blue-900/50 px-2 py-1 rounded-md border border-blue-100 dark:border-blue-800"
-                  >
-                    <Avatar className="h-5 w-5">
-                      <AvatarImage src={p.avatar || undefined} />
-                      <AvatarFallback className="text-[10px] bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300">
-                        {p.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs text-blue-800 dark:text-blue-200 font-medium">
-                      {p.name.split(' ')[0]}
-                    </span>
-                    <span className="text-[10px] text-blue-500 dark:text-blue-400">
-                      ({p.role})
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <div className="mx-4 mb-2 px-2.5 py-1.5 bg-muted/50 rounded-md">
+          <div className="flex items-center gap-2 flex-wrap">
+            <User className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className="text-xs text-muted-foreground">Client:</span>
+            <span className="text-xs font-medium">
+              {participantsData.client.name}
+            </span>
+            {participantsData.client.phone && (
+              <a 
+                href={`tel:${participantsData.client.phone}`}
+                className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:underline"
+                data-testid="client-phone-link"
+              >
+                <Phone className="h-2.5 w-2.5" />
+                {participantsData.client.phone}
+              </a>
+            )}
+            {participantsData.client.email && (
+              <a 
+                href={`mailto:${participantsData.client.email}`}
+                className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:underline"
+                data-testid="client-email-link"
+              >
+                <Mail className="h-2.5 w-2.5" />
+                {participantsData.client.email}
+              </a>
+            )}
           </div>
         </div>
       )}
       
       <CardContent className="p-0">
-        <div className="flex flex-col h-[400px]">
+        <div className="flex flex-col h-[500px]">
           <ScrollArea className="flex-1 px-4" ref={scrollRef}>
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
@@ -217,12 +169,12 @@ export function JobChat({ jobId, currentUserId, className }: JobChatProps) {
               </div>
             ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                <MessageCircle className="w-12 h-12 mb-3 opacity-50" />
-                <p className="text-sm">No messages yet</p>
-                <p className="text-xs mt-1">Start the conversation about this job</p>
+                <MessageCircle className="w-10 h-10 mb-2 opacity-40" />
+                <p className="text-sm font-medium">Start a conversation</p>
+                <p className="text-xs mt-0.5">Send a message to get things moving</p>
               </div>
             ) : (
-              <div className="py-4 space-y-1 group">
+              <div className="py-3 space-y-0.5 group">
                 {messages.map((msg) => (
                   <ChatMessage
                     key={msg.id}

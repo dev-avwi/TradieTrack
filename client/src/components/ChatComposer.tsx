@@ -53,7 +53,7 @@ export function ChatComposer({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled || isSending}
-        className="min-h-[44px] max-h-[120px] resize-none border-0 bg-muted focus-visible:ring-0 focus-visible:ring-offset-0 rounded-2xl px-4 py-3"
+        className="min-h-[44px] max-h-[120px] resize-none border-0 bg-muted focus-visible:ring-0 focus-visible:ring-offset-0 rounded-full px-4 py-3"
         rows={1}
         data-testid="input-chat-message"
       />
