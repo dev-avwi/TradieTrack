@@ -545,6 +545,7 @@ export default function NewInvoiceScreen() {
   });
   const [jobExpenses, setJobExpenses] = useState<any[]>([]);
   const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
+  const [isLoadingJob, setIsLoadingJob] = useState(false);
 
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
 
@@ -552,8 +553,38 @@ export default function NewInvoiceScreen() {
     fetchClients();
     if (params.jobId) {
       fetchJobExpenses(params.jobId);
+      fetchJobAndPrefill(params.jobId);
     }
   }, []);
+
+  const fetchJobAndPrefill = async (jId: string) => {
+    setIsLoadingJob(true);
+    try {
+      const response = await api.get(`/api/jobs/${jId}`);
+      if (response.data) {
+        const job = response.data;
+        setForm(prev => ({
+          ...prev,
+          clientId: job.clientId || prev.clientId,
+          title: job.title || prev.title,
+          description: job.description || prev.description,
+        }));
+        if (job.clientId) {
+          const clientResponse = await api.get(`/api/clients/${job.clientId}`);
+          if (clientResponse.data) {
+            setForm(prev => ({
+              ...prev,
+              clientName: clientResponse.data.name || '',
+            }));
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Error fetching job data:', error);
+    } finally {
+      setIsLoadingJob(false);
+    }
+  };
 
   const fetchJobExpenses = async (jId: string) => {
     setIsLoadingExpenses(true);

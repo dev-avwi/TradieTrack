@@ -498,7 +498,7 @@ export function LoadingScreen({ message = 'Loading TradieTrack...', showProgress
             <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
           </View>
         ) : (
-          <ShimmerProgress colors={colors} isDark={isDark} />
+          <LoadingDots colors={colors} isDark={isDark} />
         )}
       </View>
     </View>
