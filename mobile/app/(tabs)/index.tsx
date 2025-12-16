@@ -8,10 +8,12 @@ import {
   StyleSheet,
   Linking,
   ActivityIndicator,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore } from '../../src/lib/store';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -393,7 +395,9 @@ function TodayJobCard({
   onPress,
   onStartJob,
   onCompleteJob,
-  isUpdating
+  isUpdating,
+  onGetDirections,
+  orderNumber
 }: { 
   job: any;
   clients: any[];
@@ -402,6 +406,8 @@ function TodayJobCard({
   onStartJob: (id: string) => void;
   onCompleteJob: (id: string) => void;
   isUpdating: boolean;
+  onGetDirections?: (job: any) => void;
+  orderNumber?: number;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -529,9 +535,15 @@ function TodayJobCard({
         {/* Job Header */}
         <View style={styles.jobCardHeader}>
           <View style={styles.jobCardHeaderLeft}>
-            <View style={styles.timeBox}>
-              <Text style={styles.timeBoxText}>{time.hour}</Text>
-            </View>
+            {orderNumber ? (
+              <View style={styles.orderBadge}>
+                <Text style={styles.orderBadgeText}>{orderNumber}</Text>
+              </View>
+            ) : (
+              <View style={styles.timeBox}>
+                <Text style={styles.timeBoxText}>{time.hour}</Text>
+              </View>
+            )}
             <View style={styles.jobCardTitleArea}>
               <View style={styles.jobCardMetaRow}>
                 <Text style={styles.timePeriod}>{time.period}</Text>
@@ -568,6 +580,7 @@ function TodayJobCard({
                   style={styles.quickContactButton}
                   onPress={handleCall}
                   activeOpacity={0.7}
+                  data-testid={`button-call-${job.id}`}
                 >
                   <Feather name="phone" size={iconSizes.md} color={colors.foreground} />
                   <Text style={styles.quickContactText}>Call</Text>
@@ -576,6 +589,7 @@ function TodayJobCard({
                   style={styles.quickContactButton}
                   onPress={handleSMS}
                   activeOpacity={0.7}
+                  data-testid={`button-sms-${job.id}`}
                 >
                   <Feather name="message-square" size={iconSizes.md} color={colors.foreground} />
                   <Text style={styles.quickContactText}>SMS</Text>
@@ -584,12 +598,13 @@ function TodayJobCard({
             )}
             {job.address && (
               <TouchableOpacity 
-                style={[styles.quickContactButton, !client?.phone && styles.quickContactButtonFull]}
-                onPress={handleNavigate}
+                style={[styles.quickContactButton, styles.directionsButton]}
+                onPress={() => onGetDirections?.(job)}
                 activeOpacity={0.7}
+                data-testid={`button-directions-${job.id}`}
               >
-                <Feather name="navigation" size={iconSizes.md} color={colors.foreground} />
-                <Text style={styles.quickContactText}>Navigate</Text>
+                <Feather name="navigation" size={iconSizes.md} color={colors.primary} />
+                <Text style={[styles.quickContactText, { color: colors.primary }]}>Directions</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -650,6 +665,166 @@ export default function DashboardScreen() {
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [allJobs, setAllJobs] = useState<any[]>([]);
+  
+  // Route optimization state
+  const [optimizedJobs, setOptimizedJobs] = useState<any[]>([]);
+  const [isRouteOptimized, setIsRouteOptimized] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  // Haversine formula to calculate distance between two coordinates in km
+  const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Jobs with valid coordinates for route optimization
+  const jobsWithCoords = useMemo(() => {
+    return todaysJobs.filter((job: any) => 
+      job.latitude && job.longitude && job.address
+    );
+  }, [todaysJobs]);
+
+  // Nearest-neighbor route optimization
+  const optimizeRoute = async () => {
+    if (jobsWithCoords.length < 2) {
+      Alert.alert('Not Enough Jobs', 'You need at least 2 jobs with addresses to optimize the route.');
+      return;
+    }
+
+    setIsOptimizing(true);
+    
+    try {
+      // Get current location as starting point
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      let startLat: number, startLon: number;
+      
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        startLat = location.coords.latitude;
+        startLon = location.coords.longitude;
+        setUserLocation({ latitude: startLat, longitude: startLon });
+      } else {
+        // Use first job as starting point
+        startLat = jobsWithCoords[0].latitude;
+        startLon = jobsWithCoords[0].longitude;
+      }
+
+      // Nearest-neighbor algorithm
+      const unvisited = [...jobsWithCoords];
+      const route: any[] = [];
+      let currentLat = startLat;
+      let currentLon = startLon;
+
+      while (unvisited.length > 0) {
+        let nearestIndex = 0;
+        let nearestDistance = Infinity;
+
+        for (let i = 0; i < unvisited.length; i++) {
+          const dist = haversineDistance(
+            currentLat, currentLon,
+            unvisited[i].latitude, unvisited[i].longitude
+          );
+          if (dist < nearestDistance) {
+            nearestDistance = dist;
+            nearestIndex = i;
+          }
+        }
+
+        const nearest = unvisited.splice(nearestIndex, 1)[0];
+        route.push(nearest);
+        currentLat = nearest.latitude;
+        currentLon = nearest.longitude;
+      }
+
+      // Add jobs without coordinates at the end (maintain original order)
+      const jobsWithoutCoords = todaysJobs.filter((job: any) => !job.latitude || !job.longitude);
+      setOptimizedJobs([...route, ...jobsWithoutCoords]);
+      setIsRouteOptimized(true);
+      Alert.alert('Route Optimized', `Your ${route.length} jobs have been reordered for the most efficient route.`);
+    } catch (error) {
+      console.log('Error optimizing route:', error);
+      Alert.alert('Error', 'Failed to optimize route. Please try again.');
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  // Reset to original order
+  const resetRouteOrder = () => {
+    setOptimizedJobs([]);
+    setIsRouteOptimized(false);
+  };
+
+  // Open directions to a single job
+  const openDirections = (job: any) => {
+    if (!job.latitude || !job.longitude) {
+      if (job.address) {
+        const encodedAddress = encodeURIComponent(job.address);
+        Linking.openURL(`https://maps.google.com/maps?daddr=${encodedAddress}`);
+      } else {
+        Alert.alert('No Address', 'This job has no address to navigate to.');
+      }
+      return;
+    }
+
+    const lat = job.latitude;
+    const lng = job.longitude;
+    
+    if (Platform.OS === 'ios') {
+      Linking.openURL(`maps://app?daddr=${lat},${lng}`);
+    } else {
+      Linking.canOpenURL('google.navigation:q=0,0').then((supported) => {
+        if (supported) {
+          Linking.openURL(`google.navigation:q=${lat},${lng}`);
+        } else {
+          Linking.openURL(`https://maps.google.com/maps?daddr=${lat},${lng}`);
+        }
+      });
+    }
+  };
+
+  // Start multi-stop route
+  const startRoute = () => {
+    const jobs = isRouteOptimized ? optimizedJobs : todaysJobs;
+    const validJobs = jobs.filter((job: any) => job.latitude && job.longitude);
+    
+    if (validJobs.length === 0) {
+      Alert.alert('No Valid Jobs', 'No jobs with valid coordinates to create a route.');
+      return;
+    }
+
+    // Build Google Maps multi-stop URL
+    let waypoints: string[] = [];
+    
+    // Start with user location if available
+    if (userLocation) {
+      waypoints.push(`${userLocation.latitude},${userLocation.longitude}`);
+    }
+    
+    // Add all job coordinates
+    validJobs.forEach((job: any) => {
+      waypoints.push(`${job.latitude},${job.longitude}`);
+    });
+
+    if (waypoints.length < 2) {
+      openDirections(validJobs[0]);
+      return;
+    }
+
+    const routeUrl = `https://www.google.com/maps/dir/${waypoints.join('/')}`;
+    Linking.openURL(routeUrl);
+  };
+
+  // Get display jobs (optimized or original)
+  const displayJobs = isRouteOptimized ? optimizedJobs : todaysJobs;
   
   // Determine if user is staff (team member with limited permissions)
   const isStaffUser = isStaff();
@@ -1162,24 +1337,80 @@ export default function DashboardScreen() {
               <Feather name="calendar" size={iconSizes.md} color={colors.primary} />
             </View>
             <Text style={styles.sectionTitle}>Today</Text>
+            {isRouteOptimized && (
+              <View style={styles.optimizedBadge}>
+                <Feather name="check" size={12} color={colors.success} />
+                <Text style={styles.optimizedBadgeText}>Optimized</Text>
+              </View>
+            )}
           </View>
-          {todaysJobs.length > 0 && (
-            <TouchableOpacity 
-              style={styles.viewAllButton}
-              onPress={() => router.push('/(tabs)/jobs')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.viewAllText}>View All</Text>
-              <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          )}
+          <View style={styles.headerActions}>
+            {jobsWithCoords.length >= 2 && (
+              <TouchableOpacity 
+                style={[
+                  styles.optimizeButton,
+                  isRouteOptimized && styles.optimizeButtonActive
+                ]}
+                onPress={isRouteOptimized ? resetRouteOrder : optimizeRoute}
+                activeOpacity={0.7}
+                disabled={isOptimizing}
+                data-testid="button-optimize-route"
+              >
+                {isOptimizing ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <>
+                    <Feather 
+                      name={isRouteOptimized ? "x" : "navigation"} 
+                      size={iconSizes.sm} 
+                      color={isRouteOptimized ? colors.mutedForeground : colors.primary} 
+                    />
+                    <Text style={[
+                      styles.optimizeButtonText,
+                      isRouteOptimized && styles.optimizeButtonTextActive
+                    ]}>
+                      {isRouteOptimized ? 'Reset' : 'Optimize'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+            {todaysJobs.length > 0 && (
+              <TouchableOpacity 
+                style={styles.viewAllButton}
+                onPress={() => router.push('/(tabs)/jobs')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.viewAllText}>View All</Text>
+                <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
+
+        {/* Start Route Button - shown when jobs exist */}
+        {jobsWithCoords.length >= 1 && (
+          <TouchableOpacity 
+            style={styles.startRouteButton}
+            onPress={startRoute}
+            activeOpacity={0.8}
+            data-testid="button-start-route"
+          >
+            <View style={styles.startRouteIcon}>
+              <Feather name="map" size={18} color={colors.white} />
+            </View>
+            <Text style={styles.startRouteText}>
+              Start Route ({jobsWithCoords.length} stop{jobsWithCoords.length !== 1 ? 's' : ''})
+            </Text>
+            <Feather name="chevron-right" size={18} color={colors.white} />
+          </TouchableOpacity>
+        )}
 
         {todaysJobs.length === 0 ? (
           <EmptyTodayState onCreateJob={() => router.push('/more/create-job')} />
         ) : (
           <View style={styles.jobsList}>
-            {todaysJobs.map((job: any, index: number) => (
+            {displayJobs.map((job: any, index: number) => (
               <TodayJobCard
                 key={job.id}
                 job={job}
@@ -1189,6 +1420,8 @@ export default function DashboardScreen() {
                 onStartJob={handleStartJob}
                 onCompleteJob={handleCompleteJob}
                 isUpdating={isUpdating}
+                onGetDirections={openDirections}
+                orderNumber={isRouteOptimized ? index + 1 : undefined}
               />
             ))}
           </View>
@@ -1767,6 +2000,92 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.captionSmall,
     fontWeight: '500',
     color: colors.foreground,
+  },
+  directionsButton: {
+    borderColor: `${colors.primary}30`,
+    backgroundColor: `${colors.primary}10`,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  optimizeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: `${colors.primary}10`,
+    borderWidth: 1,
+    borderColor: `${colors.primary}30`,
+  },
+  optimizeButtonActive: {
+    backgroundColor: colors.muted,
+    borderColor: colors.cardBorder,
+  },
+  optimizeButtonText: {
+    ...typography.captionSmall,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  optimizeButtonTextActive: {
+    color: colors.mutedForeground,
+  },
+  optimizedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    backgroundColor: `${colors.success}15`,
+  },
+  optimizedBadgeText: {
+    ...typography.captionSmall,
+    fontWeight: '500',
+    color: colors.success,
+  },
+  startRouteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+    marginBottom: spacing.md,
+    minHeight: 48,
+  },
+  startRouteIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startRouteText: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.white,
+    flex: 1,
+  },
+  orderBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderBadgeText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.white,
   },
   primaryActionButton: {
     flexDirection: 'row',
