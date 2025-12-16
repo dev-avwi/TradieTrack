@@ -1859,3 +1859,125 @@ export const insertAutomationLogSchema = createInsertSchema(automationLogs).omit
 });
 export type InsertAutomationLog = z.infer<typeof insertAutomationLogSchema>;
 export type AutomationLog = typeof automationLogs.$inferSelect;
+
+// SMS Templates - Reusable message templates with merge fields
+export const smsTemplates = pgTable("sms_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 100 }).notNull(),
+  category: text("category").default('general'), // general, booking, quote, invoice, reminder, arrival
+  body: text("body").notNull(), // Template with merge fields like {client_name}, {job_title}
+  isDefault: boolean("is_default").default(false),
+  usageCount: integer("usage_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSmsTemplateSchema = createInsertSchema(smsTemplates).omit({
+  id: true,
+  usageCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSmsTemplate = z.infer<typeof insertSmsTemplateSchema>;
+export type SmsTemplate = typeof smsTemplates.$inferSelect;
+
+// SMS Booking Links - Unique links for clients to confirm/reschedule bookings
+export const smsBookingLinks = pgTable("sms_booking_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: varchar("token", { length: 64 }).notNull().unique(), // Secure random token for URL
+  status: text("status").default('pending'), // pending, confirmed, rescheduled, expired, cancelled
+  clientResponse: text("client_response"), // confirmed, reschedule_requested, cancelled
+  clientNotes: text("client_notes"),
+  expiresAt: timestamp("expires_at").notNull(),
+  respondedAt: timestamp("responded_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSmsBookingLinkSchema = createInsertSchema(smsBookingLinks).omit({
+  id: true,
+  status: true,
+  respondedAt: true,
+  createdAt: true,
+});
+export type InsertSmsBookingLink = z.infer<typeof insertSmsBookingLinkSchema>;
+export type SmsBookingLink = typeof smsBookingLinks.$inferSelect;
+
+// SMS Tracking Links - Live arrival tracking for clients
+export const smsTrackingLinks = pgTable("sms_tracking_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  teamMemberId: varchar("team_member_id").references(() => users.id, { onDelete: 'set null' }),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  isActive: boolean("is_active").default(true),
+  lastLocationLat: decimal("last_location_lat", { precision: 10, scale: 7 }),
+  lastLocationLng: decimal("last_location_lng", { precision: 10, scale: 7 }),
+  lastLocationAt: timestamp("last_location_at"),
+  estimatedArrival: timestamp("estimated_arrival"),
+  expiresAt: timestamp("expires_at").notNull(),
+  viewCount: integer("view_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSmsTrackingLinkSchema = createInsertSchema(smsTrackingLinks).omit({
+  id: true,
+  isActive: true,
+  lastLocationLat: true,
+  lastLocationLng: true,
+  lastLocationAt: true,
+  viewCount: true,
+  createdAt: true,
+});
+export type InsertSmsTrackingLink = z.infer<typeof insertSmsTrackingLinkSchema>;
+export type SmsTrackingLink = typeof smsTrackingLinks.$inferSelect;
+
+// SMS Automation Rules - Automated SMS sending rules
+export const smsAutomationRules = pgTable("sms_automation_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 100 }).notNull(),
+  isActive: boolean("is_active").default(true),
+  triggerType: text("trigger_type").notNull(), // quote_sent, invoice_sent, invoice_overdue, job_scheduled, job_day_before, quote_follow_up
+  delayMinutes: integer("delay_minutes").default(0), // Delay before sending (0 = immediate)
+  templateId: varchar("template_id").references(() => smsTemplates.id, { onDelete: 'set null' }),
+  customMessage: text("custom_message"), // If no template, use this message
+  conditions: jsonb("conditions").default({}), // Additional conditions like { minAmount: 100, jobStatus: 'scheduled' }
+  lastTriggeredAt: timestamp("last_triggered_at"),
+  triggerCount: integer("trigger_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSmsAutomationRuleSchema = createInsertSchema(smsAutomationRules).omit({
+  id: true,
+  lastTriggeredAt: true,
+  triggerCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSmsAutomationRule = z.infer<typeof insertSmsAutomationRuleSchema>;
+export type SmsAutomationRule = typeof smsAutomationRules.$inferSelect;
+
+// SMS Automation Log - Track sent automated messages
+export const smsAutomationLogs = pgTable("sms_automation_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ruleId: varchar("rule_id").notNull().references(() => smsAutomationRules.id, { onDelete: 'cascade' }),
+  entityType: text("entity_type").notNull(), // job, quote, invoice
+  entityId: varchar("entity_id").notNull(),
+  messageId: varchar("message_id").references(() => smsMessages.id, { onDelete: 'set null' }),
+  status: text("status").default('sent'), // sent, failed, skipped
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueRuleEntity: unique().on(table.ruleId, table.entityType, table.entityId),
+}));
+
+export const insertSmsAutomationLogSchema = createInsertSchema(smsAutomationLogs).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSmsAutomationLog = z.infer<typeof insertSmsAutomationLogSchema>;
+export type SmsAutomationLog = typeof smsAutomationLogs.$inferSelect;

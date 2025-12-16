@@ -44,6 +44,8 @@ import {
   // Chat schemas
   insertJobChatSchema,
   insertTeamChatSchema,
+  // SMS Template schema
+  insertSmsTemplateSchema,
   // Types
   type InsertTimeEntry,
   // Location tracking tables
@@ -10536,6 +10538,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ===== SMS TEMPLATES ROUTES =====
+  
+  // Get available merge fields
+  app.get("/api/sms/templates/merge-fields", requireAuth, async (req: any, res) => {
+    try {
+      const { AVAILABLE_MERGE_FIELDS } = await import('./services/smsService');
+      res.json(AVAILABLE_MERGE_FIELDS);
+    } catch (error: any) {
+      console.error('Error getting merge fields:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // List user's SMS templates
+  app.get("/api/sms/templates", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const templates = await storage.getSmsTemplates(userId);
+      res.json(templates);
+    } catch (error: any) {
+      console.error('Error fetching SMS templates:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get a specific SMS template
+  app.get("/api/sms/templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const template = await storage.getSmsTemplate(id, userId);
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      res.json(template);
+    } catch (error: any) {
+      console.error('Error fetching SMS template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Create a new SMS template
+  app.post("/api/sms/templates", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const validatedData = insertSmsTemplateSchema.parse({
+        ...req.body,
+        userId,
+      });
+      const template = await storage.createSmsTemplate(validatedData);
+      res.status(201).json(template);
+    } catch (error: any) {
+      console.error('Error creating SMS template:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+  
+  // Update an SMS template
+  app.put("/api/sms/templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      // Check template exists and belongs to user
+      const existing = await storage.getSmsTemplate(id, userId);
+      if (!existing) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      
+      const { name, category, body, isDefault } = req.body;
+      const template = await storage.updateSmsTemplate(id, userId, { 
+        name, 
+        category, 
+        body, 
+        isDefault 
+      });
+      res.json(template);
+    } catch (error: any) {
+      console.error('Error updating SMS template:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+  
+  // Delete an SMS template
+  app.delete("/api/sms/templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const deleted = await storage.deleteSmsTemplate(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting SMS template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Apply template with merge fields
+  app.post("/api/sms/templates/:id/apply", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { clientId, jobId, quoteId, invoiceId } = req.body;
+      
+      // Get the template
+      const template = await storage.getSmsTemplate(id, userId);
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      
+      // Gather context for merge fields
+      const businessSettings = await storage.getBusinessSettings(userId);
+      const client = clientId ? await storage.getClient(clientId, userId) : null;
+      const job = jobId ? await storage.getJob(jobId, userId) : null;
+      const quote = quoteId ? await storage.getQuote(quoteId, userId) : null;
+      const invoice = invoiceId ? await storage.getInvoice(invoiceId, userId) : null;
+      
+      // Build merge context
+      const { parseSmsTemplate } = await import('./services/smsService');
+      const context = {
+        business_name: businessSettings?.businessName || '',
+        client_name: client?.name || '',
+        client_first_name: client?.name?.split(' ')[0] || '',
+        job_title: job?.title || '',
+        job_address: job?.address || '',
+        scheduled_date: job?.scheduledAt ? new Date(job.scheduledAt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : '',
+        scheduled_time: job?.scheduledTime || (job?.scheduledAt ? new Date(job.scheduledAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''),
+        quote_amount: quote?.total ? `$${parseFloat(quote.total).toFixed(2)}` : '',
+        invoice_amount: invoice?.total ? `$${parseFloat(invoice.total).toFixed(2)}` : '',
+        invoice_due_date: invoice?.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : '',
+        booking_link: '', // Could be generated if booking links feature is implemented
+        tracking_link: '', // Could be generated if tracking links feature is implemented
+      };
+      
+      // Parse the template
+      const parsedMessage = parseSmsTemplate(template.body, context);
+      
+      // Increment usage count
+      await storage.incrementSmsTemplateUsage(id);
+      
+      res.json({ 
+        template,
+        parsedMessage,
+        context
+      });
+    } catch (error: any) {
+      console.error('Error applying SMS template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Seed default templates for current user
+  app.post("/api/sms/templates/seed-defaults", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      
+      // Check if user already has templates
+      const existingTemplates = await storage.getSmsTemplates(userId);
+      if (existingTemplates.length > 0) {
+        return res.status(400).json({ error: 'User already has SMS templates' });
+      }
+      
+      const { seedDefaultSmsTemplates } = await import('./services/smsService');
+      await seedDefaultSmsTemplates(userId);
+      
+      const templates = await storage.getSmsTemplates(userId);
+      res.status(201).json(templates);
+    } catch (error: any) {
+      console.error('Error seeding SMS templates:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
   
   // Get SMS conversations for current user
   app.get("/api/sms/conversations", requireAuth, async (req: any, res) => {
@@ -10696,6 +10874,271 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error handling incoming SMS:', error);
       res.status(500).send('Internal error');
+    }
+  });
+
+  // ===== SMS AUTOMATION ROUTES =====
+  
+  // Get all automation rules for user
+  app.get("/api/sms/automations", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const rules = await storage.getSmsAutomationRules(userId);
+      res.json(rules);
+    } catch (error: any) {
+      console.error('Error getting SMS automation rules:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Create new automation rule
+  app.post("/api/sms/automations", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { name, triggerType, delayMinutes, templateId, customMessage, conditions, isActive } = req.body;
+      
+      if (!name || !triggerType) {
+        return res.status(400).json({ error: 'Name and trigger type are required' });
+      }
+      
+      const rule = await storage.createSmsAutomationRule({
+        userId,
+        name,
+        triggerType,
+        delayMinutes: delayMinutes || 0,
+        templateId: templateId || null,
+        customMessage: customMessage || null,
+        conditions: conditions || {},
+        isActive: isActive !== false,
+      });
+      
+      res.status(201).json(rule);
+    } catch (error: any) {
+      console.error('Error creating SMS automation rule:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Update automation rule
+  app.put("/api/sms/automations/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { name, triggerType, delayMinutes, templateId, customMessage, conditions, isActive } = req.body;
+      
+      const existing = await storage.getSmsAutomationRule(id, userId);
+      if (!existing) {
+        return res.status(404).json({ error: 'Automation rule not found' });
+      }
+      
+      const rule = await storage.updateSmsAutomationRule(id, userId, {
+        name,
+        triggerType,
+        delayMinutes,
+        templateId,
+        customMessage,
+        conditions,
+        isActive,
+      });
+      
+      res.json(rule);
+    } catch (error: any) {
+      console.error('Error updating SMS automation rule:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Delete automation rule
+  app.delete("/api/sms/automations/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const deleted = await storage.deleteSmsAutomationRule(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Automation rule not found' });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting SMS automation rule:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Toggle automation rule active status
+  app.post("/api/sms/automations/:id/toggle", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const existing = await storage.getSmsAutomationRule(id, userId);
+      if (!existing) {
+        return res.status(404).json({ error: 'Automation rule not found' });
+      }
+      
+      const rule = await storage.updateSmsAutomationRule(id, userId, {
+        isActive: !existing.isActive,
+      });
+      
+      res.json(rule);
+    } catch (error: any) {
+      console.error('Error toggling SMS automation rule:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // ===== SMS BOOKING LINKS ROUTES =====
+  
+  // Generate booking link for a job
+  app.post("/api/jobs/:id/booking-link", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id: jobId } = req.params;
+      
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const token = randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // Expires in 7 days
+      
+      const bookingLink = await storage.createSmsBookingLink({
+        jobId,
+        businessOwnerId: userId,
+        token,
+        expiresAt,
+        clientResponse: null,
+        clientNotes: null,
+      });
+      
+      const baseUrl = process.env.REPLIT_DOMAIN 
+        ? `https://${process.env.REPLIT_DOMAIN}`
+        : process.env.BASE_URL || 'http://localhost:5000';
+      
+      res.status(201).json({
+        ...bookingLink,
+        url: `${baseUrl}/booking/${token}`,
+      });
+    } catch (error: any) {
+      console.error('Error creating booking link:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Public: View booking link page data
+  app.get("/api/booking/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const bookingLink = await storage.getSmsBookingLinkByToken(token);
+      if (!bookingLink) {
+        return res.status(404).json({ error: 'Booking link not found' });
+      }
+      
+      if (new Date() > new Date(bookingLink.expiresAt)) {
+        return res.status(410).json({ error: 'Booking link has expired' });
+      }
+      
+      if (bookingLink.status !== 'pending') {
+        return res.status(400).json({ 
+          error: 'This booking has already been responded to',
+          status: bookingLink.status,
+          clientResponse: bookingLink.clientResponse,
+        });
+      }
+      
+      const job = await storage.getJobPublic(bookingLink.jobId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const businessSettings = await storage.getBusinessSettings(bookingLink.businessOwnerId);
+      
+      res.json({
+        bookingLink: {
+          id: bookingLink.id,
+          status: bookingLink.status,
+          expiresAt: bookingLink.expiresAt,
+        },
+        job: {
+          id: job.id,
+          title: job.title,
+          description: job.description,
+          scheduledDate: job.scheduledDate,
+          scheduledTime: job.scheduledTime,
+          address: job.address,
+          estimatedDuration: job.estimatedDuration,
+        },
+        business: {
+          name: businessSettings?.businessName || 'Your Tradesperson',
+          phone: businessSettings?.businessPhone || null,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error viewing booking link:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Public: Client responds to booking
+  app.post("/api/booking/:token/respond", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { response, notes } = req.body;
+      
+      if (!response || !['confirmed', 'reschedule_requested', 'cancelled'].includes(response)) {
+        return res.status(400).json({ error: 'Valid response required (confirmed, reschedule_requested, cancelled)' });
+      }
+      
+      const bookingLink = await storage.getSmsBookingLinkByToken(token);
+      if (!bookingLink) {
+        return res.status(404).json({ error: 'Booking link not found' });
+      }
+      
+      if (new Date() > new Date(bookingLink.expiresAt)) {
+        return res.status(410).json({ error: 'Booking link has expired' });
+      }
+      
+      if (bookingLink.status !== 'pending') {
+        return res.status(400).json({ error: 'This booking has already been responded to' });
+      }
+      
+      const statusMap: Record<string, string> = {
+        'confirmed': 'confirmed',
+        'reschedule_requested': 'rescheduled',
+        'cancelled': 'cancelled',
+      };
+      
+      const updatedLink = await storage.updateSmsBookingLink(bookingLink.id, {
+        status: statusMap[response],
+        clientResponse: response,
+        clientNotes: notes || null,
+        respondedAt: new Date(),
+      });
+      
+      if (response === 'confirmed') {
+        const job = await storage.getJobPublic(bookingLink.jobId);
+        if (job) {
+          await storage.updateJob(job.id, bookingLink.businessOwnerId, { 
+            status: 'confirmed' 
+          });
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: response === 'confirmed' 
+          ? 'Booking confirmed successfully!' 
+          : response === 'reschedule_requested' 
+            ? 'Reschedule request submitted. We will contact you shortly.'
+            : 'Booking cancelled.',
+      });
+    } catch (error: any) {
+      console.error('Error responding to booking:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 

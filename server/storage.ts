@@ -135,10 +135,22 @@ import {
   formSubmissions,
   smsConversations,
   smsMessages,
+  smsTemplates,
+  smsAutomationRules,
+  smsAutomationLogs,
+  smsBookingLinks,
   type SmsConversation,
   type InsertSmsConversation,
   type SmsMessage,
   type InsertSmsMessage,
+  type SmsTemplate,
+  type InsertSmsTemplate,
+  type SmsAutomationRule,
+  type InsertSmsAutomationRule,
+  type SmsAutomationLog,
+  type InsertSmsAutomationLog,
+  type SmsBookingLink,
+  type InsertSmsBookingLink,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -208,6 +220,7 @@ export interface IStorage {
   // Jobs
   getJobs(userId: string, includeArchived?: boolean): Promise<Job[]>;
   getJob(id: string, userId: string): Promise<Job | undefined>;
+  getJobPublic(id: string): Promise<Job | undefined>;
   createJob(job: InsertJob): Promise<Job>;
   updateJob(id: string, userId: string, job: Partial<InsertJob>): Promise<Job | undefined>;
   deleteJob(id: string, userId: string): Promise<boolean>;
@@ -447,6 +460,31 @@ export interface IStorage {
   createSmsMessage(message: InsertSmsMessage): Promise<SmsMessage>;
   updateSmsMessage(id: string, updates: Partial<InsertSmsMessage>): Promise<SmsMessage>;
   markSmsMessagesAsRead(conversationId: string): Promise<void>;
+
+  // SMS Templates
+  getSmsTemplates(userId: string): Promise<SmsTemplate[]>;
+  getSmsTemplate(id: string, userId: string): Promise<SmsTemplate | undefined>;
+  createSmsTemplate(data: InsertSmsTemplate): Promise<SmsTemplate>;
+  updateSmsTemplate(id: string, userId: string, data: Partial<InsertSmsTemplate>): Promise<SmsTemplate>;
+  deleteSmsTemplate(id: string, userId: string): Promise<boolean>;
+  incrementSmsTemplateUsage(id: string): Promise<void>;
+
+  // SMS Automation Rules
+  getSmsAutomationRules(userId: string): Promise<SmsAutomationRule[]>;
+  getSmsAutomationRule(id: string, userId: string): Promise<SmsAutomationRule | undefined>;
+  createSmsAutomationRule(data: InsertSmsAutomationRule): Promise<SmsAutomationRule>;
+  updateSmsAutomationRule(id: string, userId: string, data: Partial<InsertSmsAutomationRule>): Promise<SmsAutomationRule>;
+  deleteSmsAutomationRule(id: string, userId: string): Promise<boolean>;
+  getSmsAutomationRulesByTrigger(userId: string, triggerType: string): Promise<SmsAutomationRule[]>;
+
+  // SMS Automation Logs
+  createSmsAutomationLog(data: InsertSmsAutomationLog): Promise<SmsAutomationLog>;
+  getSmsAutomationLog(ruleId: string, entityType: string, entityId: string): Promise<SmsAutomationLog | undefined>;
+
+  // SMS Booking Links
+  createSmsBookingLink(data: InsertSmsBookingLink): Promise<SmsBookingLink>;
+  getSmsBookingLinkByToken(token: string): Promise<SmsBookingLink | undefined>;
+  updateSmsBookingLink(id: string, data: Partial<SmsBookingLink>): Promise<SmsBookingLink>;
 }
 
 // Initialize database connection
@@ -915,6 +953,15 @@ export class PostgresStorage implements IStorage {
       .select()
       .from(jobs)
       .where(and(eq(jobs.id, id), eq(jobs.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getJobPublic(id: string): Promise<Job | undefined> {
+    const result = await db
+      .select()
+      .from(jobs)
+      .where(eq(jobs.id, id))
       .limit(1);
     return result[0];
   }
@@ -2936,6 +2983,131 @@ export class PostgresStorage implements IStorage {
         eq(smsMessages.conversationId, conversationId),
         eq(smsMessages.read, false)
       ));
+  }
+
+  // SMS Templates
+  async getSmsTemplates(userId: string): Promise<SmsTemplate[]> {
+    return await db.select().from(smsTemplates)
+      .where(eq(smsTemplates.userId, userId))
+      .orderBy(desc(smsTemplates.usageCount), asc(smsTemplates.name));
+  }
+
+  async getSmsTemplate(id: string, userId: string): Promise<SmsTemplate | undefined> {
+    const result = await db.select().from(smsTemplates)
+      .where(and(eq(smsTemplates.id, id), eq(smsTemplates.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createSmsTemplate(data: InsertSmsTemplate): Promise<SmsTemplate> {
+    const [result] = await db.insert(smsTemplates).values(data).returning();
+    return result;
+  }
+
+  async updateSmsTemplate(id: string, userId: string, data: Partial<InsertSmsTemplate>): Promise<SmsTemplate> {
+    const [result] = await db.update(smsTemplates)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(smsTemplates.id, id), eq(smsTemplates.userId, userId)))
+      .returning();
+    return result;
+  }
+
+  async deleteSmsTemplate(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(smsTemplates)
+      .where(and(eq(smsTemplates.id, id), eq(smsTemplates.userId, userId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async incrementSmsTemplateUsage(id: string): Promise<void> {
+    await db.update(smsTemplates)
+      .set({ 
+        usageCount: sql`${smsTemplates.usageCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(smsTemplates.id, id));
+  }
+
+  // SMS Automation Rules
+  async getSmsAutomationRules(userId: string): Promise<SmsAutomationRule[]> {
+    return await db.select().from(smsAutomationRules)
+      .where(eq(smsAutomationRules.userId, userId))
+      .orderBy(desc(smsAutomationRules.createdAt));
+  }
+
+  async getSmsAutomationRule(id: string, userId: string): Promise<SmsAutomationRule | undefined> {
+    const result = await db.select().from(smsAutomationRules)
+      .where(and(eq(smsAutomationRules.id, id), eq(smsAutomationRules.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createSmsAutomationRule(data: InsertSmsAutomationRule): Promise<SmsAutomationRule> {
+    const [result] = await db.insert(smsAutomationRules).values(data).returning();
+    return result;
+  }
+
+  async updateSmsAutomationRule(id: string, userId: string, data: Partial<InsertSmsAutomationRule>): Promise<SmsAutomationRule> {
+    const [result] = await db.update(smsAutomationRules)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(smsAutomationRules.id, id), eq(smsAutomationRules.userId, userId)))
+      .returning();
+    return result;
+  }
+
+  async deleteSmsAutomationRule(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(smsAutomationRules)
+      .where(and(eq(smsAutomationRules.id, id), eq(smsAutomationRules.userId, userId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getSmsAutomationRulesByTrigger(userId: string, triggerType: string): Promise<SmsAutomationRule[]> {
+    return await db.select().from(smsAutomationRules)
+      .where(and(
+        eq(smsAutomationRules.userId, userId),
+        eq(smsAutomationRules.triggerType, triggerType),
+        eq(smsAutomationRules.isActive, true)
+      ))
+      .orderBy(desc(smsAutomationRules.createdAt));
+  }
+
+  // SMS Automation Logs
+  async createSmsAutomationLog(data: InsertSmsAutomationLog): Promise<SmsAutomationLog> {
+    const [result] = await db.insert(smsAutomationLogs).values(data).returning();
+    return result;
+  }
+
+  async getSmsAutomationLog(ruleId: string, entityType: string, entityId: string): Promise<SmsAutomationLog | undefined> {
+    const result = await db.select().from(smsAutomationLogs)
+      .where(and(
+        eq(smsAutomationLogs.ruleId, ruleId),
+        eq(smsAutomationLogs.entityType, entityType),
+        eq(smsAutomationLogs.entityId, entityId)
+      ))
+      .limit(1);
+    return result[0];
+  }
+
+  // SMS Booking Links
+  async createSmsBookingLink(data: InsertSmsBookingLink): Promise<SmsBookingLink> {
+    const [result] = await db.insert(smsBookingLinks).values(data).returning();
+    return result;
+  }
+
+  async getSmsBookingLinkByToken(token: string): Promise<SmsBookingLink | undefined> {
+    const result = await db.select().from(smsBookingLinks)
+      .where(eq(smsBookingLinks.token, token))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateSmsBookingLink(id: string, data: Partial<SmsBookingLink>): Promise<SmsBookingLink> {
+    const [result] = await db.update(smsBookingLinks)
+      .set(data)
+      .where(eq(smsBookingLinks.id, id))
+      .returning();
+    return result;
   }
 }
 

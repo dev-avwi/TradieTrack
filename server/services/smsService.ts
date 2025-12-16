@@ -310,4 +310,128 @@ export function getTwilioStatus(): { enabled: boolean; phoneNumber: string | nul
   };
 }
 
+/**
+ * Merge field context for SMS template parsing
+ */
+export interface MergeContext {
+  client_name?: string;
+  client_first_name?: string;
+  job_title?: string;
+  job_address?: string;
+  scheduled_date?: string;
+  scheduled_time?: string;
+  business_name?: string;
+  quote_amount?: string;
+  invoice_amount?: string;
+  invoice_due_date?: string;
+  booking_link?: string;
+  tracking_link?: string;
+}
+
+/**
+ * Available merge fields for SMS templates
+ */
+export const AVAILABLE_MERGE_FIELDS = [
+  { field: '{client_name}', description: 'Full client name' },
+  { field: '{client_first_name}', description: 'Client first name' },
+  { field: '{job_title}', description: 'Job title' },
+  { field: '{job_address}', description: 'Job address' },
+  { field: '{scheduled_date}', description: 'Scheduled date (e.g., Mon 15 Jan)' },
+  { field: '{scheduled_time}', description: 'Scheduled time (e.g., 9:00 AM)' },
+  { field: '{business_name}', description: 'Your business name' },
+  { field: '{quote_amount}', description: 'Quote total amount' },
+  { field: '{invoice_amount}', description: 'Invoice total amount' },
+  { field: '{invoice_due_date}', description: 'Invoice due date' },
+  { field: '{booking_link}', description: 'Booking confirmation link' },
+  { field: '{tracking_link}', description: 'Job tracking link' },
+] as const;
+
+/**
+ * Parse an SMS template by replacing merge fields with actual values
+ * 
+ * @param template - The template string with merge fields like {client_name}
+ * @param context - The context object containing values for merge fields
+ * @returns The parsed template with merge fields replaced
+ */
+export function parseSmsTemplate(template: string, context: MergeContext): string {
+  let parsed = template;
+  
+  // Replace each merge field with its value or empty string if not provided
+  const replacements: Record<string, string | undefined> = {
+    '{client_name}': context.client_name,
+    '{client_first_name}': context.client_first_name,
+    '{job_title}': context.job_title,
+    '{job_address}': context.job_address,
+    '{scheduled_date}': context.scheduled_date,
+    '{scheduled_time}': context.scheduled_time,
+    '{business_name}': context.business_name,
+    '{quote_amount}': context.quote_amount,
+    '{invoice_amount}': context.invoice_amount,
+    '{invoice_due_date}': context.invoice_due_date,
+    '{booking_link}': context.booking_link,
+    '{tracking_link}': context.tracking_link,
+  };
+  
+  for (const [field, value] of Object.entries(replacements)) {
+    // Replace field with value, or remove it if value is undefined/empty
+    parsed = parsed.replace(new RegExp(field.replace(/[{}]/g, '\\$&'), 'g'), value || '');
+  }
+  
+  // Clean up any double spaces that might result from removed fields
+  parsed = parsed.replace(/\s{2,}/g, ' ').trim();
+  
+  return parsed;
+}
+
+/**
+ * Default SMS templates to seed for new users
+ */
+export const DEFAULT_SMS_TEMPLATES = [
+  {
+    name: 'Booking Confirmation',
+    category: 'booking',
+    body: 'Hi {client_name}, your booking with {business_name} is confirmed for {scheduled_date} at {scheduled_time}. Address: {job_address}. Reply YES to confirm or call us to reschedule.',
+    isDefault: true,
+  },
+  {
+    name: 'On My Way',
+    category: 'arrival',
+    body: 'Hi {client_first_name}, {business_name} here. I\'m on my way for {job_title}. ETA approximately 15 minutes. See you soon!',
+    isDefault: true,
+  },
+  {
+    name: 'Quote Follow-up',
+    category: 'quote',
+    body: 'Hi {client_name}, just following up on the quote for {job_title} ({quote_amount}). Let me know if you have any questions or are ready to proceed. - {business_name}',
+    isDefault: true,
+  },
+  {
+    name: 'Invoice Reminder',
+    category: 'invoice',
+    body: 'Hi {client_name}, friendly reminder that invoice for {job_title} ({invoice_amount}) is due on {invoice_due_date}. Please let us know if you have any questions. - {business_name}',
+    isDefault: true,
+  },
+  {
+    name: 'Job Completion',
+    category: 'general',
+    body: 'Hi {client_name}, {business_name} has completed work on {job_title}. Thanks for having us! An invoice will follow shortly. Please let us know if you need anything else.',
+    isDefault: true,
+  },
+] as const;
+
+/**
+ * Seed default SMS templates for a new user
+ */
+export async function seedDefaultSmsTemplates(userId: string): Promise<void> {
+  for (const template of DEFAULT_SMS_TEMPLATES) {
+    await storage.createSmsTemplate({
+      userId,
+      name: template.name,
+      category: template.category,
+      body: template.body,
+      isDefault: template.isDefault,
+    });
+  }
+}
+
 export { smsTemplates };

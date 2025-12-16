@@ -3,20 +3,22 @@ import { processOverdueReminders } from './reminderService';
 import { processRecurringForUser } from './recurringService';
 import { checkAndExpireTrials } from './subscriptionService';
 import { processTimeBasedAutomations } from './automationService';
-import { jobs, quotes, invoices } from '@shared/schema';
-import { and, or, eq, lt, isNull } from 'drizzle-orm';
+import { jobs, quotes, invoices, smsAutomationRules } from '@shared/schema';
+import { and, or, eq, lt, isNull, gte, lte } from 'drizzle-orm';
 
 let reminderInterval: NodeJS.Timeout | null = null;
 let recurringInterval: NodeJS.Timeout | null = null;
 let trialInterval: NodeJS.Timeout | null = null;
 let automationInterval: NodeJS.Timeout | null = null;
 let archiveInterval: NodeJS.Timeout | null = null;
+let smsAutomationInterval: NodeJS.Timeout | null = null;
 
 const REMINDER_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const RECURRING_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const TRIAL_CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const AUTOMATION_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 const ARCHIVE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (daily)
+const SMS_AUTOMATION_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
 async function processAllUserReminders(): Promise<void> {
   console.log('[Scheduler] Processing automatic reminders...');
@@ -223,12 +225,268 @@ export function startArchiveScheduler(): void {
   console.log(`[Scheduler] Archive scheduler running every ${ARCHIVE_INTERVAL_MS / 3600000} hours`);
 }
 
+async function processSmsAutomations(): Promise<void> {
+  console.log('[Scheduler] Processing SMS automation rules...');
+  
+  try {
+    const now = new Date();
+    let processed = 0;
+    let errors = 0;
+    
+    // Get all active SMS automation rules
+    const allRules = await db.select().from(smsAutomationRules)
+      .where(eq(smsAutomationRules.isActive, true));
+    
+    for (const rule of allRules) {
+      try {
+        switch (rule.triggerType) {
+          case 'quote_follow_up': {
+            // Process quotes sent 3+ days ago without response
+            const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+            const userQuotes = await db.select().from(quotes)
+              .where(and(
+                eq(quotes.userId, rule.userId),
+                eq(quotes.status, 'sent'),
+                lt(quotes.sentAt, threeDaysAgo)
+              ));
+            
+            for (const quote of userQuotes) {
+              const alreadyProcessed = await storage.getSmsAutomationLog(rule.id, 'quote', quote.id);
+              if (!alreadyProcessed) {
+                await processQuoteFollowUp(rule, quote);
+                processed++;
+              }
+            }
+            break;
+          }
+          
+          case 'invoice_overdue': {
+            // Process invoices 1+ days past due date
+            const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            const overdueInvoices = await db.select().from(invoices)
+              .where(and(
+                eq(invoices.userId, rule.userId),
+                or(eq(invoices.status, 'sent'), eq(invoices.status, 'overdue')),
+                lt(invoices.dueDate, yesterday)
+              ));
+            
+            for (const invoice of overdueInvoices) {
+              const alreadyProcessed = await storage.getSmsAutomationLog(rule.id, 'invoice', invoice.id);
+              if (!alreadyProcessed) {
+                await processInvoiceOverdue(rule, invoice);
+                processed++;
+              }
+            }
+            break;
+          }
+          
+          case 'job_day_before': {
+            // Process jobs scheduled for tomorrow
+            const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            const tomorrowStart = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+            const tomorrowEnd = new Date(tomorrowStart.getTime() + 24 * 60 * 60 * 1000);
+            
+            const upcomingJobs = await db.select().from(jobs)
+              .where(and(
+                eq(jobs.userId, rule.userId),
+                or(eq(jobs.status, 'scheduled'), eq(jobs.status, 'confirmed')),
+                gte(jobs.scheduledDate, tomorrowStart),
+                lt(jobs.scheduledDate, tomorrowEnd)
+              ));
+            
+            for (const job of upcomingJobs) {
+              const alreadyProcessed = await storage.getSmsAutomationLog(rule.id, 'job', job.id);
+              if (!alreadyProcessed) {
+                await processJobDayBefore(rule, job);
+                processed++;
+              }
+            }
+            break;
+          }
+        }
+      } catch (ruleError) {
+        console.error(`[SMS Automation] Error processing rule ${rule.id}:`, ruleError);
+        errors++;
+      }
+    }
+    
+    if (processed > 0 || errors > 0) {
+      console.log(`[Scheduler] SMS automations processed: ${processed} successful, ${errors} failed`);
+    } else {
+      console.log('[Scheduler] No SMS automations to process');
+    }
+  } catch (error) {
+    console.error('[Scheduler] Error processing SMS automations:', error);
+  }
+}
+
+async function processQuoteFollowUp(rule: any, quote: any): Promise<void> {
+  try {
+    const { sendSmsToClient } = await import('./services/smsService');
+    const client = await storage.getClientById(quote.clientId);
+    if (!client?.phone) {
+      await storage.createSmsAutomationLog({
+        ruleId: rule.id,
+        entityType: 'quote',
+        entityId: quote.id,
+        status: 'skipped',
+        errorMessage: 'Client has no phone number',
+      });
+      return;
+    }
+    
+    const message = rule.customMessage || `Hi ${client.name || 'there'}, just following up on the quote we sent for "${quote.title || 'your project'}". Let us know if you have any questions!`;
+    
+    await sendSmsToClient({
+      businessOwnerId: rule.userId,
+      clientPhone: client.phone,
+      clientName: client.name,
+      message,
+    });
+    
+    await storage.createSmsAutomationLog({
+      ruleId: rule.id,
+      entityType: 'quote',
+      entityId: quote.id,
+      status: 'sent',
+    });
+    
+    await storage.updateSmsAutomationRule(rule.id, rule.userId, {
+      lastTriggeredAt: new Date(),
+      triggerCount: (rule.triggerCount || 0) + 1,
+    });
+  } catch (error: any) {
+    console.error(`[SMS Automation] Error sending quote follow-up:`, error);
+    await storage.createSmsAutomationLog({
+      ruleId: rule.id,
+      entityType: 'quote',
+      entityId: quote.id,
+      status: 'failed',
+      errorMessage: error.message,
+    });
+  }
+}
+
+async function processInvoiceOverdue(rule: any, invoice: any): Promise<void> {
+  try {
+    const { sendSmsToClient } = await import('./services/smsService');
+    const client = await storage.getClientById(invoice.clientId);
+    if (!client?.phone) {
+      await storage.createSmsAutomationLog({
+        ruleId: rule.id,
+        entityType: 'invoice',
+        entityId: invoice.id,
+        status: 'skipped',
+        errorMessage: 'Client has no phone number',
+      });
+      return;
+    }
+    
+    const message = rule.customMessage || `Hi ${client.name || 'there'}, this is a friendly reminder that invoice #${invoice.invoiceNumber || invoice.id} for $${invoice.total} is now overdue. Please let us know if you have any questions.`;
+    
+    await sendSmsToClient({
+      businessOwnerId: rule.userId,
+      clientPhone: client.phone,
+      clientName: client.name,
+      message,
+    });
+    
+    await storage.createSmsAutomationLog({
+      ruleId: rule.id,
+      entityType: 'invoice',
+      entityId: invoice.id,
+      status: 'sent',
+    });
+    
+    await storage.updateSmsAutomationRule(rule.id, rule.userId, {
+      lastTriggeredAt: new Date(),
+      triggerCount: (rule.triggerCount || 0) + 1,
+    });
+  } catch (error: any) {
+    console.error(`[SMS Automation] Error sending invoice overdue:`, error);
+    await storage.createSmsAutomationLog({
+      ruleId: rule.id,
+      entityType: 'invoice',
+      entityId: invoice.id,
+      status: 'failed',
+      errorMessage: error.message,
+    });
+  }
+}
+
+async function processJobDayBefore(rule: any, job: any): Promise<void> {
+  try {
+    const { sendSmsToClient } = await import('./services/smsService');
+    const client = await storage.getClientById(job.clientId);
+    if (!client?.phone) {
+      await storage.createSmsAutomationLog({
+        ruleId: rule.id,
+        entityType: 'job',
+        entityId: job.id,
+        status: 'skipped',
+        errorMessage: 'Client has no phone number',
+      });
+      return;
+    }
+    
+    const scheduledDate = new Date(job.scheduledDate);
+    const dateStr = scheduledDate.toLocaleDateString('en-AU', { weekday: 'long', month: 'long', day: 'numeric' });
+    const timeStr = job.scheduledTime || 'as scheduled';
+    
+    const message = rule.customMessage || `Hi ${client.name || 'there'}, just a reminder about your appointment tomorrow (${dateStr}) at ${timeStr} for "${job.title || 'your job'}". See you then!`;
+    
+    await sendSmsToClient({
+      businessOwnerId: rule.userId,
+      clientPhone: client.phone,
+      clientName: client.name,
+      message,
+    });
+    
+    await storage.createSmsAutomationLog({
+      ruleId: rule.id,
+      entityType: 'job',
+      entityId: job.id,
+      status: 'sent',
+    });
+    
+    await storage.updateSmsAutomationRule(rule.id, rule.userId, {
+      lastTriggeredAt: new Date(),
+      triggerCount: (rule.triggerCount || 0) + 1,
+    });
+  } catch (error: any) {
+    console.error(`[SMS Automation] Error sending job day before reminder:`, error);
+    await storage.createSmsAutomationLog({
+      ruleId: rule.id,
+      entityType: 'job',
+      entityId: job.id,
+      status: 'failed',
+      errorMessage: error.message,
+    });
+  }
+}
+
+export function startSmsAutomationScheduler(): void {
+  console.log('[Scheduler] Starting SMS automation scheduler...');
+  
+  if (smsAutomationInterval) {
+    clearInterval(smsAutomationInterval);
+  }
+  
+  // Run first time after a short delay
+  setTimeout(processSmsAutomations, 10000);
+  
+  smsAutomationInterval = setInterval(processSmsAutomations, SMS_AUTOMATION_INTERVAL_MS);
+  
+  console.log(`[Scheduler] SMS automation scheduler running every ${SMS_AUTOMATION_INTERVAL_MS / 60000} minutes`);
+}
+
 export function startAllSchedulers(): void {
   startReminderScheduler();
   startRecurringScheduler();
   startTrialScheduler();
   startAutomationScheduler();
   startArchiveScheduler();
+  startSmsAutomationScheduler();
 }
 
 export function stopAllSchedulers(): void {
@@ -255,6 +513,11 @@ export function stopAllSchedulers(): void {
   if (archiveInterval) {
     clearInterval(archiveInterval);
     archiveInterval = null;
+  }
+  
+  if (smsAutomationInterval) {
+    clearInterval(smsAutomationInterval);
+    smsAutomationInterval = null;
   }
   
   console.log('[Scheduler] All schedulers stopped');
