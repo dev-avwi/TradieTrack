@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, Users, Phone, Mail, MapPin, Briefcase, LayoutGrid, List, MoreVertical, FileText } from "lucide-react";
+import { Plus, Users, Phone, Mail, MapPin, Briefcase, LayoutGrid, List, MoreVertical, FileText, MessageCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +25,7 @@ interface ClientsListProps {
   onCreateJobForClient?: (id: string) => void;
   onCallClient?: (phone: string) => void;
   onEmailClient?: (email: string) => void;
+  onSmsClient?: (clientId: string, phone: string) => void;
 }
 
 export default function ClientsList({
@@ -32,7 +33,8 @@ export default function ClientsList({
   onViewClient,
   onCreateJobForClient,
   onCallClient,
-  onEmailClient
+  onEmailClient,
+  onSmsClient
 }: ClientsListProps) {
   const searchParams = useSearch();
   const [searchTerm, setSearchTerm] = useState("");
@@ -127,6 +129,12 @@ export default function ClientsList({
               <DropdownMenuItem onClick={() => onCallClient?.(row.phone)}>
                 <Phone className="h-4 w-4 mr-2" />
                 Call
+              </DropdownMenuItem>
+            )}
+            {row.phone && (
+              <DropdownMenuItem onClick={() => onSmsClient?.(row.id, row.phone)}>
+                <MessageCircle className="h-4 w-4 mr-2" />
+                SMS
               </DropdownMenuItem>
             )}
             {row.email && (

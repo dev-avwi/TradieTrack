@@ -26,7 +26,8 @@ import {
   PenTool,
   File,
   Copy,
-  CheckCircle
+  CheckCircle,
+  MessageCircle
 } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import StatusBadge from "./StatusBadge";
@@ -438,6 +439,16 @@ export default function ClientDetailView({
           >
             <Phone className="h-4 w-4 mr-2" />
             Call
+          </Button>
+        )}
+        {client.phone && (
+          <Button 
+            variant="outline"
+            onClick={() => setLocation(`/chat?clientId=${clientId}&phone=${encodeURIComponent(client.phone)}`)}
+            data-testid="button-sms"
+          >
+            <MessageCircle className="h-4 w-4 mr-2" />
+            SMS
           </Button>
         )}
       </div>

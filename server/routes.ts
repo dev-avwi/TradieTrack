@@ -10475,6 +10475,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== SMS CONVERSATIONS ROUTES =====
+  
+  // Get Twilio status
+  app.get("/api/sms/status", requireAuth, async (req: any, res) => {
+    try {
+      const { getTwilioStatus } = await import('./services/smsService');
+      const status = getTwilioStatus();
+      res.json(status);
+    } catch (error: any) {
+      console.error('Error getting Twilio status:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get SMS conversations for current user
+  app.get("/api/sms/conversations", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      // Determine business owner and role
+      let businessOwnerId = userId;
+      let userRole = 'owner';
+      
+      const membership = await storage.getTeamMembershipByMemberId(userId);
+      if (membership) {
+        businessOwnerId = membership.businessOwnerId;
+        const role = await storage.getUserRole(membership.roleId);
+        userRole = role?.name || 'staff';
+      }
+      
+      const { getSmsConversationsForUser } = await import('./services/smsService');
+      const conversations = await getSmsConversationsForUser(userId, businessOwnerId, userRole);
+      
+      res.json(conversations);
+    } catch (error: any) {
+      console.error('Error fetching SMS conversations:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get messages for a specific conversation
+  app.get("/api/sms/conversations/:id/messages", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const messages = await storage.getSmsMessages(id);
+      res.json(messages);
+    } catch (error: any) {
+      console.error('Error fetching SMS messages:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Send SMS to a client
+  app.post("/api/sms/send", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { clientId, clientPhone, clientName, jobId, message } = req.body;
+      
+      if (!clientPhone || !message) {
+        return res.status(400).json({ error: 'Client phone and message are required' });
+      }
+      
+      // Determine business owner
+      let businessOwnerId = userId;
+      const membership = await storage.getTeamMembershipByMemberId(userId);
+      if (membership) {
+        businessOwnerId = membership.businessOwnerId;
+      }
+      
+      const { sendSmsToClient } = await import('./services/smsService');
+      const smsMessage = await sendSmsToClient({
+        businessOwnerId,
+        clientId,
+        clientPhone,
+        clientName,
+        jobId,
+        message,
+        senderUserId: userId,
+      });
+      
+      res.json(smsMessage);
+    } catch (error: any) {
+      console.error('Error sending SMS:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Send quick action SMS
+  app.post("/api/sms/quick-action", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { conversationId, actionType, jobTitle, estimatedTime } = req.body;
+      
+      if (!conversationId || !actionType) {
+        return res.status(400).json({ error: 'Conversation ID and action type are required' });
+      }
+      
+      // Get business name for the message
+      const user = await storage.getUser(userId);
+      const businessSettings = await storage.getBusinessSettings(userId);
+      const businessName = businessSettings?.businessName || user?.firstName || 'Your tradie';
+      
+      const { sendQuickAction } = await import('./services/smsService');
+      const smsMessage = await sendQuickAction({
+        conversationId,
+        senderUserId: userId,
+        actionType,
+        jobTitle,
+        businessName,
+        estimatedTime,
+      });
+      
+      res.json(smsMessage);
+    } catch (error: any) {
+      console.error('Error sending quick action SMS:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Mark conversation as read
+  app.post("/api/sms/conversations/:id/read", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const { markConversationAsRead } = await import('./services/smsService');
+      await markConversationAsRead(id, userId);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error marking conversation as read:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Soft delete conversation
+  app.delete("/api/sms/conversations/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const { deleteConversation } = await import('./services/smsService');
+      await deleteConversation(id);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting SMS conversation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Twilio webhook for incoming SMS
+  app.post("/api/sms/webhook/incoming", async (req, res) => {
+    try {
+      const { From, To, Body, MessageSid } = req.body;
+      
+      if (!From || !Body) {
+        return res.status(400).send('Bad request');
+      }
+      
+      const { handleIncomingSms } = await import('./services/smsService');
+      await handleIncomingSms(From, To, Body, MessageSid);
+      
+      // Return TwiML response
+      res.set('Content-Type', 'text/xml');
+      res.send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+    } catch (error: any) {
+      console.error('Error handling incoming SMS:', error);
+      res.status(500).send('Internal error');
+    }
+  });
+
   // ===== INVOICE REMINDERS ROUTES =====
   
   // Get reminder logs for invoice

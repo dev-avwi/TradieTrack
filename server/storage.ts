@@ -212,6 +212,7 @@ export interface IStorage {
   updateJob(id: string, userId: string, job: Partial<InsertJob>): Promise<Job | undefined>;
   deleteJob(id: string, userId: string): Promise<boolean>;
   getJobsForClient(clientId: string, userId: string): Promise<Job[]>;
+  getJobsByAssignee(assigneeId: string): Promise<Job[]>;
   archiveJob(id: string, userId: string): Promise<Job | undefined>;
   unarchiveJob(id: string, userId: string): Promise<Job | undefined>;
 
@@ -947,6 +948,14 @@ export class PostgresStorage implements IStorage {
       .select()
       .from(jobs)
       .where(and(eq(jobs.clientId, clientId), eq(jobs.userId, userId)))
+      .orderBy(desc(jobs.createdAt));
+  }
+
+  async getJobsByAssignee(assigneeId: string): Promise<Job[]> {
+    return await db
+      .select()
+      .from(jobs)
+      .where(eq(jobs.assignedTo, assigneeId))
       .orderBy(desc(jobs.createdAt));
   }
 

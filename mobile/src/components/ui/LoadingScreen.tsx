@@ -482,24 +482,30 @@ export function LoadingScreen({ message = 'Loading TradieTrack...', showProgress
     <View style={styles.container}>
       <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} />
       <View style={styles.contentWrapper}>
-        <PulsingLogo 
-          colors={colors}
-          isDark={isDark}
-          businessLogoUrl={businessLogoUrl}
-        />
+        {/* Static logo without pulsing effect */}
+        <View style={styles.logoContainer}>
+          {businessLogoUrl ? (
+            <Image 
+              source={{ uri: businessLogoUrl }} 
+              style={styles.businessLogo}
+              resizeMode="cover"
+            />
+          ) : (
+            <Image 
+              source={TRADIE_TRACK_LOGO} 
+              style={styles.tradieTrackLogo}
+              resizeMode="contain"
+            />
+          )}
+        </View>
 
         <View style={styles.textContainer}>
           <Text style={styles.appName}>TradieTrack</Text>
           {message && <Text style={styles.message}>{message}</Text>}
         </View>
 
-        {showProgress ? (
-          <View style={styles.progressContainer}>
-            <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
-          </View>
-        ) : (
-          <LoadingDots colors={colors} isDark={isDark} />
-        )}
+        {/* Always use loading dots animation */}
+        <LoadingDots colors={colors} isDark={isDark} />
       </View>
     </View>
   );
