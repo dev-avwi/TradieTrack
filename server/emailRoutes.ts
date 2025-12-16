@@ -4,6 +4,7 @@ import { createQuoteEmailHtml, createInvoiceEmailHtml, createReceiptEmailHtml } 
 import { sendEmailViaIntegration } from './emailIntegrationService';
 import { generateQuotePDF, generateInvoicePDF, generatePDFBuffer } from './pdfService';
 import { notifyPaymentReceived } from './pushNotifications';
+import { syncSingleInvoiceToXero } from './xeroService';
 
 // Helper to create tradie-friendly error messages with clear fixes
 function getTradieFriendlyEmailError(rawError: string): { title: string; message: string; fix: string } {
@@ -528,6 +529,19 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
         message: "The invoice was emailed to your client, but we had trouble updating its status.",
         fix: "The email was sent successfully. You can manually update the invoice status if needed."
       });
+    }
+
+    // 10. Auto-sync to Xero if connected (non-blocking, errors logged but don't fail the request)
+    try {
+      const xeroResult = await syncSingleInvoiceToXero(req.userId, req.params.id);
+      if (xeroResult.success && xeroResult.xeroInvoiceId) {
+        console.log(`[Xero] Invoice ${req.params.id} auto-synced to Xero as ${xeroResult.xeroInvoiceId}`);
+      } else if (!xeroResult.success) {
+        console.warn(`[Xero] Failed to auto-sync invoice ${req.params.id}:`, xeroResult.error);
+      }
+    } catch (xeroError) {
+      // Log but don't fail - Xero sync is a nice-to-have, not critical
+      console.warn('[Xero] Auto-sync error (non-blocking):', xeroError);
     }
 
     res.json({ 
