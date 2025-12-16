@@ -12,7 +12,7 @@ import {
   Modal,
   Share,
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
+// Note: expo-clipboard requires a native build - using Share API as fallback for Expo Go
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
@@ -391,8 +391,14 @@ export default function InvoiceDetailScreen() {
       return;
     }
     
-    await Clipboard.setStringAsync(paymentUrl);
-    Alert.alert('Copied', 'Payment link copied to clipboard');
+    try {
+      await Share.share({
+        message: paymentUrl,
+        title: 'Payment Link',
+      });
+    } catch (error) {
+      Alert.alert('Share Payment Link', paymentUrl);
+    }
   };
 
   const handleCollectPayment = () => {
@@ -516,8 +522,14 @@ export default function InvoiceDetailScreen() {
     }
     
     setShowShareSheet(false);
-    await Clipboard.setStringAsync(paymentUrl);
-    Alert.alert('Copied', 'Payment link copied to clipboard');
+    try {
+      await Share.share({
+        message: paymentUrl,
+        title: 'Payment Link',
+      });
+    } catch (error) {
+      Alert.alert('Share Payment Link', paymentUrl);
+    }
   };
 
   if (isLoading) {
