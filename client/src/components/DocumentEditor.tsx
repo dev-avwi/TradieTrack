@@ -616,8 +616,10 @@ export default function DocumentEditor({ type, onSave, onCancel }: DocumentEdito
           </Button>
           <Button 
             size="sm" 
+            variant="brand"
             onClick={handleSave}
             disabled={isSaving}
+            className="font-semibold shadow-sm"
             data-testid="button-save-document"
           >
             <Save className="w-4 h-4 mr-2" />

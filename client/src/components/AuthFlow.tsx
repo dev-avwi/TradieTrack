@@ -275,7 +275,8 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                   <Button 
                     type="submit"
                     disabled={isLoading}
-                    className="w-full h-11"
+                    variant="brand"
+                    className="w-full h-11 text-base font-semibold shadow-md"
                     data-testid="button-login"
                   >
                     {isLoading ? (
@@ -484,7 +485,8 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                   <Button 
                     type="submit"
                     disabled={isLoading}
-                    className="w-full h-11"
+                    variant="brand"
+                    className="w-full h-11 text-base font-semibold shadow-md"
                     data-testid="button-register"
                   >
                     {isLoading ? (

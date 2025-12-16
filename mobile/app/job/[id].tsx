@@ -2379,8 +2379,10 @@ export default function JobDetailScreen() {
       }
       
       // Read file as base64
+      // Use string fallback if EncodingType is undefined (SDK compatibility)
+      const encodingType = FileSystem.EncodingType?.Base64 ?? 'base64';
       const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: encodingType,
       });
 
       // Send JSON request with base64 data
