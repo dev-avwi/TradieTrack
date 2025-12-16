@@ -10,6 +10,7 @@ import { sendSMS, getTwilioPhoneNumber, isTwilioInitialized, smsTemplates } from
 import { storage } from '../storage';
 import type { SmsConversation, SmsMessage, InsertSmsConversation, InsertSmsMessage, BusinessSettings } from '@shared/schema';
 import { broadcastSmsNotification } from '../websocket';
+import { detectSmsJobIntent } from '../ai';
 
 interface SendSmsOptions {
   businessOwnerId: string;
@@ -318,18 +319,59 @@ export async function handleIncomingSms(
   }
   
   const isMMS = mediaUrls && mediaUrls.length > 0;
+  const messageBody = body || (isMMS ? '[Media message]' : '');
   
-  // Create inbound message (with MMS media URLs if present)
+  // AI Intent Detection - detect if message is a job/quote request
+  let intentData: {
+    isJobRequest: boolean;
+    intentConfidence?: string;
+    intentType?: string;
+    suggestedJobTitle?: string;
+    suggestedDescription?: string;
+  } = { isJobRequest: false };
+  
+  try {
+    // Only run intent detection on inbound messages with actual content
+    if (messageBody && messageBody !== '[Media message]') {
+      const intentResult = await detectSmsJobIntent(
+        messageBody,
+        targetConversation.clientName || undefined,
+        isMMS
+      );
+      
+      intentData = {
+        isJobRequest: intentResult.isJobRequest,
+        intentConfidence: intentResult.confidence,
+        intentType: intentResult.intentType,
+        suggestedJobTitle: intentResult.suggestedJobTitle,
+        suggestedDescription: intentResult.suggestedDescription,
+      };
+      
+      if (intentResult.isJobRequest) {
+        console.log(`[SMS AI] Detected job request (${intentResult.confidence} confidence): "${intentResult.suggestedJobTitle}"`);
+      }
+    }
+  } catch (aiError) {
+    console.error('[SMS AI] Intent detection failed (non-blocking):', aiError);
+  }
+  
+  // Create inbound message (with MMS media URLs and AI intent data)
   const message = await storage.createSmsMessage({
     conversationId: targetConversation.id,
     direction: 'inbound',
-    body: body || (isMMS ? '[Media message]' : ''),
+    body: messageBody,
     senderUserId: null,
     status: 'received',
     twilioSid,
     isQuickAction: false,
     quickActionType: null,
     mediaUrls: mediaUrls || [],
+    isJobRequest: intentData.isJobRequest,
+    intentConfidence: intentData.intentConfidence || null,
+    intentType: intentData.intentType || null,
+    suggestedJobTitle: intentData.suggestedJobTitle || null,
+    suggestedDescription: intentData.suggestedDescription || null,
+    jobCreatedFromSms: null,
     readAt: null,
     errorMessage: null,
   });
@@ -341,7 +383,7 @@ export async function handleIncomingSms(
     unreadCount: newUnreadCount,
   });
   
-  console.log(`[${isMMS ? 'MMS' : 'SMS'}] Inbound message routed to conversation ${targetConversation.id} (business: ${targetConversation.businessOwnerId})${isMMS ? ` with ${mediaUrls.length} media attachment(s)` : ''}`);
+  console.log(`[${isMMS ? 'MMS' : 'SMS'}] Inbound message routed to conversation ${targetConversation.id} (business: ${targetConversation.businessOwnerId})${isMMS ? ` with ${mediaUrls.length} media attachment(s)` : ''}${intentData.isJobRequest ? ' [JOB REQUEST DETECTED]' : ''}`);
   
   // Broadcast WebSocket notification to business owner and team members
   try {
@@ -349,9 +391,12 @@ export async function handleIncomingSms(
       conversationId: targetConversation.id,
       senderPhone: formattedFromPhone,
       senderName: targetConversation.clientName,
-      messagePreview: (body || (isMMS ? '[Media message]' : '')).slice(0, 100),
+      messagePreview: messageBody.slice(0, 100),
       jobId: targetConversation.jobId,
       unreadCount: newUnreadCount,
+      // Include job request flag for UI to show action button
+      isJobRequest: intentData.isJobRequest,
+      suggestedJobTitle: intentData.suggestedJobTitle,
     });
   } catch (wsError) {
     console.error('[SMS] Error broadcasting WebSocket notification:', wsError);

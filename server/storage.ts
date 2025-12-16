@@ -471,7 +471,9 @@ export interface IStorage {
   updateSmsConversation(id: string, updates: Partial<InsertSmsConversation>): Promise<SmsConversation>;
 
   // SMS Messages  
+  getSmsMessage(id: string): Promise<SmsMessage | undefined>;
   getSmsMessages(conversationId: string): Promise<SmsMessage[]>;
+  getSmsJobRequests(businessOwnerId: string): Promise<SmsMessage[]>;
   createSmsMessage(message: InsertSmsMessage): Promise<SmsMessage>;
   updateSmsMessage(id: string, updates: Partial<InsertSmsMessage>): Promise<SmsMessage>;
   markSmsMessagesAsRead(conversationId: string): Promise<void>;
@@ -2992,10 +2994,52 @@ export class PostgresStorage implements IStorage {
   }
 
   // SMS Messages
+  async getSmsMessage(id: string): Promise<SmsMessage | undefined> {
+    const result = await db.select().from(smsMessages)
+      .where(eq(smsMessages.id, id))
+      .limit(1);
+    return result[0];
+  }
+
   async getSmsMessages(conversationId: string): Promise<SmsMessage[]> {
     return await db.select().from(smsMessages)
       .where(eq(smsMessages.conversationId, conversationId))
       .orderBy(asc(smsMessages.createdAt));
+  }
+
+  async getSmsJobRequests(businessOwnerId: string): Promise<SmsMessage[]> {
+    // Get all SMS messages that are job requests and haven't been converted to jobs yet
+    // Join with conversations to filter by business owner
+    return await db
+      .select({
+        id: smsMessages.id,
+        conversationId: smsMessages.conversationId,
+        direction: smsMessages.direction,
+        body: smsMessages.body,
+        senderUserId: smsMessages.senderUserId,
+        status: smsMessages.status,
+        twilioSid: smsMessages.twilioSid,
+        errorMessage: smsMessages.errorMessage,
+        isQuickAction: smsMessages.isQuickAction,
+        quickActionType: smsMessages.quickActionType,
+        mediaUrls: smsMessages.mediaUrls,
+        isJobRequest: smsMessages.isJobRequest,
+        intentConfidence: smsMessages.intentConfidence,
+        intentType: smsMessages.intentType,
+        suggestedJobTitle: smsMessages.suggestedJobTitle,
+        suggestedDescription: smsMessages.suggestedDescription,
+        jobCreatedFromSms: smsMessages.jobCreatedFromSms,
+        readAt: smsMessages.readAt,
+        createdAt: smsMessages.createdAt,
+      })
+      .from(smsMessages)
+      .innerJoin(smsConversations, eq(smsMessages.conversationId, smsConversations.id))
+      .where(and(
+        eq(smsConversations.businessOwnerId, businessOwnerId),
+        eq(smsMessages.isJobRequest, true),
+        isNull(smsMessages.jobCreatedFromSms)
+      ))
+      .orderBy(desc(smsMessages.createdAt));
   }
 
   async createSmsMessage(message: InsertSmsMessage): Promise<SmsMessage> {
@@ -3013,10 +3057,10 @@ export class PostgresStorage implements IStorage {
 
   async markSmsMessagesAsRead(conversationId: string): Promise<void> {
     await db.update(smsMessages)
-      .set({ read: true })
+      .set({ readAt: new Date() })
       .where(and(
         eq(smsMessages.conversationId, conversationId),
-        eq(smsMessages.read, false)
+        isNull(smsMessages.readAt)
       ));
   }
 

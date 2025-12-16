@@ -11374,6 +11374,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // Create job from SMS message with AI pre-fill and MMS photos
+  app.post("/api/sms/messages/:messageId/create-job", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const businessOwnerId = req.businessOwnerId || userId;
+      const { messageId } = req.params;
+      
+      // Get the SMS message
+      const message = await storage.getSmsMessage(messageId);
+      if (!message) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
+      
+      // Get the conversation for client info
+      const conversation = await storage.getSmsConversation(message.conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      
+      // Get or create client from conversation
+      let client = null;
+      if (conversation.clientId) {
+        client = await storage.getClient(conversation.clientId, businessOwnerId);
+      }
+      
+      if (!client && conversation.clientPhone) {
+        // Try to find client by phone number
+        const clients = await storage.getClients(businessOwnerId);
+        client = clients.find(c => 
+          c.phone?.replace(/\s+/g, '').replace(/^0/, '+61') === conversation.clientPhone
+        );
+        
+        // Create client if not found
+        if (!client) {
+          client = await storage.createClient({
+            userId: businessOwnerId,
+            name: conversation.clientName || 'New Client from SMS',
+            phone: conversation.clientPhone,
+            email: null,
+            address: null,
+            notes: `Created from SMS conversation on ${new Date().toLocaleDateString('en-AU')}`,
+          });
+          
+          // Link client to conversation
+          await storage.updateSmsConversation(conversation.id, {
+            clientId: client.id,
+          });
+        }
+      }
+      
+      if (!client) {
+        return res.status(400).json({ error: 'Could not find or create client for this conversation' });
+      }
+      
+      // Use AI-suggested title and description from message, or fallback
+      const jobTitle = message.suggestedJobTitle || 'New Job from SMS';
+      const jobDescription = message.suggestedDescription || message.body;
+      
+      // Create the job with AI pre-fill
+      const job = await storage.createJob({
+        userId: businessOwnerId,
+        clientId: client.id,
+        title: jobTitle,
+        description: jobDescription,
+        status: 'pending',
+        priority: message.intentType === 'quote_request' || message.intentConfidence === 'high' ? 'high' : 'normal',
+        notes: `[Created from SMS] Original message from ${conversation.clientName || 'client'}:\n"${message.body}"`,
+        isRecurring: false,
+        recurringFrequency: null,
+        nextRecurringDate: null,
+      });
+      
+      // If message has MMS photos, attach them to the job as photos
+      const mediaUrls = message.mediaUrls as string[] || [];
+      if (mediaUrls.length > 0) {
+        for (const mediaUrl of mediaUrls) {
+          try {
+            await storage.createJobPhoto({
+              jobId: job.id,
+              url: mediaUrl,
+              caption: 'Photo from client SMS',
+              stage: 'before',
+              uploadedBy: null, // Client uploaded
+            });
+          } catch (photoError) {
+            console.error('[SMS] Error attaching photo to job:', photoError);
+          }
+        }
+        
+        // Update job notes to mention photos
+        await storage.updateJob(job.id, businessOwnerId, {
+          notes: `[Created from SMS with ${mediaUrls.length} photo(s)] Original message from ${conversation.clientName || 'client'}:\n"${message.body}"`,
+        });
+      }
+      
+      // Link conversation to this job
+      await storage.updateSmsConversation(conversation.id, {
+        jobId: job.id,
+      });
+      
+      // Mark the message as having created a job
+      await storage.updateSmsMessage(messageId, {
+        jobCreatedFromSms: job.id,
+      });
+      
+      res.status(201).json({
+        success: true,
+        job,
+        client,
+        photosAttached: mediaUrls.length,
+        message: `Job "${jobTitle}" created successfully from SMS`,
+      });
+    } catch (error: any) {
+      console.error('Error creating job from SMS:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get SMS messages that are job requests (for notifications)
+  app.get("/api/sms/job-requests", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const businessOwnerId = req.businessOwnerId || userId;
+      
+      // Get all SMS messages that are job requests and haven't been converted to jobs yet
+      const messages = await storage.getSmsJobRequests(businessOwnerId);
+      
+      res.json(messages);
+    } catch (error: any) {
+      console.error('Error getting SMS job requests:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
   
   // Twilio webhook for incoming SMS/MMS
   app.post("/api/sms/webhook/incoming", async (req, res) => {

@@ -1685,6 +1685,96 @@ Return a JSON object:
 }
 
 /**
+ * Detect if an SMS message is a job/quote request from a client
+ * Used to trigger "Create Job from SMS" action
+ */
+export async function detectSmsJobIntent(
+  messageBody: string,
+  clientName?: string,
+  hasMedia?: boolean
+): Promise<{
+  isJobRequest: boolean;
+  confidence: 'high' | 'medium' | 'low';
+  suggestedJobTitle?: string;
+  suggestedDescription?: string;
+  urgency: 'urgent' | 'normal' | 'flexible';
+  intentType: 'quote_request' | 'job_request' | 'enquiry' | 'followup' | 'other';
+}> {
+  const systemPrompt = `You are an Australian trades business SMS analyzer. Analyze incoming SMS/text messages to detect if a client is requesting a job, quote, or service.
+
+Common indicators of job/quote requests:
+- Asking for quotes ("how much for...", "can you quote...", "what would it cost...")
+- Describing problems ("my tap is leaking", "power went out", "need aircon serviced")
+- Requesting service ("can you come...", "need help with...", "looking for someone to...")
+- Scheduling requests ("when are you available", "can you come this week")
+- Urgent language ("ASAP", "urgent", "emergency")
+
+NOT job requests:
+- Simple replies ("thanks", "ok", "sounds good")
+- Confirmations ("yes that works", "confirmed")
+- Questions about existing work ("is my job done?")
+- Payment/invoice queries
+
+Return JSON:
+{
+  "isJobRequest": boolean,
+  "confidence": "high" | "medium" | "low",
+  "suggestedJobTitle": "short title if job request, null otherwise",
+  "suggestedDescription": "brief description of what they need, null if not job request",
+  "urgency": "urgent" | "normal" | "flexible",
+  "intentType": "quote_request" | "job_request" | "enquiry" | "followup" | "other"
+}`;
+
+  try {
+    const context = hasMedia ? '(Message includes photo/image attachments)' : '';
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Analyze this SMS from ${clientName || 'a client'}: "${messageBody}" ${context}` }
+      ],
+      temperature: 0.2,
+      max_tokens: 300,
+      response_format: { type: "json_object" }
+    });
+
+    const responseText = completion.choices[0]?.message?.content || '';
+    const parsed = JSON.parse(responseText);
+
+    return {
+      isJobRequest: parsed.isJobRequest === true,
+      confidence: parsed.confidence || 'low',
+      suggestedJobTitle: parsed.suggestedJobTitle || undefined,
+      suggestedDescription: parsed.suggestedDescription || undefined,
+      urgency: parsed.urgency || 'normal',
+      intentType: parsed.intentType || 'other'
+    };
+  } catch (error) {
+    console.error('[AI] SMS intent detection error (using fallback keyword detection):', error);
+    // Fallback: simple keyword detection when AI is unavailable
+    const lowerBody = messageBody.toLowerCase();
+    const strongKeywords = ['quote', 'how much', 'can you fix', 'repair', 'broken', 'leaking', 'urgent', 'asap', 'emergency'];
+    const weakKeywords = ['need', 'help', 'service', 'can you', 'install'];
+    
+    const hasStrongIndicator = strongKeywords.some(kw => lowerBody.includes(kw));
+    const hasWeakIndicator = weakKeywords.some(kw => lowerBody.includes(kw));
+    const hasJobIndicator = hasStrongIndicator || hasWeakIndicator;
+    
+    // Assign medium confidence when strong keywords found, low for weak keywords
+    const confidence = hasStrongIndicator ? 'medium' : (hasWeakIndicator ? 'low' : 'low');
+    
+    return {
+      isJobRequest: hasJobIndicator,
+      confidence: confidence as 'high' | 'medium' | 'low',
+      suggestedJobTitle: hasJobIndicator ? 'New Enquiry from SMS' : undefined,
+      suggestedDescription: hasJobIndicator ? messageBody : undefined,
+      urgency: lowerBody.includes('urgent') || lowerBody.includes('asap') || lowerBody.includes('emergency') ? 'urgent' : 'normal',
+      intentType: hasStrongIndicator ? 'quote_request' : (hasWeakIndicator ? 'enquiry' : 'other')
+    };
+  }
+}
+
+/**
  * Calculate job profitability with simple indicators
  */
 export function calculateJobProfit(params: {

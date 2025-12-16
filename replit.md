@@ -21,6 +21,7 @@ Key architectural features include:
 -   **Customisable Email Templates**: Preview and edit email content with AI-powered suggestions and Automated Gmail with PDF Workflow.
 -   **PWA Support**: Web manifest and service worker for offline capabilities.
 -   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and role-based access. Includes two-way SMS integration via Twilio with templates, MMS, and branded sender IDs.
+-   **AI SMS-to-Job Workflow**: Incoming SMS messages are analyzed by AI to detect job/quote requests. Shows confidence levels (high/medium/low) and intent types (quote_request, job_request, enquiry). "Create Job from SMS" action with AI-suggested titles, descriptions, and automatic MMS photo attachments. Auto-creates clients from phone numbers if not found.
 -   **Live360-Style Interactive Map**: (Owner/Manager only) Displays job pins and real-time location tracking for team members with activity status, speed, battery, and geofence alerts.
 -   **Role-Based Access Control (RBAC)**: Granular permissions and role templates (OWNER, ADMIN, SUPERVISOR, STAFF) enforced by middleware.
 -   **Workflow-Integrated Smart Actions**: Contextual automation suggestions with user approval, previews, and toggle controls, including next-action indicators and pre-fill APIs.

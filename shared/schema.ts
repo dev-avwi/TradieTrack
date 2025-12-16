@@ -1819,6 +1819,13 @@ export const smsMessages = pgTable("sms_messages", {
   quickActionType: text("quick_action_type"), // on_my_way, job_finished, etc.
   // MMS support - array of media URLs (max 10 per Twilio MMS, each up to 5MB)
   mediaUrls: jsonb("media_urls").default([]), // Array of media attachment URLs
+  // AI Intent Detection - for "Create Job from SMS" feature
+  isJobRequest: boolean("is_job_request").default(false),
+  intentConfidence: text("intent_confidence"), // 'high', 'medium', 'low'
+  intentType: text("intent_type"), // 'quote_request', 'job_request', 'enquiry', 'followup', 'other'
+  suggestedJobTitle: varchar("suggested_job_title", { length: 100 }),
+  suggestedDescription: text("suggested_description"),
+  jobCreatedFromSms: varchar("job_created_from_sms").references(() => jobs.id, { onDelete: 'set null' }),
   readAt: timestamp("read_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
