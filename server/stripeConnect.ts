@@ -217,7 +217,21 @@ export async function createCheckoutSessionWithFee(
 
   try {
     const amountInCents = Math.round(amount * 100);
-    const platformFeeAmount = Math.round(amountInCents * (platformFeePercent / 100));
+    
+    // Minimum invoice amount check - must cover platform fee + Stripe fees
+    const minimumAmount = 500; // $5.00 AUD minimum
+    if (amountInCents < minimumAmount) {
+      return { error: `Minimum payment amount is $5.00 AUD` };
+    }
+    
+    // Calculate platform fee (minimum 50 cents)
+    const platformFeeAmount = Math.max(Math.round(amountInCents * (platformFeePercent / 100)), 50);
+    const tradieAmount = amountInCents - platformFeeAmount;
+    
+    // Validate tradie will receive positive amount
+    if (tradieAmount <= 0) {
+      return { error: 'Invoice amount too low to process' };
+    }
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -243,9 +257,12 @@ export async function createCheckoutSessionWithFee(
         transfer_data: {
           destination: connectedAccountId,
         },
+        on_behalf_of: connectedAccountId,
         metadata: {
           invoiceId,
           platformFeePercent: platformFeePercent.toString(),
+          tradieAmount: (tradieAmount / 100).toFixed(2),
+          platformFee: (platformFeeAmount / 100).toFixed(2),
         },
       },
       metadata: {

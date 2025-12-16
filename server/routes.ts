@@ -5659,7 +5659,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Business settings not found" });
       }
 
-      const totalAmountCents = Math.round(parseFloat(invoice.total) * 100);
+      const parsedTotal = parseFloat(String(invoice.total || '0'));
+      if (isNaN(parsedTotal) || parsedTotal <= 0) {
+        return res.status(400).json({ error: "Invalid invoice total amount" });
+      }
+      const totalAmountCents = Math.round(parsedTotal * 100);
+      
+      // Minimum invoice amount check - must cover platform fee + Stripe fees ($5.00 AUD minimum)
+      // This applies to both real Stripe and mock payments to ensure consistency
+      if (totalAmountCents < 500) {
+        return res.status(400).json({ error: "Minimum payment amount is $5.00 AUD" });
+      }
+      
       const stripe = await getUncachableStripeClient();
 
       if (stripe) {
@@ -5695,16 +5706,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (business.stripeConnectAccountId && business.connectChargesEnabled) {
           // Platform fee: 2.5% (minimum $0.50)
           const platformFee = Math.max(Math.round(totalAmountCents * 0.025), 50);
+          const tradieAmount = totalAmountCents - platformFee;
           sessionConfig.payment_intent_data = {
             application_fee_amount: platformFee,
             transfer_data: {
               destination: business.stripeConnectAccountId,
             },
+            on_behalf_of: business.stripeConnectAccountId,
             metadata: {
               invoiceId: invoice.id,
               tradieUserId: req.userId,
               clientId: client.id || '',
               clientName: client.name || '',
+              platformFee: (platformFee / 100).toFixed(2),
+              tradieAmount: (tradieAmount / 100).toFixed(2),
             },
           };
         }
@@ -5760,7 +5775,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Business settings not found" });
       }
 
-      const totalAmountCents = Math.round(parseFloat(invoice.total) * 100);
+      const parsedTotal = parseFloat(String(invoice.total || '0'));
+      if (isNaN(parsedTotal) || parsedTotal <= 0) {
+        return res.status(400).json({ error: "Invalid invoice total amount" });
+      }
+      const totalAmountCents = Math.round(parsedTotal * 100);
+      
+      // Minimum invoice amount check - must cover platform fee + Stripe fees ($5.00 AUD minimum)
+      // This applies to both real Stripe and mock payments to ensure consistency
+      if (totalAmountCents < 500) {
+        return res.status(400).json({ error: "Minimum payment amount is $5.00 AUD" });
+      }
+      
       const stripe = await getUncachableStripeClient();
 
       if (stripe) {
@@ -5801,16 +5827,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Add Stripe Connect destination charges if tradie has Connect account
         if (business.stripeConnectAccountId && business.connectChargesEnabled) {
           const platformFee = Math.max(Math.round(totalAmountCents * 0.025), 50);
+          const tradieAmount = totalAmountCents - platformFee;
           sessionConfig.payment_intent_data = {
             application_fee_amount: platformFee,
             transfer_data: {
               destination: business.stripeConnectAccountId,
             },
+            on_behalf_of: business.stripeConnectAccountId,
             metadata: {
               invoiceId: invoice.id,
               tradieUserId: req.userId,
               clientId: client.id || '',
               clientName: client.name || '',
+              platformFee: (platformFee / 100).toFixed(2),
+              tradieAmount: (tradieAmount / 100).toFixed(2),
             },
           };
         }
