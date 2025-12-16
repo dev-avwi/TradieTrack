@@ -76,18 +76,11 @@ export function Button({
           overlayColor: 'transparent',
         };
       case 'brand':
-        // Brand button uses theme colors with smart fallback for visibility
-        const buttonColors = getVisibleButtonColors(
-          colors.primary,
-          colors.primaryDark,
-          colors.primaryForeground,
-          colors.card,
-          isDark
-        );
+        // HARDCODED blue for guaranteed visibility - bypassing helper
         return {
-          backgroundColor: pressed ? buttonColors.bgPressed : buttonColors.bg,
-          borderColor: buttonColors.border,
-          textColor: buttonColors.text,
+          backgroundColor: pressed ? '#1D4ED8' : '#2563EB',
+          borderColor: '#1D4ED8',
+          textColor: '#FFFFFF',
           overlayColor: elevateColor,
         };
       default:
