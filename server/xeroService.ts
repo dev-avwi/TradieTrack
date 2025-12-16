@@ -1,0 +1,300 @@
+import { XeroClient, TokenSet } from "xero-node";
+import { storage } from "./storage";
+import type { XeroConnection } from "@shared/schema";
+import { encrypt, decrypt } from "./encryption";
+
+const XERO_SCOPES = "openid profile email accounting.transactions accounting.contacts offline_access";
+
+function getRedirectUri(): string {
+  const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : process.env.REPL_SLUG && process.env.REPL_OWNER 
+      ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+      : "http://localhost:5000";
+  return `${baseUrl}/api/integrations/xero/callback`;
+}
+
+function createXeroClient(): XeroClient {
+  const clientId = process.env.XERO_CLIENT_ID;
+  const clientSecret = process.env.XERO_CLIENT_SECRET;
+  
+  if (!clientId || !clientSecret) {
+    throw new Error("XERO_CLIENT_ID and XERO_CLIENT_SECRET environment variables are required");
+  }
+
+  return new XeroClient({
+    clientId,
+    clientSecret,
+    redirectUris: [getRedirectUri()],
+    scopes: XERO_SCOPES.split(" "),
+  });
+}
+
+export async function getAuthUrl(state: string): Promise<string> {
+  const xero = createXeroClient();
+  const consentUrl = await xero.buildConsentUrl();
+  const separator = consentUrl.includes('?') ? '&' : '?';
+  return `${consentUrl}${separator}state=${encodeURIComponent(state)}`;
+}
+
+export async function handleCallback(url: string, userId: string): Promise<XeroConnection> {
+  const xero = createXeroClient();
+  
+  const tokenSet = await xero.apiCallback(url);
+  
+  await xero.updateTenants();
+  const tenants = xero.tenants;
+  
+  if (!tenants || tenants.length === 0) {
+    throw new Error("No Xero organizations found for this account");
+  }
+
+  const tenant = tenants[0];
+  
+  const existingConnection = await storage.getXeroConnection(userId);
+  
+  const connectionData = {
+    userId,
+    tenantId: tenant.tenantId,
+    tenantName: tenant.tenantName || null,
+    accessToken: encrypt(tokenSet.access_token!),
+    refreshToken: encrypt(tokenSet.refresh_token!),
+    tokenExpiresAt: new Date(Date.now() + (tokenSet.expires_in || 1800) * 1000),
+    scope: XERO_SCOPES,
+    status: "active",
+  };
+
+  if (existingConnection) {
+    const updated = await storage.updateXeroConnection(existingConnection.id, connectionData);
+    return updated!;
+  } else {
+    return await storage.createXeroConnection(connectionData);
+  }
+}
+
+function decryptTokens(connection: XeroConnection): { accessToken: string; refreshToken: string } {
+  return {
+    accessToken: decrypt(connection.accessToken),
+    refreshToken: decrypt(connection.refreshToken),
+  };
+}
+
+export async function refreshTokenIfNeeded(connection: XeroConnection): Promise<XeroConnection> {
+  const now = new Date();
+  const expiresAt = new Date(connection.tokenExpiresAt);
+  const bufferMs = 5 * 60 * 1000;
+  
+  if (now.getTime() + bufferMs < expiresAt.getTime()) {
+    return connection;
+  }
+
+  const xero = createXeroClient();
+  const tokens = decryptTokens(connection);
+  
+  const oldTokenSet: TokenSet = {
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken,
+    expires_at: Math.floor(expiresAt.getTime() / 1000),
+    token_type: "Bearer",
+    scope: connection.scope || XERO_SCOPES,
+  };
+
+  xero.setTokenSet(oldTokenSet);
+  const newTokenSet = await xero.refreshToken();
+
+  const updated = await storage.updateXeroConnection(connection.id, {
+    accessToken: encrypt(newTokenSet.access_token!),
+    refreshToken: encrypt(newTokenSet.refresh_token!),
+    tokenExpiresAt: new Date(Date.now() + (newTokenSet.expires_in || 1800) * 1000),
+  });
+
+  return updated!;
+}
+
+export async function getConnectedTenants(connection: XeroConnection): Promise<Array<{ tenantId: string; tenantName: string | null }>> {
+  const refreshedConnection = await refreshTokenIfNeeded(connection);
+  const xero = createXeroClient();
+  const tokens = decryptTokens(refreshedConnection);
+  
+  const tokenSet: TokenSet = {
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken,
+    expires_at: Math.floor(new Date(refreshedConnection.tokenExpiresAt).getTime() / 1000),
+    token_type: "Bearer",
+    scope: refreshedConnection.scope || XERO_SCOPES,
+  };
+
+  xero.setTokenSet(tokenSet);
+  await xero.updateTenants();
+  
+  return xero.tenants.map(t => ({
+    tenantId: t.tenantId,
+    tenantName: t.tenantName || null,
+  }));
+}
+
+export async function syncContactsFromXero(userId: string): Promise<{ synced: number; errors: string[] }> {
+  const connection = await storage.getXeroConnection(userId);
+  if (!connection || connection.status !== "active") {
+    throw new Error("No active Xero connection found");
+  }
+
+  const refreshedConnection = await refreshTokenIfNeeded(connection);
+  const xero = createXeroClient();
+  const tokens = decryptTokens(refreshedConnection);
+  
+  const tokenSet: TokenSet = {
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken,
+    expires_at: Math.floor(new Date(refreshedConnection.tokenExpiresAt).getTime() / 1000),
+    token_type: "Bearer",
+    scope: refreshedConnection.scope || XERO_SCOPES,
+  };
+
+  xero.setTokenSet(tokenSet);
+
+  try {
+    const response = await xero.accountingApi.getContacts(refreshedConnection.tenantId);
+    const xeroContacts = response.body.contacts || [];
+    
+    let synced = 0;
+    const errors: string[] = [];
+
+    for (const xeroContact of xeroContacts) {
+      try {
+        if (!xeroContact.name) continue;
+        
+        const existingClients = await storage.getClients(userId);
+        const matchingClient = existingClients.find(
+          c => c.email?.toLowerCase() === xeroContact.emailAddress?.toLowerCase() ||
+               c.name.toLowerCase() === xeroContact.name?.toLowerCase()
+        );
+
+        if (!matchingClient && xeroContact.name) {
+          await storage.createClient({
+            userId,
+            name: xeroContact.name,
+            email: xeroContact.emailAddress || null,
+            phone: xeroContact.phones?.[0]?.phoneNumber || null,
+            address: xeroContact.addresses?.[0]?.addressLine1 || null,
+          });
+          synced++;
+        }
+      } catch (err) {
+        errors.push(`Failed to sync contact ${xeroContact.name}: ${err}`);
+      }
+    }
+
+    await storage.updateXeroConnection(refreshedConnection.id, {
+      lastSyncAt: new Date(),
+    });
+
+    return { synced, errors };
+  } catch (err) {
+    throw new Error(`Failed to fetch contacts from Xero: ${err}`);
+  }
+}
+
+export async function syncInvoicesToXero(userId: string): Promise<{ synced: number; errors: string[] }> {
+  const connection = await storage.getXeroConnection(userId);
+  if (!connection || connection.status !== "active") {
+    throw new Error("No active Xero connection found");
+  }
+
+  const refreshedConnection = await refreshTokenIfNeeded(connection);
+  const xero = createXeroClient();
+  const tokens = decryptTokens(refreshedConnection);
+  
+  const tokenSet: TokenSet = {
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken,
+    expires_at: Math.floor(new Date(refreshedConnection.tokenExpiresAt).getTime() / 1000),
+    token_type: "Bearer",
+    scope: refreshedConnection.scope || XERO_SCOPES,
+  };
+
+  xero.setTokenSet(tokenSet);
+
+  let synced = 0;
+  const errors: string[] = [];
+
+  try {
+    const invoices = await storage.getInvoices(userId);
+    const clients = await storage.getClients(userId);
+    
+    for (const invoice of invoices) {
+      try {
+        if (invoice.status === 'draft') continue;
+        
+        const client = clients.find(c => c.id === invoice.clientId);
+        if (!client) continue;
+
+        const lineItems = await storage.getInvoiceLineItems(invoice.id);
+        
+        const xeroInvoice = {
+          type: "ACCREC" as const,
+          contact: {
+            name: client.name,
+            emailAddress: client.email || undefined,
+          },
+          lineItems: lineItems.map(item => ({
+            description: item.description,
+            quantity: parseFloat(item.quantity || "1"),
+            unitAmount: parseFloat(item.unitPrice || "0"),
+            accountCode: "200",
+          })),
+          date: invoice.issueDate ? new Date(invoice.issueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split('T')[0] : undefined,
+          reference: invoice.invoiceNumber || undefined,
+          status: invoice.status === 'sent' ? "AUTHORISED" as const : "DRAFT" as const,
+        };
+
+        await xero.accountingApi.createInvoices(refreshedConnection.tenantId, {
+          invoices: [xeroInvoice],
+        });
+        
+        synced++;
+      } catch (err) {
+        errors.push(`Failed to sync invoice ${invoice.invoiceNumber}: ${err}`);
+      }
+    }
+
+    await storage.updateXeroConnection(refreshedConnection.id, {
+      lastSyncAt: new Date(),
+    });
+
+    return { synced, errors };
+  } catch (err) {
+    throw new Error(`Failed to sync invoices to Xero: ${err}`);
+  }
+}
+
+export async function getConnectionStatus(userId: string): Promise<{
+  connected: boolean;
+  tenantName?: string;
+  tenantId?: string;
+  lastSyncAt?: Date;
+  status?: string;
+}> {
+  const connection = await storage.getXeroConnection(userId);
+  
+  if (!connection) {
+    return { connected: false };
+  }
+
+  return {
+    connected: connection.status === "active",
+    tenantName: connection.tenantName || undefined,
+    tenantId: connection.tenantId,
+    lastSyncAt: connection.lastSyncAt || undefined,
+    status: connection.status || "unknown",
+  };
+}
+
+export async function disconnect(userId: string): Promise<boolean> {
+  return await storage.deleteXeroConnection(userId);
+}
+
+export function isXeroConfigured(): boolean {
+  return !!(process.env.XERO_CLIENT_ID && process.env.XERO_CLIENT_SECRET);
+}

@@ -29,7 +29,18 @@ import {
   Wallet,
   Info
 } from "lucide-react";
-import { SiStripe, SiGmail } from "react-icons/si";
+import { SiStripe, SiGmail, SiXero } from "react-icons/si";
+import { RefreshCw, Link2Off } from "lucide-react";
+
+interface XeroStatus {
+  configured: boolean;
+  connected: boolean;
+  tenantName?: string;
+  tenantId?: string;
+  lastSyncAt?: string;
+  status?: string;
+  message?: string;
+}
 
 interface ServiceHealth {
   name: string;
@@ -163,6 +174,72 @@ export default function Integrations() {
       toast({
         title: "Error",
         description: error.message || "Failed to open Stripe dashboard",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Xero integration queries and mutations
+  const { data: xeroStatus, refetch: refetchXero } = useQuery<XeroStatus>({
+    queryKey: ['/api/integrations/xero/status'],
+  });
+
+  const connectXeroMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/xero/connect');
+      return response;
+    },
+    onSuccess: (data: any) => {
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to start Xero connection",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disconnectXeroMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/xero/disconnect');
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Disconnected",
+        description: "Xero has been disconnected successfully",
+      });
+      refetchXero();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to disconnect Xero",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const syncXeroMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/xero/sync');
+      return response;
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Sync Complete",
+        description: "Data has been synced with Xero",
+      });
+      refetchXero();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to sync with Xero",
         variant: "destructive",
       });
     },
@@ -495,6 +572,137 @@ export default function Integrations() {
                 </li>
               </ol>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Xero Accounting Integration */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  xeroStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
+                  xeroStatus?.configured ? 'bg-gray-100 dark:bg-gray-800/50' :
+                  'bg-gray-100 dark:bg-gray-800/50'
+                }`}>
+                  <SiXero className={`w-5 h-5 ${
+                    xeroStatus?.connected ? 'text-green-600 dark:text-green-400' :
+                    'text-gray-500 dark:text-gray-400'
+                  }`} />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Xero Accounting</CardTitle>
+                  <p className="text-xs text-muted-foreground">Sync invoices and contacts with Xero</p>
+                </div>
+              </div>
+              {xeroStatus?.connected ? (
+                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Connected
+                </Badge>
+              ) : xeroStatus?.configured === false ? (
+                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                  Not Configured
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                  Not Connected
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-4">
+            {xeroStatus?.connected ? (
+              <>
+                <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                      {xeroStatus.tenantName || 'Xero Organization'}
+                    </span>
+                  </div>
+                  {xeroStatus.lastSyncAt && (
+                    <p className="text-xs text-green-700 dark:text-green-300">
+                      Last synced: {new Date(xeroStatus.lastSyncAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => syncXeroMutation.mutate()}
+                    disabled={syncXeroMutation.isPending}
+                    data-testid="button-sync-xero"
+                  >
+                    {syncXeroMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Sync Now
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => disconnectXeroMutation.mutate()}
+                    disabled={disconnectXeroMutation.isPending}
+                    data-testid="button-disconnect-xero"
+                  >
+                    {disconnectXeroMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Link2Off className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </>
+            ) : xeroStatus?.configured === false ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Xero integration requires configuration. Contact support to enable this feature.
+                </p>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">
+                      Xero integration syncs your invoices, contacts, and payments between TradieTrack and your Xero account.
+                    </p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Connect your Xero account to automatically sync invoices and contacts.
+                </p>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p><strong>Two-way sync:</strong> Contacts and invoices stay in sync</p>
+                      <p><strong>Automatic updates:</strong> Changes sync between platforms</p>
+                      <p><strong>Australian business:</strong> Works with Xero AU</p>
+                    </div>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => connectXeroMutation.mutate()}
+                  disabled={connectXeroMutation.isPending}
+                  className="w-full"
+                  data-testid="button-connect-xero"
+                >
+                  {connectXeroMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <SiXero className="w-4 h-4 mr-2" />
+                  )}
+                  Connect to Xero
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -1989,3 +1989,65 @@ export const insertSmsAutomationLogSchema = createInsertSchema(smsAutomationLogs
 });
 export type InsertSmsAutomationLog = z.infer<typeof insertSmsAutomationLogSchema>;
 export type SmsAutomationLog = typeof smsAutomationLogs.$inferSelect;
+
+// ========================
+// Xero Integration Tables
+// ========================
+
+// Xero Connections - OAuth tokens and connection info
+export const xeroConnections = pgTable("xero_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tenantId: varchar("tenant_id").notNull(),
+  tenantName: varchar("tenant_name"),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  tokenExpiresAt: timestamp("token_expires_at").notNull(),
+  scope: varchar("scope"),
+  connectedAt: timestamp("connected_at").defaultNow(),
+  lastSyncAt: timestamp("last_sync_at"),
+  status: varchar("status").default('active'),
+});
+
+export const insertXeroConnectionSchema = createInsertSchema(xeroConnections).omit({
+  id: true,
+  connectedAt: true,
+  lastSyncAt: true,
+});
+export type InsertXeroConnection = z.infer<typeof insertXeroConnectionSchema>;
+export type XeroConnection = typeof xeroConnections.$inferSelect;
+
+// Xero Sync State - Track sync progress per entity type
+export const xeroSyncState = pgTable("xero_sync_state", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  entityType: varchar("entity_type").notNull(),
+  lastSyncCursor: varchar("last_sync_cursor"),
+  lastSyncAt: timestamp("last_sync_at"),
+  syncDirection: varchar("sync_direction").default('bidirectional'),
+});
+
+export const insertXeroSyncStateSchema = createInsertSchema(xeroSyncState).omit({
+  id: true,
+});
+export type InsertXeroSyncState = z.infer<typeof insertXeroSyncStateSchema>;
+export type XeroSyncState = typeof xeroSyncState.$inferSelect;
+
+// External Accounting IDs - Map local entities to Xero entities
+export const externalAccountingIds = pgTable("external_accounting_ids", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  localEntityType: varchar("local_entity_type").notNull(),
+  localEntityId: varchar("local_entity_id").notNull(),
+  provider: varchar("provider").notNull(),
+  externalId: varchar("external_id").notNull(),
+  syncStatus: varchar("sync_status").default('synced'),
+  lastSyncAt: timestamp("last_sync_at"),
+}, (table) => ({
+  uniqueLocalEntity: unique().on(table.localEntityType, table.localEntityId, table.provider),
+}));
+
+export const insertExternalAccountingIdSchema = createInsertSchema(externalAccountingIds).omit({
+  id: true,
+});
+export type InsertExternalAccountingId = z.infer<typeof insertExternalAccountingIdSchema>;
+export type ExternalAccountingId = typeof externalAccountingIds.$inferSelect;

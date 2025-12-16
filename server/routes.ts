@@ -72,6 +72,7 @@ import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegratio
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
 import { geocodeAddress } from "./geocoding";
 import { processStatusChangeAutomation, processPaymentReceivedAutomation, processTimeBasedAutomations } from "./automationService";
+import * as xeroService from "./xeroService";
 
 // Utility function for formatting relative time
 function formatRelativeTime(date: Date | string): string {
@@ -3019,6 +3020,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking health:", error);
       res.status(500).json({ error: "Failed to check service health" });
+    }
+  });
+
+  // Xero Integration Routes
+  app.post("/api/integrations/xero/connect", requireAuth, async (req: any, res) => {
+    try {
+      if (!xeroService.isXeroConfigured()) {
+        return res.status(400).json({ 
+          error: "Xero integration not configured. Please add XERO_CLIENT_ID and XERO_CLIENT_SECRET environment variables." 
+        });
+      }
+      const state = randomBytes(32).toString('hex');
+      req.session.xeroOAuthState = state;
+      const authUrl = await xeroService.getAuthUrl(state);
+      res.json({ authUrl });
+    } catch (error: any) {
+      console.error("Error getting Xero auth URL:", error);
+      res.status(500).json({ error: error.message || "Failed to generate Xero auth URL" });
+    }
+  });
+
+  app.get("/api/integrations/xero/callback", requireAuth, async (req: any, res) => {
+    try {
+      const stateFromQuery = req.query.state as string;
+      const storedState = req.session.xeroOAuthState;
+      
+      delete req.session.xeroOAuthState;
+      
+      if (!stateFromQuery || !storedState || stateFromQuery !== storedState) {
+        console.error("OAuth state mismatch - potential CSRF attack");
+        return res.redirect('/integrations?xero=error&message=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
+      }
+      
+      const fullUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+      const connection = await xeroService.handleCallback(fullUrl, req.userId);
+      res.redirect('/integrations?xero=connected');
+    } catch (error: any) {
+      console.error("Error handling Xero callback:", error);
+      res.redirect('/integrations?xero=error&message=' + encodeURIComponent(error.message || 'Connection failed'));
+    }
+  });
+
+  app.post("/api/integrations/xero/disconnect", requireAuth, async (req: any, res) => {
+    try {
+      const success = await xeroService.disconnect(req.userId);
+      res.json({ success });
+    } catch (error: any) {
+      console.error("Error disconnecting Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to disconnect Xero" });
+    }
+  });
+
+  app.get("/api/integrations/xero/status", requireAuth, async (req: any, res) => {
+    try {
+      const configured = xeroService.isXeroConfigured();
+      if (!configured) {
+        return res.json({ 
+          configured: false,
+          connected: false,
+          message: "Xero integration not configured" 
+        });
+      }
+      const status = await xeroService.getConnectionStatus(req.userId);
+      res.json({ configured: true, ...status });
+    } catch (error: any) {
+      console.error("Error getting Xero status:", error);
+      res.status(500).json({ error: error.message || "Failed to get Xero status" });
+    }
+  });
+
+  app.post("/api/integrations/xero/sync", requireAuth, async (req: any, res) => {
+    try {
+      const { type } = req.body;
+      let result;
+      
+      if (type === 'contacts') {
+        result = await xeroService.syncContactsFromXero(req.userId);
+      } else if (type === 'invoices') {
+        result = await xeroService.syncInvoicesToXero(req.userId);
+      } else {
+        const contactsResult = await xeroService.syncContactsFromXero(req.userId);
+        const invoicesResult = await xeroService.syncInvoicesToXero(req.userId);
+        result = {
+          contacts: contactsResult,
+          invoices: invoicesResult,
+        };
+      }
+      
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error("Error syncing with Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to sync with Xero" });
     }
   });
 

@@ -154,6 +154,15 @@ import {
   type InsertSmsBookingLink,
   type SmsTrackingLink,
   type InsertSmsTrackingLink,
+  xeroConnections,
+  xeroSyncState,
+  externalAccountingIds,
+  type XeroConnection,
+  type InsertXeroConnection,
+  type XeroSyncState,
+  type InsertXeroSyncState,
+  type ExternalAccountingId,
+  type InsertExternalAccountingId,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -496,6 +505,12 @@ export interface IStorage {
   updateSmsTrackingLink(id: string, data: Partial<SmsTrackingLink>): Promise<SmsTrackingLink>;
   incrementTrackingLinkViews(id: string): Promise<void>;
   deactivateSmsTrackingLink(id: string): Promise<void>;
+
+  // Xero Integration
+  getXeroConnection(userId: string): Promise<XeroConnection | undefined>;
+  createXeroConnection(data: InsertXeroConnection): Promise<XeroConnection>;
+  updateXeroConnection(id: string, data: Partial<XeroConnection>): Promise<XeroConnection | undefined>;
+  deleteXeroConnection(userId: string): Promise<boolean>;
 }
 
 // Initialize database connection
@@ -3162,6 +3177,34 @@ export class PostgresStorage implements IStorage {
     await db.update(smsTrackingLinks)
       .set({ isActive: false })
       .where(eq(smsTrackingLinks.id, id));
+  }
+
+  // Xero Integration
+  async getXeroConnection(userId: string): Promise<XeroConnection | undefined> {
+    const result = await db.select().from(xeroConnections)
+      .where(eq(xeroConnections.userId, userId))
+      .limit(1);
+    return result[0];
+  }
+
+  async createXeroConnection(data: InsertXeroConnection): Promise<XeroConnection> {
+    const [result] = await db.insert(xeroConnections).values(data).returning();
+    return result;
+  }
+
+  async updateXeroConnection(id: string, data: Partial<XeroConnection>): Promise<XeroConnection | undefined> {
+    const [result] = await db.update(xeroConnections)
+      .set(data)
+      .where(eq(xeroConnections.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteXeroConnection(userId: string): Promise<boolean> {
+    const result = await db.delete(xeroConnections)
+      .where(eq(xeroConnections.userId, userId))
+      .returning();
+    return result.length > 0;
   }
 }
 
