@@ -423,6 +423,9 @@ export const invoices = pgTable("invoices", {
   parentInvoiceId: varchar("parent_invoice_id"), // Links to original recurring invoice
   nextRecurrenceDate: timestamp("next_recurrence_date"),
   archivedAt: timestamp("archived_at"), // When the invoice was archived
+  // Xero integration tracking
+  xeroInvoiceId: varchar("xero_invoice_id"), // Xero invoice ID to prevent duplicate pushes
+  xeroSyncedAt: timestamp("xero_synced_at"), // When invoice was last synced to Xero
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
