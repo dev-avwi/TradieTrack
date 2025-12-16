@@ -81,6 +81,15 @@ Key architectural features include:
   - Create screens: internal state in cents → convert to dollars for preview/API (divide by 100)
   - Detail screens: receive dollars from API → display directly using `Intl.NumberFormat` (no conversion)
   - LiveDocumentPreview component expects dollar values for unitPrice
+- **Mobile Invoice Payment Flow (December 16)**:
+  - **Record On-Site Payment**: New button to record cash/cheque/direct transfer payments on-site with timestamp, automatically marks invoice as paid
+  - **All Signatures Display**: Invoice detail now fetches and displays all relevant signatures (job worker, job client, quote acceptance)
+  - **Stripe Payment Link**: Generates payment link when enabling online payment, shows link status, "Share Payment Link" button
+  - **Smart Payment Logic**: Hides payment options when invoice is paid, shows "Payment Received" section with method/date
+- **Mobile Quote/Invoice Preview & Sharing**:
+  - **Theme-Updated Preview**: LiveDocumentPreview now uses app theme colors, added PAID watermark and signature section
+  - **Share Action Sheet**: New modal with options: Email to Client, Share PDF, Save to Device, Print (Copy Payment Link for invoices)
+  - **PDF Functionality**: Fixed PDF download and sharing with proper loading states and error handling
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)
