@@ -16,13 +16,15 @@ Key architectural features include:
 -   **Adaptive Solo/Team Mode**: Adjusts interface based on team size, featuring time tracking and GPS check-in (team mode).
 -   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators and professional job confirmation emails.
 -   **Live Quote/Invoice Editor**: Real-time preview with templates, catalog items, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
+-   **Stripe Payment Links**: Auto-generated checkout links stored on invoices (`stripePaymentLink`), included in emails, with webhook-triggered payment status sync and automatic receipt emails.
+-   **Email Automation with PDF Attachments**: Invoice/quote emails automatically attach PDF copies via SendGrid. Welcome emails include 5-step quick-start guide.
 -   **Customisable Email Templates**: Preview and edit email content with AI-powered suggestions and Automated Gmail with PDF Workflow.
 -   **PWA Support**: Web manifest and service worker for offline capabilities.
 -   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and role-based access. Includes two-way SMS integration via Twilio with templates, MMS, and branded sender IDs.
 -   **Live360-Style Interactive Map**: (Owner/Manager only) Displays job pins and real-time location tracking for team members with activity status, speed, battery, and geofence alerts.
 -   **Role-Based Access Control (RBAC)**: Granular permissions and role templates (OWNER, ADMIN, SUPERVISOR, STAFF) enforced by middleware.
 -   **Workflow-Integrated Smart Actions**: Contextual automation suggestions with user approval, previews, and toggle controls, including next-action indicators and pre-fill APIs.
--   **Mobile App (React Native/Expo)**: Full API integration, Zustand for state management, SQLite-based offline mode with background sync and conflict resolution, and permission-aware navigation.
+-   **Mobile App (React Native/Expo)**: Full API integration, Zustand for state management, SQLite-based offline mode with background sync (15-min intervals), conflict resolution UI, quote/invoice line items caching, max 10 retry attempts with exponential backoff, and permission-aware navigation.
 -   **Financial Management**: Unified financial dashboard (`/money-hub`) combining invoices, quotes, and payments with KPI cards and quick actions. Supports recording on-site payments and generating Stripe payment links.
 -   **Automation**: Rule-based SMS automation for reminders and follow-ups.
 -   **Client Asset Library & Smart Pre-fill**: API endpoints for retrieving and reusing job photos, quote items, invoice items, and notes. Smart pre-fill suggestions for new jobs/quotes/invoices.

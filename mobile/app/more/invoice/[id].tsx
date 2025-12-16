@@ -11,8 +11,8 @@ import {
   Image,
   Modal,
   Share,
-  Clipboard,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
@@ -384,14 +384,14 @@ export default function InvoiceDetailScreen() {
     }
   };
 
-  const copyPaymentLinkToClipboard = () => {
+  const copyPaymentLinkToClipboard = async () => {
     const paymentUrl = getPaymentLinkUrl();
     if (!paymentUrl) {
       Alert.alert('Error', 'No payment link available. Please generate one first.');
       return;
     }
     
-    Clipboard.setString(paymentUrl);
+    await Clipboard.setStringAsync(paymentUrl);
     Alert.alert('Copied', 'Payment link copied to clipboard');
   };
 
@@ -516,7 +516,7 @@ export default function InvoiceDetailScreen() {
     }
     
     setShowShareSheet(false);
-    Clipboard.setString(paymentUrl);
+    await Clipboard.setStringAsync(paymentUrl);
     Alert.alert('Copied', 'Payment link copied to clipboard');
   };
 
