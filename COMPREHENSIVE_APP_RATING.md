@@ -14,7 +14,7 @@ TradieTrack is a **production-ready, professionally-engineered** field service m
 
 | Competitor | Overall Rating | Target Market |
 |------------|---------------|---------------|
-| **TradieTrack** | **8.7/10** | Australian tradies, solo-to-small teams |
+| **TradieTrack** | **9.0/10** | Australian tradies, solo-to-small teams |
 | ServiceM8 | 9.0/10 | Australian field service professionals |
 | Fergus | 8.5/10 | NZ/AU trades businesses |
 | Jobber | 8.3/10 | North American home service |
