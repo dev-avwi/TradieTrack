@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -18,7 +18,7 @@ import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useInvoicesStore, useClientsStore, useAuthStore, useQuotesStore } from '../../../src/lib/store';
-import { colors } from '../../../src/lib/colors';
+import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { API_URL } from '../../../src/lib/api';
@@ -39,20 +39,22 @@ const TEMPLATE_OPTIONS = [
   { id: 'bold', name: 'Bold', description: 'Strong branding focus' },
 ];
 
-const STATUS_CONFIG = {
-  draft: { label: 'Draft', color: colors.warning, bg: colors.warningLight },
-  sent: { label: 'Sent', color: colors.info, bg: colors.infoLight },
-  paid: { label: 'Paid', color: colors.success, bg: colors.successLight },
-  overdue: { label: 'Overdue', color: colors.destructive, bg: colors.destructiveLight },
-  cancelled: { label: 'Cancelled', color: colors.mutedForeground, bg: colors.cardHover },
-};
-
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getInvoice, updateInvoiceStatus } = useInvoicesStore();
   const { getQuote } = useQuotesStore();
   const { clients, fetchClients } = useClientsStore();
   const { token, user, businessSettings } = useAuthStore();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  const STATUS_CONFIG = useMemo(() => ({
+    draft: { label: 'Draft', color: colors.warning, bg: colors.warningLight },
+    sent: { label: 'Sent', color: colors.info, bg: colors.infoLight },
+    paid: { label: 'Paid', color: colors.success, bg: colors.successLight },
+    overdue: { label: 'Overdue', color: colors.destructive, bg: colors.destructiveLight },
+    cancelled: { label: 'Cancelled', color: colors.mutedForeground, bg: colors.cardHover },
+  }), [colors]);
   const [invoice, setInvoice] = useState<any>(null);
   const [linkedQuote, setLinkedQuote] = useState<any>(null);
   const [allSignatures, setAllSignatures] = useState<Signature[]>([]);
@@ -1217,7 +1219,7 @@ export default function InvoiceDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

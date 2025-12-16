@@ -8,7 +8,7 @@ import {
   DEFAULT_TEMPLATE,
   DOCUMENT_ACCENT_COLOR
 } from '../lib/document-templates';
-import { colors as themeColors } from '../lib/colors';
+import { useTheme } from '../lib/theme';
 
 const tradieTrackLogo = require('../../assets/tradietrack-logo.png');
 
@@ -89,30 +89,6 @@ function formatDate(date: string | Date | null): string {
   });
 }
 
-const colors = {
-  white: '#FFFFFF',
-  background: themeColors.muted,
-  text: themeColors.foreground,
-  textMuted: themeColors.mutedForeground,
-  textLight: themeColors.secondaryText,
-  textLighter: themeColors.mutedForeground,
-  border: themeColors.border,
-  borderLight: themeColors.borderLight,
-  success: themeColors.success,
-  successBg: themeColors.successLight,
-  successText: themeColors.successDark,
-  destructive: themeColors.destructive,
-  destructiveBg: themeColors.destructiveLight,
-  destructiveText: themeColors.destructiveDark,
-  warning: themeColors.warning,
-  warningBg: themeColors.warningLight,
-  warningText: themeColors.warningDark,
-  info: themeColors.info,
-  infoBg: themeColors.infoLight,
-  primary: themeColors.primary,
-  primaryLight: themeColors.primaryLight,
-};
-
 export default function LiveDocumentPreview({
   type,
   documentNumber,
@@ -136,6 +112,32 @@ export default function LiveDocumentPreview({
   templateCustomization,
   signature,
 }: LiveDocumentPreviewProps) {
+  const { colors: themeColors } = useTheme();
+  
+  const colors = useMemo(() => ({
+    white: '#FFFFFF',
+    background: themeColors.muted,
+    text: themeColors.foreground,
+    textMuted: themeColors.mutedForeground,
+    textLight: themeColors.secondaryText,
+    textLighter: themeColors.mutedForeground,
+    border: themeColors.border,
+    borderLight: themeColors.borderLight,
+    success: themeColors.success,
+    successBg: themeColors.successLight,
+    successText: themeColors.successDark,
+    destructive: themeColors.destructive,
+    destructiveBg: themeColors.destructiveLight,
+    destructiveText: themeColors.destructiveDark,
+    warning: themeColors.warning,
+    warningBg: themeColors.warningLight,
+    warningText: themeColors.warningDark,
+    info: themeColors.info,
+    infoBg: themeColors.infoLight,
+    primary: themeColors.primary,
+    primaryLight: themeColors.primaryLight,
+  }), [themeColors]);
+
   const safeParseFloat = (val: string | number): number => {
     if (typeof val === 'number') return isNaN(val) ? 0 : val;
     const parsed = parseFloat(val);
@@ -159,7 +161,7 @@ export default function LiveDocumentPreview({
   const total = subtotal + gst;
   const depositAmount = showDepositSection ? total * ((depositPercent || 0) / 100) : 0;
   
-  const brandColor = business.brandColor || '#2563eb';
+  const brandColor = business.brandColor || themeColors.primary;
   const isPaid = status === 'paid';
   const isOverdue = status === 'overdue';
   const isAccepted = status === 'accepted';
@@ -624,7 +626,7 @@ export default function LiveDocumentPreview({
       fontWeight: '600',
       color: colors.text,
     },
-  }), [template, primaryColor, headingStyle, isPaid, gstEnabled, type, tableHeaderStyle]);
+  }), [template, primaryColor, headingStyle, isPaid, gstEnabled, type, tableHeaderStyle, colors]);
 
   const noteStyle = getNoteStyle();
 

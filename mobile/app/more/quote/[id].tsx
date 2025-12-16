@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -15,7 +15,7 @@ import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useQuotesStore, useClientsStore, useAuthStore, useJobsStore } from '../../../src/lib/store';
-import { colors } from '../../../src/lib/colors';
+import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { API_URL } from '../../../src/lib/api';
@@ -27,19 +27,21 @@ const TEMPLATE_OPTIONS = [
   { id: 'bold', name: 'Bold', description: 'Strong branding focus' },
 ];
 
-const STATUS_CONFIG = {
-  draft: { label: 'Draft', color: colors.warning, bg: colors.warningLight },
-  sent: { label: 'Sent', color: colors.info, bg: colors.infoLight },
-  accepted: { label: 'Accepted', color: colors.success, bg: colors.successLight },
-  rejected: { label: 'Rejected', color: colors.destructive, bg: colors.destructiveLight },
-  expired: { label: 'Expired', color: colors.mutedForeground, bg: colors.cardHover },
-};
-
 export default function QuoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getQuote, updateQuoteStatus } = useQuotesStore();
   const { clients, fetchClients } = useClientsStore();
   const { user, token, businessSettings } = useAuthStore();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  const STATUS_CONFIG = useMemo(() => ({
+    draft: { label: 'Draft', color: colors.warning, bg: colors.warningLight },
+    sent: { label: 'Sent', color: colors.info, bg: colors.infoLight },
+    accepted: { label: 'Accepted', color: colors.success, bg: colors.successLight },
+    rejected: { label: 'Rejected', color: colors.destructive, bg: colors.destructiveLight },
+    expired: { label: 'Expired', color: colors.mutedForeground, bg: colors.cardHover },
+  }), [colors]);
   const [quote, setQuote] = useState<any>(null);
   const [quoteSignature, setQuoteSignature] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -839,7 +841,7 @@ export default function QuoteDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1225,20 +1227,20 @@ const styles = StyleSheet.create({
     color: colors.mutedForeground,
   },
   acceptedCard: {
-    backgroundColor: '#dcfce7',
-    borderColor: '#22c55e',
+    backgroundColor: colors.successLight,
+    borderColor: colors.success,
   },
   signatureImageContainer: {
     marginBottom: 12,
   },
   signatureLabel: {
     fontSize: 12,
-    color: '#166534',
+    color: colors.successDark,
     marginBottom: 8,
   },
   acceptedInfo: {
     fontSize: 13,
-    color: '#166534',
+    color: colors.successDark,
   },
   footerSection: {
     marginTop: 8,

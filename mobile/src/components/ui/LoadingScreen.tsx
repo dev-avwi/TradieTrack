@@ -175,7 +175,7 @@ function ShimmerProgress({ colors, isDark }: { colors: ThemeColors; isDark: bool
   }, []);
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
-  const shimmerColor = isDark ? colors.primary : '#3B5998';
+  const shimmerColor = colors.primary;
 
   return (
     <View style={styles.shimmerContainer}>
@@ -254,7 +254,7 @@ function LoadingDots({ colors, isDark }: { colors: ThemeColors; isDark: boolean 
   }, []);
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
-  const dotColor = isDark ? colors.primary : '#3B5998';
+  const dotColor = colors.primary;
 
   return (
     <View style={styles.dotsContainer}>
@@ -346,7 +346,7 @@ function PulsingRing({ colors, isDark }: { colors: ThemeColors; isDark: boolean 
   }, []);
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
-  const ringColor = isDark ? colors.primary : '#3B5998';
+  const ringColor = colors.primary;
 
   return (
     <>
