@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -9,7 +9,7 @@ import {
   Alert,
   ActivityIndicator
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useClientsStore } from '../../../src/lib/store';
@@ -113,13 +113,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 });
 
 export default function NewClientScreen() {
-  const { createClient } = useClientsStore();
+  const { clientId } = useLocalSearchParams<{ clientId?: string }>();
+  const { createClient, updateClient, getClient } = useClientsStore();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   
+  const isEditMode = !!clientId;
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingClient, setIsLoadingClient] = useState(false);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -128,6 +131,28 @@ export default function NewClientScreen() {
     notes: '',
   });
 
+  useEffect(() => {
+    if (clientId) {
+      loadClientData();
+    }
+  }, [clientId]);
+
+  const loadClientData = async () => {
+    if (!clientId) return;
+    setIsLoadingClient(true);
+    const client = await getClient(clientId);
+    if (client) {
+      setForm({
+        name: client.name || '',
+        phone: client.phone || '',
+        email: client.email || '',
+        address: client.address || '',
+        notes: client.notes || '',
+      });
+    }
+    setIsLoadingClient(false);
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) {
       Alert.alert('Error', 'Client name is required');
@@ -135,15 +160,29 @@ export default function NewClientScreen() {
     }
 
     setIsLoading(true);
-    const client = await createClient(form);
-    setIsLoading(false);
-
-    if (client) {
-      Alert.alert('Success', 'Client created successfully', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+    
+    if (isEditMode && clientId) {
+      const success = await updateClient(clientId, form);
+      setIsLoading(false);
+      
+      if (success) {
+        Alert.alert('Success', 'Client updated successfully', [
+          { text: 'OK', onPress: () => router.back() }
+        ]);
+      } else {
+        Alert.alert('Error', 'Failed to update client. Please try again.');
+      }
     } else {
-      Alert.alert('Error', 'Failed to create client. Please try again.');
+      const client = await createClient(form);
+      setIsLoading(false);
+
+      if (client) {
+        Alert.alert('Success', 'Client created successfully', [
+          { text: 'OK', onPress: () => router.back() }
+        ]);
+      } else {
+        Alert.alert('Error', 'Failed to create client. Please try again.');
+      }
     }
   };
 
@@ -156,13 +195,13 @@ export default function NewClientScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Feather name="chevron-left" size={24} color={colors.foreground} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>New Client</Text>
+          <Text style={styles.headerTitle}>{isEditMode ? 'Edit Client' : 'New Client'}</Text>
           <TouchableOpacity
             style={styles.saveHeaderButton}
             onPress={handleSave}
-            disabled={isLoading}
+            disabled={isLoading || isLoadingClient}
           >
-            {isLoading ? (
+            {isLoading || isLoadingClient ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Feather name="check" size={20} color={colors.primary} />

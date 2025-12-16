@@ -177,9 +177,14 @@ export default function ClientDetailScreen() {
         options={{ 
           title: 'Client Details',
           headerRight: () => (
-            <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
-              <Feather name="trash-2" size={20} color={colors.destructive} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity onPress={() => router.push(`/more/client/new?clientId=${id}`)} style={styles.headerButton}>
+                <Feather name="edit-2" size={20} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
+                <Feather name="trash-2" size={20} color={colors.destructive} />
+              </TouchableOpacity>
+            </View>
           ),
         }} 
       />

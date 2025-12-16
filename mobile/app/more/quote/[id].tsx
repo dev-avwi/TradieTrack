@@ -14,7 +14,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { useQuotesStore, useClientsStore, useAuthStore } from '../../../src/lib/store';
+import { useQuotesStore, useClientsStore, useAuthStore, useJobsStore } from '../../../src/lib/store';
 import { colors } from '../../../src/lib/colors';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
@@ -184,6 +184,43 @@ export default function QuoteDetailScreen() {
       pathname: '/more/invoice/new',
       params: { quoteId: id }
     });
+  };
+
+  const handleConvertToJob = async () => {
+    const { fetchJobs } = useJobsStore.getState();
+    
+    try {
+      const response = await fetch(`${API_URL}/api/jobs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: `Job from Quote #${quote?.quoteNumber || id?.slice(0, 6)}`,
+          description: quote?.notes || '',
+          clientId: quote?.clientId,
+          quoteId: id,
+          status: 'pending',
+          address: getClient(quote?.clientId)?.address || '',
+        }),
+      });
+
+      if (response.ok) {
+        const newJob = await response.json();
+        await fetchJobs();
+        Alert.alert('Success', 'Job created from quote!', [
+          { text: 'View Job', onPress: () => router.push(`/job/${newJob.id}`) },
+          { text: 'OK' }
+        ]);
+      } else {
+        const error = await response.json();
+        Alert.alert('Error', error.error || 'Failed to create job');
+      }
+    } catch (error) {
+      console.log('Error creating job from quote:', error);
+      Alert.alert('Error', 'Failed to create job. Please try again.');
+    }
   };
 
   const downloadPdfToCache = useCallback(async (): Promise<string | null> => {
@@ -603,10 +640,16 @@ export default function QuoteDetailScreen() {
           )}
 
           {quote.status === 'accepted' && (
-            <TouchableOpacity style={styles.primaryButton} onPress={handleConvertToInvoice}>
-              <Feather name="arrow-right" size={20} color={colors.white} />
-              <Text style={styles.primaryButtonText}>Convert to Invoice</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity style={styles.primaryButton} onPress={handleConvertToJob}>
+                <Feather name="briefcase" size={20} color={colors.white} />
+                <Text style={styles.primaryButtonText}>Create Job from Quote</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.primaryButton, { marginTop: 12 }]} onPress={handleConvertToInvoice}>
+                <Feather name="arrow-right" size={20} color={colors.white} />
+                <Text style={styles.primaryButtonText}>Convert to Invoice</Text>
+              </TouchableOpacity>
+            </>
           )}
 
           <View style={{ height: 40 }} />
