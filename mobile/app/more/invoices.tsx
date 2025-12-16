@@ -17,7 +17,7 @@ import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } fro
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 
-type FilterKey = 'all' | 'draft' | 'sent' | 'paid' | 'overdue';
+type FilterKey = 'all' | 'draft' | 'sent' | 'paid' | 'overdue' | 'recurring';
 
 const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
   { key: 'all', label: 'All', icon: 'file-text' },
@@ -25,6 +25,7 @@ const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
   { key: 'sent', label: 'Sent', icon: 'send' },
   { key: 'paid', label: 'Paid', icon: 'check-circle' },
   { key: 'overdue', label: 'Overdue', icon: 'alert-circle' },
+  { key: 'recurring', label: 'Recurring', icon: 'repeat' },
 ];
 
 const navigateToCreateInvoice = () => {
@@ -129,6 +130,22 @@ function InvoiceCard({
               {invoice.dueDate ? `Due ${formatDate(invoice.dueDate)}` : 'No due date'}
             </Text>
           </View>
+          {invoice.isRecurring && (
+            <View style={styles.invoiceDetailRow}>
+              <View style={styles.recurringBadge}>
+                <Feather name="repeat" size={10} color={colors.info} />
+                <Text style={styles.recurringBadgeText}>
+                  {invoice.recurrencePattern === 'fortnightly' ? 'Fortnightly' : 
+                   invoice.recurrencePattern?.charAt(0).toUpperCase() + invoice.recurrencePattern?.slice(1)}
+                </Text>
+              </View>
+              {invoice.nextRecurrenceDate && (
+                <Text style={styles.nextRecurrenceText}>
+                  Next: {formatDate(invoice.nextRecurrenceDate)}
+                </Text>
+              )}
+            </View>
+          )}
         </View>
       </View>
       <View style={styles.invoiceCardChevron}>
@@ -177,6 +194,7 @@ export default function InvoicesScreen() {
     sent: invoices.filter(i => i.status === 'sent').length,
     paid: invoices.filter(i => i.status === 'paid').length,
     overdue: invoices.filter(i => i.status === 'overdue').length,
+    recurring: invoices.filter(i => i.isRecurring).length,
   };
 
   const filteredInvoices = invoices.filter(invoice => {
@@ -186,7 +204,10 @@ export default function InvoicesScreen() {
       invoice.invoiceNumber?.toLowerCase().includes(searchLower) ||
       clientName.toLowerCase().includes(searchLower);
     
-    const matchesFilter = activeFilter === 'all' || invoice.status === activeFilter;
+    let matchesFilter = activeFilter === 'all' || invoice.status === activeFilter;
+    if (activeFilter === 'recurring') {
+      matchesFilter = invoice.isRecurring === true;
+    }
     
     return matchesSearch && matchesFilter;
   });
@@ -583,6 +604,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 13,
     color: colors.mutedForeground,
     flex: 1,
+  },
+  recurringBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.infoLight || colors.muted,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  recurringBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.info,
+  },
+  nextRecurrenceText: {
+    fontSize: 11,
+    color: colors.info,
+    marginLeft: 8,
   },
   invoiceCardChevron: {
     justifyContent: 'center',

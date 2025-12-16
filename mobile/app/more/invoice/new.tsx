@@ -497,6 +497,130 @@ function createStyles(colors: ThemeColors) {
       fontSize: 10,
       color: colors.mutedForeground,
     },
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 4,
+    },
+    toggleInfo: {
+      flex: 1,
+      marginRight: 16,
+    },
+    toggleTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.foreground,
+      marginBottom: 2,
+    },
+    toggleDescription: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      lineHeight: 18,
+    },
+    toggleSwitch: {
+      width: 50,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: colors.muted,
+      padding: 2,
+      justifyContent: 'center',
+    },
+    toggleThumb: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: colors.card,
+    },
+    toggleThumbActive: {
+      alignSelf: 'flex-end',
+    },
+    recurringOptions: {
+      marginTop: 16,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    inputHint: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      marginTop: 6,
+      marginLeft: 2,
+    },
+    recurringPreview: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      padding: 12,
+      backgroundColor: colors.infoLight || colors.muted,
+      borderRadius: 10,
+      marginTop: 8,
+    },
+    recurringPreviewText: {
+      flex: 1,
+      fontSize: 13,
+      color: colors.info || colors.primary,
+      lineHeight: 18,
+    },
+    frequencyModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    frequencyModalContent: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingBottom: 34,
+      paddingTop: 12,
+    },
+    frequencyModalHandle: {
+      width: 36,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: colors.muted,
+      alignSelf: 'center',
+      marginBottom: 12,
+    },
+    frequencyModalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.foreground,
+      textAlign: 'center',
+      marginBottom: 16,
+      paddingHorizontal: 16,
+    },
+    frequencyOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 14,
+      paddingHorizontal: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    frequencyOptionSelected: {
+      backgroundColor: colors.primaryLight,
+    },
+    frequencyOptionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    frequencyOptionText: {
+      fontSize: 16,
+      color: colors.foreground,
+    },
+    frequencyModalCancel: {
+      marginTop: 8,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    frequencyModalCancelText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.mutedForeground,
+    },
   });
 }
 
@@ -536,6 +660,41 @@ export default function NewInvoiceScreen() {
     invoiceDate: new Date().toISOString().split('T')[0],
     dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   });
+  
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrencePattern, setRecurrencePattern] = useState<'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [showRecurrenceOptions, setShowRecurrenceOptions] = useState(false);
+
+  const RECURRENCE_OPTIONS = [
+    { value: 'weekly', label: 'Weekly', interval: 1 },
+    { value: 'fortnightly', label: 'Fortnightly (2 weeks)', interval: 1 },
+    { value: 'monthly', label: 'Monthly', interval: 1 },
+    { value: 'quarterly', label: 'Quarterly (3 months)', interval: 3 },
+    { value: 'yearly', label: 'Yearly', interval: 1 },
+  ] as const;
+
+  const calculateNextRecurrenceDate = (dueDate: string, pattern: string): string => {
+    const due = new Date(dueDate);
+    switch (pattern) {
+      case 'weekly':
+        due.setDate(due.getDate() + 7);
+        break;
+      case 'fortnightly':
+        due.setDate(due.getDate() + 14);
+        break;
+      case 'monthly':
+        due.setMonth(due.getMonth() + 1);
+        break;
+      case 'quarterly':
+        due.setMonth(due.getMonth() + 3);
+        break;
+      case 'yearly':
+        due.setFullYear(due.getFullYear() + 1);
+        break;
+    }
+    return due.toISOString();
+  };
   
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [editForm, setEditForm] = useState({
@@ -705,7 +864,7 @@ export default function NewInvoiceScreen() {
 
     setIsLoading(true);
     try {
-      const response = await api.post('/api/invoices', {
+      const invoiceData: any = {
         clientId: form.clientId,
         jobId: jobId || undefined,
         title: form.title.trim(),
@@ -720,7 +879,19 @@ export default function NewInvoiceScreen() {
           quantity: parseFloat(item.quantity),
           unitPrice: parseFloat(item.unitPrice),
         })),
-      });
+      };
+
+      if (isRecurring) {
+        invoiceData.isRecurring = true;
+        invoiceData.recurrencePattern = recurrencePattern;
+        invoiceData.recurrenceInterval = 1;
+        invoiceData.nextRecurrenceDate = calculateNextRecurrenceDate(form.dueDate, recurrencePattern);
+        if (recurrenceEndDate) {
+          invoiceData.recurrenceEndDate = new Date(recurrenceEndDate).toISOString();
+        }
+      }
+
+      const response = await api.post('/api/invoices', invoiceData);
 
       if (response.data) {
         await fetchInvoices();
@@ -1004,6 +1175,85 @@ export default function NewInvoiceScreen() {
                     />
                   </View>
                 </View>
+              </View>
+
+              {/* Recurring Invoice Card */}
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Feather name="repeat" size={16} color={colors.primary} />
+                  <Text style={styles.cardHeaderText}>Recurring Invoice</Text>
+                </View>
+                
+                <TouchableOpacity 
+                  style={styles.toggleRow}
+                  onPress={() => setIsRecurring(!isRecurring)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.toggleInfo}>
+                    <Text style={styles.toggleTitle}>Make this recurring</Text>
+                    <Text style={styles.toggleDescription}>
+                      Automatically generate invoices on a schedule
+                    </Text>
+                  </View>
+                  <View style={[
+                    styles.toggleSwitch, 
+                    isRecurring && { backgroundColor: colors.primary }
+                  ]}>
+                    <View style={[
+                      styles.toggleThumb,
+                      isRecurring && styles.toggleThumbActive
+                    ]} />
+                  </View>
+                </TouchableOpacity>
+
+                {isRecurring && (
+                  <View style={styles.recurringOptions}>
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.inputLabel}>Frequency</Text>
+                      <TouchableOpacity
+                        style={styles.selectButton}
+                        onPress={() => setShowRecurrenceOptions(true)}
+                      >
+                        <View style={styles.selectedClient}>
+                          <Feather name="repeat" size={16} color={colors.primary} />
+                          <Text style={styles.selectedClientText}>
+                            {RECURRENCE_OPTIONS.find(o => o.value === recurrencePattern)?.label || 'Select frequency'}
+                          </Text>
+                        </View>
+                        <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.inputLabel}>End Date (optional)</Text>
+                      <View style={styles.dateInputWrapper}>
+                        <Feather name="calendar" size={16} color={colors.mutedForeground} style={styles.dateIcon} />
+                        <TextInput
+                          style={[styles.input, styles.dateInput]}
+                          value={recurrenceEndDate}
+                          onChangeText={setRecurrenceEndDate}
+                          placeholder="Leave empty for no end date"
+                          placeholderTextColor={colors.mutedForeground}
+                        />
+                      </View>
+                      <Text style={styles.inputHint}>
+                        Leave empty to generate invoices indefinitely
+                      </Text>
+                    </View>
+
+                    <View style={styles.recurringPreview}>
+                      <Feather name="info" size={14} color={colors.info} />
+                      <Text style={styles.recurringPreviewText}>
+                        Next invoice will be generated on{' '}
+                        {new Date(calculateNextRecurrenceDate(form.dueDate, recurrencePattern)).toLocaleDateString('en-AU', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </View>
 
               {/* Line Items Card */}
@@ -1325,6 +1575,61 @@ export default function NewInvoiceScreen() {
             )}
           </ScrollView>
         </View>
+      </Modal>
+
+      {/* Recurrence Frequency Picker Modal */}
+      <Modal
+        visible={showRecurrenceOptions}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowRecurrenceOptions(false)}
+      >
+        <TouchableOpacity 
+          style={styles.frequencyModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowRecurrenceOptions(false)}
+        >
+          <View style={styles.frequencyModalContent}>
+            <View style={styles.frequencyModalHandle} />
+            <Text style={styles.frequencyModalTitle}>Select Frequency</Text>
+            {RECURRENCE_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.frequencyOption,
+                  recurrencePattern === option.value && styles.frequencyOptionSelected
+                ]}
+                onPress={() => {
+                  setRecurrencePattern(option.value);
+                  setShowRecurrenceOptions(false);
+                }}
+              >
+                <View style={styles.frequencyOptionContent}>
+                  <Feather 
+                    name="repeat" 
+                    size={18} 
+                    color={recurrencePattern === option.value ? colors.primary : colors.mutedForeground} 
+                  />
+                  <Text style={[
+                    styles.frequencyOptionText,
+                    recurrencePattern === option.value && { color: colors.primary, fontWeight: '600' }
+                  ]}>
+                    {option.label}
+                  </Text>
+                </View>
+                {recurrencePattern === option.value && (
+                  <Feather name="check" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity 
+              style={styles.frequencyModalCancel}
+              onPress={() => setShowRecurrenceOptions(false)}
+            >
+              <Text style={styles.frequencyModalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </>
   );

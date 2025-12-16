@@ -21,7 +21,7 @@ import { useInvoicesStore, useClientsStore, useAuthStore, useQuotesStore } from 
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
-import { API_URL } from '../../../src/lib/api';
+import { API_URL, api } from '../../../src/lib/api';
 
 interface Signature {
   id: string;
@@ -41,7 +41,7 @@ const TEMPLATE_OPTIONS = [
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getInvoice, updateInvoiceStatus } = useInvoicesStore();
+  const { getInvoice, updateInvoiceStatus, fetchInvoices } = useInvoicesStore();
   const { getQuote } = useQuotesStore();
   const { clients, fetchClients } = useClientsStore();
   const { token, user, businessSettings } = useAuthStore();
@@ -735,6 +735,99 @@ export default function InvoiceDetailScreen() {
               </View>
             )}
           </View>
+
+          {/* Recurring Invoice Section */}
+          {invoice.isRecurring && (
+            <>
+              <Text style={styles.sectionTitle}>Recurring Schedule</Text>
+              <View style={[styles.card, styles.recurringCard]}>
+                <View style={styles.recurringHeader}>
+                  <View style={styles.recurringBadge}>
+                    <Feather name="repeat" size={14} color={colors.info} />
+                    <Text style={styles.recurringBadgeText}>
+                      {invoice.recurrencePattern === 'fortnightly' ? 'Fortnightly' : 
+                       invoice.recurrencePattern?.charAt(0).toUpperCase() + invoice.recurrencePattern?.slice(1)}
+                    </Text>
+                  </View>
+                  <Text style={styles.recurringActiveText}>Active</Text>
+                </View>
+                
+                <View style={styles.recurringDetails}>
+                  <View style={styles.recurringDetailRow}>
+                    <Feather name="calendar" size={16} color={colors.mutedForeground} />
+                    <View style={styles.recurringDetailContent}>
+                      <Text style={styles.recurringDetailLabel}>Next Invoice</Text>
+                      <Text style={styles.recurringDetailValue}>
+                        {invoice.nextRecurrenceDate 
+                          ? formatDate(invoice.nextRecurrenceDate)
+                          : 'Not scheduled'}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  {invoice.recurrenceEndDate && (
+                    <View style={styles.recurringDetailRow}>
+                      <Feather name="flag" size={16} color={colors.mutedForeground} />
+                      <View style={styles.recurringDetailContent}>
+                        <Text style={styles.recurringDetailLabel}>End Date</Text>
+                        <Text style={styles.recurringDetailValue}>
+                          {formatDate(invoice.recurrenceEndDate)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.recurringActions}>
+                  <TouchableOpacity 
+                    style={styles.recurringEditButton}
+                    onPress={() => {
+                      Alert.alert(
+                        'Edit Schedule',
+                        'Recurring schedule editing coming soon. You can stop this recurring invoice and create a new one with updated settings.',
+                        [{ text: 'OK' }]
+                      );
+                    }}
+                  >
+                    <Feather name="edit-2" size={16} color={colors.primary} />
+                    <Text style={styles.recurringEditButtonText}>Edit Schedule</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.recurringStopButton}
+                    onPress={() => {
+                      Alert.alert(
+                        'Stop Recurring',
+                        'Are you sure you want to stop this recurring invoice? No more invoices will be automatically generated.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { 
+                            text: 'Stop', 
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                await api.patch(`/api/invoices/${invoice.id}`, {
+                                  isRecurring: false,
+                                  nextRecurrenceDate: null,
+                                });
+                                await fetchInvoices();
+                                Alert.alert('Success', 'Recurring schedule has been stopped.');
+                              } catch (error) {
+                                Alert.alert('Error', 'Failed to stop recurring invoice.');
+                              }
+                            }
+                          }
+                        ]
+                      );
+                    }}
+                  >
+                    <Feather name="x-circle" size={16} color={colors.destructive} />
+                    <Text style={styles.recurringStopButtonText}>Stop Recurring</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </>
+          )}
 
           {/* Line Items */}
           {lineItems.length > 0 && (
@@ -1939,5 +2032,95 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.mutedForeground,
+  },
+  recurringCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.info,
+  },
+  recurringHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  recurringBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.infoLight || colors.muted,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  recurringBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.info,
+  },
+  recurringActiveText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.success,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  recurringDetails: {
+    gap: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    marginBottom: 16,
+  },
+  recurringDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  recurringDetailContent: {
+    flex: 1,
+  },
+  recurringDetailLabel: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginBottom: 2,
+  },
+  recurringDetailValue: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  recurringActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  recurringEditButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 10,
+  },
+  recurringEditButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  recurringStopButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    backgroundColor: colors.destructiveLight,
+    borderRadius: 10,
+  },
+  recurringStopButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.destructive,
   },
 });
