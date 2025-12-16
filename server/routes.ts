@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { randomBytes } from "crypto";
 import { z } from "zod";
+import multer from "multer";
 import { storage } from "./storage";
 import { AuthService } from "./auth";
 import { setupGoogleAuth } from "./googleAuth";
@@ -9574,12 +9575,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Upload photo to a job
+  // Upload photo to a job (base64 - for small images and backwards compatibility)
   app.post("/api/jobs/:jobId/photos", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.params.jobId;
       const { fileName, fileBase64, mimeType, category, caption, takenAt } = req.body;
+      
+      // Verify job exists and belongs to this user (security check)
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found or access denied' });
+      }
       
       if (!fileName || !fileBase64 || !mimeType) {
         return res.status(400).json({ error: 'fileName, fileBase64, and mimeType required' });
@@ -9604,6 +9611,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ photoId: result.photoId, success: true });
     } catch (error: any) {
       console.error('Error uploading photo:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Upload media to a job via multipart form (for large files like videos)
+  const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 500 * 1024 * 1024 } // 500MB limit for videos
+  });
+  
+  app.post("/api/jobs/:jobId/photos/upload", requireAuth, upload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.params.jobId;
+      const file = req.file;
+      
+      // Verify job exists and belongs to this user (security check)
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found or access denied' });
+      }
+      
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+      
+      const { category, caption, takenAt } = req.body;
+      
+      const { uploadJobPhoto } = await import('./photoService');
+      const result = await uploadJobPhoto(userId, jobId, file.buffer, {
+        fileName: file.originalname,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        category: category || 'general',
+        caption,
+        takenAt: takenAt ? new Date(takenAt) : undefined,
+      });
+      
+      if (!result.success) {
+        return res.status(500).json({ error: result.error });
+      }
+      
+      res.json({ photoId: result.photoId, success: true });
+    } catch (error: any) {
+      console.error('Error uploading media via multipart:', error);
       res.status(500).json({ error: error.message });
     }
   });

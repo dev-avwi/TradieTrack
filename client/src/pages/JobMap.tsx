@@ -60,6 +60,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import "leaflet/dist/leaflet.css";
 
 interface JobMapData {
@@ -405,6 +406,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showTeamMembers, setShowTeamMembers] = useState(true);
@@ -547,7 +549,10 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
         credentials: 'include',
         body: JSON.stringify({ jobIds }),
       });
-      if (!response.ok) throw new Error('Failed to optimize route');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to optimize route');
+      }
       return response.json();
     },
     onSuccess: (data: any) => {
@@ -559,14 +564,44 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
       ).filter(Boolean) as RouteJob[];
       setRouteJobs(reorderedJobs);
       setRouteStats({ totalDistance: data.totalDistance, estimatedDuration: data.estimatedDuration });
+      toast({
+        title: "Route Optimized",
+        description: "Jobs reordered for shortest travel distance",
+      });
     },
-    onError: () => {
+    onError: (error: Error) => {
       setIsOptimizing(false);
+      toast({
+        title: "Could not optimize route",
+        description: error.message || "Please try again later",
+        variant: "destructive",
+      });
     }
   });
 
   const handleOptimizeRoute = () => {
-    if (routeJobs.length < 2) return;
+    // Guard: need at least 2 stops to optimize
+    if (routeJobs.length < 2) {
+      toast({
+        title: "Not enough stops",
+        description: "Add at least 2 jobs to optimize the route",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Guard: need at least 2 stops with coordinates
+    const jobsWithCoords = routeJobs.filter(j => {
+      const enriched = enrichedRouteJobs.find(ej => ej.jobId === j.jobId);
+      return enriched?.latitude && enriched?.longitude;
+    });
+    if (jobsWithCoords.length < 2) {
+      toast({
+        title: "Cannot optimize route",
+        description: "At least 2 jobs need valid addresses to optimize",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsOptimizing(true);
     optimizeRouteMutation.mutate();
   };
@@ -1342,83 +1377,69 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
         </div>
       </div>
       
-      {/* Route Planning Panel */}
+      {/* Route Planning Panel - Compact floating card */}
       {showRoutePanel && enrichedRouteJobs.length > 0 && (
-        <div className="absolute left-0 right-0 top-32 z-[1001] px-3 md:px-4 pointer-events-none">
+        <div className="absolute left-3 md:left-4 top-32 z-[1001] pointer-events-none">
           <div 
-            className={`${isDark ? 'bg-gray-900/95' : 'bg-white/95'} backdrop-blur-xl rounded-2xl shadow-xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} p-4 max-w-md pointer-events-auto`}
+            className={`${isDark ? 'bg-gray-900/95' : 'bg-white/95'} backdrop-blur-xl rounded-xl shadow-xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} p-3 w-72 max-w-[calc(100vw-24px)] pointer-events-auto`}
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <div 
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center"
                   style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}
                 >
-                  <Navigation2 className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                  <Navigation2 className="h-3.5 w-3.5" style={{ color: 'hsl(var(--trade))' }} />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">Route Planner</h3>
+                  <h3 className="font-semibold text-sm">Route</h3>
                   <p className="text-xs text-muted-foreground">
-                    {enrichedRouteJobs.length} stops
-                    {routeJobsWithCoords.length > 0 && routeJobsWithCoords.length < enrichedRouteJobs.length && (
-                      <span className="text-amber-500"> ({routeJobsWithCoords.length} on map)</span>
-                    )}
+                    {enrichedRouteJobs.length} stop{enrichedRouteJobs.length !== 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-8 w-8"
+                className="h-7 w-7"
                 onClick={clearRoute}
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </Button>
             </div>
             
             {/* Validation warning */}
             {routeValidationWarning && (
-              <div className={`p-2 rounded-lg mb-3 text-xs flex items-center gap-2 ${isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span>{routeValidationWarning} - add addresses to include in route</span>
+              <div className={`px-2 py-1.5 rounded-lg mb-2 text-xs flex items-center gap-1.5 ${isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>{routeValidationWarning}</span>
               </div>
             )}
             
-            <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
+            <div className="space-y-1.5 mb-2 max-h-40 overflow-y-auto">
               {enrichedRouteJobs.map((job, index) => (
                 <div 
                   key={job.jobId}
-                  className={`flex items-start gap-2 p-2 rounded-lg ${
+                  className={`flex items-center gap-1.5 p-1.5 rounded-lg ${
                     !job.address 
                       ? (isDark ? 'bg-amber-900/20 border border-amber-700/50' : 'bg-amber-50 border border-amber-200')
                       : (isDark ? 'bg-gray-800/50' : 'bg-gray-100/50')
                   }`}
                 >
                   <div 
-                    className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold text-white"
+                    className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold text-white"
                     style={{ backgroundColor: job.address ? 'hsl(var(--trade))' : '#9CA3AF' }}
                   >
                     {index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{job.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{job.clientName}</p>
-                    {job.address ? (
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        <MapPin className="h-3 w-3 inline mr-1" />
-                        {job.address}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-amber-500 mt-0.5">
-                        <AlertTriangle className="h-3 w-3 inline mr-1" />
-                        No address set
-                      </p>
-                    )}
+                    <p className="font-medium text-xs truncate">{job.title}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{job.clientName}</p>
                   </div>
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-6 w-6 shrink-0"
+                    className="h-5 w-5 shrink-0"
                     onClick={() => removeFromRoute(job.jobId)}
                   >
                     <X className="h-3 w-3" />
@@ -1429,13 +1450,13 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
 
             {/* Route Stats */}
             {routeStats && (
-              <div className={`flex items-center gap-3 px-3 py-2 rounded-lg mb-3 ${isDark ? 'bg-green-900/30' : 'bg-green-50'}`}>
-                <div className="flex items-center gap-1.5 text-sm">
-                  <Navigation2 className="h-3.5 w-3.5 text-green-600" />
+              <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg mb-2 ${isDark ? 'bg-green-900/30' : 'bg-green-50'}`}>
+                <div className="flex items-center gap-1 text-xs">
+                  <Navigation2 className="h-3 w-3 text-green-600" />
                   <span className="font-medium">{routeStats.totalDistance} km</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-sm">
-                  <Clock className="h-3.5 w-3.5 text-green-600" />
+                <div className="flex items-center gap-1 text-xs">
+                  <Clock className="h-3 w-3 text-green-600" />
                   <span className="font-medium">
                     {Math.floor(routeStats.estimatedDuration / 60)}h {routeStats.estimatedDuration % 60}m
                   </span>
@@ -1443,23 +1464,25 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
               </div>
             )}
             
-            <div className="flex gap-2 mb-3">
+            <div className="flex gap-1.5">
               <Button
                 size="sm"
                 variant="outline"
+                className="h-8 w-8 p-0"
                 onClick={handleOptimizeRoute}
                 disabled={routeJobsWithCoords.length < 2 || isOptimizing}
-                title="Optimize route order by distance"
+                title="Optimize route order"
                 data-testid="button-optimize-route"
               >
                 {isOptimizing ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Zap className="h-4 w-4" />
+                  <Zap className="h-3.5 w-3.5" />
                 )}
               </Button>
               <Button
-                className="flex-1 text-white"
+                size="sm"
+                className="flex-1 h-8 text-white text-xs"
                 style={{ 
                   backgroundColor: routeJobsWithAddresses.length > 0 ? 'hsl(var(--trade))' : undefined,
                 }}
@@ -1467,19 +1490,20 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                 onClick={openMultiStopRoute}
                 disabled={routeJobsWithAddresses.length === 0}
               >
-                <Navigation2 className="h-4 w-4 mr-2" />
+                <Navigation2 className="h-3.5 w-3.5 mr-1.5" />
                 {routeJobsWithAddresses.length > 0 
-                  ? `Open in Maps`
+                  ? 'Open Maps'
                   : 'No addresses'}
-                {routeJobsWithAddresses.length > 0 && <ExternalLink className="h-3 w-3 ml-2" />}
+                {routeJobsWithAddresses.length > 0 && <ExternalLink className="h-3 w-3 ml-1" />}
               </Button>
               <Button
-                size="icon"
+                size="sm"
                 variant="outline"
+                className="h-8 w-8 p-0"
                 onClick={() => setShowSavedRoutes(!showSavedRoutes)}
                 title="Saved Routes"
               >
-                <FolderOpen className="h-4 w-4" />
+                <FolderOpen className="h-3.5 w-3.5" />
               </Button>
             </div>
             

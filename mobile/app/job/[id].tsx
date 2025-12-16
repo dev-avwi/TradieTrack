@@ -25,7 +25,7 @@ import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import api from '../../src/lib/api';
+import api, { API_URL } from '../../src/lib/api';
 import { useJobsStore, useTimeTrackingStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
@@ -2378,32 +2378,42 @@ export default function JobDetailScreen() {
         mimeType = ext === 'png' ? 'image/png' : `image/${ext}`;
       }
       
-      // Read file as base64
-      // Use string fallback if EncodingType is undefined (SDK compatibility)
-      const encodingType = FileSystem.EncodingType?.Base64 ?? 'base64';
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: encodingType,
-      });
-
-      // Send JSON request with base64 data
-      const response = await api.post(`/api/jobs/${job.id}/photos`, {
-        fileName: filename,
-        fileBase64: base64,
+      // Get session token for authorization
+      const token = await api.getToken();
+      
+      // Use FileSystem.uploadAsync for streaming multipart upload (works for large videos)
+      const uploadUrl = `${API_URL}/api/jobs/${job.id}/photos/upload`;
+      const uploadResult = await FileSystem.uploadAsync(uploadUrl, uri, {
+        httpMethod: 'POST',
+        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+        fieldName: 'file',
         mimeType: mimeType,
-        category: mediaType,
+        parameters: {
+          category: mediaType,
+        },
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
       });
 
-      if (response.data) {
-        setPhotos(prev => prev.filter(p => p.id !== tempId));
-        await loadPhotos();
-        Alert.alert('Success', `${mediaType === 'video' ? 'Video' : 'Photo'} uploaded successfully`);
+      if (uploadResult.status === 200) {
+        const responseData = JSON.parse(uploadResult.body);
+        if (responseData.success) {
+          setPhotos(prev => prev.filter(p => p.id !== tempId));
+          await loadPhotos();
+          Alert.alert('Success', `${mediaType === 'video' ? 'Video' : 'Photo'} uploaded successfully`);
+        } else {
+          setPhotos(prev => prev.filter(p => p.id !== tempId));
+          Alert.alert('Error', responseData.error || `Failed to upload ${mediaType}. Please try again.`);
+        }
       } else {
         setPhotos(prev => prev.filter(p => p.id !== tempId));
-        Alert.alert('Error', `Failed to upload ${mediaType}. Please try again.`);
+        Alert.alert('Error', `Failed to upload ${mediaType}. Server returned status ${uploadResult.status}`);
       }
     } catch (error: any) {
       console.error('Upload error:', error);
-      Alert.alert('Saved', `${mediaType === 'video' ? 'Video' : 'Photo'} saved locally. Will sync when online.`);
+      setPhotos(prev => prev.filter(p => p.id !== tempId));
+      Alert.alert('Error', `Failed to upload ${mediaType}. ${error.message || 'Please try again.'}`);
     }
     setIsUploadingPhoto(false);
   };
@@ -2443,28 +2453,47 @@ export default function JobDetailScreen() {
     setShowAnnotationEditor(false);
     
     try {
-      // Extract base64 data from data URI (format: data:image/jpeg;base64,...)
       const base64Data = annotatedUri.split(',')[1];
+      if (!base64Data) {
+        throw new Error('Invalid image data');
+      }
+      
       const filename = `annotated_${Date.now()}.jpg`;
-
-      // Send JSON request with base64 data
-      const response = await api.post(`/api/jobs/${job.id}/photos`, {
-        fileName: filename,
-        fileBase64: base64Data,
-        mimeType: 'image/jpeg',
-        category: 'annotated',
+      const tempFilePath = `${FileSystem.cacheDirectory}${filename}`;
+      
+      await FileSystem.writeAsStringAsync(tempFilePath, base64Data, {
+        encoding: FileSystem.EncodingType.Base64,
       });
-
-      if (response.data) {
+      
+      const token = await api.getToken();
+      const uploadUrl = `${API_URL}/api/jobs/${job.id}/photos/upload`;
+      
+      const uploadResult = await FileSystem.uploadAsync(uploadUrl, tempFilePath, {
+        httpMethod: 'POST',
+        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+        fieldName: 'file',
+        mimeType: 'image/jpeg',
+        parameters: {
+          category: 'annotated',
+        },
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      });
+      
+      await FileSystem.deleteAsync(tempFilePath, { idempotent: true });
+      
+      if (uploadResult.status >= 200 && uploadResult.status < 300) {
         await loadPhotos();
         setSelectedPhoto(null);
         Alert.alert('Success', 'Annotated photo saved successfully');
       } else {
+        console.error('Upload failed:', uploadResult.status, uploadResult.body);
         Alert.alert('Error', 'Failed to save annotated photo. Please try again.');
       }
     } catch (error: any) {
       console.error('Annotated photo upload error:', error);
-      Alert.alert('Error', 'Failed to upload annotated photo. Please try again.');
+      Alert.alert('Error', error.message || 'Failed to upload annotated photo. Please try again.');
     }
     setIsUploadingPhoto(false);
   };

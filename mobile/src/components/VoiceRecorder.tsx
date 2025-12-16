@@ -16,6 +16,7 @@ import {
   useAudioPlayerStatus,
   setAudioModeAsync,
 } from 'expo-audio';
+import { Audio } from 'expo-av';
 import { useTheme } from '../lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 

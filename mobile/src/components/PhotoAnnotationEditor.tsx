@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,10 @@ import {
   Modal,
   SafeAreaView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import * as FileSystem from 'expo-file-system';
 import { useTheme } from '../lib/theme';
 import { spacing, radius } from '../lib/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,11 +57,82 @@ export function PhotoAnnotationEditor({
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [isPreparingImage, setIsPreparingImage] = useState(true);
 
   const bgColor = isDark ? '#0f172a' : '#f1f5f9';
   const toolbarBg = isDark ? '#1e293b' : '#ffffff';
   const textColor = isDark ? '#f1f5f9' : '#1e293b';
   const borderColor = isDark ? '#334155' : '#e2e8f0';
+
+  useEffect(() => {
+    if (visible && imageUri) {
+      loadImageAsBase64();
+    }
+    return () => {
+      setImageBase64(null);
+      setIsLoaded(false);
+      setLoadError(null);
+      setIsPreparingImage(true);
+      setHasChanges(false);
+    };
+  }, [visible, imageUri]);
+
+  const loadImageAsBase64 = async () => {
+    setIsPreparingImage(true);
+    setLoadError(null);
+    
+    try {
+      let base64Data: string;
+      
+      if (imageUri.startsWith('data:')) {
+        base64Data = imageUri;
+      } else if (imageUri.startsWith('file://') || imageUri.startsWith('/')) {
+        const fileUri = imageUri.startsWith('file://') ? imageUri : `file://${imageUri}`;
+        const fileInfo = await FileSystem.getInfoAsync(fileUri);
+        
+        if (!fileInfo.exists) {
+          throw new Error('Image file not found');
+        }
+        
+        const base64Content = await FileSystem.readAsStringAsync(fileUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        const ext = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
+        const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+        base64Data = `data:${mimeType};base64,${base64Content}`;
+      } else if (imageUri.startsWith('http://') || imageUri.startsWith('https://')) {
+        const tempPath = `${FileSystem.cacheDirectory}annotation_temp_${Date.now()}.jpg`;
+        
+        const downloadResult = await FileSystem.downloadAsync(imageUri, tempPath);
+        
+        if (downloadResult.status !== 200) {
+          throw new Error('Failed to download image');
+        }
+        
+        const base64Content = await FileSystem.readAsStringAsync(downloadResult.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        const ext = imageUri.split('.').pop()?.toLowerCase().split('?')[0] || 'jpg';
+        const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+        base64Data = `data:${mimeType};base64,${base64Content}`;
+        
+        await FileSystem.deleteAsync(downloadResult.uri, { idempotent: true });
+      } else {
+        throw new Error('Unsupported image URI format');
+      }
+      
+      setImageBase64(base64Data);
+      setIsPreparingImage(false);
+    } catch (error: any) {
+      console.error('Failed to load image for annotation:', error);
+      setLoadError(error.message || 'Failed to load image');
+      setIsPreparingImage(false);
+    }
+  };
 
   const handleMessage = (event: any) => {
     try {
@@ -70,6 +143,9 @@ export function PhotoAnnotationEditor({
         setIsSaving(false);
         onSave(data.data);
       } else if (data.type === 'loaded') {
+        setIsLoaded(true);
+      } else if (data.type === 'error') {
+        setLoadError(data.message || 'Failed to load image in editor');
         setIsLoaded(true);
       }
     } catch (e) {
@@ -108,9 +184,14 @@ export function PhotoAnnotationEditor({
     webViewRef.current?.injectJavaScript('exportImage(); true;');
   };
 
+  const handleRetry = () => {
+    setLoadError(null);
+    loadImageAsBase64();
+  };
+
   const strokeWidthValue = STROKE_WIDTHS.find(w => w.name === strokeWidth)?.value || 4;
 
-  const htmlContent = `
+  const htmlContent = imageBase64 ? `
 <!DOCTYPE html>
 <html>
 <head>
@@ -170,7 +251,7 @@ export function PhotoAnnotationEditor({
 <body>
   <div id="container">
     <div id="imageContainer">
-      <img id="bgImage" src="${imageUri}" crossorigin="anonymous" />
+      <img id="bgImage" />
       <canvas id="canvas"></canvas>
       <input type="text" id="textInput" placeholder="Type text..." />
     </div>
@@ -193,8 +274,13 @@ export function PhotoAnnotationEditor({
     let startY = 0;
     let history = [];
     let currentPath = [];
+    let loadTimeout = null;
     
     bgImage.onload = function() {
+      if (loadTimeout) {
+        clearTimeout(loadTimeout);
+        loadTimeout = null;
+      }
       canvas.width = bgImage.naturalWidth;
       canvas.height = bgImage.naturalHeight;
       canvas.style.width = bgImage.offsetWidth + 'px';
@@ -203,6 +289,28 @@ export function PhotoAnnotationEditor({
       imageContainer.style.height = bgImage.offsetHeight + 'px';
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'loaded' }));
     };
+    
+    bgImage.onerror = function(e) {
+      if (loadTimeout) {
+        clearTimeout(loadTimeout);
+        loadTimeout = null;
+      }
+      window.ReactNativeWebView.postMessage(JSON.stringify({ 
+        type: 'error', 
+        message: 'Failed to load image in editor' 
+      }));
+    };
+    
+    loadTimeout = setTimeout(function() {
+      if (!bgImage.complete || bgImage.naturalWidth === 0) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ 
+          type: 'error', 
+          message: 'Image load timed out' 
+        }));
+      }
+    }, 15000);
+    
+    bgImage.src = ${JSON.stringify(imageBase64)};
     
     function setTool(tool) {
       currentTool = tool;
@@ -296,7 +404,6 @@ export function PhotoAnnotationEditor({
         lastY = pos.y;
         currentPath.push({ x: pos.x, y: pos.y });
       } else if (currentTool === 'rectangle' || currentTool === 'arrow') {
-        // Restore last state and redraw preview
         if (history.length > 0) {
           ctx.putImageData(history[history.length - 1], 0, 0);
         }
@@ -374,21 +481,28 @@ export function PhotoAnnotationEditor({
     canvas.addEventListener('touchcancel', stopDrawing);
     
     function exportImage() {
-      const exportCanvas = document.createElement('canvas');
-      exportCanvas.width = canvas.width;
-      exportCanvas.height = canvas.height;
-      const exportCtx = exportCanvas.getContext('2d');
-      
-      exportCtx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-      exportCtx.drawImage(canvas, 0, 0);
-      
-      const dataUrl = exportCanvas.toDataURL('image/jpeg', 0.9);
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'export', data: dataUrl }));
+      try {
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = canvas.width;
+        exportCanvas.height = canvas.height;
+        const exportCtx = exportCanvas.getContext('2d');
+        
+        exportCtx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+        exportCtx.drawImage(canvas, 0, 0);
+        
+        const dataUrl = exportCanvas.toDataURL('image/jpeg', 0.9);
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'export', data: dataUrl }));
+      } catch (err) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ 
+          type: 'error', 
+          message: 'Failed to export image: ' + err.message 
+        }));
+      }
     }
   </script>
 </body>
 </html>
-  `;
+  ` : '';
 
   const ToolButton = ({ 
     tool, 
@@ -424,6 +538,8 @@ export function PhotoAnnotationEditor({
     </TouchableOpacity>
   );
 
+  const showLoading = isPreparingImage || (!isLoaded && !loadError && imageBase64);
+
   return (
     <Modal
       visible={visible}
@@ -451,7 +567,7 @@ export function PhotoAnnotationEditor({
               { backgroundColor: hasChanges ? colors.primary : colors.primary + '60' },
             ]}
             onPress={handleSave}
-            disabled={!hasChanges || isSaving}
+            disabled={!hasChanges || isSaving || !isLoaded || !!loadError}
             data-testid="button-save-annotation"
           >
             {isSaving ? (
@@ -464,22 +580,46 @@ export function PhotoAnnotationEditor({
 
         {/* Drawing Area */}
         <View style={styles.drawingArea}>
-          {!isLoaded && (
+          {showLoading && (
             <View style={styles.loadingOverlay}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.loadingText, { color: textColor }]}>Loading image...</Text>
+              <Text style={[styles.loadingText, { color: textColor }]}>
+                {isPreparingImage ? 'Preparing image...' : 'Loading image...'}
+              </Text>
             </View>
           )}
-          <WebView
-            ref={webViewRef}
-            source={{ html: htmlContent }}
-            style={styles.webView}
-            onMessage={handleMessage}
-            scrollEnabled={false}
-            bounces={false}
-            showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}
-          />
+          
+          {loadError && (
+            <View style={styles.errorOverlay}>
+              <Ionicons name="alert-circle" size={48} color={colors.destructive} />
+              <Text style={[styles.errorText, { color: textColor }]}>{loadError}</Text>
+              <TouchableOpacity
+                style={[styles.retryButton, { backgroundColor: colors.primary }]}
+                onPress={handleRetry}
+                data-testid="button-retry-load"
+              >
+                <Ionicons name="refresh" size={20} color="#ffffff" />
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {imageBase64 && !loadError && (
+            <WebView
+              ref={webViewRef}
+              source={{ html: htmlContent }}
+              style={styles.webView}
+              onMessage={handleMessage}
+              scrollEnabled={false}
+              bounces={false}
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+              originWhitelist={['*']}
+              allowFileAccess={true}
+              allowUniversalAccessFromFileURLs={true}
+              mixedContentMode="always"
+            />
+          )}
         </View>
 
         {/* Bottom Toolbar */}
@@ -607,6 +747,32 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: spacing.sm,
     fontSize: 14,
+  },
+  errorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    padding: spacing.xl,
+  },
+  errorText: {
+    marginTop: spacing.md,
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   webView: {
     flex: 1,
