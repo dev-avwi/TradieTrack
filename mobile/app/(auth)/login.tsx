@@ -170,15 +170,26 @@ export default function LoginScreen() {
                 </View>
               )}
 
-              <Button 
-                variant="brand"
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#2563EB',
+                  paddingVertical: 16,
+                  paddingHorizontal: 24,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                }}
                 onPress={handleLogin}
-                loading={isLoading}
-                fullWidth
-                size="xl"
+                disabled={isLoading}
+                activeOpacity={0.8}
               >
-                Sign In
-              </Button>
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '600' }}>Sign In</Text>
+                )}
+              </TouchableOpacity>
 
               <TouchableOpacity 
                 style={styles.forgotPassword}

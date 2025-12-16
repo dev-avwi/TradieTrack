@@ -249,16 +249,26 @@ export default function RegisterScreen() {
                 </View>
               )}
 
-              <Button
-                variant="brand"
-                size="xl"
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#2563EB',
+                  paddingVertical: 16,
+                  paddingHorizontal: 24,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                }}
                 onPress={handleRegister}
-                loading={isLoading}
                 disabled={isLoading}
-                fullWidth
+                activeOpacity={0.8}
               >
-                Create Account
-              </Button>
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '600' }}>Create Account</Text>
+                )}
+              </TouchableOpacity>
             </CardContent>
           </Card>
 
