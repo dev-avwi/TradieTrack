@@ -65,6 +65,7 @@ import MyAccount from "@/pages/MyAccount";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
 import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
+import DemoModeBanner from "@/components/DemoModeBanner";
 
 // Types for job completion
 interface JobPhoto {
@@ -878,15 +879,8 @@ function AppLayout() {
                 onSettingsClick={() => setLocation('/settings')}
                 onLogoutClick={handleLogout}
               />
-              {/* Demo Mode Indicator */}
-              {userCheck?.email === 'demo@tradietrack.com.au' && (
-                <div 
-                  className="text-white px-4 py-1.5 text-center text-sm"
-                  style={{ backgroundColor: 'hsl(var(--trade))' }}
-                >
-                  <span className="font-medium">Demo Mode</span> - Testing with pre-loaded mock data (3 clients, 3 jobs, quotes & invoices)
-                </div>
-              )}
+              {/* Demo Mode Banner */}
+              <DemoModeBanner userEmail={userCheck?.email} />
               {/* Offline Indicator */}
               <OfflineIndicator />
             </div>

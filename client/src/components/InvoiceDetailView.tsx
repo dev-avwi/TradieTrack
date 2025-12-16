@@ -4,12 +4,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
 import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
+import DemoPaymentSimulator from "./DemoPaymentSimulator";
 
 interface InvoiceDetailViewProps {
   invoiceId: string;
@@ -25,8 +27,14 @@ export default function InvoiceDetailView({
   onMarkPaid 
 }: InvoiceDetailViewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
+  const [showDemoPayment, setShowDemoPayment] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
+  
+  const { data: user } = useQuery({
+    queryKey: ['/api/auth/me'],
+  });
+  const isDemoUser = user?.email === 'demo@tradietrack.com.au';
 
   const brandColor = businessSettings?.brandColor || '#2563eb';
   const templateId = (businessSettings?.documentTemplate as TemplateId) || DEFAULT_TEMPLATE;
@@ -398,15 +406,38 @@ export default function InvoiceDetailView({
             <div className="p-4">
               <div className="flex items-center gap-4">
                 <CreditCard className="h-5 w-5 text-muted-foreground" />
-                <div>
+                <div className="flex-1">
                   <h3 className="font-semibold text-muted-foreground">Online Payment</h3>
                   <p className="text-sm text-muted-foreground">
                     Connect your Stripe account in Settings to enable online payments for invoices.
                   </p>
                 </div>
+                {isDemoUser && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDemoPayment(true)}
+                    className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-900/30"
+                    data-testid="button-simulate-payment"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Simulate Payment
+                  </Button>
+                )}
               </div>
             </div>
           </Card>
+        )}
+        
+        {isDemoUser && (
+          <DemoPaymentSimulator
+            invoiceId={invoiceId}
+            invoiceNumber={invoice?.number || 'INV-001'}
+            invoiceTotal={invoice?.total || '0'}
+            clientName={client?.name || 'Client'}
+            isOpen={showDemoPayment}
+            onClose={() => setShowDemoPayment(false)}
+            onPaymentComplete={() => queryClient.invalidateQueries({ queryKey: ['/api/invoices'] })}
+          />
         )}
 
         <div className="print-content">

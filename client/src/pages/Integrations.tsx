@@ -7,6 +7,7 @@ import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmailIntegration } from "@/components/EmailIntegration";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import StripeSetupGuide from "@/components/StripeSetupGuide";
 import { 
   Dialog,
   DialogContent,
@@ -507,6 +508,19 @@ export default function Integrations() {
         </p>
         <EmailIntegration />
       </div>
+
+      {/* Stripe Setup Guide - shows when not fully connected */}
+      {!stripeConnected && (
+        <StripeSetupGuide
+          isConnected={stripeConnected}
+          isPartiallyConnected={stripePartiallyConnected}
+          chargesEnabled={stripeConnect?.chargesEnabled || false}
+          payoutsEnabled={stripeConnect?.payoutsEnabled || false}
+          onConnect={handleConnectStripe}
+          onOpenDashboard={handleOpenDashboard}
+          isConnecting={connectStripeMutation.isPending}
+        />
+      )}
 
       {/* How it works */}
       <Card className="border-dashed">
