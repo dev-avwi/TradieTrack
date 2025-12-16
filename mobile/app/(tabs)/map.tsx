@@ -9,6 +9,8 @@ import {
   Dimensions,
   Modal,
   Alert,
+  Linking,
+  ScrollView,
 } from 'react-native';
 import MapView, { Marker, Callout, PROVIDER_GOOGLE, Region, MapStyleElement } from 'react-native-maps';
 import { Feather } from '@expo/vector-icons';
@@ -576,6 +578,13 @@ export default function MapScreen() {
   const [selectedWorker, setSelectedWorker] = useState<TeamMember | null>(null);
   const [pendingAssignment, setPendingAssignment] = useState<{ worker: TeamMember; job: JobWithLocation } | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
+  
+  // Job action sheet and route planning state
+  const [selectedJob, setSelectedJob] = useState<JobWithLocation | null>(null);
+  const [showJobActionSheet, setShowJobActionSheet] = useState(false);
+  const [routeJobs, setRouteJobs] = useState<JobWithLocation[]>([]);
+  const [showRoutePanel, setShowRoutePanel] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   const getClientName = useCallback((clientId?: string) => {
     if (!clientId) return undefined;
@@ -791,6 +800,141 @@ export default function MapScreen() {
     setSelectedWorker(null);
   };
 
+  // Handle job marker press - shows action sheet instead of navigating directly
+  const handleJobMarkerPress = (job: JobWithLocation) => {
+    // If a worker is selected for assignment, use the assignment flow
+    if (selectedWorker && canAssignJobs) {
+      handleJobTapForAssignment(job);
+      return;
+    }
+    // Otherwise show action sheet
+    setSelectedJob(job);
+    setShowJobActionSheet(true);
+  };
+
+  // Check if job is already in route
+  const isJobInRoute = useCallback((jobId: string) => {
+    return routeJobs.some(j => j.id === jobId);
+  }, [routeJobs]);
+
+  // Action sheet handlers
+  const handleViewJob = () => {
+    if (selectedJob) {
+      setShowJobActionSheet(false);
+      router.push(`/job/${selectedJob.id}`);
+    }
+  };
+
+  const handleAddToRoute = () => {
+    if (selectedJob && !isJobInRoute(selectedJob.id)) {
+      setRouteJobs(prev => [...prev, selectedJob]);
+      setShowRoutePanel(true);
+      Alert.alert('Added to Route', `${selectedJob.title} has been added to your route.`);
+    } else if (selectedJob) {
+      Alert.alert('Already in Route', 'This job is already in your route.');
+    }
+    setShowJobActionSheet(false);
+  };
+
+  const handleGetDirections = () => {
+    if (selectedJob?.latitude && selectedJob?.longitude) {
+      const { latitude, longitude } = selectedJob;
+      const label = encodeURIComponent(selectedJob.address || selectedJob.title);
+      
+      // Platform-specific URL schemes for navigation
+      const url = Platform.select({
+        ios: `maps://app?daddr=${latitude},${longitude}&dirflg=d`,
+        android: `google.navigation:q=${latitude},${longitude}`,
+        default: `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`,
+      });
+      
+      Linking.openURL(url).catch(() => {
+        // Fallback to Google Maps URL
+        Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`);
+      });
+    }
+    setShowJobActionSheet(false);
+  };
+
+  // Route panel handlers
+  const handleRemoveFromRoute = (jobId: string) => {
+    setRouteJobs(prev => prev.filter(j => j.id !== jobId));
+  };
+
+  const handleClearRoute = () => {
+    Alert.alert(
+      'Clear Route',
+      'Are you sure you want to clear all jobs from your route?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Clear', style: 'destructive', onPress: () => {
+          setRouteJobs([]);
+          setShowRoutePanel(false);
+        }},
+      ]
+    );
+  };
+
+  const handleOptimizeRoute = async () => {
+    if (routeJobs.length < 2) {
+      Alert.alert('Not Enough Stops', 'Add at least 2 jobs to optimize your route.');
+      return;
+    }
+    
+    setIsOptimizing(true);
+    try {
+      const response = await api.post('/api/routes/optimize', {
+        jobIds: routeJobs.map(j => j.id),
+        userLatitude: userLocation?.latitude,
+        userLongitude: userLocation?.longitude,
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.optimizedJobIds) {
+          // Reorder routeJobs based on optimized order
+          const optimizedJobs = data.optimizedJobIds
+            .map((id: string) => routeJobs.find(j => j.id === id))
+            .filter(Boolean) as JobWithLocation[];
+          setRouteJobs(optimizedJobs);
+          Alert.alert('Route Optimized', 'Your route has been optimized for the shortest distance.');
+        }
+      } else {
+        Alert.alert('Optimization Failed', 'Could not optimize route. Please try again.');
+      }
+    } catch (error) {
+      console.error('Route optimization error:', error);
+      Alert.alert('Error', 'An error occurred while optimizing the route.');
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  const handleStartRoute = () => {
+    if (routeJobs.length === 0) return;
+    
+    // Build waypoints for multi-stop navigation
+    const waypoints = routeJobs
+      .filter(j => j.latitude && j.longitude)
+      .map(j => `${j.latitude},${j.longitude}`);
+    
+    if (waypoints.length === 0) return;
+    
+    const destination = waypoints[waypoints.length - 1];
+    const waypointsParam = waypoints.slice(0, -1).join('|');
+    
+    // Platform-specific multi-stop navigation
+    if (Platform.OS === 'ios') {
+      // iOS Maps doesn't support waypoints well, use Google Maps URL
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&waypoints=${encodeURIComponent(waypointsParam)}&travelmode=driving`;
+      Linking.openURL(url);
+    } else {
+      // Android Google Maps navigation with waypoints
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&waypoints=${encodeURIComponent(waypointsParam)}&travelmode=driving`;
+      Linking.openURL(url);
+    }
+  };
+
   // Show restricted view for staff without map access
   if (!hasMapAccess && !roleLoading) {
     return (
@@ -852,20 +996,49 @@ export default function MapScreen() {
         }}
       >
         {/* Job Markers */}
-        {showJobs && filteredJobs.map((job) => (
-          job.latitude && job.longitude && (
+        {showJobs && filteredJobs.map((job) => {
+          const jobInRoute = isJobInRoute(job.id);
+          return job.latitude && job.longitude && (
             <Marker
               key={`job-${job.id}`}
               coordinate={{ latitude: job.latitude, longitude: job.longitude }}
-              onPress={() => handleJobTapForAssignment(job)}
+              onPress={() => handleJobMarkerPress(job)}
               onCalloutPress={() => navigateToJob(job.id)}
             >
-              <View style={[
-                styles.markerContainer, 
-                { backgroundColor: getMarkerColor(job.status) },
-                selectedWorker && { opacity: 0.9 }
-              ]}>
-                <Feather name="file-text" size={14} color="#fff" />
+              <View style={{ alignItems: 'center' }}>
+                <View style={[
+                  styles.markerContainer, 
+                  { backgroundColor: getMarkerColor(job.status) },
+                  selectedWorker && { opacity: 0.9 },
+                  jobInRoute && { 
+                    borderWidth: 3, 
+                    borderColor: colors.primary,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                  }
+                ]}>
+                  <Feather name="file-text" size={14} color="#fff" />
+                </View>
+                {jobInRoute && (
+                  <View style={{
+                    position: 'absolute',
+                    top: -6,
+                    right: -6,
+                    width: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    backgroundColor: colors.primary,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                  }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>
+                      {routeJobs.findIndex(j => j.id === job.id) + 1}
+                    </Text>
+                  </View>
+                )}
               </View>
               <Callout tooltip onPress={() => navigateToJob(job.id)}>
                 <View style={styles.callout}>
@@ -880,14 +1053,18 @@ export default function MapScreen() {
                     <Text style={[styles.calloutHint, { color: colors.primary }]}>
                       Tap to assign to {selectedWorker.user?.firstName}
                     </Text>
+                  ) : jobInRoute ? (
+                    <Text style={[styles.calloutHint, { color: colors.primary }]}>
+                      Stop #{routeJobs.findIndex(j => j.id === job.id) + 1} in route
+                    </Text>
                   ) : (
-                    <Text style={styles.calloutHint}>Tap for details</Text>
+                    <Text style={styles.calloutHint}>Tap for options</Text>
                   )}
                 </View>
               </Callout>
             </Marker>
-          )
-        ))}
+          );
+        })}
 
         {/* Team Member Markers */}
         {showTeamMembers && canViewTeamMode && teamMembers.map((member) => {
@@ -1241,6 +1418,424 @@ export default function MapScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Job Action Sheet Modal */}
+      <Modal
+        visible={showJobActionSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowJobActionSheet(false)}
+      >
+        <TouchableOpacity 
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'flex-end',
+          }}
+          activeOpacity={1}
+          onPress={() => setShowJobActionSheet(false)}
+        >
+          <View style={{
+            backgroundColor: colors.card,
+            borderTopLeftRadius: radius['2xl'],
+            borderTopRightRadius: radius['2xl'],
+            padding: spacing.lg,
+            paddingBottom: insets.bottom + spacing.lg,
+            ...shadows.xl,
+          }}>
+            {/* Handle bar */}
+            <View style={{
+              width: 40,
+              height: 4,
+              backgroundColor: colors.border,
+              borderRadius: 2,
+              alignSelf: 'center',
+              marginBottom: spacing.lg,
+            }} />
+            
+            {/* Job Info Header */}
+            {selectedJob && (
+              <View style={{
+                marginBottom: spacing.lg,
+                paddingBottom: spacing.md,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+              }}>
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '700',
+                  color: colors.foreground,
+                  marginBottom: spacing.xs,
+                }}>
+                  {selectedJob.title}
+                </Text>
+                {selectedJob.clientName && (
+                  <Text style={{
+                    fontSize: 14,
+                    color: colors.mutedForeground,
+                    marginBottom: spacing.xs,
+                  }}>
+                    {selectedJob.clientName}
+                  </Text>
+                )}
+                {selectedJob.address && (
+                  <Text style={{
+                    fontSize: 13,
+                    color: colors.mutedForeground,
+                  }} numberOfLines={2}>
+                    {selectedJob.address}
+                  </Text>
+                )}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginTop: spacing.sm,
+                  gap: spacing.sm,
+                }}>
+                  <View style={{
+                    paddingHorizontal: spacing.sm,
+                    paddingVertical: spacing.xs,
+                    borderRadius: radius.sm,
+                    backgroundColor: getMarkerColor(selectedJob.status),
+                  }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>
+                      {STATUS_LABELS[selectedJob.status]}
+                    </Text>
+                  </View>
+                  {isJobInRoute(selectedJob.id) && (
+                    <View style={{
+                      paddingHorizontal: spacing.sm,
+                      paddingVertical: spacing.xs,
+                      borderRadius: radius.sm,
+                      backgroundColor: colors.primary,
+                    }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>
+                        In Route
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+            
+            {/* Action Buttons */}
+            <View style={{ gap: spacing.sm }}>
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: colors.muted,
+                  padding: spacing.md,
+                  borderRadius: radius.lg,
+                  gap: spacing.md,
+                }}
+                onPress={handleViewJob}
+                activeOpacity={0.7}
+              >
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Feather name="file-text" size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground }}>
+                    View Job
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                    See full job details and journey
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: colors.muted,
+                  padding: spacing.md,
+                  borderRadius: radius.lg,
+                  gap: spacing.md,
+                  opacity: selectedJob && isJobInRoute(selectedJob.id) ? 0.5 : 1,
+                }}
+                onPress={handleAddToRoute}
+                activeOpacity={0.7}
+                disabled={selectedJob ? isJobInRoute(selectedJob.id) : false}
+              >
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.success,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Feather name="plus-circle" size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground }}>
+                    {selectedJob && isJobInRoute(selectedJob.id) ? 'Already in Route' : 'Add to Route'}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                    Plan multi-stop navigation
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: colors.muted,
+                  padding: spacing.md,
+                  borderRadius: radius.lg,
+                  gap: spacing.md,
+                }}
+                onPress={handleGetDirections}
+                activeOpacity={0.7}
+              >
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.info,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Feather name="navigation" size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground }}>
+                    Get Directions
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                    Open in Maps app
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Cancel Button */}
+            <TouchableOpacity
+              style={{
+                alignItems: 'center',
+                padding: spacing.md,
+                marginTop: spacing.md,
+              }}
+              onPress={() => setShowJobActionSheet(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.mutedForeground }}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Route Panel (Bottom Sheet) */}
+      {routeJobs.length > 0 && (
+        <View style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: bottomNavHeight,
+          backgroundColor: colors.card,
+          borderTopLeftRadius: radius['2xl'],
+          borderTopRightRadius: radius['2xl'],
+          maxHeight: showRoutePanel ? SCREEN_HEIGHT * 0.45 : 60,
+          ...shadows.xl,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        }}>
+          {/* Collapsed Header */}
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: spacing.md,
+              borderBottomWidth: showRoutePanel ? 1 : 0,
+              borderBottomColor: colors.border,
+            }}
+            onPress={() => setShowRoutePanel(!showRoutePanel)}
+            activeOpacity={0.7}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <View style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: colors.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Feather name="map-pin" size={16} color="#fff" />
+              </View>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>
+                Route: {routeJobs.length} stop{routeJobs.length !== 1 ? 's' : ''}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: colors.primary,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                  borderRadius: radius.md,
+                }}
+                onPress={handleStartRoute}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Start</Text>
+              </TouchableOpacity>
+              <Feather 
+                name={showRoutePanel ? "chevron-down" : "chevron-up"} 
+                size={20} 
+                color={colors.mutedForeground} 
+              />
+            </View>
+          </TouchableOpacity>
+          
+          {/* Expanded Content */}
+          {showRoutePanel && (
+            <View style={{ flex: 1 }}>
+              <ScrollView 
+                style={{ flex: 1, padding: spacing.md }}
+                showsVerticalScrollIndicator={false}
+              >
+                {routeJobs.map((job, index) => (
+                  <View
+                    key={job.id}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: colors.muted,
+                      padding: spacing.sm,
+                      borderRadius: radius.md,
+                      marginBottom: spacing.sm,
+                      gap: spacing.sm,
+                    }}
+                  >
+                    <View style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: colors.primary,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>
+                        {index + 1}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }} numberOfLines={1}>
+                        {job.title}
+                      </Text>
+                      {job.address && (
+                        <Text style={{ fontSize: 11, color: colors.mutedForeground }} numberOfLines={1}>
+                          {job.address}
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleRemoveFromRoute(job.id)}
+                      style={{ padding: spacing.xs }}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="x" size={18} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+              
+              {/* Route Actions */}
+              <View style={{
+                flexDirection: 'row',
+                gap: spacing.sm,
+                padding: spacing.md,
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+              }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: colors.muted,
+                    paddingVertical: spacing.md,
+                    borderRadius: radius.md,
+                    gap: spacing.xs,
+                  }}
+                  onPress={handleClearRoute}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="trash-2" size={16} color={colors.destructive} />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.destructive }}>
+                    Clear
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: colors.muted,
+                    paddingVertical: spacing.md,
+                    borderRadius: radius.md,
+                    gap: spacing.xs,
+                  }}
+                  onPress={handleOptimizeRoute}
+                  disabled={isOptimizing || routeJobs.length < 2}
+                  activeOpacity={0.7}
+                >
+                  {isOptimizing ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <>
+                      <Feather name="zap" size={16} color={colors.primary} />
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
+                        Optimize
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: colors.primary,
+                    paddingVertical: spacing.md,
+                    borderRadius: radius.md,
+                    gap: spacing.xs,
+                  }}
+                  onPress={handleStartRoute}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="navigation" size={16} color="#fff" />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+                    Start
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
