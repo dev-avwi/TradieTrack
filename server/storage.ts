@@ -163,6 +163,9 @@ import {
   type InsertXeroSyncState,
   type ExternalAccountingId,
   type InsertExternalAccountingId,
+  myobConnections,
+  type MyobConnection,
+  type InsertMyobConnection,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -511,6 +514,12 @@ export interface IStorage {
   createXeroConnection(data: InsertXeroConnection): Promise<XeroConnection>;
   updateXeroConnection(id: string, data: Partial<XeroConnection>): Promise<XeroConnection | undefined>;
   deleteXeroConnection(userId: string): Promise<boolean>;
+
+  // MYOB Integration
+  getMyobConnection(userId: string): Promise<MyobConnection | undefined>;
+  createMyobConnection(data: InsertMyobConnection): Promise<MyobConnection>;
+  updateMyobConnection(id: string, data: Partial<MyobConnection>): Promise<MyobConnection | undefined>;
+  deleteMyobConnection(userId: string): Promise<boolean>;
 }
 
 // Initialize database connection
@@ -3203,6 +3212,34 @@ export class PostgresStorage implements IStorage {
   async deleteXeroConnection(userId: string): Promise<boolean> {
     const result = await db.delete(xeroConnections)
       .where(eq(xeroConnections.userId, userId))
+      .returning();
+    return result.length > 0;
+  }
+
+  // MYOB Integration
+  async getMyobConnection(userId: string): Promise<MyobConnection | undefined> {
+    const result = await db.select().from(myobConnections)
+      .where(eq(myobConnections.userId, userId))
+      .limit(1);
+    return result[0];
+  }
+
+  async createMyobConnection(data: InsertMyobConnection): Promise<MyobConnection> {
+    const [result] = await db.insert(myobConnections).values(data).returning();
+    return result;
+  }
+
+  async updateMyobConnection(id: string, data: Partial<MyobConnection>): Promise<MyobConnection | undefined> {
+    const [result] = await db.update(myobConnections)
+      .set(data)
+      .where(eq(myobConnections.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteMyobConnection(userId: string): Promise<boolean> {
+    const result = await db.delete(myobConnections)
+      .where(eq(myobConnections.userId, userId))
       .returning();
     return result.length > 0;
   }

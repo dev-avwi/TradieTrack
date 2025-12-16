@@ -2051,3 +2051,32 @@ export const insertExternalAccountingIdSchema = createInsertSchema(externalAccou
 });
 export type InsertExternalAccountingId = z.infer<typeof insertExternalAccountingIdSchema>;
 export type ExternalAccountingId = typeof externalAccountingIds.$inferSelect;
+
+// ========================
+// MYOB Integration Tables
+// ========================
+
+// MYOB Connections - OAuth tokens and connection info for MYOB AccountRight
+export const myobConnections = pgTable("myob_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  businessId: varchar("business_id").notNull(), // Company File GUID from callback
+  companyName: varchar("company_name"),
+  accessToken: text("access_token").notNull(), // Encrypted
+  refreshToken: text("refresh_token").notNull(), // Encrypted
+  tokenExpiresAt: timestamp("token_expires_at").notNull(),
+  cfUsername: text("cf_username"), // Company File username (encrypted)
+  cfPassword: text("cf_password"), // Company File password (encrypted)
+  scope: varchar("scope"),
+  connectedAt: timestamp("connected_at").defaultNow(),
+  lastSyncAt: timestamp("last_sync_at"),
+  status: varchar("status").default('active'),
+});
+
+export const insertMyobConnectionSchema = createInsertSchema(myobConnections).omit({
+  id: true,
+  connectedAt: true,
+  lastSyncAt: true,
+});
+export type InsertMyobConnection = z.infer<typeof insertMyobConnectionSchema>;
+export type MyobConnection = typeof myobConnections.$inferSelect;

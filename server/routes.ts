@@ -73,6 +73,7 @@ import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized
 import { geocodeAddress } from "./geocoding";
 import { processStatusChangeAutomation, processPaymentReceivedAutomation, processTimeBasedAutomations } from "./automationService";
 import * as xeroService from "./xeroService";
+import * as myobService from "./myobService";
 
 // Utility function for formatting relative time
 function formatRelativeTime(date: Date | string): string {
@@ -3112,6 +3113,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error syncing with Xero:", error);
       res.status(500).json({ error: error.message || "Failed to sync with Xero" });
+    }
+  });
+
+  // MYOB Integration Routes
+  app.post("/api/integrations/myob/connect", requireAuth, async (req: any, res) => {
+    try {
+      if (!myobService.isMyobConfigured()) {
+        return res.status(400).json({ 
+          error: "MYOB integration not configured. Please add MYOB_CLIENT_ID and MYOB_CLIENT_SECRET environment variables." 
+        });
+      }
+      const state = randomBytes(32).toString('hex');
+      req.session.myobOAuthState = state;
+      const authUrl = myobService.getAuthUrl(state);
+      res.json({ authUrl });
+    } catch (error: any) {
+      console.error("Error getting MYOB auth URL:", error);
+      res.status(500).json({ error: error.message || "Failed to generate MYOB auth URL" });
+    }
+  });
+
+  app.get("/api/integrations/myob/callback", requireAuth, async (req: any, res) => {
+    try {
+      const stateFromQuery = req.query.state as string;
+      const storedState = req.session.myobOAuthState;
+      const code = req.query.code as string;
+      const businessId = req.query.companyFileId as string || req.query.businessId as string;
+      
+      delete req.session.myobOAuthState;
+      
+      if (!stateFromQuery || !storedState || stateFromQuery !== storedState) {
+        console.error("OAuth state mismatch - potential CSRF attack");
+        return res.redirect('/integrations?myob=error&message=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
+      }
+      
+      if (!code) {
+        return res.redirect('/integrations?myob=error&message=' + encodeURIComponent('Missing authorization code.'));
+      }
+
+      if (!businessId) {
+        return res.redirect('/integrations?myob=error&message=' + encodeURIComponent('Missing Company File ID. Please try again.'));
+      }
+      
+      await myobService.handleCallback(code, businessId, req.userId);
+      res.redirect('/integrations?myob=connected');
+    } catch (error: any) {
+      console.error("Error handling MYOB callback:", error);
+      res.redirect('/integrations?myob=error&message=' + encodeURIComponent(error.message || 'Connection failed'));
+    }
+  });
+
+  app.post("/api/integrations/myob/disconnect", requireAuth, async (req: any, res) => {
+    try {
+      const success = await myobService.disconnect(req.userId);
+      res.json({ success });
+    } catch (error: any) {
+      console.error("Error disconnecting MYOB:", error);
+      res.status(500).json({ error: error.message || "Failed to disconnect MYOB" });
+    }
+  });
+
+  app.get("/api/integrations/myob/status", requireAuth, async (req: any, res) => {
+    try {
+      const configured = myobService.isMyobConfigured();
+      if (!configured) {
+        return res.json({ 
+          configured: false,
+          connected: false,
+          message: "MYOB integration not configured" 
+        });
+      }
+      const status = await myobService.getConnectionStatus(req.userId);
+      res.json({ configured: true, ...status });
+    } catch (error: any) {
+      console.error("Error getting MYOB status:", error);
+      res.status(500).json({ error: error.message || "Failed to get MYOB status" });
+    }
+  });
+
+  app.post("/api/integrations/myob/sync", requireAuth, async (req: any, res) => {
+    try {
+      const { type } = req.body;
+      let result;
+      
+      if (type === 'contacts') {
+        result = await myobService.syncContactsFromMyob(req.userId);
+      } else if (type === 'invoices') {
+        result = await myobService.syncInvoicesToMyob(req.userId);
+      } else {
+        const contactsResult = await myobService.syncContactsFromMyob(req.userId);
+        const invoicesResult = await myobService.syncInvoicesToMyob(req.userId);
+        result = {
+          contacts: contactsResult,
+          invoices: invoicesResult,
+        };
+      }
+      
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error("Error syncing with MYOB:", error);
+      res.status(500).json({ error: error.message || "Failed to sync with MYOB" });
+    }
+  });
+
+  app.post("/api/integrations/myob/credentials", requireAuth, async (req: any, res) => {
+    try {
+      const { cfUsername, cfPassword } = req.body;
+      
+      if (!cfUsername || !cfPassword) {
+        return res.status(400).json({ error: "Company file username and password are required" });
+      }
+      
+      const result = await myobService.setCompanyFileCredentials(req.userId, cfUsername, cfPassword);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error setting MYOB credentials:", error);
+      res.status(500).json({ error: error.message || "Failed to set MYOB credentials" });
     }
   });
 
