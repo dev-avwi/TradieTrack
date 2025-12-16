@@ -1195,15 +1195,54 @@ export async function sendWelcomeEmail(
           
           <p>Thanks for signing up to TradieTrack. You've just taken the first step towards running a more organised, professional trade business.</p>
           
-          <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2563eb;">
-            <h3 style="margin: 0 0 15px 0; color: #1d4ed8;">Here's what you can do:</h3>
-            <ul style="margin: 0; padding-left: 20px;">
-              <li style="margin-bottom: 8px;"><strong>Create professional quotes</strong> - Send them directly to clients</li>
-              <li style="margin-bottom: 8px;"><strong>Track jobs</strong> - From quote to payment</li>
-              <li style="margin-bottom: 8px;"><strong>Send invoices</strong> - Get paid faster with online payments</li>
-              <li style="margin-bottom: 8px;"><strong>Manage clients</strong> - All your customer info in one place</li>
-              <li><strong>Australian GST compliant</strong> - ABN and tax handling built in</li>
-            </ul>
+          <div style="background: #f0f9ff; padding: 25px; border-radius: 8px; margin: 25px 0;">
+            <h3 style="margin: 0 0 20px 0; color: #1d4ed8; text-align: center;">Quick Start Guide</h3>
+            
+            <div style="display: flex; margin-bottom: 15px;">
+              <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">1</div>
+              <div>
+                <strong style="color: #1d4ed8;">Set up your business profile</strong>
+                <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Add your ABN, logo, and business details for professional quotes and invoices</p>
+              </div>
+            </div>
+            
+            <div style="display: flex; margin-bottom: 15px;">
+              <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">2</div>
+              <div>
+                <strong style="color: #1d4ed8;">Add your first client</strong>
+                <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Store customer details and job history in one place</p>
+              </div>
+            </div>
+            
+            <div style="display: flex; margin-bottom: 15px;">
+              <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">3</div>
+              <div>
+                <strong style="color: #1d4ed8;">Create a quote</strong>
+                <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Use our templates to send professional quotes with one click</p>
+              </div>
+            </div>
+            
+            <div style="display: flex; margin-bottom: 15px;">
+              <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">4</div>
+              <div>
+                <strong style="color: #1d4ed8;">Convert quote to job</strong>
+                <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Once accepted, turn it into a trackable job with scheduling</p>
+              </div>
+            </div>
+            
+            <div style="display: flex;">
+              <div style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">5</div>
+              <div>
+                <strong style="color: #10b981;">Invoice & get paid</strong>
+                <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Send invoices with Stripe payment links - get paid online instantly</p>
+              </div>
+            </div>
+          </div>
+          
+          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+            <p style="margin: 0; font-size: 14px; color: #92400e;">
+              <strong>Pro tip:</strong> Download our mobile app to manage your jobs on the go. Same account, synced data!
+            </p>
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
