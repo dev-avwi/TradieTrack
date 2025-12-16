@@ -583,6 +583,23 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .document { padding: 20px; }
     }
+    
+    /* Page break handling for multi-page documents */
+    .line-items-table { page-break-inside: auto; }
+    .line-items-table tr { page-break-inside: avoid; page-break-after: auto; }
+    .line-items-table thead { display: table-header-group; }
+    .totals-section { page-break-inside: avoid; }
+    .notes-section { page-break-inside: avoid; }
+    .terms-section { page-break-inside: avoid; }
+    .payment-section { page-break-inside: avoid; }
+    .acceptance-section { page-break-inside: avoid; page-break-before: auto; }
+    .footer { page-break-inside: avoid; }
+    .signature-section { page-break-inside: avoid; }
+    
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
   </style>
 `;
 };

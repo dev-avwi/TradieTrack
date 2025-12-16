@@ -204,12 +204,24 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             box-shadow: none !important;
             border: none !important;
             background: white !important;
+            height: auto !important;
+            overflow: visible !important;
           }
           .no-print { display: none !important; }
           body {
             print-color-adjust: exact !important;
             -webkit-print-color-adjust: exact !important;
+            height: auto !important;
+            overflow: visible !important;
           }
+          html, body {
+            height: auto !important;
+            overflow: visible !important;
+          }
+          table { page-break-inside: auto; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          thead { display: table-header-group; }
+          tfoot { display: table-footer-group; }
           @page { size: A4; margin: 12mm; }
         }
       `}</style>
