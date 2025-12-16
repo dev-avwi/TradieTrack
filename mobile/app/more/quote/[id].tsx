@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -50,6 +50,8 @@ export default function QuoteDetailScreen() {
   const [selectedTemplate, setSelectedTemplate] = useState(businessSettings?.documentTemplate || 'professional');
   const [showDepositEditor, setShowDepositEditor] = useState(false);
   const [depositPercent, setDepositPercent] = useState('');
+  const [showShareSheet, setShowShareSheet] = useState(false);
+  const [pdfUri, setPdfUri] = useState<string | null>(null);
   
   const brandColor = businessSettings?.primaryColor || user?.brandColor || '#2563eb';
 
@@ -184,12 +186,11 @@ export default function QuoteDetailScreen() {
     });
   };
 
-  const handleDownloadPdf = async () => {
-    if (!quote || isDownloadingPdf) return;
+  const downloadPdfToCache = useCallback(async (): Promise<string | null> => {
+    if (!quote) return null;
     
-    setIsDownloadingPdf(true);
     try {
-      const fileUri = `${FileSystem.documentDirectory}${quote.quoteNumber || 'quote'}.pdf`;
+      const fileUri = `${FileSystem.cacheDirectory}${quote.quoteNumber || 'quote'}.pdf`;
       
       const downloadResult = await FileSystem.downloadAsync(
         `${API_URL}/api/quotes/${id}/pdf`,
@@ -205,23 +206,93 @@ export default function QuoteDetailScreen() {
         throw new Error('Failed to download PDF');
       }
 
-      // Check if sharing is available and use expo-sharing for both platforms
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(downloadResult.uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Quote ${quote.quoteNumber}`,
-          UTI: 'com.adobe.pdf',
-        });
-      } else {
-        Alert.alert('Success', `PDF saved to device. File: ${quote.quoteNumber}.pdf`);
+      return downloadResult.uri;
+    } catch (error) {
+      console.log('PDF download error:', error);
+      throw error;
+    }
+  }, [quote, id, token]);
+
+  const handleDownloadPdf = async () => {
+    if (!quote || isDownloadingPdf) return;
+    
+    setIsDownloadingPdf(true);
+    try {
+      const uri = await downloadPdfToCache();
+      if (!uri) {
+        throw new Error('Failed to generate PDF');
       }
+      setPdfUri(uri);
+      setShowShareSheet(true);
     } catch (error) {
       console.log('PDF download error:', error);
       Alert.alert('Error', 'Failed to download PDF. Please try again.');
     } finally {
       setIsDownloadingPdf(false);
     }
+  };
+
+  const handleSharePdf = async () => {
+    setShowShareSheet(false);
+    
+    try {
+      const uri = pdfUri || await downloadPdfToCache();
+      if (!uri) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Quote ${quote?.quoteNumber}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Sharing Not Available', 'Sharing is not available on this device. Try saving to device instead.');
+      }
+    } catch (error) {
+      console.log('Share PDF error:', error);
+      Alert.alert('Error', 'Failed to share PDF. Please try again.');
+    }
+  };
+
+  const handleSaveToDevice = async () => {
+    setShowShareSheet(false);
+    setIsDownloadingPdf(true);
+    
+    try {
+      const uri = pdfUri || await downloadPdfToCache();
+      if (!uri) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      // Use native share sheet which includes "Save to Files" on iOS and "Save to Downloads" on Android
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Save Quote ${quote?.quoteNumber}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        // Fallback: Copy to document directory
+        const fileName = `${quote?.quoteNumber || 'quote'}.pdf`;
+        const destUri = `${FileSystem.documentDirectory}${fileName}`;
+        await FileSystem.copyAsync({ from: uri, to: destUri });
+        Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
+      }
+    } catch (error) {
+      console.log('Save to device error:', error);
+      Alert.alert('Error', 'Failed to save PDF. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  const handleEmailQuote = () => {
+    setShowShareSheet(false);
+    setShowEmailCompose(true);
   };
 
   if (isLoading) {
@@ -647,6 +718,79 @@ export default function QuoteDetailScreen() {
             ))}
           </View>
         </View>
+      </Modal>
+
+      {/* Share Action Sheet Modal */}
+      <Modal
+        visible={showShareSheet}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowShareSheet(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowShareSheet(false)}
+        >
+          <View style={styles.shareSheetContent}>
+            <View style={styles.shareSheetHandle} />
+            <Text style={styles.shareSheetTitle}>Share Quote</Text>
+            <Text style={styles.shareSheetSubtitle}>{quote?.quoteNumber}</Text>
+            
+            <View style={styles.shareOptions}>
+              <TouchableOpacity 
+                style={styles.shareOption}
+                onPress={handleEmailQuote}
+              >
+                <View style={[styles.shareOptionIcon, { backgroundColor: colors.primaryLight }]}>
+                  <Feather name="mail" size={22} color={colors.primary} />
+                </View>
+                <Text style={styles.shareOptionText}>Email to Client</Text>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.shareOption}
+                onPress={handleSharePdf}
+              >
+                <View style={[styles.shareOptionIcon, { backgroundColor: colors.successLight }]}>
+                  <Feather name="share-2" size={22} color={colors.success} />
+                </View>
+                <Text style={styles.shareOptionText}>Share PDF</Text>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.shareOption}
+                onPress={handleSaveToDevice}
+              >
+                <View style={[styles.shareOptionIcon, { backgroundColor: colors.infoLight }]}>
+                  <Feather name="download" size={22} color={colors.info} />
+                </View>
+                <Text style={styles.shareOptionText}>Save to Device</Text>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.shareOption}
+                onPress={handleSharePdf}
+              >
+                <View style={[styles.shareOptionIcon, { backgroundColor: colors.warningLight }]}>
+                  <Feather name="printer" size={22} color={colors.warning} />
+                </View>
+                <Text style={styles.shareOptionText}>Print</Text>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.shareSheetCancel}
+              onPress={() => setShowShareSheet(false)}
+            >
+              <Text style={styles.shareSheetCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </>
   );
@@ -1140,5 +1284,73 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: colors.foreground,
+  },
+  shareSheetContent: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  shareSheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  shareSheetTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.foreground,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  shareSheetSubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  shareOptions: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  shareOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  shareOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  shareOptionText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  shareSheetCancel: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  shareSheetCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.mutedForeground,
   },
 });

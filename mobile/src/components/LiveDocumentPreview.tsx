@@ -8,6 +8,7 @@ import {
   DEFAULT_TEMPLATE,
   DOCUMENT_ACCENT_COLOR
 } from '../lib/document-templates';
+import { colors as themeColors } from '../lib/colors';
 
 const tradieTrackLogo = require('../../assets/tradietrack-logo.png');
 
@@ -40,6 +41,12 @@ interface ClientInfo {
   address?: string;
 }
 
+interface SignatureInfo {
+  dataUrl: string;
+  signedBy?: string;
+  signedAt?: string;
+}
+
 interface LiveDocumentPreviewProps {
   type: 'quote' | 'invoice';
   documentNumber?: string;
@@ -61,6 +68,7 @@ interface LiveDocumentPreviewProps {
   jobScheduledDate?: string;
   templateId?: TemplateId;
   templateCustomization?: TemplateCustomization;
+  signature?: SignatureInfo;
 }
 
 function formatCurrency(amount: number): string {
@@ -83,17 +91,26 @@ function formatDate(date: string | Date | null): string {
 
 const colors = {
   white: '#FFFFFF',
-  background: '#F8FAFC',
-  text: '#1a1a1a',
-  textMuted: '#666666',
-  textLight: '#888888',
-  textLighter: '#999999',
-  border: '#eeeeee',
-  borderLight: '#e5e7eb',
-  success: '#22c55e',
-  successBg: '#dcfce7',
-  successText: '#166534',
-  destructive: '#dc2626',
+  background: themeColors.muted,
+  text: themeColors.foreground,
+  textMuted: themeColors.mutedForeground,
+  textLight: themeColors.secondaryText,
+  textLighter: themeColors.mutedForeground,
+  border: themeColors.border,
+  borderLight: themeColors.borderLight,
+  success: themeColors.success,
+  successBg: themeColors.successLight,
+  successText: themeColors.successDark,
+  destructive: themeColors.destructive,
+  destructiveBg: themeColors.destructiveLight,
+  destructiveText: themeColors.destructiveDark,
+  warning: themeColors.warning,
+  warningBg: themeColors.warningLight,
+  warningText: themeColors.warningDark,
+  info: themeColors.info,
+  infoBg: themeColors.infoLight,
+  primary: themeColors.primary,
+  primaryLight: themeColors.primaryLight,
 };
 
 export default function LiveDocumentPreview({
@@ -117,6 +134,7 @@ export default function LiveDocumentPreview({
   jobScheduledDate,
   templateId = DEFAULT_TEMPLATE,
   templateCustomization,
+  signature,
 }: LiveDocumentPreviewProps) {
   const safeParseFloat = (val: string | number): number => {
     if (typeof val === 'number') return isNaN(val) ? 0 : val;
@@ -157,13 +175,14 @@ export default function LiveDocumentPreview({
 
   const getStatusBadgeStyle = (s: string) => {
     switch (s) {
-      case 'draft': return { background: '#e5e7eb', color: '#374151' };
-      case 'sent': return { background: '#dbeafe', color: '#1d4ed8' };
-      case 'accepted': return { background: '#dcfce7', color: '#166534' };
-      case 'declined': return { background: '#fee2e2', color: '#991b1b' };
-      case 'paid': return { background: '#dcfce7', color: '#166534' };
-      case 'overdue': return { background: '#fee2e2', color: '#991b1b' };
-      default: return { background: '#e5e7eb', color: '#374151' };
+      case 'draft': return { background: colors.border, color: colors.text };
+      case 'sent': return { background: colors.infoBg, color: colors.info };
+      case 'accepted': return { background: colors.successBg, color: colors.successText };
+      case 'declined': return { background: colors.destructiveBg, color: colors.destructiveText };
+      case 'paid': return { background: colors.successBg, color: colors.successText };
+      case 'overdue': return { background: colors.destructiveBg, color: colors.destructiveText };
+      case 'pending': return { background: colors.warningBg, color: colors.warningText };
+      default: return { background: colors.border, color: colors.text };
     }
   };
 
@@ -532,6 +551,79 @@ export default function LiveDocumentPreview({
       textAlign: 'center',
       marginBottom: 4,
     },
+    paidWatermarkContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1,
+      pointerEvents: 'none',
+    },
+    paidWatermark: {
+      fontSize: 72,
+      fontWeight: '800',
+      color: colors.success,
+      opacity: 0.08,
+      transform: [{ rotate: '-30deg' }],
+      letterSpacing: 8,
+    },
+    paidBadge: {
+      position: 'absolute',
+      top: 24,
+      right: 24,
+      backgroundColor: colors.successBg,
+      borderWidth: 2,
+      borderColor: colors.success,
+      borderRadius: 6,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      zIndex: 10,
+    },
+    paidBadgeText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.successText,
+      letterSpacing: 2,
+    },
+    signatureDisplaySection: {
+      marginTop: 24,
+      marginBottom: 24,
+      padding: 20,
+      backgroundColor: colors.primaryLight,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    signatureDisplayTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.primary,
+      marginBottom: 12,
+    },
+    signatureImage: {
+      width: '100%',
+      height: 80,
+      backgroundColor: colors.white,
+      borderRadius: 4,
+      marginBottom: 8,
+    },
+    signatureMetaRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: 8,
+    },
+    signatureMetaText: {
+      fontSize: 10,
+      color: colors.textMuted,
+    },
+    signatureMetaValue: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.text,
+    },
   }), [template, primaryColor, headingStyle, isPaid, gstEnabled, type, tableHeaderStyle]);
 
   const noteStyle = getNoteStyle();
@@ -543,6 +635,20 @@ export default function LiveDocumentPreview({
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.documentCard}>
+        {/* PAID Watermark - displayed for paid invoices */}
+        {type === 'invoice' && isPaid && (
+          <View style={styles.paidWatermarkContainer}>
+            <Text style={styles.paidWatermark}>PAID</Text>
+          </View>
+        )}
+        
+        {/* PAID Badge - prominent indicator for paid invoices */}
+        {type === 'invoice' && isPaid && (
+          <View style={styles.paidBadge}>
+            <Text style={styles.paidBadgeText}>PAID</Text>
+          </View>
+        )}
+        
         <View style={styles.documentContent}>
           {/* Header - Business Info LEFT, Document Type RIGHT */}
           <View style={styles.header}>
@@ -801,6 +907,36 @@ export default function LiveDocumentPreview({
             <View style={styles.confirmationBox}>
               <Text style={styles.confirmationTitle}>Payment Received - Thank You!</Text>
               <Text style={styles.confirmationText}>Amount: {formatCurrency(total)}</Text>
+            </View>
+          )}
+
+          {/* Captured Signature Display */}
+          {signature && signature.dataUrl && (
+            <View style={styles.signatureDisplaySection}>
+              <Text style={styles.signatureDisplayTitle}>
+                <Feather name="edit-3" size={14} color={colors.primary} /> Authorised Signature
+              </Text>
+              <Image 
+                source={{ uri: signature.dataUrl }} 
+                style={styles.signatureImage}
+                resizeMode="contain"
+              />
+              {(signature.signedBy || signature.signedAt) && (
+                <View style={styles.signatureMetaRow}>
+                  {signature.signedBy && (
+                    <View>
+                      <Text style={styles.signatureMetaText}>Signed by:</Text>
+                      <Text style={styles.signatureMetaValue}>{signature.signedBy}</Text>
+                    </View>
+                  )}
+                  {signature.signedAt && (
+                    <View>
+                      <Text style={styles.signatureMetaText}>Date:</Text>
+                      <Text style={styles.signatureMetaValue}>{formatDate(signature.signedAt)}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           )}
 

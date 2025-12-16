@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -10,6 +10,8 @@ import {
   Switch,
   Image,
   Modal,
+  Share,
+  Clipboard,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -20,6 +22,15 @@ import { colors } from '../../../src/lib/colors';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { API_URL } from '../../../src/lib/api';
+
+interface Signature {
+  id: string;
+  signatureData: string;
+  signerName?: string;
+  signedAt?: string;
+  documentType?: string;
+  signerRole?: string;
+}
 
 const TEMPLATE_OPTIONS = [
   { id: 'professional', name: 'Professional', description: 'Clean, minimal design' },
@@ -44,14 +55,18 @@ export default function InvoiceDetailScreen() {
   const { token, user, businessSettings } = useAuthStore();
   const [invoice, setInvoice] = useState<any>(null);
   const [linkedQuote, setLinkedQuote] = useState<any>(null);
-  const [quoteSignature, setQuoteSignature] = useState<any>(null);
+  const [allSignatures, setAllSignatures] = useState<Signature[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [isTogglingPayment, setIsTogglingPayment] = useState(false);
+  const [isGeneratingPaymentLink, setIsGeneratingPaymentLink] = useState(false);
+  const [isRecordingOnSitePayment, setIsRecordingOnSitePayment] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(businessSettings?.documentTemplate || 'professional');
+  const [showShareSheet, setShowShareSheet] = useState(false);
+  const [pdfUri, setPdfUri] = useState<string | null>(null);
   
   const brandColor = businessSettings?.primaryColor || user?.brandColor || '#2563eb';
 
@@ -65,29 +80,65 @@ export default function InvoiceDetailScreen() {
     setInvoice(invoiceData);
     await fetchClients();
     
+    const signatures: Signature[] = [];
+    
     // Fetch linked quote if exists
     if (invoiceData?.quoteId) {
       const quoteData = await getQuote(invoiceData.quoteId);
       setLinkedQuote(quoteData);
       
-      // Fetch signature if quote was signed
-      if (quoteData && businessSettings?.includeSignatureOnInvoices) {
-        try {
-          const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote&documentId=${invoiceData.quoteId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+      // Fetch quote signature
+      try {
+        const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote&documentId=${invoiceData.quoteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const quoteSignatures = await response.json();
+          quoteSignatures.forEach((sig: any) => {
+            signatures.push({ ...sig, documentType: 'quote' });
           });
-          if (response.ok) {
-            const signatures = await response.json();
-            if (signatures.length > 0) {
-              setQuoteSignature(signatures[0]);
-            }
-          }
-        } catch (err) {
-          console.log('Could not fetch signature:', err);
         }
+      } catch (err) {
+        console.log('Could not fetch quote signature:', err);
       }
     }
     
+    // Fetch job signatures if invoice has jobId
+    if (invoiceData?.jobId) {
+      try {
+        const response = await fetch(`${API_URL}/api/jobs/${invoiceData.jobId}/signatures`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const jobSignatures = await response.json();
+          jobSignatures.forEach((sig: any) => {
+            signatures.push({ 
+              ...sig, 
+              documentType: sig.documentType || 'job_completion' 
+            });
+          });
+        }
+      } catch (err) {
+        console.log('Could not fetch job signatures:', err);
+      }
+    }
+    
+    // Fetch invoice-specific signatures
+    try {
+      const response = await fetch(`${API_URL}/api/digital-signatures?documentType=invoice&documentId=${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const invoiceSignatures = await response.json();
+        invoiceSignatures.forEach((sig: any) => {
+          signatures.push({ ...sig, documentType: 'invoice' });
+        });
+      }
+    } catch (err) {
+      console.log('Could not fetch invoice signatures:', err);
+    }
+    
+    setAllSignatures(signatures);
     setIsLoading(false);
   };
 
@@ -225,16 +276,111 @@ export default function InvoiceDetailScreen() {
     );
   };
 
+  const handleRecordOnSitePayment = async () => {
+    if (!invoice || isRecordingOnSitePayment) return;
+    
+    Alert.alert(
+      'Record On-Site Payment',
+      `Record payment of ${formatCurrency(invoice.total)} received on-site from the client?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Record Payment',
+          onPress: async () => {
+            setIsRecordingOnSitePayment(true);
+            try {
+              const response = await fetch(`${API_URL}/api/invoices/${id}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  status: 'paid',
+                  paidAt: new Date().toISOString(),
+                  amountPaid: invoice.total.toString(),
+                  paymentMethod: 'on_site',
+                }),
+              });
+
+              if (response.ok) {
+                await loadData();
+                Alert.alert('Payment Recorded', 'On-site payment has been recorded successfully');
+              } else {
+                const error = await response.json();
+                Alert.alert('Error', error.error || 'Failed to record payment');
+              }
+            } catch (error) {
+              console.log('Error recording on-site payment:', error);
+              Alert.alert('Error', 'Failed to record payment. Please try again.');
+            } finally {
+              setIsRecordingOnSitePayment(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const generatePaymentLink = async () => {
+    if (!invoice || isGeneratingPaymentLink) return;
+    
+    setIsGeneratingPaymentLink(true);
+    try {
+      const response = await fetch(`${API_URL}/api/invoices/${id}/payment-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        await loadData();
+        Alert.alert('Success', 'Payment link generated successfully');
+        return data.paymentUrl;
+      } else {
+        const error = await response.json();
+        Alert.alert('Error', error.error || 'Failed to generate payment link');
+      }
+    } catch (error) {
+      console.log('Error generating payment link:', error);
+      Alert.alert('Error', 'Failed to generate payment link. Please try again.');
+    } finally {
+      setIsGeneratingPaymentLink(false);
+    }
+    return null;
+  };
+
+  const sharePaymentLink = async () => {
+    if (!invoice?.paymentToken) {
+      Alert.alert('Error', 'No payment link available');
+      return;
+    }
+    
+    const paymentUrl = `${API_URL}/public/invoice/${invoice.paymentToken}/pay`;
+    try {
+      await Share.share({
+        message: `Pay Invoice ${invoice.invoiceNumber}: ${paymentUrl}`,
+        url: paymentUrl,
+        title: `Invoice ${invoice.invoiceNumber} Payment Link`,
+      });
+    } catch (error) {
+      console.log('Error sharing payment link:', error);
+      Alert.alert('Error', 'Failed to share link');
+    }
+  };
+
   const handleCollectPayment = () => {
     router.push(`/(tabs)/collect?invoiceId=${id}`);
   };
 
-  const handleDownloadPdf = async () => {
-    if (!invoice || isDownloadingPdf) return;
+  const downloadPdfToCache = useCallback(async (): Promise<string | null> => {
+    if (!invoice) return null;
     
-    setIsDownloadingPdf(true);
     try {
-      const fileUri = `${FileSystem.documentDirectory}${invoice.invoiceNumber || 'invoice'}.pdf`;
+      const fileUri = `${FileSystem.cacheDirectory}${invoice.invoiceNumber || 'invoice'}.pdf`;
       
       const downloadResult = await FileSystem.downloadAsync(
         `${API_URL}/api/invoices/${id}/pdf`,
@@ -250,23 +396,105 @@ export default function InvoiceDetailScreen() {
         throw new Error('Failed to download PDF');
       }
 
-      // Check if sharing is available and use expo-sharing for both platforms
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(downloadResult.uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Invoice ${invoice.invoiceNumber}`,
-          UTI: 'com.adobe.pdf',
-        });
-      } else {
-        Alert.alert('Success', `PDF saved to device. File: ${invoice.invoiceNumber}.pdf`);
+      return downloadResult.uri;
+    } catch (error) {
+      console.log('PDF download error:', error);
+      throw error;
+    }
+  }, [invoice, id, token]);
+
+  const handleDownloadPdf = async () => {
+    if (!invoice || isDownloadingPdf) return;
+    
+    setIsDownloadingPdf(true);
+    try {
+      const uri = await downloadPdfToCache();
+      if (!uri) {
+        throw new Error('Failed to generate PDF');
       }
+      setPdfUri(uri);
+      setShowShareSheet(true);
     } catch (error) {
       console.log('PDF download error:', error);
       Alert.alert('Error', 'Failed to download PDF. Please try again.');
     } finally {
       setIsDownloadingPdf(false);
     }
+  };
+
+  const handleSharePdf = async () => {
+    setShowShareSheet(false);
+    
+    try {
+      const uri = pdfUri || await downloadPdfToCache();
+      if (!uri) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Invoice ${invoice?.invoiceNumber}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Sharing Not Available', 'Sharing is not available on this device. Try saving to device instead.');
+      }
+    } catch (error) {
+      console.log('Share PDF error:', error);
+      Alert.alert('Error', 'Failed to share PDF. Please try again.');
+    }
+  };
+
+  const handleSaveToDevice = async () => {
+    setShowShareSheet(false);
+    setIsDownloadingPdf(true);
+    
+    try {
+      const uri = pdfUri || await downloadPdfToCache();
+      if (!uri) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      // Use native share sheet which includes "Save to Files" on iOS and "Save to Downloads" on Android
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Save Invoice ${invoice?.invoiceNumber}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        // Fallback: Copy to document directory
+        const fileName = `${invoice?.invoiceNumber || 'invoice'}.pdf`;
+        const destUri = `${FileSystem.documentDirectory}${fileName}`;
+        await FileSystem.copyAsync({ from: uri, to: destUri });
+        Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
+      }
+    } catch (error) {
+      console.log('Save to device error:', error);
+      Alert.alert('Error', 'Failed to save PDF. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  const handleEmailInvoice = () => {
+    setShowShareSheet(false);
+    setShowEmailCompose(true);
+  };
+
+  const handleCopyPaymentLink = async () => {
+    if (!invoice?.paymentToken) {
+      Alert.alert('No Payment Link', 'Enable online payments first to get a payment link.');
+      return;
+    }
+    
+    setShowShareSheet(false);
+    const paymentUrl = `${API_URL}/public/invoice/${invoice.paymentToken}/pay`;
+    Clipboard.setString(paymentUrl);
+    Alert.alert('Copied', 'Payment link copied to clipboard');
   };
 
   if (isLoading) {
@@ -536,11 +764,33 @@ export default function InvoiceDetailScreen() {
             )}
           </View>
 
-          {/* Payment Settings */}
+          {/* Payment Options - Only show if not paid */}
           {invoice.status !== 'paid' && (
             <>
               <Text style={styles.sectionTitle}>Payment Options</Text>
               <View style={styles.card}>
+                {/* Record On-Site Payment Button */}
+                <TouchableOpacity 
+                  style={styles.onSitePaymentButton}
+                  onPress={handleRecordOnSitePayment}
+                  disabled={isRecordingOnSitePayment}
+                >
+                  {isRecordingOnSitePayment ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <Feather name="dollar-sign" size={20} color={colors.white} />
+                  )}
+                  <Text style={styles.onSitePaymentButtonText}>
+                    Record On-Site Payment
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.onSitePaymentHint}>
+                  Use when client pays cash, check, or direct transfer on-site
+                </Text>
+                
+                <View style={styles.paymentDivider} />
+
+                {/* Online Payment Toggle */}
                 <View style={styles.paymentToggleRow}>
                   <View style={styles.paymentToggleInfo}>
                     <Feather name="credit-card" size={20} color={colors.primary} />
@@ -553,20 +803,80 @@ export default function InvoiceDetailScreen() {
                   </View>
                   <Switch
                     value={invoice.allowOnlinePayment || false}
-                    onValueChange={toggleOnlinePayment}
-                    disabled={isTogglingPayment}
+                    onValueChange={async () => {
+                      const newValue = !invoice.allowOnlinePayment;
+                      await toggleOnlinePayment();
+                      // If enabling and no payment token exists, generate one
+                      if (newValue && !invoice.paymentToken) {
+                        await generatePaymentLink();
+                      }
+                    }}
+                    disabled={isTogglingPayment || isGeneratingPaymentLink}
                     trackColor={{ false: colors.muted, true: colors.primaryLight }}
                     thumbColor={invoice.allowOnlinePayment ? colors.primary : colors.mutedForeground}
                   />
                 </View>
-                {invoice.allowOnlinePayment && invoice.paymentToken && (
-                  <View style={styles.paymentLinkInfo}>
-                    <Feather name="check-circle" size={16} color={colors.success} />
-                    <Text style={styles.paymentLinkText}>
-                      Payment link active - clients can pay online
-                    </Text>
-                  </View>
+                
+                {/* Payment Link Section */}
+                {invoice.allowOnlinePayment && (
+                  <>
+                    {invoice.paymentToken ? (
+                      <View style={styles.paymentLinkSection}>
+                        <View style={styles.paymentLinkInfo}>
+                          <Feather name="check-circle" size={16} color={colors.success} />
+                          <Text style={styles.paymentLinkText}>
+                            Payment link active
+                          </Text>
+                        </View>
+                        <TouchableOpacity 
+                          style={styles.copyLinkButton}
+                          onPress={sharePaymentLink}
+                        >
+                          <Feather name="share-2" size={16} color={colors.primary} />
+                          <Text style={styles.copyLinkButtonText}>Share Payment Link</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View style={styles.paymentLinkSection}>
+                        <TouchableOpacity 
+                          style={styles.generateLinkButton}
+                          onPress={generatePaymentLink}
+                          disabled={isGeneratingPaymentLink}
+                        >
+                          {isGeneratingPaymentLink ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                          ) : (
+                            <>
+                              <Feather name="link" size={16} color={colors.primary} />
+                              <Text style={styles.generateLinkButtonText}>Generate Payment Link</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </>
                 )}
+              </View>
+            </>
+          )}
+
+          {/* Payment Info - Show when already paid */}
+          {invoice.status === 'paid' && invoice.paidAt && (
+            <>
+              <Text style={styles.sectionTitle}>Payment Received</Text>
+              <View style={[styles.card, styles.paidCard]}>
+                <View style={styles.paidInfo}>
+                  <Feather name="check-circle" size={24} color={colors.success} />
+                  <View style={styles.paidInfoText}>
+                    <Text style={styles.paidAmount}>{formatCurrency(invoice.amountPaid || invoice.total)}</Text>
+                    <Text style={styles.paidDate}>Paid on {formatDate(invoice.paidAt)}</Text>
+                    {invoice.paymentMethod && (
+                      <Text style={styles.paidMethod}>
+                        Method: {invoice.paymentMethod === 'on_site' ? 'On-Site Payment' : invoice.paymentMethod}
+                      </Text>
+                    )}
+                  </View>
+                </View>
               </View>
             </>
           )}
@@ -581,29 +891,58 @@ export default function InvoiceDetailScreen() {
             </>
           )}
 
-          {/* Signature Section - Shows if invoice is linked to a signed quote */}
-          {quoteSignature && (
+          {/* Signatures Section - Shows all related signatures */}
+          {allSignatures.length > 0 && (
             <>
-              <Text style={styles.sectionTitle}>Quote Acceptance Signature</Text>
-              <View style={styles.card}>
-                <Image 
-                  source={{ uri: quoteSignature.signatureData }} 
-                  style={styles.signatureImage}
-                  resizeMode="contain"
-                />
-                <View style={styles.signatureDetails}>
-                  {quoteSignature.signerName && (
-                    <Text style={styles.signatureInfo}>
-                      Signed by: {quoteSignature.signerName}
-                    </Text>
-                  )}
-                  {quoteSignature.signedAt && (
-                    <Text style={styles.signatureInfo}>
-                      Date: {formatDate(quoteSignature.signedAt)}
-                    </Text>
-                  )}
-                </View>
-              </View>
+              <Text style={styles.sectionTitle}>
+                Signatures ({allSignatures.length})
+              </Text>
+              {allSignatures.map((signature, index) => {
+                const getSignatureLabel = (sig: Signature) => {
+                  switch (sig.documentType) {
+                    case 'quote':
+                      return 'Quote Acceptance';
+                    case 'job_completion':
+                      return sig.signerRole === 'worker' ? 'Worker Completion' : 'Client Approval';
+                    case 'invoice':
+                      return 'Invoice Signature';
+                    default:
+                      return 'Signature';
+                  }
+                };
+                
+                return (
+                  <View key={signature.id || index} style={styles.card}>
+                    <View style={styles.signatureLabelRow}>
+                      <Feather 
+                        name={signature.documentType === 'quote' ? 'file-text' : signature.documentType === 'job_completion' ? 'check-square' : 'edit-3'} 
+                        size={16} 
+                        color={colors.primary} 
+                      />
+                      <Text style={styles.signatureLabel}>
+                        {getSignatureLabel(signature)}
+                      </Text>
+                    </View>
+                    <Image 
+                      source={{ uri: signature.signatureData }} 
+                      style={styles.signatureImage}
+                      resizeMode="contain"
+                    />
+                    <View style={styles.signatureDetails}>
+                      {signature.signerName && (
+                        <Text style={styles.signatureInfo}>
+                          Signed by: {signature.signerName}
+                        </Text>
+                      )}
+                      {signature.signedAt && (
+                        <Text style={styles.signatureInfo}>
+                          Date: {formatDate(signature.signedAt)}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
             </>
           )}
 
@@ -743,6 +1082,92 @@ export default function InvoiceDetailScreen() {
             ))}
           </View>
         </View>
+      </Modal>
+
+      {/* Share Action Sheet Modal */}
+      <Modal
+        visible={showShareSheet}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowShareSheet(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowShareSheet(false)}
+        >
+          <View style={styles.shareSheetContent}>
+            <View style={styles.shareSheetHandle} />
+            <Text style={styles.shareSheetTitle}>Share Invoice</Text>
+            <Text style={styles.shareSheetSubtitle}>{invoice?.invoiceNumber}</Text>
+            
+            <View style={styles.shareOptions}>
+              <TouchableOpacity 
+                style={styles.shareOption}
+                onPress={handleEmailInvoice}
+              >
+                <View style={[styles.shareOptionIcon, { backgroundColor: colors.primaryLight }]}>
+                  <Feather name="mail" size={22} color={colors.primary} />
+                </View>
+                <Text style={styles.shareOptionText}>Email to Client</Text>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.shareOption}
+                onPress={handleSharePdf}
+              >
+                <View style={[styles.shareOptionIcon, { backgroundColor: colors.successLight }]}>
+                  <Feather name="share-2" size={22} color={colors.success} />
+                </View>
+                <Text style={styles.shareOptionText}>Share PDF</Text>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              {invoice?.allowOnlinePayment && invoice?.paymentToken && (
+                <TouchableOpacity 
+                  style={styles.shareOption}
+                  onPress={handleCopyPaymentLink}
+                >
+                  <View style={[styles.shareOptionIcon, { backgroundColor: colors.infoLight }]}>
+                    <Feather name="link" size={22} color={colors.info} />
+                  </View>
+                  <Text style={styles.shareOptionText}>Copy Payment Link</Text>
+                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity 
+                style={styles.shareOption}
+                onPress={handleSaveToDevice}
+              >
+                <View style={[styles.shareOptionIcon, { backgroundColor: '#fef3c7' }]}>
+                  <Feather name="download" size={22} color="#d97706" />
+                </View>
+                <Text style={styles.shareOptionText}>Save to Device</Text>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.shareOption}
+                onPress={handleSharePdf}
+              >
+                <View style={[styles.shareOptionIcon, { backgroundColor: '#f3e8ff' }]}>
+                  <Feather name="printer" size={22} color="#9333ea" />
+                </View>
+                <Text style={styles.shareOptionText}>Print</Text>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.shareSheetCancel}
+              onPress={() => setShowShareSheet(false)}
+            >
+              <Text style={styles.shareSheetCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </>
   );
@@ -1009,14 +1434,113 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   paymentLinkText: {
     fontSize: 13,
     color: colors.success,
+  },
+  paymentLinkSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: 12,
+  },
+  copyLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 8,
+  },
+  copyLinkButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primary,
+  },
+  generateLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  generateLinkButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primary,
+  },
+  onSitePaymentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    backgroundColor: colors.success,
+    borderRadius: 10,
+  },
+  onSitePaymentButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  onSitePaymentHint: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  paymentDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 16,
+  },
+  paidCard: {
+    borderColor: colors.success,
+    borderWidth: 1,
+    backgroundColor: colors.successLight,
+  },
+  paidInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  paidInfoText: {
+    flex: 1,
+  },
+  paidAmount: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.success,
+  },
+  paidDate: {
+    fontSize: 14,
+    color: colors.foreground,
+    marginTop: 4,
+  },
+  paidMethod: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  signatureLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  signatureLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
   },
   actionsColumn: {
     gap: 12,
@@ -1269,5 +1793,73 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: colors.foreground,
+  },
+  shareSheetContent: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  shareSheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  shareSheetTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.foreground,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  shareSheetSubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  shareOptions: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  shareOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  shareOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  shareOptionText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  shareSheetCancel: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  shareSheetCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.mutedForeground,
   },
 });
