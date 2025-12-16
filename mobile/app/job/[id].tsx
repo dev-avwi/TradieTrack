@@ -33,6 +33,7 @@ import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
 import { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
 import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from '../../src/components/JobWorkflowComponents';
+import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
 
 interface Job {
   id: string;
@@ -1064,6 +1065,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  markupPhotoButton: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 120 : 100,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+  },
+  markupPhotoText: {
+    color: colors.primaryForeground,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   photoCountBadge: {
     position: 'absolute',
     top: -4,
@@ -1321,6 +1339,7 @@ export default function JobDetailScreen() {
   
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [isCompletingJob, setIsCompletingJob] = useState(false);
+  const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { 
@@ -2193,6 +2212,44 @@ export default function JobDetailScreen() {
         }
       ]
     );
+  };
+
+  const handleAnnotatedPhotoSave = async (annotatedUri: string) => {
+    if (!job) return;
+    
+    setIsUploadingPhoto(true);
+    setShowAnnotationEditor(false);
+    
+    try {
+      // Convert base64 data URI to blob-like data for upload
+      const base64Data = annotatedUri.split(',')[1];
+      const filename = `annotated_${Date.now()}.jpg`;
+      
+      const formData = new FormData();
+      formData.append('photo', {
+        uri: annotatedUri,
+        name: filename,
+        type: 'image/jpeg',
+      } as any);
+      formData.append('jobId', job.id);
+      formData.append('category', 'annotated');
+
+      const response = await api.post(`/api/jobs/${job.id}/photos`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response.data) {
+        await loadPhotos();
+        setSelectedPhoto(null);
+        Alert.alert('Success', 'Annotated photo saved successfully');
+      } else {
+        Alert.alert('Error', 'Failed to save annotated photo. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Annotated photo upload error:', error);
+      Alert.alert('Error', 'Failed to upload annotated photo. Please try again.');
+    }
+    setIsUploadingPhoto(false);
   };
 
   const formatDate = (dateStr?: string) => {
@@ -3264,7 +3321,7 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Full Photo Preview Modal */}
-      <Modal visible={!!selectedPhoto} animationType="fade" transparent>
+      <Modal visible={!!selectedPhoto && !showAnnotationEditor} animationType="fade" transparent>
         <View style={styles.photoPreviewModal}>
           {selectedPhoto && (
             <>
@@ -3276,12 +3333,22 @@ export default function JobDetailScreen() {
               <TouchableOpacity 
                 style={styles.closePhotoButton}
                 onPress={() => setSelectedPhoto(null)}
+                data-testid="button-close-photo"
               >
                 <Feather name="x" size={24} color={colors.primaryForeground} />
               </TouchableOpacity>
               <TouchableOpacity 
+                style={styles.markupPhotoButton}
+                onPress={() => setShowAnnotationEditor(true)}
+                data-testid="button-markup-photo"
+              >
+                <Feather name="edit-2" size={18} color={colors.primaryForeground} />
+                <Text style={styles.markupPhotoText}>Markup</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
                 style={styles.deletePhotoButton}
                 onPress={() => handleDeletePhoto(selectedPhoto)}
+                data-testid="button-delete-photo"
               >
                 <Feather name="trash-2" size={18} color={colors.primaryForeground} />
                 <Text style={styles.deletePhotoText}>Delete Photo</Text>
@@ -3290,6 +3357,16 @@ export default function JobDetailScreen() {
           )}
         </View>
       </Modal>
+
+      {/* Photo Annotation Editor Modal */}
+      {selectedPhoto && showAnnotationEditor && (
+        <PhotoAnnotationEditor
+          imageUri={selectedPhoto.signedUrl || selectedPhoto.url || ''}
+          onSave={handleAnnotatedPhotoSave}
+          onCancel={() => setShowAnnotationEditor(false)}
+          visible={showAnnotationEditor}
+        />
+      )}
 
       {/* Job Completion Summary Modal */}
       {job && (
