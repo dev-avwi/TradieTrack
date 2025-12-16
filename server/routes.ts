@@ -2983,6 +2983,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const servicesReady = (stripeConnectStatus.connected && stripeConnectStatus.chargesEnabled) || emailVerified;
       
+      // Check Twilio SMS status
+      const twilioConfigured = !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN);
+      
       const services = {
         payments: {
           name: 'Payment Processing',
@@ -3005,6 +3008,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: emailVerified 
             ? 'Quotes and invoices delivered via email' 
             : 'Uses Gmail link to compose emails'
+        },
+        sendgrid: {
+          name: 'Email Automation',
+          status: (emailVerified ? 'ready' : 'not_connected') as 'ready' | 'not_connected',
+          provider: 'SendGrid',
+          managed: true,
+          verified: emailVerified,
+          error: emailError,
+          description: emailVerified 
+            ? 'Automatic email sending enabled' 
+            : 'Connect to send emails automatically'
+        },
+        twilio: {
+          name: 'SMS Notifications',
+          status: (twilioConfigured ? 'ready' : 'not_connected') as 'ready' | 'not_connected',
+          provider: 'Twilio',
+          managed: true,
+          verified: twilioConfigured,
+          error: null,
+          description: twilioConfigured 
+            ? 'SMS notifications enabled' 
+            : 'Connect to send SMS reminders'
         }
       };
       

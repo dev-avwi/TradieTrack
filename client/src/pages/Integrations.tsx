@@ -31,7 +31,13 @@ import {
   ArrowRight,
   Building2,
   Wallet,
-  Info
+  Info,
+  Phone,
+  MessageSquare,
+  Send,
+  Clock,
+  FileText,
+  BarChart3
 } from "lucide-react";
 import { SiStripe, SiGmail, SiXero, SiMyob } from "react-icons/si";
 import { RefreshCw, Link2Off } from "lucide-react";
@@ -86,6 +92,8 @@ interface HealthStatus {
   services: {
     payments: ServiceHealth;
     email: ServiceHealth;
+    sendgrid?: ServiceHealth;
+    twilio?: ServiceHealth;
   };
   stripeConnect?: StripeConnectStatus;
   checkedAt: string;
@@ -988,6 +996,198 @@ export default function Integrations() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Communication Services Section */}
+      <div className="pt-6">
+        <h3 className="text-lg font-semibold mb-2">Communication Services</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Connect these services to automate client communications
+        </p>
+        
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Twilio SMS Notifications Card */}
+          <Card data-testid="card-twilio-integration">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    health?.services?.twilio?.status === 'ready' 
+                      ? 'bg-green-100 dark:bg-green-900/50' 
+                      : 'bg-gray-100 dark:bg-gray-800/50'
+                  }`}>
+                    <Phone className={`w-5 h-5 ${
+                      health?.services?.twilio?.status === 'ready' 
+                        ? 'text-green-600 dark:text-green-400' 
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`} />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">SMS Notifications</CardTitle>
+                    <p className="text-xs text-muted-foreground">Send SMS reminders and updates to clients</p>
+                  </div>
+                </div>
+                <ServiceBadge status={health?.services?.twilio?.status} fetchFailed={fetchFailed} />
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-4">
+              {health?.services?.twilio?.status === 'ready' ? (
+                <>
+                  <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                    <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+                      SMS integration is active
+                    </p>
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      Your clients will receive SMS notifications for appointments and updates.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-foreground">What happens when connected:</p>
+                    <ul className="text-xs text-muted-foreground space-y-1.5">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        SMS reminders sent automatically
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        Two-way texting with clients
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        Appointment confirmations
+                      </li>
+                    </ul>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Connect Twilio to send SMS reminders and updates directly to your clients' phones.
+                  </p>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p><strong>Requires:</strong> TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN</p>
+                        <p><strong>Features:</strong> Job reminders, status updates, confirmations</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-foreground">What happens when connected:</p>
+                    <ul className="text-xs text-muted-foreground space-y-1.5">
+                      <li className="flex items-center gap-2">
+                        <Clock className="w-3 h-3" />
+                        SMS reminders sent automatically
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <MessageSquare className="w-3 h-3" />
+                        Two-way texting with clients
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="w-3 h-3" />
+                        Appointment confirmations
+                      </li>
+                    </ul>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* SendGrid Email Automation Card */}
+          <Card data-testid="card-sendgrid-integration">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    health?.services?.sendgrid?.status === 'ready' 
+                      ? 'bg-green-100 dark:bg-green-900/50' 
+                      : 'bg-gray-100 dark:bg-gray-800/50'
+                  }`}>
+                    <Mail className={`w-5 h-5 ${
+                      health?.services?.sendgrid?.status === 'ready' 
+                        ? 'text-green-600 dark:text-green-400' 
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`} />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Email Automation</CardTitle>
+                    <p className="text-xs text-muted-foreground">Automatic email sending for quotes & invoices</p>
+                  </div>
+                </div>
+                <ServiceBadge status={health?.services?.sendgrid?.status} fetchFailed={fetchFailed} />
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-4">
+              {health?.services?.sendgrid?.status === 'ready' ? (
+                <>
+                  <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                    <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+                      Email automation is active
+                    </p>
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      Quotes and invoices are sent automatically without opening Gmail.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-foreground">What happens when connected:</p>
+                    <ul className="text-xs text-muted-foreground space-y-1.5">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        Emails send instantly (no Gmail popup)
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        Professional templates
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        Delivery tracking
+                      </li>
+                    </ul>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Connect SendGrid to send emails automatically without opening Gmail.
+                  </p>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p><strong>Requires:</strong> SENDGRID_API_KEY</p>
+                        <p><strong>Features:</strong> Instant sending, templates, tracking</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-foreground">What happens when connected:</p>
+                    <ul className="text-xs text-muted-foreground space-y-1.5">
+                      <li className="flex items-center gap-2">
+                        <Send className="w-3 h-3" />
+                        Emails send instantly (no Gmail popup)
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <FileText className="w-3 h-3" />
+                        Professional templates
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <BarChart3 className="w-3 h-3" />
+                        Delivery tracking
+                      </li>
+                    </ul>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Optional Email Provider Integration */}
