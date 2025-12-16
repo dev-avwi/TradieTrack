@@ -192,6 +192,11 @@ export const businessSettings = pgTable("business_settings", {
   // Document Template Settings
   documentTemplate: text("document_template").default('professional'), // modern, professional, minimal
   documentTemplateSettings: json("document_template_settings"), // Custom overrides for template
+  // SMS Branding Settings
+  twilioPhoneNumber: text("twilio_phone_number"), // User's own Twilio phone number (E.164 format)
+  twilioSenderId: text("twilio_sender_id"), // Alphanumeric sender ID (11 chars max, e.g., "TradieTrack")
+  twilioAccountSid: text("twilio_account_sid"), // User's own Twilio account SID
+  twilioAuthToken: text("twilio_auth_token"), // User's own Twilio auth token (encrypted at rest)
   // Onboarding tracking
   onboardingCompleted: boolean("onboarding_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -1808,6 +1813,8 @@ export const smsMessages = pgTable("sms_messages", {
   errorMessage: text("error_message"),
   isQuickAction: boolean("is_quick_action").default(false),
   quickActionType: text("quick_action_type"), // on_my_way, job_finished, etc.
+  // MMS support - array of media URLs (max 10 per Twilio MMS, each up to 5MB)
+  mediaUrls: jsonb("media_urls").default([]), // Array of media attachment URLs
   readAt: timestamp("read_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });

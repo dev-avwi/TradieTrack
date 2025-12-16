@@ -50,6 +50,7 @@ import TeamManagement from "@/pages/TeamManagement";
 import PaymentPage from "@/pages/PaymentPage";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
+import TrackArrival from "@/pages/TrackArrival";
 import Reports from "@/pages/Reports";
 import CollectPayment from "@/pages/CollectPayment";
 import TeamChatPage from "@/pages/TeamChat";
@@ -964,6 +965,7 @@ function App() {
           <Switch>
             {/* Public routes - no auth required */}
             <Route path="/pay/:token" component={PaymentPage} />
+            <Route path="/track/:token">{(params) => <TrackArrival token={params.token} />}</Route>
             <Route path="/privacy" component={PrivacyPolicy} />
             <Route path="/terms" component={TermsOfService} />
             {/* All other routes go through AppLayout */}

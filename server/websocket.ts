@@ -199,6 +199,49 @@ export function broadcastToBusinessUsers(businessId: string, message: any) {
   });
 }
 
+/**
+ * Broadcast SMS notification to business owner and relevant team members
+ * Called when an inbound SMS arrives at the webhook
+ */
+export function broadcastSmsNotification(
+  businessId: string,
+  notification: {
+    conversationId: string;
+    senderPhone: string;
+    senderName: string | null;
+    messagePreview: string;
+    jobId?: string | null;
+    unreadCount: number;
+  }
+) {
+  const message = {
+    type: 'sms_notification',
+    ...notification,
+    timestamp: Date.now(),
+  };
+  
+  let notifiedCount = 0;
+  connections.forEach((conn) => {
+    if (conn.businessId === businessId && conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.send(JSON.stringify(message));
+      notifiedCount++;
+    }
+  });
+  
+  console.log(`[WebSocket] SMS notification broadcast to ${notifiedCount} user(s) for business ${businessId}`);
+}
+
+/**
+ * Broadcast to specific user IDs within a business
+ */
+export function broadcastToUsers(userIds: string[], message: any) {
+  connections.forEach((conn) => {
+    if (userIds.includes(conn.userId) && conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.send(JSON.stringify(message));
+    }
+  });
+}
+
 export function getActiveConnections(businessId: string): string[] {
   const active: string[] = [];
   connections.forEach((conn) => {

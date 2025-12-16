@@ -135,6 +135,7 @@ export function getTwilioPhoneNumber(): string | null {
 interface SendSMSOptions {
   to: string;
   message: string;
+  mediaUrls?: string[]; // MMS media URLs (max 10, each up to 5MB)
 }
 
 interface SMSResult {
@@ -145,7 +146,7 @@ interface SMSResult {
 }
 
 export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
-  const { to, message } = options;
+  const { to, message, mediaUrls } = options;
 
   // Format Australian phone number
   let formattedTo = to.replace(/\s+/g, '').replace(/^0/, '+61');
@@ -153,12 +154,19 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
     formattedTo = '+61' + formattedTo.replace(/^61/, '');
   }
 
+  // Validate media URLs (max 10 per Twilio MMS)
+  const validMediaUrls = mediaUrls?.slice(0, 10) || [];
+  const isMMS = validMediaUrls.length > 0;
+
   if (!isTwilioInitialized() || !twilioClient || !twilioPhoneNumber) {
-    // Demo mode - log the SMS
-    console.log('📱 [DEMO SMS]');
+    // Demo mode - log the SMS/MMS
+    console.log(`📱 [DEMO ${isMMS ? 'MMS' : 'SMS'}]`);
     console.log(`   To: ${formattedTo}`);
     console.log(`   Message: ${message}`);
-    console.log('   (Twilio not configured - SMS simulated)');
+    if (isMMS) {
+      console.log(`   Media URLs: ${validMediaUrls.join(', ')}`);
+    }
+    console.log('   (Twilio not configured - message simulated)');
     return {
       success: true,
       simulated: true,
@@ -167,19 +175,27 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
   }
 
   try {
-    const result = await twilioClient.messages.create({
+    // Build message options
+    const messageOptions: any = {
       body: message,
       from: twilioPhoneNumber,
       to: formattedTo
-    });
+    };
 
-    console.log(`✅ SMS sent to ${formattedTo}: ${result.sid}`);
+    // Add MediaUrl for MMS (Twilio accepts array of URLs)
+    if (isMMS) {
+      messageOptions.mediaUrl = validMediaUrls;
+    }
+
+    const result = await twilioClient.messages.create(messageOptions);
+
+    console.log(`✅ ${isMMS ? 'MMS' : 'SMS'} sent to ${formattedTo}: ${result.sid}`);
     return {
       success: true,
       messageId: result.sid
     };
   } catch (error: any) {
-    console.error('❌ Failed to send SMS:', error.message);
+    console.error(`❌ Failed to send ${isMMS ? 'MMS' : 'SMS'}:`, error.message);
     return {
       success: false,
       error: error.message

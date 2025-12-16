@@ -139,6 +139,7 @@ import {
   smsAutomationRules,
   smsAutomationLogs,
   smsBookingLinks,
+  smsTrackingLinks,
   type SmsConversation,
   type InsertSmsConversation,
   type SmsMessage,
@@ -151,6 +152,8 @@ import {
   type InsertSmsAutomationLog,
   type SmsBookingLink,
   type InsertSmsBookingLink,
+  type SmsTrackingLink,
+  type InsertSmsTrackingLink,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -485,6 +488,14 @@ export interface IStorage {
   createSmsBookingLink(data: InsertSmsBookingLink): Promise<SmsBookingLink>;
   getSmsBookingLinkByToken(token: string): Promise<SmsBookingLink | undefined>;
   updateSmsBookingLink(id: string, data: Partial<SmsBookingLink>): Promise<SmsBookingLink>;
+
+  // SMS Tracking Links (Live Arrival Tracking)
+  createSmsTrackingLink(data: InsertSmsTrackingLink): Promise<SmsTrackingLink>;
+  getSmsTrackingLinkByToken(token: string): Promise<SmsTrackingLink | undefined>;
+  getSmsTrackingLinkByJobId(jobId: string): Promise<SmsTrackingLink | undefined>;
+  updateSmsTrackingLink(id: string, data: Partial<SmsTrackingLink>): Promise<SmsTrackingLink>;
+  incrementTrackingLinkViews(id: string): Promise<void>;
+  deactivateSmsTrackingLink(id: string): Promise<void>;
 }
 
 // Initialize database connection
@@ -3108,6 +3119,49 @@ export class PostgresStorage implements IStorage {
       .where(eq(smsBookingLinks.id, id))
       .returning();
     return result;
+  }
+
+  // SMS Tracking Links (Live Arrival Tracking)
+  async createSmsTrackingLink(data: InsertSmsTrackingLink): Promise<SmsTrackingLink> {
+    const [result] = await db.insert(smsTrackingLinks).values(data).returning();
+    return result;
+  }
+
+  async getSmsTrackingLinkByToken(token: string): Promise<SmsTrackingLink | undefined> {
+    const result = await db.select().from(smsTrackingLinks)
+      .where(eq(smsTrackingLinks.token, token))
+      .limit(1);
+    return result[0];
+  }
+
+  async getSmsTrackingLinkByJobId(jobId: string): Promise<SmsTrackingLink | undefined> {
+    const result = await db.select().from(smsTrackingLinks)
+      .where(and(
+        eq(smsTrackingLinks.jobId, jobId),
+        eq(smsTrackingLinks.isActive, true)
+      ))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateSmsTrackingLink(id: string, data: Partial<SmsTrackingLink>): Promise<SmsTrackingLink> {
+    const [result] = await db.update(smsTrackingLinks)
+      .set(data)
+      .where(eq(smsTrackingLinks.id, id))
+      .returning();
+    return result;
+  }
+
+  async incrementTrackingLinkViews(id: string): Promise<void> {
+    await db.update(smsTrackingLinks)
+      .set({ viewCount: sql`${smsTrackingLinks.viewCount} + 1` })
+      .where(eq(smsTrackingLinks.id, id));
+  }
+
+  async deactivateSmsTrackingLink(id: string): Promise<void> {
+    await db.update(smsTrackingLinks)
+      .set({ isActive: false })
+      .where(eq(smsTrackingLinks.id, id));
   }
 }
 

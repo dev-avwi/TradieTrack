@@ -2308,6 +2308,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== SMS BRANDING SETTINGS ROUTES =====
+  
+  // Get current SMS branding settings
+  app.get("/api/settings/sms-branding", requireAuth, async (req: any, res) => {
+    try {
+      const settings = await storage.getBusinessSettings(req.userId);
+      
+      // Return SMS branding fields (mask sensitive data)
+      const smsBranding = {
+        twilioPhoneNumber: settings?.twilioPhoneNumber || null,
+        twilioSenderId: settings?.twilioSenderId || null,
+        twilioAccountSid: settings?.twilioAccountSid ? '***' + settings.twilioAccountSid.slice(-4) : null,
+        twilioAuthTokenConfigured: !!settings?.twilioAuthToken,
+        // Include platform defaults info
+        platformTwilioConfigured: !!process.env.TWILIO_ACCOUNT_SID && !!process.env.TWILIO_AUTH_TOKEN,
+        platformTwilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER ? process.env.TWILIO_PHONE_NUMBER.slice(-4) : null,
+      };
+      
+      res.json(smsBranding);
+    } catch (error) {
+      console.error("Error fetching SMS branding settings:", error);
+      res.status(500).json({ error: "Failed to fetch SMS branding settings" });
+    }
+  });
+  
+  // Update SMS branding settings
+  app.put("/api/settings/sms-branding", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const { twilioPhoneNumber, twilioSenderId, twilioAccountSid, twilioAuthToken } = req.body;
+      
+      // Validate sender ID (alphanumeric only, max 11 chars)
+      if (twilioSenderId) {
+        const senderIdRegex = /^[a-zA-Z0-9]{1,11}$/;
+        if (!senderIdRegex.test(twilioSenderId)) {
+          return res.status(400).json({ 
+            error: "Invalid sender ID. Must be alphanumeric and max 11 characters." 
+          });
+        }
+      }
+      
+      // Validate phone number format (E.164)
+      if (twilioPhoneNumber) {
+        const phoneRegex = /^\+[1-9]\d{1,14}$/;
+        if (!phoneRegex.test(twilioPhoneNumber)) {
+          return res.status(400).json({ 
+            error: "Invalid phone number. Must be in E.164 format (e.g., +61412345678)." 
+          });
+        }
+      }
+      
+      // Get or create business settings
+      let settings = await storage.getBusinessSettings(req.userId);
+      
+      const updateData: any = {};
+      if (twilioPhoneNumber !== undefined) updateData.twilioPhoneNumber = twilioPhoneNumber || null;
+      if (twilioSenderId !== undefined) updateData.twilioSenderId = twilioSenderId || null;
+      if (twilioAccountSid !== undefined) updateData.twilioAccountSid = twilioAccountSid || null;
+      if (twilioAuthToken !== undefined) updateData.twilioAuthToken = twilioAuthToken || null;
+      
+      if (settings) {
+        settings = await storage.updateBusinessSettings(req.userId, updateData);
+      } else {
+        settings = await storage.createBusinessSettings({
+          userId: req.userId,
+          businessName: 'My Business',
+          ...updateData,
+        });
+      }
+      
+      // Return masked response
+      res.json({
+        twilioPhoneNumber: settings?.twilioPhoneNumber || null,
+        twilioSenderId: settings?.twilioSenderId || null,
+        twilioAccountSid: settings?.twilioAccountSid ? '***' + settings.twilioAccountSid.slice(-4) : null,
+        twilioAuthTokenConfigured: !!settings?.twilioAuthToken,
+        message: "SMS branding settings updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating SMS branding settings:", error);
+      res.status(500).json({ error: "Failed to update SMS branding settings" });
+    }
+  });
+
   // Integration Status (platform-level - what integrations are configured)
   app.get("/api/integrations/status", requireAuth, async (req: any, res) => {
     try {
@@ -10758,14 +10841,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Send SMS to a client
+  // Send SMS/MMS to a client
   app.post("/api/sms/send", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const { clientId, clientPhone, clientName, jobId, message } = req.body;
+      const { clientId, clientPhone, clientName, jobId, message, mediaUrls } = req.body;
       
       if (!clientPhone || !message) {
         return res.status(400).json({ error: 'Client phone and message are required' });
+      }
+      
+      // Validate mediaUrls if provided
+      let validatedMediaUrls: string[] = [];
+      if (mediaUrls && Array.isArray(mediaUrls)) {
+        // Limit to max 10 media URLs per Twilio MMS
+        validatedMediaUrls = mediaUrls.slice(0, 10).filter((url: any) => {
+          if (typeof url !== 'string') return false;
+          try {
+            const urlObj = new URL(url);
+            // Allow object storage URLs and common image/file hosting
+            const allowedHosts = [
+              'storage.googleapis.com',
+              'storage.cloud.google.com',
+              'replit.dev',
+              'repl.co',
+              'cdn.replit.com',
+              'api.twilio.com', // For media from Twilio
+            ];
+            const isAllowed = allowedHosts.some(host => urlObj.hostname.includes(host)) || 
+                             urlObj.hostname.endsWith('.replit.dev') ||
+                             urlObj.hostname.endsWith('.repl.co');
+            if (!isAllowed) {
+              console.log(`[MMS] Rejected media URL from disallowed host: ${urlObj.hostname}`);
+            }
+            return isAllowed;
+          } catch {
+            return false;
+          }
+        });
       }
       
       // Determine business owner
@@ -10784,11 +10897,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         jobId,
         message,
         senderUserId: userId,
+        mediaUrls: validatedMediaUrls.length > 0 ? validatedMediaUrls : undefined,
       });
       
       res.json(smsMessage);
     } catch (error: any) {
-      console.error('Error sending SMS:', error);
+      console.error('Error sending SMS/MMS:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -10856,23 +10970,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Twilio webhook for incoming SMS
+  // Twilio webhook for incoming SMS/MMS
   app.post("/api/sms/webhook/incoming", async (req, res) => {
     try {
-      const { From, To, Body, MessageSid } = req.body;
+      const { From, To, Body, MessageSid, NumMedia } = req.body;
       
-      if (!From || !Body) {
+      if (!From) {
         return res.status(400).send('Bad request');
       }
       
+      // Extract MMS media URLs from Twilio webhook
+      // Twilio sends MediaUrl0, MediaUrl1, ..., MediaUrlN for each attachment
+      const mediaUrls: string[] = [];
+      const numMedia = parseInt(NumMedia || '0', 10);
+      
+      for (let i = 0; i < numMedia && i < 10; i++) {
+        const mediaUrl = req.body[`MediaUrl${i}`];
+        if (mediaUrl) {
+          mediaUrls.push(mediaUrl);
+        }
+      }
+      
+      const isMMS = mediaUrls.length > 0;
+      if (isMMS) {
+        console.log(`[MMS Webhook] Received MMS with ${mediaUrls.length} media attachment(s) from ${From}`);
+      }
+      
       const { handleIncomingSms } = await import('./services/smsService');
-      await handleIncomingSms(From, To, Body, MessageSid);
+      await handleIncomingSms(From, To, Body || '', MessageSid, mediaUrls.length > 0 ? mediaUrls : undefined);
       
       // Return TwiML response
       res.set('Content-Type', 'text/xml');
       res.send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
     } catch (error: any) {
-      console.error('Error handling incoming SMS:', error);
+      console.error('Error handling incoming SMS/MMS:', error);
       res.status(500).send('Internal error');
     }
   });
@@ -11138,6 +11269,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error responding to booking:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== SMS TRACKING LINKS ROUTES (Live Arrival Tracking) =====
+  
+  // Generate tracking link for a job (authenticated)
+  app.post("/api/jobs/:id/tracking-link", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id: jobId } = req.params;
+      
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      // Check if there's already an active tracking link for this job
+      const existingLink = await storage.getSmsTrackingLinkByJobId(jobId);
+      if (existingLink && existingLink.isActive && new Date(existingLink.expiresAt) > new Date()) {
+        const baseUrl = process.env.REPLIT_DOMAIN 
+          ? `https://${process.env.REPLIT_DOMAIN}`
+          : process.env.BASE_URL || 'http://localhost:5000';
+        return res.json({
+          ...existingLink,
+          url: `${baseUrl}/track/${existingLink.token}`,
+        });
+      }
+      
+      // Deactivate any existing links
+      if (existingLink) {
+        await storage.deactivateSmsTrackingLink(existingLink.id);
+      }
+      
+      const token = randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24); // Expires in 24 hours
+      
+      // Get business owner ID (for team scenarios)
+      const userContext = await getUserContext(userId);
+      
+      const trackingLink = await storage.createSmsTrackingLink({
+        jobId,
+        teamMemberId: userId,
+        businessOwnerId: userContext.effectiveUserId,
+        token,
+        expiresAt,
+        estimatedArrival: null,
+      });
+      
+      const baseUrl = process.env.REPLIT_DOMAIN 
+        ? `https://${process.env.REPLIT_DOMAIN}`
+        : process.env.BASE_URL || 'http://localhost:5000';
+      
+      res.status(201).json({
+        ...trackingLink,
+        url: `${baseUrl}/track/${token}`,
+      });
+    } catch (error: any) {
+      console.error('Error creating tracking link:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Public: View tracking page data (no auth required)
+  app.get("/api/track/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const trackingLink = await storage.getSmsTrackingLinkByToken(token);
+      if (!trackingLink) {
+        return res.status(404).json({ error: 'Tracking link not found' });
+      }
+      
+      if (new Date() > new Date(trackingLink.expiresAt)) {
+        return res.status(410).json({ error: 'Tracking link has expired' });
+      }
+      
+      if (!trackingLink.isActive) {
+        return res.status(410).json({ error: 'Tracking link is no longer active' });
+      }
+      
+      // Increment view count
+      await storage.incrementTrackingLinkViews(trackingLink.id);
+      
+      const job = await storage.getJobPublic(trackingLink.jobId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const businessSettings = await storage.getBusinessSettings(trackingLink.businessOwnerId);
+      
+      // Get worker info
+      let workerName = businessSettings?.businessName || 'Your Tradesperson';
+      if (trackingLink.teamMemberId) {
+        const worker = await storage.getUser(trackingLink.teamMemberId);
+        if (worker) {
+          workerName = worker.firstName && worker.lastName 
+            ? `${worker.firstName} ${worker.lastName}`
+            : worker.firstName || businessSettings?.businessName || 'Your Tradesperson';
+        }
+      }
+      
+      res.json({
+        id: trackingLink.id,
+        isActive: trackingLink.isActive,
+        expiresAt: trackingLink.expiresAt,
+        lastLocation: trackingLink.lastLocationLat && trackingLink.lastLocationLng 
+          ? {
+              lat: parseFloat(String(trackingLink.lastLocationLat)),
+              lng: parseFloat(String(trackingLink.lastLocationLng)),
+              updatedAt: trackingLink.lastLocationAt,
+            }
+          : null,
+        estimatedArrival: trackingLink.estimatedArrival,
+        job: {
+          id: job.id,
+          title: job.title,
+          address: job.address,
+          scheduledAt: job.scheduledAt,
+          scheduledTime: job.scheduledTime,
+          status: job.status,
+        },
+        business: {
+          name: businessSettings?.businessName || 'Your Tradesperson',
+          phone: businessSettings?.phone || null,
+          logoUrl: businessSettings?.logoUrl || null,
+        },
+        worker: {
+          name: workerName,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error viewing tracking link:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Worker updates their location (authenticated)
+  app.post("/api/track/:token/location", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { token } = req.params;
+      const { lat, lng, estimatedArrival } = req.body;
+      
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        return res.status(400).json({ error: 'lat and lng are required as numbers' });
+      }
+      
+      const trackingLink = await storage.getSmsTrackingLinkByToken(token);
+      if (!trackingLink) {
+        return res.status(404).json({ error: 'Tracking link not found' });
+      }
+      
+      // Only the assigned worker or business owner can update location
+      if (trackingLink.teamMemberId !== userId && trackingLink.businessOwnerId !== userId) {
+        return res.status(403).json({ error: 'Not authorized to update this tracking link' });
+      }
+      
+      if (!trackingLink.isActive) {
+        return res.status(410).json({ error: 'Tracking link is no longer active' });
+      }
+      
+      if (new Date() > new Date(trackingLink.expiresAt)) {
+        return res.status(410).json({ error: 'Tracking link has expired' });
+      }
+      
+      const updatedLink = await storage.updateSmsTrackingLink(trackingLink.id, {
+        lastLocationLat: String(lat),
+        lastLocationLng: String(lng),
+        lastLocationAt: new Date(),
+        estimatedArrival: estimatedArrival ? new Date(estimatedArrival) : trackingLink.estimatedArrival,
+      });
+      
+      res.json({
+        success: true,
+        lastLocation: {
+          lat,
+          lng,
+          updatedAt: updatedLink.lastLocationAt,
+        },
+        estimatedArrival: updatedLink.estimatedArrival,
+      });
+    } catch (error: any) {
+      console.error('Error updating tracking location:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Deactivate tracking link (when job is completed)
+  app.post("/api/track/:token/deactivate", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { token } = req.params;
+      
+      const trackingLink = await storage.getSmsTrackingLinkByToken(token);
+      if (!trackingLink) {
+        return res.status(404).json({ error: 'Tracking link not found' });
+      }
+      
+      // Only the assigned worker or business owner can deactivate
+      if (trackingLink.teamMemberId !== userId && trackingLink.businessOwnerId !== userId) {
+        return res.status(403).json({ error: 'Not authorized to deactivate this tracking link' });
+      }
+      
+      await storage.deactivateSmsTrackingLink(trackingLink.id);
+      
+      res.json({ success: true, message: 'Tracking link deactivated' });
+    } catch (error: any) {
+      console.error('Error deactivating tracking link:', error);
       res.status(500).json({ error: error.message });
     }
   });

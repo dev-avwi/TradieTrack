@@ -5,9 +5,11 @@
  * Integration: connection:conn_twilio_01KB17KVHYEAGTVK0VVR1H47AA
  */
 
+import twilio from 'twilio';
 import { sendSMS, getTwilioPhoneNumber, isTwilioInitialized, smsTemplates } from '../twilioClient';
 import { storage } from '../storage';
-import type { SmsConversation, SmsMessage, InsertSmsConversation, InsertSmsMessage } from '@shared/schema';
+import type { SmsConversation, SmsMessage, InsertSmsConversation, InsertSmsMessage, BusinessSettings } from '@shared/schema';
+import { broadcastSmsNotification } from '../websocket';
 
 interface SendSmsOptions {
   businessOwnerId: string;
@@ -19,6 +21,7 @@ interface SendSmsOptions {
   senderUserId: string;
   isQuickAction?: boolean;
   quickActionType?: string;
+  mediaUrls?: string[]; // MMS media URLs (max 10, each up to 5MB)
 }
 
 interface QuickActionOptions {
@@ -28,6 +31,8 @@ interface QuickActionOptions {
   jobTitle?: string;
   businessName?: string;
   estimatedTime?: string;
+  includeTrackingLink?: boolean;
+  trackingLinkUrl?: string;
 }
 
 /**
@@ -83,7 +88,69 @@ export async function getOrCreateConversation(options: {
 }
 
 /**
- * Send an SMS message to a client
+ * Send SMS using business's custom Twilio credentials if configured
+ */
+async function sendSmsWithBusinessSettings(
+  to: string,
+  message: string,
+  businessSettings: BusinessSettings | null | undefined,
+  mediaUrls?: string[]
+): Promise<{ success: boolean; messageId?: string; error?: string; simulated?: boolean }> {
+  // Format phone number
+  let formattedTo = to.replace(/\s+/g, '').replace(/^0/, '+61');
+  if (!formattedTo.startsWith('+')) {
+    formattedTo = '+61' + formattedTo.replace(/^61/, '');
+  }
+  
+  const validMediaUrls = mediaUrls?.slice(0, 10) || [];
+  const isMMS = validMediaUrls.length > 0;
+  
+  // Check if business has custom Twilio settings
+  if (businessSettings?.twilioAccountSid && businessSettings?.twilioAuthToken) {
+    try {
+      const client = twilio(businessSettings.twilioAccountSid, businessSettings.twilioAuthToken);
+      
+      // Determine the "from" value - use sender ID or phone number
+      // Note: Alphanumeric sender IDs don't support MMS, so use phone number for MMS
+      let fromValue: string;
+      if (isMMS || !businessSettings.twilioSenderId) {
+        // Use phone number for MMS or if no sender ID configured
+        fromValue = businessSettings.twilioPhoneNumber || getTwilioPhoneNumber() || '';
+      } else {
+        // Use alphanumeric sender ID for SMS (max 11 chars, alphanumeric only)
+        fromValue = businessSettings.twilioSenderId.slice(0, 11);
+      }
+      
+      if (!fromValue) {
+        throw new Error('No Twilio phone number or sender ID configured');
+      }
+      
+      const messageOptions: any = {
+        body: message,
+        from: fromValue,
+        to: formattedTo
+      };
+      
+      if (isMMS) {
+        messageOptions.mediaUrl = validMediaUrls;
+      }
+      
+      const result = await client.messages.create(messageOptions);
+      console.log(`✅ ${isMMS ? 'MMS' : 'SMS'} sent via business Twilio (${fromValue}) to ${formattedTo}: ${result.sid}`);
+      return { success: true, messageId: result.sid };
+    } catch (error: any) {
+      console.error(`❌ Failed to send ${isMMS ? 'MMS' : 'SMS'} via business Twilio:`, error.message);
+      // Fall back to platform Twilio
+      console.log('Falling back to platform Twilio...');
+    }
+  }
+  
+  // Fall back to platform Twilio
+  return sendSMS({ to: formattedTo, message, mediaUrls: validMediaUrls.length > 0 ? validMediaUrls : undefined });
+}
+
+/**
+ * Send an SMS/MMS message to a client
  */
 export async function sendSmsToClient(options: SendSmsOptions): Promise<SmsMessage> {
   const conversation = await getOrCreateConversation({
@@ -94,6 +161,12 @@ export async function sendSmsToClient(options: SendSmsOptions): Promise<SmsMessa
     jobId: options.jobId,
   });
   
+  // Fetch business settings for custom Twilio configuration
+  const businessSettings = await storage.getBusinessSettings(options.businessOwnerId);
+  
+  // Validate and limit media URLs (max 10 per Twilio MMS)
+  const validMediaUrls = options.mediaUrls?.slice(0, 10) || [];
+  
   // Create message record first (pending status)
   const message = await storage.createSmsMessage({
     conversationId: conversation.id,
@@ -103,16 +176,19 @@ export async function sendSmsToClient(options: SendSmsOptions): Promise<SmsMessa
     status: 'pending',
     isQuickAction: options.isQuickAction || false,
     quickActionType: options.quickActionType || null,
+    mediaUrls: validMediaUrls,
     readAt: null,
     twilioSid: null,
     errorMessage: null,
   });
   
-  // Send via Twilio
-  const result = await sendSMS({
-    to: conversation.clientPhone,
-    message: options.message,
-  });
+  // Send via Twilio using business settings if available
+  const result = await sendSmsWithBusinessSettings(
+    conversation.clientPhone,
+    options.message,
+    businessSettings,
+    validMediaUrls.length > 0 ? validMediaUrls : undefined
+  );
   
   // Update message with result
   const updatedMessage = await storage.updateSmsMessage(message.id, {
@@ -151,7 +227,11 @@ export async function sendQuickAction(options: QuickActionOptions): Promise<SmsM
   
   switch (options.actionType) {
     case 'on_my_way':
-      message = `Hi! ${businessName} here. I'm on my way to ${jobTitle}. ${options.estimatedTime ? `ETA: ${options.estimatedTime}` : 'See you soon!'} (${timeString})`;
+      message = `Hi! ${businessName} here. I'm on my way to ${jobTitle}. ${options.estimatedTime ? `ETA: ${options.estimatedTime}` : 'See you soon!'}`;
+      if (options.includeTrackingLink && options.trackingLinkUrl) {
+        message += ` Track my arrival: ${options.trackingLinkUrl}`;
+      }
+      message += ` (${timeString})`;
       break;
     case 'just_arrived':
       message = `Hi! ${businessName} has just arrived for ${jobTitle}. (${timeString})`;
@@ -183,17 +263,20 @@ export async function sendQuickAction(options: QuickActionOptions): Promise<SmsM
 }
 
 /**
- * Handle incoming SMS from Twilio webhook
+ * Handle incoming SMS/MMS from Twilio webhook
  * 
  * Multi-tenant safety: When multiple businesses serve the same client,
  * we resolve to the most recent conversation that has had an outbound message.
  * This ensures replies go to the business that most recently contacted the client.
+ * 
+ * MMS support: Extracts media URLs from Twilio webhook (MediaUrl0, MediaUrl1, etc.)
  */
 export async function handleIncomingSms(
   fromPhone: string,
   toPhone: string,
   body: string,
-  twilioSid: string
+  twilioSid: string,
+  mediaUrls?: string[] // MMS media URLs from Twilio webhook
 ): Promise<SmsMessage | null> {
   const formattedFromPhone = formatPhoneNumber(fromPhone);
   
@@ -234,27 +317,45 @@ export async function handleIncomingSms(
     console.log(`[SMS] No outbound messages found for ${formattedFromPhone}, using most recent conversation`);
   }
   
-  // Create inbound message
+  const isMMS = mediaUrls && mediaUrls.length > 0;
+  
+  // Create inbound message (with MMS media URLs if present)
   const message = await storage.createSmsMessage({
     conversationId: targetConversation.id,
     direction: 'inbound',
-    body,
+    body: body || (isMMS ? '[Media message]' : ''),
     senderUserId: null,
     status: 'received',
     twilioSid,
     isQuickAction: false,
     quickActionType: null,
+    mediaUrls: mediaUrls || [],
     readAt: null,
     errorMessage: null,
   });
   
   // Update conversation
+  const newUnreadCount = (targetConversation.unreadCount || 0) + 1;
   await storage.updateSmsConversation(targetConversation.id, {
     lastMessageAt: new Date(),
-    unreadCount: (targetConversation.unreadCount || 0) + 1,
+    unreadCount: newUnreadCount,
   });
   
-  console.log(`[SMS] Inbound message routed to conversation ${targetConversation.id} (business: ${targetConversation.businessOwnerId})`);
+  console.log(`[${isMMS ? 'MMS' : 'SMS'}] Inbound message routed to conversation ${targetConversation.id} (business: ${targetConversation.businessOwnerId})${isMMS ? ` with ${mediaUrls.length} media attachment(s)` : ''}`);
+  
+  // Broadcast WebSocket notification to business owner and team members
+  try {
+    broadcastSmsNotification(targetConversation.businessOwnerId, {
+      conversationId: targetConversation.id,
+      senderPhone: formattedFromPhone,
+      senderName: targetConversation.clientName,
+      messagePreview: (body || (isMMS ? '[Media message]' : '')).slice(0, 100),
+      jobId: targetConversation.jobId,
+      unreadCount: newUnreadCount,
+    });
+  } catch (wsError) {
+    console.error('[SMS] Error broadcasting WebSocket notification:', wsError);
+  }
   
   return message;
 }
@@ -431,6 +532,62 @@ export async function seedDefaultSmsTemplates(userId: string): Promise<void> {
       body: template.body,
       isDefault: template.isDefault,
     });
+  }
+}
+
+/**
+ * Generate a tracking link for a job
+ * Used when sending "On My Way" SMS to include live location tracking
+ */
+export async function generateTrackingLink(
+  jobId: string,
+  teamMemberId: string,
+  businessOwnerId: string
+): Promise<{ url: string; token: string } | null> {
+  try {
+    const { randomBytes } = await import('crypto');
+    
+    // Check if there's already an active tracking link
+    const existingLink = await storage.getSmsTrackingLinkByJobId(jobId);
+    if (existingLink && existingLink.isActive && new Date(existingLink.expiresAt) > new Date()) {
+      const baseUrl = process.env.REPLIT_DOMAIN 
+        ? `https://${process.env.REPLIT_DOMAIN}`
+        : process.env.BASE_URL || 'http://localhost:5000';
+      return {
+        url: `${baseUrl}/track/${existingLink.token}`,
+        token: existingLink.token,
+      };
+    }
+    
+    // Deactivate any existing links
+    if (existingLink) {
+      await storage.deactivateSmsTrackingLink(existingLink.id);
+    }
+    
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // Expires in 24 hours
+    
+    await storage.createSmsTrackingLink({
+      jobId,
+      teamMemberId,
+      businessOwnerId,
+      token,
+      expiresAt,
+      estimatedArrival: null,
+    });
+    
+    const baseUrl = process.env.REPLIT_DOMAIN 
+      ? `https://${process.env.REPLIT_DOMAIN}`
+      : process.env.BASE_URL || 'http://localhost:5000';
+    
+    return {
+      url: `${baseUrl}/track/${token}`,
+      token,
+    };
+  } catch (error) {
+    console.error('Error generating tracking link:', error);
+    return null;
   }
 }
 

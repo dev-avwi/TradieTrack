@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { ChatMessage } from "@/components/ChatMessage";
@@ -21,10 +21,13 @@ import {
   Check,
   CheckCheck,
   Phone,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
 import { useAppMode } from "@/hooks/use-app-mode";
+import { useSmsSocket } from "@/hooks/use-sms-socket";
 import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
 
 interface TeamChatMessage {
@@ -166,6 +169,31 @@ export default function ChatHub() {
 
   const { data: currentUser } = useQuery<User>({
     queryKey: ['/api/auth/me'],
+  });
+
+  const handleSmsNotification = useCallback((notification: {
+    conversationId: string;
+    senderPhone: string;
+    senderName: string | null;
+    messagePreview: string;
+    jobId?: string | null;
+    unreadCount: number;
+    timestamp: number;
+  }) => {
+    toast({
+      title: `New SMS from ${notification.senderName || notification.senderPhone}`,
+      description: notification.messagePreview.slice(0, 60) + (notification.messagePreview.length > 60 ? '...' : ''),
+    });
+    
+    if (selectedSmsConversation?.id === notification.conversationId) {
+      queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', notification.conversationId, 'messages'] });
+    }
+  }, [toast, queryClient, selectedSmsConversation]);
+
+  const { isConnected: smsSocketConnected } = useSmsSocket({
+    businessId: currentUser?.id || '',
+    enabled: !!currentUser?.id,
+    onSmsNotification: handleSmsNotification,
   });
 
   const { data: unreadCounts = { teamChat: 0, directMessages: 0, jobChats: 0, sms: 0 } } = useQuery<UnreadCounts>({
