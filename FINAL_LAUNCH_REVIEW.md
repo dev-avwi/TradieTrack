@@ -52,8 +52,8 @@ TradieTrack is a **production-ready** job management platform that matches or ex
 | Stripe Integration | ✅ Connect Express | ✅ Stripe | ✅ ServiceM8 Pay |
 | Payment Links in Emails | ✅ Auto-generated | ✅ Full | ✅ Full |
 | Payment Receipts | ✅ Auto-email | ✅ Full | ✅ Full |
-| Xero Sync | ✅ OAuth + Sync | ✅ 2-way | ✅ 2-way |
-| MYOB Sync | ✅ OAuth + Sync | ✅ 2-way | ✅ 2-way |
+| Xero Sync | ✅ OAuth + Auto-sync | ✅ 2-way | ✅ 2-way |
+| MYOB Sync | ⚠️ Removed (focusing on Xero) | ✅ 2-way | ✅ 2-way |
 | QuickBooks Sync | ⚠️ Not yet | ✅ Full | ✅ Full |
 | On-site Payments | ✅ Record + link | ✅ Full | ✅ Tap to Pay |
 | **Score** | **8.5/10** | **9.0/10** | **9.0/10** |
@@ -152,7 +152,7 @@ TradieTrack is a **production-ready** job management platform that matches or ex
 
 | Gap | Who Leads | Priority to Fix |
 |-----|-----------|-----------------|
-| QuickBooks Integration | Tradify/ServiceM8 | Low (Xero/MYOB cover AU market) |
+| QuickBooks Integration | Tradify/ServiceM8 | Low (Xero covers AU market) |
 | Customer Self-Booking Portal | ServiceM8 | Medium |
 | SmartRead Bills (AI invoice scanning) | Tradify | Low |
 | Inventory/Stock Management | Tradify/AroFlo | Low |
@@ -194,8 +194,8 @@ TradieTrack is a **production-ready** job management platform that matches or ex
 - [x] 23 professional templates
 
 ### Integrations ✅ READY
-- [x] Xero OAuth + sync (configured)
-- [x] MYOB OAuth + sync (needs credentials)
+- [x] Xero OAuth + auto-sync (invoices sync automatically when sent)
+- [ ] MYOB - Removed from UI (focusing on Xero)
 - [x] Stripe Connect Express
 - [x] SendGrid email
 - [x] Twilio SMS
