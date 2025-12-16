@@ -29,6 +29,7 @@ type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 
 const STATUS_FILTERS: { key: string; label: string; icon: string }[] = [
   { key: 'all', label: 'All', icon: 'briefcase' },
+  { key: 'recurring', label: 'Recurring', icon: 'repeat' },
   { key: 'pending', label: 'Pending', icon: 'clock' },
   { key: 'scheduled', label: 'Scheduled', icon: 'calendar' },
   { key: 'in_progress', label: 'In Progress', icon: 'play' },
@@ -95,10 +96,23 @@ function JobCard({
         {/* Status badge at top */}
         <View style={styles.jobCardStatusRow}>
           <StatusBadge status={job.status} size="sm" />
+          {job.isRecurring && (
+            <View style={styles.recurringBadge}>
+              <Feather name="repeat" size={10} color={colors.primary} />
+              <Text style={styles.recurringBadgeText}>Recurring</Text>
+            </View>
+          )}
         </View>
 
         {/* Title */}
         <Text style={styles.jobTitle} numberOfLines={2}>{job.title || 'Untitled Job'}</Text>
+        
+        {/* Next recurrence date for recurring jobs */}
+        {job.isRecurring && job.nextRecurrenceDate && (
+          <Text style={styles.nextRecurrenceText}>
+            Next: {new Date(job.nextRecurrenceDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+          </Text>
+        )}
 
         {/* Details section */}
         <View style={styles.jobCardDetails}>
@@ -172,6 +186,7 @@ export default function JobsScreen() {
   const statusCounts = useMemo(() => {
     const counts = {
       all: jobs.length,
+      recurring: 0,
       pending: 0,
       scheduled: 0,
       in_progress: 0,
@@ -180,6 +195,7 @@ export default function JobsScreen() {
     };
     
     jobs.forEach(job => {
+      if (job.isRecurring) counts.recurring++;
       if (job.status === 'pending') counts.pending++;
       else if (job.status === 'scheduled') counts.scheduled++;
       else if (job.status === 'in_progress') counts.in_progress++;
@@ -200,6 +216,10 @@ export default function JobsScreen() {
 
     if (activeFilter === 'all') {
       return filterBySearch(jobs);
+    }
+    
+    if (activeFilter === 'recurring') {
+      return filterBySearch(jobs.filter(job => job.isRecurring));
     }
     
     return filterBySearch(jobs.filter(job => job.status === activeFilter));
@@ -554,6 +574,30 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.md,
   },
   jobCardStatusRow: {
+    marginBottom: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  recurringBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    gap: 3,
+  },
+  recurringBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  nextRecurrenceText: {
+    fontSize: 11,
+    color: colors.primary,
+    fontWeight: '500',
     marginBottom: spacing.xs,
   },
   jobTitle: {

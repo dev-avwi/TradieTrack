@@ -2054,6 +2054,88 @@ export default function JobDetailScreen() {
     }
   };
 
+  const handleDuplicateJob = async () => {
+    if (!job) return;
+    
+    Alert.alert(
+      'Duplicate Job',
+      'Create a new job with the same details?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Duplicate',
+          onPress: async () => {
+            try {
+              const newJobData = {
+                title: job.title,
+                description: job.description ? `${job.description}\n\n(Duplicated from job #${job.id})` : `Duplicated from job #${job.id}`,
+                address: job.address,
+                clientId: job.clientId,
+                status: 'pending',
+                estimatedDuration: job.estimatedDuration,
+                estimatedCost: job.estimatedCost,
+                geofenceRadius: job.geofenceRadius,
+                latitude: job.latitude,
+                longitude: job.longitude,
+                notes: job.notes ? `${job.notes}\n\n(Original job: #${job.id})` : `Original job: #${job.id}`,
+              };
+              
+              const response = await api.post<{ id: string }>('/api/jobs', newJobData);
+              
+              if (response.data?.id) {
+                Alert.alert('Success', 'Job duplicated successfully', [
+                  {
+                    text: 'View New Job',
+                    onPress: () => router.push(`/job/${response.data!.id}`),
+                  },
+                ]);
+              } else {
+                Alert.alert('Error', 'Failed to duplicate job');
+              }
+            } catch (error) {
+              console.error('Error duplicating job:', error);
+              Alert.alert('Error', 'Failed to duplicate job');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleStopRecurring = async () => {
+    if (!job) return;
+    
+    Alert.alert(
+      'Stop Recurring',
+      'This will stop future jobs from being automatically created. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Stop Recurring',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await api.patch(`/api/jobs/${job.id}`, {
+                isRecurring: false,
+                nextRecurrenceDate: null,
+              });
+              
+              if (response.data) {
+                setJob({ ...job, isRecurring: false, nextRecurrenceDate: null });
+                Alert.alert('Success', 'Recurring schedule stopped');
+              } else {
+                Alert.alert('Error', 'Failed to stop recurring schedule');
+              }
+            } catch (error) {
+              console.error('Error stopping recurring:', error);
+              Alert.alert('Error', 'Failed to stop recurring schedule');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleStartTimer = async () => {
     if (!job) return;
     
@@ -2756,6 +2838,102 @@ export default function JobDetailScreen() {
             </TouchableOpacity>
           </View>
         )}
+      </View>
+
+      {/* Recurring Schedule Section */}
+      {job.isRecurring && (
+        <View style={styles.costingCard}>
+          <View style={styles.costingHeader}>
+            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+              <Feather name="repeat" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <Text style={styles.costingTitle}>Recurring Schedule</Text>
+          </View>
+          
+          <View style={{ gap: spacing.md }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Frequency</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
+                {job.recurrencePattern === 'weekly' && 'Weekly'}
+                {job.recurrencePattern === 'fortnightly' && 'Fortnightly'}
+                {job.recurrencePattern === 'monthly' && 'Monthly'}
+                {job.recurrencePattern === 'quarterly' && 'Quarterly'}
+                {job.recurrencePattern === 'yearly' && 'Yearly'}
+              </Text>
+            </View>
+            
+            {job.nextRecurrenceDate && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Next Job</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
+                  {new Date(job.nextRecurrenceDate).toLocaleDateString('en-AU', {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                  })}
+                </Text>
+              </View>
+            )}
+            
+            {job.recurrenceEndDate && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Ends</Text>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>
+                  {new Date(job.recurrenceEndDate).toLocaleDateString('en-AU', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                  })}
+                </Text>
+              </View>
+            )}
+            
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: spacing.xs,
+                backgroundColor: colors.destructive,
+                paddingVertical: spacing.md,
+                borderRadius: radius.lg,
+                marginTop: spacing.sm,
+              }}
+              onPress={handleStopRecurring}
+              activeOpacity={0.8}
+            >
+              <Feather name="x-circle" size={18} color={colors.primaryForeground} />
+              <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+                Stop Recurring
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Duplicate Job Button */}
+      <View style={styles.costingCard}>
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: spacing.sm,
+            backgroundColor: colors.card,
+            paddingVertical: spacing.md,
+            borderRadius: radius.lg,
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
+          onPress={handleDuplicateJob}
+          activeOpacity={0.8}
+        >
+          <Feather name="copy" size={18} color={colors.foreground} />
+          <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>
+            Duplicate Job
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Main Action Button */}

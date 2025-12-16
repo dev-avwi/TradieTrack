@@ -529,6 +529,42 @@ export default function CreateJobScreen() {
   const [quickClientPhone, setQuickClientPhone] = useState('');
   const [isAddingClient, setIsAddingClient] = useState(false);
 
+  // Recurring job state
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrencePattern, setRecurrencePattern] = useState<'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [showRecurrenceOptions, setShowRecurrenceOptions] = useState(false);
+
+  const RECURRENCE_OPTIONS = [
+    { value: 'weekly' as const, label: 'Weekly' },
+    { value: 'fortnightly' as const, label: 'Fortnightly (2 weeks)' },
+    { value: 'monthly' as const, label: 'Monthly' },
+    { value: 'quarterly' as const, label: 'Quarterly (3 months)' },
+    { value: 'yearly' as const, label: 'Yearly' },
+  ];
+
+  const calculateNextRecurrenceDate = (baseDate: string, pattern: string): string => {
+    const date = new Date(baseDate);
+    switch (pattern) {
+      case 'weekly':
+        date.setDate(date.getDate() + 7);
+        break;
+      case 'fortnightly':
+        date.setDate(date.getDate() + 14);
+        break;
+      case 'monthly':
+        date.setMonth(date.getMonth() + 1);
+        break;
+      case 'quarterly':
+        date.setMonth(date.getMonth() + 3);
+        break;
+      case 'yearly':
+        date.setFullYear(date.getFullYear() + 1);
+        break;
+    }
+    return date.toISOString();
+  };
+
   const STATUS_OPTIONS: { value: JobStatus; label: string; color: string }[] = [
     { value: 'pending', label: 'Pending', color: colors.pending },
     { value: 'scheduled', label: 'Scheduled', color: colors.scheduled },
@@ -613,6 +649,18 @@ export default function CreateJobScreen() {
         const hours = parseFloat(estimatedDuration);
         if (!isNaN(hours) && hours > 0) {
           jobData.estimatedDuration = Math.round(hours * 60);
+        }
+      }
+
+      // Add recurring job fields
+      if (isRecurring) {
+        const baseDate = scheduledAt ? scheduledAt.toISOString() : new Date().toISOString();
+        jobData.isRecurring = true;
+        jobData.recurrencePattern = recurrencePattern;
+        jobData.recurrenceInterval = 1;
+        jobData.nextRecurrenceDate = calculateNextRecurrenceDate(baseDate, recurrencePattern);
+        if (recurrenceEndDate) {
+          jobData.recurrenceEndDate = new Date(recurrenceEndDate).toISOString();
         }
       }
 
@@ -885,6 +933,85 @@ export default function CreateJobScreen() {
                 numberOfLines={3}
               />
             </View>
+
+            {/* Recurring Job Section */}
+            <View style={[styles.section, { backgroundColor: colors.card, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.border }]}>
+              <TouchableOpacity 
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                onPress={() => setIsRecurring(!isRecurring)}
+                activeOpacity={0.7}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 16 }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    <Feather name="repeat" size={18} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground, marginBottom: 2 }}>Make this recurring</Text>
+                    <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
+                      Automatically create jobs on a schedule
+                    </Text>
+                  </View>
+                </View>
+                <View style={[
+                  { width: 50, height: 30, borderRadius: 15, justifyContent: 'center', paddingHorizontal: 2 },
+                  { backgroundColor: isRecurring ? colors.primary : colors.muted }
+                ]}>
+                  <View style={[
+                    { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.white },
+                    { alignSelf: isRecurring ? 'flex-end' : 'flex-start' }
+                  ]} />
+                </View>
+              </TouchableOpacity>
+
+              {isRecurring && (
+                <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border }}>
+                  <View style={{ marginBottom: 16 }}>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 6 }}>Frequency</Text>
+                    <TouchableOpacity
+                      style={styles.selector}
+                      onPress={() => setShowRecurrenceOptions(true)}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <Feather name="repeat" size={16} color={colors.primary} />
+                        <Text style={{ fontSize: 15, fontWeight: '500', color: colors.foreground }}>
+                          {RECURRENCE_OPTIONS.find(o => o.value === recurrencePattern)?.label || 'Select frequency'}
+                        </Text>
+                      </View>
+                      <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={{ marginBottom: 16 }}>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 6 }}>End Date (Optional)</Text>
+                    <View style={{ position: 'relative' }}>
+                      <Feather name="calendar" size={16} color={colors.mutedForeground} style={{ position: 'absolute', left: 14, top: 16, zIndex: 1 }} />
+                      <TextInput
+                        style={[styles.input, { paddingLeft: 40 }]}
+                        value={recurrenceEndDate}
+                        onChangeText={setRecurrenceEndDate}
+                        placeholder="YYYY-MM-DD (leave empty for no end)"
+                        placeholderTextColor={colors.mutedForeground}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primaryLight, padding: 12, borderRadius: 10 }}>
+                    <Feather name="info" size={14} color={colors.primary} />
+                    <Text style={{ flex: 1, fontSize: 13, color: colors.primary }}>
+                      Next job will be created on{' '}
+                      {new Date(calculateNextRecurrenceDate(
+                        scheduledAt ? scheduledAt.toISOString() : new Date().toISOString(),
+                        recurrencePattern
+                      )).toLocaleDateString('en-AU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
           </ScrollView>
 
           {/* Save Button */}
@@ -1007,6 +1134,51 @@ export default function CreateJobScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Recurrence Options Modal */}
+      <Modal visible={showRecurrenceOptions} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Frequency</Text>
+              <TouchableOpacity onPress={() => setShowRecurrenceOptions(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalList}>
+              {RECURRENCE_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.statusItem,
+                    recurrencePattern === option.value && styles.statusItemSelected,
+                  ]}
+                  onPress={() => {
+                    setRecurrencePattern(option.value);
+                    setShowRecurrenceOptions(false);
+                  }}
+                >
+                  <Feather 
+                    name="repeat" 
+                    size={18} 
+                    color={recurrencePattern === option.value ? colors.primary : colors.mutedForeground} 
+                  />
+                  <Text style={[
+                    styles.statusItemText,
+                    recurrencePattern === option.value && { color: colors.primary, fontWeight: '600' }
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {recurrencePattern === option.value && (
+                    <Feather name="check" size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
     </>
   );
