@@ -41,3 +41,17 @@ Key architectural features include:
 -   **SMS Notifications**: Twilio
 -   **Object Storage**: Google Cloud Storage (GCS)
 -   **Maps**: Leaflet with react-leaflet (CartoDB dark tiles)
+
+### Demo Mode & Testing
+
+-   **Demo Account**: demo@tradietrack.com.au / demo123456 - Pre-loaded with 3 clients, 3 jobs, quotes & invoices
+-   **DemoModeBanner**: Visual indicator when logged into demo account with helpful guidance
+-   **DemoPaymentSimulator**: Simulates Stripe payment flow for demos (shows fee breakdown, processing animation)
+-   **Test Users**: mike@northqldplumbing.com.au, luke@harriselectrical.com.au, tom@northqldplumbing.com.au (all password: Test123!)
+-   **StripeSetupGuide**: In-app Stripe Connect setup documentation on Integrations page
+
+### Documentation
+
+-   **COMPREHENSIVE_APP_RATING.md**: Detailed 8.7/10 app rating with ServiceM8 comparison
+-   Key Strengths: Modern UI (9.0), Job Management (9.2), AI Features (8.6), Offline Support (9.0)
+-   Key Gap: Accounting software integrations (Xero/MYOB) - 7.5/10
