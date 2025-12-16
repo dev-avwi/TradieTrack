@@ -24,6 +24,7 @@ import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import api from '../../src/lib/api';
 import { useJobsStore, useTimeTrackingStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';
@@ -2285,7 +2286,6 @@ export default function JobDetailScreen() {
     setPhotos(prev => [...prev, optimisticMedia]);
     
     try {
-      const formData = new FormData();
       const filename = uri.split('/').pop() || (mediaType === 'video' ? 'video.mp4' : 'photo.jpg');
       const ext = filename.split('.').pop()?.toLowerCase() || (mediaType === 'video' ? 'mp4' : 'jpg');
       
@@ -2296,16 +2296,17 @@ export default function JobDetailScreen() {
         mimeType = ext === 'png' ? 'image/png' : `image/${ext}`;
       }
       
-      formData.append('photo', {
-        uri,
-        name: filename,
-        type: mimeType,
-      } as any);
-      formData.append('jobId', job.id);
-      formData.append('mimeType', mimeType);
+      // Read file as base64
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
 
-      const response = await api.post(`/api/jobs/${job.id}/photos`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      // Send JSON request with base64 data
+      const response = await api.post(`/api/jobs/${job.id}/photos`, {
+        fileName: filename,
+        fileBase64: base64,
+        mimeType: mimeType,
+        category: mediaType,
       });
 
       if (response.data) {
@@ -2358,21 +2359,16 @@ export default function JobDetailScreen() {
     setShowAnnotationEditor(false);
     
     try {
-      // Convert base64 data URI to blob-like data for upload
+      // Extract base64 data from data URI (format: data:image/jpeg;base64,...)
       const base64Data = annotatedUri.split(',')[1];
       const filename = `annotated_${Date.now()}.jpg`;
-      
-      const formData = new FormData();
-      formData.append('photo', {
-        uri: annotatedUri,
-        name: filename,
-        type: 'image/jpeg',
-      } as any);
-      formData.append('jobId', job.id);
-      formData.append('category', 'annotated');
 
-      const response = await api.post(`/api/jobs/${job.id}/photos`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      // Send JSON request with base64 data
+      const response = await api.post(`/api/jobs/${job.id}/photos`, {
+        fileName: filename,
+        fileBase64: base64Data,
+        mimeType: 'image/jpeg',
+        category: 'annotated',
       });
 
       if (response.data) {
