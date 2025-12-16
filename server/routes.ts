@@ -9490,10 +9490,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Get client information if job has a client
+      let client = null;
+      if (job.clientId) {
+        client = await storage.getClient(job.clientId, job.userId);
+      }
+      
       res.json({ 
         participants,
         jobTitle: job.title,
         participantCount: participants.length,
+        client: client ? {
+          id: client.id,
+          name: client.name,
+          phone: client.phone,
+          email: client.email,
+        } : null,
       });
     } catch (error: any) {
       console.error('Error getting job chat participants:', error);

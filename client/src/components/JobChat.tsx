@@ -6,7 +6,7 @@ import { ChatComposer } from "./ChatComposer";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Loader2, Users, Eye } from "lucide-react";
+import { MessageCircle, Loader2, Users, Eye, User, Phone, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -32,10 +32,18 @@ interface Participant {
   avatar?: string | null;
 }
 
+interface ClientInfo {
+  id: string;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+}
+
 interface JobChatParticipants {
   participants: Participant[];
   jobTitle: string;
   participantCount: number;
+  client?: ClientInfo | null;
 }
 
 interface JobChatProps {
@@ -126,6 +134,45 @@ export function JobChat({ jobId, currentUserId, className }: JobChatProps) {
         </Badge>
       </CardHeader>
       
+      {/* Client Banner - Who this job is for */}
+      {participantsData?.client && (
+        <div className="mx-4 mb-3 px-3 py-2.5 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-100 dark:border-green-900/50">
+          <div className="flex items-start gap-2">
+            <User className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-green-800 dark:text-green-300 mb-1">
+                Client for this job:
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-green-700 dark:text-green-200">
+                  {participantsData.client.name}
+                </span>
+                {participantsData.client.phone && (
+                  <a 
+                    href={`tel:${participantsData.client.phone}`}
+                    className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:underline"
+                    data-testid="client-phone-link"
+                  >
+                    <Phone className="h-3 w-3" />
+                    {participantsData.client.phone}
+                  </a>
+                )}
+                {participantsData.client.email && (
+                  <a 
+                    href={`mailto:${participantsData.client.email}`}
+                    className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:underline"
+                    data-testid="client-email-link"
+                  >
+                    <Mail className="h-3 w-3" />
+                    {participantsData.client.email}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Participants Banner - Who can see these messages */}
       {participantsData && participantsData.participants.length > 0 && (
         <div className="mx-4 mb-3 px-3 py-2.5 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-900/50">
