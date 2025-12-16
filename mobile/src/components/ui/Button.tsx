@@ -1,9 +1,17 @@
-import { Pressable, Text, ActivityIndicator, View, StyleSheet, ViewStyle } from 'react-native';
+import { Pressable, Text, ActivityIndicator, View, StyleSheet, ViewStyle, Platform } from 'react-native';
 import { ReactNode } from 'react';
 import { useTheme } from '../../lib/theme';
 
 type ButtonVariant = 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'brand';
 type ButtonSize = 'default' | 'sm' | 'lg' | 'xl' | 'icon';
+
+// Brand button colors - fixed blue for guaranteed visibility
+const BRAND_COLORS = {
+  background: '#2563EB',
+  backgroundPressed: '#1D4ED8',
+  border: '#1D4ED8',
+  text: '#FFFFFF',
+};
 
 interface ButtonProps {
   children: ReactNode;
@@ -76,13 +84,19 @@ export function Button({
           overlayColor: 'transparent',
         };
       case 'brand':
-        // Brand button uses a fixed blue color for guaranteed visibility
-        // especially on login/register screens before theme loads
+        // Brand button uses FIXED blue color for GUARANTEED visibility
+        // This is critical for auth screens before user theme loads
         return {
-          backgroundColor: pressed ? '#2563EB' : '#3B82F6',
-          borderColor: '#2563EB',
-          textColor: '#FFFFFF',
+          backgroundColor: pressed ? BRAND_COLORS.backgroundPressed : BRAND_COLORS.background,
+          borderColor: BRAND_COLORS.border,
+          textColor: BRAND_COLORS.text,
           overlayColor: 'transparent',
+          // Shadow for better visibility on light backgrounds
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 6,
+          elevation: 8,
         };
       default:
         return {
@@ -148,18 +162,29 @@ export function Button({
       disabled={disabled || loading}
       style={({ pressed }) => {
         const variantStyles = getVariantStyles(pressed);
+        const baseStyles: ViewStyle = {
+          backgroundColor: variantStyles.backgroundColor,
+          borderColor: variantStyles.borderColor,
+          borderWidth: 1,
+          minHeight: sizeStyles.minHeight,
+          paddingHorizontal: sizeStyles.paddingHorizontal,
+          paddingVertical: sizeStyles.paddingVertical,
+          borderRadius: sizeStyles.borderRadius,
+          opacity: disabled ? 0.5 : 1,
+        };
+        
+        // Apply shadow properties if they exist (for brand variant)
+        if (variantStyles.shadowColor) {
+          baseStyles.shadowColor = variantStyles.shadowColor;
+          baseStyles.shadowOffset = variantStyles.shadowOffset;
+          baseStyles.shadowOpacity = variantStyles.shadowOpacity;
+          baseStyles.shadowRadius = variantStyles.shadowRadius;
+          baseStyles.elevation = variantStyles.elevation;
+        }
+        
         return [
           styles.button,
-          {
-            backgroundColor: variantStyles.backgroundColor,
-            borderColor: variantStyles.borderColor,
-            borderWidth: 1,
-            minHeight: sizeStyles.minHeight,
-            paddingHorizontal: sizeStyles.paddingHorizontal,
-            paddingVertical: sizeStyles.paddingVertical,
-            borderRadius: sizeStyles.borderRadius,
-            opacity: disabled ? 0.5 : 1,
-          },
+          baseStyles,
           size === 'icon' && { width: sizeStyles.width, height: sizeStyles.height },
           fullWidth && styles.fullWidth,
           style,
