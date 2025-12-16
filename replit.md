@@ -1,5 +1,5 @@
 ### Overview
-TradieTrack is a mobile-first web application for Australian tradespeople, designed to streamline business operations from job creation and management to quoting, invoicing, and payment collection. It includes Australian GST handling and AUD currency, aiming to provide a comprehensive, efficient, and user-friendly solution for solo tradies and small businesses to manage their operations effectively. The project's ambition is to empower tradies with tools that simplify their daily tasks, improve financial management, and enhance client communication, ultimately boosting productivity and profitability.
+TradieTrack is a mobile-first web application for Australian tradespeople, designed to streamline business operations from job creation and management to quoting, invoicing, and payment collection. It includes Australian GST handling and AUD currency, aiming to provide a comprehensive, efficient, and user-friendly solution for solo tradies and small businesses. The project's ambition is to empower tradies with tools that simplify daily tasks, improve financial management, and enhance client communication, ultimately boosting productivity and profitability.
 
 ### User Preferences
 Preferred communication style: Simple, everyday language.
@@ -8,96 +8,24 @@ Preferred communication style: Simple, everyday language.
 TradieTrack utilizes an event-driven architecture with TypeScript. The frontend is a mobile-first React 18 application, using shadcn/ui (Radix UI) for components, TailwindCSS for styling, Wouter for routing, and TanStack Query for state management. The backend is an Express.js and TypeScript REST API with Zod for validation, storing data in PostgreSQL managed by Drizzle ORM.
 
 Key architectural features include:
-- **Authentication**: Email/password, Google OAuth 2.0, session management, and secure token-based password reset.
-- **AI Assistant**: An integrated GPT-4o-mini AI provides business-aware suggestions and Australian English phrasing.
-- **PDF Generation**: Server-side PDF generation via Puppeteer for quotes and invoices.
-- **Theming & Branding**: Comprehensive system for custom brand colors, persisting across sessions.
-- **UI/UX**: Mobile-first design with a native app feel, card-based layouts, touch-optimized components, and a "Today's Schedule" dashboard.
-- **Smart Tradie Features**: Includes Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation.
-- **Adaptive Solo/Team Mode**: Adjusts interface based on team size, featuring time tracking and GPS check-in (team mode).
-- **Job Workflow**: A 5-stage ServiceM8-style job status workflow (`pending` → `scheduled` → `in_progress` → `done` → `invoiced`) with visual indicators and professional job confirmation emails.
-- **Live Quote/Invoice Editor**: Real-time preview with templates, catalog items, and deposit settings, supporting quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
-- **Customisable Email Templates**: Preview and edit email content with AI-powered suggestions and Automated Gmail with PDF Workflow.
-- **PWA Support**: Web manifest and service worker for offline capabilities.
-- **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and role-based access.
-- **Life360-Style Interactive Map**: (Owner/Manager only) Displays job pins and real-time location tracking for team members with activity status, speed, battery, and geofence alerts.
-- **Role-Based Access Control (RBAC)**: Granular permissions and role templates (OWNER, ADMIN, SUPERVISOR, STAFF) enforced by middleware.
-- **Workflow-Integrated Smart Actions**: Contextual automation suggestions with user approval, previews, and toggle controls.
-- **Mobile App**: A React Native mobile app (Expo SDK 52) with full API integration, Zustand for state management, and an SQLite-based offline mode with background sync and conflict resolution. It features permission-aware navigation and dedicated stores for auth, jobs, clients, quotes, and invoices.
-
-### Recent Changes (December 2025)
-- **Mobile UX Fixes (December 15)**:
-  - Fixed "Manage Team" routing in dashboard (was routing to /more/team, now /more/team-management)
-  - Updated splash screen configuration from dark navy (#0f172a) to clean white (#ffffff) theme
-  - Fixed chat hub filter chips height to 44px for proper touch targets (was 36px)
-  - Removed duplicate "Next Steps" SmartActionsPanel from job detail page (kept single red NextActionCard CTA)
-- **Mobile Nav Parity with Web**: Updated mobile app navigation to match web app:
-  - Bottom nav reduced to 4 items (Dashboard, Work, Chat, More) - removed Money tab to match web
-  - Header now includes Map icon (owner/manager only), Notifications bell with unread badge, matching web header
-  - Money-related screens are now accessible via More menu instead of dedicated tab
-- **Money Hub Dashboard**: New unified financial dashboard (`/money-hub`) combining invoices, quotes, and payments in one view with KPI cards (Outstanding, Overdue, Paid 30d, Pending Quotes), tabbed interface, and quick actions. Mobile parity via `mobile/app/more/money-hub.tsx`.
-- **AI Assistant Proactive Notifications**: Enhanced mobile AI assistant with real-time notifications for overdue invoices, pending quotes, and today's jobs. Color-coded priority indicators (high/medium/low) with dismissible cards. Matches web `/api/ai/notifications` endpoint functionality.
-- **Job Workflow Validation**: Backend now validates job status transitions - jobs cannot be set to "invoiced" without a linked invoice record. Added efficient `/api/jobs/:id/linked-documents` endpoint for fetching quote/invoice linkage.
-- **Comprehensive FAQ System**: Enhanced SupportTab with 6 categorized FAQ sections using Accordion UI:
-  - Getting Started (first job, first client, business setup)
-  - Jobs & Scheduling (statuses, photos, scheduling, completion)
-  - Quotes (creation, sending, deposits, conversion to invoice)
-  - Invoices & Payments (creation, sending, Stripe, payment recording, overdue handling)
-  - Team Management (adding members, roles, job assignment)
-  - Troubleshooting (email issues, Stripe, sync, PDF generation, feature requests)
-- **App Walkthrough Tutorial**: New `AppWalkthrough.tsx` component provides guided 5-step tour for new users covering clients, jobs, quotes, invoices, and settings. Accessible via Settings → Support → "Start App Tour" button.
-- **Mobile P0 Bug Fixes**: Fixed critical production bugs:
-  - Added missing Alert import to payments.tsx for Stripe Connect error handling
-  - Fixed VoiceRecorder permission handling for expo-audio with graceful fallback
-  - Added background location tracking error handling with foreground-only fallback
-  - Fixed Stripe Connect URL opening with canOpenURL/openURL pattern
-  - Fixed chat hub filter chips height (36px) for better touch targets
-  - Added Quick Add Client to create-job.tsx for feature parity
-  - Added StatusBar to LoadingScreen to prevent dark bars on splash
-- **AI Quote Generator**: Generate quote line items from photos/voice/description using GPT-4o vision. Features JSON parse validation, line item normalization (clamps quantities/prices), and server-side total recalculation (subtotal + GST + grand total). Integrated into LiveQuoteEditor with Sparkles AI button.
-- **Instant Job Parser**: Create jobs from pasted text (SMS, email, message) via `/api/ai/parse-job-text`. Extracts client name, description, address, urgency. SessionStorage uses scoped keys with 5-minute expiry for security.
-- **Next-Action Indicators**: Smart "what to do next" suggestions on job cards and table view. Batch endpoint `/api/jobs/next-actions` returns priority-colored guidance (high/medium/low). Cache invalidates on job create/update.
-- **Mobile Feature Parity Components**: Four new standalone components for web-mobile parity:
-  - `DragDropDispatchBoard.tsx`: Gesture-based drag-and-drop dispatch board with timeline grid, draggable job cards, and team member columns (integrated into dispatch-board.tsx with list/timeline toggle)
-  - `EmailComposeModal.tsx`: AI-powered email compose modal with templates, preview, and AI suggestions
-  - `CustomFormBuilder.tsx`: Full form builder UI with field type picker, drag reorder, and live preview
-  - `AdvancedThemeControls.tsx`: Granular theming controls with presets, typography, corner radius, and animation settings
-- **Advanced Theme Store**: Extended theme management (`advanced-theme-store.ts`) with theme presets, custom palettes (light/dark), typography settings (font scale, heading weight, line height), and appearance settings (border radius, shadow intensity, animation speed, compact mode)
-- **Client Asset Library**: API endpoints to retrieve job photos, quote items, invoice items, and notes for reuse; security-verified with client ownership checks
-- **Smart Pre-fill API**: `/api/clients/:id/prefill` endpoint returns recent job descriptions, line items, and notes for auto-populating new jobs/quotes/invoices
-- **CSV Export**: Reports dashboard has export buttons with disabled states for each report type
-- **Mobile Smart Pre-fill**: Create job screen fetches and displays smart suggestions when client is selected, with proper loading states and error handling
-- **Attachment Offline Sync**: Complete implementation with `saveAttachmentOffline`, `deleteAttachmentOffline`, `syncAttachment` methods; `local_id` column for ID reconciliation; nullable `local_uri` for server-fetched attachments; verified update success before clearing sync queue
-- **ID Reconciliation**: `updateLocalIdWithServerId` tries WHERE local_id=? first, falls back to WHERE id=? for backwards compatibility, returns boolean success
-- **Offline Sync Improvements**: Exponential backoff now follows spec (30s/2m/5m/15m/30m delays), `last_attempted_at` updates after sync attempts to prevent premature delays on pre-sync failures
-- **Automation Templates**: 12 pre-built trade-specific sequences (quote follow-ups, invoice reminders, job confirmations) with full email/SMS content for plumbing, electrical, HVAC, landscaping
-- **Stripe Terminal Mobile**: SDK integration complete with connection token fetching, simulator fallback for Expo Go testing
-- **Offline Auth Flow**: checkAuth() properly falls back to cached auth data when offline or API fails
-- **Mobile Template Picker Integration**: Quote and Invoice creation screens now include "Use Template" button that opens a searchable template picker modal. Selecting a template pre-fills line items, terms, deposit percentage (quotes) or due date (invoices). Uses `/api/templates?type=quote|invoice` endpoints.
-- **Mobile Chat Hub Spacing Fix**: Fixed gap between filter chips and conversation list by adjusting paddingTop/Bottom to 12px and removing marginTop on list container.
-- **Mobile JobForms Integration**: Custom forms (JobForms) component properly integrated into job detail page Documents tab, displaying for in_progress/done/invoiced jobs with readOnly mode when invoiced.
-- **Mobile Currency Handling Fix**: Fixed critical bug in quote/invoice detail screens where dollar amounts from API were incorrectly divided by 100. Architecture clarified:
-  - Database stores dollars (decimal 10,2), NOT cents
-  - Create screens: internal state in cents → convert to dollars for preview/API (divide by 100)
-  - Detail screens: receive dollars from API → display directly using `Intl.NumberFormat` (no conversion)
-  - LiveDocumentPreview component expects dollar values for unitPrice
-- **Mobile Invoice Payment Flow (December 16)**:
-  - **Record On-Site Payment**: New button to record cash/cheque/direct transfer payments on-site with timestamp, automatically marks invoice as paid
-  - **All Signatures Display**: Invoice detail now fetches and displays all relevant signatures (job worker, job client, quote acceptance)
-  - **Stripe Payment Link**: Generates payment link when enabling online payment, shows link status, "Share Payment Link" button
-  - **Smart Payment Logic**: Hides payment options when invoice is paid, shows "Payment Received" section with method/date
-- **Mobile Quote/Invoice Preview & Sharing**:
-  - **Theme-Updated Preview**: LiveDocumentPreview now uses app theme colors, added PAID watermark and signature section
-  - **Share Action Sheet**: New modal with options: Email to Client, Share PDF, Save to Device, Print (Copy Payment Link for invoices)
-  - **PDF Functionality**: Fixed PDF download and sharing with proper loading states and error handling
-- **SMS Integration (December 16)**:
-  - **Two-Way SMS via Twilio**: Full SMS conversation system with database tables (sms_conversations, sms_messages), Twilio send/receive integration, and webhook handler for inbound messages
-  - **SMS API Routes**: GET/POST conversations, messages, quick-actions (on_my_way, just_arrived, job_finished, running_late, need_materials), and mark-as-read functionality
-  - **ChatHub SMS Integration**: New 'sms' filter in ChatHub with full conversation list, message view, and send functionality. URL params (`?smsClientId=xxx&phone=yyy`) auto-open SMS conversations
-  - **SMS Buttons**: Added SMS button next to Call buttons in ClientsList and ClientDetailView
-  - **Role-Based SMS Access**: Workers only see SMS conversations for jobs they're assigned to; owners/admins/managers see all conversations
-  - **Job Chat Client Details**: Client banner added to JobChat showing client name, phone, and email for quick reference
-  - **Role-Based Chat Deletion**: Owners/admins/managers can delete any message in their business's job/team chats; workers can only delete their own messages. Enforced with business owner verification at route and storage layers
+-   **Authentication**: Supports Email/password, Google OAuth 2.0, session management, and secure token-based password reset.
+-   **AI Assistant**: Integrates GPT-4o-mini for business-aware suggestions and Australian English phrasing, including proactive notifications and quote generation.
+-   **PDF Generation**: Server-side PDF generation via Puppeteer for quotes and invoices.
+-   **Theming & Branding**: Comprehensive system for custom brand colors, typography, and appearance settings, persisting across sessions.
+-   **UI/UX**: Mobile-first design with a native app feel, card-based layouts, touch-optimized components, and a "Today's Schedule" dashboard. Includes features like Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation.
+-   **Adaptive Solo/Team Mode**: Adjusts interface based on team size, featuring time tracking and GPS check-in (team mode).
+-   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators and professional job confirmation emails.
+-   **Live Quote/Invoice Editor**: Real-time preview with templates, catalog items, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
+-   **Customisable Email Templates**: Preview and edit email content with AI-powered suggestions and Automated Gmail with PDF Workflow.
+-   **PWA Support**: Web manifest and service worker for offline capabilities.
+-   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and role-based access. Includes two-way SMS integration via Twilio with templates, MMS, and branded sender IDs.
+-   **Live360-Style Interactive Map**: (Owner/Manager only) Displays job pins and real-time location tracking for team members with activity status, speed, battery, and geofence alerts.
+-   **Role-Based Access Control (RBAC)**: Granular permissions and role templates (OWNER, ADMIN, SUPERVISOR, STAFF) enforced by middleware.
+-   **Workflow-Integrated Smart Actions**: Contextual automation suggestions with user approval, previews, and toggle controls, including next-action indicators and pre-fill APIs.
+-   **Mobile App (React Native/Expo)**: Full API integration, Zustand for state management, SQLite-based offline mode with background sync and conflict resolution, and permission-aware navigation.
+-   **Financial Management**: Unified financial dashboard (`/money-hub`) combining invoices, quotes, and payments with KPI cards and quick actions. Supports recording on-site payments and generating Stripe payment links.
+-   **Automation**: Rule-based SMS automation for reminders and follow-ups.
+-   **Client Asset Library & Smart Pre-fill**: API endpoints for retrieving and reusing job photos, quote items, invoice items, and notes. Smart pre-fill suggestions for new jobs/quotes/invoices.
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)

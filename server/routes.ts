@@ -2315,11 +2315,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const settings = await storage.getBusinessSettings(req.userId);
       
-      // Return SMS branding fields (mask sensitive data)
+      // Mask auth token like "••••••abc1" - only show last 4 chars
+      const maskedAuthToken = settings?.twilioAuthToken 
+        ? '••••••' + settings.twilioAuthToken.slice(-4) 
+        : null;
+      
+      // Return SMS branding fields (mask ALL sensitive data)
       const smsBranding = {
         twilioPhoneNumber: settings?.twilioPhoneNumber || null,
         twilioSenderId: settings?.twilioSenderId || null,
         twilioAccountSid: settings?.twilioAccountSid ? '***' + settings.twilioAccountSid.slice(-4) : null,
+        twilioAuthToken: maskedAuthToken,
         twilioAuthTokenConfigured: !!settings?.twilioAuthToken,
         // Include platform defaults info
         platformTwilioConfigured: !!process.env.TWILIO_ACCOUNT_SID && !!process.env.TWILIO_AUTH_TOKEN,
@@ -2364,8 +2370,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData: any = {};
       if (twilioPhoneNumber !== undefined) updateData.twilioPhoneNumber = twilioPhoneNumber || null;
       if (twilioSenderId !== undefined) updateData.twilioSenderId = twilioSenderId || null;
-      if (twilioAccountSid !== undefined) updateData.twilioAccountSid = twilioAccountSid || null;
-      if (twilioAuthToken !== undefined) updateData.twilioAuthToken = twilioAuthToken || null;
+      
+      // Don't update account SID if a masked value is sent back (starts with ***)
+      if (twilioAccountSid !== undefined && !twilioAccountSid?.startsWith('***')) {
+        updateData.twilioAccountSid = twilioAccountSid || null;
+      }
+      
+      // Don't update auth token if a masked value is sent back (contains •)
+      if (twilioAuthToken !== undefined && !twilioAuthToken?.includes('•')) {
+        updateData.twilioAuthToken = twilioAuthToken || null;
+      }
       
       if (settings) {
         settings = await storage.updateBusinessSettings(req.userId, updateData);
@@ -2377,11 +2391,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Return masked response
+      // Return masked response - mask auth token like "••••••abc1"
+      const maskedAuthToken = settings?.twilioAuthToken 
+        ? '••••••' + settings.twilioAuthToken.slice(-4) 
+        : null;
+      
       res.json({
         twilioPhoneNumber: settings?.twilioPhoneNumber || null,
         twilioSenderId: settings?.twilioSenderId || null,
         twilioAccountSid: settings?.twilioAccountSid ? '***' + settings.twilioAccountSid.slice(-4) : null,
+        twilioAuthToken: maskedAuthToken,
         twilioAuthTokenConfigured: !!settings?.twilioAuthToken,
         message: "SMS branding settings updated successfully",
       });
@@ -11126,6 +11145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       const { id: jobId } = req.params;
+      const { sendSms, templateId } = req.body;
       
       const job = await storage.getJob(jobId, userId);
       if (!job) {
@@ -11149,9 +11169,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? `https://${process.env.REPLIT_DOMAIN}`
         : process.env.BASE_URL || 'http://localhost:5000';
       
+      const bookingUrl = `${baseUrl}/booking/${token}`;
+      
+      // Send SMS with booking link if requested
+      let smsResult = null;
+      if (sendSms && job.clientId) {
+        const client = await storage.getClient(job.clientId, userId);
+        if (client?.phone) {
+          const businessSettings = await storage.getBusinessSettings(userId);
+          const { sendSmsToClient, parseSmsTemplate } = await import('./services/smsService');
+          
+          // Get template or use default
+          let templateBody = 'Hi {client_name}, your booking with {business_name} is confirmed for {scheduled_date} at {scheduled_time}. Confirm here: {booking_link}';
+          if (templateId) {
+            const template = await storage.getSmsTemplate(templateId, userId);
+            if (template) {
+              templateBody = template.body;
+            }
+          }
+          
+          // Format scheduled date/time
+          const scheduledDate = job.scheduledAt 
+            ? new Date(job.scheduledAt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })
+            : job.scheduledDate || '';
+          const scheduledTime = job.scheduledAt
+            ? new Date(job.scheduledAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })
+            : job.scheduledTime || '';
+          
+          // Parse template with merge fields
+          const parsedMessage = parseSmsTemplate(templateBody, {
+            client_name: client.name || '',
+            client_first_name: client.name?.split(' ')[0] || '',
+            job_title: job.title || '',
+            job_address: job.address || '',
+            scheduled_date: scheduledDate,
+            scheduled_time: scheduledTime,
+            business_name: businessSettings?.businessName || 'Your Tradesperson',
+            booking_link: bookingUrl,
+          });
+          
+          try {
+            smsResult = await sendSmsToClient({
+              businessOwnerId: userId,
+              clientId: job.clientId,
+              clientPhone: client.phone,
+              clientName: client.name || undefined,
+              jobId,
+              message: parsedMessage,
+              senderUserId: userId,
+            });
+          } catch (smsError: any) {
+            console.error('Error sending booking SMS:', smsError);
+            smsResult = { error: smsError.message };
+          }
+        }
+      }
+      
       res.status(201).json({
         ...bookingLink,
-        url: `${baseUrl}/booking/${token}`,
+        url: bookingUrl,
+        smsResult,
       });
     } catch (error: any) {
       console.error('Error creating booking link:', error);
@@ -11159,16 +11236,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Rate limiting store for public endpoints (in-memory, simple implementation)
+  const rateLimitStore: Map<string, { count: number; resetAt: number }> = new Map();
+  const RATE_LIMIT_MAX = 10;
+  const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+  
+  function checkRateLimit(token: string): { allowed: boolean; remaining: number } {
+    const now = Date.now();
+    const key = `token:${token}`;
+    const entry = rateLimitStore.get(key);
+    
+    if (!entry || now > entry.resetAt) {
+      rateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+      return { allowed: true, remaining: RATE_LIMIT_MAX - 1 };
+    }
+    
+    if (entry.count >= RATE_LIMIT_MAX) {
+      return { allowed: false, remaining: 0 };
+    }
+    
+    entry.count++;
+    return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count };
+  }
+  
   // Public: View booking link page data
   app.get("/api/booking/:token", async (req, res) => {
     try {
       const { token } = req.params;
+      
+      // Rate limiting check
+      const rateLimit = checkRateLimit(token);
+      if (!rateLimit.allowed) {
+        return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+      }
+      res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
       
       const bookingLink = await storage.getSmsBookingLinkByToken(token);
       if (!bookingLink) {
         return res.status(404).json({ error: 'Booking link not found' });
       }
       
+      // Check expiry BEFORE returning any data
       if (new Date() > new Date(bookingLink.expiresAt)) {
         return res.status(410).json({ error: 'Booking link has expired' });
       }
@@ -11177,7 +11285,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ 
           error: 'This booking has already been responded to',
           status: bookingLink.status,
-          clientResponse: bookingLink.clientResponse,
         });
       }
       
@@ -11188,6 +11295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const businessSettings = await storage.getBusinessSettings(bookingLink.businessOwnerId);
       
+      // Return ONLY what's needed for the booking page - NO PII
       res.json({
         bookingLink: {
           id: bookingLink.id,
@@ -11195,17 +11303,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expiresAt: bookingLink.expiresAt,
         },
         job: {
-          id: job.id,
           title: job.title,
-          description: job.description,
           scheduledDate: job.scheduledDate,
           scheduledTime: job.scheduledTime,
-          address: job.address,
           estimatedDuration: job.estimatedDuration,
         },
         business: {
           name: businessSettings?.businessName || 'Your Tradesperson',
-          phone: businessSettings?.businessPhone || null,
         },
       });
     } catch (error: any) {
@@ -11338,11 +11442,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { token } = req.params;
       
+      // Rate limiting check
+      const rateLimit = checkRateLimit(token);
+      if (!rateLimit.allowed) {
+        return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+      }
+      res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
+      
       const trackingLink = await storage.getSmsTrackingLinkByToken(token);
       if (!trackingLink) {
         return res.status(404).json({ error: 'Tracking link not found' });
       }
       
+      // Check expiry BEFORE returning any data
       if (new Date() > new Date(trackingLink.expiresAt)) {
         return res.status(410).json({ error: 'Tracking link has expired' });
       }
@@ -11361,17 +11473,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const businessSettings = await storage.getBusinessSettings(trackingLink.businessOwnerId);
       
-      // Get worker info
-      let workerName = businessSettings?.businessName || 'Your Tradesperson';
+      // Get worker FIRST NAME ONLY - no full name for privacy
+      let workerFirstName = businessSettings?.businessName || 'Your Tradesperson';
       if (trackingLink.teamMemberId) {
         const worker = await storage.getUser(trackingLink.teamMemberId);
-        if (worker) {
-          workerName = worker.firstName && worker.lastName 
-            ? `${worker.firstName} ${worker.lastName}`
-            : worker.firstName || businessSettings?.businessName || 'Your Tradesperson';
+        if (worker?.firstName) {
+          workerFirstName = worker.firstName;
         }
       }
       
+      // Return ONLY what's needed for tracking - NO full address, NO client data
       res.json({
         id: trackingLink.id,
         isActive: trackingLink.isActive,
@@ -11385,20 +11496,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : null,
         estimatedArrival: trackingLink.estimatedArrival,
         job: {
-          id: job.id,
           title: job.title,
-          address: job.address,
-          scheduledAt: job.scheduledAt,
           scheduledTime: job.scheduledTime,
           status: job.status,
         },
         business: {
           name: businessSettings?.businessName || 'Your Tradesperson',
-          phone: businessSettings?.phone || null,
           logoUrl: businessSettings?.logoUrl || null,
         },
         worker: {
-          name: workerName,
+          firstName: workerFirstName,
         },
       });
     } catch (error: any) {

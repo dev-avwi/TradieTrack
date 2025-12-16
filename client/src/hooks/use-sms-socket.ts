@@ -33,8 +33,10 @@ export function useSmsSocket({
   const connect = useCallback(() => {
     if (!enabled || !businessId) return;
 
-    const origin = window.location.origin;
-    const wsUrl = origin.replace(/^http/, 'ws') + `/ws/location?businessId=${businessId}&isTradie=false`;
+    // Use the current host for WebSocket connection - works in both dev and production
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/ws/location?businessId=${businessId}&isTradie=false`;
 
     try {
       const ws = new WebSocket(wsUrl);
