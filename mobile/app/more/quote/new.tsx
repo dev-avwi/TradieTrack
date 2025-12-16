@@ -410,15 +410,8 @@ function createStyles(colors: ThemeColors) {
       textAlign: 'center',
     },
     submitButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      backgroundColor: '#2563EB',
+      overflow: 'hidden',
       borderRadius: 12,
-      paddingVertical: 16,
-      borderWidth: 1,
-      borderColor: '#1D4ED8',
       shadowColor: '#000000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
@@ -426,7 +419,7 @@ function createStyles(colors: ThemeColors) {
       elevation: 8,
     },
     submitButtonPressed: {
-      backgroundColor: '#1D4ED8',
+      // Handled by inner View
     },
     submitButtonDisabled: {
       opacity: 0.6,
@@ -1234,7 +1227,7 @@ export default function NewQuoteScreen() {
                 />
               </View>
 
-              {/* Submit Button */}
+              {/* Submit Button - Uses hardcoded blue for guaranteed visibility */}
               <Pressable
                 style={({ pressed }) => [
                   styles.submitButton, 
@@ -1244,13 +1237,26 @@ export default function NewQuoteScreen() {
                 onPress={handleSave}
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <>
-                    <Feather name="check" size={20} color={colors.white} />
-                    <Text style={styles.submitButtonText}>Create Quote</Text>
-                  </>
+                {({ pressed }) => (
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: 8,
+                    width: '100%',
+                    backgroundColor: pressed && !isLoading ? '#1D4ED8' : '#2563EB',
+                    paddingVertical: 16,
+                    borderRadius: 12,
+                  }}>
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Feather name="check" size={20} color="#FFFFFF" />
+                        <Text style={[styles.submitButtonText, { color: '#FFFFFF' }]}>Create Quote</Text>
+                      </>
+                    )}
+                  </View>
                 )}
               </Pressable>
             </ScrollView>

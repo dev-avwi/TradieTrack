@@ -195,6 +195,18 @@ export function Button({
         const variantStyles = getVariantStyles(pressed);
         return (
           <>
+            {/* Force background for brand variant with absolute fill */}
+            {variant === 'brand' && (
+              <View 
+                style={[
+                  StyleSheet.absoluteFill, 
+                  { 
+                    backgroundColor: pressed ? BRAND_COLORS.backgroundPressed : BRAND_COLORS.background,
+                    borderRadius: sizeStyles.borderRadius,
+                  }
+                ]} 
+              />
+            )}
             {pressed && variantStyles.overlayColor !== 'transparent' && (
               <View 
                 style={[
