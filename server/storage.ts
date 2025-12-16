@@ -394,6 +394,7 @@ export interface IStorage {
   markJobChatAsRead(jobId: string, userId: string): Promise<void>;
   getUnreadJobChatCount(jobId: string, userId: string): Promise<number>;
   deleteJobChatMessage(id: string, userId: string): Promise<boolean>;
+  forceDeleteJobChatMessage(id: string, jobId: string, businessOwnerId: string): Promise<boolean>;
 
   // Team Chat
   getTeamChatMessages(businessOwnerId: string): Promise<TeamChat[]>;
@@ -402,6 +403,7 @@ export interface IStorage {
   getUnreadTeamChatCount(businessOwnerId: string, userId: string): Promise<number>;
   pinTeamChatMessage(id: string, businessOwnerId: string, pinned: boolean): Promise<TeamChat | undefined>;
   deleteTeamChatMessage(id: string, senderId: string): Promise<boolean>;
+  forceDeleteTeamChatMessage(id: string, businessOwnerId: string): Promise<boolean>;
 
   // Automations
   getAutomations(userId: string): Promise<Automation[]>;
@@ -2444,6 +2446,22 @@ export class PostgresStorage implements IStorage {
     return result.length > 0;
   }
 
+  async forceDeleteJobChatMessage(id: string, jobId: string, businessOwnerId: string): Promise<boolean> {
+    // First verify the job belongs to the business owner
+    const job = await db.select().from(jobs)
+      .where(and(eq(jobs.id, jobId), eq(jobs.userId, businessOwnerId)))
+      .limit(1);
+    
+    if (job.length === 0) {
+      return false;
+    }
+    
+    const result = await db.delete(jobChat)
+      .where(and(eq(jobChat.id, id), eq(jobChat.jobId, jobId)))
+      .returning();
+    return result.length > 0;
+  }
+
   // Team Chat
   async getTeamChatMessages(businessOwnerId: string): Promise<TeamChat[]> {
     return await db.select().from(teamChat)
@@ -2492,6 +2510,13 @@ export class PostgresStorage implements IStorage {
   async deleteTeamChatMessage(id: string, senderId: string): Promise<boolean> {
     const result = await db.delete(teamChat)
       .where(and(eq(teamChat.id, id), eq(teamChat.senderId, senderId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async forceDeleteTeamChatMessage(id: string, businessOwnerId: string): Promise<boolean> {
+    const result = await db.delete(teamChat)
+      .where(and(eq(teamChat.id, id), eq(teamChat.businessOwnerId, businessOwnerId)))
       .returning();
     return result.length > 0;
   }

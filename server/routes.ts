@@ -9533,12 +9533,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Delete own message from job chat
+  // Delete message from job chat (own messages or any message if owner/admin/manager)
   app.delete("/api/jobs/:jobId/chat/:messageId", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const { messageId } = req.params;
+      const { jobId, messageId } = req.params;
       
+      // Check user context for role-based deletion
+      const userContext = await getUserContext(userId);
+      const canDeleteAny = userContext.isOwner || hasPermission(userContext, PERMISSIONS.MANAGE_TEAM);
+      
+      // First verify the job belongs to this user's business
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found or access denied' });
+      }
+      
+      // Verify job belongs to the correct business owner
+      if (job.userId !== userContext.businessOwnerId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      // If owner/admin/manager, can delete any message in their jobs
+      if (canDeleteAny) {
+        const deleted = await storage.forceDeleteJobChatMessage(messageId, jobId, job.userId);
+        if (deleted) {
+          return res.json({ success: true });
+        }
+      }
+      
+      // Otherwise, users can only delete their own messages
       const deleted = await storage.deleteJobChatMessage(messageId, userId);
       if (!deleted) {
         return res.status(404).json({ error: 'Message not found or not authorized' });
@@ -10468,13 +10492,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Delete own message from team chat
+  // Delete message from team chat (own messages or any message if owner/admin/manager)
   app.delete("/api/team-chat/:messageId", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { messageId } = req.params;
       
-      // Users can only delete their own messages
+      // Check user context for role-based deletion
+      const userContext = await getUserContext(userId);
+      const canDeleteAny = userContext.isOwner || hasPermission(userContext, PERMISSIONS.MANAGE_TEAM);
+      
+      // If owner/admin/manager, can delete any message
+      if (canDeleteAny && userContext.businessOwnerId) {
+        const deleted = await storage.forceDeleteTeamChatMessage(messageId, userContext.businessOwnerId);
+        if (deleted) {
+          return res.json({ success: true });
+        }
+      }
+      
+      // Otherwise, users can only delete their own messages
       const deleted = await storage.deleteTeamChatMessage(messageId, userId);
       if (!deleted) {
         return res.status(404).json({ error: 'Message not found or not authorized' });

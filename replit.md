@@ -90,6 +90,14 @@ Key architectural features include:
   - **Theme-Updated Preview**: LiveDocumentPreview now uses app theme colors, added PAID watermark and signature section
   - **Share Action Sheet**: New modal with options: Email to Client, Share PDF, Save to Device, Print (Copy Payment Link for invoices)
   - **PDF Functionality**: Fixed PDF download and sharing with proper loading states and error handling
+- **SMS Integration (December 16)**:
+  - **Two-Way SMS via Twilio**: Full SMS conversation system with database tables (sms_conversations, sms_messages), Twilio send/receive integration, and webhook handler for inbound messages
+  - **SMS API Routes**: GET/POST conversations, messages, quick-actions (on_my_way, just_arrived, job_finished, running_late, need_materials), and mark-as-read functionality
+  - **ChatHub SMS Integration**: New 'sms' filter in ChatHub with full conversation list, message view, and send functionality. URL params (`?smsClientId=xxx&phone=yyy`) auto-open SMS conversations
+  - **SMS Buttons**: Added SMS button next to Call buttons in ClientsList and ClientDetailView
+  - **Role-Based SMS Access**: Workers only see SMS conversations for jobs they're assigned to; owners/admins/managers see all conversations
+  - **Job Chat Client Details**: Client banner added to JobChat showing client name, phone, and email for quick reference
+  - **Role-Based Chat Deletion**: Owners/admins/managers can delete any message in their business's job/team chats; workers can only delete their own messages. Enforced with business owner verification at route and storage layers
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)
