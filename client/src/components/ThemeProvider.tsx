@@ -70,18 +70,22 @@ type ThemeProviderProps = {
 type ThemeProviderState = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  setThemeWithSync: (theme: Theme) => void; // Also syncs to server
   brandTheme: BrandTheme;
   setBrandTheme: (theme: BrandTheme) => void;
+  initializeFromServer: (serverTheme: Theme | null) => void;
 };
 
 const initialState: ThemeProviderState = {
   theme: 'system',
   setTheme: () => null,
+  setThemeWithSync: () => null,
   brandTheme: {
     primaryColor: '#3B5998',
     customThemeEnabled: false
   },
   setBrandTheme: () => null,
+  initializeFromServer: () => null,
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
@@ -340,19 +344,43 @@ export function ThemeProvider({
     applyBrandColors(effectiveBrandTheme.primaryColor, effectiveBrandTheme.customThemeEnabled, isDarkMode);
   }, [theme, brandTheme, applyBrandColors]);
 
-  // Memoize setTheme to prevent infinite re-renders
+  // Memoize setTheme to prevent infinite re-renders (local only)
   const stableSetTheme = useCallback((newTheme: Theme) => {
     localStorage.setItem(storageKey, newTheme);
     setTheme(newTheme);
+  }, [storageKey]);
+
+  // Set theme AND sync to server - use this for user-initiated changes
+  const setThemeWithSync = useCallback((newTheme: Theme) => {
+    localStorage.setItem(storageKey, newTheme);
+    setTheme(newTheme);
+    
+    // Sync to server in background (don't await to avoid blocking UI)
+    fetch('/api/user/preferences', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ themeMode: newTheme })
+    }).catch(err => console.warn('Failed to sync theme to server:', err));
+  }, [storageKey]);
+
+  // Initialize from server theme (called after fetching business settings)
+  const initializeFromServer = useCallback((serverTheme: Theme | null) => {
+    if (serverTheme && ['light', 'dark', 'system'].includes(serverTheme)) {
+      localStorage.setItem(storageKey, serverTheme);
+      setTheme(serverTheme);
+    }
   }, [storageKey]);
 
   // Memoize the context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
     theme,
     setTheme: stableSetTheme,
+    setThemeWithSync,
     brandTheme,
     setBrandTheme: stableSetBrandTheme,
-  }), [theme, stableSetTheme, brandTheme, stableSetBrandTheme]);
+    initializeFromServer,
+  }), [theme, stableSetTheme, setThemeWithSync, brandTheme, stableSetBrandTheme, initializeFromServer]);
 
   return (
     <ThemeProviderContext.Provider {...props} value={value}>

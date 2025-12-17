@@ -498,7 +498,7 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
 }
 
 function AppLayout() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, setThemeWithSync } = useTheme();
   const [location, setLocation] = useLocation();
   const [authKey, setAuthKey] = useState(0);
   
@@ -693,9 +693,9 @@ function AppLayout() {
     };
   }, [startTour]);
 
-  // Sync brand theme from backend to ThemeProvider ONLY on initial load
+  // Sync brand theme AND theme mode from backend to ThemeProvider ONLY on initial load
   // We use a ref to track if we've already synced to prevent overriding user's local changes
-  const { setBrandTheme } = useTheme();
+  const { setBrandTheme, initializeFromServer } = useTheme();
   const hasInitialSynced = useRef(false);
   
   useEffect(() => {
@@ -703,6 +703,12 @@ function AppLayout() {
     // This prevents overriding user's local color selections when switching themes
     if (businessSettings && !hasInitialSynced.current) {
       hasInitialSynced.current = true;
+      
+      // Sync theme mode (light/dark/system) from server - this ensures mobile and web stay in sync
+      const serverThemeMode = businessSettings.themeMode as 'light' | 'dark' | 'system' | null;
+      if (serverThemeMode) {
+        initializeFromServer(serverThemeMode);
+      }
       
       const serverColor = (businessSettings.primaryColor || businessSettings.brandColor || '').toUpperCase();
       const serverCustomEnabled = businessSettings.customThemeEnabled || false;
@@ -721,8 +727,8 @@ function AppLayout() {
       // If backend doesn't have custom theme enabled, we keep the localStorage/default values
       // This allows users to experiment with colors before saving
     }
-    // Note: setBrandTheme is stable (useCallback) so it won't cause re-runs
-  }, [businessSettings, setBrandTheme]);
+    // Note: setBrandTheme and initializeFromServer are stable (useCallback) so they won't cause re-runs
+  }, [businessSettings, setBrandTheme, initializeFromServer]);
 
   const handleLoginSuccess = () => {
     // Invalidate both auth and business settings queries to refetch fresh data
@@ -874,7 +880,7 @@ function AppLayout() {
                 showAddButton={false}
                 addButtonText={getAddButtonText()}
                 onAddClick={() => console.log('Add button clicked')}
-                onThemeToggle={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                onThemeToggle={() => setThemeWithSync(theme === 'dark' ? 'light' : 'dark')}
                 isDarkMode={theme === 'dark'}
                 onProfileClick={() => setLocation('/settings')}
                 onSettingsClick={() => setLocation('/settings')}

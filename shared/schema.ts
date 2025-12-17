@@ -192,6 +192,8 @@ export const businessSettings = pgTable("business_settings", {
   // Document Template Settings
   documentTemplate: text("document_template").default('professional'), // modern, professional, minimal
   documentTemplateSettings: json("document_template_settings"), // Custom overrides for template
+  // Theme/Appearance Settings - synced across web and mobile
+  themeMode: text("theme_mode").default('system'), // 'light', 'dark', 'system' - synced across all devices
   // SMS Branding Settings
   twilioPhoneNumber: text("twilio_phone_number"), // User's own Twilio phone number (E.164 format)
   twilioSenderId: text("twilio_sender_id"), // Alphanumeric sender ID (11 chars max, e.g., "TradieTrack")

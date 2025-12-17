@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import * as SecureStore from 'expo-secure-store';
 import { Appearance } from 'react-native';
+import { apiClient } from './api';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -31,24 +32,36 @@ const secureStorage: StateStorage = {
 
 interface ThemeState {
   mode: ThemeMode;
+  hasSyncedFromServer: boolean;
   setMode: (mode: ThemeMode) => void;
+  setModeWithSync: (mode: ThemeMode) => void;
   toggleTheme: () => void;
   getEffectiveTheme: () => 'light' | 'dark';
+  initializeFromServer: (serverTheme: ThemeMode | null) => void;
 }
 
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
       mode: 'light',
+      hasSyncedFromServer: false,
+      
       setMode: (mode: ThemeMode) => set({ mode }),
+      
+      setModeWithSync: (mode: ThemeMode) => {
+        set({ mode });
+        apiClient.request('PATCH', '/api/user/preferences', { themeMode: mode })
+          .catch(err => console.warn('Failed to sync theme to server:', err));
+      },
+      
       toggleTheme: () => {
         const currentMode = get().mode;
-        if (currentMode === 'light') {
-          set({ mode: 'dark' });
-        } else {
-          set({ mode: 'light' });
-        }
+        const newMode = currentMode === 'light' ? 'dark' : 'light';
+        set({ mode: newMode });
+        apiClient.request('PATCH', '/api/user/preferences', { themeMode: newMode })
+          .catch(err => console.warn('Failed to sync theme to server:', err));
       },
+      
       getEffectiveTheme: () => {
         const mode = get().mode;
         if (mode === 'system') {
@@ -56,10 +69,17 @@ export const useThemeStore = create<ThemeState>()(
         }
         return mode;
       },
+      
+      initializeFromServer: (serverTheme: ThemeMode | null) => {
+        if (serverTheme && ['light', 'dark', 'system'].includes(serverTheme)) {
+          set({ mode: serverTheme, hasSyncedFromServer: true });
+        }
+      },
     }),
     {
       name: 'theme-storage',
       storage: createJSONStorage(() => secureStorage),
+      partialize: (state) => ({ mode: state.mode }),
     }
   )
 );

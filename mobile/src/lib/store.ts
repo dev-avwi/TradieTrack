@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import api from './api';
 import offlineStorage, { useOfflineStore } from './offline-storage';
 import { clearRoleCache } from './role-cache';
+import { useThemeStore, ThemeMode } from './theme-store';
 
 // ============ TYPES ============
 
@@ -43,6 +44,7 @@ interface BusinessSettings {
   brandColor?: string;
   primaryColor?: string;
   teamSize?: string;
+  themeMode?: 'light' | 'dark' | 'system';
   documentTemplate?: 'professional' | 'modern' | 'minimal';
   documentTemplateSettings?: TemplateCustomization;
 }
@@ -213,6 +215,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const settingsResponse = await api.get<BusinessSettings>('/api/business-settings');
     if (settingsResponse.data) {
       set({ businessSettings: settingsResponse.data });
+      
+      // Sync theme mode from server to ensure web and mobile stay in sync
+      if (settingsResponse.data.themeMode) {
+        useThemeStore.getState().initializeFromServer(settingsResponse.data.themeMode);
+      }
     }
     
     // Fetch role info for permissions
@@ -312,6 +319,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           isInitialized: true 
         });
+        
+        // Sync theme mode from cached settings
+        if (cachedAuth.businessSettings?.themeMode) {
+          useThemeStore.getState().initializeFromServer(cachedAuth.businessSettings.themeMode as ThemeMode);
+        }
         return;
       }
       
@@ -335,6 +347,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const settingsResponse = await api.get<BusinessSettings>('/api/business-settings');
     if (settingsResponse.data) {
       set({ businessSettings: settingsResponse.data });
+      
+      // Sync theme mode from server to ensure web and mobile stay in sync
+      if (settingsResponse.data.themeMode) {
+        useThemeStore.getState().initializeFromServer(settingsResponse.data.themeMode);
+      }
     }
     
     // Fetch role info for permissions

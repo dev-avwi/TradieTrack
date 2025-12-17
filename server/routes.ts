@@ -8126,6 +8126,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update user preferences (theme mode, etc.) - syncs across web and mobile
+  app.patch("/api/user/preferences", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const effectiveUserId = req.effectiveUserId || userId;
+      const { themeMode } = req.body;
+      
+      // Get or create business settings
+      let settings = await storage.getBusinessSettings(effectiveUserId);
+      
+      if (!settings) {
+        return res.status(404).json({ error: 'Business settings not found' });
+      }
+      
+      // Update theme mode if provided
+      if (themeMode && ['light', 'dark', 'system'].includes(themeMode)) {
+        settings = await storage.updateBusinessSettings(settings.id, { themeMode });
+      }
+      
+      res.json({ 
+        success: true,
+        themeMode: settings?.themeMode || 'system'
+      });
+    } catch (error) {
+      console.error('Error updating user preferences:', error);
+      res.status(500).json({ error: 'Failed to update preferences' });
+    }
+  });
+
   // Set current user's theme color
   app.patch("/api/user/theme-color", requireAuth, async (req: any, res) => {
     try {
