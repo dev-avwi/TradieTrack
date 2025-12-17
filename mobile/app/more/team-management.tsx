@@ -94,11 +94,117 @@ const ROLE_PERMISSION_SUMMARY = {
   ],
   staff: [
     'View assigned jobs',
+    'Add photos, notes & voice memos',
     'Manage own time entries',
     'View client info',
-    'Basic access only',
   ],
 };
+
+// Category metadata with icons and descriptions
+const PERMISSION_CATEGORY_META: Record<string, { icon: string; description: string; isSensitive?: boolean }> = {
+  'Jobs': {
+    icon: 'briefcase',
+    description: 'Create, view and manage jobs',
+  },
+  'Clients': {
+    icon: 'users',
+    description: 'Access customer information',
+  },
+  'Quotes': {
+    icon: 'file-text',
+    description: 'Create and send price quotes',
+    isSensitive: true,
+  },
+  'Invoices': {
+    icon: 'credit-card',
+    description: 'Bill customers and track payments',
+    isSensitive: true,
+  },
+  'Team': {
+    icon: 'user-plus',
+    description: 'Manage team members and roles',
+    isSensitive: true,
+  },
+  'Settings': {
+    icon: 'settings',
+    description: 'Business settings and preferences',
+  },
+  'Payments': {
+    icon: 'dollar-sign',
+    description: 'Payment processing and records',
+    isSensitive: true,
+  },
+  'Reports': {
+    icon: 'bar-chart-2',
+    description: 'Business reports and analytics',
+    isSensitive: true,
+  },
+  'Templates': {
+    icon: 'copy',
+    description: 'Quote and invoice templates',
+  },
+  'Time Tracking': {
+    icon: 'clock',
+    description: 'Track work hours and timesheets',
+  },
+  'Expenses': {
+    icon: 'shopping-bag',
+    description: 'Track business expenses',
+  },
+  'Catalog': {
+    icon: 'package',
+    description: 'Manage service and product catalog',
+  },
+  'Job Media': {
+    icon: 'camera',
+    description: 'Photos, notes and files on jobs',
+  },
+  'Other': {
+    icon: 'more-horizontal',
+    description: 'Additional permissions',
+  },
+};
+
+// Quick permission presets for common use cases
+const PERMISSION_PRESETS = [
+  {
+    id: 'field_worker',
+    name: 'Field Worker',
+    icon: 'tool',
+    description: 'On-site jobs, photos, notes & time',
+    permissions: [
+      'read_jobs', 'read_clients',
+      'read_time_entries', 'write_time_entries',
+      'write_job_notes', 'write_job_media',
+    ],
+  },
+  {
+    id: 'office_admin',
+    name: 'Office Admin',
+    icon: 'monitor',
+    description: 'Full job, quote & invoice access',
+    permissions: [
+      'read_jobs', 'write_jobs',
+      'read_quotes', 'write_quotes',
+      'read_invoices', 'write_invoices',
+      'read_clients', 'write_clients',
+      'read_reports', 'manage_templates',
+    ],
+  },
+  {
+    id: 'supervisor',
+    name: 'Supervisor',
+    icon: 'user-check',
+    description: 'Manage jobs & view financials',
+    permissions: [
+      'read_jobs', 'write_jobs',
+      'read_quotes', 'read_invoices',
+      'read_clients', 'write_clients',
+      'read_time_entries', 'write_time_entries',
+      'view_all',
+    ],
+  },
+];
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
@@ -674,6 +780,97 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
     marginLeft: 'auto',
+  },
+  presetsSection: {
+    marginBottom: spacing.lg,
+  },
+  presetsSectionTitle: {
+    ...typography.label,
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  presetsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  presetButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  presetButtonSelected: {
+    backgroundColor: colors.primary + '15',
+    borderColor: colors.primary,
+  },
+  presetIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.muted,
+  },
+  presetIconSelected: {
+    backgroundColor: colors.primary,
+  },
+  presetContent: {
+    flex: 1,
+  },
+  presetName: {
+    ...typography.caption,
+    color: colors.foreground,
+    fontWeight: '600',
+  },
+  presetDesc: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 1,
+  },
+  categoryHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  categoryIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary + '15',
+  },
+  categoryIconSensitive: {
+    backgroundColor: colors.destructive + '15',
+  },
+  categoryTitleContainer: {
+    flex: 1,
+  },
+  categoryDescription: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  sensitiveWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    backgroundColor: colors.destructive + '10',
+    borderRadius: radius.sm,
+  },
+  sensitiveWarningText: {
+    ...typography.captionSmall,
+    color: colors.destructive,
+    fontWeight: '500',
   },
   detailSection: {
     marginBottom: spacing.lg,
@@ -1919,29 +2116,98 @@ export default function TeamManagementScreen() {
 
                 {useCustomPermissions ? (
                   <>
+                    {/* Quick Presets Section */}
+                    <View style={styles.presetsSection}>
+                      <Text style={styles.presetsSectionTitle}>Quick Presets</Text>
+                      <View style={styles.presetsRow}>
+                        {PERMISSION_PRESETS.slice(0, 2).map((preset) => {
+                          const isActive = preset.permissions.every(p => selectedPermissions.includes(p)) &&
+                            selectedPermissions.length === preset.permissions.length;
+                          return (
+                            <TouchableOpacity
+                              key={preset.id}
+                              style={[styles.presetButton, isActive && styles.presetButtonSelected]}
+                              onPress={() => setSelectedPermissions([...preset.permissions])}
+                            >
+                              <View style={[styles.presetIcon, isActive && styles.presetIconSelected]}>
+                                <Feather name={preset.icon as any} size={14} color={isActive ? '#FFFFFF' : colors.mutedForeground} />
+                              </View>
+                              <View style={styles.presetContent}>
+                                <Text style={styles.presetName}>{preset.name}</Text>
+                                <Text style={styles.presetDesc} numberOfLines={1}>{preset.description}</Text>
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                      {PERMISSION_PRESETS.length > 2 && (
+                        <View style={styles.presetsRow}>
+                          {PERMISSION_PRESETS.slice(2).map((preset) => {
+                            const isActive = preset.permissions.every(p => selectedPermissions.includes(p)) &&
+                              selectedPermissions.length === preset.permissions.length;
+                            return (
+                              <TouchableOpacity
+                                key={preset.id}
+                                style={[styles.presetButton, isActive && styles.presetButtonSelected]}
+                                onPress={() => setSelectedPermissions([...preset.permissions])}
+                              >
+                                <View style={[styles.presetIcon, isActive && styles.presetIconSelected]}>
+                                  <Feather name={preset.icon as any} size={14} color={isActive ? '#FFFFFF' : colors.mutedForeground} />
+                                </View>
+                                <View style={styles.presetContent}>
+                                  <Text style={styles.presetName}>{preset.name}</Text>
+                                  <Text style={styles.presetDesc} numberOfLines={1}>{preset.description}</Text>
+                                </View>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+
                     <TouchableOpacity 
                       style={styles.applyDefaultsButton}
                       onPress={applyRoleDefaults}
                     >
                       <Feather name="refresh-cw" size={14} color={colors.foreground} />
-                      <Text style={styles.applyDefaultsText}>Apply Role Defaults</Text>
+                      <Text style={styles.applyDefaultsText}>Reset to Role Defaults</Text>
                       <Text style={styles.permissionCount}>{selectedPermissions.length} selected</Text>
                     </TouchableOpacity>
 
                     {Object.entries(groupedPermissions).map(([category, perms]) => {
                       const allSelected = perms.every(p => selectedPermissions.includes(p.key));
                       const rolePerms = selectedMember ? getRolePermissions(selectedMember.roleId) : [];
+                      const categoryMeta = PERMISSION_CATEGORY_META[category] || PERMISSION_CATEGORY_META['Other'];
+                      const isSensitive = categoryMeta.isSensitive;
                       
                       return (
                         <View key={category} style={styles.permissionCategory}>
                           <View style={styles.permissionCategoryHeader}>
-                            <Text style={styles.permissionCategoryTitle}>{category}</Text>
+                            <View style={styles.categoryHeaderRow}>
+                              <View style={[styles.categoryIcon, isSensitive && styles.categoryIconSensitive]}>
+                                <Feather 
+                                  name={categoryMeta.icon as any} 
+                                  size={12} 
+                                  color={isSensitive ? colors.destructive : colors.primary} 
+                                />
+                              </View>
+                              <View style={styles.categoryTitleContainer}>
+                                <Text style={styles.permissionCategoryTitle}>{category}</Text>
+                                <Text style={styles.categoryDescription}>{categoryMeta.description}</Text>
+                              </View>
+                              {isSensitive && (
+                                <View style={styles.sensitiveWarning}>
+                                  <Feather name="lock" size={10} color={colors.destructive} />
+                                  <Text style={styles.sensitiveWarningText}>Sensitive</Text>
+                                </View>
+                              )}
+                            </View>
                             <TouchableOpacity 
                               style={styles.selectAllButton}
                               onPress={() => toggleCategory(category)}
                             >
                               <Text style={styles.selectAllText}>
-                                {allSelected ? 'Deselect All' : 'Select All'}
+                                {allSelected ? 'None' : 'All'}
                               </Text>
                             </TouchableOpacity>
                           </View>

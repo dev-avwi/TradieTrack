@@ -20,6 +20,9 @@ export const PERMISSIONS = {
   WRITE_EXPENSES: 'write_expenses',
   MANAGE_CATALOG: 'manage_catalog',
   VIEW_ALL: 'view_all',
+  // Job media permissions - allows staff to interact with photos, notes, videos, voice for assigned jobs
+  WRITE_JOB_NOTES: 'write_job_notes',
+  WRITE_JOB_MEDIA: 'write_job_media',
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -68,8 +71,11 @@ export const ROLE_TEMPLATES = {
       PERMISSIONS.READ_JOBS,
       PERMISSIONS.READ_CLIENTS,
       PERMISSIONS.READ_TIME_ENTRIES, PERMISSIONS.WRITE_TIME_ENTRIES,
+      // Allow staff to add notes, photos, videos, voice to assigned jobs
+      PERMISSIONS.WRITE_JOB_NOTES,
+      PERMISSIONS.WRITE_JOB_MEDIA,
     ],
-    description: 'Basic access to view jobs and manage own time entries',
+    description: 'Basic access to assigned jobs - can add photos, notes, and track time',
   },
 };
 
@@ -185,4 +191,125 @@ export function ownerOnly() {
       return res.status(500).json({ error: 'Permission check failed' });
     }
   };
+}
+
+/**
+ * Checks if a user can access a specific job's media (photos, notes, videos, voice)
+ * 
+ * Access rules (granular job media separation):
+ * - Business owners: Full access to all jobs
+ * - True admins (VIEW_ALL + MANAGE_TEAM): Full access to all jobs (for oversight)
+ * - All other users: Must have WRITE_JOB_MEDIA/WRITE_JOB_NOTES AND be assigned to the job
+ * 
+ * Note: VIEW_ALL alone (without MANAGE_TEAM) or WRITE_JOBS alone do NOT grant media access.
+ * This ensures staff assigned to scheduling/viewing duties cannot access job media 
+ * unless they are explicitly granted media permissions AND assigned to the job.
+ * 
+ * @returns true if access is allowed, false otherwise
+ */
+export async function canAccessJobMedia(userContext: UserContext, jobId: string): Promise<boolean> {
+  // Owners have full access
+  if (userContext.isOwner) {
+    return true;
+  }
+  
+  // True admins (VIEW_ALL + MANAGE_TEAM) can access all jobs for oversight
+  // This ensures only actual admins, not supervisors with VIEW_ALL for job visibility, 
+  // have unrestricted media access
+  const isTrueAdmin = userContext.permissions.includes(PERMISSIONS.VIEW_ALL) && 
+                      userContext.permissions.includes(PERMISSIONS.MANAGE_TEAM);
+  if (isTrueAdmin) {
+    return true;
+  }
+  
+  // All other users need:
+  // 1. Job media permissions (WRITE_JOB_MEDIA or WRITE_JOB_NOTES)
+  // 2. Be assigned to this specific job
+  const hasMediaPermission = userContext.permissions.includes(PERMISSIONS.WRITE_JOB_MEDIA) ||
+                              userContext.permissions.includes(PERMISSIONS.WRITE_JOB_NOTES);
+  
+  if (!hasMediaPermission) {
+    return false;
+  }
+  
+  // Check if assigned to this job
+  try {
+    const job = await storage.getJob(jobId, userContext.effectiveUserId);
+    if (!job) {
+      return false;
+    }
+    
+    // Check if user is assigned to this job
+    // assignedTo typically stores userId of the team member
+    // Also check teamMemberId for backwards compatibility with legacy data
+    const isAssigned = job.assignedTo === userContext.userId ||
+                       (userContext.teamMemberId && job.assignedTo === userContext.teamMemberId);
+    return isAssigned;
+  } catch (error) {
+    console.error('Error checking job access:', error);
+    return false;
+  }
+}
+
+/**
+ * Checks if a user can write/modify a specific job's media (photos, notes, videos, voice)
+ * 
+ * Write rules (granular job media separation):
+ * - Business owners: Full write access to all jobs
+ * - True admins (VIEW_ALL + MANAGE_TEAM): Full write access to all jobs
+ * - All other users: Must have WRITE_JOB_MEDIA/WRITE_JOB_NOTES AND be assigned to the job
+ * 
+ * Note: VIEW_ALL alone or WRITE_JOBS alone do NOT grant media write access.
+ */
+export async function canWriteJobMedia(userContext: UserContext, jobId: string): Promise<boolean> {
+  // Owners have full access
+  if (userContext.isOwner) {
+    return true;
+  }
+  
+  // True admins (VIEW_ALL + MANAGE_TEAM) can write to all jobs
+  const isTrueAdmin = userContext.permissions.includes(PERMISSIONS.VIEW_ALL) && 
+                      userContext.permissions.includes(PERMISSIONS.MANAGE_TEAM);
+  if (isTrueAdmin) {
+    return true;
+  }
+  
+  // All other users need WRITE_JOB_MEDIA or WRITE_JOB_NOTES permission AND must be assigned to the job
+  const hasMediaPermission = userContext.permissions.includes(PERMISSIONS.WRITE_JOB_MEDIA) ||
+                              userContext.permissions.includes(PERMISSIONS.WRITE_JOB_NOTES);
+  
+  if (!hasMediaPermission) {
+    return false;
+  }
+  
+  // Check if assigned to this job
+  try {
+    const job = await storage.getJob(jobId, userContext.effectiveUserId);
+    if (!job) {
+      return false;
+    }
+    // Check both userId and teamMemberId for assignment
+    const isAssigned = job.assignedTo === userContext.userId ||
+                       (userContext.teamMemberId && job.assignedTo === userContext.teamMemberId);
+    return isAssigned;
+  } catch (error) {
+    console.error('Error checking job write access:', error);
+    return false;
+  }
+}
+
+/**
+ * Helper to check if user is assigned to a job (for staff assignment validation)
+ */
+export async function isUserAssignedToJob(userId: string, jobId: string, effectiveUserId: string): Promise<boolean> {
+  try {
+    const job = await storage.getJob(jobId, effectiveUserId);
+    if (!job) {
+      return false;
+    }
+    return job.assignedTo === userId;
+  } catch (error) {
+    console.error('Error checking job assignment:', error);
+    return false;
+  }
 }

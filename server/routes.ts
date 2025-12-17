@@ -8452,15 +8452,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   function getCategoryForPermission(permission: string): string {
+    // Job media permissions get their own category
+    if (permission.includes('job_notes') || permission.includes('job_media')) return 'Job Media';
     if (permission.includes('job')) return 'Jobs';
     if (permission.includes('quote')) return 'Quotes';
     if (permission.includes('invoice')) return 'Invoices';
     if (permission.includes('client')) return 'Clients';
     if (permission.includes('team')) return 'Team';
-    if (permission.includes('time') || permission.includes('expense')) return 'Time & Expenses';
+    if (permission.includes('time')) return 'Time Tracking';
+    if (permission.includes('expense')) return 'Expenses';
     if (permission.includes('report')) return 'Reports';
-    if (permission.includes('template') || permission.includes('catalog')) return 'Templates & Catalog';
-    if (permission.includes('setting') || permission.includes('payment')) return 'Settings';
+    if (permission.includes('template')) return 'Templates';
+    if (permission.includes('catalog')) return 'Catalog';
+    if (permission.includes('setting')) return 'Settings';
+    if (permission.includes('payment')) return 'Payments';
     return 'Other';
   }
 
