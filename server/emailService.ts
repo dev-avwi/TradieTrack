@@ -968,9 +968,14 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
 
   try {
     await sgMail.send(emailData);
+    console.log('Password reset email sent successfully to:', user.email);
     return { success: true, message: 'Password reset email sent successfully' };
   } catch (error: any) {
     console.error('Error sending password reset email:', error);
+    // Log full SendGrid error details
+    if (error.response?.body?.errors) {
+      console.error('SendGrid error details:', JSON.stringify(error.response.body.errors, null, 2));
+    }
     if (error.message?.includes('SendGrid') || error.response?.body) {
       throw new Error('Email service error. Please check your configuration.');
     }
