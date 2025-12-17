@@ -75,9 +75,18 @@ export default function LoginScreen() {
         const url = new URL(result.url);
         const auth = url.searchParams.get('auth');
         const error = url.searchParams.get('error');
+        const token = url.searchParams.get('token');
         
-        if (auth === 'success' || auth === 'google_success') {
-          // Check auth state from server
+        if ((auth === 'success' || auth === 'google_success') && token) {
+          // Save the session token from OAuth
+          const api = (await import('../../src/lib/api')).default;
+          await api.setToken(token);
+          
+          // Now check auth state from server with the token
+          await checkAuth();
+          router.replace('/(tabs)');
+        } else if (auth === 'success' || auth === 'google_success') {
+          // No token but auth success - try checkAuth anyway
           const isLoggedIn = await checkAuth();
           if (isLoggedIn) {
             router.replace('/(tabs)');

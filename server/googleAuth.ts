@@ -225,8 +225,10 @@ export function setupGoogleAuth(app: Express) {
           
           // Redirect based on platform
           if (isMobile) {
-            console.log('🔐 Mobile OAuth success, redirecting to app deep link');
-            return res.redirect('tradietrack://?auth=google_success');
+            // Pass session token in URL for mobile app to use
+            const sessionToken = req.sessionID;
+            console.log('🔐 Mobile OAuth success, redirecting to app deep link with token');
+            return res.redirect(`tradietrack://?auth=google_success&token=${sessionToken}`);
           }
           
           // Redirect to web app
