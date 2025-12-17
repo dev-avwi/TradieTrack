@@ -436,7 +436,7 @@ export default function OnboardingSetupScreen() {
       </View>
 
       <Card style={styles.integrationCard}>
-        <CardContent>
+        <CardContent style={{ paddingTop: 20 }}>
           <View style={styles.integrationHeader}>
             <View style={[styles.integrationIcon, { backgroundColor: '#6366f1' + '20' }]}>
               <Ionicons name="logo-usd" size={24} color="#6366f1" />
@@ -464,17 +464,26 @@ export default function OnboardingSetupScreen() {
             </View>
           </View>
 
-          <Button
-            variant="default"
-            size="lg"
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#6366f1',
+              paddingVertical: 14,
+              paddingHorizontal: 20,
+              borderRadius: 10,
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+            }}
             onPress={handleConnectStripe}
-            loading={isLoading}
             disabled={isLoading}
-            fullWidth
-            style={{ backgroundColor: '#6366f1' }}
+            activeOpacity={0.8}
           >
-            Connect Stripe Account
-          </Button>
+            {isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Connect Stripe Account</Text>
+            )}
+          </TouchableOpacity>
         </CardContent>
       </Card>
 
