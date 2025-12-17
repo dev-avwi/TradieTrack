@@ -396,16 +396,27 @@ export default function OnboardingSetupScreen() {
       </View>
 
       <View style={styles.buttonRow}>
-        <Button
-          variant="brand"
-          size="xl"
+        <TouchableOpacity
+          style={{
+            backgroundColor: '#1e3a5f',
+            paddingVertical: 14,
+            paddingHorizontal: 20,
+            borderRadius: 10,
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            opacity: (isLoading || !businessData.teamSize || !businessData.businessName || !businessData.tradeType) ? 0.5 : 1,
+          }}
           onPress={handleSaveBusinessSettings}
-          loading={isLoading}
           disabled={isLoading || !businessData.teamSize || !businessData.businessName || !businessData.tradeType}
-          fullWidth
+          activeOpacity={0.8}
         >
-          Continue
-        </Button>
+          {isLoading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Continue</Text>
+          )}
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -485,14 +496,21 @@ export default function OnboardingSetupScreen() {
         </TouchableOpacity>
       </View>
 
-      <Button
-        variant="brand"
-        size="xl"
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#1e3a5f',
+          paddingVertical: 14,
+          paddingHorizontal: 20,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+        }}
         onPress={handleContinueFromIntegrations}
-        fullWidth
+        activeOpacity={0.8}
       >
-        Continue
-      </Button>
+        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Continue</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 
@@ -587,18 +605,31 @@ export default function OnboardingSetupScreen() {
         </TouchableOpacity>
       </View>
 
-      <Button
-        variant="brand"
-        size="xl"
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#1e3a5f',
+          paddingVertical: 14,
+          paddingHorizontal: 20,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          opacity: sendingInvites ? 0.5 : 1,
+        }}
         onPress={handleSendInvites}
-        loading={sendingInvites}
         disabled={sendingInvites}
-        fullWidth
+        activeOpacity={0.8}
       >
-        {teamInvites.length > 0 
-          ? `Send ${teamInvites.length} Invite${teamInvites.length > 1 ? 's' : ''}`
-          : 'Continue'}
-      </Button>
+        {sendingInvites ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
+            {teamInvites.length > 0 
+              ? `Send ${teamInvites.length} Invite${teamInvites.length > 1 ? 's' : ''}`
+              : 'Continue'}
+          </Text>
+        )}
+      </TouchableOpacity>
     </ScrollView>
   );
 
@@ -630,14 +661,21 @@ export default function OnboardingSetupScreen() {
         </View>
       </View>
 
-      <Button
-        variant="brand"
-        size="xl"
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#1e3a5f',
+          paddingVertical: 14,
+          paddingHorizontal: 20,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+        }}
         onPress={handleComplete}
-        fullWidth
+        activeOpacity={0.8}
       >
-        Start Using TradieTrack
-      </Button>
+        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Start Using TradieTrack</Text>
+      </TouchableOpacity>
     </View>
   );
 
