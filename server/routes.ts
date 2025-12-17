@@ -1245,9 +1245,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Global Search Endpoint
+  // Global Search Endpoint (team-aware)
   app.get("/api/search", requireAuth, async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const query = (req.query.q || '').toString().toLowerCase();
       
       if (query.length < 2) {
@@ -1256,9 +1257,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const results: any[] = [];
 
-      // Batch fetch all data once for efficiency
-      const allClients = await storage.getClients(req.userId);
-      const allJobs = await storage.getJobs(req.userId);
+      // Batch fetch all data once for efficiency (use effectiveUserId for team visibility)
+      const allClients = await storage.getClients(userContext.effectiveUserId);
+      const allJobs = await storage.getJobs(userContext.effectiveUserId);
       const clientsMap = new Map(allClients.map((c: any) => [c.id, c]));
       const jobsMap = new Map(allJobs.map((j: any) => [j.id, j]));
 
@@ -1307,7 +1308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Search Quotes (including client and job names)
-      const quotes = await storage.getQuotes(req.userId);
+      const quotes = await storage.getQuotes(userContext.effectiveUserId);
       quotes.forEach((quote: any) => {
         const client = clientsMap.get(quote.clientId);
         const job = quote.jobId ? jobsMap.get(quote.jobId) : null;
@@ -1335,7 +1336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Search Invoices (including client and job names)
-      const invoices = await storage.getInvoices(req.userId);
+      const invoices = await storage.getInvoices(userContext.effectiveUserId);
       invoices.forEach((invoice: any) => {
         const client = clientsMap.get(invoice.clientId);
         const job = invoice.jobId ? jobsMap.get(invoice.jobId) : null;
@@ -4925,10 +4926,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Send job confirmation email
+  // Send job confirmation email (team-aware)
   app.post("/api/jobs/:id/send-confirmation", requireAuth, async (req: any, res) => {
     try {
-      const job = await storage.getJob(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const job = await storage.getJob(req.params.id, userContext.effectiveUserId);
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
       }
@@ -4937,7 +4939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Job has no associated client" });
       }
 
-      const client = await storage.getClient(job.clientId, req.userId);
+      const client = await storage.getClient(job.clientId, userContext.effectiveUserId);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
       }
@@ -4946,7 +4948,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Client has no email address" });
       }
 
-      const business = await storage.getBusinessSettings(req.userId) || {
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId) || {
         businessName: 'Business',
         abn: '',
         address: '',
@@ -4978,10 +4980,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Checklist Items
+  // Checklist Items (team-aware)
   app.get("/api/jobs/:jobId/checklist", requireAuth, async (req: any, res) => {
     try {
-      const items = await storage.getChecklistItems(req.params.jobId, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const items = await storage.getChecklistItems(req.params.jobId, userContext.effectiveUserId);
       res.json(items);
     } catch (error) {
       console.error("Error fetching checklist items:", error);
@@ -4991,11 +4994,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/jobs/:jobId/checklist", requireAuth, async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const data = insertChecklistItemSchema.parse({
         ...req.body,
         jobId: req.params.jobId
       });
-      const item = await storage.createChecklistItem(data, req.userId);
+      const item = await storage.createChecklistItem(data, userContext.effectiveUserId);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -5011,8 +5015,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/checklist/:id", requireAuth, async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const updates = updateChecklistItemSchema.partial().parse(req.body);
-      const item = await storage.updateChecklistItem(req.params.id, req.userId, updates);
+      const item = await storage.updateChecklistItem(req.params.id, userContext.effectiveUserId, updates);
       if (!item) {
         return res.status(404).json({ error: "Checklist item not found" });
       }
@@ -5031,7 +5036,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/checklist/:id", requireAuth, async (req: any, res) => {
     try {
-      const success = await storage.deleteChecklistItem(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const success = await storage.deleteChecklistItem(req.params.id, userContext.effectiveUserId);
       if (!success) {
         return res.status(404).json({ error: "Checklist item not found" });
       }
@@ -5042,9 +5048,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get jobs for client (team-aware)
   app.get("/api/clients/:clientId/jobs", requireAuth, async (req: any, res) => {
     try {
-      const jobs = await storage.getJobsForClient(req.params.clientId, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const jobs = await storage.getJobsForClient(req.params.clientId, userContext.effectiveUserId);
       res.json(jobs);
     } catch (error) {
       console.error("Error fetching jobs for client:", error);
@@ -5052,13 +5060,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Quotes Routes
+  // Quotes Routes (team-aware: use effectiveUserId for proper data scoping)
   app.get("/api/quotes", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const includeArchived = req.query.archived === 'true';
       const [quotes, clients] = await Promise.all([
-        storage.getQuotes(req.userId, includeArchived),
-        storage.getClients(req.userId),
+        storage.getQuotes(userContext.effectiveUserId, includeArchived),
+        storage.getClients(userContext.effectiveUserId),
       ]);
       
       // Create client lookup map
@@ -5081,10 +5090,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Archive/Unarchive quote
+  // Archive/Unarchive quote (team-aware)
   app.post("/api/quotes/:id/archive", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
-      const quote = await storage.archiveQuote(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const quote = await storage.archiveQuote(req.params.id, userContext.effectiveUserId);
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
       }
@@ -5097,7 +5107,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quotes/:id/unarchive", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
-      const quote = await storage.unarchiveQuote(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const quote = await storage.unarchiveQuote(req.params.id, userContext.effectiveUserId);
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
       }
@@ -5108,11 +5119,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Accepted quotes endpoint for invoice creation workflow
+  // Accepted quotes endpoint for invoice creation workflow (team-aware)
   // Returns accepted quotes with full data (client, job, line items) for creating invoices
   app.get("/api/quotes/accepted", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
-      const userId = req.userId;
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
       
       // Get quotes, clients, jobs, and invoices
       const [quotes, clients, jobs, invoices] = await Promise.all([
@@ -5203,9 +5215,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get single quote (team-aware)
   app.get("/api/quotes/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
-      const quote = await storage.getQuoteWithLineItems(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const quote = await storage.getQuoteWithLineItems(req.params.id, userContext.effectiveUserId);
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
       }
@@ -5216,27 +5230,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create quote (team-aware)
   app.post("/api/quotes", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const { lineItems, ...quoteData } = req.body;
       const data = insertQuoteSchema.parse(quoteData);
       
       // Generate quote number if not provided
       if (!data.number) {
-        data.number = await storage.generateQuoteNumber(req.userId);
+        data.number = await storage.generateQuoteNumber(userContext.effectiveUserId);
       }
       
-      const quote = await storage.createQuote({ ...data, userId: req.userId });
+      const quote = await storage.createQuote({ ...data, userId: userContext.effectiveUserId });
       
       // Add line items if provided
       if (lineItems && Array.isArray(lineItems)) {
         for (const item of lineItems) {
           const lineItemData = insertQuoteLineItemSchema.parse({ ...item, quoteId: quote.id });
-          await storage.createQuoteLineItem(lineItemData, req.userId);
+          await storage.createQuoteLineItem(lineItemData, userContext.effectiveUserId);
         }
       }
       
-      const quoteWithItems = await storage.getQuoteWithLineItems(quote.id, req.userId);
+      const quoteWithItems = await storage.getQuoteWithLineItems(quote.id, userContext.effectiveUserId);
       res.status(201).json(quoteWithItems);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -5247,10 +5263,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update quote (team-aware)
   app.patch("/api/quotes/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const data = updateQuoteSchema.parse(req.body);
-      const quote = await storage.updateQuote(req.params.id, req.userId, data);
+      const quote = await storage.updateQuote(req.params.id, userContext.effectiveUserId, data);
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
       }
@@ -5264,9 +5282,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete quote (team-aware)
   app.delete("/api/quotes/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
-      const success = await storage.deleteQuote(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const success = await storage.deleteQuote(req.params.id, userContext.effectiveUserId);
       if (!success) {
         return res.status(404).json({ error: "Quote not found" });
       }
@@ -5277,16 +5297,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate quote from job
+  // Generate quote from job (team-aware)
   app.post("/api/jobs/:id/generate-quote", requireAuth, async (req: any, res) => {
     try {
-      const job = await storage.getJob(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const job = await storage.getJob(req.params.id, userContext.effectiveUserId);
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
       }
 
       // Generate quote number
-      const quoteNumber = await storage.generateQuoteNumber(req.userId);
+      const quoteNumber = await storage.generateQuoteNumber(userContext.effectiveUserId);
       
       // Create quote from job data
       const quoteData = insertQuoteSchema.parse({
@@ -5301,8 +5322,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         total: '0.00'
       });
 
-      const quote = await storage.createQuote({ ...quoteData, userId: req.userId });
-      const quoteWithItems = await storage.getQuoteWithLineItems(quote.id, req.userId);
+      const quote = await storage.createQuote({ ...quoteData, userId: userContext.effectiveUserId });
+      const quoteWithItems = await storage.getQuoteWithLineItems(quote.id, userContext.effectiveUserId);
       
       res.status(201).json(quoteWithItems);
     } catch (error) {
@@ -5494,13 +5515,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Invoices Routes
+  // Invoices Routes (team-aware: use effectiveUserId for proper data scoping)
   app.get("/api/invoices", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const includeArchived = req.query.archived === 'true';
       const [invoices, clients] = await Promise.all([
-        storage.getInvoices(req.userId, includeArchived),
-        storage.getClients(req.userId),
+        storage.getInvoices(userContext.effectiveUserId, includeArchived),
+        storage.getClients(userContext.effectiveUserId),
       ]);
       
       // Create client lookup map
@@ -5523,10 +5545,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Archive/Unarchive invoice
+  // Archive/Unarchive invoice (team-aware)
   app.post("/api/invoices/:id/archive", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
-      const invoice = await storage.archiveInvoice(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const invoice = await storage.archiveInvoice(req.params.id, userContext.effectiveUserId);
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
@@ -5539,7 +5562,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/invoices/:id/unarchive", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
-      const invoice = await storage.unarchiveInvoice(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const invoice = await storage.unarchiveInvoice(req.params.id, userContext.effectiveUserId);
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
@@ -5550,9 +5574,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get single invoice (team-aware)
   app.get("/api/invoices/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
     try {
-      const invoice = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const invoice = await storage.getInvoiceWithLineItems(req.params.id, userContext.effectiveUserId);
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
@@ -5563,34 +5589,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create invoice (team-aware)
   app.post("/api/invoices", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const { lineItems, ...invoiceData } = req.body;
       const data = insertInvoiceSchema.parse(invoiceData);
       
       // Generate invoice number if not provided
       if (!data.number) {
-        data.number = await storage.generateInvoiceNumber(req.userId);
+        data.number = await storage.generateInvoiceNumber(userContext.effectiveUserId);
       }
       
-      const invoice = await storage.createInvoice({ ...data, userId: req.userId });
+      const invoice = await storage.createInvoice({ ...data, userId: userContext.effectiveUserId });
       
       // Add line items if provided
       if (lineItems && Array.isArray(lineItems)) {
         for (const item of lineItems) {
           const lineItemData = insertInvoiceLineItemSchema.parse({ ...item, invoiceId: invoice.id });
-          await storage.createInvoiceLineItem(lineItemData, req.userId);
+          await storage.createInvoiceLineItem(lineItemData, userContext.effectiveUserId);
         }
       }
       
-      const invoiceWithItems = await storage.getInvoiceWithLineItems(invoice.id, req.userId);
+      const invoiceWithItems = await storage.getInvoiceWithLineItems(invoice.id, userContext.effectiveUserId);
       
       // Auto-update linked job status to 'invoiced' if job is in 'done' status
       if (invoice.jobId) {
         try {
-          const job = await storage.getJob(invoice.jobId, req.userId);
+          const job = await storage.getJob(invoice.jobId, userContext.effectiveUserId);
           if (job && job.status === 'done') {
-            await storage.updateJob(invoice.jobId, req.userId, { status: 'invoiced' });
+            await storage.updateJob(invoice.jobId, userContext.effectiveUserId, { status: 'invoiced' });
             console.log(`✅ Auto-updated job ${invoice.jobId} status to 'invoiced'`);
           }
         } catch (e) {
@@ -5609,10 +5637,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update invoice (team-aware)
   app.patch("/api/invoices/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const data = updateInvoiceSchema.parse(req.body);
-      const invoice = await storage.updateInvoice(req.params.id, req.userId, data);
+      const invoice = await storage.updateInvoice(req.params.id, userContext.effectiveUserId, data);
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
@@ -5626,9 +5656,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete invoice (team-aware)
   app.delete("/api/invoices/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
-      const success = await storage.deleteInvoice(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const success = await storage.deleteInvoice(req.params.id, userContext.effectiveUserId);
       if (!success) {
         return res.status(404).json({ error: "Invoice not found" });
       }
@@ -5656,9 +5688,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return handleInvoiceMarkPaid(req, res, storage);
   });
 
-  // Record manual payment with details (cash, bank transfer, etc.)
+  // Record manual payment with details (cash, bank transfer, etc.) - team-aware
   app.post("/api/invoices/:id/record-payment", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const { amount, paymentMethod, reference, notes } = req.body;
       
       // Validate and parse amount with proper string handling
@@ -5677,7 +5710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get invoice
-      const invoice = await storage.getInvoice(req.params.id, req.userId);
+      const invoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
@@ -5698,7 +5731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update invoice with payment details
-      const updatedInvoice = await storage.updateInvoice(req.params.id, req.userId, {
+      const updatedInvoice = await storage.updateInvoice(req.params.id, userContext.effectiveUserId, {
         status: 'paid',
         paidAt: new Date(),
         paymentMethod: paymentMethod,
@@ -5713,9 +5746,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update linked job status if applicable (best effort, don't fail if this errors)
       if (invoice.jobId) {
         try {
-          const job = await storage.getJob(invoice.jobId, req.userId);
+          const job = await storage.getJob(invoice.jobId, userContext.effectiveUserId);
           if (job && job.status !== 'invoiced') {
-            await storage.updateJob(invoice.jobId, req.userId, { status: 'invoiced' });
+            await storage.updateJob(invoice.jobId, userContext.effectiveUserId, { status: 'invoiced' });
           }
         } catch (jobError) {
           console.log("Job status update skipped:", jobError);
