@@ -197,7 +197,11 @@ export default function LoginScreen() {
 
               <TouchableOpacity 
                 style={styles.forgotPassword}
-                onPress={() => Alert.alert('Forgot Password', 'Password reset functionality coming soon!')}
+                onPress={() => {
+                  // Open the web password reset page
+                  const resetUrl = `${API_URL}/reset-password`;
+                  Linking.openURL(resetUrl);
+                }}
                 testID="link-forgot-password"
               >
                 <Text style={styles.forgotPasswordText}>Forgot password?</Text>
