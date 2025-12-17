@@ -76,6 +76,9 @@ import { processStatusChangeAutomation, processPaymentReceivedAutomation, proces
 import * as xeroService from "./xeroService";
 import * as myobService from "./myobService";
 
+// Environment check for development-only endpoints
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
 // Utility function for formatting relative time
 function formatRelativeTime(date: Date | string): string {
   const now = new Date();
@@ -1108,6 +1111,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     req.userId = user.id;
     req.user = user;
+    next();
+  };
+
+  // Middleware to restrict endpoints to development mode only
+  const requireDevelopment = (req: any, res: any, next: any) => {
+    if (!isDevelopment) {
+      return res.status(403).json({ error: "This endpoint is only available in development mode" });
+    }
     next();
   };
 
@@ -6142,7 +6153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Test data endpoint (for development only)
-  app.post("/api/test-data", requireAuth, async (req: any, res) => {
+  app.post("/api/test-data", requireAuth, requireDevelopment, async (req: any, res) => {
     try {
       // Create a test client
       const client = await storage.createClient({
@@ -13406,7 +13417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
   
   // Seed mock data for testing
-  app.post("/api/dev/seed-mock-data", requireAuth, async (req: any, res) => {
+  app.post("/api/dev/seed-mock-data", requireAuth, requireDevelopment, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const user = await storage.getUser(userId);
@@ -13423,7 +13434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Clear all user data (for testing)
-  app.post("/api/dev/clear-data", requireAuth, async (req: any, res) => {
+  app.post("/api/dev/clear-data", requireAuth, requireDevelopment, async (req: any, res) => {
     try {
       const userId = req.userId!;
       
