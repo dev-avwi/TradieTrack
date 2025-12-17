@@ -56,7 +56,7 @@ import {
   digitalSignatures,
 } from "@shared/schema";
 import { db } from "./storage";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { 
   ObjectStorageService, 
   ObjectNotFoundError 
@@ -807,9 +807,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sessionToken = authHeader.substring(7);
         try {
           // Look up session from database
-          const result = await storage.db.execute(
-            `SELECT sess FROM session WHERE sid = $1 AND expire > NOW()`,
-            [sessionToken]
+          const result = await db.execute(
+            sql`SELECT sess FROM session WHERE sid = ${sessionToken} AND expire > NOW()`
           );
           if (result.rows && result.rows.length > 0) {
             const sessionData = result.rows[0].sess as any;
@@ -1082,9 +1081,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sessionToken = authHeader.substring(7);
         try {
           // Look up session from database
-          const result = await storage.db.execute(
-            `SELECT sess FROM session WHERE sid = $1 AND expire > NOW()`,
-            [sessionToken]
+          const result = await db.execute(
+            sql`SELECT sess FROM session WHERE sid = ${sessionToken} AND expire > NOW()`
           );
           if (result.rows && result.rows.length > 0) {
             const sessionData = result.rows[0].sess as any;
