@@ -2659,6 +2659,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: error.message || "Failed to send demo email" });
     }
   });
+
+  // Preview welcome email template (for testing/demo purposes)
+  app.get("/api/email-preview/welcome", requireAuth, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.userId);
+      const userName = user?.firstName || user?.email?.split('@')[0] || 'Tradie';
+      
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Welcome to TradieTrack</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+          <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to TradieTrack!</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">The business management platform built for Australian tradies</p>
+          </div>
+          
+          <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <p style="font-size: 18px; margin-bottom: 20px;">G'day ${userName}!</p>
+            
+            <p>Thanks for signing up to TradieTrack. You've just taken the first step towards running a more organised, professional trade business.</p>
+            
+            <div style="background: #f0f9ff; padding: 25px; border-radius: 8px; margin: 25px 0;">
+              <h3 style="margin: 0 0 20px 0; color: #1d4ed8; text-align: center;">Quick Start Guide</h3>
+              
+              <div style="display: flex; margin-bottom: 15px;">
+                <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">1</div>
+                <div>
+                  <strong style="color: #1d4ed8;">Set up your business profile</strong>
+                  <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Add your ABN, logo, and business details for professional quotes and invoices</p>
+                </div>
+              </div>
+              
+              <div style="display: flex; margin-bottom: 15px;">
+                <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">2</div>
+                <div>
+                  <strong style="color: #1d4ed8;">Add your first client</strong>
+                  <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Store customer details and job history in one place</p>
+                </div>
+              </div>
+              
+              <div style="display: flex; margin-bottom: 15px;">
+                <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">3</div>
+                <div>
+                  <strong style="color: #1d4ed8;">Create a quote</strong>
+                  <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Use our templates to send professional quotes with one click</p>
+                </div>
+              </div>
+              
+              <div style="display: flex; margin-bottom: 15px;">
+                <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">4</div>
+                <div>
+                  <strong style="color: #1d4ed8;">Convert quote to job</strong>
+                  <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Once accepted, turn it into a trackable job with scheduling</p>
+                </div>
+              </div>
+              
+              <div style="display: flex;">
+                <div style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">5</div>
+                <div>
+                  <strong style="color: #10b981;">Invoice & get paid</strong>
+                  <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Send invoices with Stripe payment links - get paid online instantly</p>
+                </div>
+              </div>
+            </div>
+            
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+              <p style="margin: 0; font-size: 14px; color: #92400e;">
+                <strong>Pro tip:</strong> Download our mobile app to manage your jobs on the go. Same account, synced data!
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="https://tradietrack.replit.app" style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
+                Get Started Now
+              </a>
+            </div>
+            
+            <p style="color: #666; font-size: 14px; margin-top: 30px;">
+              Need help? Just reply to this email and we'll get back to you.
+            </p>
+            
+            <p style="margin-top: 25px;">
+              Cheers,<br>
+              <strong>The TradieTrack Team</strong><br>
+              <span style="color: #666; font-size: 14px;">AVWeb Innovation</span>
+            </p>
+          </div>
+          
+          <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+            <p style="margin: 0;">TradieTrack - Making Australian tradies more professional</p>
+            <p style="margin: 5px 0 0 0;">Questions? Contact us at admin@avwebinnovation.com</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+    } catch (error: any) {
+      console.error("Error generating welcome email preview:", error);
+      res.status(500).json({ error: "Failed to generate email preview" });
+    }
+  });
+
+  // Send test welcome email to current user (for testing purposes)
+  app.post("/api/email-preview/send-welcome", requireAuth, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const result = await sendWelcomeEmail({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName
+      });
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: result.mock 
+            ? "Welcome email logged to console (mock mode - no SendGrid configured)" 
+            : `Welcome email sent to ${user.email}`,
+          mock: result.mock
+        });
+      } else {
+        res.status(500).json({ error: result.error || "Failed to send welcome email" });
+      }
+    } catch (error: any) {
+      console.error("Error sending test welcome email:", error);
+      res.status(500).json({ error: error.message || "Failed to send welcome email" });
+    }
+  });
   
   // Test SMS Route - Disabled for beta
   app.post("/api/integrations/test-sms", requireAuth, async (req: any, res) => {
