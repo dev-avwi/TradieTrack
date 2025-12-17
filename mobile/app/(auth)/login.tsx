@@ -10,8 +10,7 @@ import {
   StyleSheet,
   Alert,
   Image,
-  ActivityIndicator,
-  Linking
+  ActivityIndicator
 } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -197,11 +196,7 @@ export default function LoginScreen() {
 
               <TouchableOpacity 
                 style={styles.forgotPassword}
-                onPress={() => {
-                  // Open the web password reset page
-                  const resetUrl = `${API_URL}/reset-password`;
-                  Linking.openURL(resetUrl);
-                }}
+                onPress={() => router.push('/(auth)/forgot-password')}
                 testID="link-forgot-password"
               >
                 <Text style={styles.forgotPasswordText}>Forgot password?</Text>

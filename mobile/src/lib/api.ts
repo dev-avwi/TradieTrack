@@ -268,6 +268,26 @@ class ApiClient {
   }): Promise<ApiResponse<any>> {
     return this.patch<any>('/api/business-settings', data);
   }
+
+  async forgotPassword(email: string): Promise<{ success: boolean; error?: string; message?: string }> {
+    const response = await this.post<{ success: boolean; message?: string }>('/api/auth/forgot-password', { email });
+    
+    if (response.error) {
+      return { success: false, error: response.error };
+    }
+    
+    return { success: true, message: response.data?.message };
+  }
+
+  async resetPassword(token: string, password: string): Promise<{ success: boolean; error?: string; message?: string }> {
+    const response = await this.post<{ success: boolean; message?: string }>('/api/auth/reset-password', { token, password });
+    
+    if (response.error) {
+      return { success: false, error: response.error };
+    }
+    
+    return { success: true, message: response.data?.message };
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL);
