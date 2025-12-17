@@ -13552,6 +13552,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
+  // ADMIN DASHBOARD ROUTES (Super Admin Only)
+  // ============================================
+  
+  const ADMIN_EMAIL = "admin@avwebinnovation.com";
+  
+  // Admin middleware - only allows access to the super admin email
+  const requireAdmin = async (req: any, res: any, next: any) => {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user || user.email !== ADMIN_EMAIL) {
+        return res.status(403).json({ error: 'Access denied. Admin only.' });
+      }
+      
+      next();
+    } catch (error) {
+      console.error('Admin auth error:', error);
+      res.status(500).json({ error: 'Authentication error' });
+    }
+  };
+  
+  // Get admin stats - KPIs, user growth, feature usage
+  app.get("/api/admin/stats", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      // Get all users
+      const allUsers = await db.select().from(users);
+      
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      // Total users
+      const totalUsers = allUsers.length;
+      
+      // Active users (updated in last 7 days)
+      const activeUsers = allUsers.filter(u => {
+        const updatedAt = u.updatedAt ? new Date(u.updatedAt) : null;
+        return updatedAt && updatedAt >= sevenDaysAgo;
+      }).length;
+      
+      // Onboarding completion rate (users with business settings)
+      const allBusinessSettings = await db.select().from(businessSettings);
+      const usersWithOnboarding = allBusinessSettings.length;
+      const onboardingCompletionRate = totalUsers > 0 
+        ? Math.round((usersWithOnboarding / totalUsers) * 100) 
+        : 0;
+      
+      // User growth data - signups per month for last 12 months
+      const growthData: { month: string; signups: number }[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+        const monthLabel = monthStart.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' });
+        
+        const signups = allUsers.filter(u => {
+          const createdAt = u.createdAt ? new Date(u.createdAt) : null;
+          return createdAt && createdAt >= monthStart && createdAt <= monthEnd;
+        }).length;
+        
+        growthData.push({ month: monthLabel, signups });
+      }
+      
+      // Feature usage stats across all users
+      const allJobs = await db.select().from(jobs);
+      const allInvoices = await db.select().from(invoices);
+      const allQuotes = await db.select().from(quotes);
+      const allClients = await db.select().from(clients);
+      
+      const featureUsage = {
+        totalJobs: allJobs.length,
+        totalInvoices: allInvoices.length,
+        totalQuotes: allQuotes.length,
+        totalClients: allClients.length,
+        completedJobs: allJobs.filter(j => j.status === 'done').length,
+        paidInvoices: allInvoices.filter(i => i.status === 'paid').length,
+        acceptedQuotes: allQuotes.filter(q => q.status === 'accepted').length,
+      };
+      
+      // Subscription tier breakdown
+      const tierBreakdown = {
+        free: allUsers.filter(u => u.subscriptionTier === 'free' || !u.subscriptionTier).length,
+        pro: allUsers.filter(u => u.subscriptionTier === 'pro').length,
+        trial: allUsers.filter(u => u.subscriptionTier === 'trial').length,
+      };
+      
+      res.json({
+        kpis: {
+          totalUsers,
+          activeUsers,
+          onboardingCompletionRate,
+        },
+        growthData,
+        featureUsage,
+        tierBreakdown,
+      });
+    } catch (error: any) {
+      console.error('Error getting admin stats:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get all users for admin
+  app.get("/api/admin/users", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      // Get all users with basic info (exclude sensitive fields)
+      const allUsers = await db.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        subscriptionTier: users.subscriptionTier,
+        tradeType: users.tradeType,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        isActive: users.isActive,
+        emailVerified: users.emailVerified,
+      }).from(users).orderBy(desc(users.createdAt));
+      
+      // Get business settings to check onboarding completion
+      const allBusinessSettings = await db.select({
+        userId: businessSettings.userId,
+        businessName: businessSettings.businessName,
+      }).from(businessSettings);
+      
+      const businessSettingsMap = new Map(allBusinessSettings.map(bs => [bs.userId, bs]));
+      
+      // Enrich user data
+      const enrichedUsers = allUsers.map(user => ({
+        ...user,
+        name: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'Unknown',
+        hasCompletedOnboarding: businessSettingsMap.has(user.id),
+        businessName: businessSettingsMap.get(user.id)?.businessName || null,
+      }));
+      
+      res.json({ users: enrichedUsers });
+    } catch (error: any) {
+      console.error('Error getting admin users:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
   // MOCK DATA SEEDING (Development/Testing)
   // ============================================
   

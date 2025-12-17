@@ -64,6 +64,7 @@ import CustomForms from "@/pages/CustomForms";
 import MyAccount from "@/pages/MyAccount";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
+import AdminDashboard from "@/pages/AdminDashboard";
 import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
 import DemoModeBanner from "@/components/DemoModeBanner";
 
@@ -421,6 +422,8 @@ function Router({
       <Route path="/reports" component={() => (
         <Reports />
       )} />
+      
+      <Route path="/admin" component={AdminDashboard} />
       
       <Route path="/payment-hub" component={PaymentHub} />
       
