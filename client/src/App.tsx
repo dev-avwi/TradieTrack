@@ -530,15 +530,18 @@ function AppLayout() {
     // Check if we've returned from OAuth (URL contains certain params or we're on the root)
     const urlParams = new URLSearchParams(window.location.search);
     const hasOAuthParams = urlParams.has('code') || urlParams.has('state');
+    // Also check for our custom auth param from Google OAuth callback
+    const authParam = urlParams.get('auth');
+    const hasGoogleAuthSuccess = authParam === 'google_success' || authParam === 'success';
     
-    if (hasOAuthParams || sessionStorage.getItem('oauth-in-progress')) {
+    if (hasOAuthParams || hasGoogleAuthSuccess || sessionStorage.getItem('oauth-in-progress')) {
       sessionStorage.removeItem('oauth-in-progress');
       // Directly invalidate auth queries to trigger refresh
       queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
       queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
       setAuthKey(prev => prev + 1);
-      // Clean up URL
-      if (hasOAuthParams) {
+      // Clean up URL (remove OAuth params but keep clean URL)
+      if (hasOAuthParams || hasGoogleAuthSuccess) {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }

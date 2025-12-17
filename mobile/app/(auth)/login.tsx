@@ -33,14 +33,22 @@ export default function LoginScreen() {
   // Handle Google OAuth callback via deep link
   useEffect(() => {
     if (params.auth === 'google_success' || params.auth === 'success') {
+      // Check if this is a new user who needs onboarding
+      const isNewUser = params.isNewUser === 'true';
+      
       // Refresh auth state after Google login
       checkAuth().then((isLoggedIn) => {
         if (isLoggedIn) {
-          router.replace('/(tabs)');
+          // New users go to onboarding, existing users go to dashboard
+          if (isNewUser) {
+            router.replace('/(onboarding)/setup');
+          } else {
+            router.replace('/(tabs)');
+          }
         }
       });
     }
-  }, [params.auth]);
+  }, [params.auth, params.isNewUser]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -75,6 +83,10 @@ export default function LoginScreen() {
         const auth = url.searchParams.get('auth');
         const error = url.searchParams.get('error');
         const token = url.searchParams.get('token');
+        const isNewUser = url.searchParams.get('isNewUser') === 'true';
+        
+        // Determine where to redirect - new users go to onboarding
+        const redirectPath = isNewUser ? '/(onboarding)/setup' : '/(tabs)';
         
         if ((auth === 'success' || auth === 'google_success') && token) {
           // Save the session token from OAuth
@@ -83,12 +95,12 @@ export default function LoginScreen() {
           
           // Now check auth state from server with the token
           await checkAuth();
-          router.replace('/(tabs)');
+          router.replace(redirectPath);
         } else if (auth === 'success' || auth === 'google_success') {
           // No token but auth success - try checkAuth anyway
           const isLoggedIn = await checkAuth();
           if (isLoggedIn) {
-            router.replace('/(tabs)');
+            router.replace(redirectPath);
           } else {
             Alert.alert('Error', 'Failed to complete sign-in. Please try again.');
           }
