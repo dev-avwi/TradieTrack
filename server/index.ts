@@ -136,12 +136,12 @@ if (process.env.DATABASE_URL) {
     next();
   });
 
-  // Set up demo data for development
-  if (process.env.NODE_ENV === 'development') {
-    await createDemoUserAndData();
-    await fixTestUserPasswords();
-    await seedSmsDataForTestUsers();
-  }
+  // Demo data creation disabled - production mode only uses real accounts
+  // if (process.env.NODE_ENV === 'development') {
+  //   await createDemoUserAndData();
+  //   await fixTestUserPasswords();
+  //   await seedSmsDataForTestUsers();
+  // }
   
   const server = await registerRoutes(app);
 
