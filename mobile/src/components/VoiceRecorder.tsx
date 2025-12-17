@@ -8,9 +8,20 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { Audio } from 'expo-av';
 import { useTheme } from '../lib/theme';
 import { Ionicons } from '@expo/vector-icons';
+
+let Audio: any = null;
+let isAudioAvailable = false;
+
+try {
+  const expoAv = require('expo-av');
+  Audio = expoAv.Audio;
+  isAudioAvailable = true;
+} catch (e) {
+  console.warn('[VoiceRecorder] expo-av not available - voice recording disabled');
+  isAudioAvailable = false;
+}
 
 interface VoiceRecorderProps {
   onSave: (uri: string, duration: number) => void;
@@ -20,43 +31,65 @@ interface VoiceRecorderProps {
 
 export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderProps) {
   const theme = useTheme();
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recording, setRecording] = useState<any>(null);
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const durationInterval = useRef<NodeJS.Timeout | null>(null);
   
-  // Use refs to track audio resources for cleanup (avoids stale closure problem)
-  const recordingRef = useRef<Audio.Recording | null>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const recordingRef = useRef<any>(null);
+  const soundRef = useRef<any>(null);
 
-  // Cleanup effect uses refs to always have access to current audio resources
   useEffect(() => {
     return () => {
       if (durationInterval.current) {
         clearInterval(durationInterval.current);
       }
-      // Use refs instead of state to ensure we always have current values
-      if (soundRef.current) {
-        soundRef.current.unloadAsync().catch((e) => 
+      if (soundRef.current && isAudioAvailable) {
+        soundRef.current.unloadAsync().catch((e: any) => 
           console.warn('[VoiceRecorder] Error unloading sound on cleanup:', e)
         );
       }
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch((e) =>
+      if (recordingRef.current && isAudioAvailable) {
+        recordingRef.current.stopAndUnloadAsync().catch((e: any) =>
           console.warn('[VoiceRecorder] Error stopping recording on cleanup:', e)
         );
       }
-      // Reset audio mode on unmount
-      Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-      }).catch((e) => console.warn('[VoiceRecorder] Error resetting audio mode on cleanup:', e));
+      if (isAudioAvailable && Audio) {
+        Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        }).catch((e: any) => console.warn('[VoiceRecorder] Error resetting audio mode on cleanup:', e));
+      }
     };
   }, []);
+
+  const styles = createStyles(theme);
+
+  if (!isAudioAvailable || !Audio) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.unavailableContainer}>
+          <Ionicons name="mic-off-outline" size={48} color={theme.colors.mutedForeground} />
+          <Text style={styles.unavailableTitle}>Voice Recording Unavailable</Text>
+          <Text style={styles.unavailableText}>
+            Voice recording requires a development build. It's not available in Expo Go.
+          </Text>
+          {onCancel && (
+            <TouchableOpacity 
+              style={[styles.button, styles.outlineButton, { marginTop: 16 }]}
+              onPress={onCancel}
+            >
+              <Text style={styles.buttonText}>Close</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  }
 
   const requestPermissions = async () => {
     try {
@@ -86,30 +119,25 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
-      // CRITICAL: Configure audio mode for iOS recording BEFORE creating recording
-      // Using expo-av Audio.setAudioModeAsync with iOS-specific parameters
       await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,        // REQUIRED for iOS recording
-        playsInSilentModeIOS: true,      // Allow in silent mode
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
         staysActiveInBackground: false,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });
       console.log('[VoiceRecorder] Audio mode configured with allowsRecordingIOS: true');
 
-      // Create and prepare the recording
       const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
       
-      // Update both state and ref for cleanup
       setRecording(newRecording);
       recordingRef.current = newRecording;
       setIsRecording(true);
       setIsPaused(false);
       setRecordingDuration(0);
 
-      // Start duration timer
       durationInterval.current = setInterval(() => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
@@ -119,7 +147,6 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
     } catch (error: any) {
       console.error('Error starting recording:', error);
       
-      // Reset audio mode on error
       try {
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: false,
@@ -145,7 +172,6 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
     if (!recording) return;
 
     try {
-      // Stop duration timer
       if (durationInterval.current) {
         clearInterval(durationInterval.current);
         durationInterval.current = null;
@@ -153,7 +179,6 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
 
       await recording.stopAndUnloadAsync();
       
-      // Reset audio mode after recording
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
@@ -166,7 +191,6 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
         setRecordedUri(uri);
       }
       
-      // Clear both state and ref
       setRecording(null);
       recordingRef.current = null;
       setIsRecording(false);
@@ -184,14 +208,12 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       if (isPaused) {
         await recording.startAsync();
         setIsPaused(false);
-        // Resume duration timer
         durationInterval.current = setInterval(() => {
           setRecordingDuration(prev => prev + 1);
         }, 1000);
       } else {
         await recording.pauseAsync();
         setIsPaused(true);
-        // Pause duration timer
         if (durationInterval.current) {
           clearInterval(durationInterval.current);
           durationInterval.current = null;
@@ -219,19 +241,16 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
         }
       }
 
-      // Create new sound
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: recordedUri },
         { shouldPlay: true }
       );
       
-      // Update both state and ref for cleanup
       setSound(newSound);
       soundRef.current = newSound;
       setIsPlaying(true);
 
-      // Handle playback finished
-      newSound.setOnPlaybackStatusUpdate((status) => {
+      newSound.setOnPlaybackStatusUpdate((status: any) => {
         if (status.isLoaded && status.didJustFinish) {
           setIsPlaying(false);
         }
@@ -245,7 +264,6 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
   const deleteRecording = async () => {
     if (sound) {
       await sound.unloadAsync();
-      // Clear both state and ref
       setSound(null);
       soundRef.current = null;
     }
@@ -265,8 +283,6 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-
-  const styles = createStyles(theme);
 
   return (
     <View style={styles.container}>
@@ -396,7 +412,7 @@ export function VoiceNotePlayer({
   onDelete 
 }: VoiceNotePlayerProps) {
   const theme = useTheme();
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
 
@@ -409,6 +425,11 @@ export function VoiceNotePlayer({
   }, [sound]);
 
   const togglePlay = async () => {
+    if (!isAudioAvailable || !Audio) {
+      Alert.alert('Unavailable', 'Audio playback requires a development build.');
+      return;
+    }
+
     try {
       if (sound) {
         if (isPlaying) {
@@ -423,7 +444,6 @@ export function VoiceNotePlayer({
         }
       }
 
-      // Create new sound
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri },
         { shouldPlay: true }
@@ -432,8 +452,7 @@ export function VoiceNotePlayer({
       setSound(newSound);
       setIsPlaying(true);
 
-      // Handle playback status updates
-      newSound.setOnPlaybackStatusUpdate((status) => {
+      newSound.setOnPlaybackStatusUpdate((status: any) => {
         if (status.isLoaded) {
           setCurrentTime(Math.floor((status.positionMillis || 0) / 1000));
           if (status.didJustFinish) {
@@ -501,6 +520,23 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     backgroundColor: theme.colors.card,
     borderRadius: 12,
     alignItems: 'center',
+  },
+  unavailableContainer: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  unavailableTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.foreground,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  unavailableText: {
+    fontSize: 14,
+    color: theme.colors.mutedForeground,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   micContainer: {
     width: 80,
