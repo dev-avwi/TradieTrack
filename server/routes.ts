@@ -8067,6 +8067,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Validate team invite token (public endpoint - no auth required)
+  app.get("/api/team/invite/validate/:token", async (req: any, res) => {
+    try {
+      const { token } = req.params;
+      
+      if (!token) {
+        return res.json({ valid: false, error: 'No token provided' });
+      }
+      
+      const teamMember = await storage.getTeamMemberByInviteToken(token);
+      
+      if (!teamMember) {
+        return res.json({ valid: false, error: 'Invalid or expired invitation token' });
+      }
+      
+      if (teamMember.inviteStatus !== 'pending') {
+        return res.json({ valid: false, error: 'This invitation has already been used' });
+      }
+      
+      // Get additional info for the invite
+      const [businessSettings, role, owner] = await Promise.all([
+        storage.getBusinessSettings(teamMember.businessOwnerId),
+        storage.getUserRole(teamMember.roleId),
+        AuthService.getUserById(teamMember.businessOwnerId)
+      ]);
+      
+      res.json({
+        valid: true,
+        invite: {
+          businessName: businessSettings?.businessName || 'A TradieTrack business',
+          roleName: role?.name || 'Team Member',
+          email: teamMember.email,
+          inviterName: owner?.firstName ? `${owner.firstName}${owner.lastName ? ' ' + owner.lastName : ''}` : 'The business owner',
+          firstName: teamMember.firstName,
+          lastName: teamMember.lastName,
+        }
+      });
+    } catch (error) {
+      console.error('Error validating invite token:', error);
+      res.status(500).json({ valid: false, error: 'Failed to validate invitation' });
+    }
+  });
+
+  // Accept team invitation (public endpoint - handles both logged in and new users)
+  app.post("/api/team/invite/accept/:token", async (req: any, res) => {
+    try {
+      const { token } = req.params;
+      
+      if (!token) {
+        return res.status(400).json({ success: false, error: 'No token provided' });
+      }
+      
+      const teamMember = await storage.getTeamMemberByInviteToken(token);
+      
+      if (!teamMember) {
+        return res.status(404).json({ success: false, error: 'Invalid or expired invitation token' });
+      }
+      
+      if (teamMember.inviteStatus !== 'pending') {
+        return res.status(400).json({ success: false, error: 'This invitation has already been used' });
+      }
+      
+      let user: any;
+      let isNewUser = false;
+      
+      // Check if user is already authenticated
+      if (req.session?.userId) {
+        // User is logged in - link their existing account
+        user = await AuthService.getUserById(req.session.userId);
+        if (!user) {
+          return res.status(401).json({ success: false, error: 'Session expired. Please log in again.' });
+        }
+        
+        // Check if this user is already a member of this team
+        const existingMembership = await storage.getTeamMemberByUserIdAndBusiness(user.id, teamMember.businessOwnerId);
+        if (existingMembership) {
+          return res.status(400).json({ success: false, error: 'You are already a member of this team' });
+        }
+      } else {
+        // User is not logged in - check for registration data
+        const { email, password, firstName, lastName } = req.body;
+        
+        if (!email || !password) {
+          return res.status(400).json({ 
+            success: false, 
+            error: 'Please provide registration details (email, password) or log in first' 
+          });
+        }
+        
+        // Validate email matches the invitation
+        if (email.toLowerCase() !== teamMember.email.toLowerCase()) {
+          return res.status(400).json({ 
+            success: false, 
+            error: 'Email address must match the invitation email' 
+          });
+        }
+        
+        // Check if user already exists with this email
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser) {
+          return res.status(400).json({ 
+            success: false, 
+            error: 'An account with this email already exists. Please log in first to accept this invitation.' 
+          });
+        }
+        
+        // Create new user account
+        const registerResult = await AuthService.register({
+          email,
+          password,
+          username: email.split('@')[0] + '_' + Date.now().toString(36),
+          firstName: firstName || teamMember.firstName || undefined,
+          lastName: lastName || teamMember.lastName || undefined,
+        });
+        
+        if (!registerResult.success) {
+          return res.status(400).json({ success: false, error: registerResult.error });
+        }
+        
+        user = registerResult.user;
+        isNewUser = true;
+        
+        // Mark email as verified since they received the invite email
+        await storage.updateUser(user.id, { emailVerified: true });
+      }
+      
+      // Update the team member record to accept the invitation
+      await storage.updateTeamMember(teamMember.id, teamMember.businessOwnerId, {
+        memberId: user.id,
+        inviteStatus: 'accepted',
+        inviteAcceptedAt: new Date(),
+        inviteToken: null, // Clear the token so it can't be reused
+      });
+      
+      // Auto-login the user if they just registered
+      if (isNewUser) {
+        req.session.userId = user.id;
+      }
+      
+      // Get the updated user data
+      const safeUser = await AuthService.getUserById(user.id);
+      
+      res.json({ 
+        success: true, 
+        user: safeUser, 
+        message: 'Invitation accepted successfully' 
+      });
+    } catch (error) {
+      console.error('Error accepting team invitation:', error);
+      res.status(500).json({ success: false, error: 'Failed to accept invitation' });
+    }
+  });
+
   // Get all user roles
   app.get("/api/team/roles", requireAuth, async (req: any, res) => {
     try {

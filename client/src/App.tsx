@@ -43,6 +43,7 @@ import Integrations from "@/pages/Integrations";
 import NotFound from "@/pages/not-found";
 import VerifyEmail from "@/pages/VerifyEmail";
 import ResetPassword from "@/pages/ResetPassword";
+import AcceptInvite from "@/pages/AcceptInvite";
 import QuoteModal from "@/components/QuoteModal";
 import InvoiceModal from "@/components/InvoiceModal";
 import TimeTrackingPage from "@/pages/TimeTracking";
@@ -453,6 +454,7 @@ function Router({
       
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/accept-invite/:token" component={AcceptInvite} />
       
       <Route path="/more" component={More} />
       
