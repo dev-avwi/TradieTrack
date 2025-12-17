@@ -60,9 +60,9 @@ export default function LoginScreen() {
     try {
       setGoogleLoading(true);
       
-      // Open Google OAuth in system browser
-      // The backend will handle the OAuth flow and redirect back to the app
-      const googleAuthUrl = `${API_URL}/api/auth/google`;
+      // Open Google OAuth in system browser with mobile flag
+      // The backend will detect this and redirect back to the app deep link
+      const googleAuthUrl = `${API_URL}/api/auth/google?mobile=true`;
       
       const result = await WebBrowser.openAuthSessionAsync(
         googleAuthUrl,

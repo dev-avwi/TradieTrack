@@ -77,7 +77,8 @@ export default function RegisterScreen() {
     try {
       setGoogleLoading(true);
       
-      const googleAuthUrl = `${API_URL}/api/auth/google`;
+      // Add mobile flag so server redirects to app deep link
+      const googleAuthUrl = `${API_URL}/api/auth/google?mobile=true`;
       
       const result = await WebBrowser.openAuthSessionAsync(
         googleAuthUrl,
