@@ -425,6 +425,10 @@ function Router({
       )} />
       
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/users" component={AdminDashboard} />
+      <Route path="/admin/activity" component={AdminDashboard} />
+      <Route path="/admin/health" component={AdminDashboard} />
+      <Route path="/admin/settings" component={AdminDashboard} />
       
       <Route path="/payment-hub" component={PaymentHub} />
       
