@@ -189,10 +189,40 @@ export function setupGoogleAuth(app: Express) {
     })
   );
 
-  app.get('/api/auth/google/callback',
-    passport.authenticate('google', { failureRedirect: '/?error=auth_failed' }),
-    (req: any, res) => {
-      const isMobile = req.session.isMobileAuth;
+  app.get('/api/auth/google/callback', (req: any, res, next) => {
+    const isMobile = req.session?.isMobileAuth;
+    
+    passport.authenticate('google', (err: any, user: any, info: any) => {
+      if (err || !user) {
+        console.error('Google OAuth failed:', err || 'No user returned');
+        // Clear mobile flag
+        if (req.session) {
+          delete req.session.isMobileAuth;
+        }
+        // Redirect based on platform
+        if (isMobile) {
+          return res.redirect('tradietrack://?error=auth_failed');
+        }
+        return res.redirect('/?error=auth_failed');
+      }
+      
+      // Login the user
+      req.login(user, (loginErr: any) => {
+        if (loginErr) {
+          console.error('Login error:', loginErr);
+          if (isMobile) {
+            return res.redirect('tradietrack://?error=login_failed');
+          }
+          return res.redirect('/?error=login_failed');
+        }
+        
+        // Continue to success handler
+        req.user = user;
+        next();
+      });
+    })(req, res, next);
+  }, (req: any, res) => {
+      const isMobile = req.session?.isMobileAuth;
       
       // Set session data and explicitly save
       if (req.user) {
