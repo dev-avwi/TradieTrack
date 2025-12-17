@@ -8,15 +8,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { 
-  useAudioRecorder, 
-  useAudioRecorderState,
-  RecordingPresets,
-  useAudioPlayer,
-  useAudioPlayerStatus,
-  setAudioModeAsync,
-  requestRecordingPermissionsAsync,
-} from 'expo-audio';
+import { Audio } from 'expo-av';
 import { useTheme } from '../lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -28,32 +20,47 @@ interface VoiceRecorderProps {
 
 export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderProps) {
   const theme = useTheme();
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [playerError, setPlayerError] = useState<boolean>(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const durationInterval = useRef<NodeJS.Timeout | null>(null);
   
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(audioRecorder, 500);
-  
-  // Create player - expo-audio useAudioPlayer expects (source, updateInterval) 
-  // Pass a valid source object or empty string, with 500ms update interval
-  const audioSource = recordedUri || '';
-  const player = useAudioPlayer(audioSource, 500);
-  const playerStatus = useAudioPlayerStatus(player);
+  // Use refs to track audio resources for cleanup (avoids stale closure problem)
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
 
-  const isRecording = recorderState?.isRecording ?? false;
-  const isPlaying = playerStatus?.playing ?? false;
-  const currentTime = playerStatus?.currentTime ?? 0;
-
+  // Cleanup effect uses refs to always have access to current audio resources
   useEffect(() => {
-    if (recorderState?.durationMillis) {
-      setRecordingDuration(Math.floor(recorderState.durationMillis / 1000));
-    }
-  }, [recorderState?.durationMillis]);
+    return () => {
+      if (durationInterval.current) {
+        clearInterval(durationInterval.current);
+      }
+      // Use refs instead of state to ensure we always have current values
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch((e) => 
+          console.warn('[VoiceRecorder] Error unloading sound on cleanup:', e)
+        );
+      }
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch((e) =>
+          console.warn('[VoiceRecorder] Error stopping recording on cleanup:', e)
+        );
+      }
+      // Reset audio mode on unmount
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      }).catch((e) => console.warn('[VoiceRecorder] Error resetting audio mode on cleanup:', e));
+    };
+  }, []);
 
   const requestPermissions = async () => {
     try {
-      const { status } = await requestRecordingPermissionsAsync();
+      const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(
           'Permission Required',
@@ -79,50 +86,49 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
-      // Configure audio mode for iOS recording using setAudioModeAsync from expo-audio
-      // In expo-audio, parameter names are: allowsRecording (not allowsRecordingIOS), playsInSilentMode (not playsInSilentModeIOS)
-      try {
-        await setAudioModeAsync({
-          allowsRecording: true,           // REQUIRED for iOS recording (expo-audio parameter name)
-          playsInSilentMode: true,         // Allow playback in silent mode (expo-audio parameter name)
-        });
-        console.log('[VoiceRecorder] Audio mode configured for iOS recording with allowsRecording: true');
-      } catch (audioModeError) {
-        console.warn('[VoiceRecorder] Could not set audio mode, proceeding anyway:', audioModeError);
-      }
+      // CRITICAL: Configure audio mode for iOS recording BEFORE creating recording
+      // Using expo-av Audio.setAudioModeAsync with iOS-specific parameters
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,        // REQUIRED for iOS recording
+        playsInSilentModeIOS: true,      // Allow in silent mode
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+      console.log('[VoiceRecorder] Audio mode configured with allowsRecordingIOS: true');
 
-      try {
-        await audioRecorder.prepareToRecordAsync(RecordingPresets.HIGH_QUALITY);
-      } catch (prepareError: any) {
-        console.error('Error preparing recorder:', prepareError);
-        if (prepareError?.message?.includes('permission') || prepareError?.message?.includes('Permission')) {
-          Alert.alert(
-            'Microphone Permission Required',
-            'Please enable microphone access in your device settings to record voice notes.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-        throw prepareError;
-      }
+      // Create and prepare the recording
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      
+      // Update both state and ref for cleanup
+      setRecording(newRecording);
+      recordingRef.current = newRecording;
+      setIsRecording(true);
+      setIsPaused(false);
+      setRecordingDuration(0);
 
-      try {
-        audioRecorder.record();
-      } catch (recordError: any) {
-        console.error('Error starting record:', recordError);
-        if (recordError?.message?.includes('permission') || recordError?.message?.includes('Permission')) {
-          Alert.alert(
-            'Microphone Permission Required',
-            'Please enable microphone access in your device settings to record voice notes.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-        throw recordError;
-      }
+      // Start duration timer
+      durationInterval.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+
+      console.log('[VoiceRecorder] Recording started successfully');
       
     } catch (error: any) {
       console.error('Error starting recording:', error);
+      
+      // Reset audio mode on error
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
+      } catch (resetError) {
+        console.warn('Could not reset audio mode:', resetError);
+      }
+      
       if (error?.message?.includes('permission') || error?.message?.includes('Permission')) {
         Alert.alert(
           'Microphone Permission Required',
@@ -136,53 +142,116 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
   };
 
   const stopRecording = async () => {
+    if (!recording) return;
+
     try {
-      const uri = await audioRecorder.stop();
+      // Stop duration timer
+      if (durationInterval.current) {
+        clearInterval(durationInterval.current);
+        durationInterval.current = null;
+      }
+
+      await recording.stopAndUnloadAsync();
+      
+      // Reset audio mode after recording
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
+
+      const uri = recording.getURI();
+      console.log('[VoiceRecorder] Recording stopped, URI:', uri);
       
       if (uri) {
         setRecordedUri(uri);
       }
+      
+      // Clear both state and ref
+      setRecording(null);
+      recordingRef.current = null;
+      setIsRecording(false);
+      setIsPaused(false);
       
     } catch (error) {
       console.error('Error stopping recording:', error);
     }
   };
 
-  const pauseRecording = () => {
+  const pauseRecording = async () => {
+    if (!recording) return;
+
     try {
-      if (recorderState?.isRecording) {
-        audioRecorder.pause();
+      if (isPaused) {
+        await recording.startAsync();
+        setIsPaused(false);
+        // Resume duration timer
+        durationInterval.current = setInterval(() => {
+          setRecordingDuration(prev => prev + 1);
+        }, 1000);
       } else {
-        audioRecorder.record();
+        await recording.pauseAsync();
+        setIsPaused(true);
+        // Pause duration timer
+        if (durationInterval.current) {
+          clearInterval(durationInterval.current);
+          durationInterval.current = null;
+        }
       }
     } catch (error) {
       console.error('Error pausing recording:', error);
     }
   };
 
-  const playRecording = () => {
-    if (!recordedUri || !player) return;
+  const playRecording = async () => {
+    if (!recordedUri) return;
 
     try {
-      if (isPlaying) {
-        player.pause();
-        return;
+      if (sound) {
+        if (isPlaying) {
+          await sound.pauseAsync();
+          setIsPlaying(false);
+          return;
+        } else {
+          await sound.setPositionAsync(0);
+          await sound.playAsync();
+          setIsPlaying(true);
+          return;
+        }
       }
 
-      player.seekTo(0);
-      player.play();
+      // Create new sound
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: recordedUri },
+        { shouldPlay: true }
+      );
+      
+      // Update both state and ref for cleanup
+      setSound(newSound);
+      soundRef.current = newSound;
+      setIsPlaying(true);
+
+      // Handle playback finished
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setIsPlaying(false);
+        }
+      });
       
     } catch (error) {
       console.error('Error playing recording:', error);
     }
   };
 
-  const deleteRecording = () => {
-    if (player) {
-      player.pause();
+  const deleteRecording = async () => {
+    if (sound) {
+      await sound.unloadAsync();
+      // Clear both state and ref
+      setSound(null);
+      soundRef.current = null;
     }
     setRecordedUri(null);
     setRecordingDuration(0);
+    setIsPlaying(false);
   };
 
   const handleSave = () => {
@@ -214,7 +283,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
           <Text style={styles.duration}>{formatDuration(recordingDuration)}</Text>
           
           <View style={styles.buttonRow}>
-            {!isRecording && !recorderState?.canRecord ? (
+            {!isRecording ? (
               <TouchableOpacity 
                 style={[styles.button, styles.primaryButton]}
                 onPress={startRecording}
@@ -222,14 +291,14 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
                 <Ionicons name="mic" size={20} color="#ffffff" />
                 <Text style={styles.buttonTextWhite}>Start Recording</Text>
               </TouchableOpacity>
-            ) : isRecording || recorderState?.canRecord ? (
+            ) : (
               <>
                 <TouchableOpacity 
                   style={[styles.button, styles.outlineButton]}
                   onPress={pauseRecording}
                 >
                   <Ionicons 
-                    name={isRecording ? "pause" : "play"} 
+                    name={isPaused ? "play" : "pause"} 
                     size={20} 
                     color={theme.colors.primary} 
                   />
@@ -242,14 +311,6 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
                   <Text style={styles.buttonTextWhite}>Stop</Text>
                 </TouchableOpacity>
               </>
-            ) : (
-              <TouchableOpacity 
-                style={[styles.button, styles.primaryButton]}
-                onPress={startRecording}
-              >
-                <Ionicons name="mic" size={20} color="#ffffff" />
-                <Text style={styles.buttonTextWhite}>Start Recording</Text>
-              </TouchableOpacity>
             )}
           </View>
         </>
@@ -335,24 +396,52 @@ export function VoiceNotePlayer({
   onDelete 
 }: VoiceNotePlayerProps) {
   const theme = useTheme();
-  // expo-audio useAudioPlayer expects (source, updateInterval)
-  const player = useAudioPlayer(uri, 500);
-  const status = useAudioPlayerStatus(player);
-  
-  const isPlaying = status?.playing ?? false;
-  const currentTime = status?.currentTime ?? 0;
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
 
-  const togglePlay = () => {
-    if (!player) return;
+  useEffect(() => {
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, [sound]);
 
+  const togglePlay = async () => {
     try {
-      if (isPlaying) {
-        player.pause();
-        return;
+      if (sound) {
+        if (isPlaying) {
+          await sound.pauseAsync();
+          setIsPlaying(false);
+          return;
+        } else {
+          await sound.setPositionAsync(0);
+          await sound.playAsync();
+          setIsPlaying(true);
+          return;
+        }
       }
 
-      player.seekTo(0);
-      player.play();
+      // Create new sound
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true }
+      );
+      
+      setSound(newSound);
+      setIsPlaying(true);
+
+      // Handle playback status updates
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded) {
+          setCurrentTime(Math.floor((status.positionMillis || 0) / 1000));
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+            setCurrentTime(0);
+          }
+        }
+      });
       
     } catch (error) {
       console.error('Error playing audio:', error);
@@ -392,7 +481,7 @@ export function VoiceNotePlayer({
           {title || 'Voice Note'}
         </Text>
         <Text style={styles.playerMeta}>
-          {formatDuration(Math.floor(isPlaying ? currentTime : 0))} / {formatDuration(duration || 0)}
+          {formatDuration(isPlaying ? currentTime : 0)} / {formatDuration(duration || 0)}
           {createdAt && ` | ${formatDate(createdAt)}`}
         </Text>
       </View>
@@ -429,7 +518,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     fontSize: 32,
     fontWeight: '600',
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
-    color: theme.colors.text,
+    color: theme.colors.foreground,
     marginBottom: 16,
   },
   buttonRow: {
@@ -470,7 +559,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: theme.colors.text,
+    color: theme.colors.foreground,
   },
   buttonTextWhite: {
     fontSize: 16,
@@ -504,11 +593,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
   playbackTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: theme.colors.text,
+    color: theme.colors.foreground,
   },
   playbackDuration: {
     fontSize: 14,
-    color: theme.colors.textSecondary,
+    color: theme.colors.mutedForeground,
     marginTop: 2,
   },
   deleteButton: {
@@ -528,11 +617,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
   playerTitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: theme.colors.text,
+    color: theme.colors.foreground,
   },
   playerMeta: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: theme.colors.mutedForeground,
     marginTop: 2,
   },
 });

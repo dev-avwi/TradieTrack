@@ -10009,14 +10009,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== JOB PHOTOS ROUTES =====
   
-  // Get photos for a job
+  // Get photos for a job (team-aware: shows all photos for the job)
   app.get("/api/jobs/:jobId/photos", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.params.jobId;
       
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
       const { getJobPhotos } = await import('./photoService');
-      const photos = await getJobPhotos(jobId, userId);
+      // Use effectiveUserId to see all photos uploaded by any team member for this job
+      const photos = await getJobPhotos(jobId, userContext.effectiveUserId);
       
       res.json(photos);
     } catch (error: any) {
@@ -10026,14 +10030,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Upload photo to a job (base64 - for small images and backwards compatibility)
+  // Team-aware: photos stored under effectiveUserId so all team members can see them
   app.post("/api/jobs/:jobId/photos", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.params.jobId;
       const { fileName, fileBase64, mimeType, category, caption, takenAt } = req.body;
       
-      // Verify job exists and belongs to this user (security check)
-      const job = await storage.getJob(jobId, userId);
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
+      // Verify job exists and belongs to this user/team (security check)
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
       if (!job) {
         return res.status(404).json({ error: 'Job not found or access denied' });
       }
@@ -10045,7 +10053,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileBuffer = Buffer.from(fileBase64, 'base64');
       
       const { uploadJobPhoto } = await import('./photoService');
-      const result = await uploadJobPhoto(userId, jobId, fileBuffer, {
+      // Use effectiveUserId so all team uploads are visible to everyone on the team
+      const result = await uploadJobPhoto(userContext.effectiveUserId, jobId, fileBuffer, {
         fileName,
         fileSize: fileBuffer.length,
         mimeType,
@@ -10071,14 +10080,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     limits: { fileSize: 500 * 1024 * 1024 } // 500MB limit for videos
   });
   
+  // Team-aware: multipart uploads stored under effectiveUserId so all team members can see them
   app.post("/api/jobs/:jobId/photos/upload", requireAuth, upload.single('file'), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.params.jobId;
       const file = req.file;
       
-      // Verify job exists and belongs to this user (security check)
-      const job = await storage.getJob(jobId, userId);
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
+      // Verify job exists and belongs to this user/team (security check)
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
       if (!job) {
         return res.status(404).json({ error: 'Job not found or access denied' });
       }
@@ -10090,7 +10103,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { category, caption, takenAt } = req.body;
       
       const { uploadJobPhoto } = await import('./photoService');
-      const result = await uploadJobPhoto(userId, jobId, file.buffer, {
+      // Use effectiveUserId so all team uploads are visible to everyone on the team
+      const result = await uploadJobPhoto(userContext.effectiveUserId, jobId, file.buffer, {
         fileName: file.originalname,
         fileSize: file.size,
         mimeType: file.mimetype,
@@ -10110,15 +10124,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Update photo metadata
+  // Update photo metadata (team-aware)
   app.patch("/api/jobs/:jobId/photos/:photoId", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { photoId } = req.params;
       const { category, caption, sortOrder } = req.body;
       
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
       const { updatePhotoMetadata } = await import('./photoService');
-      const result = await updatePhotoMetadata(photoId, userId, { category, caption, sortOrder });
+      const result = await updatePhotoMetadata(photoId, userContext.effectiveUserId, { category, caption, sortOrder });
       
       if (!result.success) {
         return res.status(500).json({ error: result.error });
@@ -10131,14 +10148,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Delete photo
+  // Delete photo (team-aware)
   app.delete("/api/jobs/:jobId/photos/:photoId", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { photoId } = req.params;
       
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
       const { deleteJobPhoto } = await import('./photoService');
-      const result = await deleteJobPhoto(photoId, userId);
+      const result = await deleteJobPhoto(photoId, userContext.effectiveUserId);
       
       if (!result.success) {
         return res.status(500).json({ error: result.error });
@@ -10153,14 +10173,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== VOICE NOTES ROUTES =====
   
-  // Get voice notes for a job
+  // Get voice notes for a job (team-aware: shows all voice notes for the job)
   app.get("/api/jobs/:jobId/voice-notes", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { jobId } = req.params;
       
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
       const { getJobVoiceNotes } = await import('./voiceNoteService');
-      const voiceNotes = await getJobVoiceNotes(jobId, userId);
+      // Use effectiveUserId to see all voice notes from any team member for this job
+      const voiceNotes = await getJobVoiceNotes(jobId, userContext.effectiveUserId);
       
       res.json(voiceNotes);
     } catch (error: any) {
@@ -10169,12 +10193,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Upload a voice note
+  // Upload a voice note (team-aware: stored under effectiveUserId so all team members can see them)
   app.post("/api/jobs/:jobId/voice-notes", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { jobId } = req.params;
       const { audioData, fileName, mimeType, duration, title } = req.body;
+      
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
       
       if (!audioData) {
         return res.status(400).json({ error: 'Audio data is required' });
@@ -10185,7 +10212,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileBuffer = Buffer.from(base64Data, 'base64');
       
       const { uploadVoiceNote } = await import('./voiceNoteService');
-      const result = await uploadVoiceNote(userId, jobId, fileBuffer, {
+      // Use effectiveUserId so all team uploads are visible to everyone on the team
+      const result = await uploadVoiceNote(userContext.effectiveUserId, jobId, fileBuffer, {
         fileName: fileName || `voice-note-${Date.now()}.webm`,
         fileSize: fileBuffer.length,
         mimeType: mimeType || 'audio/webm',
@@ -10208,15 +10236,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Update voice note title
+  // Update voice note title (team-aware)
   app.patch("/api/jobs/:jobId/voice-notes/:voiceNoteId", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { voiceNoteId } = req.params;
       const { title } = req.body;
       
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
       const { updateVoiceNoteTitle } = await import('./voiceNoteService');
-      const result = await updateVoiceNoteTitle(voiceNoteId, userId, title);
+      const result = await updateVoiceNoteTitle(voiceNoteId, userContext.effectiveUserId, title);
       
       if (!result.success) {
         return res.status(500).json({ error: result.error });
@@ -10229,14 +10260,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Delete voice note
+  // Delete voice note (team-aware)
   app.delete("/api/jobs/:jobId/voice-notes/:voiceNoteId", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { voiceNoteId } = req.params;
       
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
       const { deleteVoiceNote } = await import('./voiceNoteService');
-      const result = await deleteVoiceNote(voiceNoteId, userId);
+      const result = await deleteVoiceNote(voiceNoteId, userContext.effectiveUserId);
       
       if (!result.success) {
         return res.status(500).json({ error: result.error });
@@ -10251,14 +10285,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== JOB SIGNATURE ROUTES =====
   
-  // Get signatures for a job
+  // Get signatures for a job (team-aware: shows all signatures for the job)
   app.get("/api/jobs/:jobId/signatures", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { jobId } = req.params;
       
-      // Verify job access
-      const job = await storage.getJob(jobId, userId);
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
+      // Verify job access using effectiveUserId
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
       if (!job) {
         return res.status(404).json({ error: 'Job not found' });
       }
@@ -10271,7 +10308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Add signature to a job
+  // Add signature to a job (team-aware)
   app.post("/api/jobs/:jobId/signatures", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
@@ -10282,8 +10319,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Signer name and signature data are required' });
       }
       
-      // Verify job access
-      const job = await storage.getJob(jobId, userId);
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
+      // Verify job access using effectiveUserId
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
       if (!job) {
         return res.status(404).json({ error: 'Job not found' });
       }
@@ -10306,14 +10346,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Delete a signature
+  // Delete a signature (team-aware)
   app.delete("/api/jobs/:jobId/signatures/:signatureId", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { jobId, signatureId } = req.params;
       
-      // Verify job access
-      const job = await storage.getJob(jobId, userId);
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
+      // Verify job access using effectiveUserId
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
       if (!job) {
         return res.status(404).json({ error: 'Job not found' });
       }

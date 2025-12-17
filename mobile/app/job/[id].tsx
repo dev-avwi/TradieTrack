@@ -2648,8 +2648,19 @@ export default function JobDetailScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Scheduled Date Card */}
-      <View style={styles.card}>
+      {/* Scheduled Date Card - Tappable to edit schedule */}
+      <TouchableOpacity 
+        activeOpacity={0.7} 
+        style={styles.card}
+        onPress={() => {
+          if (job.scheduledAt) {
+            setScheduleDate(new Date(job.scheduledAt));
+          } else {
+            setScheduleDate(new Date());
+          }
+          setShowScheduleModal(true);
+        }}
+      >
         <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
           <Feather name="clock" size={iconSizes.xl} color={colors.primary} />
         </View>
@@ -2660,7 +2671,13 @@ export default function JobDetailScreen() {
             {job.scheduledAt && ` at ${formatTime(job.scheduledAt)}`}
           </Text>
         </View>
-      </View>
+        <Feather 
+          name="edit-2" 
+          size={iconSizes.lg} 
+          color={colors.primary} 
+          style={styles.cardActionIcon}
+        />
+      </TouchableOpacity>
 
       {/* Client Card */}
       {client && (
