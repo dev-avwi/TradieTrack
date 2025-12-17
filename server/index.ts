@@ -82,6 +82,9 @@ if (process.env.DATABASE_URL) {
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
+  // Serve static public assets (logo, etc.) for emails
+  app.use('/public', express.static('public'));
+
   // Detect if running on Replit (served via HTTPS even in development)
   const isReplit = !!process.env.REPL_ID;
   const isProduction = process.env.NODE_ENV === 'production';

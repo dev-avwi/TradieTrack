@@ -707,7 +707,9 @@ export const createJobConfirmationEmailHtml = (job: any, client: any, business: 
 
 // Email template for email verification
 const createEmailVerificationEmail = (user: any, verificationToken: string) => {
-  const verificationUrl = `${process.env.VITE_APP_URL || 'http://localhost:5000'}/verify-email?token=${verificationToken}`;
+  const baseUrl = process.env.VITE_APP_URL || 'http://localhost:5000';
+  const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
+  const logoUrl = `${baseUrl}/public/tradietrack-logo.png`;
 
   return {
     to: user.email,
@@ -727,6 +729,7 @@ const createEmailVerificationEmail = (user: any, verificationToken: string) => {
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 160px; height: auto; margin-bottom: 15px;" />
           <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to TradieTrack!</h1>
           <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your business management platform</p>
         </div>
@@ -910,7 +913,9 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
     throw new Error('User email address is required');
   }
 
-  const resetUrl = `${process.env.VITE_APP_URL || 'http://localhost:5000'}/reset-password?token=${resetToken}`;
+  const baseUrl = process.env.VITE_APP_URL || 'http://localhost:5000';
+  const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+  const logoUrl = `${baseUrl}/public/tradietrack-logo.png`;
 
   const emailData = {
     to: user.email,
@@ -930,8 +935,8 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 160px; height: auto; margin-bottom: 15px;" />
           <h1 style="color: white; margin: 0; font-size: 28px;">Password Reset Request</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">TradieTrack</p>
         </div>
         
         <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 20px;">
@@ -1167,11 +1172,13 @@ export async function sendPaymentRequestEmail(params: PaymentRequestEmailParams)
 // Welcome email for new user signups
 export async function sendWelcomeEmail(
   user: { email: string; firstName?: string | null; lastName?: string | null },
-  businessName?: string
+  businessName?: string,
+  baseUrl?: string
 ): Promise<{ success: boolean; error?: string; mock?: boolean }> {
   const emailService = isSendGridConfigured ? sgMail : mockEmailService;
   const userName = user.firstName || user.email.split('@')[0];
   const displayBusinessName = businessName || 'your business';
+  const logoUrl = baseUrl ? `${baseUrl}/public/tradietrack-logo.png` : 'https://tradietrack.replit.app/public/tradietrack-logo.png';
 
   const emailData = {
     to: user.email,
@@ -1191,6 +1198,7 @@ export async function sendWelcomeEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
         <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
+          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 180px; height: auto; margin-bottom: 15px;" />
           <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to TradieTrack!</h1>
           <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">The business management platform built for Australian tradies</p>
         </div>
@@ -1366,6 +1374,7 @@ export async function sendTeamInviteEmail(
   const emailService = isSendGridConfigured ? sgMail : mockEmailService;
   const displayName = inviteeName || inviteeEmail.split('@')[0];
   const acceptUrl = `${baseUrl}/accept-invite/${inviteToken}`;
+  const logoUrl = `${baseUrl}/public/tradietrack-logo.png`;
 
   const emailData = {
     to: inviteeEmail,
@@ -1385,6 +1394,7 @@ export async function sendTeamInviteEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
         <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
+          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 180px; height: auto; margin-bottom: 15px;" />
           <h1 style="color: white; margin: 0; font-size: 24px;">You're Invited to Join ${businessName}</h1>
           <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">on TradieTrack</p>
         </div>
