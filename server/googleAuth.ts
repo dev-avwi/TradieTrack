@@ -170,37 +170,31 @@ export function setupGoogleAuth(app: Express) {
     }
   }));
 
-  // Google OAuth routes - detect mobile requests via query param
+  // Google OAuth routes - use state parameter to track mobile requests
   app.get('/api/auth/google', (req: any, res, next) => {
-    // Store mobile flag in session before redirecting to Google
-    if (req.query.mobile === 'true') {
-      req.session.isMobileAuth = true;
-      req.session.save((err: any) => {
-        if (err) console.error('Session save error:', err);
-        next();
-      });
-    } else {
-      req.session.isMobileAuth = false;
-      next();
-    }
-  }, passport.authenticate('google', { 
+    const isMobile = req.query.mobile === 'true';
+    // Use state parameter to pass mobile flag through OAuth flow
+    const state = isMobile ? 'mobile' : 'web';
+    console.log(`🔐 Starting Google OAuth - platform: ${state}`);
+    
+    passport.authenticate('google', { 
       scope: ['profile', 'email'],
-      prompt: 'select_account' // Force account selection every time
-    })
-  );
+      prompt: 'select_account',
+      state: state
+    })(req, res, next);
+  });
 
   app.get('/api/auth/google/callback', (req: any, res, next) => {
-    const isMobile = req.session?.isMobileAuth;
+    // Get mobile flag from state parameter (preserved through OAuth flow)
+    const state = req.query.state;
+    const isMobile = state === 'mobile';
+    console.log(`🔐 Google OAuth callback - state: ${state}, isMobile: ${isMobile}`);
     
     passport.authenticate('google', (err: any, user: any, info: any) => {
       if (err || !user) {
         console.error('Google OAuth failed:', err || 'No user returned');
-        // Clear mobile flag
-        if (req.session) {
-          delete req.session.isMobileAuth;
-        }
-        // Redirect based on platform
         if (isMobile) {
+          console.log('🔐 Mobile OAuth failed, redirecting to app deep link');
           return res.redirect('tradietrack://?error=auth_failed');
         }
         return res.redirect('/?error=auth_failed');
@@ -216,24 +210,13 @@ export function setupGoogleAuth(app: Express) {
           return res.redirect('/?error=login_failed');
         }
         
-        // Continue to success handler
-        req.user = user;
-        next();
-      });
-    })(req, res, next);
-  }, (req: any, res) => {
-      const isMobile = req.session?.isMobileAuth;
-      
-      // Set session data and explicitly save
-      if (req.user) {
-        req.session.userId = req.user.id;
-        req.session.user = req.user;
-        // Clear the mobile flag after use
-        delete req.session.isMobileAuth;
+        // Set session data
+        req.session.userId = user.id;
+        req.session.user = user;
         
-        req.session.save((err: any) => {
-          if (err) {
-            console.error('Session save error:', err);
+        req.session.save((saveErr: any) => {
+          if (saveErr) {
+            console.error('Session save error:', saveErr);
             if (isMobile) {
               return res.redirect('tradietrack://?error=session_failed');
             }
@@ -243,20 +226,15 @@ export function setupGoogleAuth(app: Express) {
           // Redirect based on platform
           if (isMobile) {
             console.log('🔐 Mobile OAuth success, redirecting to app deep link');
-            return res.redirect('tradietrack://?auth=success');
+            return res.redirect('tradietrack://?auth=google_success');
           }
           
           // Redirect to web app
+          console.log('🔐 Web OAuth success, redirecting to web app');
           res.redirect('/?auth=success');
         });
-      } else {
-        if (isMobile) {
-          res.redirect('tradietrack://?auth=success');
-        } else {
-          res.redirect('/?auth=success');
-        }
-      }
-    }
-  );
+      });
+    })(req, res, next);
+  });
 }
 
