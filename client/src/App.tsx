@@ -65,6 +65,7 @@ import MyAccount from "@/pages/MyAccount";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
 import AdminDashboard from "@/pages/AdminDashboard";
+import AdminAppShell from "@/components/AdminAppShell";
 import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
 import DemoModeBanner from "@/components/DemoModeBanner";
 
@@ -829,6 +830,28 @@ function AppLayout() {
   const handleNavigation = (path: string) => {
     setLocation(path);
   };
+
+  // Platform admin users get a completely different interface
+  if (userCheck?.isPlatformAdmin === true) {
+    return (
+      <AdminAppShell 
+        onLogout={handleLogout} 
+        onNavigate={handleNavigation}
+      >
+        <Switch>
+          <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin/users" component={AdminDashboard} />
+          <Route path="/admin/activity" component={AdminDashboard} />
+          <Route path="/admin/health" component={AdminDashboard} />
+          <Route path="/admin/settings" component={AdminDashboard} />
+          {/* Redirect any other path to admin dashboard */}
+          <Route>
+            <Redirect to="/admin" />
+          </Route>
+        </Switch>
+      </AdminAppShell>
+    );
+  }
 
   // Custom sidebar width for TradieTrack
   const style = {
