@@ -1466,7 +1466,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Message is required" });
       }
       
-      const context = await gatherAIContext(req.userId, storage);
+      const userContext = await getUserContext(req.userId);
+      const context = await gatherAIContext(userContext.effectiveUserId, storage);
       const chatResponse = await chatWithAI(message, context);
       
       res.json(chatResponse);
@@ -1493,9 +1494,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return { success: true, simulated: true };
       };
 
-      // Helper to find client by name
+      // Helper to find client by name (team-aware)
+      const userContext = await getUserContext(req.userId);
       const findClient = async (clientName: string) => {
-        const clients = await storage.getClients(req.userId);
+        const clients = await storage.getClients(userContext.effectiveUserId);
         return clients.find((c: any) => 
           c.name?.toLowerCase() === clientName?.toLowerCase()
         );
@@ -1566,9 +1568,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // ========== SEND EXISTING INVOICE ==========
+      // ========== SEND EXISTING INVOICE (team-aware) ==========
       if (action.type === 'send_invoice' && action.data) {
-        const invoice = await storage.getInvoiceWithLineItems(action.data.invoiceId, req.userId);
+        const invoice = await storage.getInvoiceWithLineItems(action.data.invoiceId, userContext.effectiveUserId);
         if (!invoice) {
           return res.json({ success: false, message: "Invoice not found" });
         }
@@ -1581,7 +1583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        const business = await storage.getBusinessSettings(req.userId);
+        const business = await storage.getBusinessSettings(userContext.effectiveUserId);
         const { generateInvoicePDF } = await import('./pdfService');
         const pdfBuffer = await generateInvoicePDF(invoice, invoice.lineItems || [], client, business);
 
@@ -1594,14 +1596,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                  <p>Thanks for your business!</p>
                  <p>${business?.businessName || ''}</p>`,
           text: `Invoice ${invoice.number || ''} attached`,
-          userId: req.userId,
+          userId: userContext.effectiveUserId,
           type: 'invoice',
           relatedId: invoice.id.toString(),
           attachments: [{ filename: `Invoice-${invoice.number || invoice.id}.pdf`, content: pdfBuffer }]
         });
 
         if (result.success) {
-          await storage.updateInvoice(invoice.id, req.userId, { status: 'sent' });
+          await storage.updateInvoice(invoice.id, userContext.effectiveUserId, { status: 'sent' });
         }
 
         return res.json({ 
@@ -1612,9 +1614,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // ========== SEND EXISTING QUOTE ==========
+      // ========== SEND EXISTING QUOTE (team-aware) ==========
       if (action.type === 'send_quote' && action.data) {
-        const quote = await storage.getQuoteWithLineItems(action.data.quoteId, req.userId);
+        const quote = await storage.getQuoteWithLineItems(action.data.quoteId, userContext.effectiveUserId);
         if (!quote) {
           return res.json({ success: false, message: "Quote not found" });
         }
@@ -1627,7 +1629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        const business = await storage.getBusinessSettings(req.userId);
+        const business = await storage.getBusinessSettings(userContext.effectiveUserId);
         const { generateQuotePDF } = await import('./pdfService');
         const pdfBuffer = await generateQuotePDF(quote, quote.lineItems || [], client, business);
 
@@ -1640,14 +1642,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                  <p>Let me know if you have any questions!</p>
                  <p>${business?.businessName || ''}</p>`,
           text: `Quote ${quote.number || ''} attached`,
-          userId: req.userId,
+          userId: userContext.effectiveUserId,
           type: 'quote',
           relatedId: quote.id.toString(),
           attachments: [{ filename: `Quote-${quote.number || quote.id}.pdf`, content: pdfBuffer }]
         });
 
         if (result.success) {
-          await storage.updateQuote(quote.id, req.userId, { status: 'sent' });
+          await storage.updateQuote(quote.id, userContext.effectiveUserId, { status: 'sent' });
         }
 
         return res.json({ 
@@ -1658,7 +1660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // ========== CREATE INVOICE ==========
+      // ========== CREATE INVOICE (team-aware) ==========
       if (action.type === 'create_invoice' && action.data) {
         let clientId = action.data.clientId;
         if (!clientId && action.data.clientName) {
@@ -1677,7 +1679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dueDate.setDate(dueDate.getDate() + (action.data.dueInDays || 14));
 
         const invoice = await storage.createInvoice({
-          userId: req.userId,
+          userId: userContext.effectiveUserId,
           clientId,
           jobId: action.data.fromJobId || null,
           title: action.data.description || 'Invoice',
@@ -1706,7 +1708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // ========== CREATE QUOTE ==========
+      // ========== CREATE QUOTE (team-aware) ==========
       if (action.type === 'create_quote' && action.data) {
         let clientId = action.data.clientId;
         if (!clientId && action.data.clientName) {
@@ -1725,7 +1727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validUntil.setDate(validUntil.getDate() + (action.data.validForDays || 30));
 
         const quote = await storage.createQuote({
-          userId: req.userId,
+          userId: userContext.effectiveUserId,
           clientId,
           title: action.data.description || 'Quote',
           description: action.data.description,
@@ -1753,7 +1755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // ========== CREATE JOB ==========
+      // ========== CREATE JOB (team-aware) ==========
       if (action.type === 'create_job' && action.data) {
         let clientId = action.data.clientId;
         if (!clientId && action.data.clientName) {
@@ -1783,7 +1785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const job = await storage.createJob({
-          userId: req.userId,
+          userId: userContext.effectiveUserId,
           clientId,
           title: action.data.title,
           description: action.data.notes || '',
@@ -1801,14 +1803,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // ========== MARK JOB COMPLETE ==========
+      // ========== MARK JOB COMPLETE (team-aware) ==========
       if (action.type === 'mark_job_complete' && action.data) {
-        const job = await storage.getJob(action.data.jobId, req.userId);
+        const job = await storage.getJob(action.data.jobId, userContext.effectiveUserId);
         if (!job) {
           return res.json({ success: false, message: "Job not found" });
         }
 
-        await storage.updateJob(action.data.jobId, req.userId, { 
+        await storage.updateJob(action.data.jobId, userContext.effectiveUserId, { 
           status: 'done',
           completedAt: new Date()
         });
@@ -1826,15 +1828,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // ========== PAYMENT REMINDER ==========
+      // ========== PAYMENT REMINDER (team-aware) ==========
       if (action.type === 'payment_reminder' && action.data) {
-        const invoice = await storage.getInvoiceWithLineItems(action.data.invoiceId, req.userId);
+        const invoice = await storage.getInvoiceWithLineItems(action.data.invoiceId, userContext.effectiveUserId);
         if (!invoice) {
           return res.json({ success: false, message: "Invoice not found" });
         }
 
         const client = await storage.getClientById(invoice.clientId);
-        const business = await storage.getBusinessSettings(req.userId);
+        const business = await storage.getBusinessSettings(userContext.effectiveUserId);
         const invoiceTotal = parseFloat(invoice.total || '0').toFixed(2);
 
         // Generate reminder message based on tone
@@ -1854,7 +1856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             subject: `Payment Reminder: Invoice ${invoice.number || ''} - ${business?.businessName || ''}`,
             html: message.replace(/\n/g, '<br>'),
             text: message,
-            userId: req.userId,
+            userId: userContext.effectiveUserId,
             type: 'reminder',
             relatedId: invoice.id.toString()
           });
@@ -1941,9 +1943,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Schedule Suggestions endpoint - generates optimal job scheduling recommendations
+  // AI Schedule Suggestions endpoint - generates optimal job scheduling recommendations (team-aware)
   app.post("/api/ai/schedule-suggestions", requireAuth, async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const { targetDate } = req.body;
       
       if (!targetDate) {
@@ -1951,19 +1954,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get business settings for context
-      const businessSettings = await storage.getBusinessSettings(req.userId);
+      const businessSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
       const businessName = businessSettings?.businessName || 'My Business';
       const tradeName = businessSettings?.tradeName || 'Trade';
       
       // Get all jobs
-      const allJobs = await storage.getJobs(req.userId);
+      const allJobs = await storage.getJobs(userContext.effectiveUserId);
       
       // Get clients for name lookup
-      const clients = await storage.getClients(req.userId);
+      const clients = await storage.getClients(userContext.effectiveUserId);
       const clientsMap = new Map(clients.map(c => [c.id, c]));
       
       // Get team members
-      const teamMembers = await storage.getTeamMembers(req.userId);
+      const teamMembers = await storage.getTeamMembers(userContext.effectiveUserId);
       
       // Filter unscheduled jobs (pending status, no scheduledAt)
       const unscheduledJobs = allJobs
@@ -2054,13 +2057,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // STANDOUT AI FEATURES
   // ============================
 
-  // AI Quote Generator from Photos + Voice - THE KILLER FEATURE
+  // AI Quote Generator from Photos + Voice - THE KILLER FEATURE (team-aware)
   app.post("/api/ai/generate-quote", requireAuth, async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const { jobId, photoUrls, voiceTranscription, jobDescription } = req.body;
       
       // Get business settings for trade type
-      const businessSettings = await storage.getBusinessSettings(req.userId);
+      const businessSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
       const tradeType = businessSettings?.tradeName || 'Trade';
       const businessName = businessSettings?.businessName || 'My Business';
       
@@ -2069,7 +2073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let photos: string[] = photoUrls || [];
       
       if (jobId) {
-        const job = await storage.getJob(jobId, req.userId);
+        const job = await storage.getJob(jobId, userContext.effectiveUserId);
         if (job) {
           description = description || job.description || job.title;
           // Get job photos if not provided
@@ -2096,9 +2100,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Instant Job Parser - Create job from pasted text (SMS, email, message)
+  // Instant Job Parser - Create job from pasted text (SMS, email, message) (team-aware)
   app.post("/api/ai/parse-job-text", requireAuth, async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const { text } = req.body;
       
       if (!text || typeof text !== 'string' || text.trim().length < 10) {
@@ -2106,7 +2111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get business settings for trade type
-      const businessSettings = await storage.getBusinessSettings(req.userId);
+      const businessSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
       const tradeType = businessSettings?.tradeName || 'Trade';
       
       const { parseJobFromText } = await import('./ai');
@@ -3695,9 +3700,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get single client (team-aware)
   app.get("/api/clients/:id", requireAuth, async (req: any, res) => {
     try {
-      const client = await storage.getClient(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const client = await storage.getClient(req.params.id, userContext.effectiveUserId);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
       }
@@ -3743,9 +3750,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete client (team-aware)
   app.delete("/api/clients/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_CLIENTS), async (req: any, res) => {
     try {
-      const success = await storage.deleteClient(req.params.id, req.userId);
+      const userContext = await getUserContext(req.userId);
+      const success = await storage.deleteClient(req.params.id, userContext.effectiveUserId);
       if (!success) {
         return res.status(404).json({ error: "Client not found" });
       }
@@ -5344,13 +5353,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return handleQuoteEmailWithPDF(req, res, storage);
   });
 
+  // Accept quote (team-aware)
   app.post("/api/quotes/:id/accept", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       // Get existing quote for status comparison
-      const existingQuote = await storage.getQuote(req.params.id, req.userId);
+      const existingQuote = await storage.getQuote(req.params.id, userContext.effectiveUserId);
       const previousStatus = existingQuote?.status || 'draft';
       
-      const quote = await storage.updateQuote(req.params.id, req.userId, {
+      const quote = await storage.updateQuote(req.params.id, userContext.effectiveUserId, {
         status: 'accepted',
         acceptedAt: new Date()
       });
@@ -5359,7 +5370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Trigger automation rules for quote acceptance
-      processStatusChangeAutomation(req.userId, 'quote', quote.id, previousStatus, 'accepted')
+      processStatusChangeAutomation(userContext.effectiveUserId, 'quote', quote.id, previousStatus, 'accepted')
         .catch(err => console.error('[Automations] Error processing quote acceptance:', err));
       
       res.json(quote);
@@ -5369,13 +5380,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reject quote (team-aware)
   app.post("/api/quotes/:id/reject", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       // Get existing quote for status comparison
-      const existingQuote = await storage.getQuote(req.params.id, req.userId);
+      const existingQuote = await storage.getQuote(req.params.id, userContext.effectiveUserId);
       const previousStatus = existingQuote?.status || 'draft';
       
-      const quote = await storage.updateQuote(req.params.id, req.userId, {
+      const quote = await storage.updateQuote(req.params.id, userContext.effectiveUserId, {
         status: 'declined',
         rejectedAt: new Date()
       });
@@ -5384,7 +5397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Trigger automation rules for quote rejection
-      processStatusChangeAutomation(req.userId, 'quote', quote.id, previousStatus, 'declined')
+      processStatusChangeAutomation(userContext.effectiveUserId, 'quote', quote.id, previousStatus, 'declined')
         .catch(err => console.error('[Automations] Error processing quote rejection:', err));
       
       res.json(quote);
@@ -5394,25 +5407,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // PDF Download - Quote
+  // PDF Download - Quote (team-aware)
   app.get("/api/quotes/:id/pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const { generateQuotePDF, generatePDFBuffer } = await import('./pdfService');
       
-      const quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, req.userId);
+      const quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, userContext.effectiveUserId);
       if (!quoteWithItems) {
         return res.status(404).json({ error: "Quote not found" });
       }
       
-      const client = await storage.getClient(quoteWithItems.clientId, req.userId);
-      const business = await storage.getBusinessSettings(req.userId);
+      const client = await storage.getClient(quoteWithItems.clientId, userContext.effectiveUserId);
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
       
       if (!client || !business) {
         return res.status(404).json({ error: "Client or business settings not found" });
       }
       
       // Get linked job for site address if available
-      const job = quoteWithItems.jobId ? await storage.getJob(quoteWithItems.jobId, req.userId) : undefined;
+      const job = quoteWithItems.jobId ? await storage.getJob(quoteWithItems.jobId, userContext.effectiveUserId) : undefined;
       
       const html = generateQuotePDF({
         quote: quoteWithItems,
@@ -5433,9 +5447,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Preview PDF - Generate PDF from draft quote data (before saving)
+  // Preview PDF - Generate PDF from draft quote data (before saving) (team-aware)
   app.post("/api/quotes/preview-pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const { generateQuotePDF, generatePDFBuffer } = await import('./pdfService');
       
       const { clientId, title, description, validUntil, subtotal, gstAmount, total, lineItems, notes } = req.body;
@@ -5444,8 +5459,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Client ID is required" });
       }
       
-      const client = await storage.getClient(clientId, req.userId);
-      const business = await storage.getBusinessSettings(req.userId);
+      const client = await storage.getClient(clientId, userContext.effectiveUserId);
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
       
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
@@ -5454,7 +5469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create a mock quote object for PDF generation
       const mockQuote = {
         id: 'preview',
-        userId: req.userId,
+        userId: userContext.effectiveUserId,
         clientId,
         number: 'PREVIEW',
         title: title || 'Draft Quote',
@@ -5823,26 +5838,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // PDF Download - Invoice
+  // PDF Download - Invoice (team-aware)
   app.get("/api/invoices/:id/pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const { generateInvoicePDF, generatePDFBuffer } = await import('./pdfService');
       
-      const invoiceWithItems = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
+      const invoiceWithItems = await storage.getInvoiceWithLineItems(req.params.id, userContext.effectiveUserId);
       if (!invoiceWithItems) {
         return res.status(404).json({ error: "Invoice not found" });
       }
       
-      const client = await storage.getClient(invoiceWithItems.clientId, req.userId);
-      const business = await storage.getBusinessSettings(req.userId);
+      const client = await storage.getClient(invoiceWithItems.clientId, userContext.effectiveUserId);
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
       
       if (!client || !business) {
         return res.status(404).json({ error: "Client or business settings not found" });
       }
       
       // Get linked job and time entries for site address and time tracking
-      const job = invoiceWithItems.jobId ? await storage.getJob(invoiceWithItems.jobId, req.userId) : undefined;
-      const timeEntries = invoiceWithItems.jobId ? await storage.getTimeEntries(req.userId, invoiceWithItems.jobId) : [];
+      const job = invoiceWithItems.jobId ? await storage.getJob(invoiceWithItems.jobId, userContext.effectiveUserId) : undefined;
+      const timeEntries = invoiceWithItems.jobId ? await storage.getTimeEntries(userContext.effectiveUserId, invoiceWithItems.jobId) : [];
       
       const html = generateInvoicePDF({
         invoice: invoiceWithItems,
@@ -5864,9 +5880,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Preview PDF - Generate PDF from draft invoice data (before saving)
+  // Preview PDF - Generate PDF from draft invoice data (before saving) (team-aware)
   app.post("/api/invoices/preview-pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       const { generateInvoicePDF, generatePDFBuffer } = await import('./pdfService');
       
       const { clientId, title, description, dueDate, subtotal, gstAmount, total, lineItems, notes } = req.body;
@@ -5875,8 +5892,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Client ID is required" });
       }
       
-      const client = await storage.getClient(clientId, req.userId);
-      const business = await storage.getBusinessSettings(req.userId);
+      const client = await storage.getClient(clientId, userContext.effectiveUserId);
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
       
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
@@ -5885,7 +5902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create a mock invoice object for PDF generation
       const mockInvoice = {
         id: 'preview',
-        userId: req.userId,
+        userId: userContext.effectiveUserId,
         clientId,
         number: 'PREVIEW',
         title: title || 'Draft Invoice',
@@ -5946,18 +5963,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create Stripe checkout session for invoice payment (with Connect destination charges)
+  // Create Stripe checkout session for invoice payment (with Connect destination charges) (team-aware)
   app.post("/api/invoices/:id/create-checkout-session", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
       // Get invoice with line items
-      const invoice = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
+      const invoice = await storage.getInvoiceWithLineItems(req.params.id, userContext.effectiveUserId);
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
 
       // Get client and business settings
-      const client = await storage.getClient(invoice.clientId, req.userId);
-      const business = await storage.getBusinessSettings(req.userId);
+      const client = await storage.getClient(invoice.clientId, userContext.effectiveUserId);
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
       
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
