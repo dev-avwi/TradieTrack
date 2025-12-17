@@ -51,9 +51,23 @@ Key architectural features include:
 -   **Xero Integration**: Full OAuth 2.0 flow with contacts sync and invoices push. Auto-sync when invoices are sent. Duplicate prevention via xeroInvoiceId tracking. XeroSetupGuide component with step-by-step instructions and FAQ accordion.
 -   **MYOB Integration**: Removed from UI (December 2024) - focusing on Xero. Backend code retained for future use.
 
+### Platform Admin Dashboard
+
+-   **Admin Account**: admin@avwebinnovation.com / Admin123! - Platform admin with `isPlatformAdmin=true` flag
+-   **Dedicated Admin Interface**: Admin users see a completely different UI (AdminAppShell) with admin-focused navigation
+-   **Admin Navigation**: Overview, Users, Platform Activity, System Health, Settings (no Jobs, Clients, Quotes, Invoices)
+-   **Admin Views**:
+    - `/admin` - Overview dashboard with platform KPIs, user growth chart, feature usage stats
+    - `/admin/users` - Detailed user management table with search, tier filter, status filter
+    - `/admin/activity` - Platform activity log showing signups, onboarding, upgrades
+    - `/admin/health` - System health status (API, DB, Background Jobs, Storage)
+    - `/admin/settings` - Coming soon placeholder
+-   **Security**: Admin access enforced via `isPlatformAdmin` database flag only (no email fallbacks)
+-   **Route Protection**: Non-admin users redirected away from /admin/* routes
+
 ### Demo Mode & Testing
 
--   **Demo Account**: demo@tradietrack.com.au / demo123456 - Pre-loaded with 3 clients, 3 jobs, quotes & invoices
+-   **Demo Account**: demo@tradietrack.com.au / demo123456 - Pre-loaded with 15 clients, 20 jobs, "Mike's Plumbing Services"
 -   **DemoModeBanner**: Visual indicator when logged into demo account with helpful guidance
 -   **DemoPaymentSimulator**: Simulates Stripe payment flow for demos (shows fee breakdown, processing animation)
 -   **Test Users**: mike@northqldplumbing.com.au, luke@harriselectrical.com.au, tom@northqldplumbing.com.au (all password: Test123!)
