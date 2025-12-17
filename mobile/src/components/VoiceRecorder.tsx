@@ -80,14 +80,15 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       if (!hasPermission) return;
 
       // Configure audio mode for iOS recording using setAudioModeAsync from expo-audio
-      // This is required on iOS to enable recording mode
+      // This is required on iOS to enable recording mode - MUST set allowsRecordingIOS: true
       try {
         await setAudioModeAsync({
-          playsInSilentMode: true,
-          shouldPlayInBackground: false,
+          allowsRecordingIOS: true,        // REQUIRED for iOS recording
+          playsInSilentModeIOS: true,      // Allow playback in silent mode
+          staysActiveInBackground: false,
           interruptionMode: 'doNotMix',
         });
-        console.log('[VoiceRecorder] Audio mode configured for iOS recording');
+        console.log('[VoiceRecorder] Audio mode configured for iOS recording with allowsRecordingIOS: true');
       } catch (audioModeError) {
         console.warn('[VoiceRecorder] Could not set audio mode, proceeding anyway:', audioModeError);
       }

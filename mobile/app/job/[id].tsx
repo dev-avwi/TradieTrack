@@ -37,6 +37,7 @@ import { JobForms } from '../../src/components/FormRenderer';
 import { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
 import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from '../../src/components/JobWorkflowComponents';
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface Job {
   id: string;
@@ -1428,6 +1429,11 @@ export default function JobDetailScreen() {
   const [isCompletingJob, setIsCompletingJob] = useState(false);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { 
     activeTimer, 
@@ -2220,6 +2226,14 @@ export default function JobDetailScreen() {
       return;
     }
 
+    // Show schedule picker when scheduling a job
+    if (action.next === 'scheduled') {
+      setScheduleDate(job.scheduledAt ? new Date(job.scheduledAt) : new Date());
+      setShowScheduleModal(true);
+      return;
+    }
+
+    // For other transitions (scheduled -> in_progress), show confirmation
     Alert.alert(
       action.label,
       `Are you sure you want to ${action.label.toLowerCase()}?`,
@@ -2251,6 +2265,39 @@ export default function JobDetailScreen() {
       Alert.alert('Error', 'Failed to complete job. Please try again.');
     }
     setIsCompletingJob(false);
+  };
+
+  const handleConfirmSchedule = async () => {
+    if (!job) return;
+    
+    // Validate that the selected time is not in the past
+    const now = new Date();
+    if (scheduleDate < now) {
+      Alert.alert('Invalid Time', 'Please select a future date and time for scheduling.');
+      return;
+    }
+    
+    try {
+      const response = await api.patch(`/api/jobs/${job.id}`, {
+        status: 'scheduled',
+        scheduledAt: scheduleDate.toISOString(),
+      });
+      
+      if (response.data) {
+        // Update local job state
+        setJob({ ...job, status: 'scheduled', scheduledAt: scheduleDate.toISOString() });
+        
+        // Refresh the jobs store to update any cached job lists
+        const { fetchJobs, fetchTodaysJobs } = useJobsStore.getState();
+        fetchJobs();
+        fetchTodaysJobs();
+        
+        setShowScheduleModal(false);
+        Alert.alert('Success', 'Job scheduled successfully');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to schedule job. Please try again.');
+    }
   };
 
   const handleSaveNotes = async () => {
@@ -2383,9 +2430,11 @@ export default function JobDetailScreen() {
       
       // Use FileSystem.uploadAsync for streaming multipart upload (works for large videos)
       const uploadUrl = `${API_URL}/api/jobs/${job.id}/photos/upload`;
+      // Use FileSystemUploadType.MULTIPART (value: 1) with fallback for compatibility
+      const uploadType = FileSystem.FileSystemUploadType?.MULTIPART ?? 1;
       const uploadResult = await FileSystem.uploadAsync(uploadUrl, uri, {
         httpMethod: 'POST',
-        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+        uploadType: uploadType,
         fieldName: 'file',
         mimeType: mimeType,
         parameters: {
@@ -2468,9 +2517,11 @@ export default function JobDetailScreen() {
       const token = await api.getToken();
       const uploadUrl = `${API_URL}/api/jobs/${job.id}/photos/upload`;
       
+      // Use FileSystemUploadType.MULTIPART (value: 1) with fallback for compatibility
+      const uploadType = FileSystem.FileSystemUploadType?.MULTIPART ?? 1;
       const uploadResult = await FileSystem.uploadAsync(uploadUrl, tempFilePath, {
         httpMethod: 'POST',
-        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+        uploadType: uploadType,
         fieldName: 'file',
         mimeType: 'image/jpeg',
         parameters: {
@@ -4008,6 +4059,143 @@ export default function JobDetailScreen() {
           </View>
         </Modal>
       )}
+
+      {/* Schedule Job Modal */}
+      <Modal
+        visible={showScheduleModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowScheduleModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Schedule Job</Text>
+              <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
+                <Feather name="x" size={24} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalContent}>
+              <Text style={{ fontSize: 14, color: colors.foreground, marginBottom: spacing.md }}>
+                Select date and time for this job:
+              </Text>
+              
+              {/* Date Picker Button */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: colors.background,
+                  borderRadius: radius.lg,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: spacing.md,
+                  marginBottom: spacing.md,
+                }}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Feather name="calendar" size={20} color={colors.primary} style={{ marginRight: spacing.md }} />
+                <Text style={{ color: colors.foreground, flex: 1, fontSize: 15 }}>
+                  {scheduleDate.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                </Text>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              
+              {/* Time Picker Button */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: colors.background,
+                  borderRadius: radius.lg,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: spacing.md,
+                  marginBottom: spacing.lg,
+                }}
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Feather name="clock" size={20} color={colors.primary} style={{ marginRight: spacing.md }} />
+                <Text style={{ color: colors.foreground, flex: 1, fontSize: 15 }}>
+                  {scheduleDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              
+              {/* Date Picker */}
+              {showDatePicker && (
+                <DateTimePicker
+                  value={scheduleDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, date) => {
+                    // On Android, always close the picker after any action
+                    if (Platform.OS === 'android') {
+                      setShowDatePicker(false);
+                    }
+                    // Only update date if user confirmed (not dismissed)
+                    if (event.type === 'set' && date) {
+                      const newDate = new Date(scheduleDate);
+                      newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                      setScheduleDate(newDate);
+                    }
+                  }}
+                  minimumDate={new Date()}
+                />
+              )}
+              
+              {/* Time Picker */}
+              {showTimePicker && (
+                <DateTimePicker
+                  value={scheduleDate}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, date) => {
+                    // On Android, always close the picker after any action
+                    if (Platform.OS === 'android') {
+                      setShowTimePicker(false);
+                    }
+                    // Only update time if user confirmed (not dismissed)
+                    if (event.type === 'set' && date) {
+                      const newDate = new Date(scheduleDate);
+                      newDate.setHours(date.getHours(), date.getMinutes());
+                      setScheduleDate(newDate);
+                    }
+                  }}
+                />
+              )}
+              
+              <View style={{ flexDirection: 'row', gap: spacing.md }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    backgroundColor: colors.muted,
+                    borderRadius: radius.lg,
+                    paddingVertical: spacing.md,
+                    alignItems: 'center',
+                  }}
+                  onPress={() => setShowScheduleModal(false)}
+                >
+                  <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 15 }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    backgroundColor: colors.primary,
+                    borderRadius: radius.lg,
+                    paddingVertical: spacing.md,
+                    alignItems: 'center',
+                  }}
+                  onPress={handleConfirmSchedule}
+                >
+                  <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 15 }}>Schedule Job</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
