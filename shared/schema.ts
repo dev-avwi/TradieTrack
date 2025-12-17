@@ -72,6 +72,8 @@ export const users = pgTable("users", {
   trialStatus: text("trial_status"), // active, expired, converted
   // Legacy field kept for compatibility
   subscriptionResetDate: timestamp("subscription_reset_date").defaultNow(),
+  // Platform admin flag - for admin@avwebinnovation.com to access platform dashboard
+  isPlatformAdmin: boolean("is_platform_admin").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

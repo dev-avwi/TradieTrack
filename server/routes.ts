@@ -56,7 +56,7 @@ import {
   digitalSignatures,
 } from "@shared/schema";
 import { db } from "./storage";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, desc } from "drizzle-orm";
 import { 
   ObjectStorageService, 
   ObjectNotFoundError 
@@ -857,6 +857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trialStatus: user.trialStatus,
         trialEndsAt: user.trialEndsAt,
         trialUsedAt: user.trialUsedAt,
+        isPlatformAdmin: user.isPlatformAdmin || false,
       };
       
       res.json(safeUser);
@@ -13553,9 +13554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ADMIN DASHBOARD ROUTES (Super Admin Only)
   // ============================================
   
-  const ADMIN_EMAIL = "admin@avwebinnovation.com";
-  
-  // Admin middleware - only allows access to the super admin email
+  // Admin middleware - requires isPlatformAdmin flag to be true
   const requireAdmin = async (req: any, res: any, next: any) => {
     try {
       const userId = req.userId;
@@ -13564,7 +13563,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const user = await storage.getUser(userId);
-      if (!user || user.email !== ADMIN_EMAIL) {
+      // Only isPlatformAdmin flag grants admin access - no email fallbacks
+      if (!user || user.isPlatformAdmin !== true) {
         return res.status(403).json({ error: 'Access denied. Admin only.' });
       }
       

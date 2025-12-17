@@ -33,7 +33,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const ADMIN_EMAIL = "admin@avwebinnovation.com";
+interface AuthUser {
+  email?: string;
+  isPlatformAdmin?: boolean;
+}
 
 interface AdminStats {
   kpis: {
@@ -81,11 +84,12 @@ interface AdminUsersResponse {
 export default function AdminDashboard() {
   const [, navigate] = useLocation();
 
-  const { data: authUser, isLoading: authLoading } = useQuery<{ email?: string }>({
+  const { data: authUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ['/api/auth/me'],
   });
 
-  const isAdmin = authUser?.email === ADMIN_EMAIL;
+  // Only isPlatformAdmin flag grants admin access
+  const isAdmin = authUser?.isPlatformAdmin === true;
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {

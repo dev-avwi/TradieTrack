@@ -136,12 +136,13 @@ if (process.env.DATABASE_URL) {
     next();
   });
 
-  // Demo data creation disabled - production mode only uses real accounts
-  // if (process.env.NODE_ENV === 'development') {
-  //   await createDemoUserAndData();
-  //   await fixTestUserPasswords();
-  //   await seedSmsDataForTestUsers();
-  // }
+  // Demo data seeding (only creates demo@tradietrack.com.au for testing, not admin)
+  if (process.env.NODE_ENV === 'development') {
+    await createDemoUserAndData();
+    // Test user passwords disabled - use demo account only
+    // await fixTestUserPasswords();
+    // await seedSmsDataForTestUsers();
+  }
   
   const server = await registerRoutes(app);
 
