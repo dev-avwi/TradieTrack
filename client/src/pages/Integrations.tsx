@@ -38,7 +38,10 @@ import {
   Send,
   Clock,
   FileText,
-  BarChart3
+  BarChart3,
+  Eye,
+  EyeOff,
+  HelpCircle
 } from "lucide-react";
 import { SiStripe, SiGmail, SiXero } from "react-icons/si";
 import { RefreshCw, Link2Off } from "lucide-react";
@@ -149,8 +152,23 @@ function ServiceBadge({ status, fetchFailed }: { status: string | undefined; fet
   );
 }
 
+interface TwilioSettings {
+  twilioPhoneNumber: string | null;
+  twilioSenderId: string | null;
+  twilioAccountSid: string | null;
+  twilioAuthToken: string | null;
+  twilioAuthTokenConfigured: boolean;
+  platformTwilioConfigured: boolean;
+  platformTwilioPhoneNumber: string | null;
+}
+
 export default function Integrations() {
   const [stripeDialogOpen, setStripeDialogOpen] = useState(false);
+  const [twilioDialogOpen, setTwilioDialogOpen] = useState(false);
+  const [twilioAccountSid, setTwilioAccountSid] = useState('');
+  const [twilioAuthToken, setTwilioAuthToken] = useState('');
+  const [twilioPhoneNumber, setTwilioPhoneNumber] = useState('');
+  const [showAuthToken, setShowAuthToken] = useState(false);
   const { toast } = useToast();
 
   const { data: health, isLoading, isError, refetch } = useQuery<HealthStatus>({
@@ -272,6 +290,89 @@ export default function Integrations() {
 
   // MYOB integration - Removed from UI per user request (focusing on Xero)
   // Backend routes remain available for future use
+
+  // Twilio SMS integration queries and mutations
+  const { data: twilioSettings, refetch: refetchTwilio } = useQuery<TwilioSettings>({
+    queryKey: ['/api/settings/sms-branding'],
+  });
+
+  const saveTwilioMutation = useMutation({
+    mutationFn: async (data: { twilioAccountSid: string; twilioAuthToken: string; twilioPhoneNumber: string }) => {
+      const response = await apiRequest('PUT', '/api/settings/sms-branding', data);
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Settings Saved",
+        description: "Your Twilio credentials have been saved successfully",
+      });
+      refetchTwilio();
+      refetch();
+      setTwilioDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Save Failed",
+        description: error.message || "Failed to save Twilio settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const testTwilioMutation = useMutation({
+    mutationFn: async (data: { twilioAccountSid: string; twilioAuthToken: string; twilioPhoneNumber: string }) => {
+      const response = await apiRequest('POST', '/api/settings/sms-branding/test', data);
+      return response;
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Connection Successful",
+        description: data.message || "Twilio credentials are valid",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to connect to Twilio. Please check your credentials.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOpenTwilioSetup = () => {
+    // Pre-fill with existing values (don't show masked values in editable fields)
+    setTwilioAccountSid('');
+    setTwilioAuthToken('');
+    setTwilioPhoneNumber(twilioSettings?.twilioPhoneNumber || '');
+    setShowAuthToken(false);
+    setTwilioDialogOpen(true);
+  };
+
+  const handleTestTwilio = () => {
+    if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
+      toast({
+        title: "Missing Fields",
+        description: "Please fill in all fields before testing",
+        variant: "destructive",
+      });
+      return;
+    }
+    testTwilioMutation.mutate({ twilioAccountSid, twilioAuthToken, twilioPhoneNumber });
+  };
+
+  const handleSaveTwilio = () => {
+    if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
+      toast({
+        title: "Missing Fields",
+        description: "Please fill in all fields before saving",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveTwilioMutation.mutate({ twilioAccountSid, twilioAuthToken, twilioPhoneNumber });
+  };
+
+  const twilioConnected = twilioSettings?.twilioAuthTokenConfigured && twilioSettings?.twilioPhoneNumber;
 
   if (isLoading) {
     return (
@@ -744,12 +845,12 @@ export default function Integrations() {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    health?.services?.twilio?.status === 'ready' 
+                    twilioConnected || health?.services?.twilio?.status === 'ready' 
                       ? 'bg-green-100 dark:bg-green-900/50' 
                       : 'bg-gray-100 dark:bg-gray-800/50'
                   }`}>
                     <Phone className={`w-5 h-5 ${
-                      health?.services?.twilio?.status === 'ready' 
+                      twilioConnected || health?.services?.twilio?.status === 'ready' 
                         ? 'text-green-600 dark:text-green-400' 
                         : 'text-gray-500 dark:text-gray-400'
                     }`} />
@@ -759,11 +860,20 @@ export default function Integrations() {
                     <p className="text-xs text-muted-foreground">Send SMS reminders and updates to clients</p>
                   </div>
                 </div>
-                <ServiceBadge status={health?.services?.twilio?.status} fetchFailed={fetchFailed} />
+                {twilioConnected || health?.services?.twilio?.status === 'ready' ? (
+                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Connected
+                  </Badge>
+                )}
               </div>
             </CardHeader>
             <CardContent className="pt-0 space-y-4">
-              {health?.services?.twilio?.status === 'ready' ? (
+              {twilioConnected || health?.services?.twilio?.status === 'ready' ? (
                 <>
                   <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
                     <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
@@ -772,10 +882,15 @@ export default function Integrations() {
                     <p className="text-sm text-green-700 dark:text-green-300">
                       Your clients will receive SMS notifications for appointments and updates.
                     </p>
+                    {twilioSettings?.twilioPhoneNumber && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                        Phone: {twilioSettings.twilioPhoneNumber}
+                      </p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-foreground">What happens when connected:</p>
+                    <p className="text-xs font-medium text-foreground">Active features:</p>
                     <ul className="text-xs text-muted-foreground space-y-1.5">
                       <li className="flex items-center gap-2">
                         <CheckCircle className="w-3 h-3 text-green-500" />
@@ -791,17 +906,27 @@ export default function Integrations() {
                       </li>
                     </ul>
                   </div>
+                  
+                  <Button 
+                    variant="outline"
+                    onClick={handleOpenTwilioSetup}
+                    className="w-full"
+                    data-testid="button-update-twilio"
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    Update Settings
+                  </Button>
                 </>
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    Connect Twilio to send SMS reminders and updates directly to your clients' phones.
+                    Connect your Twilio account to send SMS reminders and updates directly to your clients' phones.
                   </p>
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-start gap-2">
                       <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
                       <div className="text-xs text-muted-foreground space-y-1">
-                        <p><strong>Requires:</strong> TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN</p>
+                        <p><strong>You'll need:</strong> Your Twilio Account SID, Auth Token, and Phone Number</p>
                         <p><strong>Features:</strong> Job reminders, status updates, confirmations</p>
                       </div>
                     </div>
@@ -824,6 +949,16 @@ export default function Integrations() {
                       </li>
                     </ul>
                   </div>
+                  
+                  <Button 
+                    onClick={handleOpenTwilioSetup}
+                    className="w-full"
+                    data-testid="button-connect-twilio"
+                  >
+                    <Phone className="w-4 h-4 mr-2" />
+                    Connect Twilio
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
                 </>
               )}
             </CardContent>
@@ -944,6 +1079,129 @@ export default function Integrations() {
           isConnecting={connectStripeMutation.isPending}
         />
       )}
+
+      {/* Twilio Setup Dialog */}
+      <Dialog open={twilioDialogOpen} onOpenChange={setTwilioDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Phone className="w-5 h-5" />
+              Connect Twilio SMS
+            </DialogTitle>
+            <DialogDescription>
+              Enter your Twilio credentials to enable SMS notifications for your clients.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Instructions */}
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <HelpCircle className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400" />
+                <div className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                  <p className="font-medium">Where to find your Twilio credentials:</p>
+                  <ol className="list-decimal list-inside space-y-0.5 text-blue-700 dark:text-blue-300">
+                    <li>Log in to your <a href="https://console.twilio.com" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Twilio Console</a></li>
+                    <li>Find Account SID and Auth Token on the dashboard</li>
+                    <li>Get your phone number from Phone Numbers → Manage → Active Numbers</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            {/* Account SID */}
+            <div className="space-y-2">
+              <Label htmlFor="twilio-sid">Account SID</Label>
+              <Input
+                id="twilio-sid"
+                placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                value={twilioAccountSid}
+                onChange={(e) => setTwilioAccountSid(e.target.value)}
+                data-testid="input-twilio-sid"
+              />
+              {twilioSettings?.twilioAccountSid && (
+                <p className="text-xs text-muted-foreground">
+                  Current: {twilioSettings.twilioAccountSid}
+                </p>
+              )}
+            </div>
+
+            {/* Auth Token */}
+            <div className="space-y-2">
+              <Label htmlFor="twilio-token">Auth Token</Label>
+              <div className="relative">
+                <Input
+                  id="twilio-token"
+                  type={showAuthToken ? "text" : "password"}
+                  placeholder="Your Twilio Auth Token"
+                  value={twilioAuthToken}
+                  onChange={(e) => setTwilioAuthToken(e.target.value)}
+                  className="pr-10"
+                  data-testid="input-twilio-token"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3"
+                  onClick={() => setShowAuthToken(!showAuthToken)}
+                >
+                  {showAuthToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+              </div>
+              {twilioSettings?.twilioAuthTokenConfigured && (
+                <p className="text-xs text-muted-foreground">
+                  Current: {twilioSettings.twilioAuthToken || '••••••••'}
+                </p>
+              )}
+            </div>
+
+            {/* Phone Number */}
+            <div className="space-y-2">
+              <Label htmlFor="twilio-phone">Twilio Phone Number</Label>
+              <Input
+                id="twilio-phone"
+                placeholder="+61412345678"
+                value={twilioPhoneNumber}
+                onChange={(e) => setTwilioPhoneNumber(e.target.value)}
+                data-testid="input-twilio-phone"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use E.164 format (e.g., +61412345678 for Australian numbers)
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleTestTwilio}
+                disabled={testTwilioMutation.isPending || !twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber}
+                className="flex-1"
+                data-testid="button-test-twilio"
+              >
+                {testTwilioMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                )}
+                Test Connection
+              </Button>
+              <Button
+                onClick={handleSaveTwilio}
+                disabled={saveTwilioMutation.isPending || !twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber}
+                className="flex-1"
+                data-testid="button-save-twilio"
+              >
+                {saveTwilioMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
+                Save Settings
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* How it works */}
       <Card className="border-dashed">

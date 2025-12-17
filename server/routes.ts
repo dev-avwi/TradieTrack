@@ -2413,6 +2413,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test Twilio connection with provided credentials
+  app.post("/api/settings/sms-branding/test", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const { twilioAccountSid, twilioAuthToken, twilioPhoneNumber } = req.body;
+      
+      if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
+        return res.status(400).json({ 
+          error: "Account SID, Auth Token, and Phone Number are all required" 
+        });
+      }
+      
+      // Validate phone number format (E.164)
+      const phoneRegex = /^\+[1-9]\d{1,14}$/;
+      if (!phoneRegex.test(twilioPhoneNumber)) {
+        return res.status(400).json({ 
+          error: "Invalid phone number. Must be in E.164 format (e.g., +61412345678)." 
+        });
+      }
+      
+      // Try to initialize a Twilio client with the provided credentials
+      const twilio = await import('twilio');
+      const client = twilio.default(twilioAccountSid, twilioAuthToken);
+      
+      // Verify the credentials by fetching account info
+      const account = await client.api.accounts(twilioAccountSid).fetch();
+      
+      // Verify the phone number belongs to this account
+      const phoneNumbers = await client.incomingPhoneNumbers.list({ phoneNumber: twilioPhoneNumber });
+      
+      if (phoneNumbers.length === 0) {
+        return res.status(400).json({ 
+          error: "Phone number not found in your Twilio account. Make sure you've purchased this number." 
+        });
+      }
+      
+      res.json({ 
+        success: true,
+        message: `Connection successful! Account: ${account.friendlyName}`,
+        accountName: account.friendlyName,
+        phoneNumber: twilioPhoneNumber,
+      });
+    } catch (error: any) {
+      console.error("Twilio connection test failed:", error);
+      
+      // Handle specific Twilio errors
+      if (error.code === 20003) {
+        return res.status(401).json({ 
+          error: "Invalid credentials. Please check your Account SID and Auth Token." 
+        });
+      }
+      if (error.code === 20404) {
+        return res.status(404).json({ 
+          error: "Account not found. Please verify your Account SID." 
+        });
+      }
+      
+      res.status(500).json({ 
+        error: error.message || "Failed to connect to Twilio. Please check your credentials." 
+      });
+    }
+  });
+
   // Integration Status (platform-level - what integrations are configured)
   app.get("/api/integrations/status", requireAuth, async (req: any, res) => {
     try {

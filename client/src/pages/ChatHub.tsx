@@ -119,6 +119,11 @@ interface SmsMessage {
   quickActionType: string | null;
   readAt: string | null;
   createdAt: string;
+  isJobRequest?: boolean;
+  intentConfidence?: 'high' | 'medium' | 'low' | null;
+  intentType?: 'quote_request' | 'job_request' | 'enquiry' | 'followup' | 'other' | null;
+  suggestedJobTitle?: string | null;
+  jobCreatedFromSms?: string | null;
 }
 
 type FilterType = 'all' | 'team' | 'direct' | 'jobs' | 'sms';
@@ -321,6 +326,28 @@ export default function ChatHub() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
+    },
+  });
+
+  const createJobFromSmsMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      const response = await apiRequest('POST', `/api/sms/messages/${messageId}/create-job`, {});
+      return response.json();
+    },
+    onSuccess: (data: { job: { id: string; title: string } }) => {
+      toast({
+        title: "Job Created",
+        description: `Job "${data.job.title}" has been created from this SMS.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', selectedSmsConversation?.id, 'messages'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create job",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
     },
   });
 
@@ -787,25 +814,108 @@ export default function ChatHub() {
             <div className="space-y-3">
               {smsMessages.map((msg) => {
                 const isOwn = msg.direction === 'outbound';
+                const isJobRequest = msg.isJobRequest && msg.direction === 'inbound';
+                const jobAlreadyCreated = !!msg.jobCreatedFromSms;
+                
+                const getIntentLabel = (intentType: string | null | undefined) => {
+                  switch (intentType) {
+                    case 'quote_request': return 'Quote Request';
+                    case 'job_request': return 'Job Request';
+                    case 'enquiry': return 'Enquiry';
+                    case 'followup': return 'Follow-up';
+                    default: return 'Request';
+                  }
+                };
+                
+                const getConfidenceColor = (confidence: string | null | undefined) => {
+                  switch (confidence) {
+                    case 'high': return 'bg-green-500/15 text-green-700 dark:text-green-400';
+                    case 'medium': return 'bg-amber-500/15 text-amber-700 dark:text-amber-400';
+                    case 'low': return 'bg-gray-500/15 text-gray-600 dark:text-gray-400';
+                    default: return 'bg-gray-500/15 text-gray-600';
+                  }
+                };
+                
                 return (
                   <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                        isOwn ? 'bg-green-600 text-white' : 'bg-muted'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                      <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : ''}`}>
-                        <span className={`text-xs ${isOwn ? 'text-white/70' : 'text-muted-foreground'}`}>
-                          {formatTime(msg.createdAt)}
-                        </span>
-                        {isOwn && msg.status === 'delivered' && (
-                          <CheckCheck className="h-3 w-3 text-white/70" />
-                        )}
-                        {isOwn && msg.status === 'sent' && (
-                          <Check className="h-3 w-3 text-white/70" />
-                        )}
+                    <div className={`max-w-[80%] ${isJobRequest ? 'space-y-2' : ''}`}>
+                      {isJobRequest && (
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                          <Badge 
+                            variant="secondary" 
+                            className="bg-blue-500/15 text-blue-700 dark:text-blue-400 text-xs"
+                            data-testid={`badge-intent-${msg.id}`}
+                          >
+                            <Briefcase className="h-3 w-3 mr-1" />
+                            {getIntentLabel(msg.intentType)}
+                          </Badge>
+                          {msg.intentConfidence && (
+                            <Badge 
+                              variant="secondary" 
+                              className={`text-xs ${getConfidenceColor(msg.intentConfidence)}`}
+                              data-testid={`badge-confidence-${msg.id}`}
+                            >
+                              {msg.intentConfidence.charAt(0).toUpperCase() + msg.intentConfidence.slice(1)} confidence
+                            </Badge>
+                          )}
+                          {jobAlreadyCreated && (
+                            <Badge 
+                              variant="secondary" 
+                              className="bg-green-500/15 text-green-700 dark:text-green-400 text-xs"
+                              data-testid={`badge-job-created-${msg.id}`}
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Job Created
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div
+                        className={`rounded-2xl px-4 py-2 ${
+                          isOwn ? 'bg-green-600 text-white' : 'bg-muted'
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                        <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : ''}`}>
+                          <span className={`text-xs ${isOwn ? 'text-white/70' : 'text-muted-foreground'}`}>
+                            {formatTime(msg.createdAt)}
+                          </span>
+                          {isOwn && msg.status === 'delivered' && (
+                            <CheckCheck className="h-3 w-3 text-white/70" />
+                          )}
+                          {isOwn && msg.status === 'sent' && (
+                            <Check className="h-3 w-3 text-white/70" />
+                          )}
+                        </div>
                       </div>
+                      
+                      {isJobRequest && (
+                        <div className="mt-2 space-y-2">
+                          {msg.suggestedJobTitle && (
+                            <p className="text-xs text-muted-foreground" data-testid={`suggested-title-${msg.id}`}>
+                              <span className="font-medium">Suggested job:</span> {msg.suggestedJobTitle}
+                            </p>
+                          )}
+                          <Button
+                            size="sm"
+                            variant={jobAlreadyCreated ? "outline" : "default"}
+                            disabled={jobAlreadyCreated || createJobFromSmsMutation.isPending}
+                            onClick={() => createJobFromSmsMutation.mutate(msg.id)}
+                            className="gap-1.5"
+                            data-testid={`button-create-job-${msg.id}`}
+                          >
+                            {createJobFromSmsMutation.isPending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : jobAlreadyCreated ? (
+                              <Check className="h-3.5 w-3.5" />
+                            ) : (
+                              <Briefcase className="h-3.5 w-3.5" />
+                            )}
+                            {jobAlreadyCreated ? 'Job Created' : 'Create Job from SMS'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
