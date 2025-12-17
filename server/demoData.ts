@@ -84,7 +84,13 @@ export async function createDemoUserAndData() {
       demoUser = await storage.getUserByEmail(DEMO_USER.email);
       console.log('✅ Demo user created:', DEMO_USER.email);
     } else {
-      console.log('✅ Demo user already exists:', DEMO_USER.email);
+      // Demo user exists - ensure password is correct (fix placeholder hashes)
+      const hashedPassword = await AuthService.hashPassword(DEMO_USER.password);
+      await storage.updateUser(demoUser.id, { 
+        password: hashedPassword,
+        emailVerified: true 
+      });
+      console.log('✅ Demo user already exists, password updated:', DEMO_USER.email);
     }
 
     if (!demoUser) {
