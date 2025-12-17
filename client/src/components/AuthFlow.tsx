@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Eye, EyeOff, AlertCircle, Zap, Check, X } from "lucide-react";
+import { Loader2, Eye, EyeOff, AlertCircle, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import appIconUrl from '@assets/Photo 1-12-2025, 6 03 07 pm (1)_1764576362665.png';
 
@@ -290,28 +290,6 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                   </Button>
                 </form>
 
-                {/* Demo Credentials */}
-                <div 
-                  className="border-2 rounded-lg p-4"
-                  style={{
-                    background: 'linear-gradient(to right, hsl(var(--trade) / 0.05), hsl(var(--trade) / 0.1))',
-                    borderColor: 'hsl(var(--trade) / 0.3)'
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <Zap className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold mb-1" style={{ color: 'hsl(var(--trade))' }}>Try Demo Account</p>
-                      <div className="text-sm space-y-1" style={{ color: 'hsl(var(--trade) / 0.8)' }}>
-                        <p className="font-mono text-xs">demo@tradietrack.com.au</p>
-                        <p className="font-mono text-xs">demo123456</p>
-                      </div>
-                      <p className="text-xs mt-2" style={{ color: 'hsl(var(--trade) / 0.7)' }}>
-                        Pre-loaded with clients, jobs, quotes & invoices
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </TabsContent>
 
               {/* Register Tab */}

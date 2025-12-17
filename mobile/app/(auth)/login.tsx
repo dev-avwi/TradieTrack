@@ -383,8 +383,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
   },
   spacer: {
-    flex: 1,
-    minHeight: 24,
+    height: 16,
   },
   signUpContainer: {
     flexDirection: 'row',
