@@ -5,6 +5,7 @@ import { sendEmailViaIntegration } from './emailIntegrationService';
 import { generateQuotePDF, generateInvoicePDF, generatePDFBuffer } from './pdfService';
 import { notifyPaymentReceived } from './pushNotifications';
 import { syncSingleInvoiceToXero } from './xeroService';
+import { processPaymentReceivedAutomation } from './automationService';
 
 // Helper to create tradie-friendly error messages with clear fixes
 function getTradieFriendlyEmailError(rawError: string): { title: string; message: string; fix: string } {
@@ -617,6 +618,26 @@ export const handleInvoiceMarkPaid = async (req: any, res: any, storage: any) =>
         fix: "Try again in a few minutes. If this keeps happening, contact support."
       });
     }
+
+    // Update linked job status if applicable (best effort, don't fail if this errors)
+    if (invoiceWithItems.jobId) {
+      try {
+        const job = await storage.getJob(invoiceWithItems.jobId, req.userId);
+        if (job && job.status !== 'invoiced') {
+          await storage.updateJob(invoiceWithItems.jobId, req.userId, { status: 'invoiced' });
+        }
+      } catch (jobError) {
+        console.log("Job status update skipped:", jobError);
+      }
+    }
+
+    // Trigger automation rules for payment received (async, non-blocking)
+    processPaymentReceivedAutomation(req.userId, req.params.id)
+      .catch(err => console.error('[Automations] Error processing payment received:', err));
+
+    // Sync payment status to Xero (async, non-blocking)
+    syncSingleInvoiceToXero(req.userId, req.params.id)
+      .catch(err => console.warn('[Xero] Error syncing payment to Xero:', err));
 
     // 6. Send receipt email (optional - don't fail if email issues)
     // Always use sendEmailViaIntegration which handles:

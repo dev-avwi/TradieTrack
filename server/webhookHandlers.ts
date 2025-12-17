@@ -1,6 +1,8 @@
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { createNotification } from './notifications';
 import { sendPaymentSuccessEmail, sendPaymentFailedEmail, sendReceiptEmail } from './emailService';
+import { processPaymentReceivedAutomation } from './automationService';
+import { syncSingleInvoiceToXero } from './xeroService';
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string, uuid: string, storage: any): Promise<void> {
@@ -68,6 +70,26 @@ async function handleStripeEvent(event: any, storage: any) {
               paymentMethod: 'stripe',
               stripePaymentIntentId: session.payment_intent,
             });
+
+            // Update linked job status if applicable (best effort, don't fail if this errors)
+            if (invoice.jobId) {
+              try {
+                const job = await storage.getJob(invoice.jobId, userId);
+                if (job && job.status !== 'invoiced') {
+                  await storage.updateJob(invoice.jobId, userId, { status: 'invoiced' });
+                }
+              } catch (jobError) {
+                console.log("Job status update skipped:", jobError);
+              }
+            }
+
+            // Trigger automation rules for payment received (async, non-blocking)
+            processPaymentReceivedAutomation(userId, invoiceId)
+              .catch(err => console.error('[Automations] Error processing payment received:', err));
+
+            // Sync payment status to Xero (async, non-blocking)
+            syncSingleInvoiceToXero(userId, invoiceId)
+              .catch(err => console.warn('[Xero] Error syncing payment to Xero:', err));
 
             await createNotification(storage, {
               userId,
