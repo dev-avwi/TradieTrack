@@ -365,6 +365,69 @@ export async function syncSingleInvoiceToXero(userId: string, invoiceId: string)
   }
 }
 
+// Mark an invoice as paid in Xero (called when payment is received)
+export async function markInvoicePaidInXero(userId: string, invoiceId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const connection = await storage.getXeroConnection(userId);
+    if (!connection || connection.status !== "active") {
+      // No Xero connection - not an error, just skip
+      return { success: true };
+    }
+
+    const invoice = await storage.getInvoice(invoiceId, userId);
+    if (!invoice) {
+      return { success: false, error: "Invoice not found" };
+    }
+
+    // If invoice hasn't been synced to Xero yet, we can't mark it paid
+    if (!invoice.xeroInvoiceId) {
+      console.log('[Xero] Invoice not synced to Xero yet, skipping payment sync');
+      return { success: true };
+    }
+
+    const refreshedConnection = await refreshTokenIfNeeded(connection);
+    const xero = createXeroClient();
+    const tokens = decryptTokens(refreshedConnection);
+    
+    const tokenSet: TokenSet = {
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken,
+      expires_at: Math.floor(new Date(refreshedConnection.tokenExpiresAt).getTime() / 1000),
+      token_type: "Bearer",
+      scope: refreshedConnection.scope || XERO_SCOPES,
+    };
+
+    xero.setTokenSet(tokenSet);
+
+    // Create a payment in Xero to mark the invoice as paid
+    const payment = {
+      invoice: {
+        invoiceID: invoice.xeroInvoiceId,
+      },
+      account: {
+        code: "090", // Default bank account code - typically "Business Bank Account"
+      },
+      date: new Date().toISOString().split('T')[0],
+      amount: parseFloat(invoice.total || "0"),
+    };
+
+    await xero.accountingApi.createPayment(refreshedConnection.tenantId, payment);
+    
+    // Update the sync timestamp
+    await storage.updateInvoice(invoice.id, userId, {
+      xeroSyncedAt: new Date(),
+    });
+
+    console.log(`[Xero] Invoice ${invoiceId} marked as paid in Xero`);
+    return { success: true };
+  } catch (err) {
+    // Payment creation might fail if Xero doesn't have the expected account
+    // Log but don't fail the overall payment flow
+    console.warn('[Xero] Failed to mark invoice as paid in Xero:', err);
+    return { success: false, error: String(err) };
+  }
+}
+
 export async function getConnectionStatus(userId: string): Promise<{
   connected: boolean;
   tenantName?: string;

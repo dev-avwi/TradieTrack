@@ -4,7 +4,7 @@ import { createQuoteEmailHtml, createInvoiceEmailHtml, createReceiptEmailHtml } 
 import { sendEmailViaIntegration } from './emailIntegrationService';
 import { generateQuotePDF, generateInvoicePDF, generatePDFBuffer } from './pdfService';
 import { notifyPaymentReceived } from './pushNotifications';
-import { syncSingleInvoiceToXero } from './xeroService';
+import { syncSingleInvoiceToXero, markInvoicePaidInXero } from './xeroService';
 import { processPaymentReceivedAutomation } from './automationService';
 
 // Helper to create tradie-friendly error messages with clear fixes
@@ -636,7 +636,7 @@ export const handleInvoiceMarkPaid = async (req: any, res: any, storage: any) =>
       .catch(err => console.error('[Automations] Error processing payment received:', err));
 
     // Sync payment status to Xero (async, non-blocking)
-    syncSingleInvoiceToXero(req.userId, req.params.id)
+    markInvoicePaidInXero(req.userId, req.params.id)
       .catch(err => console.warn('[Xero] Error syncing payment to Xero:', err));
 
     // 6. Send receipt email (optional - don't fail if email issues)

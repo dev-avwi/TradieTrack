@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -496,6 +496,20 @@ export default function InvoiceDetailView({
                   <div className="mt-2">
                     <StatusBadge status={invoice.status} />
                   </div>
+                  {/* Xero sync status */}
+                  {invoice.xeroInvoiceId && (
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700">
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Xero Synced
+                      </Badge>
+                      {invoice.xeroSyncedAt && (
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(invoice.xeroSyncedAt).toLocaleDateString('en-AU')}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
