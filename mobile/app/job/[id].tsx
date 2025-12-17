@@ -37,7 +37,6 @@ import { JobForms } from '../../src/components/FormRenderer';
 import { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
 import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from '../../src/components/JobWorkflowComponents';
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface Job {
   id: string;
@@ -4123,47 +4122,129 @@ export default function JobDetailScreen() {
                 <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
               </TouchableOpacity>
               
-              {/* Date Picker */}
+              {/* Custom Date Picker */}
               {showDatePicker && (
-                <DateTimePicker
-                  value={scheduleDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(event, date) => {
-                    // On Android, always close the picker after any action
-                    if (Platform.OS === 'android') {
-                      setShowDatePicker(false);
-                    }
-                    // Only update date if user confirmed (not dismissed)
-                    if (event.type === 'set' && date) {
-                      const newDate = new Date(scheduleDate);
-                      newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-                      setScheduleDate(newDate);
-                    }
-                  }}
-                  minimumDate={new Date()}
-                />
+                <View style={{ backgroundColor: colors.muted, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md }}>
+                  <Text style={{ color: colors.foreground, fontWeight: '600', marginBottom: spacing.sm, textAlign: 'center' }}>Select Date</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 180 }}>
+                    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                      {Array.from({ length: 30 }, (_, i) => {
+                        const date = new Date();
+                        date.setDate(date.getDate() + i);
+                        const isSelected = scheduleDate.toDateString() === date.toDateString();
+                        return (
+                          <TouchableOpacity
+                            key={i}
+                            onPress={() => {
+                              const newDate = new Date(scheduleDate);
+                              newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                              setScheduleDate(newDate);
+                            }}
+                            style={{
+                              padding: spacing.md,
+                              backgroundColor: isSelected ? colors.primary : colors.background,
+                              borderRadius: radius.md,
+                              minWidth: 70,
+                              alignItems: 'center',
+                            }}
+                          >
+                            <Text style={{ color: isSelected ? colors.primaryForeground : colors.mutedForeground, fontSize: 12 }}>
+                              {date.toLocaleDateString('en-AU', { weekday: 'short' })}
+                            </Text>
+                            <Text style={{ color: isSelected ? colors.primaryForeground : colors.foreground, fontSize: 18, fontWeight: '700' }}>
+                              {date.getDate()}
+                            </Text>
+                            <Text style={{ color: isSelected ? colors.primaryForeground : colors.mutedForeground, fontSize: 12 }}>
+                              {date.toLocaleDateString('en-AU', { month: 'short' })}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                  <TouchableOpacity
+                    style={{ backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.sm, marginTop: spacing.md, alignItems: 'center' }}
+                    onPress={() => setShowDatePicker(false)}
+                  >
+                    <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Done</Text>
+                  </TouchableOpacity>
+                </View>
               )}
               
-              {/* Time Picker */}
+              {/* Custom Time Picker */}
               {showTimePicker && (
-                <DateTimePicker
-                  value={scheduleDate}
-                  mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(event, date) => {
-                    // On Android, always close the picker after any action
-                    if (Platform.OS === 'android') {
-                      setShowTimePicker(false);
-                    }
-                    // Only update time if user confirmed (not dismissed)
-                    if (event.type === 'set' && date) {
-                      const newDate = new Date(scheduleDate);
-                      newDate.setHours(date.getHours(), date.getMinutes());
-                      setScheduleDate(newDate);
-                    }
-                  }}
-                />
+                <View style={{ backgroundColor: colors.muted, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md }}>
+                  <Text style={{ color: colors.foreground, fontWeight: '600', marginBottom: spacing.sm, textAlign: 'center' }}>Select Time</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.lg }}>
+                    {/* Hours */}
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ color: colors.mutedForeground, fontSize: 12, marginBottom: spacing.xs }}>Hour</Text>
+                      <ScrollView style={{ height: 150 }} showsVerticalScrollIndicator={false}>
+                        {Array.from({ length: 24 }, (_, h) => {
+                          const isSelected = scheduleDate.getHours() === h;
+                          return (
+                            <TouchableOpacity
+                              key={h}
+                              onPress={() => {
+                                const newDate = new Date(scheduleDate);
+                                newDate.setHours(h);
+                                setScheduleDate(newDate);
+                              }}
+                              style={{
+                                padding: spacing.sm,
+                                backgroundColor: isSelected ? colors.primary : 'transparent',
+                                borderRadius: radius.sm,
+                                minWidth: 50,
+                                alignItems: 'center',
+                              }}
+                            >
+                              <Text style={{ color: isSelected ? colors.primaryForeground : colors.foreground, fontSize: 16, fontWeight: isSelected ? '700' : '400' }}>
+                                {h.toString().padStart(2, '0')}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                    <Text style={{ color: colors.foreground, fontSize: 24, alignSelf: 'center' }}>:</Text>
+                    {/* Minutes */}
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ color: colors.mutedForeground, fontSize: 12, marginBottom: spacing.xs }}>Minute</Text>
+                      <ScrollView style={{ height: 150 }} showsVerticalScrollIndicator={false}>
+                        {[0, 15, 30, 45].map((m) => {
+                          const isSelected = scheduleDate.getMinutes() === m;
+                          return (
+                            <TouchableOpacity
+                              key={m}
+                              onPress={() => {
+                                const newDate = new Date(scheduleDate);
+                                newDate.setMinutes(m);
+                                setScheduleDate(newDate);
+                              }}
+                              style={{
+                                padding: spacing.sm,
+                                backgroundColor: isSelected ? colors.primary : 'transparent',
+                                borderRadius: radius.sm,
+                                minWidth: 50,
+                                alignItems: 'center',
+                              }}
+                            >
+                              <Text style={{ color: isSelected ? colors.primaryForeground : colors.foreground, fontSize: 16, fontWeight: isSelected ? '700' : '400' }}>
+                                {m.toString().padStart(2, '0')}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={{ backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.sm, marginTop: spacing.md, alignItems: 'center' }}
+                    onPress={() => setShowTimePicker(false)}
+                  >
+                    <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Done</Text>
+                  </TouchableOpacity>
+                </View>
               )}
               
               <View style={{ flexDirection: 'row', gap: spacing.md }}>
