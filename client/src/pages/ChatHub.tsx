@@ -339,8 +339,17 @@ export default function ChatHub() {
         title: "Job Created",
         description: `Job "${data.job.title}" has been created from this SMS.`,
       });
+      queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', selectedSmsConversation?.id, 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      
+      // Update local state with the new jobId so the header shows "View Job" immediately
+      if (selectedSmsConversation) {
+        setSelectedSmsConversation({
+          ...selectedSmsConversation,
+          jobId: data.job.id
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -797,10 +806,24 @@ export default function ChatHub() {
               {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS Conversation'}
             </p>
           </div>
-          <Badge variant="outline" className="shrink-0 gap-1">
-            <Phone className="h-3 w-3" />
-            SMS
-          </Badge>
+          <div className="flex items-center gap-2">
+            {selectedSmsConversation.jobId && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setLocation(`/jobs/${selectedSmsConversation.jobId}`)}
+                className="gap-1.5"
+                data-testid="button-view-linked-job"
+              >
+                <Briefcase className="h-3.5 w-3.5" />
+                View Job
+              </Button>
+            )}
+            <Badge variant="outline" className="shrink-0 gap-1">
+              <Phone className="h-3 w-3" />
+              SMS
+            </Badge>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
@@ -897,23 +920,34 @@ export default function ChatHub() {
                               <span className="font-medium">Suggested job:</span> {msg.suggestedJobTitle}
                             </p>
                           )}
-                          <Button
-                            size="sm"
-                            variant={jobAlreadyCreated ? "outline" : "default"}
-                            disabled={jobAlreadyCreated || createJobFromSmsMutation.isPending}
-                            onClick={() => createJobFromSmsMutation.mutate(msg.id)}
-                            className="gap-1.5"
-                            data-testid={`button-create-job-${msg.id}`}
-                          >
-                            {createJobFromSmsMutation.isPending ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : jobAlreadyCreated ? (
-                              <Check className="h-3.5 w-3.5" />
-                            ) : (
+                          {jobAlreadyCreated ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setLocation(`/jobs/${msg.jobCreatedFromSms}`)}
+                              className="gap-1.5"
+                              data-testid={`button-view-job-${msg.id}`}
+                            >
                               <Briefcase className="h-3.5 w-3.5" />
-                            )}
-                            {jobAlreadyCreated ? 'Job Created' : 'Create Job from SMS'}
-                          </Button>
+                              View Job
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              disabled={createJobFromSmsMutation.isPending}
+                              onClick={() => createJobFromSmsMutation.mutate(msg.id)}
+                              className="gap-1.5"
+                              data-testid={`button-create-job-${msg.id}`}
+                            >
+                              {createJobFromSmsMutation.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Briefcase className="h-3.5 w-3.5" />
+                              )}
+                              Create Job from SMS
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
