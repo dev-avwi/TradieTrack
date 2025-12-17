@@ -7770,8 +7770,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/team/members", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const teamMembers = await storage.getTeamMembers(userId);
-      res.json(teamMembers);
+      
+      // Fetch team members and all roles in parallel (avoid N+1 queries)
+      const [teamMembers, allRoles] = await Promise.all([
+        storage.getTeamMembers(userId),
+        storage.getUserRoles()
+      ]);
+      
+      // Create a lookup map for O(1) role access
+      const roleMap = new Map(allRoles.map(role => [role.id, role]));
+      
+      // Enrich team members with role name without additional queries
+      const enrichedMembers = teamMembers.map(member => {
+        const role = roleMap.get(member.roleId);
+        return {
+          ...member,
+          roleName: role?.name || 'Team Member',
+          roleDescription: role?.description || '',
+        };
+      });
+      
+      res.json(enrichedMembers);
     } catch (error) {
       console.error('Error fetching team members:', error);
       res.status(500).json({ error: 'Failed to fetch team members' });
