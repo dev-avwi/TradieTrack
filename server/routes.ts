@@ -13883,6 +13883,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Email template preview (development only)
+  app.get("/api/dev/email-preview/:type", requireDevelopment, async (req, res) => {
+    const { type } = req.params;
+    const baseUrl = process.env.VITE_APP_URL || 'http://localhost:5000';
+    const logoUrl = `${baseUrl}/public/tradietrack-logo.png`;
+    
+    const sampleUser = { firstName: 'Mike', email: 'mike@example.com' };
+    
+    let html = '';
+    
+    if (type === 'welcome') {
+      html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Welcome to TradieTrack</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+            <img src="${logoUrl}" alt="TradieTrack" style="max-width: 180px; height: auto; margin-bottom: 15px;" />
+            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to TradieTrack!</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your business management platform</p>
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 20px;">
+            <h2 style="color: #333; margin-top: 0;">G'day ${sampleUser.firstName}!</h2>
+            <p>Thanks for signing up for TradieTrack! We're stoked to have you on board.</p>
+            <p>TradieTrack helps you manage your trade business with ease - from quotes and invoices to scheduling and client management.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="#" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Get Started</a>
+            </div>
+          </div>
+          
+          <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; color: #666; font-size: 14px; text-align: center;">
+            <p><strong>TradieTrack</strong> | Streamline your trade business</p>
+          </div>
+        </body>
+        </html>
+      `;
+    } else if (type === 'reset') {
+      html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Reset Your Password - TradieTrack</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+            <img src="${logoUrl}" alt="TradieTrack" style="max-width: 160px; height: auto; margin-bottom: 15px;" />
+            <h1 style="color: white; margin: 0; font-size: 28px;">Password Reset Request</h1>
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 20px;">
+            <h2 style="color: #333; margin-top: 0;">Hi ${sampleUser.firstName},</h2>
+            <p>We received a request to reset the password for your TradieTrack account.</p>
+            <p>Click the button below to create a new password:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="#" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Reset Password</a>
+            </div>
+          </div>
+          
+          <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; color: #666; font-size: 14px;">
+            <p><strong>Important:</strong> This link will expire in 1 hour.</p>
+          </div>
+        </body>
+        </html>
+      `;
+    } else {
+      return res.status(400).send('Unknown email type. Use: welcome, reset');
+    }
+    
+    res.send(html);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
