@@ -96,11 +96,6 @@ export default function LoginScreen() {
     }
   };
 
-  const fillTestAccount = () => {
-    setEmail('luke@harriselectrical.com.au');
-    setPassword('Test123!');
-  };
-
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -237,15 +232,6 @@ export default function LoginScreen() {
             </Link>
           </View>
 
-          <TouchableOpacity 
-            onPress={fillTestAccount}
-            style={styles.testAccountButton}
-            testID="button-test-account"
-          >
-            <Text style={styles.testAccountText}>
-              Tap to use test account: luke@harriselectrical.com.au
-            </Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -405,18 +391,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     fontSize: 15,
-  },
-  testAccountButton: {
-    marginTop: 16,
-    padding: 14,
-    backgroundColor: colors.card,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  testAccountText: {
-    textAlign: 'center',
-    color: colors.mutedForeground,
-    fontSize: 13,
   },
 });
