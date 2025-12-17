@@ -270,6 +270,81 @@ export async function createDemoUserAndData() {
 
       console.log('✅ Demo invoice created');
     }
+    
+    // Check if demo user has SMS conversations (separate from client check)
+    const existingSmsConversations = await storage.getSmsConversationsByBusiness(demoUser.id);
+    if (existingSmsConversations.length === 0) {
+      // Get first client for linking
+      const clients = await storage.getClients(demoUser.id);
+      const firstClient = clients[0];
+      
+      // Create demo SMS conversations with job requests
+      const smsConversations = [
+        {
+          businessOwnerId: demoUser.id,
+          clientId: firstClient?.id || null,
+          clientPhone: '+61412345678',
+          clientName: firstClient?.name || 'Sarah Johnson',
+          lastMessageAt: new Date(),
+          unreadCount: 2,
+        },
+        {
+          businessOwnerId: demoUser.id,
+          clientId: null, // Unknown caller - tests auto-client creation
+          clientPhone: '+61498765432',
+          clientName: 'Unknown Caller',
+          lastMessageAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+          unreadCount: 1,
+        }
+      ];
+      
+      const createdConversations = [];
+      for (const convData of smsConversations) {
+        const conv = await storage.createSmsConversation(convData);
+        createdConversations.push(conv);
+      }
+      
+      // Create SMS messages including job requests
+      const smsMessages = [
+        // Conversation 1: Known client asking for a quote (job request)
+        {
+          conversationId: createdConversations[0].id,
+          direction: 'inbound' as const,
+          body: 'Hi Mike, can you come out and give me a quote for fixing my hot water system? It stopped heating properly last night. Address is 15 Oak Street Cairns.',
+          status: 'delivered' as const,
+          isJobRequest: true,
+          intentConfidence: 'high' as const,
+          intentType: 'quote_request' as const,
+          suggestedJobTitle: 'Hot Water System Repair',
+          suggestedDescription: 'Customer reports hot water system not heating properly. Requesting quote for repair at 15 Oak Street Cairns.',
+        },
+        {
+          conversationId: createdConversations[0].id,
+          direction: 'outbound' as const,
+          body: "Hi Sarah! Thanks for reaching out. I'll add this to my schedule and get back to you with a quote today.",
+          senderUserId: demoUser.id,
+          status: 'delivered' as const,
+        },
+        // Conversation 2: Unknown caller - job request
+        {
+          conversationId: createdConversations[1].id,
+          direction: 'inbound' as const,
+          body: 'G\'day mate, I got a burst pipe in my kitchen and water is going everywhere! Can you come ASAP? I\'m at 42 Smith Street, Edge Hill. This is urgent!',
+          status: 'delivered' as const,
+          isJobRequest: true,
+          intentConfidence: 'high' as const,
+          intentType: 'job_request' as const,
+          suggestedJobTitle: 'Emergency Burst Pipe Repair',
+          suggestedDescription: 'Emergency call - burst pipe in kitchen causing water damage. Location: 42 Smith Street, Edge Hill. Urgent response required.',
+        },
+      ];
+      
+      for (const msgData of smsMessages) {
+        await storage.createSmsMessage(msgData);
+      }
+      
+      console.log('✅ Demo SMS conversations created:', createdConversations.length, 'conversations with messages');
+    }
 
     // Check if templates exist, if not seed them (we expect 20+ templates now)
     const templates = await storage.getDocumentTemplates(demoUser.id);
@@ -353,6 +428,95 @@ export async function createDemoUserAndData() {
   } catch (error) {
     console.error('Error setting up demo data:', error);
     return null;
+  }
+}
+
+// Also seed SMS demo data for test users (Mike Sullivan) so testers can see the feature
+export async function seedSmsDataForTestUsers() {
+  try {
+    const testUser = await storage.getUserByEmail('mike@northqldplumbing.com.au');
+    if (!testUser) {
+      console.log('No test user found for SMS demo data');
+      return;
+    }
+    
+    // Check if test user already has SMS conversations
+    const existingSmsConversations = await storage.getSmsConversationsByBusiness(testUser.id);
+    if (existingSmsConversations.length > 0) {
+      console.log(`✅ Test user already has ${existingSmsConversations.length} SMS conversations`);
+      return;
+    }
+    
+    // Get first client for linking
+    const clients = await storage.getClients(testUser.id);
+    const firstClient = clients[0];
+    
+    // Create SMS conversations with job requests for test user
+    const smsConversations = [
+      {
+        businessOwnerId: testUser.id,
+        clientId: firstClient?.id || null,
+        clientPhone: '+61412345678',
+        clientName: firstClient?.name || 'Sarah Johnson',
+        lastMessageAt: new Date(),
+        unreadCount: 2,
+      },
+      {
+        businessOwnerId: testUser.id,
+        clientId: null, // Unknown caller - tests auto-client creation
+        clientPhone: '+61498765432',
+        clientName: 'Unknown Caller',
+        lastMessageAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        unreadCount: 1,
+      }
+    ];
+    
+    const createdConversations = [];
+    for (const convData of smsConversations) {
+      const conv = await storage.createSmsConversation(convData);
+      createdConversations.push(conv);
+    }
+    
+    // Create SMS messages including job requests
+    const smsMessages = [
+      {
+        conversationId: createdConversations[0].id,
+        direction: 'inbound' as const,
+        body: 'Hi, can you come out and give me a quote for fixing my hot water system? It stopped heating properly last night. Address is 15 Oak Street Cairns.',
+        status: 'delivered' as const,
+        isJobRequest: true,
+        intentConfidence: 'high' as const,
+        intentType: 'quote_request' as const,
+        suggestedJobTitle: 'Hot Water System Repair',
+        suggestedDescription: 'Customer reports hot water system not heating properly. Requesting quote for repair at 15 Oak Street Cairns.',
+      },
+      {
+        conversationId: createdConversations[0].id,
+        direction: 'outbound' as const,
+        body: "Thanks for reaching out. I'll add this to my schedule and get back to you with a quote today.",
+        senderUserId: testUser.id,
+        status: 'delivered' as const,
+      },
+      {
+        conversationId: createdConversations[1].id,
+        direction: 'inbound' as const,
+        body: 'G\'day mate, I got a burst pipe in my kitchen and water is going everywhere! Can you come ASAP? I\'m at 42 Smith Street, Edge Hill. This is urgent!',
+        status: 'delivered' as const,
+        isJobRequest: true,
+        intentConfidence: 'high' as const,
+        intentType: 'job_request' as const,
+        suggestedJobTitle: 'Emergency Burst Pipe Repair',
+        suggestedDescription: 'Emergency call - burst pipe in kitchen causing water damage. Location: 42 Smith Street, Edge Hill. Urgent response required.',
+      },
+    ];
+    
+    for (const msgData of smsMessages) {
+      await storage.createSmsMessage(msgData);
+    }
+    
+    console.log('✅ Test user SMS demo data created:', createdConversations.length, 'conversations');
+  } catch (error) {
+    console.error('Error seeding SMS data for test users:', error);
   }
 }
 

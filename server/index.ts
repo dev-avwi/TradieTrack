@@ -3,7 +3,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { createDemoUserAndData, fixTestUserPasswords } from "./demoData";
+import { createDemoUserAndData, fixTestUserPasswords, seedSmsDataForTestUsers } from "./demoData";
 import { initializeStripe } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { storage } from "./storage";
@@ -140,6 +140,7 @@ if (process.env.DATABASE_URL) {
   if (process.env.NODE_ENV === 'development') {
     await createDemoUserAndData();
     await fixTestUserPasswords();
+    await seedSmsDataForTestUsers();
   }
   
   const server = await registerRoutes(app);

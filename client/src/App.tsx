@@ -207,9 +207,10 @@ function Router({
   onShowQuoteModal: (quoteId: string) => void;
   onShowInvoiceModal: (invoiceId: string) => void;
 }) {
+  const [location] = useLocation();
 
   return (
-    <Switch>
+    <Switch location={location}>
       {/* Work page - unified job workflow view */}
       <Route path="/work" component={() => (
         <WorkPage 
