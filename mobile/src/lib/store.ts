@@ -287,6 +287,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           isInitialized: true 
         });
+        
+        // Sync theme mode from cached settings (honors last known server value)
+        if (cachedAuth.businessSettings?.themeMode) {
+          useThemeStore.getState().initializeFromServer(cachedAuth.businessSettings.themeMode as ThemeMode);
+        }
         console.log('[Auth] Using cached auth data for offline access');
         return;
       } else {
