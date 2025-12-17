@@ -49,6 +49,9 @@ export function setupGoogleAuth(app: Express) {
         const accountIndex = selectedAccount ? parseInt(selectedAccount as string, 10) : 0;
         const demoGoogleUser = demoAccounts[accountIndex] || demoAccounts[0];
 
+        // Track if this is a new user for onboarding
+        let isNewUser = false;
+        
         // Check if user already exists by Google ID (most reliable)
         let user = await AuthService.findUserByGoogleId(demoGoogleUser.googleId);
         
@@ -61,6 +64,7 @@ export function setupGoogleAuth(app: Express) {
           // Create new Google user (first-time login)
           console.log(`🆕 Creating new Google user: ${demoGoogleUser.email}`);
           user = await AuthService.createGoogleUser(demoGoogleUser);
+          isNewUser = true;
         } else {
           // Existing user found - link Google ID if not already linked
           console.log(`✅ Existing Google user found: ${demoGoogleUser.email}`);
@@ -80,12 +84,12 @@ export function setupGoogleAuth(app: Express) {
             }
             return res.redirect('/?error=session_failed');
           }
-          // Redirect based on platform
+          // Redirect based on platform with isNewUser flag
           if (isMobile) {
-            console.log('🔐 Mobile OAuth success (dev mode), redirecting to app deep link');
-            return res.redirect('tradietrack://?auth=google_success');
+            console.log(`🔐 Mobile OAuth success (dev mode, isNewUser: ${isNewUser}), redirecting to app deep link`);
+            return res.redirect(`tradietrack://?auth=google_success&isNewUser=${isNewUser}`);
           }
-          res.redirect('/?auth=google_success');
+          res.redirect(`/?auth=google_success&isNewUser=${isNewUser}`);
         });
       } catch (error) {
         console.error('Demo Google auth error:', error);
@@ -137,10 +141,15 @@ export function setupGoogleAuth(app: Express) {
     passReqToCallback: true
   }, async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
     try {
+      // Track if this is a new user for onboarding purposes
+      let isNewUser = false;
+      
       // Check if user already exists with this Google ID
       const existingUser = await AuthService.findUserByGoogleId(profile.id);
       
       if (existingUser) {
+        // Attach isNewUser flag to user object for callback to use
+        (existingUser as any).isNewUser = false;
         return done(null, existingUser);
       }
 
@@ -150,10 +159,12 @@ export function setupGoogleAuth(app: Express) {
       if (emailUser) {
         // Link Google account to existing user
         await AuthService.linkGoogleAccount(emailUser.id, profile.id);
+        (emailUser as any).isNewUser = false;
         return done(null, emailUser);
       }
 
-      // Create new user
+      // Create new user - this is a first-time user who needs onboarding
+      isNewUser = true;
       const newUser = await AuthService.createGoogleUser({
         googleId: profile.id,
         email: profile.emails?.[0]?.value || '',
@@ -163,6 +174,8 @@ export function setupGoogleAuth(app: Express) {
         emailVerified: true // Google accounts are pre-verified
       });
 
+      // Attach isNewUser flag for callback to use
+      (newUser as any).isNewUser = isNewUser;
       return done(null, newUser);
     } catch (error) {
       console.error('Google OAuth error:', error);
@@ -223,17 +236,20 @@ export function setupGoogleAuth(app: Express) {
             return res.redirect('/?error=session_failed');
           }
           
+          // Check if this is a new user (set by the Passport strategy)
+          const isNewUser = (user as any).isNewUser === true;
+          
           // Redirect based on platform
           if (isMobile) {
-            // Pass session token in URL for mobile app to use
+            // Pass session token and isNewUser flag in URL for mobile app
             const sessionToken = req.sessionID;
-            console.log('🔐 Mobile OAuth success, redirecting to app deep link with token');
-            return res.redirect(`tradietrack://?auth=google_success&token=${sessionToken}`);
+            console.log(`🔐 Mobile OAuth success (isNewUser: ${isNewUser}), redirecting to app deep link`);
+            return res.redirect(`tradietrack://?auth=google_success&token=${sessionToken}&isNewUser=${isNewUser}`);
           }
           
-          // Redirect to web app
-          console.log('🔐 Web OAuth success, redirecting to web app');
-          res.redirect('/?auth=success');
+          // Redirect to web app with isNewUser flag so frontend knows to show onboarding
+          console.log(`🔐 Web OAuth success (isNewUser: ${isNewUser}), redirecting to web app`);
+          res.redirect(`/?auth=google_success&isNewUser=${isNewUser}`);
         });
       });
     })(req, res, next);

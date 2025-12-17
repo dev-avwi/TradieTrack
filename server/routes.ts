@@ -1027,6 +1027,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Email and Google ID are required" });
       }
 
+      // Track if this is a new user for onboarding
+      let isNewUser = false;
+
       // Check if user already exists by Google ID
       let user = await AuthService.findUserByGoogleId(googleId);
       
@@ -1046,6 +1049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profileImageUrl: profileImageUrl || null,
           emailVerified: true
         });
+        isNewUser = true;
       } else {
         // Existing user found - link Google ID if not already linked
         console.log(`✅ Existing Google user found for mobile: ${email}`);
@@ -1062,8 +1066,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("Session save error:", err);
           return res.status(500).json({ error: "Failed to create session" });
         }
-        // Return session token for mobile auth
-        res.json({ success: true, user, sessionToken: req.sessionID });
+        // Return session token and isNewUser flag for mobile auth
+        res.json({ success: true, user, sessionToken: req.sessionID, isNewUser });
       });
     } catch (error) {
       console.error("Mobile Google auth error:", error);
@@ -2292,11 +2296,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/business-settings", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
-      const data = insertBusinessSettingsSchema.parse(req.body);
+      // Extract tradeType from request - it belongs to users table, not business_settings
+      const { tradeType, ...businessSettingsData } = req.body;
+      
+      // If tradeType is provided, update the user's trade type
+      if (tradeType) {
+        await storage.updateUser(req.userId, { tradeType });
+      }
+      
+      const data = insertBusinessSettingsSchema.parse(businessSettingsData);
       const settings = await storage.createBusinessSettings({ ...data, userId: req.userId });
       res.status(201).json(settings);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.log("Validation errors:", error.errors);
         return res.status(400).json({ error: "Invalid input", details: error.errors });
       }
       console.error("Error creating business settings:", error);
@@ -2306,7 +2319,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/business-settings", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
-      const data = insertBusinessSettingsSchema.partial().parse(req.body);
+      // Extract tradeType from request - it belongs to users table, not business_settings
+      const { tradeType, ...businessSettingsData } = req.body;
+      
+      // If tradeType is provided, update the user's trade type
+      if (tradeType) {
+        await storage.updateUser(req.userId, { tradeType });
+      }
+      
+      const data = insertBusinessSettingsSchema.partial().parse(businessSettingsData);
       const settings = await storage.updateBusinessSettings(req.userId, data);
       if (!settings) {
         return res.status(404).json({ error: "Business settings not found" });
@@ -2314,6 +2335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(settings);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.log("Validation errors:", error.errors);
         return res.status(400).json({ error: "Invalid input", details: error.errors });
       }
       console.error("Error updating business settings:", error);
