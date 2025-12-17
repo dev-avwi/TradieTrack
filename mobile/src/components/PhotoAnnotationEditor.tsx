@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme } from '../lib/theme';
 import { spacing, radius } from '../lib/design-tokens';
 import { Ionicons } from '@expo/vector-icons';

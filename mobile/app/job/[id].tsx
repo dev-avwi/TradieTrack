@@ -24,7 +24,7 @@ import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import api, { API_URL } from '../../src/lib/api';
 import { useJobsStore, useTimeTrackingStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';

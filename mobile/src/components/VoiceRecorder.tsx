@@ -80,15 +80,13 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       if (!hasPermission) return;
 
       // Configure audio mode for iOS recording using setAudioModeAsync from expo-audio
-      // This is required on iOS to enable recording mode - MUST set allowsRecordingIOS: true
+      // In expo-audio, parameter names are: allowsRecording (not allowsRecordingIOS), playsInSilentMode (not playsInSilentModeIOS)
       try {
         await setAudioModeAsync({
-          allowsRecordingIOS: true,        // REQUIRED for iOS recording
-          playsInSilentModeIOS: true,      // Allow playback in silent mode
-          staysActiveInBackground: false,
-          interruptionMode: 'doNotMix',
+          allowsRecording: true,           // REQUIRED for iOS recording (expo-audio parameter name)
+          playsInSilentMode: true,         // Allow playback in silent mode (expo-audio parameter name)
         });
-        console.log('[VoiceRecorder] Audio mode configured for iOS recording with allowsRecordingIOS: true');
+        console.log('[VoiceRecorder] Audio mode configured for iOS recording with allowsRecording: true');
       } catch (audioModeError) {
         console.warn('[VoiceRecorder] Could not set audio mode, proceeding anyway:', audioModeError);
       }
@@ -209,7 +207,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
             <Ionicons 
               name="mic" 
               size={32} 
-              color={isRecording ? theme.colors.error : theme.colors.primary} 
+              color={isRecording ? theme.colors.destructive : theme.colors.primary} 
             />
           </View>
           
@@ -276,7 +274,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
               style={styles.deleteButton}
               onPress={deleteRecording}
             >
-              <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
+              <Ionicons name="trash-outline" size={20} color={theme.colors.destructive} />
             </TouchableOpacity>
           </View>
           
@@ -401,7 +399,7 @@ export function VoiceNotePlayer({
       
       {onDelete && (
         <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
-          <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
+          <Ionicons name="trash-outline" size={20} color={theme.colors.destructive} />
         </TouchableOpacity>
       )}
     </View>
@@ -425,7 +423,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     marginBottom: 16,
   },
   micRecording: {
-    backgroundColor: theme.colors.error + '20',
+    backgroundColor: theme.colors.destructive + '20',
   },
   duration: {
     fontSize: 32,
@@ -461,7 +459,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     borderColor: theme.colors.border,
   },
   stopButton: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: theme.colors.destructive,
   },
   disabledButton: {
     opacity: 0.6,
