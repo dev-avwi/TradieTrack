@@ -2304,6 +2304,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateUser(req.userId, { tradeType });
       }
       
+      // Convert numeric fields to strings (mobile app sends numbers, schema expects strings for decimal columns)
+      if (typeof businessSettingsData.defaultHourlyRate === 'number') {
+        businessSettingsData.defaultHourlyRate = String(businessSettingsData.defaultHourlyRate);
+      }
+      if (typeof businessSettingsData.calloutFee === 'number') {
+        businessSettingsData.calloutFee = String(businessSettingsData.calloutFee);
+      }
+      
       const data = insertBusinessSettingsSchema.parse(businessSettingsData);
       const settings = await storage.createBusinessSettings({ ...data, userId: req.userId });
       res.status(201).json(settings);
@@ -2325,6 +2333,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If tradeType is provided, update the user's trade type
       if (tradeType) {
         await storage.updateUser(req.userId, { tradeType });
+      }
+      
+      // Convert numeric fields to strings (mobile app sends numbers, schema expects strings for decimal columns)
+      if (typeof businessSettingsData.defaultHourlyRate === 'number') {
+        businessSettingsData.defaultHourlyRate = String(businessSettingsData.defaultHourlyRate);
+      }
+      if (typeof businessSettingsData.calloutFee === 'number') {
+        businessSettingsData.calloutFee = String(businessSettingsData.calloutFee);
       }
       
       const data = insertBusinessSettingsSchema.partial().parse(businessSettingsData);
