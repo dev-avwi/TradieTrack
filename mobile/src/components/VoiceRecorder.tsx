@@ -15,8 +15,8 @@ import {
   useAudioPlayer,
   useAudioPlayerStatus,
   setAudioModeAsync,
+  requestRecordingPermissionsAsync,
 } from 'expo-audio';
-import { Audio } from 'expo-av';
 import { useTheme } from '../lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -53,24 +53,16 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
 
   const requestPermissions = async () => {
     try {
-      // Check if Audio module has requestRecordingPermissionsAsync (expo-audio)
-      if (typeof Audio?.requestRecordingPermissionsAsync === 'function') {
-        const { status } = await Audio.requestRecordingPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert(
-            'Permission Required',
-            'Please grant microphone permission to record voice notes.',
-            [{ text: 'OK' }]
-          );
-          return false;
-        }
-        return true;
-      } else {
-        // Fallback: expo-audio may not require explicit permission request
-        // The recorder will request permissions when starting
-        console.log('[VoiceRecorder] Audio.requestRecordingPermissionsAsync not available, proceeding without explicit check');
-        return true;
+      const { status } = await requestRecordingPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please grant microphone permission to record voice notes.',
+          [{ text: 'OK' }]
+        );
+        return false;
       }
+      return true;
     } catch (error) {
       console.error('Error requesting permissions:', error);
       Alert.alert(
