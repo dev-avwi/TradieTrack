@@ -13886,7 +13886,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Email template preview (development only)
   app.get("/api/dev/email-preview/:type", requireDevelopment, async (req, res) => {
     const { type } = req.params;
-    const baseUrl = process.env.VITE_APP_URL || 'http://localhost:5000';
+    // Use the request's host to construct the correct URL
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.headers.host || req.headers['x-forwarded-host'] || 'localhost:5000';
+    const baseUrl = `${protocol}://${host}`;
     const logoUrl = `${baseUrl}/public/tradietrack-logo.png`;
     
     const sampleUser = { firstName: 'Mike', email: 'mike@example.com' };

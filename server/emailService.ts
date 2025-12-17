@@ -33,6 +33,20 @@ const PLATFORM_FROM_EMAIL = 'mail@avwebinnovation.com';
 const PLATFORM_REPLY_TO_EMAIL = 'admin@avwebinnovation.com';
 const PLATFORM_FROM_NAME = 'TradieTrack';
 
+// Get the correct base URL for emails
+const getBaseUrl = () => {
+  // Check for explicitly set app URL first
+  if (process.env.VITE_APP_URL) {
+    return process.env.VITE_APP_URL;
+  }
+  // Use Replit dev domain if available
+  if (process.env.REPLIT_DEV_DOMAIN) {
+    return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  }
+  // Fallback to localhost
+  return 'http://localhost:5000';
+};
+
 // Simple footer for transactional emails (quote/invoice emails are transactional, not marketing)
 const UNSUBSCRIBE_FOOTER = `
   <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #666; font-size: 12px;">
@@ -707,7 +721,7 @@ export const createJobConfirmationEmailHtml = (job: any, client: any, business: 
 
 // Email template for email verification
 const createEmailVerificationEmail = (user: any, verificationToken: string) => {
-  const baseUrl = process.env.VITE_APP_URL || 'http://localhost:5000';
+  const baseUrl = getBaseUrl();
   const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
   const logoUrl = `${baseUrl}/public/tradietrack-logo.png`;
 
@@ -913,7 +927,7 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
     throw new Error('User email address is required');
   }
 
-  const baseUrl = process.env.VITE_APP_URL || 'http://localhost:5000';
+  const baseUrl = getBaseUrl();
   const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
   const logoUrl = `${baseUrl}/public/tradietrack-logo.png`;
 
@@ -1178,7 +1192,8 @@ export async function sendWelcomeEmail(
   const emailService = isSendGridConfigured ? sgMail : mockEmailService;
   const userName = user.firstName || user.email.split('@')[0];
   const displayBusinessName = businessName || 'your business';
-  const logoUrl = baseUrl ? `${baseUrl}/public/tradietrack-logo.png` : 'https://tradietrack.replit.app/public/tradietrack-logo.png';
+  const effectiveBaseUrl = baseUrl || getBaseUrl();
+  const logoUrl = `${effectiveBaseUrl}/public/tradietrack-logo.png`;
 
   const emailData = {
     to: user.email,
