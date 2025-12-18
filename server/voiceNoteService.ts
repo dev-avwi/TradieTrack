@@ -23,32 +23,34 @@ function getPrivateObjectDir(): string {
 const PRIVATE_OBJECT_DIR = getPrivateObjectDir();
 
 // Parse object path - extract bucket name and object name from the full path
-// Path format: /<bucket_name>/<object_name> or <bucket_name>/<object_name>
+// Path format: /<bucket_name>/<object_name> or just <object_path> (relative to BUCKET_ID)
 function parseObjectPath(objectKey: string): { bucketName: string; objectName: string } {
-  // Ensure path starts with slash for consistent parsing
-  let path = objectKey;
-  if (!path.startsWith("/")) {
-    path = `/${path}`;
+  if (!BUCKET_ID) {
+    throw new Error("Object storage bucket not configured");
   }
   
-  const pathParts = path.split("/");
-  // pathParts[0] is empty string (before the first /)
-  // pathParts[1] is the bucket name
-  // pathParts[2+] is the object name
+  // Clean the path
+  let cleanPath = objectKey.startsWith("/") ? objectKey.slice(1) : objectKey;
   
-  if (pathParts.length < 3) {
-    // Fallback: If path doesn't contain bucket, use BUCKET_ID
-    if (!BUCKET_ID) {
-      throw new Error("Object storage bucket not configured");
-    }
-    const objectName = objectKey.startsWith("/") ? objectKey.slice(1) : objectKey;
+  // Check if the path starts with the bucket name
+  if (cleanPath.startsWith(BUCKET_ID + "/")) {
+    // Remove bucket prefix and use as object name
+    const objectName = cleanPath.slice(BUCKET_ID.length + 1);
     return { bucketName: BUCKET_ID, objectName };
   }
   
-  const bucketName = pathParts[1];
-  const objectName = pathParts.slice(2).join("/");
+  // Check if the path starts with a replit-objstore bucket pattern
+  if (cleanPath.startsWith("replit-objstore-")) {
+    const slashIndex = cleanPath.indexOf("/");
+    if (slashIndex > 0) {
+      const bucketName = cleanPath.slice(0, slashIndex);
+      const objectName = cleanPath.slice(slashIndex + 1);
+      return { bucketName, objectName };
+    }
+  }
   
-  return { bucketName, objectName };
+  // The path is relative (e.g., ".private/voice-notes/...") - use BUCKET_ID
+  return { bucketName: BUCKET_ID, objectName: cleanPath };
 }
 
 export function isObjectStorageConfigured(): boolean {
