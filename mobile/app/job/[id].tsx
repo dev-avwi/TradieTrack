@@ -1547,19 +1547,19 @@ export default function JobDetailScreen() {
           return true;
 
         case 'send_invoice_email':
-          // Use the API endpoint that sends invoice with PDF (matching web behavior)
-          if (invoice?.id) {
-            try {
-              await api.post(`/api/invoices/${invoice.id}/send`, {});
-              Alert.alert('Success', 'Invoice sent to client');
-            } catch {
-              // Fall back to native email if API fails
-              if (client?.email) {
-                await Linking.openURL(`mailto:${client.email}?subject=Invoice for ${job.title}`);
-              }
-            }
+          // Open native email app (Gmail/Outlook) so user can see and customize before sending
+          if (client?.email && invoice?.id) {
+            const invoiceNumber = (invoice as any)?.number || invoice.id.slice(0, 8);
+            const total = invoice?.total ? `$${Number(invoice.total).toFixed(2)}` : '';
+            const subject = `Invoice ${invoiceNumber}${total ? ` - ${total}` : ''}`;
+            const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and pay your invoice here:\n${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay\n\nThanks for your business!`;
+            
+            await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+            Alert.alert('Email Ready', 'Your email app has opened with the invoice details. Review and send when ready.');
           } else if (client?.email) {
             await Linking.openURL(`mailto:${client.email}?subject=Invoice for ${job.title}`);
+          } else {
+            Alert.alert('No Email', 'This client doesn\'t have an email address on file.');
           }
           return true;
 
@@ -1585,15 +1585,19 @@ export default function JobDetailScreen() {
           return true;
 
         case 'send_quote_email':
-          if (quote?.id) {
-            try {
-              await api.post(`/api/quotes/${quote.id}/send`, {});
-              Alert.alert('Success', 'Quote sent to client');
-            } catch {
-              if (client?.email) {
-                await Linking.openURL(`mailto:${client.email}?subject=Quote for ${job.title}`);
-              }
-            }
+          // Open native email app (Gmail/Outlook) so user can see and customize before sending
+          if (client?.email && quote?.id) {
+            const quoteNumber = (quote as any)?.number || quote.id.slice(0, 8);
+            const total = (quote as any)?.total ? `$${Number((quote as any).total).toFixed(2)}` : '';
+            const subject = `Quote ${quoteNumber}${total ? ` - ${total}` : ''}`;
+            const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and accept this quote here:\n${API_URL.replace('/api', '')}/q/${(quote as any)?.acceptanceToken || quote.id}\n\nLet me know if you have any questions!`;
+            
+            await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+            Alert.alert('Email Ready', 'Your email app has opened with the quote details. Review and send when ready.');
+          } else if (client?.email) {
+            await Linking.openURL(`mailto:${client.email}?subject=Quote for ${job.title}`);
+          } else {
+            Alert.alert('No Email', 'This client doesn\'t have an email address on file.');
           }
           return true;
 
