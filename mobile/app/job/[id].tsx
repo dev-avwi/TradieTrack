@@ -1840,7 +1840,22 @@ export default function JobDetailScreen() {
     }
   };
 
-  const handleDeleteSignature = async (signatureId: string) => {
+  // Direct delete without confirmation (for re-sign flow) - returns success boolean
+  const deleteSignatureDirectly = async (signatureId: string): Promise<boolean> => {
+    if (!job) return false;
+    try {
+      await api.delete(`/api/jobs/${job.id}/signatures/${signatureId}`);
+      // Use functional state update to prevent desync
+      setSignatures(prev => prev.filter(s => s.id !== signatureId));
+      return true;
+    } catch (error) {
+      console.error('Error deleting signature:', error);
+      Alert.alert('Error', 'Failed to delete signature. Please try again.');
+      return false;
+    }
+  };
+
+  const handleDeleteSignature = (signatureId: string) => {
     if (!job) return;
     
     Alert.alert(
@@ -1852,13 +1867,7 @@ export default function JobDetailScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await api.delete(`/api/jobs/${job.id}/signatures/${signatureId}`);
-              setSignatures(signatures.filter(s => s.id !== signatureId));
-            } catch (error) {
-              console.error('Error deleting signature:', error);
-              Alert.alert('Error', 'Failed to delete signature');
-            }
+            await deleteSignatureDirectly(signatureId);
           },
         },
       ]
@@ -3219,7 +3228,7 @@ export default function JobDetailScreen() {
                   borderColor: colors.border,
                 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <View>
+                    <View style={{ flex: 1 }}>
                       <Text style={{ color: colors.foreground, fontWeight: '600' }}>
                         Signed by {sig.signerName}
                       </Text>
@@ -3233,13 +3242,39 @@ export default function JobDetailScreen() {
                         })}
                       </Text>
                     </View>
-                    <TouchableOpacity 
-                      onPress={() => handleDeleteSignature(sig.id)}
-                      style={{ padding: spacing.xs }}
-                    >
-                      <Feather name="trash-2" size={18} color={colors.destructive} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+                      <TouchableOpacity 
+                        onPress={() => {
+                          Alert.alert(
+                            'Re-sign?',
+                            'Delete this signature and capture a new one?',
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Re-sign',
+                                onPress: async () => {
+                                  const deleted = await deleteSignatureDirectly(sig.id);
+                                  if (deleted) {
+                                    setShowSignaturePad(true);
+                                  }
+                                },
+                              },
+                            ]
+                          );
+                        }}
+                        style={{ padding: spacing.xs }}
+                      >
+                        <Feather name="edit-2" size={18} color={colors.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        onPress={() => handleDeleteSignature(sig.id)}
+                        style={{ padding: spacing.xs }}
+                      >
+                        <Feather name="trash-2" size={18} color={colors.destructive} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
+                  {/* Signature Preview */}
                   <View style={{ 
                     marginTop: spacing.sm, 
                     backgroundColor: colors.card, 
@@ -3247,10 +3282,24 @@ export default function JobDetailScreen() {
                     padding: spacing.sm,
                     alignItems: 'center',
                   }}>
-                    <Feather name="check-circle" size={24} color={colors.success} />
-                    <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 4 }}>
-                      Signature captured
-                    </Text>
+                    {sig.signatureData ? (
+                      <Image
+                        source={{ uri: sig.signatureData }}
+                        style={{
+                          width: '100%',
+                          height: 120,
+                          borderRadius: 4,
+                        }}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <>
+                        <Feather name="check-circle" size={24} color={colors.success} />
+                        <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 4 }}>
+                          Signature captured
+                        </Text>
+                      </>
+                    )}
                   </View>
                 </View>
               ))}
