@@ -39,14 +39,11 @@ export function JobVoiceNotes({ jobId, canUpload = true }: JobVoiceNotesProps) {
       });
       const audioData = await base64Promise;
       
-      return apiRequest(`/api/jobs/${jobId}/voice-notes`, {
-        method: 'POST',
-        body: JSON.stringify({
-          audioData,
-          fileName: `voice-note-${Date.now()}.webm`,
-          mimeType: audioBlob.type || 'audio/webm',
-          duration,
-        }),
+      return apiRequest('POST', `/api/jobs/${jobId}/voice-notes`, {
+        audioData,
+        fileName: `voice-note-${Date.now()}.webm`,
+        mimeType: audioBlob.type || 'audio/webm',
+        duration,
       });
     },
     onSuccess: () => {
@@ -68,9 +65,7 @@ export function JobVoiceNotes({ jobId, canUpload = true }: JobVoiceNotesProps) {
 
   const deleteMutation = useMutation({
     mutationFn: async (voiceNoteId: string) => {
-      return apiRequest(`/api/jobs/${jobId}/voice-notes/${voiceNoteId}`, {
-        method: 'DELETE',
-      });
+      return apiRequest('DELETE', `/api/jobs/${jobId}/voice-notes/${voiceNoteId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'voice-notes'] });

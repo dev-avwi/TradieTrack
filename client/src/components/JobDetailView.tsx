@@ -733,37 +733,11 @@ export default function JobDetailView({
           </Card>
         )}
 
-        {/* Photos - only show for in_progress, done, invoiced jobs */}
-        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (
-          <JobPhotoGallery jobId={jobId} canUpload={job.status !== 'invoiced'} />
-        ) : (
-          <Card>
-            <CardContent className="py-6">
-              <div className="text-center text-muted-foreground">
-                <Camera className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">
-                  Photos can be added once the job is started
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Photos - show for ALL job statuses so team sync works */}
+        <JobPhotoGallery jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
-        {/* Voice Notes - only show for in_progress, done, invoiced jobs */}
-        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (
-          <JobVoiceNotes jobId={jobId} canUpload={job.status !== 'invoiced'} />
-        ) : (
-          <Card>
-            <CardContent className="py-6">
-              <div className="text-center text-muted-foreground">
-                <Mic className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">
-                  Voice notes can be added once the job is started
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Voice Notes - show for ALL job statuses so team sync works */}
+        <JobVoiceNotes jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
         {/* Custom Forms - available for in_progress, done, invoiced jobs */}
         {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (
