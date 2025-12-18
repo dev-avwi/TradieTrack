@@ -127,6 +127,7 @@ export function JobVoiceNotes({ jobId, canUpload = true }: JobVoiceNotesProps) {
               <VoiceNotePlayer
                 key={note.id}
                 signedUrl={note.signedUrl || ''}
+                fallbackUrl={`/api/jobs/${jobId}/voice-notes/${note.id}/view`}
                 title={note.title || undefined}
                 duration={note.duration || undefined}
                 createdAt={note.createdAt || undefined}

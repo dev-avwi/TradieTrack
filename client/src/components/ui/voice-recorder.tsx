@@ -275,6 +275,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading, className }: Voic
 
 interface VoiceNotePlayerProps {
   signedUrl: string;
+  fallbackUrl?: string;
   title?: string;
   duration?: number;
   createdAt?: string;
@@ -285,6 +286,7 @@ interface VoiceNotePlayerProps {
 
 export function VoiceNotePlayer({ 
   signedUrl, 
+  fallbackUrl,
   title, 
   duration, 
   createdAt,
@@ -296,8 +298,13 @@ export function VoiceNotePlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Use signedUrl if available, otherwise fall back to fallbackUrl
+  const audioUrl = signedUrl || fallbackUrl || '';
+
   useEffect(() => {
-    const audio = new Audio(signedUrl);
+    if (!audioUrl) return;
+    
+    const audio = new Audio(audioUrl);
     audioRef.current = audio;
     
     audio.ontimeupdate = () => setCurrentTime(Math.floor(audio.currentTime));
@@ -310,7 +317,7 @@ export function VoiceNotePlayer({
       audio.pause();
       audio.src = '';
     };
-  }, [signedUrl]);
+  }, [audioUrl]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;

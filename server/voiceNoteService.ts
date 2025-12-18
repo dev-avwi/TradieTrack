@@ -4,6 +4,7 @@ import crypto from 'crypto';
 
 const PRIVATE_OBJECT_DIR = process.env.PRIVATE_OBJECT_DIR || '.private';
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
 let gcsStorage: Storage | null = null;
 
@@ -102,24 +103,59 @@ export async function getSignedVoiceNoteUrl(
   objectStorageKey: string,
   expiresInMinutes: number = 60
 ): Promise<{ url?: string; error?: string }> {
-  const storage = getGCSStorage();
+  if (!objectStorageKey) {
+    return { error: 'No object storage key provided' };
+  }
   
-  if (!storage || !BUCKET_ID) {
+  if (!BUCKET_ID) {
     return { error: 'Object storage not configured' };
   }
 
   try {
-    const bucket = storage.bucket(BUCKET_ID);
-    const file = bucket.file(objectStorageKey);
+    // Remove leading slash if present for consistent object name
+    const objectName = objectStorageKey.startsWith("/") ? objectStorageKey.slice(1) : objectStorageKey;
     
-    const [url] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + expiresInMinutes * 60 * 1000,
-    });
+    // Use Replit's sidecar to generate a signed URL (works in Replit environment)
+    const request = {
+      bucket_name: BUCKET_ID,
+      object_name: objectName,
+      method: 'GET',
+      expires_at: new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString(),
+    };
+    
+    const response = await fetch(
+      `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      }
+    );
+    
+    if (!response.ok) {
+      // Fallback: Try using the GCS client directly
+      const storage = getGCSStorage();
+      if (!storage) {
+        return { error: 'Failed to get storage client' };
+      }
+      
+      const bucket = storage.bucket(BUCKET_ID);
+      const file = bucket.file(objectName);
+      
+      const [signedUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + expiresInMinutes * 60 * 1000,
+      });
+      
+      return { url: signedUrl };
+    }
 
-    return { url };
+    const { signed_url: signedURL } = await response.json();
+    return { url: signedURL };
   } catch (error: any) {
-    console.error('Error getting signed URL:', error);
+    console.error('Error getting signed URL for voice note:', error);
     return { error: error.message };
   }
 }
