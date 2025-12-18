@@ -186,13 +186,13 @@ export default function JobDetailView({
     enabled: !isTradie && !isSolo,
   });
 
-  // Fetch job photos to check if job has documentation
+  // Fetch job photos - enable for all job statuses to support team sync
   const { data: jobPhotos = [] } = useQuery<{ id: string }[]>({
     queryKey: ['/api/jobs', jobId, 'photos'],
-    enabled: !!jobId && job?.status === 'in_progress',
+    enabled: !!jobId,
   });
 
-  // Fetch time entries for this job
+  // Fetch time entries for this job - only for active jobs where time tracking applies
   const { data: timeEntries = [] } = useQuery<{ id: string; endTime?: string }[]>({
     queryKey: ['/api/time-entries', { jobId }],
     queryFn: async () => {
@@ -200,19 +200,19 @@ export default function JobDetailView({
       if (!res.ok) return [];
       return res.json();
     },
-    enabled: !!jobId && job?.status === 'in_progress',
+    enabled: !!jobId,
   });
 
-  // Fetch voice notes for this job
+  // Fetch voice notes - enable for all job statuses to support team sync
   const { data: voiceNotes = [] } = useQuery<{ id: string }[]>({
     queryKey: ['/api/jobs', jobId, 'voice-notes'],
-    enabled: !!jobId && job?.status === 'in_progress',
+    enabled: !!jobId,
   });
 
-  // Fetch signatures for this job
+  // Fetch signatures - enable for all job statuses to support team sync
   const { data: signatures = [] } = useQuery<{ id: string }[]>({
     queryKey: ['/api/jobs', jobId, 'signatures'],
-    enabled: !!jobId && job?.status === 'in_progress',
+    enabled: !!jobId,
   });
 
   // Check if job is "empty" (no documentation)
