@@ -2,8 +2,24 @@ import { storage as dbStorage } from './storage';
 import { objectStorageClient } from './objectStorage';
 import crypto from 'crypto';
 
-const PRIVATE_OBJECT_DIR = process.env.PRIVATE_OBJECT_DIR || '.private';
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+
+// Sanitize PRIVATE_OBJECT_DIR - strip bucket name prefix if present
+function getPrivateObjectDir(): string {
+  let dir = process.env.PRIVATE_OBJECT_DIR || '.private';
+  // If the path contains the bucket name, strip it
+  if (BUCKET_ID && dir.includes(BUCKET_ID)) {
+    // Remove the bucket prefix (e.g., /replit-objstore-xxx/.private -> .private)
+    dir = dir.replace(new RegExp(`^/?${BUCKET_ID}/`), '');
+  }
+  // Remove leading slash if present
+  if (dir.startsWith('/')) {
+    dir = dir.slice(1);
+  }
+  return dir;
+}
+
+const PRIVATE_OBJECT_DIR = getPrivateObjectDir();
 
 // Parse object path - extract bucket name and object name from the full path
 // Path format: /<bucket_name>/<object_name> or <bucket_name>/<object_name>
