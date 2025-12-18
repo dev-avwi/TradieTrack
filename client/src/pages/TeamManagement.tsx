@@ -34,7 +34,10 @@ import {
   Save,
   X,
   Shield,
-  Key
+  Key,
+  MapPin,
+  Briefcase,
+  Phone
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -413,11 +416,23 @@ function RoleEditCard({ role, onUpdate }: { role: UserRole; onUpdate: () => void
   );
 }
 
+// Job type for assignment
+interface Job {
+  id: string;
+  title: string;
+  status: string;
+  clientId: string;
+  assignedTo?: string;
+  scheduledDate?: string;
+}
+
 export default function TeamManagement() {
   const { toast } = useToast();
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const [permissionsMember, setPermissionsMember] = useState<TeamMember | null>(null);
+  const [assignJobMember, setAssignJobMember] = useState<TeamMember | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState("");
   
   // Form state for invite
   const [inviteEmail, setInviteEmail] = useState("");
@@ -429,6 +444,17 @@ export default function TeamManagement() {
   // Fetch team members
   const { data: teamMembers, isLoading: membersLoading } = useQuery<TeamMember[]>({
     queryKey: ['/api/team/members'],
+  });
+
+  // Fetch unassigned jobs for assignment
+  const { data: availableJobs } = useQuery<Job[]>({
+    queryKey: ['/api/jobs', { status: 'unassigned' }],
+    queryFn: async () => {
+      const response = await fetch('/api/jobs?limit=50');
+      if (!response.ok) throw new Error('Failed to fetch jobs');
+      return response.json();
+    },
+    enabled: !!assignJobMember,
   });
 
   // Fetch roles
@@ -503,6 +529,56 @@ export default function TeamManagement() {
     onError: (error: any) => {
       toast({
         title: "Failed to remove member",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Location toggle mutation
+  const locationToggleMutation = useMutation({
+    mutationFn: async ({ memberId, enabled }: { memberId: string; enabled: boolean }) => {
+      const response = await apiRequest('PATCH', `/api/team/members/${memberId}/location`, {
+        locationEnabledByOwner: enabled
+      });
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
+      toast({
+        title: variables.enabled ? "Location enabled" : "Location disabled",
+        description: `Location tracking has been ${variables.enabled ? 'enabled' : 'disabled'} for this team member.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update location settings",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Assign job mutation
+  const assignJobMutation = useMutation({
+    mutationFn: async ({ jobId, memberId }: { jobId: string; memberId: string }) => {
+      const response = await apiRequest('POST', `/api/jobs/${jobId}/assign`, {
+        assignedTo: memberId
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      toast({
+        title: "Job assigned",
+        description: `Job has been assigned to ${assignJobMember?.firstName} ${assignJobMember?.lastName}.`,
+      });
+      setAssignJobMember(null);
+      setSelectedJobId("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to assign job",
         description: error.message || "Please try again.",
         variant: "destructive",
       });
@@ -663,80 +739,123 @@ export default function TeamManagement() {
               {teamMembers.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover-elevate"
+                  className="p-4 border rounded-lg hover-elevate"
                   data-testid={`team-member-${member.id}`}
                 >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-sm font-semibold text-primary">
+                  {/* Top Row - Avatar, Name, Status */}
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base font-semibold text-primary">
                         {member.firstName?.charAt(0)}{member.lastName?.charAt(0)}
                       </span>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold" data-testid={`text-member-name-${member.id}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-lg" data-testid={`text-member-name-${member.id}`}>
                           {member.firstName} {member.lastName}
                         </h3>
                         {getStatusBadge(member)}
+                        <Badge variant="outline" className="text-xs">
+                          {getRoleName(member.roleId)}
+                        </Badge>
+                        {member.useCustomPermissions && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Key className="h-2 w-2 mr-1" />
+                            Custom Permissions
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      
+                      {/* Details Row */}
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2 flex-wrap">
                         <span className="flex items-center gap-1">
                           <Mail className="h-3 w-3" />
                           {member.email}
                         </span>
-                        <span className="flex items-center gap-1">
-                          {getRoleName(member.roleId)}
-                          {member.useCustomPermissions && (
-                            <Badge variant="outline" className="text-xs ml-1">
-                              <Key className="h-2 w-2 mr-1" />
-                              Custom
-                            </Badge>
-                          )}
-                        </span>
                         {member.hourlyRate && (
-                          <span>
+                          <span className="flex items-center gap-1">
                             ${member.hourlyRate}/hr
                           </span>
                         )}
+                        {member.startDate && (
+                          <span className="flex items-center gap-1">
+                            Started {new Date(member.startDate).toLocaleDateString('en-AU')}
+                          </span>
+                        )}
                       </div>
+
+                      {/* Location & Controls Row (only for accepted members) */}
+                      {member.inviteStatus === 'accepted' && (
+                        <div className="flex items-center gap-4 mt-3 pt-3 border-t">
+                          {/* Location Toggle */}
+                          <div className="flex items-center gap-2">
+                            <MapPin className={`h-4 w-4 ${member.locationEnabledByOwner !== false ? 'text-green-500' : 'text-muted-foreground'}`} />
+                            <Label htmlFor={`location-${member.id}`} className="text-sm">
+                              Location Access
+                            </Label>
+                            <Switch
+                              id={`location-${member.id}`}
+                              checked={member.locationEnabledByOwner !== false}
+                              onCheckedChange={(checked) => {
+                                locationToggleMutation.mutate({ memberId: member.id, enabled: checked });
+                              }}
+                              disabled={locationToggleMutation.isPending}
+                              data-testid={`switch-location-${member.id}`}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {member.inviteStatus === 'accepted' && (
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-2 flex-shrink-0">
+                      {member.inviteStatus === 'accepted' && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAssignJobMember(member)}
+                            data-testid={`button-assign-job-${member.id}`}
+                          >
+                            <Briefcase className="h-3 w-3 mr-1" />
+                            Assign Job
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPermissionsMember(member)}
+                            data-testid={`button-permissions-${member.id}`}
+                          >
+                            <Key className="h-3 w-3 mr-1" />
+                            Permissions
+                          </Button>
+                        </>
+                      )}
+                      {member.inviteStatus === 'pending' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => resendInviteMutation.mutate(member.id)}
+                          disabled={resendInviteMutation.isPending}
+                          data-testid={`button-resend-invite-${member.id}`}
+                        >
+                          Resend Invite
+                        </Button>
+                      )}
                       <Button
-                        variant="outline"
+                        variant="destructive"
                         size="sm"
-                        onClick={() => setPermissionsMember(member)}
-                        data-testid={`button-permissions-${member.id}`}
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to remove ${member.firstName} ${member.lastName}?`)) {
+                            removeMutation.mutate(member.id);
+                          }
+                        }}
+                        disabled={removeMutation.isPending}
+                        data-testid={`button-remove-${member.id}`}
                       >
-                        <Key className="h-3 w-3 mr-1" />
-                        Permissions
+                        Remove
                       </Button>
-                    )}
-                    {member.inviteStatus === 'pending' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => resendInviteMutation.mutate(member.id)}
-                        disabled={resendInviteMutation.isPending}
-                        data-testid={`button-resend-invite-${member.id}`}
-                      >
-                        Resend Invite
-                      </Button>
-                    )}
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm(`Are you sure you want to remove ${member.firstName} ${member.lastName}?`)) {
-                          removeMutation.mutate(member.id);
-                        }
-                      }}
-                      disabled={removeMutation.isPending}
-                      data-testid={`button-remove-${member.id}`}
-                    >
-                      Remove
-                    </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -877,6 +996,80 @@ export default function TeamManagement() {
           onOpenChange={(open) => !open && setPermissionsMember(null)}
         />
       )}
+
+      {/* Assign Job Dialog */}
+      <Dialog open={!!assignJobMember} onOpenChange={(open) => !open && setAssignJobMember(null)}>
+        <DialogContent data-testid="dialog-assign-job">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5" />
+              Assign Job to {assignJobMember?.firstName} {assignJobMember?.lastName}
+            </DialogTitle>
+            <DialogDescription>
+              Select a job to assign to this team member. They'll be able to see and manage the job in their Work view.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="job">Select Job</Label>
+              <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                <SelectTrigger data-testid="select-job">
+                  <SelectValue placeholder="Choose a job to assign" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableJobs?.filter(job => 
+                    job.status !== 'completed' && job.status !== 'archived'
+                  ).map((job) => (
+                    <SelectItem key={job.id} value={job.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{job.title}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {job.status}
+                        </Badge>
+                        {job.assignedTo && (
+                          <Badge variant="secondary" className="text-xs">
+                            Already Assigned
+                          </Badge>
+                        )}
+                      </div>
+                    </SelectItem>
+                  )) || (
+                    <div className="p-2 text-sm text-muted-foreground text-center">
+                      No jobs available
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAssignJobMember(null);
+                setSelectedJobId("");
+              }}
+              data-testid="button-cancel-assign"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedJobId && assignJobMember?.memberId) {
+                  assignJobMutation.mutate({ 
+                    jobId: selectedJobId, 
+                    memberId: assignJobMember.memberId 
+                  });
+                }
+              }}
+              disabled={!selectedJobId || assignJobMutation.isPending}
+              data-testid="button-confirm-assign"
+            >
+              {assignJobMutation.isPending ? "Assigning..." : "Assign Job"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

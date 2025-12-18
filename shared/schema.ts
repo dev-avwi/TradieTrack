@@ -881,6 +881,9 @@ export const teamMembers = pgTable("team_members", {
   // Custom permissions override - allows per-user permission customization by owner
   customPermissions: json("custom_permissions"), // null = use role defaults, [] = custom list
   useCustomPermissions: boolean("use_custom_permissions").default(false), // Whether to use custom or role permissions
+  // Location tracking control
+  allowLocationSharing: boolean("allow_location_sharing").default(true), // Whether this member shares their location with owner
+  locationEnabledByOwner: boolean("location_enabled_by_owner").default(true), // Owner can disable location access for this member
   // Employment details
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
   startDate: timestamp("start_date"),

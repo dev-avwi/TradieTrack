@@ -8594,6 +8594,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return 'Other';
   }
 
+  // Toggle location sharing for a team member (owner only)
+  app.patch("/api/team/members/:id/location", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const memberId = req.params.id;
+      const { locationEnabledByOwner } = req.body;
+      
+      if (typeof locationEnabledByOwner !== 'boolean') {
+        return res.status(400).json({ error: 'locationEnabledByOwner must be a boolean' });
+      }
+      
+      // Verify the team member belongs to this owner
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const allMembers = await storage.getTeamMembers(effectiveUserId);
+      const member = allMembers.find(m => m.id === memberId);
+      
+      if (!member) {
+        return res.status(404).json({ error: 'Team member not found' });
+      }
+      
+      // Update the team member's location setting
+      const updated = await storage.updateTeamMemberLocationSettings(memberId, {
+        locationEnabledByOwner
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating team member location settings:', error);
+      res.status(500).json({ error: 'Failed to update location settings' });
+    }
+  });
+
   // ===== THEME COLOR ROUTES =====
   
   // Predefined color palette for team members (professional tradie colors)
