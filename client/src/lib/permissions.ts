@@ -107,6 +107,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Automations - owner only
   { path: '/automations', label: 'Automations', allowedRoles: ['owner', 'solo_owner'], showInNav: true },
   
+  // Custom Forms - owner/manager only
+  { path: '/custom-forms', label: 'Forms', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  
   // Integrations - owner only
   { path: '/integrations', label: 'Integrations', allowedRoles: ['owner', 'solo_owner'], showInNav: true },
   
