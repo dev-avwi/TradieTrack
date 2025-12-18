@@ -10463,6 +10463,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stream voice note content directly (for mobile apps that can't handle redirects)
+  // Includes on-the-fly transcoding from webm to mp4 for iOS compatibility
+  app.get("/api/jobs/:jobId/voice-notes/:voiceNoteId/stream", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, voiceNoteId } = req.params;
+      
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
+      // Get voice note from database
+      const voiceNote = await storage.getVoiceNote(voiceNoteId, userContext.effectiveUserId);
+      if (!voiceNote) {
+        return res.status(404).json({ error: 'Voice note not found' });
+      }
+      
+      // Get signed URL
+      const { getSignedVoiceNoteUrl } = await import('./voiceNoteService');
+      const { url, error } = await getSignedVoiceNoteUrl(voiceNote.objectStorageKey);
+      
+      if (error || !url) {
+        console.error('Error getting signed URL for voice note stream:', error);
+        return res.status(500).json({ error: 'Failed to access voice note' });
+      }
+      
+      // Check if this is a webm file that needs transcoding for iOS
+      const isWebm = voiceNote.mimeType?.includes('webm') || voiceNote.fileName?.endsWith('.webm');
+      
+      if (isWebm) {
+        // Transcode webm to mp4/aac for iOS compatibility using ffmpeg
+        // Buffer output first, then verify success before sending response
+        console.log('[VoiceNote] Transcoding webm to mp4 for iOS compatibility');
+        
+        // First verify the source URL is accessible
+        try {
+          const checkResponse = await fetch(url, { method: 'HEAD' });
+          if (!checkResponse.ok) {
+            console.error('[VoiceNote] Source URL not accessible:', checkResponse.status);
+            return res.status(500).json({ error: 'Voice note source not accessible' });
+          }
+        } catch (checkError) {
+          console.error('[VoiceNote] Failed to check source URL:', checkError);
+          return res.status(500).json({ error: 'Failed to verify voice note source' });
+        }
+        
+        const { spawn } = await import('child_process');
+        
+        // Buffer output to verify transcoding succeeded before sending
+        const outputChunks: Buffer[] = [];
+        let hasError = false;
+        let stderrOutput = '';
+        
+        // Use ffmpeg to transcode webm -> mp4 (aac audio)
+        const ffmpeg = spawn('ffmpeg', [
+          '-y',                // Overwrite output
+          '-i', url,           // Input from signed URL
+          '-c:a', 'aac',       // Convert to AAC codec
+          '-b:a', '128k',      // Bitrate
+          '-f', 'mp4',         // Output format
+          '-movflags', 'frag_keyframe+empty_moov',  // Fragmented MP4 for streaming
+          'pipe:1'             // Output to stdout
+        ]);
+        
+        ffmpeg.stdout.on('data', (chunk: Buffer) => {
+          outputChunks.push(chunk);
+        });
+        
+        ffmpeg.stderr.on('data', (data: Buffer) => {
+          stderrOutput += data.toString();
+          // Check for error indicators
+          const msg = data.toString();
+          if (msg.includes('Error') || msg.includes('error opening') || msg.includes('Invalid')) {
+            hasError = true;
+          }
+        });
+        
+        ffmpeg.on('error', (err: Error) => {
+          console.error('[ffmpeg] Process error:', err);
+          hasError = true;
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Transcoding failed' });
+          }
+        });
+        
+        ffmpeg.on('close', (code: number) => {
+          const totalSize = outputChunks.reduce((acc, c) => acc + c.length, 0);
+          
+          if (code !== 0 || hasError || totalSize < 100) {
+            console.error('[ffmpeg] Transcoding failed - code:', code, 'totalSize:', totalSize, 'hasError:', hasError);
+            console.error('[ffmpeg] stderr:', stderrOutput.substring(0, 500));
+            if (!res.headersSent) {
+              res.status(500).json({ error: 'Transcoding failed' });
+            }
+          } else {
+            console.log('[ffmpeg] Transcoding complete, output size:', totalSize);
+            // Only now set headers and send response
+            res.setHeader('Content-Type', 'audio/mp4');
+            res.setHeader('Content-Length', totalSize);
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            
+            for (const chunk of outputChunks) {
+              res.write(chunk);
+            }
+            res.end();
+          }
+        });
+        
+        // Handle client disconnect
+        req.on('close', () => {
+          ffmpeg.kill('SIGTERM');
+        });
+        
+        return;
+      }
+      
+      // Non-webm files: fetch and stream directly
+      const response = await fetch(url);
+      if (!response.ok) {
+        return res.status(500).json({ error: 'Failed to fetch voice note' });
+      }
+      
+      // Determine content type
+      let contentType = voiceNote.mimeType || 'audio/mpeg';
+      if (voiceNote.fileName?.endsWith('.m4a')) {
+        contentType = 'audio/mp4';
+      }
+      
+      // Set proper headers for audio streaming
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      
+      // Stream the response
+      const arrayBuffer = await response.arrayBuffer();
+      res.setHeader('Content-Length', arrayBuffer.byteLength);
+      res.send(Buffer.from(arrayBuffer));
+    } catch (error: any) {
+      console.error('Error streaming voice note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ===== JOB SIGNATURE ROUTES =====
   
   // Get signatures for a job (team-aware: shows all signatures for the job)

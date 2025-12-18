@@ -40,9 +40,21 @@ export function VoiceRecorder({ onSave, onCancel, isUploading, className }: Voic
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
-      });
+      // Prefer audio/mp4 for iOS compatibility, fallback to webm for browsers that don't support mp4
+      const getMimeType = () => {
+        // Try mp4 first (iOS compatible)
+        if (MediaRecorder.isTypeSupported('audio/mp4')) return 'audio/mp4';
+        // Fallback to webm (widely supported on desktop browsers)
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
+        if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
+        // Last resort - let browser pick
+        return '';
+      };
+      
+      const mimeType = getMimeType();
+      const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
+      
+      const mediaRecorder = new MediaRecorder(stream, options);
       
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];

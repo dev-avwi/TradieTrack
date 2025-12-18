@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { useTheme } from '../lib/theme';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import { api } from '../lib/api';
 
 let Audio: any = null;
 let isAudioAvailable = false;
@@ -397,6 +399,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
 }
 
 interface VoiceNotePlayerProps {
+  noteId?: string;
   uri: string;
   fallbackUri?: string;
   title?: string;
@@ -406,6 +409,7 @@ interface VoiceNotePlayerProps {
 }
 
 export function VoiceNotePlayer({ 
+  noteId,
   uri, 
   fallbackUri,
   title, 
@@ -447,15 +451,87 @@ export function VoiceNotePlayer({
     setCurrentTime(0);
   };
 
-  const loadAndPlayAudio = async (audioUri: string): Promise<boolean> => {
+  const loadAndPlayAudio = async (audioUri: string, forceDownload: boolean = false): Promise<boolean> => {
     try {
       console.log('[VoiceNotePlayer] Attempting to load:', audioUri);
       
       // Always clean up before loading new audio
       await cleanupSound();
       
+      let playUri = audioUri;
+      
+      // If this is a /stream endpoint URL, download with auth headers first
+      if (audioUri.includes('/stream') || audioUri.includes('/api/')) {
+        try {
+          const token = await api.getToken();
+          // Use noteId for consistent caching if available
+          const cacheFileName = noteId ? `voice_note_${noteId}.m4a` : `voice_note_${Date.now()}.m4a`;
+          const localPath = `${FileSystem.cacheDirectory}${cacheFileName}`;
+          
+          // Check if cached file exists and is valid (skip if forceDownload)
+          if (!forceDownload && noteId) {
+            const fileInfo = await FileSystem.getInfoAsync(localPath);
+            if (fileInfo.exists && fileInfo.size && fileInfo.size > 500) {
+              // Cached file is valid (>500 bytes for audio)
+              console.log('[VoiceNotePlayer] Using cached file:', localPath, 'size:', fileInfo.size);
+              playUri = localPath;
+            } else if (fileInfo.exists && (!fileInfo.size || fileInfo.size <= 500)) {
+              // Cached file is too small/invalid - delete and redownload
+              console.log('[VoiceNotePlayer] Cached file invalid, deleting:', localPath);
+              await FileSystem.deleteAsync(localPath, { idempotent: true });
+              // Fall through to download fresh
+            }
+            
+            // Only download if playUri hasn't been set to cache
+            if (playUri === audioUri) {
+              // Download fresh
+              console.log('[VoiceNotePlayer] Downloading audio with auth to:', localPath);
+              
+              const downloadResult = await FileSystem.downloadAsync(audioUri, localPath, {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+              });
+              
+              if (downloadResult.status === 200) {
+                // Verify downloaded file is not empty
+                const downloadedInfo = await FileSystem.getInfoAsync(downloadResult.uri);
+                if (downloadedInfo.exists && downloadedInfo.size && downloadedInfo.size > 100) {
+                  playUri = downloadResult.uri;
+                  console.log('[VoiceNotePlayer] Downloaded to:', playUri, 'size:', downloadedInfo.size);
+                } else {
+                  console.error('[VoiceNotePlayer] Downloaded file is empty or too small');
+                  // Delete the bad cached file
+                  await FileSystem.deleteAsync(localPath, { idempotent: true });
+                  return false;
+                }
+              } else {
+                console.error('[VoiceNotePlayer] Download failed with status:', downloadResult.status);
+                return false;
+              }
+            }
+          } else {
+            // No noteId or forceDownload - always download fresh
+            console.log('[VoiceNotePlayer] Downloading audio with auth to:', localPath);
+            
+            const downloadResult = await FileSystem.downloadAsync(audioUri, localPath, {
+              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
+            
+            if (downloadResult.status === 200) {
+              playUri = downloadResult.uri;
+              console.log('[VoiceNotePlayer] Downloaded to:', playUri);
+            } else {
+              console.error('[VoiceNotePlayer] Download failed with status:', downloadResult.status);
+              return false;
+            }
+          }
+        } catch (downloadError) {
+          console.error('[VoiceNotePlayer] Download error:', downloadError);
+          return false;
+        }
+      }
+      
       const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: audioUri },
+        { uri: playUri },
         { shouldPlay: true }
       );
       
@@ -476,12 +552,22 @@ export function VoiceNotePlayer({
           console.error('[VoiceNotePlayer] Playback error:', status.error);
           setHasError(true);
           setIsPlaying(false);
+          // Clear cached file on playback error
+          if (noteId) {
+            const localPath = `${FileSystem.cacheDirectory}voice_note_${noteId}.m4a`;
+            FileSystem.deleteAsync(localPath, { idempotent: true }).catch(() => {});
+          }
         }
       });
       
       return true;
     } catch (error) {
       console.error('[VoiceNotePlayer] Error loading audio:', error);
+      // Clear cached file on error
+      if (noteId) {
+        const localPath = `${FileSystem.cacheDirectory}voice_note_${noteId}.m4a`;
+        FileSystem.deleteAsync(localPath, { idempotent: true }).catch(() => {});
+      }
       return false;
     }
   };
@@ -507,17 +593,23 @@ export function VoiceNotePlayer({
         }
       }
 
-      // If there was an error, reset and try again
+      // If there was an error, reset and force fresh download
+      const shouldForceDownload = hasError;
       if (hasError) {
         await cleanupSound();
         setHasError(false);
+        // Also clear cache on retry
+        if (noteId) {
+          const localPath = `${FileSystem.cacheDirectory}voice_note_${noteId}.m4a`;
+          await FileSystem.deleteAsync(localPath, { idempotent: true }).catch(() => {});
+        }
       }
 
       setIsLoading(true);
       
       // Try primary URL first
       if (uri && uri.length > 0) {
-        const success = await loadAndPlayAudio(uri);
+        const success = await loadAndPlayAudio(uri, shouldForceDownload);
         if (success) {
           setIsLoading(false);
           return;
@@ -527,7 +619,7 @@ export function VoiceNotePlayer({
       // Try fallback URL if primary fails
       if (fallbackUri && fallbackUri.length > 0) {
         console.log('[VoiceNotePlayer] Primary URL failed, trying fallback:', fallbackUri);
-        const success = await loadAndPlayAudio(fallbackUri);
+        const success = await loadAndPlayAudio(fallbackUri, true); // Always force download for fallback
         if (success) {
           setIsLoading(false);
           return;
