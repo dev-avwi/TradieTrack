@@ -34,6 +34,7 @@ Key architectural features include:
 -   **Financial Management**: Unified financial dashboard (`/money-hub`) combining invoices, quotes, and payments with KPI cards and quick actions. Supports recording on-site payments and generating Stripe payment links.
 -   **Automation**: Rule-based SMS automation for reminders and follow-ups.
 -   **Client Asset Library & Smart Pre-fill**: API endpoints for retrieving and reusing job photos, quote items, invoice items, and notes. Smart pre-fill suggestions for new jobs/quotes/invoices.
+-   **Activity Feed with Navigation**: Dedicated activity_logs table storing meaningful lifecycle events (job created/status changes, quote created/sent, invoice created/sent/paid). Activities include entityType and entityId for clickable navigation to detail views. Both web (using wouter) and mobile (using expo-router) support navigation to jobs, quotes, and invoices from activity items.
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)
