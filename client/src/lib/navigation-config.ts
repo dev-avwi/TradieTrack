@@ -18,6 +18,7 @@ import {
   Smartphone,
   UserCircle,
   Wallet,
+  ClipboardList,
   type LucideIcon
 } from "lucide-react";
 
@@ -196,6 +197,18 @@ export const mainMenuItems: NavItem[] = [
     description: "Get paid on-site with Tap to Pay",
     color: "text-success",
     bgColor: "bg-success/10",
+    hideForStaff: true,
+    showInSidebar: true,
+    showInMore: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
+    title: "Forms",
+    url: "/custom-forms",
+    icon: ClipboardList,
+    description: "Create and manage custom forms and checklists",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
     hideForStaff: true,
     showInSidebar: true,
     showInMore: true,
