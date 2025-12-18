@@ -619,9 +619,44 @@ export default function TeamManagement() {
         </CardHeader>
         <CardContent>
           {!teamMembers || teamMembers.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No team members yet. Invite your first team member to get started.</p>
+            <div className="text-center py-12 space-y-6" data-testid="empty-team-state">
+              <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                <UserPlus className="h-10 w-10 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-semibold">Ready to grow your team?</h3>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  Invite team members to help manage jobs, track time, and communicate with clients. 
+                  Each member gets their own login and role-based access.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button 
+                  onClick={() => setInviteDialogOpen(true)}
+                  size="lg"
+                  data-testid="button-invite-first-member"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Invite Your First Team Member
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto pt-6 text-sm">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto mb-2" />
+                  <p className="font-medium">Assign Jobs</p>
+                  <p className="text-muted-foreground text-xs">Delegate work to your team</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <Clock className="h-5 w-5 text-blue-500 mx-auto mb-2" />
+                  <p className="font-medium">Track Time</p>
+                  <p className="text-muted-foreground text-xs">Monitor hours and productivity</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <Shield className="h-5 w-5 text-purple-500 mx-auto mb-2" />
+                  <p className="font-medium">Role-Based Access</p>
+                  <p className="text-muted-foreground text-xs">Control what each member sees</p>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">

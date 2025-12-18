@@ -144,12 +144,10 @@ export const mainMenuItems: NavItem[] = [
     description: "Manage team members and roles",
     color: "text-success",
     bgColor: "bg-success/10",
-    requiresTeam: true,
-    requiresOwnerOrManager: true,
     hideForStaff: true,
     showInSidebar: true,
     showInMore: true,
-    allowedRoles: ['owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
     title: "Chat",

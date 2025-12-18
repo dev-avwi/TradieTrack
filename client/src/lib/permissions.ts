@@ -84,9 +84,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/time-tracking', label: 'Time Tracking', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   
   
-  // Team - owner/manager only (hidden for solo)
-  { path: '/team', label: 'Team', allowedRoles: ['owner', 'manager'], showInNav: true },
-  { path: '/team/invite', label: 'Invite Team', allowedRoles: ['owner', 'manager'], showInNav: false },
+  // Team - owner/solo_owner/manager (solo owners can invite first team member)
+  { path: '/team', label: 'Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  { path: '/team/invite', label: 'Invite Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   
   // Chat - all team roles
   { path: '/chat', label: 'Chat', allowedRoles: ['owner', 'manager', 'staff_tradie'], showInNav: true },
@@ -162,8 +162,8 @@ export function getNavItemsForRole(role: UserRole, isTeam: boolean): PagePermiss
     if (!p.showInNav) return false;
     if (!p.allowedRoles.includes(role)) return false;
     
-    // Hide team-specific items for solo users
-    if (!isTeam && ['/team', '/chat', '/map', '/dispatch'].includes(p.path)) {
+    // Hide team-specific items for solo users (but keep /team for upgrading)
+    if (!isTeam && ['/chat', '/map', '/dispatch'].includes(p.path)) {
       return false;
     }
     
