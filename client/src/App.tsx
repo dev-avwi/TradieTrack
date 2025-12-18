@@ -223,10 +223,6 @@ function Router({
           onShowInvoiceModal={onShowInvoiceModal}
         />
       )} />
-
-      <Route path="/jobs">
-        <Redirect to="/work" />
-      </Route>
       
       {/* IMPORTANT: /jobs/new must come BEFORE /jobs/:id to prevent "new" matching as an ID */}
       <Route path="/jobs/new" component={() => (
@@ -284,6 +280,11 @@ function Router({
           onViewClient={(clientId) => onNavigate(`/clients/${clientId}`)}
         />
       )} />
+      
+      {/* Catch-all redirect for /jobs to /work (MUST come AFTER more specific job routes) */}
+      <Route path="/jobs">
+        <Redirect to="/work" />
+      </Route>
       
       <Route path="/clients" component={() => (
         <ClientsList 

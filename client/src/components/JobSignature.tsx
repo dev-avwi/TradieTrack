@@ -39,10 +39,7 @@ export function JobSignature({ jobId }: JobSignatureProps) {
 
   const saveMutation = useMutation({
     mutationFn: async (data: { signerName: string; signerEmail?: string; signatureData: string }) => {
-      return apiRequest(`/api/jobs/${jobId}/signatures`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('POST', `/api/jobs/${jobId}/signatures`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'signatures'] });
@@ -61,9 +58,7 @@ export function JobSignature({ jobId }: JobSignatureProps) {
 
   const deleteMutation = useMutation({
     mutationFn: async (signatureId: string) => {
-      return apiRequest(`/api/jobs/${jobId}/signatures/${signatureId}`, {
-        method: 'DELETE',
-      });
+      return apiRequest('DELETE', `/api/jobs/${jobId}/signatures/${signatureId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'signatures'] });
