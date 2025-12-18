@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine } from "lucide-react";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
@@ -35,6 +35,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -138,6 +146,8 @@ export default function JobDetailView({
   const [editingAction, setEditingAction] = useState<SmartAction | null>(null);
   const [emailTemplates, setEmailTemplates] = useState<Record<string, EmailTemplate>>({});
   const [showEmptyJobWarning, setShowEmptyJobWarning] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [editedNotes, setEditedNotes] = useState('');
   
   const { userRole, isTradie, isSolo, actionPermissions } = useAppMode();
   const { data: businessSettings } = useBusinessSettings();
@@ -294,6 +304,37 @@ export default function JobDetailView({
       });
     },
   });
+
+  // Save notes mutation - allows tradies to update notes during job
+  const saveNotesMutation = useMutation({
+    mutationFn: async (notes: string) => {
+      return await apiRequest("PATCH", `/api/jobs/${jobId}`, { notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+      setShowNotesModal(false);
+      toast({
+        title: "Notes Saved",
+        description: "Your notes have been updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save notes",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOpenNotesModal = () => {
+    setEditedNotes(job?.notes || '');
+    setShowNotesModal(true);
+  };
+
+  const handleSaveNotes = () => {
+    saveNotesMutation.mutate(editedNotes);
+  };
 
   const isLoading = jobLoading || clientLoading;
 
@@ -595,16 +636,31 @@ export default function JobDetailView({
           </CardContent>
         </Card>
 
-        {job.notes && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Notes</CardTitle>
-            </CardHeader>
-            <CardContent>
+        {/* Editable Notes Card - Always visible like mobile app */}
+        <Card 
+          className="cursor-pointer hover:border-primary/50 transition-colors"
+          onClick={handleOpenNotesModal}
+          data-testid="card-job-notes"
+        >
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Notes
+              </span>
+              <PenLine className="h-4 w-4 text-muted-foreground" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {job.notes ? (
               <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                Tap to add notes about this job...
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Time Tracking Widget - Show for in_progress jobs */}
         {job.status === 'in_progress' && (
@@ -940,6 +996,51 @@ export default function JobDetailView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Notes Edit Modal - Like mobile app */}
+      <Dialog open={showNotesModal} onOpenChange={setShowNotesModal}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-edit-notes">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Job Notes
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={editedNotes}
+              onChange={(e) => setEditedNotes(e.target.value)}
+              placeholder="Add notes about this job..."
+              className="min-h-[200px] resize-none"
+              autoFocus
+              data-testid="textarea-job-notes"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNotesModal(false)}
+              data-testid="button-cancel-notes"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveNotes}
+              disabled={saveNotesMutation.isPending}
+              data-testid="button-save-notes"
+            >
+              {saveNotesMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Notes'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }
