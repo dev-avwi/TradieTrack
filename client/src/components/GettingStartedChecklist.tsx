@@ -63,15 +63,26 @@ interface SetupStep {
   priority: 'high' | 'medium' | 'low';
 }
 
+const DISMISS_KEY = 'tradietrack_setup_dismissed_permanently';
+
 export default function GettingStartedChecklist({
   onNavigate,
   onCreateClient,
   onCreateQuote
 }: GettingStartedChecklistProps) {
   const [dismissed, setDismissed] = useState(false);
+  const [permanentlyDismissed, setPermanentlyDismissed] = useState(false);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
   const [isTourActive, setIsTourActive] = useState(false);
   const { toast } = useToast();
+  
+  // Check localStorage for permanent dismissal on mount
+  useEffect(() => {
+    const savedDismissed = localStorage.getItem(DISMISS_KEY);
+    if (savedDismissed === 'true') {
+      setPermanentlyDismissed(true);
+    }
+  }, []);
   
   // Check if guided tour is active and hide this component
   useEffect(() => {
@@ -95,6 +106,15 @@ export default function GettingStartedChecklist({
     
     return () => observer.disconnect();
   }, []);
+  
+  const handleDismissForever = () => {
+    localStorage.setItem(DISMISS_KEY, 'true');
+    setPermanentlyDismissed(true);
+    toast({
+      title: "Setup guide hidden",
+      description: "You can access setup anytime from Settings.",
+    });
+  };
   
   const { data: businessSettings } = useQuery({ queryKey: ["/api/business-settings"] });
   const { data: user } = useQuery({ queryKey: ["/api/auth/me"] });
@@ -247,8 +267,8 @@ export default function GettingStartedChecklist({
   const allComplete = completedCount === steps.length;
   const highPriorityIncomplete = steps.filter(s => s.priority === 'high' && !s.completed);
 
-  // Hide when tour is active, dismissed, or all steps are complete
-  if (isTourActive || dismissed || allComplete) {
+  // Hide when tour is active, dismissed (session or permanent), or all steps are complete
+  if (isTourActive || dismissed || permanentlyDismissed || allComplete) {
     return null;
   }
 
@@ -275,15 +295,26 @@ export default function GettingStartedChecklist({
               </p>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => setDismissed(true)}
-            className="h-8 w-8"
-            data-testid="button-dismiss-checklist"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleDismissForever}
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              data-testid="button-dismiss-forever"
+            >
+              Don't show again
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setDismissed(true)}
+              className="h-8 w-8"
+              data-testid="button-dismiss-checklist"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         <Progress value={progressPercentage} className="h-2 mb-4" />
