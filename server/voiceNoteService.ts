@@ -77,6 +77,13 @@ export async function uploadVoiceNote(
     const objectKey = `${PRIVATE_OBJECT_DIR}/voice-notes/${jobId}/${uniqueId}.${fileExtension}`;
 
     // Use Replit's object storage client
+    console.log('[VoiceNoteService] Uploading voice note:', {
+      bucketId: BUCKET_ID,
+      objectKey,
+      fileSize: fileBuffer.length,
+      mimeType: metadata.mimeType,
+    });
+    
     const bucket = objectStorageClient.bucket(BUCKET_ID);
     const file = bucket.file(objectKey);
     
@@ -90,6 +97,10 @@ export async function uploadVoiceNote(
         title: metadata.title,
       },
     });
+    
+    // Verify the file was uploaded
+    const [exists] = await file.exists();
+    console.log('[VoiceNoteService] Upload complete, file exists:', exists);
 
     const voiceNote = await dbStorage.createVoiceNote({
       userId,
