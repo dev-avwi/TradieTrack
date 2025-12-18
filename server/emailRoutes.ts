@@ -464,12 +464,26 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
         try {
           // Get line items for PDF generation
           const lineItems = await storage.getInvoiceLineItems(req.params.id, req.userId);
+          
+          // Get job and job signatures if linked
+          const job = invoiceWithItems.jobId ? await storage.getJob(invoiceWithItems.jobId, req.userId) : undefined;
+          let jobSignatures: any[] = [];
+          if (invoiceWithItems.jobId) {
+            const { digitalSignatures } = await import("@shared/schema");
+            const { db } = await import("./db");
+            const { eq } = await import("drizzle-orm");
+            const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, invoiceWithItems.jobId));
+            jobSignatures = signatures.filter(s => s.documentType === 'job_completion');
+          }
+          
           const pdfHtml = generateInvoicePDF({
             invoice: invoiceWithItems,
             lineItems: lineItems || [],
             client,
             business: businessSettings,
             paymentUrl: paymentUrl || undefined,
+            job,
+            jobSignatures,
           });
           const pdfBuffer = await generatePDFBuffer(pdfHtml);
           pdfAttachment = {
@@ -965,9 +979,17 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     // 6. Get linked job for site address and time entries
     let linkedJob = null;
     let timeEntries: any[] = [];
+    let jobSignatures: any[] = [];
     if (invoiceWithItems.jobId) {
       linkedJob = await storage.getJob(invoiceWithItems.jobId, req.userId);
       timeEntries = await storage.getTimeEntriesForJob(invoiceWithItems.jobId, req.userId);
+      
+      // Get job signatures
+      const { digitalSignatures } = await import("@shared/schema");
+      const { db } = await import("./db");
+      const { eq } = await import("drizzle-orm");
+      const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, invoiceWithItems.jobId));
+      jobSignatures = signatures.filter(s => s.documentType === 'job_completion');
     }
     
     // 7. Generate PDF buffer
@@ -979,6 +1001,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       job: linkedJob,
       timeEntries,
       paymentUrl: paymentUrl || undefined,
+      jobSignatures,
     }));
     
     // 8. Upload PDF to cloud storage

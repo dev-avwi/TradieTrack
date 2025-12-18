@@ -5860,13 +5860,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const job = invoiceWithItems.jobId ? await storage.getJob(invoiceWithItems.jobId, userContext.effectiveUserId) : undefined;
       const timeEntries = invoiceWithItems.jobId ? await storage.getTimeEntries(userContext.effectiveUserId, invoiceWithItems.jobId) : [];
       
+      // Get job signatures if there's a linked job
+      let jobSignatures: any[] = [];
+      if (invoiceWithItems.jobId) {
+        const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, invoiceWithItems.jobId));
+        jobSignatures = signatures.filter(s => s.documentType === 'job_completion');
+      }
+      
       const html = generateInvoicePDF({
         invoice: invoiceWithItems,
         lineItems: invoiceWithItems.lineItems || [],
         client,
         business,
         job,
-        timeEntries
+        timeEntries,
+        jobSignatures
       });
       
       const pdfBuffer = await generatePDFBuffer(html);
@@ -10627,7 +10635,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, jobId));
-      res.json(signatures);
+      
+      // Ensure consistent camelCase property names for mobile/web clients
+      const mappedSignatures = signatures.map(sig => ({
+        id: sig.id,
+        jobId: sig.jobId,
+        signerName: sig.signerName,
+        signerEmail: sig.signerEmail,
+        signatureData: sig.signatureData,
+        signedAt: sig.signedAt,
+        documentType: sig.documentType,
+        ipAddress: sig.ipAddress,
+        userAgent: sig.userAgent,
+      }));
+      
+      res.json(mappedSignatures);
     } catch (error: any) {
       console.error('Error getting signatures:', error);
       res.status(500).json({ error: error.message });
@@ -10665,7 +10687,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.headers['user-agent'],
       }).returning();
       
-      res.json(signature);
+      // Return with explicit camelCase property names
+      res.json({
+        id: signature.id,
+        jobId: signature.jobId,
+        signerName: signature.signerName,
+        signerEmail: signature.signerEmail,
+        signatureData: signature.signatureData,
+        signedAt: signature.signedAt,
+        documentType: signature.documentType,
+        ipAddress: signature.ipAddress,
+        userAgent: signature.userAgent,
+      });
     } catch (error: any) {
       console.error('Error saving signature:', error);
       res.status(500).json({ error: error.message });

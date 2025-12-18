@@ -30,6 +30,14 @@ interface ClientInfo {
   address?: string;
 }
 
+interface JobSignature {
+  id: string;
+  signerName: string;
+  signatureData: string;
+  signedAt: string | Date;
+  documentType?: string;
+}
+
 interface LiveDocumentPreviewProps {
   type: "quote" | "invoice";
   documentNumber?: string;
@@ -51,6 +59,7 @@ interface LiveDocumentPreviewProps {
   jobScheduledDate?: string;
   templateId?: TemplateId;
   templateCustomization?: TemplateCustomization;
+  jobSignatures?: JobSignature[];
 }
 
 function formatCurrency(amount: number): string {
@@ -92,6 +101,7 @@ export default function LiveDocumentPreview({
   jobScheduledDate,
   templateId = DEFAULT_TEMPLATE,
   templateCustomization,
+  jobSignatures = [],
 }: LiveDocumentPreviewProps) {
   const safeParseFloat = (val: string | number): number => {
     if (typeof val === 'number') return isNaN(val) ? 0 : val;
@@ -498,6 +508,37 @@ export default function LiveDocumentPreview({
             </div>
             <div className="text-[10px] text-[#666]">
               All work is guaranteed for {business.warrantyPeriod} from completion date.
+            </div>
+          </div>
+        )}
+
+        {/* Job Completion Signatures Section */}
+        {type === 'invoice' && jobSignatures.length > 0 && (
+          <div className="mb-8 p-5 border border-slate-200 rounded-lg bg-slate-50">
+            <div className="font-semibold mb-4 text-[#374151] text-[12px] uppercase tracking-wide">
+              Job Completion Signatures
+            </div>
+            <div className="flex flex-wrap gap-6 justify-center">
+              {jobSignatures.filter(sig => sig.signatureData).map((sig) => {
+                // Ensure data URL prefix exists
+                const sigDataUrl = sig.signatureData.startsWith('data:') 
+                  ? sig.signatureData 
+                  : `data:image/png;base64,${sig.signatureData}`;
+                return (
+                  <div key={sig.id} className="text-center min-w-[150px]">
+                    <div className="bg-white border border-slate-200 rounded-md p-3 mb-2">
+                      <img 
+                        src={sigDataUrl} 
+                        alt={`${sig.signerName || 'Client'} signature`}
+                        className="max-h-[50px] max-w-[140px] w-auto mx-auto"
+                      />
+                    </div>
+                    <div className="text-[11px] font-medium text-[#1f2937]">{sig.signerName || 'Client'}</div>
+                    <div className="text-[10px] text-[#6b7280]">Client Signature</div>
+                    <div className="text-[9px] text-[#9ca3af]">{formatDate(sig.signedAt)}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
