@@ -9684,7 +9684,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error creating Terminal payment intent:', error);
-      res.status(500).json({ error: 'Failed to create payment intent' });
+      
+      // Provide more helpful error messages based on Stripe error codes
+      let errorMessage = 'Failed to create payment intent';
+      
+      if (error.type === 'StripeInvalidRequestError') {
+        if (error.code === 'account_invalid') {
+          errorMessage = 'Your Stripe account needs to complete onboarding. Go to Integrations to finish setup.';
+        } else if (error.message?.includes('transfers')) {
+          errorMessage = 'Your Stripe account needs the "transfers" capability enabled. Please complete Stripe onboarding.';
+        } else if (error.message?.includes('card_present')) {
+          errorMessage = 'Tap to Pay is not available for your Stripe account. Please contact Stripe support.';
+        } else {
+          errorMessage = error.message || errorMessage;
+        }
+      } else if (error.type === 'StripePermissionError') {
+        errorMessage = 'Your Stripe account is not authorized for Tap to Pay. Complete Stripe Connect onboarding first.';
+      }
+      
+      res.status(500).json({ error: errorMessage });
     }
   });
 
