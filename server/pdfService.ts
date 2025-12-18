@@ -97,11 +97,12 @@ interface QuoteWithDetails {
   lineItems: QuoteLineItem[];
   client: Client;
   business: BusinessSettings;
-  signature?: DigitalSignature;
+  signature?: DigitalSignature; // Quote acceptance signature (captured when client accepts)
   token?: string; // For payment API calls
   canAcceptPayments?: boolean; // Whether business has Stripe Connect set up
   job?: Job; // Linked job for address/details
   acceptanceUrl?: string; // Public URL for client to accept quote online
+  jobSignatures?: DigitalSignature[]; // Signatures from linked job (for consistency with invoices)
 }
 
 interface InvoiceWithDetails {
@@ -809,6 +810,49 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
 Accepted by: ${quote.acceptedBy}
 Date: ${formatDate(quote.acceptedAt)}
 ${(quote as any).acceptanceIp ? `IP Address: ${(quote as any).acceptanceIp}` : ''}
+        </div>
+      </div>
+    ` : ''}
+    
+    ${quote.status === 'accepted' && data.signature?.signatureData ? `
+      <div style="margin-top: 24px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; page-break-inside: avoid;">
+        <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
+          Client Acceptance Signature
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;">
+          <div style="text-align: center; min-width: 150px;">
+            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+              <img src="${data.signature.signatureData.startsWith('data:') ? data.signature.signatureData : 'data:image/png;base64,' + data.signature.signatureData}" alt="${data.signature.signerName || 'Client'} signature" style="max-height: 50px; max-width: 140px; width: auto;" />
+            </div>
+            <div style="font-size: 11px; font-weight: 500; color: #1f2937;">${data.signature.signerName || quote.acceptedBy || 'Client'}</div>
+            <div style="font-size: 10px; color: #6b7280;">Client Signature</div>
+            <div style="font-size: 9px; color: #9ca3af;">${formatDate(data.signature.signedAt || quote.acceptedAt)}</div>
+          </div>
+        </div>
+      </div>
+    ` : ''}
+    
+    ${data.jobSignatures && data.jobSignatures.filter(s => s.signatureData).length > 0 ? `
+      <div style="margin-top: 24px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; page-break-inside: avoid;">
+        <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
+          Job Completion Signatures
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;">
+          ${data.jobSignatures.filter(s => s.signatureData).map(sig => {
+            const sigDataUrl = sig.signatureData.startsWith('data:') 
+              ? sig.signatureData 
+              : 'data:image/png;base64,' + sig.signatureData;
+            const signerName = sig.signerName || 'Client';
+            return `
+            <div style="text-align: center; min-width: 150px;">
+              <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+                <img src="${sigDataUrl}" alt="${signerName} signature" style="max-height: 50px; max-width: 140px; width: auto;" />
+              </div>
+              <div style="font-size: 11px; font-weight: 500; color: #1f2937;">${signerName}</div>
+              <div style="font-size: 10px; color: #6b7280;">Client Signature</div>
+              <div style="font-size: 9px; color: #9ca3af;">${formatDate(sig.signedAt)}</div>
+            </div>
+          `}).join('')}
         </div>
       </div>
     ` : ''}

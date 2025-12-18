@@ -216,12 +216,30 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
         try {
           // Get line items for PDF generation
           const lineItems = await storage.getQuoteLineItems(req.params.id, req.userId);
+          
+          // Get job signatures if quote is linked to a job
+          let jobSignatures: any[] = [];
+          if (quoteWithItems.jobId) {
+            const { db } = await import('./db');
+            const { digitalSignatures } = await import('@shared/schema');
+            const { eq } = await import('drizzle-orm');
+            const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, quoteWithItems.jobId));
+            jobSignatures = signatures.map(sig => ({
+              id: sig.id,
+              jobId: sig.jobId,
+              signerName: sig.signerName,
+              signatureData: sig.signatureData,
+              signedAt: sig.signedAt,
+            }));
+          }
+          
           const pdfHtml = generateQuotePDF({
             quote: quoteWithItems,
             lineItems: lineItems || [],
             client,
             business: businessSettings,
             acceptanceUrl: quoteAcceptanceUrl || undefined,
+            jobSignatures,
           });
           const pdfBuffer = await generatePDFBuffer(pdfHtml);
           pdfAttachment = {
@@ -810,8 +828,22 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     
     // 6. Get linked job for site address
     let linkedJob = null;
+    let jobSignatures: any[] = [];
     if (quoteWithItems.jobId) {
       linkedJob = await storage.getJob(quoteWithItems.jobId, req.userId);
+      
+      // Get job signatures for consistency with invoices
+      const { db } = await import('./db');
+      const { digitalSignatures } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, quoteWithItems.jobId));
+      jobSignatures = signatures.map(sig => ({
+        id: sig.id,
+        jobId: sig.jobId,
+        signerName: sig.signerName,
+        signatureData: sig.signatureData,
+        signedAt: sig.signedAt,
+      }));
     }
     
     // Check Stripe Connect status for payment capability
@@ -827,6 +859,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       canAcceptPayments,
       acceptanceUrl: quoteAcceptanceUrl || undefined,
       job: linkedJob,
+      jobSignatures,
     }));
     
     // 8. Upload PDF to cloud storage

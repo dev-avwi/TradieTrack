@@ -5428,12 +5428,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get linked job for site address if available
       const job = quoteWithItems.jobId ? await storage.getJob(quoteWithItems.jobId, userContext.effectiveUserId) : undefined;
       
+      // Get job signatures if quote is linked to a job
+      let jobSignatures: any[] = [];
+      if (quoteWithItems.jobId) {
+        const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, quoteWithItems.jobId));
+        jobSignatures = signatures.map(sig => ({
+          id: sig.id,
+          jobId: sig.jobId,
+          signerName: sig.signerName,
+          signatureData: sig.signatureData,
+          signedAt: sig.signedAt,
+        }));
+      }
+      
+      // Get quote acceptance signature if quote was accepted
+      let acceptanceSignature;
+      if (quoteWithItems.status === 'accepted') {
+        const signatures = await db.select().from(digitalSignatures).where(
+          sql`${digitalSignatures.documentType} = 'quote_acceptance' AND ${digitalSignatures.quoteId} = ${quoteWithItems.id}`
+        );
+        if (signatures.length > 0) {
+          acceptanceSignature = {
+            id: signatures[0].id,
+            signerName: signatures[0].signerName,
+            signatureData: signatures[0].signatureData,
+            signedAt: signatures[0].signedAt,
+          };
+        }
+      }
+      
       const html = generateQuotePDF({
         quote: quoteWithItems,
         lineItems: quoteWithItems.lineItems || [],
         client,
         business,
-        job
+        job,
+        jobSignatures,
+        signature: acceptanceSignature,
       });
       
       const pdfBuffer = await generatePDFBuffer(html);

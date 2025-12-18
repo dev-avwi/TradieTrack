@@ -106,6 +106,16 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     enabled: !!urlJobId && !jobAutoLoaded,
   });
 
+  // Use effective job ID that considers both URL param and selected state
+  // This ensures signatures load immediately when coming from URL before effect runs
+  const effectiveJobId = selectedJobId || urlJobId;
+
+  // Fetch job signatures if a job is selected (or loaded from URL)
+  const { data: jobSignatures = [] } = useQuery<any[]>({
+    queryKey: ['/api/jobs', effectiveJobId, 'signatures'],
+    enabled: !!effectiveJobId,
+  });
+
   const form = useForm<QuoteFormData>({
     resolver: zodResolver(quoteFormSchema),
     defaultValues: {
@@ -840,6 +850,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
               gstEnabled={gstEnabled}
               templateId={(businessSettings as any)?.documentTemplate || 'minimal'}
               templateCustomization={(businessSettings as any)?.documentTemplateSettings}
+              jobSignatures={jobSignatures?.filter((s: any) => s.documentType === 'job_completion') || []}
             />
           </div>
         </div>
