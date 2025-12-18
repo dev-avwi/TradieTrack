@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,7 @@ export default function InvoiceDetailView({
 }: InvoiceDetailViewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const [showDemoPayment, setShowDemoPayment] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
   
@@ -237,6 +238,51 @@ export default function InvoiceDetailView({
     }
   };
 
+  const handleShare = async () => {
+    const publicUrl = invoice?.stripePaymentLink 
+      || `${window.location.origin}/invoices/${invoiceId}/pay`;
+    
+    const shareData = {
+      title: `Invoice ${invoice?.number || invoiceId}`,
+      text: `Invoice for ${invoice?.title || 'work'} - ${formatCurrency(Number(invoice?.total || 0))}`,
+      url: publicUrl,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        toast({
+          title: "Shared",
+          description: "Invoice link shared successfully.",
+        });
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          handleCopyLink(publicUrl);
+        }
+      }
+    } else {
+      handleCopyLink(publicUrl);
+    }
+  };
+
+  const handleCopyLink = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast({
+        title: "Link Copied",
+        description: "Invoice payment link copied to clipboard.",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to copy link. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
@@ -342,6 +388,10 @@ export default function InvoiceDetailView({
             <Button variant="outline" onClick={handleSaveAsPDF} className="w-full sm:w-auto" data-testid="button-save-pdf">
               <Download className="h-4 w-4 mr-2" />
               Save as PDF
+            </Button>
+            <Button variant="outline" onClick={handleShare} className="w-full sm:w-auto" data-testid="button-share">
+              {copied ? <Check className="h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}
+              {copied ? 'Copied!' : 'Share'}
             </Button>
           </div>
         </div>

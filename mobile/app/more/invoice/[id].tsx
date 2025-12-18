@@ -11,6 +11,7 @@ import {
   Image,
   Modal,
   Share,
+  Linking,
 } from 'react-native';
 // Note: expo-clipboard requires a native build - using Share API as fallback for Expo Go
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -168,7 +169,70 @@ export default function InvoiceDetailScreen() {
   };
 
   const handleSend = () => {
-    setShowEmailCompose(true);
+    Alert.alert(
+      'Send Invoice',
+      'How would you like to send this invoice?',
+      [
+        {
+          text: 'Open Email App',
+          onPress: () => handleSendViaEmailApp(),
+        },
+        {
+          text: 'Use TradieTrack',
+          onPress: () => setShowEmailCompose(true),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+  
+  const handleSendViaEmailApp = async () => {
+    if (!invoice) return;
+    const client = getClient(invoice.clientId);
+    
+    if (!client?.email) {
+      Alert.alert('No Email', 'This client doesn\'t have an email address on file.');
+      return;
+    }
+    
+    const invoiceNumber = invoice.invoiceNumber || invoice.id?.slice(0, 8);
+    const total = formatCurrency(invoice.total);
+    const subject = `Invoice ${invoiceNumber} - ${total}`;
+    const paymentUrl = invoice.stripePaymentLink 
+      || `${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay`;
+    
+    const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${invoice.title || 'the completed work'}.\n\nTotal: ${total}\nDue: ${formatDate(invoice.dueDate)}\n\nPay online here:\n${paymentUrl}\n\nThanks for your business!\n\nCheers`;
+    
+    const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    try {
+      const canOpen = await Linking.canOpenURL(mailtoUrl);
+      if (canOpen) {
+        await Linking.openURL(mailtoUrl);
+        Alert.alert(
+          'Email App Opened',
+          'Your email app has the invoice details ready. After you send it, would you like to mark this invoice as sent?',
+          [
+            { text: 'Not Yet', style: 'cancel' },
+            { 
+              text: 'Mark as Sent', 
+              onPress: async () => {
+                await updateInvoiceStatus(id!, 'sent');
+                await loadData();
+              }
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Unable to open email app. Please check your email settings.');
+      }
+    } catch (error) {
+      console.log('Error opening email:', error);
+      Alert.alert('Error', 'Failed to open email app.');
+    }
   };
 
   const handleEmailSend = async (subject: string, message: string) => {

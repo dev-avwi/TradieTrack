@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Send, FileText, Download } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
@@ -16,6 +16,7 @@ interface QuoteDetailViewProps {
 
 export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetailViewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
 
@@ -157,6 +158,52 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
     }
   };
 
+  const handleShare = async () => {
+    const publicUrl = quote?.acceptanceToken 
+      ? `${window.location.origin}/q/${quote.acceptanceToken}`
+      : `${window.location.origin}/quotes/${quoteId}`;
+    
+    const shareData = {
+      title: `Quote ${quote?.number || quoteId}`,
+      text: `Quote for ${quote?.title || 'work'} - ${formatCurrency(Number(quote?.total || 0))}`,
+      url: publicUrl,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        toast({
+          title: "Shared",
+          description: "Quote link shared successfully.",
+        });
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          handleCopyLink(publicUrl);
+        }
+      }
+    } else {
+      handleCopyLink(publicUrl);
+    }
+  };
+
+  const handleCopyLink = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast({
+        title: "Link Copied",
+        description: "Quote link copied to clipboard.",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to copy link. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
@@ -254,6 +301,10 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             <Button variant="outline" onClick={handleSaveAsPDF} className="w-full sm:w-auto" data-testid="button-save-pdf">
               <Download className="h-4 w-4 mr-2" />
               Save as PDF
+            </Button>
+            <Button variant="outline" onClick={handleShare} className="w-full sm:w-auto" data-testid="button-share">
+              {copied ? <Check className="h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}
+              {copied ? 'Copied!' : 'Share'}
             </Button>
           </div>
         </div>

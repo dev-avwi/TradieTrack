@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Linking,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -112,7 +113,74 @@ export default function QuoteDetailScreen() {
 
   const handleSend = () => {
     if (!quote) return;
-    setShowEmailCompose(true);
+    const client = getClient(quote.clientId);
+    
+    Alert.alert(
+      'Send Quote',
+      'How would you like to send this quote?',
+      [
+        {
+          text: 'Open Email App',
+          onPress: () => handleSendViaEmailApp(),
+        },
+        {
+          text: 'Use TradieTrack',
+          onPress: () => setShowEmailCompose(true),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+  
+  const handleSendViaEmailApp = async () => {
+    if (!quote) return;
+    const client = getClient(quote.clientId);
+    
+    if (!client?.email) {
+      Alert.alert('No Email', 'This client doesn\'t have an email address on file.');
+      return;
+    }
+    
+    const quoteNumber = quote.quoteNumber || quote.id?.slice(0, 8);
+    const total = formatCurrency(quote.total);
+    const subject = `Quote ${quoteNumber} - ${total}`;
+    const publicUrl = quote.acceptanceToken 
+      ? `${API_URL.replace('/api', '')}/q/${quote.acceptanceToken}` 
+      : '';
+    
+    const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${quote.title || 'the requested work'}.\n\nTotal: ${total}\n\n${publicUrl ? `View and accept your quote here:\n${publicUrl}\n\n` : ''}Let me know if you have any questions!\n\nCheers`;
+    
+    const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    try {
+      const canOpen = await Linking.canOpenURL(mailtoUrl);
+      if (canOpen) {
+        await Linking.openURL(mailtoUrl);
+        // Mark quote as sent after opening email app
+        Alert.alert(
+          'Email App Opened',
+          'Your email app has the quote details ready. After you send it, would you like to mark this quote as sent?',
+          [
+            { text: 'Not Yet', style: 'cancel' },
+            { 
+              text: 'Mark as Sent', 
+              onPress: async () => {
+                await updateQuoteStatus(id!, 'sent');
+                await loadData();
+              }
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Unable to open email app. Please check your email settings.');
+      }
+    } catch (error) {
+      console.log('Error opening email:', error);
+      Alert.alert('Error', 'Failed to open email app.');
+    }
   };
 
   const handleEmailSend = async (subject: string, message: string) => {
