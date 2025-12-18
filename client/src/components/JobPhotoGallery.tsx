@@ -441,14 +441,16 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
 
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>
-                  Uploaded {new Date(selectedPhoto.createdAt).toLocaleDateString('en-AU', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })}
+                  {selectedPhoto.createdAt ? (
+                    <>Uploaded {new Date(selectedPhoto.createdAt).toLocaleDateString('en-AU', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}</>
+                  ) : 'Date unknown'}
                 </span>
                 <span>
-                  {(selectedPhoto.fileSize / 1024).toFixed(0)} KB
+                  {selectedPhoto.fileSize ? `${(selectedPhoto.fileSize / 1024).toFixed(0)} KB` : ''}
                 </span>
               </div>
 

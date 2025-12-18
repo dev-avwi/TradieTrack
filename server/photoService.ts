@@ -5,14 +5,33 @@ import crypto from 'crypto';
 const PRIVATE_OBJECT_DIR = process.env.PRIVATE_OBJECT_DIR || '.private';
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 
-// Parse object path - use the configured bucket ID, not from the path
+// Parse object path - extract bucket name and object name from the full path
+// Path format: /<bucket_name>/<object_name> or <bucket_name>/<object_name>
 function parseObjectPath(objectKey: string): { bucketName: string; objectName: string } {
-  if (!BUCKET_ID) {
-    throw new Error("Object storage bucket not configured");
+  // Ensure path starts with slash for consistent parsing
+  let path = objectKey;
+  if (!path.startsWith("/")) {
+    path = `/${path}`;
   }
-  // Remove leading slash if present for consistent object name
-  const objectName = objectKey.startsWith("/") ? objectKey.slice(1) : objectKey;
-  return { bucketName: BUCKET_ID, objectName };
+  
+  const pathParts = path.split("/");
+  // pathParts[0] is empty string (before the first /)
+  // pathParts[1] is the bucket name
+  // pathParts[2+] is the object name
+  
+  if (pathParts.length < 3) {
+    // Fallback: If path doesn't contain bucket, use BUCKET_ID
+    if (!BUCKET_ID) {
+      throw new Error("Object storage bucket not configured");
+    }
+    const objectName = objectKey.startsWith("/") ? objectKey.slice(1) : objectKey;
+    return { bucketName: BUCKET_ID, objectName };
+  }
+  
+  const bucketName = pathParts[1];
+  const objectName = pathParts.slice(2).join("/");
+  
+  return { bucketName, objectName };
 }
 
 // Check if object storage is configured
@@ -121,6 +140,8 @@ export async function getSignedPhotoUrl(
       expires_at: new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString(),
     };
     
+    console.log('[PhotoService] Requesting signed URL for:', { bucketName, objectName });
+    
     const response = await fetch(
       `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
       {
@@ -133,22 +154,32 @@ export async function getSignedPhotoUrl(
     );
     
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[PhotoService] Sidecar error:', response.status, errorText);
+      
       // Fallback: Try using the GCS client directly
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectName);
-      
-      const [signedUrl] = await file.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + expiresInMinutes * 60 * 1000,
-      });
-      
-      return { url: signedUrl };
+      try {
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectName);
+        
+        const [signedUrl] = await file.getSignedUrl({
+          action: 'read',
+          expires: Date.now() + expiresInMinutes * 60 * 1000,
+        });
+        
+        console.log('[PhotoService] GCS fallback successful');
+        return { url: signedUrl };
+      } catch (gcsError: any) {
+        console.error('[PhotoService] GCS fallback failed:', gcsError.message);
+        return { error: `Sidecar: ${errorText}, GCS: ${gcsError.message}` };
+      }
     }
 
     const { signed_url: signedURL } = await response.json();
+    console.log('[PhotoService] Signed URL generated successfully');
     return { url: signedURL };
   } catch (error: any) {
-    console.error('Error getting signed URL for photo:', error);
+    console.error('[PhotoService] Error getting signed URL:', error);
     return { error: error.message };
   }
 }
@@ -192,20 +223,31 @@ export async function getJobPhotos(
   category: string;
   caption: string | null;
   takenAt: Date | null;
+  fileSize: number | null;
+  mimeType: string | null;
+  createdAt: Date | null;
   signedUrl?: string;
 }>> {
   try {
     const photos = await dbStorage.getJobPhotos(jobId, userId);
     
+    console.log(`[PhotoService] Getting signed URLs for ${photos.length} photos`);
+    
     const photosWithUrls = await Promise.all(
       photos.map(async (photo) => {
-        const { url } = await getSignedPhotoUrl(photo.objectStorageKey);
+        const { url, error } = await getSignedPhotoUrl(photo.objectStorageKey);
+        if (error) {
+          console.error(`[PhotoService] Failed to get URL for photo ${photo.id}:`, error);
+        }
         return {
           id: photo.id,
           fileName: photo.fileName,
           category: photo.category || 'general',
           caption: photo.caption,
           takenAt: photo.takenAt,
+          fileSize: photo.fileSize,
+          mimeType: photo.mimeType,
+          createdAt: photo.createdAt,
           signedUrl: url,
         };
       })
