@@ -10357,8 +10357,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Remove base64 prefix if present
-      const base64Data = audioData.replace(/^data:audio\/[^;]+;base64,/, '');
+      // Handle MIME types with codec parameters like "audio/webm;codecs=opus"
+      // The data URL format is: data:audio/webm;codecs=opus;base64,XXXXX
+      const base64Data = audioData.replace(/^data:audio\/[^;]+(?:;[^;]+)*;base64,/, '');
+      console.log('[VoiceNote Upload] Original length:', audioData.length, 'Base64 length:', base64Data.length);
       const fileBuffer = Buffer.from(base64Data, 'base64');
+      console.log('[VoiceNote Upload] Buffer size:', fileBuffer.length);
       
       const { uploadVoiceNote } = await import('./voiceNoteService');
       // Use effectiveUserId so all team uploads are visible to everyone on the team
