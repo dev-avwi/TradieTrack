@@ -79,6 +79,35 @@ import * as myobService from "./myobService";
 // Environment check for development-only endpoints
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
+// Helper function to log activity events for dashboard feed
+type ActivityType = 'job_created' | 'job_status_changed' | 'job_completed' | 'job_scheduled' | 'job_started' |
+  'quote_created' | 'quote_sent' | 'quote_accepted' | 'quote_rejected' |
+  'invoice_created' | 'invoice_sent' | 'invoice_paid' | 'payment_received';
+
+async function logActivity(
+  userId: string,
+  type: ActivityType,
+  title: string,
+  description: string | null,
+  entityType: 'job' | 'quote' | 'invoice' | null,
+  entityId: string | null,
+  metadata?: Record<string, any>
+): Promise<void> {
+  try {
+    await storage.createActivityLog({
+      userId,
+      type,
+      title,
+      description,
+      entityType,
+      entityId,
+      metadata: metadata || {},
+    });
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+  }
+}
+
 // Utility function for formatting relative time
 function formatRelativeTime(date: Date | string): string {
   const now = new Date();
@@ -4640,6 +4669,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Increment job count after successful creation
       await FreemiumService.incrementJobCount(effectiveUserId);
       
+      // Log activity for dashboard feed
+      const client = job.clientId ? await storage.getClient(job.clientId, effectiveUserId) : null;
+      await logActivity(
+        effectiveUserId,
+        'job_created',
+        `New job created: ${job.title}`,
+        client ? `Client: ${client.name}` : null,
+        'job',
+        job.id,
+        { jobTitle: job.title, clientName: client?.name, status: job.status }
+      );
+      
       res.status(201).json(job);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -4709,17 +4750,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Job not found" });
       }
 
-      // Create notifications for status changes
+      // Create notifications and log activity for status changes
       if (data.status && existingJob && data.status !== existingJob.status) {
         const client = job.clientId ? await storage.getClient(job.clientId, effectiveUserId) : null;
         const clientName = client?.name || 'Unknown client';
 
         if (data.status === 'scheduled') {
           await notifyJobScheduled(storage, effectiveUserId, job, clientName);
+          await logActivity(effectiveUserId, 'job_scheduled', `Job scheduled: ${job.title}`, `Client: ${clientName}`, 'job', job.id, { jobTitle: job.title, clientName, oldStatus: existingJob.status, newStatus: data.status });
         } else if (data.status === 'in_progress') {
           await notifyJobStarted(storage, effectiveUserId, job, clientName);
+          await logActivity(effectiveUserId, 'job_started', `Job started: ${job.title}`, `Client: ${clientName}`, 'job', job.id, { jobTitle: job.title, clientName, oldStatus: existingJob.status, newStatus: data.status });
         } else if (data.status === 'done') {
           await notifyJobCompleted(storage, effectiveUserId, job, { firstName: 'You', username: 'You' });
+          await logActivity(effectiveUserId, 'job_completed', `Job completed: ${job.title}`, `Client: ${clientName}`, 'job', job.id, { jobTitle: job.title, clientName, oldStatus: existingJob.status, newStatus: data.status });
+        } else {
+          await logActivity(effectiveUserId, 'job_status_changed', `Job status updated: ${job.title}`, `${existingJob.status} → ${data.status}`, 'job', job.id, { jobTitle: job.title, clientName, oldStatus: existingJob.status, newStatus: data.status });
         }
       }
 
@@ -5262,6 +5308,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const quoteWithItems = await storage.getQuoteWithLineItems(quote.id, userContext.effectiveUserId);
+      
+      // Log activity for dashboard feed
+      const client = quote.clientId ? await storage.getClient(quote.clientId, userContext.effectiveUserId) : null;
+      await logActivity(
+        userContext.effectiveUserId,
+        'quote_created',
+        `Quote #${quote.number} created`,
+        client ? `Client: ${client.name}` : null,
+        'quote',
+        quote.id,
+        { quoteNumber: quote.number, clientName: client?.name, total: quote.total }
+      );
+      
       res.status(201).json(quoteWithItems);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -5672,6 +5731,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Don't fail the invoice creation if job update fails
         }
       }
+      
+      // Log activity for dashboard feed
+      const client = invoice.clientId ? await storage.getClient(invoice.clientId, userContext.effectiveUserId) : null;
+      await logActivity(
+        userContext.effectiveUserId,
+        'invoice_created',
+        `Invoice #${invoice.number} created`,
+        client ? `Client: ${client.name}` : null,
+        'invoice',
+        invoice.id,
+        { invoiceNumber: invoice.number, clientName: client?.name, total: invoice.total }
+      );
       
       res.status(201).json(invoiceWithItems);
     } catch (error) {

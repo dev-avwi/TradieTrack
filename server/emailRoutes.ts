@@ -302,6 +302,21 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
       });
     }
 
+    // Log activity for dashboard feed
+    try {
+      await storage.createActivityLog({
+        userId: req.userId,
+        type: 'quote_sent',
+        title: `Quote #${updatedQuote.number} sent`,
+        description: `Sent to ${client.name}`,
+        entityType: 'quote',
+        entityId: updatedQuote.id,
+        metadata: { quoteNumber: updatedQuote.number, clientName: client.name, clientEmail: client.email, total: updatedQuote.total }
+      });
+    } catch (activityError) {
+      console.error('Failed to log quote sent activity:', activityError);
+    }
+
     res.json({ 
       ...updatedQuote, 
       emailSent: true, 
@@ -577,6 +592,21 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
       console.warn('[Xero] Auto-sync error (non-blocking):', xeroError);
     }
 
+    // Log activity for dashboard feed
+    try {
+      await storage.createActivityLog({
+        userId: req.userId,
+        type: 'invoice_sent',
+        title: `Invoice #${updatedInvoice.number} sent`,
+        description: `Sent to ${client.name}`,
+        entityType: 'invoice',
+        entityId: updatedInvoice.id,
+        metadata: { invoiceNumber: updatedInvoice.number, clientName: client.name, clientEmail: client.email, total: updatedInvoice.total }
+      });
+    } catch (activityError) {
+      console.error('Failed to log invoice sent activity:', activityError);
+    }
+
     res.json({ 
       ...updatedInvoice, 
       emailSent: true, 
@@ -670,6 +700,22 @@ export const handleInvoiceMarkPaid = async (req: any, res: any, storage: any) =>
     // Sync payment status to Xero (async, non-blocking)
     markInvoicePaidInXero(req.userId, req.params.id)
       .catch(err => console.warn('[Xero] Error syncing payment to Xero:', err));
+
+    // Log activity for dashboard feed
+    try {
+      const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoiceWithItems.total || '0'));
+      await storage.createActivityLog({
+        userId: req.userId,
+        type: 'invoice_paid',
+        title: `Payment received: Invoice #${invoiceWithItems.number}`,
+        description: `${formattedTotal} from ${client.name}`,
+        entityType: 'invoice',
+        entityId: invoiceWithItems.id,
+        metadata: { invoiceNumber: invoiceWithItems.number, clientName: client.name, total: invoiceWithItems.total }
+      });
+    } catch (activityError) {
+      console.error('Failed to log invoice paid activity:', activityError);
+    }
 
     // 6. Send receipt email (optional - don't fail if email issues)
     // Always use sendEmailViaIntegration which handles:
