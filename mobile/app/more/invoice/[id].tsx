@@ -44,7 +44,7 @@ export default function InvoiceDetailScreen() {
   const { getInvoice, updateInvoiceStatus, fetchInvoices } = useInvoicesStore();
   const { getQuote } = useQuotesStore();
   const { clients, fetchClients } = useClientsStore();
-  const { token, user, businessSettings } = useAuthStore();
+  const { user, businessSettings } = useAuthStore();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
@@ -78,6 +78,7 @@ export default function InvoiceDetailScreen() {
 
   const loadData = async () => {
     setIsLoading(true);
+    const authToken = await api.getToken();
     const invoiceData = await getInvoice(id!);
     setInvoice(invoiceData);
     await fetchClients();
@@ -92,7 +93,7 @@ export default function InvoiceDetailScreen() {
       // Fetch quote signature
       try {
         const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote&documentId=${invoiceData.quoteId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${authToken}` }
         });
         if (response.ok) {
           const quoteSignatures = await response.json();
@@ -109,7 +110,7 @@ export default function InvoiceDetailScreen() {
     if (invoiceData?.jobId) {
       try {
         const response = await fetch(`${API_URL}/api/jobs/${invoiceData.jobId}/signatures`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${authToken}` }
         });
         if (response.ok) {
           const jobSignatures = await response.json();
@@ -128,7 +129,7 @@ export default function InvoiceDetailScreen() {
     // Fetch invoice-specific signatures
     try {
       const response = await fetch(`${API_URL}/api/digital-signatures?documentType=invoice&documentId=${id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${authToken}` }
       });
       if (response.ok) {
         const invoiceSignatures = await response.json();
@@ -171,6 +172,7 @@ export default function InvoiceDetailScreen() {
   };
 
   const handleEmailSend = async (subject: string, message: string) => {
+    const authToken = await api.getToken();
     let emailSent = false;
     let apiError = false;
     
@@ -179,7 +181,7 @@ export default function InvoiceDetailScreen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           subject,
@@ -220,6 +222,7 @@ export default function InvoiceDetailScreen() {
   const toggleOnlinePayment = async () => {
     if (!invoice || isTogglingPayment) return;
     
+    const authToken = await api.getToken();
     const previousValue = invoice.allowOnlinePayment;
     const newValue = !previousValue;
     
@@ -231,7 +234,7 @@ export default function InvoiceDetailScreen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           allowOnlinePayment: newValue,
@@ -291,11 +294,12 @@ export default function InvoiceDetailScreen() {
           onPress: async () => {
             setIsRecordingOnSitePayment(true);
             try {
+              const authToken = await api.getToken();
               const response = await fetch(`${API_URL}/api/invoices/${id}`, {
                 method: 'PATCH',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`,
+                  'Authorization': `Bearer ${authToken}`,
                 },
                 body: JSON.stringify({
                   status: 'paid',
@@ -327,13 +331,14 @@ export default function InvoiceDetailScreen() {
   const generatePaymentLink = async () => {
     if (!invoice || isGeneratingPaymentLink) return;
     
+    const authToken = await api.getToken();
     setIsGeneratingPaymentLink(true);
     try {
       const response = await fetch(`${API_URL}/api/invoices/${id}/generate-payment-link`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
         },
       });
 
@@ -411,6 +416,7 @@ export default function InvoiceDetailScreen() {
     if (!invoice) return null;
     
     try {
+      const authToken = await api.getToken();
       const fileUri = `${FileSystem.cacheDirectory}${invoice.invoiceNumber || 'invoice'}.pdf`;
       
       const downloadResult = await FileSystem.downloadAsync(
@@ -418,7 +424,7 @@ export default function InvoiceDetailScreen() {
         fileUri,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${authToken}`,
           },
         }
       );
@@ -432,7 +438,7 @@ export default function InvoiceDetailScreen() {
       console.log('PDF download error:', error);
       throw error;
     }
-  }, [invoice, id, token]);
+  }, [invoice, id]);
 
   const handleDownloadPdf = async () => {
     if (!invoice || isDownloadingPdf) return;

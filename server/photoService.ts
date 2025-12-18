@@ -5,18 +5,14 @@ import crypto from 'crypto';
 const PRIVATE_OBJECT_DIR = process.env.PRIVATE_OBJECT_DIR || '.private';
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 
-// Parse full object path to extract bucket name and object name
-function parseObjectPath(path: string): { bucketName: string; objectName: string } {
-  if (!path.startsWith("/")) {
-    path = `/${path}`;
+// Parse object path - use the configured bucket ID, not from the path
+function parseObjectPath(objectKey: string): { bucketName: string; objectName: string } {
+  if (!BUCKET_ID) {
+    throw new Error("Object storage bucket not configured");
   }
-  const pathParts = path.split("/");
-  if (pathParts.length < 3) {
-    throw new Error("Invalid path: must contain at least a bucket name");
-  }
-  const bucketName = pathParts[1];
-  const objectName = pathParts.slice(2).join("/");
-  return { bucketName, objectName };
+  // Remove leading slash if present for consistent object name
+  const objectName = objectKey.startsWith("/") ? objectKey.slice(1) : objectKey;
+  return { bucketName: BUCKET_ID, objectName };
 }
 
 // Check if object storage is configured

@@ -18,7 +18,7 @@ import { useQuotesStore, useClientsStore, useAuthStore, useJobsStore } from '../
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
-import { API_URL } from '../../../src/lib/api';
+import { API_URL, api } from '../../../src/lib/api';
 
 const TEMPLATE_OPTIONS = [
   { id: 'professional', name: 'Professional', description: 'Clean, minimal design' },
@@ -31,7 +31,7 @@ export default function QuoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getQuote, updateQuoteStatus } = useQuotesStore();
   const { clients, fetchClients } = useClientsStore();
-  const { user, token, businessSettings } = useAuthStore();
+  const { user, businessSettings } = useAuthStore();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
@@ -70,8 +70,9 @@ export default function QuoteDetailScreen() {
     // Fetch signature if quote is accepted
     if (quoteData?.status === 'accepted') {
       try {
+        const authToken = await api.getToken();
         const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote&documentId=${id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${authToken}` }
         });
         if (response.ok) {
           const signatures = await response.json();
@@ -119,11 +120,12 @@ export default function QuoteDetailScreen() {
     let apiError = false;
     
     try {
+      const authToken = await api.getToken();
       const response = await fetch(`${API_URL}/api/quotes/${id}/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           subject,
@@ -192,11 +194,12 @@ export default function QuoteDetailScreen() {
     const { fetchJobs } = useJobsStore.getState();
     
     try {
+      const authToken = await api.getToken();
       const response = await fetch(`${API_URL}/api/jobs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           title: `Job from Quote #${quote?.quoteNumber || id?.slice(0, 6)}`,
@@ -230,13 +233,14 @@ export default function QuoteDetailScreen() {
     
     try {
       const fileUri = `${FileSystem.cacheDirectory}${quote.quoteNumber || 'quote'}.pdf`;
+      const authToken = await api.getToken();
       
       const downloadResult = await FileSystem.downloadAsync(
         `${API_URL}/api/quotes/${id}/pdf`,
         fileUri,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${authToken}`,
           },
         }
       );
@@ -250,7 +254,7 @@ export default function QuoteDetailScreen() {
       console.log('PDF download error:', error);
       throw error;
     }
-  }, [quote, id, token]);
+  }, [quote, id]);
 
   const handleDownloadPdf = async () => {
     if (!quote || isDownloadingPdf) return;
