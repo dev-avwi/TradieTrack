@@ -3365,6 +3365,7 @@ export default function JobDetailScreen() {
               <VoiceNotePlayer
                 key={note.id}
                 uri={note.signedUrl || ''}
+                fallbackUri={`${api.getBaseUrl()}/api/jobs/${id}/voice-notes/${note.id}/view`}
                 title={note.title || undefined}
                 duration={note.duration || undefined}
                 createdAt={note.createdAt || undefined}

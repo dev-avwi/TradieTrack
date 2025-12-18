@@ -6,6 +6,35 @@ const PRIVATE_OBJECT_DIR = process.env.PRIVATE_OBJECT_DIR || '.private';
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
+// Parse object path - extract bucket name and object name from the full path
+// Path format: /<bucket_name>/<object_name> or <bucket_name>/<object_name>
+function parseObjectPath(objectKey: string): { bucketName: string; objectName: string } {
+  // Ensure path starts with slash for consistent parsing
+  let path = objectKey;
+  if (!path.startsWith("/")) {
+    path = `/${path}`;
+  }
+  
+  const pathParts = path.split("/");
+  // pathParts[0] is empty string (before the first /)
+  // pathParts[1] is the bucket name
+  // pathParts[2+] is the object name
+  
+  if (pathParts.length < 3) {
+    // Fallback: If path doesn't contain bucket, use BUCKET_ID
+    if (!BUCKET_ID) {
+      throw new Error("Object storage bucket not configured");
+    }
+    const objectName = objectKey.startsWith("/") ? objectKey.slice(1) : objectKey;
+    return { bucketName: BUCKET_ID, objectName };
+  }
+  
+  const bucketName = pathParts[1];
+  const objectName = pathParts.slice(2).join("/");
+  
+  return { bucketName, objectName };
+}
+
 export function isObjectStorageConfigured(): boolean {
   return !!BUCKET_ID;
 }
@@ -92,18 +121,16 @@ export async function getSignedVoiceNoteUrl(
   if (!objectStorageKey) {
     return { error: 'No object storage key provided' };
   }
-  
-  if (!BUCKET_ID) {
-    return { error: 'Object storage not configured' };
-  }
 
   try {
-    // Remove leading slash if present for consistent object name
-    const objectName = objectStorageKey.startsWith("/") ? objectStorageKey.slice(1) : objectStorageKey;
+    // Parse the full path to get bucket name and object name
+    const { bucketName, objectName } = parseObjectPath(objectStorageKey);
+    
+    console.log('[VoiceNoteService] Requesting signed URL for:', { bucketName, objectName });
     
     // Use Replit's sidecar to generate a signed URL (works in Replit environment)
     const request = {
-      bucket_name: BUCKET_ID,
+      bucket_name: bucketName,
       object_name: objectName,
       method: 'GET',
       expires_at: new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString(),
@@ -121,22 +148,32 @@ export async function getSignedVoiceNoteUrl(
     );
     
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[VoiceNoteService] Sidecar error:', response.status, errorText);
+      
       // Fallback: Try using Replit's object storage client directly
-      const bucket = objectStorageClient.bucket(BUCKET_ID);
-      const file = bucket.file(objectName);
-      
-      const [signedUrl] = await file.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + expiresInMinutes * 60 * 1000,
-      });
-      
-      return { url: signedUrl };
+      try {
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectName);
+        
+        const [signedUrl] = await file.getSignedUrl({
+          action: 'read',
+          expires: Date.now() + expiresInMinutes * 60 * 1000,
+        });
+        
+        console.log('[VoiceNoteService] GCS fallback successful');
+        return { url: signedUrl };
+      } catch (gcsError: any) {
+        console.error('[VoiceNoteService] GCS fallback failed:', gcsError.message);
+        return { error: `Sidecar: ${errorText}, GCS: ${gcsError.message}` };
+      }
     }
 
     const { signed_url: signedURL } = await response.json();
+    console.log('[VoiceNoteService] Signed URL generated successfully');
     return { url: signedURL };
   } catch (error: any) {
-    console.error('Error getting signed URL for voice note:', error);
+    console.error('[VoiceNoteService] Error getting signed URL:', error);
     return { error: error.message };
   }
 }
@@ -145,19 +182,16 @@ export async function deleteVoiceNote(
   voiceNoteId: string,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
-  if (!BUCKET_ID) {
-    return { success: false, error: 'Object storage not configured' };
-  }
-
   try {
     const voiceNote = await dbStorage.getVoiceNote(voiceNoteId, userId);
     if (!voiceNote) {
       return { success: false, error: 'Voice note not found' };
     }
 
-    // Use Replit's object storage client
-    const bucket = objectStorageClient.bucket(BUCKET_ID);
-    const file = bucket.file(voiceNote.objectStorageKey);
+    // Parse the path to get bucket name and object name
+    const { bucketName, objectName } = parseObjectPath(voiceNote.objectStorageKey);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
     
     try {
       await file.delete();

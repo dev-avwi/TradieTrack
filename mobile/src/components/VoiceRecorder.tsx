@@ -398,6 +398,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
 
 interface VoiceNotePlayerProps {
   uri: string;
+  fallbackUri?: string;
   title?: string;
   duration?: number;
   createdAt?: string;
@@ -406,51 +407,62 @@ interface VoiceNotePlayerProps {
 
 export function VoiceNotePlayer({ 
   uri, 
+  fallbackUri,
   title, 
   duration, 
   createdAt,
   onDelete 
 }: VoiceNotePlayerProps) {
   const theme = useTheme();
-  const [sound, setSound] = useState<any>(null);
+  const soundRef = useRef<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
+  // Cleanup sound on unmount
   useEffect(() => {
     return () => {
-      if (sound) {
-        sound.unloadAsync();
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
       }
     };
-  }, [sound]);
+  }, []);
 
-  const togglePlay = async () => {
-    if (!isAudioAvailable || !Audio) {
-      Alert.alert('Unavailable', 'Audio playback requires a development build.');
-      return;
-    }
-
-    try {
-      if (sound) {
-        if (isPlaying) {
-          await sound.pauseAsync();
-          setIsPlaying(false);
-          return;
-        } else {
-          await sound.setPositionAsync(0);
-          await sound.playAsync();
-          setIsPlaying(true);
-          return;
-        }
+  // Cleanup helper function
+  const cleanupSound = async () => {
+    if (soundRef.current) {
+      try {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+      } catch (e) {
+        // Ignore cleanup errors
       }
+      soundRef.current = null;
+    }
+    setIsLoaded(false);
+    setIsPlaying(false);
+    setCurrentTime(0);
+  };
 
+  const loadAndPlayAudio = async (audioUri: string): Promise<boolean> => {
+    try {
+      console.log('[VoiceNotePlayer] Attempting to load:', audioUri);
+      
+      // Always clean up before loading new audio
+      await cleanupSound();
+      
       const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri },
+        { uri: audioUri },
         { shouldPlay: true }
       );
       
-      setSound(newSound);
+      soundRef.current = newSound;
+      setIsLoaded(true);
       setIsPlaying(true);
+      setHasError(false);
 
       newSound.setOnPlaybackStatusUpdate((status: any) => {
         if (status.isLoaded) {
@@ -460,10 +472,78 @@ export function VoiceNotePlayer({
             setCurrentTime(0);
           }
         }
+        if (status.error) {
+          console.error('[VoiceNotePlayer] Playback error:', status.error);
+          setHasError(true);
+          setIsPlaying(false);
+        }
       });
+      
+      return true;
+    } catch (error) {
+      console.error('[VoiceNotePlayer] Error loading audio:', error);
+      return false;
+    }
+  };
+
+  const togglePlay = async () => {
+    if (!isAudioAvailable || !Audio) {
+      Alert.alert('Unavailable', 'Audio playback requires a development build.');
+      return;
+    }
+
+    try {
+      // If sound is loaded and not in error state, just toggle play/pause
+      if (soundRef.current && isLoaded && !hasError) {
+        if (isPlaying) {
+          await soundRef.current.pauseAsync();
+          setIsPlaying(false);
+          return;
+        } else {
+          await soundRef.current.setPositionAsync(0);
+          await soundRef.current.playAsync();
+          setIsPlaying(true);
+          return;
+        }
+      }
+
+      // If there was an error, reset and try again
+      if (hasError) {
+        await cleanupSound();
+        setHasError(false);
+      }
+
+      setIsLoading(true);
+      
+      // Try primary URL first
+      if (uri && uri.length > 0) {
+        const success = await loadAndPlayAudio(uri);
+        if (success) {
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Try fallback URL if primary fails
+      if (fallbackUri && fallbackUri.length > 0) {
+        console.log('[VoiceNotePlayer] Primary URL failed, trying fallback:', fallbackUri);
+        const success = await loadAndPlayAudio(fallbackUri);
+        if (success) {
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Both failed
+      setIsLoading(false);
+      setHasError(true);
+      Alert.alert('Playback Error', 'Unable to play this voice note. Please try again later.');
       
     } catch (error) {
       console.error('Error playing audio:', error);
+      setIsLoading(false);
+      setHasError(true);
+      Alert.alert('Error', 'Failed to play voice note.');
     }
   };
 
@@ -486,22 +566,31 @@ export function VoiceNotePlayer({
   const styles = createStyles(theme);
 
   return (
-    <View style={styles.playerContainer}>
-      <TouchableOpacity style={styles.playButton} onPress={togglePlay}>
-        <Ionicons 
-          name={isPlaying ? "pause" : "play"} 
-          size={24} 
-          color={theme.colors.primary} 
-        />
+    <View style={[styles.playerContainer, hasError && styles.playerContainerError]}>
+      <TouchableOpacity 
+        style={[styles.playButton, isLoading && styles.playButtonDisabled]} 
+        onPress={togglePlay}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        ) : (
+          <Ionicons 
+            name={hasError ? "reload" : (isPlaying ? "pause" : "play")} 
+            size={24} 
+            color={hasError ? theme.colors.mutedForeground : theme.colors.primary} 
+          />
+        )}
       </TouchableOpacity>
       
       <View style={styles.playerInfo}>
-        <Text style={styles.playerTitle} numberOfLines={1}>
+        <Text style={[styles.playerTitle, hasError && styles.playerTitleError]} numberOfLines={1}>
           {title || 'Voice Note'}
         </Text>
         <Text style={styles.playerMeta}>
-          {formatDuration(isPlaying ? currentTime : 0)} / {formatDuration(duration || 0)}
-          {createdAt && ` | ${formatDate(createdAt)}`}
+          {hasError ? 'Tap to retry' : (
+            `${formatDuration(isPlaying ? currentTime : 0)} / ${formatDuration(duration || 0)}${createdAt ? ` | ${formatDate(createdAt)}` : ''}`
+          )}
         </Text>
       </View>
       
@@ -646,6 +735,12 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     borderRadius: 8,
     padding: 12,
   },
+  playerContainerError: {
+    opacity: 0.7,
+  },
+  playButtonDisabled: {
+    opacity: 0.5,
+  },
   playerInfo: {
     flex: 1,
     marginLeft: 12,
@@ -654,6 +749,9 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: theme.colors.foreground,
+  },
+  playerTitleError: {
+    color: theme.colors.mutedForeground,
   },
   playerMeta: {
     fontSize: 13,

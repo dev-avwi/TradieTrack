@@ -296,15 +296,21 @@ export function VoiceNotePlayer({
 }: VoiceNotePlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // Use signedUrl if available, otherwise fall back to fallbackUrl
-  const audioUrl = signedUrl || fallbackUrl || '';
+  const [currentUrl, setCurrentUrl] = useState<string>(signedUrl || fallbackUrl || '');
 
   useEffect(() => {
-    if (!audioUrl) return;
+    // Reset state when URLs change
+    setCurrentUrl(signedUrl || fallbackUrl || '');
+    setHasError(false);
+  }, [signedUrl, fallbackUrl]);
+
+  useEffect(() => {
+    if (!currentUrl) return;
     
-    const audio = new Audio(audioUrl);
+    const audio = new Audio(currentUrl);
     audioRef.current = audio;
     
     audio.ontimeupdate = () => setCurrentTime(Math.floor(audio.currentTime));
@@ -312,22 +318,54 @@ export function VoiceNotePlayer({
       setIsPlaying(false);
       setCurrentTime(0);
     };
+    audio.onerror = () => {
+      console.error('[VoiceNotePlayer] Error loading audio from:', currentUrl);
+      setIsLoading(false);
+      
+      // If primary URL failed, try fallback
+      if (currentUrl === signedUrl && fallbackUrl) {
+        console.log('[VoiceNotePlayer] Trying fallback URL:', fallbackUrl);
+        setCurrentUrl(fallbackUrl);
+      } else {
+        setHasError(true);
+      }
+    };
+    audio.oncanplay = () => {
+      setIsLoading(false);
+    };
     
     return () => {
       audio.pause();
       audio.src = '';
     };
-  }, [audioUrl]);
+  }, [currentUrl, signedUrl, fallbackUrl]);
 
-  const togglePlay = () => {
+  const togglePlay = async () => {
     if (!audioRef.current) return;
     
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      if (hasError) {
+        // Reset and try again
+        setHasError(false);
+        setIsLoading(true);
+        setCurrentUrl(signedUrl || fallbackUrl || '');
+        return;
+      }
+      
+      setIsLoading(true);
+      try {
+        await audioRef.current.play();
+        setIsPlaying(true);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('[VoiceNotePlayer] Play failed:', error);
+        setIsLoading(false);
+        setHasError(true);
+      }
     }
-    setIsPlaying(!isPlaying);
   };
 
   const formatDuration = (seconds: number) => {
@@ -346,27 +384,46 @@ export function VoiceNotePlayer({
   };
 
   return (
-    <div className={cn("flex items-center gap-3 p-3 bg-muted rounded-lg", className)}>
+    <div className={cn(
+      "flex items-center gap-3 p-3 bg-muted rounded-lg",
+      hasError && "opacity-70",
+      className
+    )}>
       <Button
         onClick={togglePlay}
         variant="ghost"
         size="icon"
         className="shrink-0"
+        disabled={isLoading}
         data-testid="button-play-voice-note"
       >
-        {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+        {isLoading ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : hasError ? (
+          <Play className="w-5 h-5 text-muted-foreground" />
+        ) : isPlaying ? (
+          <Pause className="w-5 h-5" />
+        ) : (
+          <Play className="w-5 h-5" />
+        )}
       </Button>
       
       <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">
+        <div className={cn("font-medium truncate", hasError && "text-muted-foreground")}>
           {title || 'Voice Note'}
         </div>
         <div className="text-sm text-muted-foreground flex items-center gap-2">
-          <span>{formatDuration(isPlaying ? currentTime : 0)} / {formatDuration(duration || 0)}</span>
-          {createdAt && (
+          {hasError ? (
+            <span>Tap to retry</span>
+          ) : (
             <>
-              <span className="text-muted-foreground/50">|</span>
-              <span>{formatDate(createdAt)}</span>
+              <span>{formatDuration(isPlaying ? currentTime : 0)} / {formatDuration(duration || 0)}</span>
+              {createdAt && (
+                <>
+                  <span className="text-muted-foreground/50">|</span>
+                  <span>{formatDate(createdAt)}</span>
+                </>
+              )}
             </>
           )}
         </div>

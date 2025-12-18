@@ -71,6 +71,10 @@ class ApiClient {
     return !!this.sessionToken;
   }
 
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
   private async getHeaders(): Promise<HeadersInit> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
