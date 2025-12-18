@@ -10226,6 +10226,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: error.message });
     }
   });
+  
+  // View/stream a photo (for when signedUrl is not available)
+  app.get("/api/jobs/:jobId/photos/:photoId/view", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, photoId } = req.params;
+      
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
+      // Get photo from database
+      const photo = await storage.getJobPhoto(photoId, userContext.effectiveUserId);
+      if (!photo) {
+        return res.status(404).json({ error: 'Photo not found' });
+      }
+      
+      // Get signed URL and redirect to it
+      const { getSignedPhotoUrl } = await import('./photoService');
+      const { url, error } = await getSignedPhotoUrl(photo.objectStorageKey);
+      
+      if (error || !url) {
+        console.error('Error getting signed URL for photo view:', error);
+        return res.status(500).json({ error: 'Failed to access photo' });
+      }
+      
+      res.redirect(url);
+    } catch (error: any) {
+      console.error('Error viewing photo:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   // ===== VOICE NOTES ROUTES =====
   
@@ -10335,6 +10366,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error: any) {
       console.error('Error deleting voice note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // View/stream a voice note (for when signedUrl is not available)
+  app.get("/api/jobs/:jobId/voice-notes/:voiceNoteId/view", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, voiceNoteId } = req.params;
+      
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
+      // Get voice note from database
+      const voiceNote = await storage.getVoiceNote(voiceNoteId, userContext.effectiveUserId);
+      if (!voiceNote) {
+        return res.status(404).json({ error: 'Voice note not found' });
+      }
+      
+      // Get signed URL and redirect to it
+      const { getSignedVoiceNoteUrl } = await import('./voiceNoteService');
+      const { url, error } = await getSignedVoiceNoteUrl(voiceNote.objectStorageKey);
+      
+      if (error || !url) {
+        console.error('Error getting signed URL for voice note view:', error);
+        return res.status(500).json({ error: 'Failed to access voice note' });
+      }
+      
+      res.redirect(url);
+    } catch (error: any) {
+      console.error('Error viewing voice note:', error);
       res.status(500).json({ error: error.message });
     }
   });
