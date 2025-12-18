@@ -10276,6 +10276,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Download a photo with Content-Disposition header to force download
+  app.get("/api/jobs/:jobId/photos/:photoId/download", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, photoId } = req.params;
+      
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
+      // Get photo from database
+      const photo = await storage.getJobPhoto(photoId, userContext.effectiveUserId);
+      if (!photo) {
+        return res.status(404).json({ error: 'Photo not found' });
+      }
+      
+      // Get signed URL
+      const { getSignedPhotoUrl } = await import('./photoService');
+      const { url, error } = await getSignedPhotoUrl(photo.objectStorageKey);
+      
+      if (error || !url) {
+        console.error('Error getting signed URL for photo download:', error);
+        return res.status(500).json({ error: 'Failed to access photo' });
+      }
+      
+      // Fetch the media and stream it with proper headers
+      const response = await fetch(url);
+      if (!response.ok) {
+        return res.status(500).json({ error: 'Failed to fetch media' });
+      }
+      
+      // Set headers for download
+      const fileName = photo.fileName || `media_${photoId}.${photo.mimeType?.split('/')[1] || 'jpg'}`;
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Type', photo.mimeType || 'application/octet-stream');
+      
+      // Stream the response
+      const arrayBuffer = await response.arrayBuffer();
+      res.send(Buffer.from(arrayBuffer));
+    } catch (error: any) {
+      console.error('Error downloading photo:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ===== VOICE NOTES ROUTES =====
   
   // Get voice notes for a job (team-aware: shows all voice notes for the job)

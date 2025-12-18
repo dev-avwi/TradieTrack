@@ -25,6 +25,7 @@ import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import api, { API_URL } from '../../src/lib/api';
 import { useJobsStore, useTimeTrackingStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';
@@ -1094,6 +1095,35 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
     fontSize: 14,
     fontWeight: '600',
+  },
+  savePhotoButton: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 180 : 160,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.success || '#22c55e',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+  },
+  savePhotoText: {
+    color: colors.primaryForeground,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  saveVideoButton: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 120 : 100,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.success || '#22c55e',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
   },
   photoCountBadge: {
     position: 'absolute',
@@ -2494,6 +2524,46 @@ export default function JobDetailScreen() {
     );
   };
 
+  const [isSavingMedia, setIsSavingMedia] = useState(false);
+  
+  const handleSaveMedia = async (photo: JobPhoto) => {
+    if (isSavingMedia) return;
+    
+    const isVideo = photo.mimeType?.startsWith('video/');
+    const mediaUrl = photo.signedUrl || photo.url || `${api.getBaseUrl()}/api/jobs/${job?.id}/photos/${photo.id}/view`;
+    
+    setIsSavingMedia(true);
+    
+    try {
+      const isSharingAvailable = await Sharing.isAvailableAsync();
+      if (!isSharingAvailable) {
+        Alert.alert('Not Available', 'Sharing is not available on this device');
+        setIsSavingMedia(false);
+        return;
+      }
+
+      const extension = isVideo ? (photo.fileName?.split('.').pop() || 'mp4') : 'jpg';
+      const filename = photo.fileName || `media_${Date.now()}.${extension}`;
+      const localUri = `${FileSystem.cacheDirectory}${filename}`;
+
+      const downloadResult = await FileSystem.downloadAsync(mediaUrl, localUri);
+      
+      if (downloadResult.status === 200) {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: photo.mimeType || (isVideo ? 'video/mp4' : 'image/jpeg'),
+          dialogTitle: `Save ${isVideo ? 'Video' : 'Photo'} to...`,
+        });
+      } else {
+        Alert.alert('Error', 'Failed to download media. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Save media error:', error);
+      Alert.alert('Error', `Failed to save ${isVideo ? 'video' : 'photo'}. ${error.message || 'Please try again.'}`);
+    } finally {
+      setIsSavingMedia(false);
+    }
+  };
+
   const handleAnnotatedPhotoSave = async (annotatedUri: string) => {
     if (!job) return;
     
@@ -3797,6 +3867,15 @@ export default function JobDetailScreen() {
                 <Feather name="x" size={24} color={colors.primaryForeground} />
               </TouchableOpacity>
               <TouchableOpacity 
+                style={[styles.savePhotoButton, isSavingMedia && { opacity: 0.6 }]}
+                onPress={() => handleSaveMedia(selectedPhoto)}
+                disabled={isSavingMedia}
+                data-testid="button-share-photo"
+              >
+                <Feather name={isSavingMedia ? "loader" : "share"} size={18} color={colors.primaryForeground} />
+                <Text style={styles.savePhotoText}>{isSavingMedia ? 'Preparing...' : 'Share Photo'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
                 style={styles.markupPhotoButton}
                 onPress={() => setShowAnnotationEditor(true)}
                 data-testid="button-markup-photo"
@@ -3870,6 +3949,19 @@ export default function JobDetailScreen() {
                 data-testid="button-close-video"
               >
                 <Feather name="x" size={24} color={colors.primaryForeground} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.saveVideoButton, isSavingMedia && { opacity: 0.6 }]}
+                onPress={() => {
+                  if (selectedVideo) {
+                    handleSaveMedia(selectedVideo);
+                  }
+                }}
+                disabled={isSavingMedia}
+                data-testid="button-share-video"
+              >
+                <Feather name={isSavingMedia ? "loader" : "share"} size={18} color={colors.primaryForeground} />
+                <Text style={styles.savePhotoText}>{isSavingMedia ? 'Preparing...' : 'Share Video'}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.deleteVideoButton}

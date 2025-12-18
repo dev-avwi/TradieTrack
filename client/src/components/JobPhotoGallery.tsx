@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2, Video, Film } from "lucide-react";
+import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2, Video, Film, Download } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -429,49 +429,104 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
             </div>
           </DialogHeader>
 
-          {selectedPhoto && (
-            <div className="space-y-4">
-              <div className="aspect-video rounded-lg overflow-hidden bg-muted">
-                <img
-                  src={selectedPhoto.signedUrl || `/api/jobs/${jobId}/photos/${selectedPhoto.id}/view`}
-                  alt={selectedPhoto.caption || selectedPhoto.fileName}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  {selectedPhoto.createdAt ? (
-                    <>Uploaded {new Date(selectedPhoto.createdAt).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}</>
-                  ) : 'Date unknown'}
-                </span>
-                <span>
-                  {selectedPhoto.fileSize ? `${(selectedPhoto.fileSize / 1024).toFixed(0)} KB` : ''}
-                </span>
-              </div>
-
-              {canUpload && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => deleteMutation.mutate(selectedPhoto.id)}
-                  disabled={deleteMutation.isPending}
-                  data-testid="button-delete-photo"
-                >
-                  {deleteMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          {selectedPhoto && (() => {
+            const isVideo = selectedPhoto.mimeType?.startsWith('video/');
+            const mediaUrl = selectedPhoto.signedUrl || `/api/jobs/${jobId}/photos/${selectedPhoto.id}/view`;
+            
+            const handleDownload = () => {
+              try {
+                // Use the /download endpoint which adds Content-Disposition headers
+                const downloadUrl = `/api/jobs/${jobId}/photos/${selectedPhoto.id}/download`;
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = selectedPhoto.fileName || (isVideo ? 'video.mp4' : 'photo.jpg');
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                toast({
+                  title: "Download started",
+                  description: `${isVideo ? 'Video' : 'Photo'} is being saved to your device`,
+                });
+              } catch (error) {
+                console.error('Download error:', error);
+                toast({
+                  title: "Download failed",
+                  description: "Unable to download file. Please try again.",
+                  variant: "destructive",
+                });
+              }
+            };
+            
+            return (
+              <div className="space-y-4">
+                <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+                  {isVideo ? (
+                    <video
+                      src={mediaUrl}
+                      controls
+                      autoPlay={false}
+                      playsInline
+                      className="w-full h-full object-contain"
+                      data-testid="video-player"
+                    >
+                      <source src={mediaUrl} type={selectedPhoto.mimeType || 'video/mp4'} />
+                      Your browser does not support the video tag.
+                    </video>
                   ) : (
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <img
+                      src={mediaUrl}
+                      alt={selectedPhoto.caption || selectedPhoto.fileName}
+                      className="w-full h-full object-contain"
+                    />
                   )}
-                  Delete Photo
-                </Button>
-              )}
-            </div>
-          )}
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    {selectedPhoto.createdAt ? (
+                      <>Uploaded {new Date(selectedPhoto.createdAt).toLocaleDateString('en-AU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}</>
+                    ) : 'Date unknown'}
+                  </span>
+                  <span>
+                    {selectedPhoto.fileSize ? `${(selectedPhoto.fileSize / 1024).toFixed(0)} KB` : ''}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownload}
+                    data-testid="button-download-media"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Save {isVideo ? 'Video' : 'Photo'}
+                  </Button>
+                  
+                  {canUpload && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteMutation.mutate(selectedPhoto.id)}
+                      disabled={deleteMutation.isPending}
+                      data-testid="button-delete-photo"
+                    >
+                      {deleteMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Delete {isVideo ? 'Video' : 'Photo'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </Card>
