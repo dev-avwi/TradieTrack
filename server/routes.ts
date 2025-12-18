@@ -3552,29 +3552,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Recent activity endpoint - shows user's recent system activity
+  // Recent activity endpoint - shows user's recent system activity with navigation links
   app.get("/api/activity/recent/:limit?", requireAuth, async (req: any, res) => {
     try {
       const limit = Math.min(parseInt(req.params.limit) || 10, 50);
+      const userContext = await getUserContext(req.userId);
       
-      // Get recent notifications as activity indicators
-      const notifications = await storage.getNotifications(req.userId);
+      // Get activity logs from the new activity_logs table
+      const activityLogs = await storage.getActivityLogs(userContext.effectiveUserId, limit);
       
-      // Map notifications to activity items (limit the results)
-      const activities = notifications.slice(0, limit).map((n: any) => {
-        let type = 'email_sent';
-        if (n.type === 'payment') type = 'payment_received';
-        else if (n.type === 'quote') type = n.title?.includes('accepted') ? 'quote_accepted' : 'quote_sent';
-        else if (n.type === 'invoice') type = 'invoice_sent';
-        else if (n.type === 'reminder') type = 'reminder_sent';
+      // Map activity logs to activity items with navigation paths
+      const activities = activityLogs.map((log: any) => {
+        // Determine navigation path based on entity type and id
+        let navigationPath: string | null = null;
+        if (log.entityType && log.entityId) {
+          switch (log.entityType) {
+            case 'job':
+              navigationPath = `/jobs/${log.entityId}`;
+              break;
+            case 'quote':
+              navigationPath = `/quotes/${log.entityId}`;
+              break;
+            case 'invoice':
+              navigationPath = `/invoices/${log.entityId}`;
+              break;
+          }
+        }
         
         return {
-          id: n.id,
-          type,
-          title: n.title || 'Activity',
-          description: n.message || '',
-          timestamp: n.createdAt,
+          id: log.id,
+          type: log.type,
+          title: log.title || 'Activity',
+          description: log.description || '',
+          timestamp: log.createdAt,
           status: 'success' as const,
+          entityType: log.entityType,
+          entityId: log.entityId,
+          navigationPath,
+          metadata: log.metadata,
         };
       });
       
