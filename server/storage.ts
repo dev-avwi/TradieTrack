@@ -166,6 +166,9 @@ import {
   myobConnections,
   type MyobConnection,
   type InsertMyobConnection,
+  activityLogs,
+  type ActivityLog,
+  type InsertActivityLog,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -220,6 +223,10 @@ export interface IStorage {
   registerPushToken(token: InsertPushToken): Promise<PushToken>;
   deactivatePushToken(tokenId: string, userId: string): Promise<boolean>;
   deactivatePushTokenByValue(token: string, userId: string): Promise<boolean>;
+
+  // Activity Logs (Dashboard Activity Feed)
+  getActivityLogs(userId: string, limit?: number): Promise<ActivityLog[]>;
+  createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
 
   // Platform Stats (for trust signals)
   getPlatformStats(): Promise<{ userCount: number; quotesCount: number; paidInvoicesCount: number }>;
@@ -911,6 +918,21 @@ export class PostgresStorage implements IStorage {
       .where(and(eq(pushTokens.token, token), eq(pushTokens.userId, userId)))
       .returning();
     return result.length > 0;
+  }
+
+  // Activity Logs (Dashboard Activity Feed)
+  async getActivityLogs(userId: string, limit: number = 20): Promise<ActivityLog[]> {
+    return await db
+      .select()
+      .from(activityLogs)
+      .where(eq(activityLogs.userId, userId))
+      .orderBy(desc(activityLogs.createdAt))
+      .limit(limit);
+  }
+
+  async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {
+    const result = await db.insert(activityLogs).values(log).returning();
+    return result[0];
   }
 
   // Platform Stats (for trust signals)

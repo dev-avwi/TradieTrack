@@ -260,6 +260,25 @@ export type PushToken = typeof pushTokens.$inferSelect;
 export const insertPushTokenSchema = createInsertSchema(pushTokens).omit({ id: true, createdAt: true, lastUsedAt: true });
 export type InsertPushToken = z.infer<typeof insertPushTokenSchema>;
 
+// Activity Logs - tracks all user activities for dashboard feed
+export const activityLogs = pgTable("activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text("type").notNull(), // job_created, job_started, job_completed, quote_created, quote_sent, quote_accepted, invoice_created, invoice_sent, invoice_paid, etc.
+  title: text("title").notNull(),
+  description: text("description"),
+  // Entity references for navigation
+  entityType: text("entity_type"), // 'job', 'quote', 'invoice', 'client'
+  entityId: varchar("entity_id"), // ID of the related entity
+  // Metadata for additional context
+  metadata: jsonb("metadata").default({}), // Can store client name, amounts, etc.
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+
 // Clients
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
