@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAppMode } from "@/hooks/use-app-mode";
+import { useQuery } from "@tanstack/react-query";
 import appIconUrl from '@assets/Photo 1-12-2025, 6 03 07 pm (1)_1764576362665.png';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -54,6 +55,24 @@ export default function Header({
   const [location, setLocation] = useLocation();
   const { isOwner, isManager } = useAppMode();
   const canViewMap = isOwner || isManager;
+  
+  // Fetch current user data
+  const { data: user } = useQuery<{
+    id: number;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    businessName?: string;
+  }>({ queryKey: ["/api/auth/me"] });
+  
+  // Get display name and initials
+  const displayName = user?.businessName || 
+    (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName) || 
+    'User';
+  const userEmail = user?.email || '';
+  const initials = user?.firstName && user?.lastName 
+    ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+    : user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U';
   
   // Add keyboard shortcut for search (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -191,18 +210,18 @@ export default function Header({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full" data-testid="button-profile-menu">
               <Avatar className="h-8 w-8">
                 <AvatarImage src="" />
-                <AvatarFallback>M</AvatarFallback>
+                <AvatarFallback data-testid="avatar-initials">{initials}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">Mike's Plumbing</p>
-                <p className="text-xs text-muted-foreground">mike@mikesplumbing.com.au</p>
+                <p className="text-sm font-medium" data-testid="text-profile-name">{displayName}</p>
+                <p className="text-xs text-muted-foreground" data-testid="text-profile-email">{userEmail}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
