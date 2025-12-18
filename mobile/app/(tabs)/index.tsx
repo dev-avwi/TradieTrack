@@ -23,29 +23,73 @@ import { TrustBanner } from '../../src/components/ui/TrustBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 
 // Activity Feed Component - matches web Recent Activity section
-function ActivityFeed({ activities }: { activities: any[] }) {
+function ActivityFeed({ 
+  activities, 
+  onActivityPress,
+  isLoading 
+}: { 
+  activities: any[]; 
+  onActivityPress?: (activity: any) => void;
+  isLoading?: boolean;
+}) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const getActivityIcon = (type: string): keyof typeof Feather.glyphMap => {
     switch (type) {
-      case 'job': return 'briefcase';
-      case 'quote': return 'file-text';
-      case 'invoice': return 'dollar-sign';
-      case 'payment': return 'credit-card';
-      case 'client': return 'user';
-      default: return 'activity';
+      case 'job_created':
+      case 'job_status_change':
+      case 'job_scheduled':
+      case 'job_started':
+      case 'job_completed':
+      case 'job':
+        return 'briefcase';
+      case 'quote_created':
+      case 'quote_sent':
+      case 'quote':
+        return 'file-text';
+      case 'invoice_created':
+      case 'invoice_sent':
+      case 'invoice':
+        return 'dollar-sign';
+      case 'invoice_paid':
+      case 'payment_received':
+      case 'payment':
+        return 'credit-card';
+      case 'client':
+        return 'user';
+      default:
+        return 'activity';
     }
   };
 
   const getActivityColor = (type: string) => {
     switch (type) {
-      case 'job': return colors.primary;
-      case 'quote': return colors.info;
-      case 'invoice': return colors.warning;
-      case 'payment': return colors.success;
-      case 'client': return colors.mutedForeground;
-      default: return colors.mutedForeground;
+      case 'job_created':
+      case 'job_scheduled':
+      case 'job':
+        return colors.primary;
+      case 'job_started':
+      case 'job_status_change':
+        return colors.warning;
+      case 'job_completed':
+        return colors.success;
+      case 'quote_created':
+      case 'quote_sent':
+      case 'quote':
+        return colors.info;
+      case 'invoice_created':
+      case 'invoice_sent':
+      case 'invoice':
+        return colors.warning;
+      case 'invoice_paid':
+      case 'payment_received':
+      case 'payment':
+        return colors.success;
+      case 'client':
+        return colors.mutedForeground;
+      default:
+        return colors.mutedForeground;
     }
   };
 
@@ -63,6 +107,14 @@ function ActivityFeed({ activities }: { activities: any[] }) {
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
   };
+  
+  if (isLoading) {
+    return (
+      <View style={[styles.activityEmpty, { paddingVertical: spacing.xl }]}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
+  }
 
   if (activities.length === 0) {
     return (
@@ -75,21 +127,35 @@ function ActivityFeed({ activities }: { activities: any[] }) {
 
   return (
     <View style={styles.activityList}>
-      {activities.slice(0, 5).map((activity, index) => (
-        <View key={activity.id || index} style={styles.activityItem}>
-          <View style={[styles.activityIcon, { backgroundColor: `${getActivityColor(activity.type)}12` }]}>
-            <Feather 
-              name={getActivityIcon(activity.type)} 
-              size={iconSizes.md} 
-              color={getActivityColor(activity.type)} 
-            />
-          </View>
-          <View style={styles.activityContent}>
-            <Text style={styles.activityTitle} numberOfLines={1}>{activity.title}</Text>
-            <Text style={styles.activityTime}>{formatTimeAgo(activity.createdAt)}</Text>
-          </View>
-        </View>
-      ))}
+      {activities.slice(0, 5).map((activity, index) => {
+        const isClickable = activity.navigationPath || activity.entityId;
+        
+        return (
+          <TouchableOpacity 
+            key={activity.id || index} 
+            style={styles.activityItem}
+            onPress={() => isClickable && onActivityPress?.(activity)}
+            activeOpacity={isClickable ? 0.7 : 1}
+            disabled={!isClickable}
+          >
+            <View style={[styles.activityIcon, { backgroundColor: `${getActivityColor(activity.type)}12` }]}>
+              <Feather 
+                name={getActivityIcon(activity.type)} 
+                size={iconSizes.md} 
+                color={getActivityColor(activity.type)} 
+              />
+            </View>
+            <View style={styles.activityContent}>
+              <Text style={styles.activityTitle} numberOfLines={1}>{activity.title}</Text>
+              <Text style={styles.activityDescription} numberOfLines={1}>{activity.description}</Text>
+              <Text style={styles.activityTime}>{formatTimeAgo(activity.timestamp || activity.createdAt)}</Text>
+            </View>
+            {isClickable && (
+              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            )}
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -671,6 +737,26 @@ export default function DashboardScreen() {
   const [isRouteOptimized, setIsRouteOptimized] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  
+  // Activity feed state
+  const [activities, setActivities] = useState<any[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  
+  const fetchActivities = useCallback(async () => {
+    setActivitiesLoading(true);
+    try {
+      const { default: api } = await import('../../src/lib/api');
+      const response = await api.get('/api/activity/recent/5');
+      if (response.data) {
+        setActivities(response.data);
+      }
+    } catch (error) {
+      console.log('Error fetching activities:', error);
+      setActivities([]);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  }, []);
 
   // Haversine formula to calculate distance between two coordinates in km
   const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -858,8 +944,9 @@ export default function DashboardScreen() {
       fetchTodaysJobs(),
       fetchStats(),
       fetchClients(),
+      fetchActivities(),
     ]);
-  }, [fetchTodaysJobs, fetchStats, fetchClients]);
+  }, [fetchTodaysJobs, fetchStats, fetchClients, fetchActivities]);
 
   useEffect(() => {
     refreshData();
@@ -1447,15 +1534,13 @@ export default function DashboardScreen() {
           </View>
         </View>
         <ActivityFeed 
-          activities={[
-            // Generate sample activity from today's jobs for visual consistency
-            ...todaysJobs.slice(0, 3).map((job: any) => ({
-              id: job.id,
-              type: 'job',
-              title: `Job: ${job.title}`,
-              createdAt: job.scheduledAt || new Date().toISOString()
-            }))
-          ]} 
+          activities={activities}
+          isLoading={activitiesLoading}
+          onActivityPress={(activity) => {
+            if (activity.entityType && activity.entityId) {
+              handleNavigateToItem(activity.entityType, activity.entityId);
+            }
+          }}
         />
       </View>
 
@@ -1540,6 +1625,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   activityTitle: {
     ...typography.body,
     color: colors.foreground,
+  },
+  activityDescription: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
   },
   activityTime: {
     ...typography.captionSmall,
