@@ -1,24 +1,10 @@
-import { Storage } from '@google-cloud/storage';
 import { storage as dbStorage } from './storage';
+import { objectStorageClient } from './objectStorage';
 import crypto from 'crypto';
 
 const PRIVATE_OBJECT_DIR = process.env.PRIVATE_OBJECT_DIR || '.private';
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
-
-let gcsStorage: Storage | null = null;
-
-function getGCSStorage(): Storage | null {
-  if (!gcsStorage && BUCKET_ID) {
-    try {
-      gcsStorage = new Storage();
-    } catch (error) {
-      console.error('Failed to initialize GCS storage:', error);
-      return null;
-    }
-  }
-  return gcsStorage;
-}
 
 export function isObjectStorageConfigured(): boolean {
   return !!BUCKET_ID;
@@ -52,9 +38,8 @@ export async function uploadVoiceNote(
     };
   }
   
-  const storage = getGCSStorage();
-  if (!storage || !BUCKET_ID) {
-    return { success: false, error: 'Failed to initialize storage' };
+  if (!BUCKET_ID) {
+    return { success: false, error: 'Object storage bucket not configured' };
   }
 
   try {
@@ -62,7 +47,8 @@ export async function uploadVoiceNote(
     const uniqueId = crypto.randomBytes(8).toString('hex');
     const objectKey = `${PRIVATE_OBJECT_DIR}/voice-notes/${jobId}/${uniqueId}.${fileExtension}`;
 
-    const bucket = storage.bucket(BUCKET_ID);
+    // Use Replit's object storage client
+    const bucket = objectStorageClient.bucket(BUCKET_ID);
     const file = bucket.file(objectKey);
     
     await file.save(fileBuffer, {
@@ -135,13 +121,8 @@ export async function getSignedVoiceNoteUrl(
     );
     
     if (!response.ok) {
-      // Fallback: Try using the GCS client directly
-      const storage = getGCSStorage();
-      if (!storage) {
-        return { error: 'Failed to get storage client' };
-      }
-      
-      const bucket = storage.bucket(BUCKET_ID);
+      // Fallback: Try using Replit's object storage client directly
+      const bucket = objectStorageClient.bucket(BUCKET_ID);
       const file = bucket.file(objectName);
       
       const [signedUrl] = await file.getSignedUrl({
@@ -164,9 +145,7 @@ export async function deleteVoiceNote(
   voiceNoteId: string,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const storage = getGCSStorage();
-  
-  if (!storage || !BUCKET_ID) {
+  if (!BUCKET_ID) {
     return { success: false, error: 'Object storage not configured' };
   }
 
@@ -176,7 +155,8 @@ export async function deleteVoiceNote(
       return { success: false, error: 'Voice note not found' };
     }
 
-    const bucket = storage.bucket(BUCKET_ID);
+    // Use Replit's object storage client
+    const bucket = objectStorageClient.bucket(BUCKET_ID);
     const file = bucket.file(voiceNote.objectStorageKey);
     
     try {

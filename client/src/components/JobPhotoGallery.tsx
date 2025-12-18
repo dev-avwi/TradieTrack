@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2 } from "lucide-react";
+import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2, Video, Film } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -173,10 +173,10 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
   return (
     <Card data-testid="job-photo-gallery">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Camera className="h-4 w-4" />
-            Photos {photos.length > 0 && `(${photos.length})`}
+            <Film className="h-4 w-4" />
+            Media {photos.length > 0 && `(${photos.length})`}
           </CardTitle>
           {canUpload && (
             <Button
@@ -186,7 +186,7 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
               data-testid="button-add-photo"
             >
               <Plus className="h-4 w-4 mr-1" />
-              Add Photo
+              Add Media
             </Button>
           )}
         </div>
@@ -195,7 +195,7 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           capture="environment"
           className="hidden"
           onChange={handleFileSelect}
@@ -207,9 +207,9 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
           </div>
         ) : photos.length === 0 ? (
           <div className="text-center py-8">
-            <ImageIcon className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
+            <Film className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground mb-3">
-              No photos yet
+              No media yet
             </p>
             {canUpload && (
               <Button
@@ -219,12 +219,13 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
                 data-testid="button-upload-first-photo"
               >
                 <Camera className="h-4 w-4 mr-2" />
-                Take or Upload Photo
+                Take or Upload Media
               </Button>
             )}
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Display photos grouped by category */}
             {Object.entries(CATEGORY_LABELS).map(([category, { label }]) => {
               const categoryPhotos = groupedPhotos[category];
               if (!categoryPhotos?.length) return null;
@@ -236,29 +237,99 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
                       {label}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      {categoryPhotos.length} {categoryPhotos.length === 1 ? 'photo' : 'photos'}
+                      {categoryPhotos.length} {categoryPhotos.length === 1 ? 'item' : 'items'}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                    {categoryPhotos.map((photo) => (
-                      <button
-                        key={photo.id}
-                        className="aspect-square rounded-lg overflow-hidden bg-muted hover-elevate focus:ring-2 focus:ring-primary focus:outline-none"
-                        onClick={() => setSelectedPhoto(photo)}
-                        data-testid={`photo-${photo.id}`}
-                      >
-                        <img
-                          src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
-                          alt={photo.caption || photo.fileName}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </button>
-                    ))}
+                    {categoryPhotos.map((photo) => {
+                      const isVideo = photo.mimeType?.startsWith('video/');
+                      return (
+                        <button
+                          key={photo.id}
+                          className="aspect-square rounded-lg overflow-hidden bg-muted hover-elevate focus:ring-2 focus:ring-primary focus:outline-none relative"
+                          onClick={() => setSelectedPhoto(photo)}
+                          data-testid={`photo-${photo.id}`}
+                        >
+                          {isVideo ? (
+                            <>
+                              <video
+                                src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
+                                className="w-full h-full object-cover"
+                                muted
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <Video className="h-8 w-8 text-white" />
+                              </div>
+                            </>
+                          ) : (
+                            <img
+                              src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
+                              alt={photo.caption || photo.fileName}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );
             })}
+            
+            {/* Also show any photos with unexpected categories */}
+            {Object.keys(groupedPhotos)
+              .filter(category => !CATEGORY_LABELS[category])
+              .map(category => {
+                const categoryPhotos = groupedPhotos[category];
+                if (!categoryPhotos?.length) return null;
+                
+                return (
+                  <div key={category}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="secondary">
+                        {category || 'Uncategorized'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {categoryPhotos.length} {categoryPhotos.length === 1 ? 'item' : 'items'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {categoryPhotos.map((photo) => {
+                        const isVideo = photo.mimeType?.startsWith('video/');
+                        return (
+                          <button
+                            key={photo.id}
+                            className="aspect-square rounded-lg overflow-hidden bg-muted hover-elevate focus:ring-2 focus:ring-primary focus:outline-none relative"
+                            onClick={() => setSelectedPhoto(photo)}
+                            data-testid={`photo-${photo.id}`}
+                          >
+                            {isVideo ? (
+                              <>
+                                <video
+                                  src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
+                                  className="w-full h-full object-cover"
+                                  muted
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                  <Video className="h-8 w-8 text-white" />
+                                </div>
+                              </>
+                            ) : (
+                              <img
+                                src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
+                                alt={photo.caption || photo.fileName}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         )}
       </CardContent>
