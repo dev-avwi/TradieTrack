@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { 
   Mail,
@@ -10,7 +11,9 @@ import {
   Bell,
   Send,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  Briefcase,
+  Plus
 } from "lucide-react";
 import { formatHistoryDate } from "@shared/dateUtils";
 import { Button } from "@/components/ui/button";
@@ -23,11 +26,14 @@ interface ActivityFeedProps {
 
 interface ActivityItem {
   id: string;
-  type: 'email_sent' | 'sms_sent' | 'payment_received' | 'quote_sent' | 'invoice_sent' | 'reminder_sent' | 'quote_accepted' | 'job_scheduled' | 'job_started' | 'job_completed';
+  type: string;
   title: string;
   description: string;
   timestamp: string;
   status: 'success' | 'pending' | 'failed';
+  entityType?: 'job' | 'quote' | 'invoice' | null;
+  entityId?: string | null;
+  navigationPath?: string | null;
   metadata?: Record<string, any>;
 }
 
@@ -42,6 +48,11 @@ const activityIcons: Record<string, typeof Mail> = {
   job_scheduled: Clock,
   job_started: Clock,
   job_completed: CheckCircle2,
+  job_created: Briefcase,
+  job_status_change: Briefcase,
+  quote_created: Plus,
+  invoice_created: Plus,
+  invoice_paid: CreditCard,
 };
 
 const activityColors: Record<string, { bg: string; icon: string }> = {
@@ -55,6 +66,11 @@ const activityColors: Record<string, { bg: string; icon: string }> = {
   job_scheduled: { bg: 'hsl(210 80% 52% / 0.1)', icon: 'hsl(210 80% 52%)' },
   job_started: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
   job_completed: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
+  job_created: { bg: 'hsl(210 80% 52% / 0.1)', icon: 'hsl(210 80% 52%)' },
+  job_status_change: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
+  quote_created: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
+  invoice_created: { bg: 'hsl(5 85% 55% / 0.1)', icon: 'hsl(5 85% 55%)' },
+  invoice_paid: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
 };
 
 export default function ActivityFeed({ 
@@ -62,6 +78,8 @@ export default function ActivityFeed({
   onViewAll,
   compact = false 
 }: ActivityFeedProps) {
+  const [, setLocation] = useLocation();
+  
   const { data: activities = [], isLoading } = useQuery<ActivityItem[]>({
     queryKey: [`/api/activity/recent/${limit}`],
     staleTime: 30 * 1000,
@@ -75,6 +93,12 @@ export default function ActivityFeed({
   const health = systemStatus as any;
   const emailWorking = health?.services?.email?.status === 'ready';
   const smsWorking = health?.services?.sms?.status === 'ready';
+  
+  const handleActivityClick = (activity: ActivityItem) => {
+    if (activity.navigationPath) {
+      setLocation(activity.navigationPath);
+    }
+  };
 
   if (compact) {
     return (
@@ -193,12 +217,14 @@ export default function ActivityFeed({
                 {activities.slice(0, limit).map((activity, index) => {
                   const Icon = activityIcons[activity.type] || Mail;
                   const colors = activityColors[activity.type] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
+                  const isClickable = !!activity.navigationPath;
                   
                   return (
                     <div 
                       key={activity.id}
-                      className={`relative flex items-start gap-3 p-3 rounded-xl hover-elevate cursor-pointer animate-slide-in stagger-delay-${Math.min(index + 1, 8)}`}
+                      className={`relative flex items-start gap-3 p-3 rounded-xl hover-elevate animate-slide-in stagger-delay-${Math.min(index + 1, 8)} ${isClickable ? 'cursor-pointer' : ''}`}
                       style={{ opacity: 0 }}
+                      onClick={() => handleActivityClick(activity)}
                       data-testid={`activity-item-${activity.id}`}
                     >
                       {/* Icon with status indicator */}
@@ -235,6 +261,13 @@ export default function ActivityFeed({
                           {formatHistoryDate(activity.timestamp)}
                         </p>
                       </div>
+                      
+                      {/* Navigation indicator */}
+                      {isClickable && (
+                        <div className="flex items-center self-center">
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
