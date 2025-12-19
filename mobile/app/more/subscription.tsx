@@ -25,12 +25,13 @@ interface FeatureItem {
 }
 
 interface SubscriptionStatus {
-  tier: 'free' | 'pro' | 'trial';
+  tier: 'free' | 'pro' | 'team' | 'trial';
   status: 'active' | 'past_due' | 'canceled' | 'none';
   currentPeriodEnd?: string;
   cancelAtPeriodEnd?: boolean;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  seatCount?: number;
 }
 
 interface CheckoutResponse {
@@ -42,6 +43,8 @@ interface CheckoutResponse {
 }
 
 const PRO_PRICE = 39;
+const TEAM_BASE_PRICE = 59;
+const TEAM_SEAT_PRICE = 29;
 const BETA_MODE = true;
 
 const FEATURES: FeatureItem[] = [
@@ -456,6 +459,117 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     lineHeight: 20,
   },
+  // Plan selection styles
+  planSelectionContainer: {
+    marginBottom: spacing.xl,
+  },
+  planSelectionTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    marginBottom: spacing.md,
+  },
+  planSelectCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 2,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  planSelectCardActive: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}08`,
+  },
+  planSelectHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  planSelectName: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  planSelectSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  planSelectBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    backgroundColor: colors.muted,
+  },
+  planSelectBadgeActive: {
+    backgroundColor: colors.primary,
+  },
+  planSelectBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+  },
+  planSelectBadgeTextActive: {
+    color: colors.primaryForeground,
+  },
+  planSelectPrice: {
+    ...typography.pageTitle,
+    color: colors.primary,
+    marginBottom: spacing.md,
+  },
+  planSelectPeriod: {
+    ...typography.body,
+    color: colors.mutedForeground,
+    fontWeight: 'normal',
+  },
+  planFeatureList: {
+    gap: spacing.xs,
+  },
+  planFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  planFeatureText: {
+    ...typography.caption,
+    color: colors.foreground,
+  },
+  // Seat selector styles
+  seatSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  seatSelectorLabel: {
+    ...typography.caption,
+    color: colors.foreground,
+    flex: 1,
+  },
+  seatButton: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.md,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  seatCount: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    minWidth: 30,
+    textAlign: 'center',
+  },
+  seatSelectorSuffix: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
 });
 
 export default function SubscriptionScreen() {
@@ -468,6 +582,11 @@ export default function SubscriptionScreen() {
   const [upgrading, setUpgrading] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<'pro' | 'team'>('pro');
+  const [seatCount, setSeatCount] = useState(1);
+  
+  // Calculate team price based on seat count
+  const teamPrice = TEAM_BASE_PRICE + (seatCount * TEAM_SEAT_PRICE);
 
   const fetchSubscriptionStatus = useCallback(async () => {
     try {
@@ -504,11 +623,24 @@ export default function SubscriptionScreen() {
 
     setUpgrading(true);
     try {
-      const response = await api.post<CheckoutResponse>('/api/billing/checkout', {
-        priceId: 'pro_monthly',
-        successUrl: 'tradietrack://subscription?success=true',
-        cancelUrl: 'tradietrack://subscription?canceled=true',
-      });
+      // Choose endpoint based on selected plan
+      const endpoint = selectedPlan === 'team' 
+        ? '/api/billing/checkout/team' 
+        : '/api/billing/checkout';
+      
+      const body = selectedPlan === 'team' 
+        ? { 
+            seatCount: seatCount,
+            successUrl: 'tradietrack://subscription?success=true',
+            cancelUrl: 'tradietrack://subscription?canceled=true',
+          }
+        : {
+            priceId: 'pro_monthly',
+            successUrl: 'tradietrack://subscription?success=true',
+            cancelUrl: 'tradietrack://subscription?canceled=true',
+          };
+
+      const response = await api.post<CheckoutResponse>(endpoint, body);
 
       if (response.data?.success && response.data?.sessionUrl) {
         const canOpen = await Linking.canOpenURL(response.data.sessionUrl);
@@ -600,7 +732,10 @@ export default function SubscriptionScreen() {
 
   const currentTier = BETA_MODE ? 'pro' : (subscriptionStatus?.tier || 'free');
   const isProUser = currentTier === 'pro' || currentTier === 'trial';
+  const isTeamUser = currentTier === 'team';
+  const hasPaidPlan = isProUser || isTeamUser;
   const isCanceledButActive = subscriptionStatus?.cancelAtPeriodEnd && subscriptionStatus?.status === 'active';
+  const currentSeatCount = subscriptionStatus?.seatCount || 0;
 
   const getStatusBadgeStyle = () => {
     if (subscriptionStatus?.status === 'past_due') {
@@ -668,7 +803,7 @@ export default function SubscriptionScreen() {
                 </View>
               )}
 
-              {isProUser && !BETA_MODE && (
+              {hasPaidPlan && !BETA_MODE && (
                 <View style={styles.currentPlanCard}>
                   <View style={styles.currentPlanHeader}>
                     <View style={styles.currentPlanBadge}>
@@ -678,7 +813,7 @@ export default function SubscriptionScreen() {
                       <View style={styles.currentPlanInfo}>
                         <Text style={styles.currentPlanLabel}>CURRENT PLAN</Text>
                         <Text style={styles.currentPlanName}>
-                          {currentTier === 'trial' ? 'Pro Trial' : 'Professional'}
+                          {currentTier === 'trial' ? 'Pro Trial' : isTeamUser ? 'Team' : 'Professional'}
                         </Text>
                       </View>
                     </View>
@@ -692,7 +827,10 @@ export default function SubscriptionScreen() {
                   <View style={styles.billingInfo}>
                     <View style={styles.billingRow}>
                       <Text style={styles.billingLabel}>Monthly Price</Text>
-                      <Text style={styles.billingValue}>${PRO_PRICE} AUD</Text>
+                      <Text style={styles.billingValue}>
+                        ${isTeamUser ? (TEAM_BASE_PRICE + (currentSeatCount * TEAM_SEAT_PRICE)) : PRO_PRICE} AUD
+                        {isTeamUser && ` (${currentSeatCount + 1} users)`}
+                      </Text>
                     </View>
                     {subscriptionStatus?.currentPeriodEnd && (
                       <View style={styles.billingRow}>
@@ -718,47 +856,157 @@ export default function SubscriptionScreen() {
                 </View>
               )}
 
-              <View style={styles.plansRow}>
-                <View style={[
-                  styles.planCard, 
-                  styles.planCardFree,
-                  !isProUser && styles.planCardCurrent
-                ]}>
-                  <View style={[styles.planBadge, styles.planBadgeFree]}>
-                    <Text style={[styles.planBadgeText, styles.planBadgeTextFree]}>FREE</Text>
-                  </View>
-                  <Text style={styles.planName}>Starter</Text>
-                  <Text style={[styles.planPrice, { color: colors.mutedForeground }]}>$0</Text>
-                  <Text style={styles.planPeriod}>forever</Text>
-                  {!isProUser && !BETA_MODE && (
+              {/* Plan Selection - Only show when free */}
+              {!hasPaidPlan && !BETA_MODE && (
+                <View style={styles.planSelectionContainer}>
+                  <Text style={styles.planSelectionTitle}>Choose Your Plan</Text>
+                  
+                  {/* Pro Plan Card */}
+                  <TouchableOpacity 
+                    style={[
+                      styles.planSelectCard, 
+                      selectedPlan === 'pro' && styles.planSelectCardActive
+                    ]}
+                    onPress={() => setSelectedPlan('pro')}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.planSelectHeader}>
+                      <View>
+                        <Text style={styles.planSelectName}>Pro</Text>
+                        <Text style={styles.planSelectSubtitle}>Perfect for solo tradies</Text>
+                      </View>
+                      <View style={[styles.planSelectBadge, selectedPlan === 'pro' && styles.planSelectBadgeActive]}>
+                        <Text style={[styles.planSelectBadgeText, selectedPlan === 'pro' && styles.planSelectBadgeTextActive]}>Solo</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.planSelectPrice}>${PRO_PRICE}<Text style={styles.planSelectPeriod}>/month</Text></Text>
+                    <View style={styles.planFeatureList}>
+                      <View style={styles.planFeatureItem}>
+                        <Feather name="check" size={14} color={colors.success} />
+                        <Text style={styles.planFeatureText}>Unlimited jobs, quotes, invoices</Text>
+                      </View>
+                      <View style={styles.planFeatureItem}>
+                        <Feather name="check" size={14} color={colors.success} />
+                        <Text style={styles.planFeatureText}>AI assistant & suggestions</Text>
+                      </View>
+                      <View style={styles.planFeatureItem}>
+                        <Feather name="check" size={14} color={colors.success} />
+                        <Text style={styles.planFeatureText}>Custom branding</Text>
+                      </View>
+                      <View style={styles.planFeatureItem}>
+                        <Feather name="x" size={14} color={colors.mutedForeground} />
+                        <Text style={[styles.planFeatureText, { color: colors.mutedForeground }]}>Team features</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Team Plan Card */}
+                  <TouchableOpacity 
+                    style={[
+                      styles.planSelectCard, 
+                      selectedPlan === 'team' && styles.planSelectCardActive
+                    ]}
+                    onPress={() => setSelectedPlan('team')}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.planSelectHeader}>
+                      <View>
+                        <Text style={styles.planSelectName}>Team</Text>
+                        <Text style={styles.planSelectSubtitle}>${TEAM_BASE_PRICE} base + ${TEAM_SEAT_PRICE}/extra user</Text>
+                      </View>
+                      <View style={[styles.planSelectBadge, selectedPlan === 'team' && styles.planSelectBadgeActive]}>
+                        <Text style={[styles.planSelectBadgeText, selectedPlan === 'team' && styles.planSelectBadgeTextActive]}>Crew</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.planSelectPrice}>${teamPrice}<Text style={styles.planSelectPeriod}>/month</Text></Text>
+                    
+                    {/* Seat Selector */}
+                    <View style={styles.seatSelector}>
+                      <Text style={styles.seatSelectorLabel}>Team size:</Text>
+                      <TouchableOpacity 
+                        style={styles.seatButton}
+                        onPress={() => setSeatCount(Math.max(0, seatCount - 1))}
+                      >
+                        <Feather name="minus" size={16} color={colors.foreground} />
+                      </TouchableOpacity>
+                      <Text style={styles.seatCount}>{seatCount + 1}</Text>
+                      <TouchableOpacity 
+                        style={styles.seatButton}
+                        onPress={() => setSeatCount(Math.min(49, seatCount + 1))}
+                      >
+                        <Feather name="plus" size={16} color={colors.foreground} />
+                      </TouchableOpacity>
+                      <Text style={styles.seatSelectorSuffix}>users</Text>
+                    </View>
+                    
+                    <View style={styles.planFeatureList}>
+                      <View style={styles.planFeatureItem}>
+                        <Feather name="check" size={14} color={colors.success} />
+                        <Text style={styles.planFeatureText}>Everything in Pro</Text>
+                      </View>
+                      <View style={styles.planFeatureItem}>
+                        <Feather name="check" size={14} color={colors.success} />
+                        <Text style={styles.planFeatureText}>Team management & roles</Text>
+                      </View>
+                      <View style={styles.planFeatureItem}>
+                        <Feather name="check" size={14} color={colors.success} />
+                        <Text style={styles.planFeatureText}>Live GPS tracking</Text>
+                      </View>
+                      <View style={styles.planFeatureItem}>
+                        <Feather name="check" size={14} color={colors.success} />
+                        <Text style={styles.planFeatureText}>Team chat</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Current plan display for paid users */}
+              {hasPaidPlan && !BETA_MODE && (
+                <View style={styles.plansRow}>
+                  <View style={[styles.planCard, styles.planCardPro, styles.planCardCurrent]}>
+                    <View style={[styles.planBadge, styles.planBadgePro]}>
+                      <Text style={[styles.planBadgeText, styles.planBadgeTextPro]}>{isTeamUser ? 'TEAM' : 'PRO'}</Text>
+                    </View>
+                    <Text style={styles.planName}>{isTeamUser ? 'Team' : 'Professional'}</Text>
+                    <Text style={styles.planPrice}>
+                      ${isTeamUser ? (TEAM_BASE_PRICE + (currentSeatCount * TEAM_SEAT_PRICE)) : PRO_PRICE}
+                    </Text>
+                    <Text style={styles.planPeriod}>/month{isTeamUser && ` (${currentSeatCount + 1} users)`}</Text>
                     <View style={styles.currentPlanIndicator}>
                       <Feather name="check-circle" size={14} color={colors.success} />
                       <Text style={styles.currentPlanIndicatorText}>Current Plan</Text>
                     </View>
-                  )}
-                </View>
-
-                <View style={[
-                  styles.planCard, 
-                  styles.planCardPro,
-                  isProUser && styles.planCardCurrent
-                ]}>
-                  <View style={[styles.planBadge, styles.planBadgePro]}>
-                    <Text style={[styles.planBadgeText, styles.planBadgeTextPro]}>PRO</Text>
                   </View>
-                  <Text style={styles.planName}>Professional</Text>
-                  <Text style={styles.planPrice}>${PRO_PRICE}</Text>
-                  <Text style={styles.planPeriod}>/month</Text>
-                  {(isProUser || BETA_MODE) && (
+                </View>
+              )}
+
+              {/* Beta mode display */}
+              {BETA_MODE && (
+                <View style={styles.plansRow}>
+                  <View style={[styles.planCard, styles.planCardFree]}>
+                    <View style={[styles.planBadge, styles.planBadgeFree]}>
+                      <Text style={[styles.planBadgeText, styles.planBadgeTextFree]}>FREE</Text>
+                    </View>
+                    <Text style={styles.planName}>Starter</Text>
+                    <Text style={[styles.planPrice, { color: colors.mutedForeground }]}>$0</Text>
+                    <Text style={styles.planPeriod}>forever</Text>
+                  </View>
+
+                  <View style={[styles.planCard, styles.planCardPro, styles.planCardCurrent]}>
+                    <View style={[styles.planBadge, styles.planBadgePro]}>
+                      <Text style={[styles.planBadgeText, styles.planBadgeTextPro]}>PRO</Text>
+                    </View>
+                    <Text style={styles.planName}>Professional</Text>
+                    <Text style={styles.planPrice}>${PRO_PRICE}</Text>
+                    <Text style={styles.planPeriod}>/month</Text>
                     <View style={styles.currentPlanIndicator}>
                       <Feather name="check-circle" size={14} color={colors.success} />
-                      <Text style={styles.currentPlanIndicatorText}>
-                        {BETA_MODE ? 'Beta Access' : 'Current Plan'}
-                      </Text>
+                      <Text style={styles.currentPlanIndicatorText}>Beta Access</Text>
                     </View>
-                  )}
+                  </View>
                 </View>
-              </View>
+              )}
 
               <View style={styles.featuresCard}>
                 <View style={styles.featuresHeader}>
@@ -813,7 +1061,7 @@ export default function SubscriptionScreen() {
                 ))}
               </View>
 
-              {!isProUser && !BETA_MODE && (
+              {!hasPaidPlan && !BETA_MODE && (
                 <>
                   <TouchableOpacity 
                     style={[styles.ctaButton, upgrading && styles.ctaButtonDisabled]}
@@ -824,7 +1072,11 @@ export default function SubscriptionScreen() {
                     {upgrading ? (
                       <ActivityIndicator color={colors.primaryForeground} />
                     ) : (
-                      <Text style={styles.ctaButtonText}>Upgrade to Pro</Text>
+                      <Text style={styles.ctaButtonText}>
+                        {selectedPlan === 'team' 
+                          ? `Upgrade to Team - $${teamPrice}/month`
+                          : `Upgrade to Pro - $${PRO_PRICE}/month`}
+                      </Text>
                     )}
                   </TouchableOpacity>
                   <Text style={styles.ctaSubtext}>
@@ -848,7 +1100,7 @@ export default function SubscriptionScreen() {
                 </>
               )}
 
-              {isProUser && !BETA_MODE && (
+              {hasPaidPlan && !BETA_MODE && (
                 <>
                   {isCanceledButActive ? (
                     <TouchableOpacity 
