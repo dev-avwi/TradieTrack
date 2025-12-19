@@ -65,6 +65,7 @@ import { useToast } from "@/hooks/use-toast";
 import DataSafetyBanner from "./DataSafetyBanner";
 import DocumentTemplateSelector from "./DocumentTemplateSelector";
 import { TemplateId, TemplateCustomization } from "@/lib/document-templates";
+import { PRICING } from "@shared/schema";
 
 // Types for MyAccount tab
 interface ColorOption {
@@ -1986,14 +1987,16 @@ function BillingTabContent() {
   const [selectedPlan, setSelectedPlan] = useState<'pro' | 'team'>('pro');
   const [seatCount, setSeatCount] = useState(1);
   
-  // Pricing constants (in AUD)
-  const PRICING = {
-    pro: { monthly: 39 },
-    team: { base: 59, perSeat: 29 }
-  };
+  // Currency formatter
+  const formatPrice = (cents: number) => Math.round(cents / 100);
   
-  // Calculate team price
-  const teamPrice = PRICING.team.base + (seatCount * PRICING.team.perSeat);
+  // Pricing in dollars (converted from cents in schema)
+  const proMonthly = formatPrice(PRICING.pro.monthly); // $39
+  const teamBase = formatPrice(PRICING.team.baseMonthly); // $59
+  const seatPrice = formatPrice(PRICING.team.seatMonthly); // $29
+  
+  // Calculate team price (base + additional seats)
+  const teamPrice = teamBase + (seatCount * seatPrice);
   
   // Fetch billing status
   const { data: billingStatus, isLoading: billingLoading } = useQuery<{
@@ -2177,8 +2180,8 @@ function BillingTabContent() {
                           : isCanceled 
                             ? 'Cancels at period end' 
                             : isTeam 
-                              ? `$${PRICING.team.base + (currentSeatCount * PRICING.team.perSeat)}/month (${currentSeatCount + 1} users)` 
-                              : '$39/month' 
+                              ? `$${formatPrice(PRICING.team.baseMonthly + (currentSeatCount * PRICING.team.seatMonthly))}/month (${currentSeatCount + 1} users)` 
+                              : `$${proMonthly}/month` 
                         : 'Limited features'}
                     </p>
                   </div>
@@ -2217,7 +2220,7 @@ function BillingTabContent() {
                         <h5 className="font-semibold text-lg">Pro</h5>
                         <Badge variant={selectedPlan === 'pro' ? 'default' : 'outline'}>Solo</Badge>
                       </div>
-                      <p className="text-2xl font-bold mb-2">$39<span className="text-sm font-normal text-muted-foreground">/month</span></p>
+                      <p className="text-2xl font-bold mb-2">${proMonthly}<span className="text-sm font-normal text-muted-foreground">/month</span></p>
                       <p className="text-sm text-muted-foreground mb-3">Perfect for solo tradies</p>
                       <ul className="text-sm space-y-1">
                         <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Unlimited jobs, quotes, invoices</li>
@@ -2240,7 +2243,7 @@ function BillingTabContent() {
                       <p className="text-2xl font-bold mb-2">
                         ${teamPrice}<span className="text-sm font-normal text-muted-foreground">/month</span>
                       </p>
-                      <p className="text-sm text-muted-foreground mb-3">$59 base + $29/extra user</p>
+                      <p className="text-sm text-muted-foreground mb-3">${teamBase} base + ${seatPrice}/extra user</p>
                       
                       {/* Seat selector */}
                       <div className="flex items-center gap-2 mb-3 p-2 bg-muted/50 rounded">
@@ -2319,7 +2322,7 @@ function BillingTabContent() {
                         <Crown className="h-4 w-4 mr-2" />
                         {selectedPlan === 'team' 
                           ? `Upgrade to Team - $${teamPrice}/month`
-                          : 'Upgrade to Pro - $39/month'}
+                          : `Upgrade to Pro - $${proMonthly}/month`}
                       </>
                     )}
                   </Button>
