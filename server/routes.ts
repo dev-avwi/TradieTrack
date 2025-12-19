@@ -10,7 +10,7 @@ import { loginSchema, insertUserSchema, type SafeUser, requestLoginCodeSchema, v
 import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail, sendTeamInviteEmail, sendJobAssignmentEmail, sendJobCompletionNotificationEmail, sendWelcomeEmail } from "./emailService";
 import { FreemiumService } from "./freemiumService";
 import { DEMO_USER } from "./demoData";
-import { ownerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission } from "./permissions";
+import { ownerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, sanitizeClientData, canViewClientSensitiveData } from "./permissions";
 import {
   insertBusinessSettingsSchema,
   insertIntegrationSettingsSchema,
@@ -66,6 +66,7 @@ import {
   tradieLineItems, 
   tradieRateCards 
 } from "./tradieTemplates";
+import { getSafetyFormTemplates, getSafetyFormTemplate } from "./safetyTemplates";
 import { generateAISuggestions, chatWithAI, type BusinessContext } from "./ai";
 import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted } from "./notifications";
 import { notifyJobAssigned, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected } from "./pushNotifications";
@@ -3841,6 +3842,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clients = clients.filter(c => assignedClientIds.includes(c.id));
       }
       
+      // Sanitize client data - mask sensitive fields for managers without READ_CLIENTS_SENSITIVE
+      clients = clients.map(client => sanitizeClientData(client, userContext));
+      
       res.json(clients);
     } catch (error) {
       console.error("Error fetching clients:", error);
@@ -3856,7 +3860,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
       }
-      res.json(client);
+      // Sanitize client data - mask sensitive fields for managers without READ_CLIENTS_SENSITIVE
+      const sanitizedClient = sanitizeClientData(client, userContext);
+      res.json(sanitizedClient);
     } catch (error) {
       console.error("Error fetching client:", error);
       res.status(500).json({ error: "Failed to fetch client" });
@@ -4772,6 +4778,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const data = insertJobSchema.parse(body);
       
+      // Validate job assignment RBAC if assignedTo is provided
+      if (data.assignedTo) {
+        const userContext = req.userContext || await getUserContext(req.userId);
+        const assignmentCheck = await canAssignJobTo(userContext, data.assignedTo);
+        if (!assignmentCheck.allowed) {
+          return res.status(403).json({ 
+            error: assignmentCheck.reason || "You don't have permission to assign this job to that team member",
+            code: "ASSIGNMENT_NOT_ALLOWED"
+          });
+        }
+      }
+      
       // Auto-geocode address if provided but lat/lng missing
       let jobData = { ...data, userId: effectiveUserId };
       if (data.address && (!data.latitude || !data.longitude)) {
@@ -4845,6 +4863,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ 
             error: "Cannot mark job as invoiced without creating an invoice first. Please create an invoice for this job.",
             code: "INVOICE_REQUIRED"
+          });
+        }
+      }
+      
+      // Validate job assignment RBAC: Manager can only assign to workers, not to other managers or owner
+      if (data.assignedTo && data.assignedTo !== existingJob?.assignedTo) {
+        const userContext = req.userContext || await getUserContext(req.userId);
+        const assignmentCheck = await canAssignJobTo(userContext, data.assignedTo);
+        if (!assignmentCheck.allowed) {
+          return res.status(403).json({ 
+            error: assignmentCheck.reason || "You don't have permission to assign this job to that team member",
+            code: "ASSIGNMENT_NOT_ALLOWED"
           });
         }
       }
@@ -5018,31 +5048,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "assignedTo is required" });
       }
       
-      // Verify the user is owner/manager (can assign jobs)
-      const businessSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
-      const isOwner = businessSettings && businessSettings.userId === req.userId;
-      
-      // Check if user is a manager via team member role
-      let isManager = false;
-      if (!isOwner) {
-        const teamMemberInfo = await storage.getTeamMemberByUserIdAndBusiness(req.userId, userContext.effectiveUserId);
-        if (teamMemberInfo && teamMemberInfo.roleId) {
-          // Get the role name from the role ID
-          const role = await storage.getUserRole(teamMemberInfo.roleId);
-          isManager = role?.name?.toLowerCase().includes('manager') || 
-                      role?.name?.toLowerCase().includes('admin') || false;
-        }
+      // Validate job assignment RBAC: Owner assigns to anyone, Manager assigns to workers only
+      const assignmentCheck = await canAssignJobTo(userContext, assignedTo);
+      if (!assignmentCheck.allowed) {
+        return res.status(403).json({ 
+          error: assignmentCheck.reason || "You don't have permission to assign this job to that team member",
+          code: "ASSIGNMENT_NOT_ALLOWED"
+        });
       }
       
-      if (!isOwner && !isManager) {
-        return res.status(403).json({ error: "Only owners and managers can assign jobs" });
-      }
-      
-      // Verify the assignee is a valid team member
+      // Verify the assignee is a valid team member (or the owner)
+      // Note: assignedTo can be either memberId (team_members.member_id) or userId (users.id)
       const teamMembers = await storage.getTeamMembers(userContext.effectiveUserId);
-      const validAssignee = teamMembers.find(m => m.userId === assignedTo && m.inviteStatus === 'accepted');
+      const validAssignee = teamMembers.find(m => 
+        (m.memberId === assignedTo || m.userId === assignedTo) && 
+        m.inviteStatus === 'accepted'
+      );
+      const isAssigningToOwner = assignedTo === userContext.businessOwnerId || assignedTo === userContext.effectiveUserId;
       
-      if (!validAssignee) {
+      if (!validAssignee && !isAssigningToOwner) {
         return res.status(400).json({ error: "Invalid team member for assignment" });
       }
       
@@ -14213,6 +14237,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
   // CUSTOM FORMS
   // ============================================
+
+  // Get all pre-built safety form templates (SWMS, JSA, etc.)
+  app.get("/api/safety-form-templates", requireAuth, async (req: any, res) => {
+    try {
+      const templates = getSafetyFormTemplates();
+      res.json(templates);
+    } catch (error: any) {
+      console.error('Error fetching safety form templates:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get a specific safety form template
+  app.get("/api/safety-form-templates/:key", requireAuth, async (req: any, res) => {
+    try {
+      const { key } = req.params;
+      const template = getSafetyFormTemplate(key as any);
+      
+      if (!template) {
+        return res.status(404).json({ error: 'Safety form template not found' });
+      }
+      
+      res.json(template);
+    } catch (error: any) {
+      console.error('Error fetching safety form template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create custom form from safety template
+  app.post("/api/safety-form-templates/:key/create", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { key } = req.params;
+      const template = getSafetyFormTemplate(key as any);
+      
+      if (!template) {
+        return res.status(404).json({ error: 'Safety form template not found' });
+      }
+      
+      // Create a custom form based on the template
+      const form = await storage.createCustomForm({
+        userId,
+        name: template.name,
+        description: template.description,
+        formType: template.formType,
+        fields: template.fields,
+        settings: template.settings,
+        requiresSignature: template.requiresSignature,
+        isActive: true,
+      });
+      
+      res.status(201).json(form);
+    } catch (error: any) {
+      console.error('Error creating form from template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   // Get all custom forms for user
   app.get("/api/custom-forms", requireAuth, async (req: any, res) => {
