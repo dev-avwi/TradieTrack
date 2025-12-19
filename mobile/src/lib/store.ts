@@ -47,6 +47,9 @@ interface BusinessSettings {
   themeMode?: 'light' | 'dark' | 'system';
   documentTemplate?: 'professional' | 'modern' | 'minimal';
   documentTemplateSettings?: TemplateCustomization;
+  tradeName?: string;
+  aiEnabled?: boolean;
+  aiPhotoAnalysisEnabled?: boolean;
 }
 
 interface Job {

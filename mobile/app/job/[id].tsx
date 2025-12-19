@@ -27,8 +27,9 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import api, { API_URL } from '../../src/lib/api';
-import { useJobsStore, useTimeTrackingStore } from '../../src/lib/store';
+import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';
+import { AIPhotoAnalysis } from '../../src/components/AIPhotoAnalysis';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
@@ -1464,6 +1465,7 @@ export default function JobDetailScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   
   const { updateJobStatus, updateJobNotes } = useJobsStore();
+  const { businessSettings } = useAuthStore();
   const { 
     activeTimer, 
     fetchActiveTimer, 
@@ -3898,6 +3900,18 @@ export default function JobDetailScreen() {
                   <Text style={[styles.photoActionText, styles.photoActionTextSecondary]}>Gallery</Text>
                 </TouchableOpacity>
               </View>
+              
+              {/* AI Photo Analysis */}
+              {job && photos.filter(p => !isVideo(p)).length > 0 && (
+                <AIPhotoAnalysis
+                  jobId={job.id}
+                  photoCount={photos.filter(p => !isVideo(p)).length}
+                  existingNotes={job.notes || ''}
+                  onNotesUpdated={() => loadJob()}
+                  aiEnabled={businessSettings?.aiEnabled !== false}
+                  aiPhotoAnalysisEnabled={businessSettings?.aiPhotoAnalysisEnabled !== false}
+                />
+              )}
             </ScrollView>
           </View>
         </View>
