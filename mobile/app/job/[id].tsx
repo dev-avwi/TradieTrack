@@ -3830,6 +3830,19 @@ export default function JobDetailScreen() {
                 <Feather name="x" size={24} color={colors.foreground} />
               </TouchableOpacity>
             </View>
+            
+            {/* AI Photo Analysis - Prominent Position */}
+            {job && photos.filter(p => !isVideo(p)).length > 0 && (
+              <AIPhotoAnalysis
+                jobId={job.id}
+                photoCount={photos.filter(p => !isVideo(p)).length}
+                existingNotes={job.notes || ''}
+                onNotesUpdated={() => loadJob()}
+                aiEnabled={businessSettings?.aiEnabled !== false}
+                aiPhotoAnalysisEnabled={businessSettings?.aiPhotoAnalysisEnabled !== false}
+              />
+            )}
+            
             <ScrollView style={styles.photosContainer}>
               {photos.length === 0 ? (
                 <View style={styles.photosEmpty}>
@@ -3900,18 +3913,6 @@ export default function JobDetailScreen() {
                   <Text style={[styles.photoActionText, styles.photoActionTextSecondary]}>Gallery</Text>
                 </TouchableOpacity>
               </View>
-              
-              {/* AI Photo Analysis */}
-              {job && photos.filter(p => !isVideo(p)).length > 0 && (
-                <AIPhotoAnalysis
-                  jobId={job.id}
-                  photoCount={photos.filter(p => !isVideo(p)).length}
-                  existingNotes={job.notes || ''}
-                  onNotesUpdated={() => loadJob()}
-                  aiEnabled={businessSettings?.aiEnabled !== false}
-                  aiPhotoAnalysisEnabled={businessSettings?.aiPhotoAnalysisEnabled !== false}
-                />
-              )}
             </ScrollView>
           </View>
         </View>

@@ -323,12 +323,14 @@ export function AIPhotoAnalysis({
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.primary + '15',
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 2,
+    borderColor: colors.primary + '40',
     padding: spacing.md,
-    marginTop: spacing.md,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
   },
   header: {
     flexDirection: 'row',
@@ -339,7 +341,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   title: {
     fontSize: typography.subtitle.fontSize,
     fontWeight: '600',
-    color: colors.foreground,
+    color: colors.primary,
   },
   betaBadge: {
     backgroundColor: colors.primary + '20',
