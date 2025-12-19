@@ -10,7 +10,7 @@ import { loginSchema, insertUserSchema, type SafeUser, requestLoginCodeSchema, v
 import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail, sendTeamInviteEmail, sendJobAssignmentEmail, sendJobCompletionNotificationEmail, sendWelcomeEmail } from "./emailService";
 import { FreemiumService } from "./freemiumService";
 import { DEMO_USER } from "./demoData";
-import { ownerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, sanitizeClientData, canViewClientSensitiveData } from "./permissions";
+import { ownerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo } from "./permissions";
 import {
   insertBusinessSettingsSchema,
   insertIntegrationSettingsSchema,
@@ -3842,9 +3842,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clients = clients.filter(c => assignedClientIds.includes(c.id));
       }
       
-      // Sanitize client data - mask sensitive fields for managers without READ_CLIENTS_SENSITIVE
-      clients = clients.map(client => sanitizeClientData(client, userContext));
-      
       res.json(clients);
     } catch (error) {
       console.error("Error fetching clients:", error);
@@ -3860,9 +3857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
       }
-      // Sanitize client data - mask sensitive fields for managers without READ_CLIENTS_SENSITIVE
-      const sanitizedClient = sanitizeClientData(client, userContext);
-      res.json(sanitizedClient);
+      res.json(client);
     } catch (error) {
       console.error("Error fetching client:", error);
       res.status(500).json({ error: "Failed to fetch client" });
