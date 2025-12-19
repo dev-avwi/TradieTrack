@@ -29,7 +29,7 @@ import * as Sharing from 'expo-sharing';
 import api, { API_URL } from '../../src/lib/api';
 import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';
-import { AIPhotoAnalysis } from '../../src/components/AIPhotoAnalysis';
+import { AIPhotoAnalysisModal } from '../../src/components/AIPhotoAnalysis';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
@@ -103,11 +103,9 @@ interface JobPhoto {
 
 const isVideo = (photo: JobPhoto) => {
   const mimeType = photo.mimeType || '';
-  const fileName = photo.fileName || '';
-  return mimeType.startsWith('video/') || 
-         fileName.endsWith('.mp4') || 
-         fileName.endsWith('.mov') || 
-         fileName.endsWith('.m4v');
+  const fileName = photo.fileName?.toLowerCase() || '';
+  const ext = fileName.split('.').pop() || '';
+  return mimeType.startsWith('video/') || ['mp4', 'mov', 'avi', 'webm', 'm4v', '3gp'].includes(ext);
 };
 
 interface CompletedTimeEntry {
@@ -648,16 +646,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   addPhotoButton: {
-    width: 72,
+    width: 100,
     height: 72,
     borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: colors.primary + '50',
     marginRight: spacing.sm,
+    gap: 4,
   },
   emptyPhotosContainer: {
     flexDirection: 'row',
@@ -1423,6 +1421,7 @@ export default function JobDetailScreen() {
   
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showPhotosModal, setShowPhotosModal] = useState(false);
+  const [showAIAnalysisModal, setShowAIAnalysisModal] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   
@@ -3384,7 +3383,8 @@ export default function JobDetailScreen() {
                 onPress={() => setShowPhotosModal(true)}
                 activeOpacity={0.7}
               >
-                <Feather name="plus" size={iconSizes.xl} color={colors.primary} />
+                <Feather name="plus-circle" size={24} color={colors.primary} />
+                <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>Add Photos</Text>
               </TouchableOpacity>
             </ScrollView>
             <View style={[styles.emptyPhotosContainer, { marginTop: spacing.md, flexWrap: 'wrap', gap: spacing.sm }]}>
@@ -3831,18 +3831,6 @@ export default function JobDetailScreen() {
               </TouchableOpacity>
             </View>
             
-            {/* AI Photo Analysis - Prominent Position */}
-            {job && photos.filter(p => !isVideo(p)).length > 0 && (
-              <AIPhotoAnalysis
-                jobId={job.id}
-                photoCount={photos.filter(p => !isVideo(p)).length}
-                existingNotes={job.notes || ''}
-                onNotesUpdated={() => loadJob()}
-                aiEnabled={businessSettings?.aiEnabled !== false}
-                aiPhotoAnalysisEnabled={businessSettings?.aiPhotoAnalysisEnabled !== false}
-              />
-            )}
-            
             <ScrollView style={styles.photosContainer}>
               {photos.length === 0 ? (
                 <View style={styles.photosEmpty}>
@@ -3914,9 +3902,50 @@ export default function JobDetailScreen() {
                 </TouchableOpacity>
               </View>
             </ScrollView>
+            
+            {/* Floating AI Analysis Button */}
+            {photos.filter(p => !isVideo(p)).length > 0 && businessSettings?.aiEnabled !== false && businessSettings?.aiPhotoAnalysisEnabled !== false && (
+              <TouchableOpacity
+                style={{
+                  position: 'absolute',
+                  bottom: spacing.lg,
+                  right: spacing.lg,
+                  backgroundColor: colors.primary,
+                  paddingHorizontal: spacing.lg,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.full || 24,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.sm,
+                  ...shadows.lg,
+                }}
+                onPress={() => {
+                  setShowPhotosModal(false);
+                  setTimeout(() => setShowAIAnalysisModal(true), 300);
+                }}
+                activeOpacity={0.8}
+              >
+                <Feather name="zap" size={18} color={colors.primaryForeground} />
+                <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>Analyse with AI</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
+
+      {/* AI Photo Analysis Modal */}
+      {job && (
+        <AIPhotoAnalysisModal
+          visible={showAIAnalysisModal}
+          onClose={() => setShowAIAnalysisModal(false)}
+          jobId={job.id}
+          photos={photos}
+          existingNotes={job.notes || ''}
+          onNotesUpdated={() => loadJob()}
+          aiEnabled={businessSettings?.aiEnabled !== false}
+          aiPhotoAnalysisEnabled={businessSettings?.aiPhotoAnalysisEnabled !== false}
+        />
+      )}
 
       {/* Full Photo Preview Modal */}
       <Modal visible={!!selectedPhoto && !showAnnotationEditor} animationType="fade" transparent>

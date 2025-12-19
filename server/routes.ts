@@ -2160,6 +2160,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userContext = await getUserContext(req.userId);
       const jobId = req.params.jobId;
       
+      // Get optional photoIds query parameter for selecting specific photos
+      const photoIdsParam = req.query.photoIds as string | undefined;
+      const selectedPhotoIds = photoIdsParam ? photoIdsParam.split(',').filter(Boolean) : null;
+      
       // Get job details
       const job = await storage.getJob(jobId, userContext.effectiveUserId);
       if (!job) {
@@ -2175,8 +2179,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Filter to only photos with valid signed URLs and limit to 10
+      // If photoIds are provided, only include those photos
       const photosWithUrls = photos
         .filter(p => p.signedUrl && (p.mimeType?.startsWith('image/') ?? true))
+        .filter(p => selectedPhotoIds ? selectedPhotoIds.includes(p.id) : true)
         .slice(0, 10)
         .map(p => ({
           id: p.id,

@@ -7,38 +7,78 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  Modal,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import api from '../lib/api';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, typography } from '../lib/design-tokens';
 
-interface AIPhotoAnalysisProps {
+interface Photo {
+  id: string;
+  url?: string;
+  signedUrl?: string;
+  thumbnailUrl?: string;
+  mimeType?: string;
+  fileName?: string;
+}
+
+// Helper to detect videos by mimeType or filename extension
+const isVideo = (photo: Photo): boolean => {
+  if (photo.mimeType?.startsWith('video/')) return true;
+  const ext = photo.fileName?.split('.').pop()?.toLowerCase() || '';
+  return ['mp4', 'mov', 'avi', 'webm', 'm4v', '3gp'].includes(ext);
+};
+
+interface AIPhotoAnalysisModalProps {
+  visible: boolean;
+  onClose: () => void;
   jobId: string;
-  photoCount: number;
+  photos: Photo[];
   existingNotes?: string;
   onNotesUpdated?: () => void;
   aiEnabled?: boolean;
   aiPhotoAnalysisEnabled?: boolean;
 }
 
-export function AIPhotoAnalysis({
+const { width: screenWidth } = Dimensions.get('window');
+const photoSize = (screenWidth - spacing.lg * 2 - spacing.sm * 2) / 3;
+
+export function AIPhotoAnalysisModal({
+  visible,
+  onClose,
   jobId,
-  photoCount,
+  photos,
   existingNotes,
   onNotesUpdated,
   aiEnabled = true,
   aiPhotoAnalysisEnabled = true,
-}: AIPhotoAnalysisProps) {
+}: AIPhotoAnalysisModalProps) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   
+  // Filter to only image photos (not videos)
+  const imagePhotos = photos.filter(p => !isVideo(p));
+  
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [analysisText, setAnalysisText] = useState('');
   const [isComplete, setIsComplete] = useState(false);
   const [isAddingToNotes, setIsAddingToNotes] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const isAbortedRef = useRef(false);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (visible) {
+      setSelectedPhotoIds(new Set());
+      setAnalysisText('');
+      setIsComplete(false);
+      setIsAnalysing(false);
+    }
+  }, [visible]);
 
   useEffect(() => {
     return () => {
@@ -48,8 +88,29 @@ export function AIPhotoAnalysis({
     };
   }, []);
 
+  const togglePhotoSelection = (photoId: string) => {
+    setSelectedPhotoIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(photoId)) {
+        newSet.delete(photoId);
+      } else if (newSet.size < 10) {
+        newSet.add(photoId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAll = () => {
+    const allIds = imagePhotos.slice(0, 10).map(p => p.id);
+    setSelectedPhotoIds(new Set(allIds));
+  };
+
+  const deselectAll = () => {
+    setSelectedPhotoIds(new Set());
+  };
+
   const startAnalysis = useCallback(async () => {
-    if (isAnalysing) return;
+    if (isAnalysing || selectedPhotoIds.size === 0) return;
     
     setIsAnalysing(true);
     setAnalysisText('');
@@ -62,7 +123,11 @@ export function AIPhotoAnalysis({
       const token = await api.getToken();
       const baseUrl = api.getBaseUrl();
       
-      const response = await fetch(`${baseUrl}/api/jobs/${jobId}/photos/analyze`, {
+      // Include selected photo IDs in the request
+      const photoIdsParam = Array.from(selectedPhotoIds).join(',');
+      const url = `${baseUrl}/api/jobs/${jobId}/photos/analyze?photoIds=${encodeURIComponent(photoIdsParam)}`;
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -124,32 +189,29 @@ export function AIPhotoAnalysis({
         setIsComplete(true);
       }
     } catch (error: any) {
-      if (error.name === 'AbortError' || isAbortedRef.current) {
+      if (error.name === 'AbortError') {
         return;
       }
       console.error('Photo analysis error:', error);
-      Alert.alert(
-        'Analysis Failed',
-        error.message || 'Could not analyse photos. Please try again.'
-      );
-      setAnalysisText('');
+      Alert.alert('Analysis Failed', error.message || 'Failed to analyse photos. Please try again.');
     } finally {
       if (!isAbortedRef.current) {
         setIsAnalysing(false);
       }
     }
-  }, [jobId, isAnalysing]);
+  }, [jobId, selectedPhotoIds, isAnalysing]);
 
   const cancelAnalysis = useCallback(() => {
     isAbortedRef.current = true;
-    abortControllerRef.current?.abort();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     setIsAnalysing(false);
     setAnalysisText('');
-    setIsComplete(false);
   }, []);
 
   const addToNotes = useCallback(async () => {
-    if (!analysisText.trim()) return;
+    if (!analysisText || isAddingToNotes) return;
     
     setIsAddingToNotes(true);
     try {
@@ -168,234 +230,296 @@ export function AIPhotoAnalysis({
         },
         body: JSON.stringify({ notes: newNotes }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update notes');
       }
-      
-      Alert.alert('Success', 'Photo analysis added to job notes');
-      setAnalysisText('');
-      setIsComplete(false);
+
+      Alert.alert('Success', 'AI analysis added to job notes');
       onNotesUpdated?.();
+      onClose();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Could not add analysis to notes');
+      console.error('Error adding to notes:', error);
+      Alert.alert('Error', 'Failed to add analysis to notes. Please try again.');
     } finally {
       setIsAddingToNotes(false);
     }
-  }, [jobId, analysisText, existingNotes, onNotesUpdated]);
+  }, [analysisText, existingNotes, jobId, onNotesUpdated, onClose, isAddingToNotes]);
 
   const discardAnalysis = useCallback(() => {
     setAnalysisText('');
     setIsComplete(false);
+    setSelectedPhotoIds(new Set());
   }, []);
-
-  if (photoCount === 0) {
-    return null;
-  }
 
   if (!aiEnabled || !aiPhotoAnalysisEnabled) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Feather name="zap" size={16} color={colors.mutedForeground} />
-          <Text style={styles.title}>AI Photo Analysis</Text>
-          <View style={styles.disabledBadge}>
-            <Text style={styles.disabledBadgeText}>Off</Text>
+      <Modal visible={visible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={styles.headerLeft}>
+                <Feather name="zap" size={20} color={colors.mutedForeground} />
+                <Text style={[styles.modalTitle, { color: colors.mutedForeground }]}>AI Photo Analysis</Text>
+              </View>
+              <TouchableOpacity onPress={onClose}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.disabledContent}>
+              <Feather name="alert-circle" size={48} color={colors.mutedForeground} />
+              <Text style={styles.disabledText}>
+                AI photo analysis is disabled. Enable it in Settings to use this feature.
+              </Text>
+            </View>
           </View>
         </View>
-        <Text style={styles.disabledText}>
-          AI photo analysis is disabled. Enable it in Settings to use this feature.
-        </Text>
-      </View>
+      </Modal>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Feather name="zap" size={16} color={colors.primary} />
-        <Text style={styles.title}>AI Photo Analysis</Text>
-        <View style={styles.betaBadge}>
-          <Text style={styles.betaBadgeText}>Beta</Text>
-        </View>
-        {photoCount > 0 && !isAnalysing && !analysisText && (
-          <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>
-              {photoCount} photo{photoCount !== 1 ? 's' : ''}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {!isAnalysing && !analysisText && (
-        <View style={styles.content}>
-          <Text style={styles.description}>
-            Use AI to analyse your job photos and automatically generate notes with photo references.
-          </Text>
-          <TouchableOpacity
-            style={styles.analyseButton}
-            onPress={startAnalysis}
-            activeOpacity={0.8}
-          >
-            <Feather name="zap" size={18} color={colors.primaryForeground} />
-            <Text style={styles.analyseButtonText}>
-              Analyse with AI
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {isAnalysing && (
-        <View style={styles.content}>
-          <View style={styles.analysingHeader}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.analysingText}>Analysing photos...</Text>
-          </View>
-          {analysisText ? (
-            <View style={styles.streamingContainer}>
-              <ScrollView 
-                style={styles.streamingScroll}
-                showsVerticalScrollIndicator={true}
-              >
-                <Text style={styles.streamingText}>
-                  {analysisText}
-                  <Text style={styles.cursor}>|</Text>
-                </Text>
-              </ScrollView>
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <View style={styles.headerLeft}>
+              <Feather name="zap" size={20} color={colors.primary} />
+              <Text style={styles.modalTitle}>Analyse with AI</Text>
             </View>
-          ) : null}
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={cancelAnalysis}
-            activeOpacity={0.8}
-          >
-            <Feather name="x" size={16} color={colors.foreground} />
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+            <TouchableOpacity onPress={onClose} disabled={isAnalysing}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
 
-      {isComplete && analysisText && (
-        <View style={styles.content}>
-          <View style={styles.completeHeader}>
-            <Feather name="check-circle" size={16} color={colors.success || '#22c55e'} />
-            <Text style={[styles.completeText, { color: colors.success || '#22c55e' }]}>
-              Analysis complete
-            </Text>
-          </View>
-          <View style={styles.resultContainer}>
-            <ScrollView 
-              style={styles.resultScroll}
-              showsVerticalScrollIndicator={true}
-            >
-              <Text style={styles.resultText}>{analysisText}</Text>
-            </ScrollView>
-          </View>
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.addButton, isAddingToNotes && styles.buttonDisabled]}
-              onPress={addToNotes}
-              disabled={isAddingToNotes}
-              activeOpacity={0.8}
-            >
-              {isAddingToNotes ? (
-                <ActivityIndicator size="small" color={colors.primaryForeground} />
+          {!isAnalysing && !analysisText && (
+            <>
+              <View style={styles.selectionHeader}>
+                <Text style={styles.selectionInfo}>
+                  Select photos to analyse ({selectedPhotoIds.size}/10)
+                </Text>
+                <View style={styles.selectionActions}>
+                  <TouchableOpacity onPress={selectAll} style={styles.selectionButton}>
+                    <Text style={styles.selectionButtonText}>Select All</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={deselectAll} style={styles.selectionButton}>
+                    <Text style={styles.selectionButtonText}>Clear</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <ScrollView style={styles.photosGrid} contentContainerStyle={styles.photosGridContent}>
+                {imagePhotos.map((photo) => {
+                  const isSelected = selectedPhotoIds.has(photo.id);
+                  return (
+                    <TouchableOpacity
+                      key={photo.id}
+                      style={[styles.photoItem, isSelected && styles.photoItemSelected]}
+                      onPress={() => togglePhotoSelection(photo.id)}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={{ uri: photo.signedUrl || photo.thumbnailUrl || photo.url || '' }}
+                        style={styles.photoImage}
+                        resizeMode="cover"
+                      />
+                      <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                        {isSelected && <Feather name="check" size={14} color="#fff" />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={styles.footer}>
+                <TouchableOpacity
+                  style={[styles.analyseButton, selectedPhotoIds.size === 0 && styles.buttonDisabled]}
+                  onPress={startAnalysis}
+                  disabled={selectedPhotoIds.size === 0}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="zap" size={18} color={colors.primaryForeground} />
+                  <Text style={styles.analyseButtonText}>
+                    Analyse {selectedPhotoIds.size} Photo{selectedPhotoIds.size !== 1 ? 's' : ''} with AI
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {isAnalysing && (
+            <View style={styles.streamingContent}>
+              <View style={styles.analysingHeader}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.analysingText}>Analysing {selectedPhotoIds.size} photos...</Text>
+              </View>
+              {analysisText ? (
+                <ScrollView style={styles.streamingScroll} showsVerticalScrollIndicator>
+                  <Text style={styles.streamingText}>
+                    {analysisText}
+                    <Text style={styles.cursor}>|</Text>
+                  </Text>
+                </ScrollView>
               ) : (
-                <Feather name="plus" size={16} color={colors.primaryForeground} />
+                <Text style={styles.waitingText}>AI is examining your photos...</Text>
               )}
-              <Text style={styles.addButtonText}>Add to Notes</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.discardButton, isAddingToNotes && styles.buttonDisabled]}
-              onPress={discardAnalysis}
-              disabled={isAddingToNotes}
-              activeOpacity={0.8}
-            >
-              <Feather name="x" size={16} color={colors.foreground} />
-              <Text style={styles.discardButtonText}>Discard</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity style={styles.cancelButton} onPress={cancelAnalysis} activeOpacity={0.8}>
+                <Feather name="x" size={16} color={colors.foreground} />
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {isComplete && analysisText && (
+            <View style={styles.resultContent}>
+              <View style={styles.completeHeader}>
+                <Feather name="check-circle" size={18} color={colors.success || '#22c55e'} />
+                <Text style={[styles.completeText, { color: colors.success || '#22c55e' }]}>
+                  Analysis complete
+                </Text>
+              </View>
+              <ScrollView style={styles.resultScroll} showsVerticalScrollIndicator>
+                <Text style={styles.resultText}>{analysisText}</Text>
+              </ScrollView>
+              <View style={styles.resultActions}>
+                <TouchableOpacity
+                  style={[styles.addButton, isAddingToNotes && styles.buttonDisabled]}
+                  onPress={addToNotes}
+                  disabled={isAddingToNotes}
+                  activeOpacity={0.8}
+                >
+                  {isAddingToNotes ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Feather name="plus" size={16} color={colors.primaryForeground} />
+                  )}
+                  <Text style={styles.addButtonText}>Add to Notes</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.discardButton, isAddingToNotes && styles.buttonDisabled]}
+                  onPress={discardAnalysis}
+                  disabled={isAddingToNotes}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="x" size={16} color={colors.foreground} />
+                  <Text style={styles.discardButtonText}>Start Over</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
-      )}
-    </View>
+      </View>
+    </Modal>
   );
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  container: {
-    backgroundColor: colors.primary + '15',
-    borderRadius: radius.lg,
-    borderWidth: 2,
-    borderColor: colors.primary + '40',
-    padding: spacing.md,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
-  header: {
+  modalContainer: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    maxHeight: '85%',
+    minHeight: '60%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.sm,
   },
-  title: {
-    fontSize: typography.subtitle.fontSize,
+  modalTitle: {
+    fontSize: typography.cardTitle.fontSize,
     fontWeight: '600',
-    color: colors.primary,
+    color: colors.foreground,
   },
-  betaBadge: {
-    backgroundColor: colors.primary + '20',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-  },
-  betaBadgeText: {
-    fontSize: typography.badge.fontSize,
-    fontWeight: '500',
-    color: colors.primary,
-  },
-  disabledBadge: {
+  selectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.muted,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
   },
-  disabledBadgeText: {
-    fontSize: typography.badge.fontSize,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-  },
-  countBadge: {
-    backgroundColor: colors.muted,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-    marginLeft: 'auto',
-  },
-  countBadgeText: {
-    fontSize: typography.badge.fontSize,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-  },
-  content: {
-    marginTop: spacing.xs,
-  },
-  description: {
+  selectionInfo: {
     fontSize: typography.body.fontSize,
-    color: colors.mutedForeground,
-    marginBottom: spacing.md,
-    lineHeight: 20,
+    color: colors.foreground,
+    fontWeight: '500',
   },
-  disabledText: {
-    fontSize: typography.body.fontSize,
-    color: colors.mutedForeground,
-    marginTop: spacing.xs,
+  selectionActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  selectionButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  selectionButtonText: {
+    fontSize: typography.caption.fontSize,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  photosGrid: {
+    flex: 1,
+  },
+  photosGridContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  photoItem: {
+    width: photoSize,
+    height: photoSize,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  photoItemSelected: {
+    borderColor: colors.primary,
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  checkbox: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#fff',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  footer: {
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   analyseButton: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -405,6 +529,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: typography.button.fontSize,
     fontWeight: '600',
     color: colors.primaryForeground,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  streamingContent: {
+    flex: 1,
+    padding: spacing.md,
   },
   analysingHeader: {
     flexDirection: 'row',
@@ -416,22 +547,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: typography.body.fontSize,
     color: colors.mutedForeground,
   },
-  streamingContainer: {
-    backgroundColor: colors.muted,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    maxHeight: 200,
-    marginBottom: spacing.md,
+  waitingText: {
+    fontSize: typography.body.fontSize,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: spacing.xl,
   },
   streamingScroll: {
-    maxHeight: 180,
+    flex: 1,
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
   streamingText: {
     fontSize: typography.body.fontSize,
     color: colors.foreground,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   cursor: {
     color: colors.primary,
@@ -446,12 +578,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
   },
   cancelButtonText: {
     fontSize: typography.button.fontSize,
     fontWeight: '500',
     color: colors.foreground,
+  },
+  resultContent: {
+    flex: 1,
+    padding: spacing.md,
   },
   completeHeader: {
     flexDirection: 'row',
@@ -461,26 +597,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   completeText: {
     fontSize: typography.body.fontSize,
-    fontWeight: '500',
-  },
-  resultContainer: {
-    backgroundColor: colors.muted,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    maxHeight: 200,
-    marginBottom: spacing.md,
+    fontWeight: '600',
   },
   resultScroll: {
-    maxHeight: 180,
+    flex: 1,
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
   resultText: {
     fontSize: typography.body.fontSize,
     color: colors.foreground,
-    lineHeight: 20,
+    lineHeight: 22,
   },
-  actionButtons: {
+  resultActions: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
@@ -489,7 +620,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -501,10 +631,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   discardButton: {
+    flex: 1,
     backgroundColor: colors.muted,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -515,7 +645,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
     color: colors.foreground,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  disabledContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  disabledText: {
+    fontSize: typography.body.fontSize,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
