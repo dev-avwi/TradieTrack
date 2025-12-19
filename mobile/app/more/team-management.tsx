@@ -10,12 +10,32 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
+  Linking,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
+
+interface SubscriptionStatus {
+  tier: 'free' | 'pro' | 'team' | 'trial';
+  status: 'active' | 'past_due' | 'canceled' | 'none';
+  seatCount?: number;
+}
+
+const BETA_MODE = true;
+const TEAM_BASE_PRICE = 59;
+const TEAM_SEAT_PRICE = 29;
+
+const TEAM_BENEFITS = [
+  { icon: 'users', title: 'Add Team Members', description: 'Invite staff, apprentices, and managers' },
+  { icon: 'shield', title: 'Role-Based Access', description: 'Control what each team member can see and do' },
+  { icon: 'map-pin', title: 'Live GPS Tracking', description: 'See where your team is in real-time' },
+  { icon: 'clipboard', title: 'Job Assignment', description: 'Assign and track jobs for each team member' },
+  { icon: 'message-circle', title: 'Team Chat', description: 'Built-in communication with your crew' },
+  { icon: 'clock', title: 'Time Tracking', description: 'Track hours and generate timesheets' },
+];
 
 interface TeamMember {
   id: string;
@@ -1035,6 +1055,178 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
   },
+  upgradeContainer: {
+    paddingBottom: spacing['3xl'],
+  },
+  upgradeHeader: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing['3xl'],
+    paddingBottom: spacing.xl,
+  },
+  upgradeIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  upgradeTitle: {
+    ...typography.pageTitle,
+    color: colors.foreground,
+    textAlign: 'center',
+  },
+  upgradeSubtitle: {
+    ...typography.body,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  upgradeCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    ...shadows.md,
+  },
+  upgradeCardTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  upgradeCardSubtitle: {
+    ...typography.body,
+    color: colors.mutedForeground,
+    marginBottom: spacing.lg,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: spacing.lg,
+  },
+  priceAmount: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  pricePeriod: {
+    ...typography.body,
+    color: colors.mutedForeground,
+    marginLeft: spacing.xs,
+  },
+  priceNote: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  seatSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  seatSelectorLabel: {
+    ...typography.body,
+    color: colors.foreground,
+    flex: 1,
+  },
+  seatButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  seatCount: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    minWidth: 40,
+    textAlign: 'center',
+  },
+  ctaButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.lg,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    ...shadows.md,
+  },
+  ctaButtonDisabled: {
+    backgroundColor: colors.muted,
+  },
+  ctaButtonText: {
+    color: colors.primaryForeground,
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  ctaSubtext: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
+  benefitsSection: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  benefitIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  benefitContent: {
+    flex: 1,
+  },
+  benefitTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  benefitDescription: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  betaBanner: {
+    backgroundColor: colors.successLight,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  betaBannerText: {
+    ...typography.body,
+    color: colors.success,
+    fontWeight: '600',
+    flex: 1,
+  },
 });
 
 export default function TeamManagementScreen() {
@@ -1087,6 +1279,10 @@ export default function TeamManagementScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState<string>('');
   
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [seatCount, setSeatCount] = useState(1);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  
   // Invite modal state
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -1121,11 +1317,12 @@ export default function TeamManagementScreen() {
   const fetchTeam = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [membersRes, rolesRes, permissionsRes, myRoleRes] = await Promise.all([
+      const [membersRes, rolesRes, permissionsRes, myRoleRes, statusRes] = await Promise.all([
         api.get<TeamMember[]>('/api/team/members'),
         api.get<UserRole[]>('/api/team/roles'),
         api.get<PermissionItem[]>('/api/team/permissions'),
         api.get<{ isOwner: boolean; role?: string }>('/api/team/my-role'),
+        api.get<SubscriptionStatus>('/api/billing/status'),
       ]);
       
       if (membersRes.data) {
@@ -1140,11 +1337,54 @@ export default function TeamManagementScreen() {
       if (myRoleRes.data) {
         setCurrentUserRole(myRoleRes.data.isOwner ? 'owner' : (myRoleRes.data.role || ''));
       }
+      if (statusRes.data) {
+        setSubscriptionStatus(statusRes.data);
+      }
     } catch (error) {
       console.log('Error fetching team:', error);
     }
     setIsLoading(false);
   }, []);
+  
+  const handleUpgradeToTeam = async () => {
+    if (BETA_MODE) {
+      Alert.alert(
+        'Beta Mode Active',
+        'Team features are currently free during beta! You can start inviting team members right away.',
+        [{ text: 'Got it!' }]
+      );
+      return;
+    }
+
+    setIsUpgrading(true);
+    try {
+      const response = await api.post<{ success: boolean; sessionUrl?: string; error?: string }>('/api/billing/checkout/team', {
+        seatCount: seatCount,
+        successUrl: 'tradietrack://team-management?success=true',
+        cancelUrl: 'tradietrack://team-management?canceled=true',
+      });
+
+      if (response.data?.success && response.data?.sessionUrl) {
+        const canOpen = await Linking.canOpenURL(response.data.sessionUrl);
+        if (canOpen) {
+          await Linking.openURL(response.data.sessionUrl);
+        } else {
+          Alert.alert('Error', 'Unable to open payment page. Please try again.');
+        }
+      } else {
+        Alert.alert('Error', response.data?.error || response.error || 'Failed to create checkout session');
+      }
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      Alert.alert('Error', 'Failed to start upgrade process. Please try again.');
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
+  
+  const currentTier = BETA_MODE ? 'team' : (subscriptionStatus?.tier || 'free');
+  const hasTeamPlan = currentTier === 'team' || BETA_MODE;
+  const teamPrice = TEAM_BASE_PRICE + (seatCount * TEAM_SEAT_PRICE);
 
   useEffect(() => {
     fetchTeam();
@@ -1569,37 +1809,146 @@ export default function TeamManagementScreen() {
     return '??';
   };
 
+  const renderUpgradeView = () => (
+    <ScrollView
+      style={styles.scrollView}
+      contentContainerStyle={styles.upgradeContainer}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={isLoading} onRefresh={fetchTeam} tintColor={colors.primary} />
+      }
+    >
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color={colors.foreground} />
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Team Management</Text>
+          <Text style={styles.headerSubtitle}>Grow your business</Text>
+        </View>
+      </View>
+
+      <View style={styles.upgradeHeader}>
+        <View style={styles.upgradeIcon}>
+          <Feather name="users" size={40} color={colors.primary} />
+        </View>
+        <Text style={styles.upgradeTitle}>Ready to Expand?</Text>
+        <Text style={styles.upgradeSubtitle}>
+          Add team members to help manage jobs, track time, and grow your business together.
+        </Text>
+      </View>
+
+      <View style={styles.upgradeCard}>
+        <Text style={styles.upgradeCardTitle}>Team Plan</Text>
+        <Text style={styles.upgradeCardSubtitle}>
+          Everything in Pro, plus powerful team features
+        </Text>
+
+        <View style={styles.priceRow}>
+          <Text style={styles.priceAmount}>${teamPrice}</Text>
+          <Text style={styles.pricePeriod}>/month</Text>
+        </View>
+        
+        <Text style={styles.priceNote}>
+          Base: ${TEAM_BASE_PRICE} + ${TEAM_SEAT_PRICE} per team member
+        </Text>
+
+        <View style={styles.seatSelector}>
+          <Text style={styles.seatSelectorLabel}>Team members:</Text>
+          <TouchableOpacity 
+            style={styles.seatButton}
+            onPress={() => setSeatCount(Math.max(1, seatCount - 1))}
+            disabled={seatCount <= 1}
+          >
+            <Feather name="minus" size={18} color={seatCount <= 1 ? colors.muted : colors.foreground} />
+          </TouchableOpacity>
+          <Text style={styles.seatCount}>{seatCount}</Text>
+          <TouchableOpacity 
+            style={styles.seatButton}
+            onPress={() => setSeatCount(Math.min(20, seatCount + 1))}
+            disabled={seatCount >= 20}
+          >
+            <Feather name="plus" size={18} color={seatCount >= 20 ? colors.muted : colors.foreground} />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.ctaButton, isUpgrading && styles.ctaButtonDisabled]}
+          onPress={handleUpgradeToTeam}
+          disabled={isUpgrading}
+        >
+          {isUpgrading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.ctaButtonText}>Upgrade to Team Plan</Text>
+          )}
+        </TouchableOpacity>
+        
+        <Text style={styles.ctaSubtext}>
+          Cancel anytime. No lock-in contracts.
+        </Text>
+      </View>
+
+      <View style={styles.benefitsSection}>
+        <Text style={styles.sectionTitle}>What You Get</Text>
+        {TEAM_BENEFITS.map((benefit, index) => (
+          <View key={index} style={styles.benefitItem}>
+            <View style={styles.benefitIcon}>
+              <Feather name={benefit.icon as any} size={20} color={colors.primary} />
+            </View>
+            <View style={styles.benefitContent}>
+              <Text style={styles.benefitTitle}>{benefit.title}</Text>
+              <Text style={styles.benefitDescription}>{benefit.description}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  );
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={fetchTeam} tintColor={colors.primary} />
-          }
-        >
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Feather name="arrow-left" size={24} color={colors.foreground} />
-            </TouchableOpacity>
-            <View style={styles.headerContent}>
-              <Text style={styles.headerTitle}>Team Management</Text>
-              <Text style={styles.headerSubtitle}>{teamMembers.length} team members</Text>
-            </View>
-            {currentUserIsOwner && (
-              <TouchableOpacity 
-                style={styles.inviteButton}
-                onPress={() => setShowInviteModal(true)}
-              >
-                <Feather name="user-plus" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+        {!hasTeamPlan ? (
+          renderUpgradeView()
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={isLoading} onRefresh={fetchTeam} tintColor={colors.primary} />
+            }
+          >
+            {BETA_MODE && (
+              <View style={styles.betaBanner}>
+                <Feather name="gift" size={24} color={colors.success} />
+                <Text style={styles.betaBannerText}>
+                  Beta: Team features are free! Invite your team now.
+                </Text>
+              </View>
             )}
-          </View>
+            
+            <View style={styles.header}>
+              <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Feather name="arrow-left" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+              <View style={styles.headerContent}>
+                <Text style={styles.headerTitle}>Team Management</Text>
+                <Text style={styles.headerSubtitle}>{teamMembers.length} team members</Text>
+              </View>
+              {currentUserIsOwner && (
+                <TouchableOpacity 
+                  style={styles.inviteButton}
+                  onPress={() => setShowInviteModal(true)}
+                >
+                  <Feather name="user-plus" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+            </View>
 
-          <View style={styles.statsRow}>
+            <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <View style={[styles.statIcon, { backgroundColor: ROLE_CONFIG.owner.color + '20' }]}>
                 <Feather name="shield" size={16} color={ROLE_CONFIG.owner.color} />
@@ -1663,7 +2012,8 @@ export default function TeamManagementScreen() {
               </View>
             )}
           </View>
-        </ScrollView>
+          </ScrollView>
+        )}
 
         {/* Invite Modal */}
         <Modal visible={showInviteModal} animationType="slide" transparent>
