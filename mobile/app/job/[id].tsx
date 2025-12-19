@@ -657,6 +657,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginRight: spacing.sm,
     gap: 4,
   },
+  viewAllPhotosButton: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.lg,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 4,
+  },
   emptyPhotosContainer: {
     flexDirection: 'row',
     paddingTop: spacing.sm,
@@ -3378,13 +3389,14 @@ export default function JobDetailScreen() {
                   )}
                 </TouchableOpacity>
               ))}
+              {/* Tap any photo to view full gallery */}
               <TouchableOpacity 
-                style={styles.addPhotoButton}
+                style={styles.viewAllPhotosButton}
                 onPress={() => setShowPhotosModal(true)}
                 activeOpacity={0.7}
               >
-                <Feather name="plus-circle" size={24} color={colors.primary} />
-                <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>Add Photos</Text>
+                <Feather name="grid" size={20} color={colors.primary} />
+                <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>View All</Text>
               </TouchableOpacity>
             </ScrollView>
             <View style={[styles.emptyPhotosContainer, { marginTop: spacing.md, flexWrap: 'wrap', gap: spacing.sm }]}>
@@ -3869,38 +3881,6 @@ export default function JobDetailScreen() {
                   ))}
                 </View>
               )}
-              <View style={[styles.photoActions, { flexWrap: 'wrap', gap: spacing.sm }]}>
-                <TouchableOpacity 
-                  style={[styles.photoActionButton, { flex: 0, minWidth: '30%' }]}
-                  onPress={handleTakePhoto}
-                  disabled={isUploadingPhoto}
-                >
-                  {isUploadingPhoto ? (
-                    <ActivityIndicator size="small" color={colors.primaryForeground} />
-                  ) : (
-                    <>
-                      <Feather name="camera" size={18} color={colors.primaryForeground} />
-                      <Text style={styles.photoActionText}>Photo</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.photoActionButton, { flex: 1, backgroundColor: colors.destructive }]}
-                  onPress={handleRecordVideo}
-                  disabled={isUploadingPhoto}
-                >
-                  <Feather name="video" size={18} color={colors.primaryForeground} />
-                  <Text style={styles.photoActionText}>Video</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.photoActionButton, styles.photoActionButtonSecondary, { flex: 1 }]}
-                  onPress={handlePickMedia}
-                  disabled={isUploadingPhoto}
-                >
-                  <Feather name="image" size={18} color={colors.foreground} />
-                  <Text style={[styles.photoActionText, styles.photoActionTextSecondary]}>Gallery</Text>
-                </TouchableOpacity>
-              </View>
             </ScrollView>
             
             {/* Floating AI Analysis Button */}
