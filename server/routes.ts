@@ -13469,6 +13469,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create Team subscription checkout (with seats)
+  app.post("/api/billing/checkout/team", requireAuth, async (req: any, res) => {
+    try {
+      const { createTeamSubscriptionCheckout, getPublishableKey } = await import('./billingService');
+      const user = await storage.getUser(req.userId!);
+      const { seatCount = 0 } = req.body;
+      
+      // Validate seat count
+      const seats = Math.max(0, Math.min(50, parseInt(seatCount) || 0));
+      
+      // Get base URL for success/cancel redirects
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers.host;
+      const baseUrl = `${protocol}://${host}`;
+      
+      const result = await createTeamSubscriptionCheckout(
+        req.userId!,
+        user?.email || '',
+        `${baseUrl}/settings?tab=billing&success=true`,
+        `${baseUrl}/settings?tab=billing&canceled=true`,
+        seats
+      );
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+      
+      const publishableKey = await getPublishableKey();
+      res.json({ 
+        sessionId: result.sessionId, 
+        url: result.sessionUrl,
+        publishableKey 
+      });
+    } catch (error: any) {
+      console.error('Error creating team checkout session:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Cancel subscription
   app.post("/api/billing/cancel", requireAuth, async (req: any, res) => {
     try {

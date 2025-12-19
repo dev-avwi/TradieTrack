@@ -32,13 +32,40 @@ export const TIER_LIMITS = {
     invoicesPerMonth: -1,
     quotesPerMonth: -1,
     clients: -1,
-    teamMembers: -1,
+    teamMembers: 1, // Pro is single user only
     photoStorage: -1,
     templates: -1,
-    features: ['unlimited_jobs', 'unlimited_invoices', 'recurring', 'reports', 'photo_attachments', 'auto_reminders', 'team_management', 'branding', 'ai_assistant'],
+    features: ['unlimited_jobs', 'unlimited_invoices', 'recurring', 'reports', 'photo_attachments', 'auto_reminders', 'branding', 'ai_assistant'],
+  },
+  team: {
+    jobsPerMonth: -1, // unlimited
+    invoicesPerMonth: -1,
+    quotesPerMonth: -1,
+    clients: -1,
+    teamMembers: -1, // unlimited based on purchased seats
+    photoStorage: -1,
+    templates: -1,
+    features: ['unlimited_jobs', 'unlimited_invoices', 'recurring', 'reports', 'photo_attachments', 'auto_reminders', 'team_management', 'branding', 'ai_assistant', 'live_tracking', 'team_chat'],
   },
   trial: {
     durationDays: 14,
+  },
+} as const;
+
+// Pricing in cents (AUD)
+export const PRICING = {
+  pro: {
+    monthly: 3900, // $39/month
+    name: 'TradieTrack Pro',
+    description: 'Unlimited jobs, quotes, and invoices for solo tradies',
+  },
+  team: {
+    baseMonthly: 5900, // $59/month base
+    seatMonthly: 2900, // $29/month per additional seat
+    name: 'TradieTrack Team',
+    baseName: 'TradieTrack Team (Base)',
+    seatName: 'Additional Team Member',
+    description: 'Full features plus team management and live tracking',
   },
 } as const;
 
@@ -60,7 +87,7 @@ export const users = pgTable("users", {
   emailVerificationExpiresAt: timestamp("email_verification_expires_at"),
   passwordResetToken: text("password_reset_token"),
   passwordResetExpiresAt: timestamp("password_reset_expires_at"),
-  subscriptionTier: text("subscription_tier").default('free'), // free, pro, trial
+  subscriptionTier: text("subscription_tier").default('free'), // free, pro, team, trial
   // Usage tracking
   jobsCreatedThisMonth: integer("jobs_created_this_month").default(0),
   invoicesCreatedThisMonth: integer("invoices_created_this_month").default(0),
@@ -186,6 +213,7 @@ export const businessSettings = pgTable("business_settings", {
   stripeSubscriptionId: text("stripe_subscription_id"), // Active subscription ID
   subscriptionStatus: text("subscription_status").default('none'), // none, active, past_due, canceled
   currentPeriodEnd: timestamp("current_period_end"), // When current billing period ends
+  seatCount: integer("seat_count").default(0), // Number of additional team seats purchased (for Team plan)
   // Digital Signature Settings
   defaultSignature: text("default_signature"), // Base64 encoded signature image for quotes/invoices
   signatureName: text("signature_name"), // Name displayed under signature

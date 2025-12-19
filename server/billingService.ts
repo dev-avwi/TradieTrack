@@ -1,8 +1,7 @@
 import { getUncachableStripeClient, getStripePublishableKey } from './stripeClient';
 import { storage } from './storage';
 import Stripe from 'stripe';
-
-const PRO_PRICE_AUD = 3900;
+import { PRICING } from '@shared/schema';
 
 export interface CheckoutSessionResult {
   success: boolean;
@@ -12,12 +11,13 @@ export interface CheckoutSessionResult {
 }
 
 export interface SubscriptionStatus {
-  tier: 'free' | 'pro' | 'trial';
+  tier: 'free' | 'pro' | 'team' | 'trial';
   status: 'active' | 'past_due' | 'canceled' | 'none';
   currentPeriodEnd?: Date;
   cancelAtPeriodEnd?: boolean;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  seatCount?: number; // For team tier
 }
 
 export interface BillingPortalResult {
@@ -78,13 +78,13 @@ async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
   });
 
   let product = products.data.find(
-    (p) => p.name === 'TradieTrack Pro' && p.active
+    (p) => p.name === PRICING.pro.name && p.active
   );
 
   if (!product) {
     product = await stripe.products.create({
-      name: 'TradieTrack Pro',
-      description: 'Unlimited jobs, invoices, quotes. Full features for trade businesses.',
+      name: PRICING.pro.name,
+      description: PRICING.pro.description,
       metadata: {
         platform: 'tradietrack',
         tier: 'pro',
@@ -94,7 +94,7 @@ async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
 
   const price = await stripe.prices.create({
     product: product.id,
-    unit_amount: PRO_PRICE_AUD,
+    unit_amount: PRICING.pro.monthly,
     currency: 'aud',
     recurring: {
       interval: 'month',
@@ -106,6 +106,77 @@ async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
   });
 
   return price.id;
+}
+
+// Get or create Team base price ($59/month) and seat price ($29/month)
+async function getOrCreateTeamPrices(stripe: Stripe): Promise<{ basePriceId: string; seatPriceId: string }> {
+  // Try to find existing prices
+  const prices = await stripe.prices.list({
+    lookup_keys: ['tradietrack_team_base_monthly', 'tradietrack_team_seat_monthly'],
+    active: true,
+    limit: 10,
+  });
+
+  let basePriceId = prices.data.find(p => p.lookup_key === 'tradietrack_team_base_monthly')?.id;
+  let seatPriceId = prices.data.find(p => p.lookup_key === 'tradietrack_team_seat_monthly')?.id;
+
+  // Get or create Team base product
+  if (!basePriceId) {
+    const products = await stripe.products.list({ active: true, limit: 100 });
+    let baseProduct = products.data.find(p => p.name === PRICING.team.baseName && p.active);
+
+    if (!baseProduct) {
+      baseProduct = await stripe.products.create({
+        name: PRICING.team.baseName,
+        description: PRICING.team.description,
+        metadata: {
+          platform: 'tradietrack',
+          tier: 'team',
+          type: 'base',
+        },
+      });
+    }
+
+    const basePrice = await stripe.prices.create({
+      product: baseProduct.id,
+      unit_amount: PRICING.team.baseMonthly,
+      currency: 'aud',
+      recurring: { interval: 'month' },
+      lookup_key: 'tradietrack_team_base_monthly',
+      metadata: { tier: 'team', type: 'base' },
+    });
+    basePriceId = basePrice.id;
+  }
+
+  // Get or create Team seat product
+  if (!seatPriceId) {
+    const products = await stripe.products.list({ active: true, limit: 100 });
+    let seatProduct = products.data.find(p => p.name === PRICING.team.seatName && p.active);
+
+    if (!seatProduct) {
+      seatProduct = await stripe.products.create({
+        name: PRICING.team.seatName,
+        description: 'Additional team member for TradieTrack Team plan',
+        metadata: {
+          platform: 'tradietrack',
+          tier: 'team',
+          type: 'seat',
+        },
+      });
+    }
+
+    const seatPrice = await stripe.prices.create({
+      product: seatProduct.id,
+      unit_amount: PRICING.team.seatMonthly,
+      currency: 'aud',
+      recurring: { interval: 'month' },
+      lookup_key: 'tradietrack_team_seat_monthly',
+      metadata: { tier: 'team', type: 'seat' },
+    });
+    seatPriceId = seatPrice.id;
+  }
+
+  return { basePriceId, seatPriceId };
 }
 
 export async function createSubscriptionCheckout(
@@ -167,6 +238,82 @@ export async function createSubscriptionCheckout(
   }
 }
 
+// Create Team subscription checkout with base + additional seats
+export async function createTeamSubscriptionCheckout(
+  userId: string,
+  email: string,
+  successUrl: string,
+  cancelUrl: string,
+  additionalSeats: number = 0,
+  businessName?: string
+): Promise<CheckoutSessionResult> {
+  const stripe = await getUncachableStripeClient();
+  if (!stripe) {
+    return { success: false, error: 'Payment system not configured' };
+  }
+
+  try {
+    const customerId = await getOrCreateStripeCustomer(stripe, userId, email, businessName);
+    const { basePriceId, seatPriceId } = await getOrCreateTeamPrices(stripe);
+
+    // Build line items: base + seats (if any)
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      { price: basePriceId, quantity: 1 },
+    ];
+
+    // Add seat line item only if additional seats > 0
+    if (additionalSeats > 0) {
+      lineItems.push({
+        price: seatPriceId,
+        quantity: additionalSeats,
+        adjustable_quantity: {
+          enabled: true,
+          minimum: 0,
+          maximum: 50,
+        },
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+      line_items: lineItems,
+      mode: 'subscription',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      allow_promotion_codes: true,
+      billing_address_collection: 'auto',
+      customer_update: {
+        address: 'auto',
+        name: 'auto',
+      },
+      subscription_data: {
+        metadata: {
+          userId,
+          tier: 'team',
+          seatCount: String(additionalSeats),
+          platform: 'tradietrack',
+        },
+      },
+      metadata: {
+        userId,
+        type: 'subscription',
+        tier: 'team',
+        seatCount: String(additionalSeats),
+      },
+    });
+
+    return {
+      success: true,
+      sessionId: session.id,
+      sessionUrl: session.url || undefined,
+    };
+  } catch (error: any) {
+    console.error('Error creating team subscription checkout:', error);
+    return { success: false, error: error.message || 'Failed to create checkout session' };
+  }
+}
+
 export async function createBillingPortalSession(
   userId: string,
   returnUrl: string
@@ -220,32 +367,47 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
   }
 
   const subscriptionId = businessSettings?.stripeSubscriptionId;
+  const seatCount = (businessSettings as any)?.seatCount || 0;
 
   if (!stripe || !subscriptionId) {
+    const tier = user.subscriptionTier as 'free' | 'pro' | 'team' || 'free';
     return {
-      tier: (user.subscriptionTier as 'free' | 'pro') || 'free',
-      status: user.subscriptionTier === 'pro' ? 'active' : 'none',
+      tier,
+      status: tier !== 'free' ? 'active' : 'none',
       stripeCustomerId: businessSettings?.stripeCustomerId || undefined,
+      seatCount: tier === 'team' ? seatCount : undefined,
     };
   }
 
   try {
     const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
+    
+    // Determine tier from subscription metadata or stored value
+    const subscriptionTier = subscription.metadata?.tier || user.subscriptionTier;
+    const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+    
+    let tier: 'free' | 'pro' | 'team' = 'free';
+    if (isActive) {
+      tier = subscriptionTier === 'team' ? 'team' : 'pro';
+    }
 
     return {
-      tier: subscription.status === 'active' || subscription.status === 'trialing' ? 'pro' : 'free',
+      tier,
       status: subscription.status as 'active' | 'past_due' | 'canceled',
       currentPeriodEnd: new Date((subscription.current_period_end || 0) * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       stripeCustomerId: businessSettings?.stripeCustomerId || undefined,
       stripeSubscriptionId: subscriptionId,
+      seatCount: tier === 'team' ? seatCount : undefined,
     };
   } catch (error: any) {
     console.error('Error fetching subscription:', error);
+    const tier = user.subscriptionTier as 'free' | 'pro' | 'team' || 'free';
     return {
-      tier: (user.subscriptionTier as 'free' | 'pro') || 'free',
+      tier,
       status: 'none',
       stripeCustomerId: businessSettings?.stripeCustomerId || undefined,
+      seatCount: tier === 'team' ? seatCount : undefined,
     };
   }
 }

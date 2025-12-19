@@ -55,7 +55,8 @@ import {
   X,
   CheckCircle2,
   Check,
-  Building2
+  Building2,
+  MapPin
 } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1982,15 +1983,27 @@ export default function Settings({
 // Billing Tab Content Component
 function BillingTabContent() {
   const { toast } = useToast();
+  const [selectedPlan, setSelectedPlan] = useState<'pro' | 'team'>('pro');
+  const [seatCount, setSeatCount] = useState(1);
+  
+  // Pricing constants (in AUD)
+  const PRICING = {
+    pro: { monthly: 39 },
+    team: { base: 59, perSeat: 29 }
+  };
+  
+  // Calculate team price
+  const teamPrice = PRICING.team.base + (seatCount * PRICING.team.perSeat);
   
   // Fetch billing status
   const { data: billingStatus, isLoading: billingLoading } = useQuery<{
-    tier: 'free' | 'pro';
+    tier: 'free' | 'pro' | 'team';
     status: 'active' | 'past_due' | 'canceled' | 'none' | 'trialing';
     currentPeriodEnd?: string;
     cancelAtPeriodEnd?: boolean;
     stripeCustomerId?: string;
     stripeSubscriptionId?: string;
+    seatCount?: number;
   }>({
     queryKey: ['/api/billing/status'],
   });
@@ -2007,8 +2020,8 @@ function BillingTabContent() {
     queryKey: ['/api/subscription/usage'],
   });
 
-  // Create checkout session mutation
-  const createCheckoutMutation = useMutation({
+  // Create Pro checkout session mutation
+  const createProCheckoutMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/billing/checkout");
       return res.json();
@@ -2026,6 +2039,37 @@ function BillingTabContent() {
       });
     }
   });
+
+  // Create Team checkout session mutation
+  const createTeamCheckoutMutation = useMutation({
+    mutationFn: async (seats: number) => {
+      const res = await apiRequest("POST", "/api/billing/checkout/team", { seatCount: seats });
+      return res.json();
+    },
+    onSuccess: (data: { url?: string; sessionId?: string }) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upgrade Failed",
+        description: error.message || "Could not start checkout. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Handle upgrade based on selected plan
+  const handleUpgrade = () => {
+    if (selectedPlan === 'team') {
+      createTeamCheckoutMutation.mutate(seatCount);
+    } else {
+      createProCheckoutMutation.mutate();
+    }
+  };
+  
+  const isCheckoutPending = createProCheckoutMutation.isPending || createTeamCheckoutMutation.isPending;
 
   // Cancel subscription mutation
   const cancelMutation = useMutation({
@@ -2092,9 +2136,12 @@ function BillingTabContent() {
   });
 
   const isPro = billingStatus?.tier === 'pro';
+  const isTeam = billingStatus?.tier === 'team';
+  const hasPaidPlan = isPro || isTeam;
   const isTrialing = billingStatus?.status === 'trialing';
   const isCanceled = billingStatus?.cancelAtPeriodEnd === true;
   const periodEnd = billingStatus?.currentPeriodEnd ? new Date(billingStatus.currentPeriodEnd) : null;
+  const currentSeatCount = billingStatus?.seatCount || 0;
 
   return (
     <TabsContent value="billing" className="space-y-6">
@@ -2121,21 +2168,23 @@ function BillingTabContent() {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold">
-                      {isPro ? 'Pro Plan' : 'Free Plan'}
+                      {isTeam ? 'Team Plan' : isPro ? 'Pro Plan' : 'Free Plan'}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {isPro 
+                      {hasPaidPlan 
                         ? isTrialing 
                           ? 'Free trial active' 
                           : isCanceled 
                             ? 'Cancels at period end' 
-                            : '$39/month' 
+                            : isTeam 
+                              ? `$${PRICING.team.base + (currentSeatCount * PRICING.team.perSeat)}/month (${currentSeatCount + 1} users)` 
+                              : '$39/month' 
                         : 'Limited features'}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  {isPro ? (
+                  {hasPaidPlan ? (
                     <Badge 
                       variant="default" 
                       style={{ backgroundColor: isTrialing ? 'hsl(var(--warning))' : isCanceled ? 'hsl(var(--muted-foreground))' : 'hsl(var(--success))' }}
@@ -2153,38 +2202,114 @@ function BillingTabContent() {
                 </div>
               </div>
 
-              {/* Pro Features List */}
-              <div className="space-y-4">
-                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Pro Features Include</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    { icon: Zap, text: 'Unlimited jobs, quotes & invoices' },
-                    { icon: TrendingUp, text: 'AI-powered suggestions' },
-                    { icon: Palette, text: 'Custom branding & theming' },
-                    { icon: Calendar, text: 'Team management & permissions' },
-                    { icon: Mail, text: 'Automated email reminders' },
-                    { icon: Shield, text: 'Priority support' },
-                  ].map((feature, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm">
-                      <feature.icon className={`h-4 w-4 ${isPro ? 'text-green-600' : 'text-muted-foreground'}`} />
-                      <span className={isPro ? '' : 'text-muted-foreground'}>{feature.text}</span>
-                      {!isPro && <Badge variant="outline" className="text-xs ml-auto">Pro</Badge>}
+              {/* Plan Selection - Only show when free */}
+              {!hasPaidPlan && (
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Choose Your Plan</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Pro Plan */}
+                    <div 
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedPlan === 'pro' ? 'border-primary bg-primary/5' : 'border-muted hover:border-primary/50'}`}
+                      onClick={() => setSelectedPlan('pro')}
+                      data-testid="card-plan-pro"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-semibold text-lg">Pro</h5>
+                        <Badge variant={selectedPlan === 'pro' ? 'default' : 'outline'}>Solo</Badge>
+                      </div>
+                      <p className="text-2xl font-bold mb-2">$39<span className="text-sm font-normal text-muted-foreground">/month</span></p>
+                      <p className="text-sm text-muted-foreground mb-3">Perfect for solo tradies</p>
+                      <ul className="text-sm space-y-1">
+                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Unlimited jobs, quotes, invoices</li>
+                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> AI assistant & suggestions</li>
+                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Custom branding</li>
+                        <li className="flex items-center gap-2"><X className="h-3 w-3 text-muted-foreground" /> <span className="text-muted-foreground">Team features</span></li>
+                      </ul>
                     </div>
-                  ))}
+
+                    {/* Team Plan */}
+                    <div 
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedPlan === 'team' ? 'border-primary bg-primary/5' : 'border-muted hover:border-primary/50'}`}
+                      onClick={() => setSelectedPlan('team')}
+                      data-testid="card-plan-team"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-semibold text-lg">Team</h5>
+                        <Badge variant={selectedPlan === 'team' ? 'default' : 'outline'}>Crew</Badge>
+                      </div>
+                      <p className="text-2xl font-bold mb-2">
+                        ${teamPrice}<span className="text-sm font-normal text-muted-foreground">/month</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-3">$59 base + $29/extra user</p>
+                      
+                      {/* Seat selector */}
+                      <div className="flex items-center gap-2 mb-3 p-2 bg-muted/50 rounded">
+                        <span className="text-sm">Team size:</span>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => { e.stopPropagation(); setSeatCount(Math.max(0, seatCount - 1)); }}
+                          data-testid="button-decrease-seats"
+                        >-</Button>
+                        <span className="font-semibold w-8 text-center">{seatCount + 1}</span>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => { e.stopPropagation(); setSeatCount(Math.min(49, seatCount + 1)); }}
+                          data-testid="button-increase-seats"
+                        >+</Button>
+                        <span className="text-xs text-muted-foreground">users</span>
+                      </div>
+                      
+                      <ul className="text-sm space-y-1">
+                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Everything in Pro</li>
+                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Team management & roles</li>
+                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Live GPS tracking</li>
+                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Team chat</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Features List - Show when already subscribed */}
+              {hasPaidPlan && (
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Your Plan Includes</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[
+                      { icon: Zap, text: 'Unlimited jobs, quotes & invoices' },
+                      { icon: TrendingUp, text: 'AI-powered suggestions' },
+                      { icon: Palette, text: 'Custom branding & theming' },
+                      { icon: Mail, text: 'Automated email reminders' },
+                      ...(isTeam ? [
+                        { icon: Users, text: 'Team management & permissions' },
+                        { icon: MapPin, text: 'Live GPS tracking' },
+                      ] : []),
+                      { icon: Shield, text: 'Priority support' },
+                    ].map((feature, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        <feature.icon className="h-4 w-4 text-green-600" />
+                        <span>{feature.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               <Separator />
               <div className="flex flex-wrap gap-3">
-                {!isPro ? (
+                {!hasPaidPlan ? (
                   <Button
-                    onClick={() => createCheckoutMutation.mutate()}
-                    disabled={createCheckoutMutation.isPending}
+                    onClick={handleUpgrade}
+                    disabled={isCheckoutPending}
                     style={{ backgroundColor: 'hsl(var(--trade))', borderColor: 'hsl(var(--trade-border))' }}
                     data-testid="button-upgrade"
                   >
-                    {createCheckoutMutation.isPending ? (
+                    {isCheckoutPending ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Loading...
@@ -2192,7 +2317,9 @@ function BillingTabContent() {
                     ) : (
                       <>
                         <Crown className="h-4 w-4 mr-2" />
-                        Upgrade to Pro - $39/month
+                        {selectedPlan === 'team' 
+                          ? `Upgrade to Team - $${teamPrice}/month`
+                          : 'Upgrade to Pro - $39/month'}
                       </>
                     )}
                   </Button>
