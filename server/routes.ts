@@ -2211,13 +2211,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const client = job.clientId ? await storage.getClient(job.clientId, userContext.effectiveUserId) : null;
       
-      // Set up SSE headers for streaming
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('X-Accel-Buffering', 'no');
-      res.flushHeaders();
-      
       // Stream the AI analysis
       const { streamPhotoAnalysis } = await import('./ai');
       
@@ -2227,6 +2220,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clientName: client?.name || undefined,
         trade: businessSettings?.tradeName || undefined
       };
+      
+      // Check if non-streaming mode is requested (for React Native)
+      const noStream = req.query.noStream === 'true';
+      
+      if (noStream) {
+        // Non-streaming mode: collect all chunks and return as JSON
+        let fullText = '';
+        for await (const chunk of streamPhotoAnalysis(photosWithUrls, jobContext)) {
+          fullText += chunk;
+        }
+        return res.json({ text: fullText, done: true });
+      }
+      
+      // Streaming mode: Set up SSE headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.flushHeaders();
       
       for await (const chunk of streamPhotoAnalysis(photosWithUrls, jobContext)) {
         res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);

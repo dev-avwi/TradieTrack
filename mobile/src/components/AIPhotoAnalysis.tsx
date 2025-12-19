@@ -124,14 +124,15 @@ export function AIPhotoAnalysisModal({
       const baseUrl = api.getBaseUrl();
       
       // Include selected photo IDs in the request
+      // Use noStream=true for React Native (no ReadableStream support)
       const photoIdsParam = Array.from(selectedPhotoIds).join(',');
-      const url = `${baseUrl}/api/jobs/${jobId}/photos/analyze?photoIds=${encodeURIComponent(photoIdsParam)}`;
+      const url = `${baseUrl}/api/jobs/${jobId}/photos/analyze?photoIds=${encodeURIComponent(photoIdsParam)}&noStream=true`;
       
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Accept': 'text/event-stream',
+          'Accept': 'application/json',
         },
         signal: abortControllerRef.current.signal,
       });
@@ -141,51 +142,18 @@ export function AIPhotoAnalysisModal({
         throw new Error(errorData.error || 'Failed to analyse photos');
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('Streaming not supported on this device');
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let fullText = '';
-
-      while (true) {
-        if (isAbortedRef.current) break;
-        
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.text) {
-                fullText += data.text;
-                setAnalysisText(fullText);
-              }
-              if (data.done) {
-                setIsComplete(true);
-              }
-              if (data.error) {
-                throw new Error(data.error);
-              }
-            } catch (e) {
-              if (e instanceof SyntaxError) {
-                console.error('SSE parse error:', e);
-              } else {
-                throw e;
-              }
-            }
-          }
-        }
+      // Non-streaming response: get JSON directly
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
       }
       
-      if (!isAbortedRef.current) {
+      if (data.text) {
+        setAnalysisText(data.text);
+      }
+      
+      if (data.done) {
         setIsComplete(true);
       }
     } catch (error: any) {
