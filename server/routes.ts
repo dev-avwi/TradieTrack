@@ -2154,6 +2154,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Streaming AI Photo Analysis - Analyse job photos with GPT-4o vision
+  app.get("/api/jobs/:jobId/photos/analyze", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const jobId = req.params.jobId;
+      
+      // Get job details
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      // Get photos with signed URLs
+      const { getJobPhotos } = await import('./photoService');
+      const photos = await getJobPhotos(jobId, userContext.effectiveUserId);
+      
+      if (!photos.length) {
+        return res.status(400).json({ error: 'No photos found for this job' });
+      }
+      
+      // Filter to only photos with valid signed URLs and limit to 10
+      const photosWithUrls = photos
+        .filter(p => p.signedUrl && (p.mimeType?.startsWith('image/') ?? true))
+        .slice(0, 10)
+        .map(p => ({
+          id: p.id,
+          signedUrl: p.signedUrl!,
+          fileName: p.fileName,
+          category: p.category,
+          caption: p.caption || undefined
+        }));
+      
+      if (!photosWithUrls.length) {
+        return res.status(400).json({ error: 'No valid photo URLs available' });
+      }
+      
+      // Get business settings for trade type and AI permissions
+      const businessSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
+      
+      // Check if AI photo analysis is enabled
+      const aiEnabled = businessSettings?.aiEnabled !== false;
+      const aiPhotoAnalysisEnabled = businessSettings?.aiPhotoAnalysisEnabled !== false;
+      
+      if (!aiEnabled || !aiPhotoAnalysisEnabled) {
+        return res.status(403).json({ 
+          error: 'AI photo analysis is disabled. Enable it in Settings > Notifications to use this feature.' 
+        });
+      }
+      
+      const client = job.clientId ? await storage.getClient(job.clientId, userContext.effectiveUserId) : null;
+      
+      // Set up SSE headers for streaming
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.flushHeaders();
+      
+      // Stream the AI analysis
+      const { streamPhotoAnalysis } = await import('./ai');
+      
+      const jobContext = {
+        title: job.title,
+        description: job.description || undefined,
+        clientName: client?.name || undefined,
+        trade: businessSettings?.tradeName || undefined
+      };
+      
+      for await (const chunk of streamPhotoAnalysis(photosWithUrls, jobContext)) {
+        res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+      }
+      
+      // Signal completion
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      res.end();
+    } catch (error: any) {
+      console.error('Error in streaming photo analysis:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        res.end();
+      }
+    }
+  });
+
   // Get Next Action for a Job - Shows what to do next
   app.get("/api/jobs/:id/next-action", requireAuth, async (req: any, res) => {
     try {

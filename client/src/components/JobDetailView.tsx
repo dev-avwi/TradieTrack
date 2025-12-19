@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { JobVoiceNotes } from "./JobVoiceNotes";
 import { JobSignature } from "./JobSignature";
+import { AIPhotoAnalysis } from "./AIPhotoAnalysis";
 import { JobForms } from "./CustomFormRenderer";
 import { JobChat } from "./JobChat";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
@@ -661,6 +662,15 @@ export default function JobDetailView({
             )}
           </CardContent>
         </Card>
+
+        {/* AI Photo Analysis - Show when photos exist */}
+        {jobPhotos.length > 0 && (
+          <AIPhotoAnalysis
+            jobId={jobId}
+            photoCount={jobPhotos.length}
+            existingNotes={job.notes}
+          />
+        )}
 
         {/* Time Tracking Widget - Show for in_progress jobs */}
         {job.status === 'in_progress' && (

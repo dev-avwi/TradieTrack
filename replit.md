@@ -9,7 +9,8 @@ TradieTrack utilizes an event-driven architecture with TypeScript. The frontend 
 
 Key architectural features include:
 -   **Authentication**: Supports Email/password, Google OAuth 2.0, session management, and secure token-based password reset.
--   **AI Assistant**: Integrates GPT-4o-mini for business-aware suggestions and Australian English phrasing, including proactive notifications and quote generation.
+-   **AI Assistant**: Integrates GPT-4o-mini for business-aware suggestions and Australian English phrasing, including proactive notifications and quote generation. Also includes GPT-4o vision for AI Photo Analysis with streaming responses.
+-   **AI Photo Analysis**: Streaming SSE endpoint at `/api/jobs/:jobId/photos/analyze` uses GPT-4o vision to analyse job photos and provide tradie-friendly summaries with photo references (e.g., "(Photo 1) Shows corroded pipe..."). UI component with "Analyse Photos" button, real-time streaming display, and "Add to Notes" functionality. Respects AI settings (aiEnabled, aiPhotoAnalysisEnabled) with 403 enforcement on backend.
 -   **PDF Generation**: Server-side PDF generation via Puppeteer for quotes and invoices.
 -   **Theming & Branding**: Comprehensive system for custom brand colors, typography, and appearance settings, persisting across sessions.
 -   **UI/UX**: Mobile-first design with a native app feel, card-based layouts, touch-optimized components, and a "Today's Schedule" dashboard. Includes features like Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation.

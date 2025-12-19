@@ -1775,6 +1775,84 @@ Return JSON:
 }
 
 /**
+ * Streaming photo analysis for job photos
+ * Uses GPT-4o vision to analyze photos and generate notes with references
+ */
+export async function* streamPhotoAnalysis(
+  photos: Array<{ id: string; signedUrl: string; fileName: string; category?: string; caption?: string }>,
+  jobContext: { title: string; description?: string; clientName?: string; trade?: string }
+): AsyncGenerator<string, void, unknown> {
+  if (!photos.length) {
+    yield "No photos to analyse.";
+    return;
+  }
+
+  const imageContents: Array<{ type: "image_url"; image_url: { url: string; detail: "low" | "high" | "auto" } }> = [];
+  
+  for (const photo of photos) {
+    imageContents.push({
+      type: "image_url",
+      image_url: {
+        url: photo.signedUrl,
+        detail: "low" // Use low detail for faster processing and lower cost
+      }
+    });
+  }
+
+  const photoLabels = photos.map((p, i) => `Photo ${i + 1}: ${p.fileName}${p.category ? ` (${p.category})` : ''}${p.caption ? ` - ${p.caption}` : ''}`).join('\n');
+
+  const systemPrompt = `You are a trades assistant helping document job photos for an Australian tradesperson.
+
+Job Context:
+- Title: ${jobContext.title}
+- Description: ${jobContext.description || 'Not provided'}
+- Client: ${jobContext.clientName || 'Not specified'}
+- Trade: ${jobContext.trade || 'General trades'}
+
+Photo Labels:
+${photoLabels}
+
+Analyse each photo and provide clear, professional notes that a tradie would find useful. For each photo:
+1. Describe what you see (equipment, damage, work area, materials, etc.)
+2. Note any issues or observations relevant to the job
+3. Use Australian English spelling (e.g., colour, metre, centre)
+
+Format your response as notes with photo references like:
+"(Photo 1) Shows the corroded pipe section under the sink..."
+"(Photo 2) The damaged electrical outlet with visible scorch marks..."
+
+Keep descriptions practical and focused on what matters for the job documentation. Be concise but thorough.`;
+
+  try {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Please analyse these job photos and provide notes for each one:" },
+            ...imageContents
+          ]
+        }
+      ],
+      max_tokens: 1500,
+      stream: true
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        yield content;
+      }
+    }
+  } catch (error: any) {
+    console.error('[AI] Photo analysis streaming error:', error);
+    yield `\n\n[Error analysing photos: ${error.message}]`;
+  }
+}
+
+/**
  * Calculate job profitability with simple indicators
  */
 export function calculateJobProfit(params: {

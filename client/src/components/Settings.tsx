@@ -183,7 +183,10 @@ export default function Settings({
     address: "",
     gstEnabled: false,
     timezone: "Australia/Brisbane",
-    currency: "AUD"
+    currency: "AUD",
+    aiEnabled: true,
+    aiPhotoAnalysisEnabled: true,
+    aiSuggestionsEnabled: true
   });
 
   // Default color matches ThemeProvider's default (#3B5998 navy)
@@ -332,7 +335,10 @@ export default function Settings({
         address: businessSettings.address || "",
         gstEnabled: businessSettings.gstEnabled || false,
         timezone: "Australia/Brisbane",
-        currency: "AUD"
+        currency: "AUD",
+        aiEnabled: (businessSettings as any).aiEnabled !== false,
+        aiPhotoAnalysisEnabled: (businessSettings as any).aiPhotoAnalysisEnabled !== false,
+        aiSuggestionsEnabled: (businessSettings as any).aiSuggestionsEnabled !== false
       });
       
       // Always update payment data
@@ -473,6 +479,11 @@ export default function Settings({
     };
     
     saveNotificationPreferencesMutation.mutate(dbData);
+  };
+
+  // Quick save for individual business settings (e.g., AI toggles)
+  const handleBusinessSave = (data: Partial<typeof businessData>) => {
+    saveSettingsMutation.mutate(data);
   };
 
   const handleSave = async () => {
@@ -1882,6 +1893,69 @@ export default function Settings({
                     onCheckedChange={(checked) => handleNotificationChange('weeklySummary', checked)}
                     disabled={saveNotificationPreferencesMutation.isPending}
                     data-testid="switch-weekly-summary" 
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Features Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                AI Features
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Control which AI-powered features are enabled in your account. AI features help automate documentation and provide smart suggestions.
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <Label>Enable AI Features</Label>
+                    <p className="text-sm text-muted-foreground">Master toggle for all AI-powered features</p>
+                  </div>
+                  <Switch 
+                    checked={businessData.aiEnabled !== false}
+                    onCheckedChange={(checked) => {
+                      setBusinessData(prev => ({ ...prev, aiEnabled: checked }));
+                      handleBusinessSave({ aiEnabled: checked });
+                    }}
+                    data-testid="switch-ai-enabled" 
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <Label>AI Photo Analysis</Label>
+                    <p className="text-sm text-muted-foreground">Automatically analyse job photos and generate notes</p>
+                  </div>
+                  <Switch 
+                    checked={businessData.aiPhotoAnalysisEnabled !== false}
+                    onCheckedChange={(checked) => {
+                      setBusinessData(prev => ({ ...prev, aiPhotoAnalysisEnabled: checked }));
+                      handleBusinessSave({ aiPhotoAnalysisEnabled: checked });
+                    }}
+                    disabled={businessData.aiEnabled === false}
+                    data-testid="switch-ai-photo-analysis" 
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <Label>AI Suggestions</Label>
+                    <p className="text-sm text-muted-foreground">Smart suggestions for quotes, invoices, and follow-ups</p>
+                  </div>
+                  <Switch 
+                    checked={businessData.aiSuggestionsEnabled !== false}
+                    onCheckedChange={(checked) => {
+                      setBusinessData(prev => ({ ...prev, aiSuggestionsEnabled: checked }));
+                      handleBusinessSave({ aiSuggestionsEnabled: checked });
+                    }}
+                    disabled={businessData.aiEnabled === false}
+                    data-testid="switch-ai-suggestions" 
                   />
                 </div>
               </div>

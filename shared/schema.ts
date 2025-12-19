@@ -203,6 +203,10 @@ export const businessSettings = pgTable("business_settings", {
   twilioAuthToken: text("twilio_auth_token"), // User's own Twilio auth token (encrypted at rest)
   // Onboarding tracking
   onboardingCompleted: boolean("onboarding_completed").default(false),
+  // AI Features Settings
+  aiEnabled: boolean("ai_enabled").default(true), // Enable/disable all AI features
+  aiPhotoAnalysisEnabled: boolean("ai_photo_analysis_enabled").default(true), // Enable AI photo analysis
+  aiSuggestionsEnabled: boolean("ai_suggestions_enabled").default(true), // Enable AI suggestions
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
