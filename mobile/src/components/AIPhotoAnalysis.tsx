@@ -239,7 +239,7 @@ export function AIPhotoAnalysis({
           >
             <Feather name="zap" size={18} color={colors.primaryForeground} />
             <Text style={styles.analyseButtonText}>
-              Analyse {photoCount} Photo{photoCount !== 1 ? 's' : ''}
+              Analyse with AI
             </Text>
           </TouchableOpacity>
         </View>
@@ -328,7 +328,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
-    marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   header: {
     flexDirection: 'row',
@@ -337,7 +337,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.sm,
   },
   title: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.subtitle.fontSize,
     fontWeight: '600',
     color: colors.foreground,
   },
@@ -348,7 +348,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.sm,
   },
   betaBadgeText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typography.badge.fontSize,
     fontWeight: '500',
     color: colors.primary,
   },
@@ -359,7 +359,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.sm,
   },
   disabledBadgeText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typography.badge.fontSize,
     fontWeight: '500',
     color: colors.mutedForeground,
   },
@@ -371,7 +371,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginLeft: 'auto',
   },
   countBadgeText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typography.badge.fontSize,
     fontWeight: '500',
     color: colors.mutedForeground,
   },
@@ -379,13 +379,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.xs,
   },
   description: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.body.fontSize,
     color: colors.mutedForeground,
     marginBottom: spacing.md,
     lineHeight: 20,
   },
   disabledText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.body.fontSize,
     color: colors.mutedForeground,
     marginTop: spacing.xs,
   },
@@ -400,7 +400,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.sm,
   },
   analyseButtonText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.button.fontSize,
     fontWeight: '600',
     color: colors.primaryForeground,
   },
@@ -411,7 +411,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   analysingText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.body.fontSize,
     color: colors.mutedForeground,
   },
   streamingContainer: {
@@ -427,7 +427,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     maxHeight: 180,
   },
   streamingText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.body.fontSize,
     color: colors.foreground,
     lineHeight: 20,
   },
@@ -447,7 +447,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignSelf: 'flex-start',
   },
   cancelButtonText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.button.fontSize,
     fontWeight: '500',
     color: colors.foreground,
   },
@@ -458,7 +458,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   completeText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.body.fontSize,
     fontWeight: '500',
   },
   resultContainer: {
@@ -474,7 +474,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     maxHeight: 180,
   },
   resultText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.body.fontSize,
     color: colors.foreground,
     lineHeight: 20,
   },
@@ -494,7 +494,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.xs,
   },
   addButtonText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.button.fontSize,
     fontWeight: '600',
     color: colors.primaryForeground,
   },
@@ -509,7 +509,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.xs,
   },
   discardButtonText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.button.fontSize,
     fontWeight: '500',
     color: colors.foreground,
   },
