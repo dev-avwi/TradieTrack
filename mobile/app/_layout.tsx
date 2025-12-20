@@ -14,7 +14,6 @@ import { ThemeProvider, useTheme } from '../src/lib/theme';
 import { BottomNav, getBottomNavHeight } from '../src/components/BottomNav';
 import { Header } from '../src/components/Header';
 import { useNotificationsStore } from '../src/lib/notifications-store';
-import { FloatingActionButton } from '../src/components/FloatingActionButton';
 import { TerminalProvider } from '../src/providers/StripeTerminalProvider';
 import { OfflineBanner, OfflineIndicator } from '../src/components/OfflineIndicator';
 import { ConflictResolutionPanel } from '../src/components/ConflictResolutionPanel';
@@ -240,7 +239,6 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       <View style={[styles.content, { paddingBottom: bottomNavHeight }]}>
         {children}
       </View>
-      <FloatingActionButton />
       <BottomNav />
     </View>
   );
