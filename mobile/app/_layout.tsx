@@ -232,13 +232,17 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         api.get<{ isOwner: boolean; role?: string }>('/api/team/my-role').catch(() => ({ isOwner: true, role: 'owner' })),
         api.get<any[]>('/api/team/members').catch(() => [])
       ]).then(([roleData, members]) => {
-        const acceptedMembers = members.filter((m: any) => m.inviteStatus === 'accepted');
-        const isStaff = roleData.role === 'staff';
+        const membersList = Array.isArray(members) ? members : [];
+        const acceptedMembers = membersList.filter((m: any) => m.inviteStatus === 'accepted');
+        const isStaff = roleData?.role === 'staff';
         setTeamData({
-          isOwner: roleData.isOwner,
+          isOwner: roleData?.isOwner ?? true,
           hasTeam: acceptedMembers.length > 0,
           isStaff
         });
+      }).catch(() => {
+        // Default to solo owner if all fails
+        setTeamData({ isOwner: true, hasTeam: false, isStaff: false });
       });
     }
   }, [isAuthenticated]);
