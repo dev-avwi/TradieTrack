@@ -20,7 +20,6 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
-import { FloatingActionButton } from '../../src/components/FloatingActionButton';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 
 // Activity Feed Component - matches web Recent Activity section
@@ -1625,17 +1624,6 @@ export default function DashboardScreen() {
       <View style={{ height: spacing['4xl'] }} />
     </ScrollView>
     
-    {/* Floating Action Button - Non-staff only */}
-    {!isStaffUser && (
-      <FloatingActionButton 
-        isTeamOwner={isOwnerUser && hasActiveTeam}
-        onAssignPress={() => {
-          if (schedulerY > 0) {
-            scrollRef.current?.scrollTo({ y: schedulerY - 20, animated: true });
-          }
-        }}
-      />
-    )}
   </>
   );
 }

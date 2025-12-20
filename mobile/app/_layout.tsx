@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, StyleSheet, Alert, InteractionManager } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -21,6 +21,7 @@ import { useOfflineStore } from '../src/lib/offline-storage';
 import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
 import api from '../src/lib/api';
+import { FloatingActionButton } from '../src/components/FloatingActionButton';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -207,15 +208,38 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const { unreadCount, fetchNotifications } = useNotificationsStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { colors } = useTheme();
   const { isOnline, isInitialized: offlineInitialized } = useOfflineStore();
+  const [teamData, setTeamData] = useState<{ isOwner: boolean; hasTeam: boolean; isStaff: boolean }>({ 
+    isOwner: false, 
+    hasTeam: false,
+    isStaff: false
+  });
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchNotifications();
       const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  // Fetch team role info for FAB
+  useEffect(() => {
+    if (isAuthenticated) {
+      Promise.all([
+        api.get<{ isOwner: boolean; role?: string }>('/api/team/my-role').catch(() => ({ isOwner: true, role: 'owner' })),
+        api.get<any[]>('/api/team/members').catch(() => [])
+      ]).then(([roleData, members]) => {
+        const acceptedMembers = members.filter((m: any) => m.inviteStatus === 'accepted');
+        const isStaff = roleData.role === 'staff';
+        setTeamData({
+          isOwner: roleData.isOwner,
+          hasTeam: acceptedMembers.length > 0,
+          isStaff
+        });
+      });
     }
   }, [isAuthenticated]);
 
@@ -239,6 +263,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       <View style={[styles.content, { paddingBottom: bottomNavHeight }]}>
         {children}
       </View>
+      {!teamData.isStaff && <FloatingActionButton isTeamOwner={teamData.isOwner && teamData.hasTeam} />}
       <BottomNav />
     </View>
   );
