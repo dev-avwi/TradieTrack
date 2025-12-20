@@ -6683,6 +6683,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Unified dashboard endpoint - single call for web/mobile consistency
+  app.get("/api/dashboard/unified", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
+      const isOwner = userContext.isOwner;
+      const canManageTeam = hasViewAll; // Owners and managers with view_all can see team data
+      
+      // Fetch all data in parallel
+      let [jobs, quotes, invoices, clients, teamMembers, activities] = await Promise.all([
+        storage.getJobs(effectiveUserId),
+        storage.getQuotes(effectiveUserId),
+        storage.getInvoices(effectiveUserId),
+        storage.getClients(effectiveUserId),
+        canManageTeam ? storage.getTeamMembersForBusiness(effectiveUserId) : Promise.resolve([]),
+        storage.getActivityLogs(effectiveUserId, 5)
+      ]);
+      
+      // Staff view filter
+      if (!hasViewAll && userContext.teamMemberId) {
+        jobs = jobs.filter(job => job.assignedTo === req.userId);
+        quotes = [];
+        invoices = [];
+      }
+      
+      // Calculate today's jobs
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const todaysJobs = jobs.filter(job => {
+        if (!job.scheduledAt) return false;
+        const schedDate = new Date(job.scheduledAt);
+        return schedDate >= today && schedDate < tomorrow;
+      });
+      
+      // Unassigned jobs for team owners and managers with view_all permissions
+      const unassignedJobs = canManageTeam && teamMembers.length > 0 
+        ? jobs.filter(job => !job.assignedTo && job.status !== 'completed' && job.status !== 'invoiced')
+        : [];
+      
+      // Calculate stats
+      const unpaidInvoices = invoices.filter(inv => inv.status !== 'paid');
+      const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total), 0);
+      const quotesAwaiting = quotes.filter(q => q.status === 'sent').length;
+      
+      const currentMonth = new Date();
+      currentMonth.setDate(1);
+      currentMonth.setHours(0, 0, 0, 0);
+      
+      const monthlyEarnings = invoices
+        .filter(inv => inv.status === 'paid' && inv.paidAt && new Date(inv.paidAt) >= currentMonth)
+        .reduce((sum, inv) => sum + parseFloat(inv.total), 0);
+      
+      // Active team members only
+      const activeTeamMembers = teamMembers.filter(m => m.status === 'active');
+      
+      res.json({
+        stats: {
+          jobsToday: todaysJobs.length,
+          unpaidInvoicesCount: unpaidInvoices.length,
+          unpaidInvoicesTotal: unpaidTotal,
+          quotesAwaiting,
+          monthlyEarnings,
+          isStaffView: !hasViewAll && userContext.teamMemberId ? true : false,
+        },
+        todaysJobs: todaysJobs.map(job => {
+          const client = clients.find(c => c.id === job.clientId);
+          return { ...job, client };
+        }),
+        unassignedJobs: unassignedJobs.map(job => {
+          const client = clients.find(c => c.id === job.clientId);
+          return { ...job, client };
+        }),
+        teamMembers: activeTeamMembers.map(m => ({
+          id: m.id,
+          userId: m.userId,
+          name: m.name,
+          email: m.email,
+          role: m.role,
+          status: m.status,
+        })),
+        activities,
+        isOwner,
+        canManageTeam,
+        hasActiveTeam: activeTeamMembers.length > 0,
+      });
+    } catch (error) {
+      console.error("Error fetching unified dashboard:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard data" });
+    }
+  });
+
   // Dashboard activity feed
   app.get("/api/dashboard/activity", requireAuth, async (req: any, res) => {
     try {
