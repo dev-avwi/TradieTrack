@@ -279,7 +279,8 @@ export default function MoreScreen() {
     isManager,
     isSolo,
     userRole: mapRoleToFilterRole(role),
-  }), [hasTeamAccess, isSolo, isStaff, isOwner, isManager, role]);
+    isPlatformAdmin: user?.isPlatformAdmin || false,
+  }), [hasTeamAccess, isSolo, isStaff, isOwner, isManager, role, user?.isPlatformAdmin]);
 
   const categorizedItems = useMemo(() => 
     getMorePageItemsByCategory(filterOptions), 

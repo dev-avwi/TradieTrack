@@ -10,8 +10,9 @@ import {
   Alert,
   ActivityIndicator
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
@@ -428,27 +429,40 @@ export default function IntegrationsScreen() {
 
   const handleConnectXero = async () => {
     try {
-      const response = await api.get<{ configured: boolean; connectUrl: string }>('/api/integrations/xero/connect-link');
-      if (!response.data?.connectUrl) {
-        Alert.alert('Error', 'Could not get Xero connection link');
+      setIsConnecting(true);
+      
+      // Get auth URL from backend (this creates a mobile-specific state)
+      const response = await api.post<{ authUrl: string; state: string }>('/api/integrations/xero/mobile-connect');
+      if (!response.data?.authUrl) {
+        Alert.alert('Error', response.error || 'Could not initiate Xero connection');
         return;
       }
       
-      Alert.alert(
-        'Connect Xero',
-        'You will be redirected to the web app to securely connect your Xero account. After connecting, return to the mobile app and refresh.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Continue', 
-            onPress: async () => {
-              await Linking.openURL(response.data!.connectUrl);
-            }
-          }
-        ]
+      // Open Xero OAuth in in-app browser
+      const result = await WebBrowser.openAuthSessionAsync(
+        response.data.authUrl,
+        'tradietrack://xero-callback'
       );
+      
+      if (result.type === 'success') {
+        // Parse the callback URL to check success
+        const url = new URL(result.url);
+        const success = url.searchParams.get('success') === 'true';
+        const error = url.searchParams.get('error');
+        
+        if (success) {
+          Alert.alert('Success', 'Xero account connected successfully!');
+          fetchIntegrationStatus();
+        } else {
+          Alert.alert('Connection Failed', error || 'Failed to connect Xero account');
+        }
+      } else if (result.type === 'cancel') {
+        // User cancelled - no alert needed
+      }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to open Xero connection');
+      Alert.alert('Error', error.message || 'Failed to connect Xero');
+    } finally {
+      setIsConnecting(false);
     }
   };
 

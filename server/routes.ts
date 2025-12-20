@@ -3485,22 +3485,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Xero Integration Routes
   
-  // Xero connect link for mobile app - provides web URL for OAuth
-  app.get("/api/integrations/xero/connect-link", requireAuth, async (req: any, res) => {
+  // In-memory store for mobile OAuth states (in production, use Redis or database)
+  const mobileOAuthStates = new Map<string, { userId: string; expiresAt: number }>();
+  
+  // Clean up expired states every 5 minutes
+  setInterval(() => {
+    const now = Date.now();
+    for (const [state, data] of mobileOAuthStates.entries()) {
+      if (data.expiresAt < now) {
+        mobileOAuthStates.delete(state);
+      }
+    }
+  }, 5 * 60 * 1000);
+
+  // Xero connect for mobile app - returns auth URL for in-app browser OAuth
+  app.post("/api/integrations/xero/mobile-connect", requireAuth, async (req: any, res) => {
     try {
-      const configured = xeroService.isXeroConfigured();
-      const protocol = req.protocol || 'https';
-      const host = req.get('host');
-      const baseUrl = `${protocol}://${host}`;
+      if (!xeroService.isXeroConfigured()) {
+        return res.status(400).json({ 
+          error: "Xero integration not configured. Please add XERO_CLIENT_ID and XERO_CLIENT_SECRET environment variables." 
+        });
+      }
       
-      res.json({
-        configured,
-        connectUrl: `${baseUrl}/integrations?action=connect-xero`,
-        baseUrl,
+      // Generate state with mobile flag and store it in memory keyed by state
+      const state = `mobile_${req.userId}_${Date.now()}_${randomBytes(8).toString('hex')}`;
+      
+      // Store state in memory with 10 minute expiry
+      mobileOAuthStates.set(state, {
+        userId: req.userId,
+        expiresAt: Date.now() + 10 * 60 * 1000,
       });
+      
+      const authUrl = await xeroService.getAuthUrl(state);
+      res.json({ authUrl, state });
     } catch (error: any) {
-      console.error("Error generating Xero connect link:", error);
-      res.status(500).json({ error: error.message || "Failed to generate connect link" });
+      console.error("Error getting Xero mobile auth URL:", error);
+      res.status(500).json({ error: error.message || "Failed to generate Xero auth URL" });
     }
   });
 
@@ -3521,23 +3541,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/integrations/xero/callback", requireAuth, async (req: any, res) => {
+  // Xero callback - supports both web (session-based) and mobile (state-based) auth
+  app.get("/api/integrations/xero/callback", async (req: any, res) => {
     try {
       const stateFromQuery = req.query.state as string;
-      const storedState = req.session.xeroOAuthState;
+      const isMobile = stateFromQuery?.startsWith('mobile_');
       
-      delete req.session.xeroOAuthState;
+      let isValidState = false;
+      let userId: string | null = null;
       
-      if (!stateFromQuery || !storedState || stateFromQuery !== storedState) {
+      if (isMobile) {
+        // Check mobile OAuth state store - no session required
+        const mobileState = mobileOAuthStates.get(stateFromQuery);
+        if (mobileState && mobileState.expiresAt > Date.now()) {
+          isValidState = true;
+          userId = mobileState.userId;
+          mobileOAuthStates.delete(stateFromQuery); // Clean up after use
+        }
+      } else {
+        // Check session for web OAuth - requires auth
+        if (!req.session?.passport?.user && !req.userId) {
+          return res.redirect('/integrations?xero=error&message=' + encodeURIComponent('Please log in first.'));
+        }
+        userId = req.userId || req.session?.passport?.user;
+        const storedState = req.session.xeroOAuthState;
+        delete req.session.xeroOAuthState;
+        isValidState = stateFromQuery && storedState && stateFromQuery === storedState;
+      }
+      
+      if (!isValidState || !userId) {
         console.error("OAuth state mismatch - potential CSRF attack");
+        if (isMobile) {
+          return res.redirect('tradietrack://xero-callback?success=false&error=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
+        }
         return res.redirect('/integrations?xero=error&message=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
       }
       
       const fullUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-      const connection = await xeroService.handleCallback(fullUrl, req.userId);
+      const connection = await xeroService.handleCallback(fullUrl, userId);
+      
+      // Redirect to mobile deep link if request originated from mobile
+      if (isMobile) {
+        return res.redirect('tradietrack://xero-callback?success=true');
+      }
       res.redirect('/integrations?xero=connected');
     } catch (error: any) {
       console.error("Error handling Xero callback:", error);
+      const isMobile = (req.query.state as string)?.startsWith('mobile_');
+      if (isMobile) {
+        return res.redirect('tradietrack://xero-callback?success=false&error=' + encodeURIComponent(error.message || 'Connection failed'));
+      }
       res.redirect('/integrations?xero=error&message=' + encodeURIComponent(error.message || 'Connection failed'));
     }
   });

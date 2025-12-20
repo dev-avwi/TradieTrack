@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Alert, InteractionManager } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Linking from 'expo-linking';
 import { useAuthStore } from '../src/lib/store';
 import "../global.css";
 import { useNotifications, useOfflineStorage, useLocationTracking } from '../src/hooks/useServices';
@@ -20,6 +21,7 @@ import { ConflictResolutionPanel } from '../src/components/ConflictResolutionPan
 import { useOfflineStore } from '../src/lib/offline-storage';
 import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
+import api from '../src/lib/api';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +31,85 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Deep link handler for email flows (verify-email, accept-invite, reset-password)
+function DeepLinkHandler() {
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+  
+  useEffect(() => {
+    // Handle initial URL (when app opens from a deep link)
+    const handleInitialURL = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl) {
+        handleDeepLink(initialUrl);
+      }
+    };
+    
+    // Handle deep links while app is running
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+    
+    handleInitialURL();
+    
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+  
+  const handleDeepLink = async (url: string) => {
+    try {
+      const parsed = Linking.parse(url);
+      const { hostname, path, queryParams } = parsed;
+      
+      // Handle different deep link paths
+      if (hostname === 'verify-email' || path === '/verify-email') {
+        const token = queryParams?.token as string;
+        if (token) {
+          try {
+            const response = await api.get(`/api/verify-email?token=${token}`);
+            if (response.data?.success) {
+              Alert.alert('Email Verified', 'Your email has been verified successfully!');
+              checkAuth();
+            } else {
+              Alert.alert('Verification Failed', response.error || 'Failed to verify email');
+            }
+          } catch (error: any) {
+            Alert.alert('Verification Failed', error.message || 'Failed to verify email');
+          }
+        }
+      } else if (hostname === 'accept-invite' || path === '/accept-invite') {
+        const token = queryParams?.token as string;
+        if (token) {
+          // Defer navigation until interactions complete for safety
+          InteractionManager.runAfterInteractions(() => {
+            router.push(`/(auth)/register?inviteToken=${token}`);
+          });
+        }
+      } else if (hostname === 'reset-password' || path === '/reset-password') {
+        const token = queryParams?.token as string;
+        if (token) {
+          // Defer navigation until interactions complete for safety
+          InteractionManager.runAfterInteractions(() => {
+            router.push(`/(auth)/reset-password?token=${token}`);
+          });
+        }
+      } else if (hostname === 'xero-callback' || path === '/xero-callback') {
+        // Xero OAuth callback - handled by integrations screen
+        const success = queryParams?.success === 'true';
+        if (success) {
+          InteractionManager.runAfterInteractions(() => {
+            router.push('/more/integrations');
+          });
+        }
+      }
+    } catch (error) {
+      console.log('[DeepLink] Error handling deep link:', error);
+    }
+  };
+  
+  return null;
+}
 
 function ServicesInitializer() {
   const notifications = useNotifications();
@@ -176,6 +257,7 @@ function RootLayoutContent() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <DeepLinkHandler />
       <ServicesInitializer />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AuthenticatedLayout>

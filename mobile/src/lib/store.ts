@@ -21,6 +21,7 @@ interface User {
   brandColor?: string;
   themeColor?: string;
   gstEnabled?: boolean;
+  isPlatformAdmin?: boolean;
 }
 
 interface TemplateCustomization {

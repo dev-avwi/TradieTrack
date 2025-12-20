@@ -11,6 +11,7 @@ export interface NavItem {
   bgColor?: 'primary' | 'success' | 'warning' | 'info' | 'muted' | 'destructive';
   requiresTeam?: boolean;
   requiresOwnerOrManager?: boolean;
+  requiresPlatformAdmin?: boolean;
   hideForTradie?: boolean;
   hideForStaff?: boolean;
   allowedRoles?: UserRole[];
@@ -18,7 +19,7 @@ export interface NavItem {
   showInMore?: boolean;
   showBadge?: boolean;
   badge?: string;
-  category?: 'work' | 'money' | 'team' | 'automations' | 'communication' | 'settings' | 'legal' | 'account' | 'featured';
+  category?: 'work' | 'money' | 'team' | 'automations' | 'communication' | 'settings' | 'legal' | 'account' | 'featured' | 'admin';
 }
 
 export const mainMenuItems: NavItem[] = [
@@ -366,6 +367,21 @@ export const accountMenuItems: NavItem[] = [
   },
 ];
 
+export const adminMenuItems: NavItem[] = [
+  {
+    title: "Admin Dashboard",
+    url: "/more/admin",
+    icon: "shield",
+    description: "Platform management",
+    color: "destructive",
+    bgColor: "destructive",
+    requiresPlatformAdmin: true,
+    showInMore: true,
+    category: "admin",
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+  },
+];
+
 export const moreNavItem: NavItem = {
   title: "More",
   url: "/more",
@@ -380,6 +396,7 @@ export interface FilterOptions {
   isManager: boolean;
   isSolo: boolean;
   userRole?: UserRole;
+  isPlatformAdmin?: boolean;
 }
 
 export function filterNavItems(items: NavItem[], options: FilterOptions): NavItem[] {
@@ -387,6 +404,11 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
   const isStaffTradie = options.isTradie && !isOwnerOrManager;
   
   return items.filter(item => {
+    // Platform admin only items
+    if (item.requiresPlatformAdmin && !options.isPlatformAdmin) {
+      return false;
+    }
+    
     // Use allowedRoles if specified (new permission system)
     // Match web's filtering logic from client/src/lib/navigation-config.ts
     if (item.allowedRoles && options.userRole) {
@@ -422,7 +444,7 @@ export function getBottomNavItems(options: FilterOptions): NavItem[] {
 }
 
 export function getMorePageItems(options: FilterOptions): NavItem[] {
-  const allItems = [...mainMenuItems, ...settingsMenuItems, ...legalMenuItems, ...accountMenuItems];
+  const allItems = [...mainMenuItems, ...settingsMenuItems, ...legalMenuItems, ...accountMenuItems, ...adminMenuItems];
   const filtered = filterNavItems(allItems, options);
   return filtered.filter(item => item.showInMore);
 }
@@ -439,6 +461,7 @@ export function getMorePageItemsByCategory(options: FilterOptions): Record<strin
     settings: [],
     legal: [],
     account: [],
+    admin: [],
   };
   
   items.forEach(item => {
@@ -461,6 +484,7 @@ export const categoryLabels: Record<string, string> = {
   settings: 'Settings',
   legal: 'Legal',
   account: 'Account',
+  admin: 'Platform Admin',
 };
 
 export const categoryOrder = [
@@ -473,4 +497,5 @@ export const categoryOrder = [
   'settings',
   'legal',
   'account',
+  'admin',
 ];
