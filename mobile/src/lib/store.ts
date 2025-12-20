@@ -150,10 +150,30 @@ interface RoleInfo {
   isOwner: boolean;
 }
 
+interface TeamMember {
+  id: string;
+  userId: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+  inviteStatus: 'pending' | 'accepted' | 'rejected';
+  locationEnabledByOwner?: boolean;
+}
+
+interface TeamState {
+  hasActiveTeam: boolean;
+  activeTeamCount: number;
+  members: TeamMember[];
+  isLoading: boolean;
+  lastFetched: number | null;
+}
+
 interface AuthState {
   user: User | null;
   businessSettings: BusinessSettings | null;
   roleInfo: RoleInfo | null;
+  teamState: TeamState;
   isLoading: boolean;
   isAuthenticated: boolean;
   isInitialized: boolean;
@@ -163,6 +183,8 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   fetchRoleInfo: () => Promise<void>;
+  fetchTeamState: (forceRefresh?: boolean) => Promise<void>;
+  getTeamMembers: () => TeamMember[];
   fetchBusinessSettings: () => Promise<void>;
   setBusinessSettings: (settings: BusinessSettings) => void;
   setUser: (user: User) => void;
@@ -171,12 +193,14 @@ interface AuthState {
   hasPermission: (permission: string) => boolean;
   isOwner: () => boolean;
   isStaff: () => boolean;
+  hasActiveTeam: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   businessSettings: null,
   roleInfo: null,
+  teamState: { hasActiveTeam: false, activeTeamCount: 0, members: [], isLoading: false, lastFetched: null },
   isLoading: false,
   isAuthenticated: false,
   isInitialized: false,
@@ -232,6 +256,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Fetch role info for permissions
     await get().fetchRoleInfo();
     
+    // Fetch team state for FAB and features
+    await get().fetchTeamState();
+    
     // Cache auth data for offline access
     const state = get();
     await offlineStorage.cacheAuthData(state.user, state.businessSettings, state.roleInfo);
@@ -255,6 +282,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user: null, 
       businessSettings: null,
       roleInfo: null,
+      teamState: { hasActiveTeam: false, activeTeamCount: 0, members: [], isLoading: false, lastFetched: null },
       isAuthenticated: false,
       isLoading: false,
       error: null 
@@ -369,6 +397,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Fetch role info for permissions
     await get().fetchRoleInfo();
     
+    // Fetch team state for FAB and features
+    await get().fetchTeamState();
+    
     // Update cached auth data
     const state = get();
     await offlineStorage.cacheAuthData(state.user, state.businessSettings, state.roleInfo);
@@ -462,6 +493,55 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isStaff: () => {
     const { roleInfo } = get();
     return roleInfo !== null && !roleInfo.isOwner;
+  },
+  
+  fetchTeamState: async (forceRefresh = false) => {
+    const { isOnline } = useOfflineStore.getState();
+    if (!isOnline) {
+      return;
+    }
+    
+    // Skip if recently fetched (within 5 minutes) and not forcing refresh
+    const { teamState } = get();
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    if (!forceRefresh && teamState.lastFetched && Date.now() - teamState.lastFetched < CACHE_DURATION) {
+      return;
+    }
+    
+    set({ teamState: { ...teamState, isLoading: true } });
+    
+    try {
+      const membersResponse = await api.get<any[]>('/api/team/members');
+      const members = Array.isArray(membersResponse.data) ? membersResponse.data : [];
+      const acceptedMembers = members.filter((m: any) => m.inviteStatus === 'accepted');
+      
+      set({
+        teamState: {
+          hasActiveTeam: acceptedMembers.length > 0,
+          activeTeamCount: acceptedMembers.length,
+          members: members,
+          isLoading: false,
+          lastFetched: Date.now(),
+        }
+      });
+    } catch (e) {
+      console.log('[Auth] Failed to fetch team state:', e);
+      set({
+        teamState: {
+          ...get().teamState,
+          isLoading: false,
+        }
+      });
+    }
+  },
+  
+  hasActiveTeam: () => {
+    const { teamState, roleInfo } = get();
+    return roleInfo?.isOwner === true && teamState.hasActiveTeam;
+  },
+  
+  getTeamMembers: () => {
+    return get().teamState.members;
   },
 }));
 

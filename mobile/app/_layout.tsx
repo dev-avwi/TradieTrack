@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { View, StyleSheet, Alert, InteractionManager } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -207,15 +207,10 @@ function ServicesInitializer() {
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
-  const { unreadCount, fetchNotifications } = useNotificationsStore();
-  const { isAuthenticated, user } = useAuthStore();
+  const { fetchNotifications } = useNotificationsStore();
+  const { isAuthenticated, isOwner, isStaff, hasActiveTeam } = useAuthStore();
   const { colors } = useTheme();
   const { isOnline, isInitialized: offlineInitialized } = useOfflineStore();
-  const [teamData, setTeamData] = useState<{ isOwner: boolean; hasTeam: boolean; isStaff: boolean }>({ 
-    isOwner: false, 
-    hasTeam: false,
-    isStaff: false
-  });
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -225,34 +220,16 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated]);
 
-  // Fetch team role info for FAB
-  useEffect(() => {
-    if (isAuthenticated) {
-      Promise.all([
-        api.get<{ isOwner: boolean; role?: string }>('/api/team/my-role').catch(() => ({ isOwner: true, role: 'owner' })),
-        api.get<any[]>('/api/team/members').catch(() => [])
-      ]).then(([roleData, members]) => {
-        const membersList = Array.isArray(members) ? members : [];
-        const acceptedMembers = membersList.filter((m: any) => m.inviteStatus === 'accepted');
-        const isStaff = roleData?.role === 'staff';
-        setTeamData({
-          isOwner: roleData?.isOwner ?? true,
-          hasTeam: acceptedMembers.length > 0,
-          isStaff
-        });
-      }).catch(() => {
-        // Default to solo owner if all fails
-        setTeamData({ isOwner: true, hasTeam: false, isStaff: false });
-      });
-    }
-  }, [isAuthenticated]);
-
   // Trigger full sync when coming online or after authentication
   useEffect(() => {
     if (isAuthenticated && isOnline && offlineInitialized) {
       offlineStorage.fullSync();
     }
   }, [isAuthenticated, isOnline, offlineInitialized]);
+  
+  // Compute FAB visibility from centralized store
+  const showFab = !isStaff();
+  const isTeamOwner = isOwner() && hasActiveTeam();
 
   if (!isAuthenticated) {
     return <>{children}</>;
@@ -267,7 +244,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       <View style={[styles.content, { paddingBottom: bottomNavHeight }]}>
         {children}
       </View>
-      {!teamData.isStaff && <FloatingActionButton isTeamOwner={teamData.isOwner && teamData.hasTeam} />}
+      {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} />}
       <BottomNav />
     </View>
   );

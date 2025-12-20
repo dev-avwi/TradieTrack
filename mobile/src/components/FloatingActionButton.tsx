@@ -258,7 +258,11 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress }: Flo
                   style={styles.quickAction}
                   onPress={() => {
                     setIsOpen(false);
-                    onAssignPress?.();
+                    if (onAssignPress) {
+                      onAssignPress();
+                    } else {
+                      router.push('/more/team-management');
+                    }
                   }}
                 >
                   <Feather name="users" size={14} color={colors.info} />

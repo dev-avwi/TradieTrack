@@ -17,6 +17,7 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
+import { useAuthStore } from '../../src/lib/store';
 
 interface SubscriptionStatus {
   tier: 'free' | 'pro' | 'team' | 'trial';
@@ -24,7 +25,7 @@ interface SubscriptionStatus {
   seatCount?: number;
 }
 
-const BETA_MODE = true;
+const BETA_MODE = false;
 const TEAM_BASE_PRICE = 59;
 const TEAM_SEAT_PRICE = 29;
 
@@ -1234,6 +1235,10 @@ const createStyles = (colors: any) => StyleSheet.create({
 export default function TeamManagementScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { user, isOwner } = useAuthStore();
+  
+  // Get subscription tier from auth store (single source of truth)
+  const userSubscriptionTier = user?.subscriptionTier || 'free';
   
   const ROLE_CONFIG = useMemo(() => ({
     owner: { 
@@ -1358,15 +1363,6 @@ export default function TeamManagementScreen() {
   }, []);
   
   const handleUpgradeToTeam = async () => {
-    if (BETA_MODE) {
-      Alert.alert(
-        'Beta Mode Active',
-        'Team features are currently free during beta! You can start inviting team members right away.',
-        [{ text: 'Got it!' }]
-      );
-      return;
-    }
-
     setIsUpgrading(true);
     try {
       const response = await api.post<{ success: boolean; sessionUrl?: string; error?: string }>('/api/billing/checkout/team', {
@@ -1393,8 +1389,9 @@ export default function TeamManagementScreen() {
     }
   };
   
-  const currentTier = BETA_MODE ? 'team' : (subscriptionStatus?.tier || 'free');
-  const hasTeamPlan = currentTier === 'team' || BETA_MODE;
+  // Use auth store tier as source of truth, fall back to API response
+  const currentTier = userSubscriptionTier || subscriptionStatus?.tier || 'free';
+  const hasTeamPlan = currentTier === 'team';
   const teamPrice = TEAM_BASE_PRICE + (seatCount * TEAM_SEAT_PRICE);
 
   useEffect(() => {
