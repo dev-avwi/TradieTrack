@@ -51,6 +51,8 @@ interface TeamMember {
   inviteStatus: 'pending' | 'accepted' | 'rejected';
   useCustomPermissions?: boolean;
   customPermissions?: string[];
+  locationEnabledByOwner?: boolean;
+  allowLocationSharing?: boolean;
   user?: {
     id: string;
     firstName: string;
@@ -1313,6 +1315,15 @@ export default function TeamManagementScreen() {
   const [useCustomPermissions, setUseCustomPermissions] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
+  
+  // Assign job modal state
+  const [showAssignJobModal, setShowAssignJobModal] = useState(false);
+  const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string>('');
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+  const [isAssigningJob, setIsAssigningJob] = useState(false);
+  const [isResendingInvite, setIsResendingInvite] = useState<string | null>(null);
+  const [isTogglingLocation, setIsTogglingLocation] = useState<string | null>(null);
 
   const fetchTeam = useCallback(async () => {
     setIsLoading(true);
@@ -1642,6 +1653,88 @@ export default function TeamManagementScreen() {
     );
   };
 
+  // Toggle location sharing for a team member
+  const handleToggleLocation = async (member: TeamMember, enabled: boolean) => {
+    setIsTogglingLocation(member.id);
+    try {
+      await api.patch(`/api/team/members/${member.id}/location`, {
+        locationEnabledByOwner: enabled,
+      });
+      setTeamMembers(prev =>
+        prev.map(m => m.id === member.id ? { ...m, locationEnabledByOwner: enabled } : m)
+      );
+      Alert.alert(
+        enabled ? 'Location Enabled' : 'Location Disabled',
+        `Location tracking has been ${enabled ? 'enabled' : 'disabled'} for this team member.`
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update location settings');
+    }
+    setIsTogglingLocation(null);
+  };
+
+  // Resend invite to pending member
+  const handleResendInvite = async (member: TeamMember) => {
+    setIsResendingInvite(member.id);
+    try {
+      await api.post(`/api/team/members/${member.id}/resend-invite`);
+      Alert.alert('Invite Sent', `Invitation has been resent to ${member.email}`);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to resend invite');
+    }
+    setIsResendingInvite(null);
+  };
+
+  // Open assign job modal
+  const openAssignJobModal = async (member: TeamMember) => {
+    setSelectedMember(member);
+    setShowAssignJobModal(true);
+    setIsLoadingJobs(true);
+    setSelectedJobId('');
+    
+    try {
+      const response = await api.get<Job[]>('/api/jobs');
+      // Handle both array response and wrapped response
+      const jobsArray = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data as any)?.jobs || [];
+      
+      // Filter to active jobs that can be assigned
+      const jobs = jobsArray.filter(
+        (j: Job) => j.status !== 'done' && j.status !== 'cancelled'
+      ).slice(0, 50); // Limit to 50 jobs
+      setAvailableJobs(jobs);
+    } catch (error) {
+      console.log('Error fetching jobs:', error);
+      setAvailableJobs([]);
+    }
+    setIsLoadingJobs(false);
+  };
+
+  // Assign job to member
+  const handleAssignJob = async () => {
+    if (!selectedMember || !selectedJobId) {
+      Alert.alert('Required', 'Please select a job to assign');
+      return;
+    }
+    
+    setIsAssigningJob(true);
+    try {
+      await api.post(`/api/jobs/${selectedJobId}/assign`, {
+        assignedTo: selectedMember.userId,
+      });
+      Alert.alert(
+        'Job Assigned',
+        `Job has been assigned to ${getMemberName(selectedMember)}`
+      );
+      setShowAssignJobModal(false);
+      setSelectedJobId('');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to assign job');
+    }
+    setIsAssigningJob(false);
+  };
+
   const ownerCount = teamMembers.filter(m => m.role === 'owner').length;
   const adminCount = teamMembers.filter(m => m.role === 'admin').length;
   const staffCount = teamMembers.filter(m => m.role === 'staff' || m.role === 'supervisor').length;
@@ -1704,6 +1797,42 @@ export default function TeamManagementScreen() {
           </View>
         </View>
 
+        {/* Location toggle for accepted members */}
+        {member.role !== 'owner' && member.inviteStatus === 'accepted' && currentUserIsOwner && (
+          <View style={[styles.memberActions, { borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: spacing.sm, marginBottom: spacing.sm }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Feather 
+                name="map-pin" 
+                size={14} 
+                color={member.locationEnabledByOwner !== false ? colors.success : colors.mutedForeground} 
+              />
+              <Text style={[styles.actionButtonText, { marginLeft: spacing.xs, color: colors.foreground }]}>
+                Location Access
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={{
+                width: 44,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: member.locationEnabledByOwner !== false ? colors.success : colors.muted,
+                padding: 2,
+                opacity: isTogglingLocation === member.id ? 0.5 : 1,
+              }}
+              onPress={() => handleToggleLocation(member, member.locationEnabledByOwner === false)}
+              disabled={isTogglingLocation === member.id}
+            >
+              <View style={{
+                width: 20,
+                height: 20,
+                borderRadius: 10,
+                backgroundColor: '#FFFFFF',
+                transform: [{ translateX: member.locationEnabledByOwner !== false ? 20 : 0 }],
+              }} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {member.role !== 'owner' && currentUserIsOwner && (
           <View style={styles.memberActions}>
             <TouchableOpacity 
@@ -1723,12 +1852,39 @@ export default function TeamManagementScreen() {
             </TouchableOpacity>
             
             {member.inviteStatus === 'accepted' && (
+              <>
+                <TouchableOpacity 
+                  style={styles.permissionsButton}
+                  onPress={() => openPermissionsModal(member)}
+                >
+                  <Feather name="key" size={14} color={colors.primary} />
+                  <Text style={styles.permissionsButtonText}>Permissions</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={() => openAssignJobModal(member)}
+                >
+                  <Feather name="briefcase" size={14} color={colors.primary} />
+                  <Text style={styles.actionButtonText}>Assign Job</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            
+            {member.inviteStatus === 'pending' && (
               <TouchableOpacity 
-                style={styles.permissionsButton}
-                onPress={() => openPermissionsModal(member)}
+                style={[styles.actionButton, { borderColor: colors.warning }]}
+                onPress={() => handleResendInvite(member)}
+                disabled={isResendingInvite === member.id}
               >
-                <Feather name="key" size={14} color={colors.primary} />
-                <Text style={styles.permissionsButtonText}>Permissions</Text>
+                {isResendingInvite === member.id ? (
+                  <ActivityIndicator size="small" color={colors.warning} />
+                ) : (
+                  <>
+                    <Feather name="send" size={14} color={colors.warning} />
+                    <Text style={[styles.actionButtonText, { color: colors.warning }]}>Resend</Text>
+                  </>
+                )}
               </TouchableOpacity>
             )}
             
@@ -2633,6 +2789,114 @@ export default function TeamManagementScreen() {
                     <>
                       <Feather name="save" size={16} color="#FFFFFF" />
                       <Text style={styles.saveButtonText}>Save</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Assign Job Modal */}
+        <Modal visible={showAssignJobModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle} numberOfLines={1}>
+                  Assign Job to {getMemberName(selectedMember)}
+                </Text>
+                <TouchableOpacity onPress={() => setShowAssignJobModal(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                {isLoadingJobs ? (
+                  <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing.xl }} />
+                ) : availableJobs.length === 0 ? (
+                  <View style={styles.emptyDetail}>
+                    <Feather name="briefcase" size={48} color={colors.mutedForeground} />
+                    <Text style={styles.emptyDetailText}>No available jobs to assign</Text>
+                    <Text style={[styles.emptyDetailText, { marginTop: spacing.xs }]}>
+                      Create a new job first, then assign it here
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.inputLabel, styles.inputLabelFirst]}>Select a Job</Text>
+                    {availableJobs.map((job) => {
+                      const isSelected = selectedJobId === job.id;
+                      const statusConfig = JOB_STATUS_CONFIG[job.status as keyof typeof JOB_STATUS_CONFIG] || JOB_STATUS_CONFIG.todo;
+                      const isAssigned = !!job.assignedTo;
+                      
+                      return (
+                        <TouchableOpacity
+                          key={job.id}
+                          style={[
+                            styles.roleOption,
+                            isSelected && styles.roleOptionSelected,
+                            isSelected && { borderColor: colors.primary }
+                          ]}
+                          onPress={() => setSelectedJobId(job.id)}
+                        >
+                          <View style={styles.roleOptionHeader}>
+                            <View style={[styles.roleOptionIcon, { backgroundColor: statusConfig.color + '30' }]}>
+                              <Feather name="briefcase" size={16} color={statusConfig.textColor === '#FFFFFF' ? statusConfig.color : colors.foreground} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.roleOptionLabel} numberOfLines={1}>{job.title}</Text>
+                              {job.address && (
+                                <Text style={styles.roleOptionDesc} numberOfLines={1}>{job.address}</Text>
+                              )}
+                            </View>
+                            <View style={[
+                              styles.roleOptionCheck, 
+                              { 
+                                borderColor: isSelected ? colors.primary : colors.border,
+                                backgroundColor: isSelected ? colors.primary : 'transparent',
+                              }
+                            ]}>
+                              {isSelected && <Feather name="check" size={12} color="#FFFFFF" />}
+                            </View>
+                          </View>
+                          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}>
+                            <View style={[styles.jobStatus, { backgroundColor: statusConfig.color }]}>
+                              <Text style={[styles.jobStatusText, { color: statusConfig.textColor }]}>
+                                {statusConfig.label}
+                              </Text>
+                            </View>
+                            {isAssigned && (
+                              <View style={[styles.customBadge, { backgroundColor: colors.warning + '20' }]}>
+                                <Feather name="user" size={10} color={colors.warning} />
+                                <Text style={[styles.customBadgeText, { color: colors.warning }]}>Already assigned</Text>
+                              </View>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </>
+                )}
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => setShowAssignJobModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.saveButton, !selectedJobId && { opacity: 0.5 }]}
+                  onPress={handleAssignJob}
+                  disabled={isAssigningJob || !selectedJobId}
+                >
+                  {isAssigningJob ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Feather name="check" size={16} color="#FFFFFF" />
+                      <Text style={styles.saveButtonText}>Assign Job</Text>
                     </>
                   )}
                 </TouchableOpacity>
