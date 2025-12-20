@@ -12,7 +12,7 @@ import { useAppMode } from "@/hooks/use-app-mode";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { 
   Briefcase, 
   DollarSign, 
@@ -89,6 +89,12 @@ export default function TeamOwnerDashboard({
   const [draggedJob, setDraggedJob] = useState<Job | null>(null);
   const [dragOverMember, setDragOverMember] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const schedulerRef = useRef<HTMLElement>(null);
+
+  // Scroll to job scheduler section
+  const scrollToScheduler = () => {
+    schedulerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   // Fetch all unassigned jobs for the scheduler
   const { data: unassignedJobs = [] } = useQuery<Job[]>({
@@ -398,6 +404,18 @@ export default function TeamOwnerDashboard({
                   <span className="truncate">Quote</span>
                 </Button>
               )}
+              {hasActiveTeam && jobsToAssign.length > 0 && (
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 h-10 px-3 rounded-xl press-scale min-w-[80px] border-primary/30 text-primary"
+                  onClick={scrollToScheduler}
+                  data-testid="button-assign-job"
+                >
+                  <UserPlus className="h-4 w-4 mr-1.5" />
+                  <span className="truncate">Assign ({jobsToAssign.length})</span>
+                </Button>
+              )}
               <Button 
                 variant="outline"
                 size="sm"
@@ -415,7 +433,7 @@ export default function TeamOwnerDashboard({
 
       {/* Job Scheduler - Drag & Drop */}
       {hasActiveTeam && (
-        <section className="space-y-4 animate-fade-up" style={{ animationDelay: '150ms' }}>
+        <section ref={schedulerRef} className="space-y-4 animate-fade-up" style={{ animationDelay: '150ms' }}>
           <div className="flex items-center justify-between">
             <h2 className="ios-section-title flex items-center gap-2.5">
               <div 

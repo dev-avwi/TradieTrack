@@ -731,6 +731,14 @@ export default function DashboardScreen() {
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [allJobs, setAllJobs] = useState<any[]>([]);
+  const [schedulerY, setSchedulerY] = useState(0);
+  
+  // Scroll to job scheduler section
+  const scrollToScheduler = useCallback(() => {
+    if (schedulerY > 0) {
+      scrollRef.current?.scrollTo({ y: schedulerY - 20, animated: true });
+    }
+  }, [schedulerY]);
   
   // Route optimization state
   const [optimizedJobs, setOptimizedJobs] = useState<any[]>([]);
@@ -1168,6 +1176,53 @@ export default function DashboardScreen() {
         <TrustBanner />
       </View>
 
+      {/* Quick Actions - Role-based */}
+      {!isStaffUser && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Quick Actions</Text>
+          <View style={styles.quickActionsCard}>
+            <View style={styles.quickActionsRow}>
+              <TouchableOpacity 
+                style={[styles.quickActionButton, styles.quickActionButtonPrimary]}
+                onPress={() => router.push('/job/create')}
+                activeOpacity={0.8}
+              >
+                <Feather name="briefcase" size={iconSizes.md} color={colors.primaryForeground} />
+                <Text style={[styles.quickActionText, styles.quickActionTextPrimary]}>Job</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => router.push('/more/quotes/create')}
+                activeOpacity={0.8}
+              >
+                <Feather name="file-text" size={iconSizes.md} color={colors.foreground} />
+                <Text style={styles.quickActionText}>Quote</Text>
+              </TouchableOpacity>
+              {isOwnerUser && hasActiveTeam && unassignedJobs.length > 0 && (
+                <TouchableOpacity 
+                  style={[styles.quickActionButton, { borderColor: colors.primary + '50' }]}
+                  onPress={() => {
+                    // Scroll to job scheduler and pre-select first job
+                    scrollToScheduler();
+                    setTimeout(() => {
+                      if (unassignedJobs.length > 0) {
+                        setSelectedJob(unassignedJobs[0]);
+                      }
+                    }, 300);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="user-plus" size={iconSizes.md} color={colors.primary} />
+                  <Text style={[styles.quickActionText, { color: colors.primary }]}>
+                    Assign ({unassignedJobs.length})
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Time Tracking Widget - Staff Only */}
       {isStaffUser && (
         <View style={styles.section}>
@@ -1260,7 +1315,10 @@ export default function DashboardScreen() {
 
       {/* Job Scheduler - Team Owners Only */}
       {isOwnerUser && hasActiveTeam && (
-        <View style={styles.section}>
+        <View 
+          style={styles.section}
+          onLayout={(event) => setSchedulerY(event.nativeEvent.layout.y)}
+        >
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <View style={[styles.sectionTitleIcon, { backgroundColor: `${colors.info}15` }]}>
