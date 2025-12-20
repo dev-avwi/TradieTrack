@@ -22,6 +22,9 @@ interface User {
   themeColor?: string;
   gstEnabled?: boolean;
   isPlatformAdmin?: boolean;
+  subscriptionTier?: 'free' | 'pro' | 'team' | 'trial';
+  trialEndsAt?: string;
+  trialStatus?: string;
 }
 
 interface TemplateCustomization {
