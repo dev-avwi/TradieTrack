@@ -20,6 +20,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
+import { FloatingActionButton } from '../../src/components/FloatingActionButton';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 
 // Activity Feed Component - matches web Recent Activity section
@@ -461,6 +462,7 @@ function TodayJobCard({
   onPress,
   onStartJob,
   onCompleteJob,
+  onOnMyWay,
   isUpdating,
   onGetDirections,
   orderNumber
@@ -471,6 +473,7 @@ function TodayJobCard({
   onPress: () => void;
   onStartJob: (id: string) => void;
   onCompleteJob: (id: string) => void;
+  onOnMyWay: (id: string, clientId?: string) => void;
   isUpdating: boolean;
   onGetDirections?: (job: any) => void;
   orderNumber?: number;
@@ -540,7 +543,30 @@ function TodayJobCard({
   };
 
   const getActionButton = () => {
-    if (job.status === 'pending' || job.status === 'scheduled') {
+    if (job.status === 'scheduled') {
+      return (
+        <View style={styles.actionButtonsRow}>
+          <TouchableOpacity 
+            style={[styles.secondaryActionButton, { backgroundColor: colors.info }]}
+            onPress={() => onOnMyWay(job.id, job.clientId)}
+            disabled={isUpdating}
+            activeOpacity={0.8}
+          >
+            <Feather name="navigation" size={iconSizes.sm} color={colors.white} />
+            <Text style={styles.secondaryActionButtonText}>On My Way</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.primaryActionButton}
+            onPress={() => onStartJob(job.id)}
+            disabled={isUpdating}
+            activeOpacity={0.8}
+          >
+            <Feather name="play" size={iconSizes.sm} color={colors.white} />
+            <Text style={styles.primaryActionButtonText}>Start Job</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    } else if (job.status === 'pending') {
       return (
         <TouchableOpacity 
           style={styles.primaryActionButton}
@@ -1068,16 +1094,54 @@ export default function DashboardScreen() {
   };
 
   const handleStartJob = async (jobId: string) => {
-    setIsUpdating(true);
-    try {
-      await updateJobStatus(jobId, 'in_progress');
-      // Navigate to job detail page to show time tracking, notes, etc.
-      router.push(`/job/${jobId}`);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to start job');
-    } finally {
-      setIsUpdating(false);
-    }
+    Alert.alert(
+      'Start Job?',
+      'This will mark the job as in progress and start the time tracker.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start Job',
+          onPress: async () => {
+            setIsUpdating(true);
+            try {
+              await updateJobStatus(jobId, 'in_progress');
+              router.push(`/job/${jobId}`);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to start job');
+            } finally {
+              setIsUpdating(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleOnMyWay = async (jobId: string, clientId?: string) => {
+    Alert.alert(
+      'On My Way?',
+      'Notify the client that you\'re heading to the job site?',
+      [
+        { text: 'Just View Job', onPress: () => router.push(`/job/${jobId}`) },
+        {
+          text: 'Send & View Job',
+          onPress: async () => {
+            setIsUpdating(true);
+            try {
+              if (clientId) {
+                await api.post(`/api/jobs/${jobId}/on-my-way`);
+                Alert.alert('Sent!', 'Client has been notified.');
+              }
+              router.push(`/job/${jobId}`);
+            } catch (error) {
+              router.push(`/job/${jobId}`);
+            } finally {
+              setIsUpdating(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleCompleteJob = async (jobId: string) => {
@@ -1133,6 +1197,7 @@ export default function DashboardScreen() {
   const isLoading = jobsLoading || statsLoading;
 
   return (
+  <>
     <ScrollView 
       ref={scrollRef}
       style={styles.container}
@@ -1175,53 +1240,6 @@ export default function DashboardScreen() {
       <View style={{ marginBottom: spacing.lg }}>
         <TrustBanner />
       </View>
-
-      {/* Quick Actions - Role-based */}
-      {!isStaffUser && (
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Quick Actions</Text>
-          <View style={styles.quickActionsCard}>
-            <View style={styles.quickActionsRow}>
-              <TouchableOpacity 
-                style={[styles.quickActionButton, styles.quickActionButtonPrimary]}
-                onPress={() => router.push('/job/create')}
-                activeOpacity={0.8}
-              >
-                <Feather name="briefcase" size={iconSizes.md} color={colors.primaryForeground} />
-                <Text style={[styles.quickActionText, styles.quickActionTextPrimary]}>Job</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickActionButton}
-                onPress={() => router.push('/more/quotes/create')}
-                activeOpacity={0.8}
-              >
-                <Feather name="file-text" size={iconSizes.md} color={colors.foreground} />
-                <Text style={styles.quickActionText}>Quote</Text>
-              </TouchableOpacity>
-              {isOwnerUser && hasActiveTeam && unassignedJobs.length > 0 && (
-                <TouchableOpacity 
-                  style={[styles.quickActionButton, { borderColor: colors.primary + '50' }]}
-                  onPress={() => {
-                    // Scroll to job scheduler and pre-select first job
-                    scrollToScheduler();
-                    setTimeout(() => {
-                      if (unassignedJobs.length > 0) {
-                        setSelectedJob(unassignedJobs[0]);
-                      }
-                    }, 300);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Feather name="user-plus" size={iconSizes.md} color={colors.primary} />
-                  <Text style={[styles.quickActionText, { color: colors.primary }]}>
-                    Assign ({unassignedJobs.length})
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </View>
-      )}
 
       {/* Time Tracking Widget - Staff Only */}
       {isStaffUser && (
@@ -1564,6 +1582,7 @@ export default function DashboardScreen() {
                 onPress={() => router.push(`/job/${job.id}`)}
                 onStartJob={handleStartJob}
                 onCompleteJob={handleCompleteJob}
+                onOnMyWay={handleOnMyWay}
                 isUpdating={isUpdating}
                 onGetDirections={openDirections}
                 orderNumber={isRouteOptimized ? index + 1 : undefined}
@@ -1605,6 +1624,10 @@ export default function DashboardScreen() {
       {/* Bottom Spacing */}
       <View style={{ height: spacing['4xl'] }} />
     </ScrollView>
+    
+    {/* Floating Action Button - Non-staff only */}
+    {!isStaffUser && <FloatingActionButton />}
+  </>
   );
 }
 
@@ -2235,15 +2258,36 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '700',
     color: colors.white,
   },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
   primaryActionButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
     paddingVertical: spacing.md,
     borderRadius: radius.md,
     backgroundColor: colors.success,
     minHeight: 44,
+  },
+  secondaryActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.info,
+    minHeight: 44,
+  },
+  secondaryActionButtonText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.primaryForeground,
   },
   completeActionButton: {
     backgroundColor: colors.primary,

@@ -149,7 +149,7 @@ export function FloatingActionButton() {
       color: colors.primary,
       onPress: () => {
         setIsOpen(false);
-        router.push('/more/create-job');
+        router.push('/job/create');
       },
     },
     {
@@ -158,7 +158,7 @@ export function FloatingActionButton() {
       color: colors.info,
       onPress: () => {
         setIsOpen(false);
-        router.push('/more/quote/new');
+        router.push('/more/quotes/create');
       },
     },
     {
@@ -167,7 +167,7 @@ export function FloatingActionButton() {
       color: colors.success,
       onPress: () => {
         setIsOpen(false);
-        router.push('/more/invoice/new');
+        router.push('/more/invoices/create');
       },
     },
     {
@@ -176,7 +176,7 @@ export function FloatingActionButton() {
       color: colors.warning,
       onPress: () => {
         setIsOpen(false);
-        router.push('/more/client/new');
+        router.push('/more/clients/create');
       },
     },
   ];

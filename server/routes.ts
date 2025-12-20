@@ -5275,6 +5275,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send "On My Way" notification to client
+  app.post("/api/jobs/:id/on-my-way", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const job = await storage.getJob(req.params.id, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (!job.clientId) {
+        return res.status(400).json({ error: "Job has no associated client" });
+      }
+
+      const client = await storage.getClient(job.clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      if (!client.phone) {
+        return res.status(400).json({ error: "Client has no phone number for SMS notification" });
+      }
+
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
+      const businessName = business?.businessName || 'Your tradesperson';
+      const user = await storage.getUser(req.userId);
+      const tradieName = user?.firstName || businessName;
+
+      const message = `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ETA approximately 15-20 minutes.`;
+      
+      // Check if Twilio is configured
+      if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
+        // Log activity even without SMS (demo mode)
+        await storage.createActivityLog({
+          userId: userContext.effectiveUserId,
+          action: 'on_my_way_sent',
+          entityType: 'job',
+          entityId: job.id,
+          details: `On My Way notification logged (SMS not configured) for ${client.firstName || client.email || 'client'}`,
+        });
+        return res.json({ success: true, message: 'On My Way logged (SMS not configured)', demoMode: true });
+      }
+
+      // Send SMS via Twilio
+      try {
+        const twilio = require('twilio');
+        const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        await twilioClient.messages.create({
+          body: message,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: client.phone
+        });
+      } catch (smsError: any) {
+        console.error('Failed to send on-my-way SMS:', smsError);
+        return res.status(500).json({ error: `Failed to send SMS: ${smsError.message || 'Unknown error'}` });
+      }
+
+      // Log activity after successful SMS
+      await storage.createActivityLog({
+        userId: userContext.effectiveUserId,
+        action: 'on_my_way_sent',
+        entityType: 'job',
+        entityId: job.id,
+        details: `On My Way SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone}`,
+      });
+
+      res.json({ success: true, message: 'On My Way notification sent' });
+    } catch (error: any) {
+      console.error("Error sending on-my-way notification:", error);
+      res.status(500).json({ error: error.message || "Failed to send notification" });
+    }
+  });
+
   app.delete("/api/jobs/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       // Use effectiveUserId (business owner's ID) for multi-tenant data scoping

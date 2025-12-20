@@ -19,6 +19,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { format, isAfter, isBefore, subDays, differenceInDays } from 'date-fns';
+import { XeroRibbon } from '../../src/components/XeroRibbon';
 
 interface Invoice {
   id: string;
@@ -30,6 +31,7 @@ interface Invoice {
   dueDate?: string;
   paidAt?: string;
   createdAt?: string;
+  xeroInvoiceId?: string;
 }
 
 interface Quote {
@@ -519,40 +521,42 @@ export default function MoneyHubScreen() {
     const statusColor = statusColors[status] || colors.mutedForeground;
 
     return (
-      <TouchableOpacity 
-        key={invoice.id}
-        style={styles.documentRow}
-        onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.documentIcon, { backgroundColor: `${colors.primary}15` }]}>
-          <Feather name="file-text" size={iconSizes.md} color={colors.primary} />
-        </View>
-        <View style={styles.documentInfo}>
-          <View style={styles.documentTitleRow}>
-            <Text style={styles.documentTitle} numberOfLines={1}>
-              #{invoice.number || invoice.id.slice(0, 8)}
-            </Text>
-            <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
-              <Text style={[styles.statusText, { color: statusColor }]}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </Text>
-            </View>
+      <View key={invoice.id} style={{ position: 'relative', overflow: 'hidden', borderRadius: radius.md }}>
+        {invoice.xeroInvoiceId && <XeroRibbon size="small" />}
+        <TouchableOpacity 
+          style={styles.documentRow}
+          onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.documentIcon, { backgroundColor: `${colors.primary}15` }]}>
+            <Feather name="file-text" size={iconSizes.md} color={colors.primary} />
           </View>
-          <Text style={styles.documentSubtitle} numberOfLines={1}>
-            {client?.name || 'Unknown Client'}
-          </Text>
-        </View>
-        <View style={styles.documentRight}>
-          <Text style={styles.documentAmount}>{formatCurrency(invoice.total)}</Text>
-          {invoice.dueDate && (
-            <Text style={[styles.documentDue, isOverdue && { color: colors.destructive }]}>
-              {isOverdue ? `${daysOverdue}d overdue` : `Due ${format(new Date(invoice.dueDate), 'dd MMM')}`}
+          <View style={styles.documentInfo}>
+            <View style={styles.documentTitleRow}>
+              <Text style={styles.documentTitle} numberOfLines={1}>
+                #{invoice.number || invoice.id.slice(0, 8)}
+              </Text>
+              <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
+                <Text style={[styles.statusText, { color: statusColor }]}>
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.documentSubtitle} numberOfLines={1}>
+              {client?.name || 'Unknown Client'}
             </Text>
-          )}
-        </View>
-        <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
-      </TouchableOpacity>
+          </View>
+          <View style={styles.documentRight}>
+            <Text style={styles.documentAmount}>{formatCurrency(invoice.total)}</Text>
+            {invoice.dueDate && (
+              <Text style={[styles.documentDue, isOverdue && { color: colors.destructive }]}>
+                {isOverdue ? `${daysOverdue}d overdue` : `Due ${format(new Date(invoice.dueDate), 'dd MMM')}`}
+              </Text>
+            )}
+          </View>
+          <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      </View>
     );
   };
 
