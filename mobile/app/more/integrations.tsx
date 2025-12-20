@@ -27,6 +27,25 @@ interface StripeConnectStatus {
   message?: string;
 }
 
+interface XeroStatus {
+  configured: boolean;
+  connected: boolean;
+  tenantName?: string;
+  tenantId?: string;
+  lastSyncAt?: string;
+  status?: string;
+  message?: string;
+}
+
+interface TwilioStatus {
+  configured: boolean;
+  platformConfigured: boolean;
+  userConfigured: boolean;
+  phoneNumber?: string;
+  senderId?: string;
+  demoMode: boolean;
+}
+
 interface IntegrationHealth {
   stripeConnectStatus?: {
     connected: boolean;
@@ -41,6 +60,12 @@ interface IntegrationHealth {
   emailError?: string;
   gmailConnected?: boolean;
   gmailEmail?: string;
+  services?: {
+    twilio?: {
+      status: 'ready' | 'demo' | 'not_connected';
+      description?: string;
+    };
+  };
 }
 
 const createStyles = (colors: any) => StyleSheet.create({
@@ -325,15 +350,20 @@ export default function IntegrationsScreen() {
   const { businessSettings, fetchBusinessSettings } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSendingTestSms, setIsSendingTestSms] = useState(false);
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
   const [integrationHealth, setIntegrationHealth] = useState<IntegrationHealth | null>(null);
+  const [xeroStatus, setXeroStatus] = useState<XeroStatus | null>(null);
+  const [showSmsPreview, setShowSmsPreview] = useState(false);
 
   const fetchIntegrationStatus = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [stripeResponse, healthResponse] = await Promise.all([
+      const [stripeResponse, healthResponse, xeroResponse] = await Promise.all([
         api.get<StripeConnectStatus>('/api/stripe-connect/status'),
-        api.get<IntegrationHealth>('/api/integrations/health')
+        api.get<IntegrationHealth>('/api/integrations/health'),
+        api.get<XeroStatus>('/api/integrations/xero/status')
       ]);
       
       if (stripeResponse.data) {
@@ -341,6 +371,9 @@ export default function IntegrationsScreen() {
       }
       if (healthResponse.data) {
         setIntegrationHealth(healthResponse.data);
+      }
+      if (xeroResponse.data) {
+        setXeroStatus(xeroResponse.data);
       }
       
       await fetchBusinessSettings();
@@ -390,6 +423,92 @@ export default function IntegrationsScreen() {
       }
     } catch (error) {
       await Linking.openURL('https://dashboard.stripe.com');
+    }
+  };
+
+  const handleConnectXero = async () => {
+    try {
+      const response = await api.get<{ configured: boolean; connectUrl: string }>('/api/integrations/xero/connect-link');
+      if (!response.data?.connectUrl) {
+        Alert.alert('Error', 'Could not get Xero connection link');
+        return;
+      }
+      
+      Alert.alert(
+        'Connect Xero',
+        'You will be redirected to the web app to securely connect your Xero account. After connecting, return to the mobile app and refresh.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Continue', 
+            onPress: async () => {
+              await Linking.openURL(response.data!.connectUrl);
+            }
+          }
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to open Xero connection');
+    }
+  };
+
+  const handleDisconnectXero = async () => {
+    Alert.alert(
+      'Disconnect Xero',
+      'Are you sure you want to disconnect your Xero account? Invoice sync will stop working.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Disconnect',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.post('/api/integrations/xero/disconnect');
+              Alert.alert('Success', 'Xero has been disconnected');
+              fetchIntegrationStatus();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to disconnect Xero');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleSyncXero = async () => {
+    setIsSyncing(true);
+    try {
+      await api.post('/api/integrations/xero/sync');
+      Alert.alert('Success', 'Data has been synced with Xero');
+      fetchIntegrationStatus();
+    } catch (error: any) {
+      Alert.alert('Sync Failed', error.message || 'Failed to sync with Xero');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleTestSms = async () => {
+    setIsSendingTestSms(true);
+    try {
+      const response = await api.post<{ success: boolean; message: string; preview?: any }>('/api/integrations/test-sms-preview');
+      if (response.data?.success) {
+        setShowSmsPreview(true);
+        Alert.alert(
+          'SMS Preview',
+          `This is how your SMS notifications will appear:\n\n"Hi [Client Name], reminder: Your appointment with ${businessSettings?.businessName || 'Your Business'} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm."\n\nNote: In demo mode, SMS messages are logged but not actually sent.`,
+          [{ text: 'Got it', onPress: () => setShowSmsPreview(false) }]
+        );
+      } else {
+        Alert.alert('Demo Mode', response.data?.message || 'SMS preview shown in demo mode');
+      }
+    } catch (error: any) {
+      Alert.alert(
+        'SMS Demo Preview',
+        `This is how your SMS notifications will appear:\n\n"Hi [Client Name], reminder: Your appointment with ${businessSettings?.businessName || 'Your Business'} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm."\n\nNote: SMS is currently in demo mode. Connect Twilio credentials to send real messages.`
+      );
+    } finally {
+      setIsSendingTestSms(false);
     }
   };
 
@@ -639,6 +758,199 @@ export default function IntegrationsScreen() {
                 </View>
               </View>
 
+              <Text style={styles.sectionTitle}>Accounting</Text>
+
+              <View style={styles.integrationCard} data-testid="card-xero-integration">
+                <View style={styles.integrationHeader}>
+                  <View style={[styles.integrationIconContainer, { backgroundColor: '#13b5ea20' }]}>
+                    <Feather name="book" size={22} color="#13b5ea" />
+                  </View>
+                  <View style={styles.integrationInfo}>
+                    <Text style={styles.integrationTitle}>Xero</Text>
+                    <Text style={styles.integrationSubtitle}>
+                      {xeroStatus?.connected ? xeroStatus.tenantName : 'Accounting sync'}
+                    </Text>
+                  </View>
+                  <View style={[
+                    styles.integrationBadge,
+                    xeroStatus?.connected ? styles.integrationBadgeSuccess : 
+                    xeroStatus?.configured ? styles.integrationBadgeWarning : styles.integrationBadgeDisabled
+                  ]}>
+                    <Text style={[
+                      styles.integrationBadgeText,
+                      { color: xeroStatus?.connected ? colors.success : 
+                        xeroStatus?.configured ? colors.warning : colors.mutedForeground }
+                    ]}>
+                      {xeroStatus?.connected ? 'Connected' : 
+                       xeroStatus?.configured ? 'Not Connected' : 'Not Configured'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.integrationDetails}>
+                  {xeroStatus?.connected ? (
+                    <>
+                      <View style={styles.detailRow}>
+                        <View style={styles.detailIconContainer}>
+                          <Feather name="check-circle" size={16} color={colors.success} />
+                        </View>
+                        <Text style={styles.detailText}>
+                          Connected to {xeroStatus.tenantName}
+                        </Text>
+                      </View>
+                      {xeroStatus.lastSyncAt && (
+                        <View style={styles.detailRow}>
+                          <View style={styles.detailIconContainer}>
+                            <Feather name="clock" size={16} color={colors.primary} />
+                          </View>
+                          <Text style={styles.detailText}>
+                            Last synced: {new Date(xeroStatus.lastSyncAt).toLocaleDateString()}
+                          </Text>
+                        </View>
+                      )}
+                      <Text style={styles.detailSubtext}>
+                        Invoices are automatically synced to Xero when sent. Contacts can be imported from Xero.
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.actionButtonPrimary, { flex: 1 }]}
+                          onPress={handleSyncXero}
+                          disabled={isSyncing}
+                          data-testid="button-sync-xero"
+                        >
+                          {isSyncing ? (
+                            <ActivityIndicator size="small" color={colors.primaryForeground} />
+                          ) : (
+                            <Feather name="refresh-cw" size={16} color={colors.primaryForeground} />
+                          )}
+                          <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                            {isSyncing ? 'Syncing...' : 'Sync Now'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.actionButtonSecondary, { flex: 1 }]}
+                          onPress={handleDisconnectXero}
+                          data-testid="button-disconnect-xero"
+                        >
+                          <Feather name="link-2" size={16} color={colors.destructive} />
+                          <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
+                            Disconnect
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.detailSubtext}>
+                        {xeroStatus?.configured 
+                          ? 'Connect your Xero account to automatically sync invoices and import contacts.'
+                          : 'Xero integration is not configured. Contact support to enable this feature.'}
+                      </Text>
+                      <View style={styles.featureList}>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>Auto-sync invoices when sent</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>Import contacts from Xero</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>Keep your books up to date</Text>
+                        </View>
+                      </View>
+                      {xeroStatus?.configured && (
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.actionButtonPrimary]}
+                          onPress={handleConnectXero}
+                          data-testid="button-connect-xero"
+                        >
+                          <Feather name="link" size={16} color={colors.primaryForeground} />
+                          <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                            Connect Xero
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  )}
+                </View>
+              </View>
+
+              <Text style={styles.sectionTitle}>SMS Notifications</Text>
+
+              <View style={styles.integrationCard} data-testid="card-sms-integration">
+                <View style={styles.integrationHeader}>
+                  <View style={[styles.integrationIconContainer, { backgroundColor: '#25d36620' }]}>
+                    <Feather name="message-circle" size={22} color="#25d366" />
+                  </View>
+                  <View style={styles.integrationInfo}>
+                    <Text style={styles.integrationTitle}>SMS Notifications</Text>
+                    <Text style={styles.integrationSubtitle}>Twilio-powered messaging</Text>
+                  </View>
+                  <View style={[
+                    styles.integrationBadge,
+                    integrationHealth?.services?.twilio?.status === 'ready' 
+                      ? styles.integrationBadgeSuccess 
+                      : styles.integrationBadgeWarning
+                  ]}>
+                    <Text style={[
+                      styles.integrationBadgeText,
+                      { color: integrationHealth?.services?.twilio?.status === 'ready' 
+                          ? colors.success 
+                          : colors.warning }
+                    ]}>
+                      {integrationHealth?.services?.twilio?.status === 'ready' ? 'Connected' : 'Demo Mode'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.integrationDetails}>
+                  {integrationHealth?.services?.twilio?.status !== 'ready' && (
+                    <View style={styles.warningBanner}>
+                      <Feather name="info" size={18} color={colors.warning} />
+                      <Text style={styles.warningText}>
+                        SMS is in demo mode during beta. Messages are logged but not sent.
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={styles.detailSubtext}>
+                    {integrationHealth?.services?.twilio?.status === 'ready'
+                      ? 'SMS notifications are active. Send appointment reminders and job updates via SMS.'
+                      : 'Send appointment reminders and job updates via SMS. Keep customers informed automatically.'}
+                  </Text>
+                  <View style={styles.featureList}>
+                    <View style={styles.featureItem}>
+                      <Feather name="check" size={14} color={colors.success} />
+                      <Text style={styles.featureText}>Appointment reminders</Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <Feather name="check" size={14} color={colors.success} />
+                      <Text style={styles.featureText}>Job status updates</Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <Feather name="check" size={14} color={colors.success} />
+                      <Text style={styles.featureText}>Payment confirmations</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={[styles.actionButton, styles.actionButtonSecondary]}
+                    onPress={handleTestSms}
+                    disabled={isSendingTestSms}
+                    data-testid="button-test-sms"
+                  >
+                    {isSendingTestSms ? (
+                      <ActivityIndicator size="small" color={colors.foreground} />
+                    ) : (
+                      <Feather name="eye" size={16} color={colors.foreground} />
+                    )}
+                    <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
+                      {isSendingTestSms ? 'Loading...' : 'Preview SMS Template'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               <Text style={styles.sectionTitle}>Coming Soon</Text>
 
               <View style={[styles.integrationCard, { opacity: 0.7 }]} data-testid="card-calendar-integration">
@@ -659,50 +971,6 @@ export default function IntegrationsScreen() {
                 <View style={styles.integrationDetails}>
                   <Text style={styles.detailSubtext}>
                     Automatically sync your job schedules with Google Calendar. See all appointments in one place.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={[styles.integrationCard, { opacity: 0.7 }]} data-testid="card-accounting-integration">
-                <View style={styles.integrationHeader}>
-                  <View style={[styles.integrationIconContainer, { backgroundColor: '#13b5ea20' }]}>
-                    <Feather name="book" size={22} color="#13b5ea" />
-                  </View>
-                  <View style={styles.integrationInfo}>
-                    <Text style={styles.integrationTitle}>Xero / MYOB</Text>
-                    <Text style={styles.integrationSubtitle}>Accounting sync</Text>
-                  </View>
-                  <View style={styles.integrationBadgeDisabled}>
-                    <Text style={[styles.integrationBadgeText, { color: colors.mutedForeground }]}>
-                      Coming Soon
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.integrationDetails}>
-                  <Text style={styles.detailSubtext}>
-                    Sync invoices and payments with your accounting software. Keep your books up to date automatically.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={[styles.integrationCard, { opacity: 0.7 }]} data-testid="card-sms-integration">
-                <View style={styles.integrationHeader}>
-                  <View style={[styles.integrationIconContainer, { backgroundColor: '#25d36620' }]}>
-                    <Feather name="message-circle" size={22} color="#25d366" />
-                  </View>
-                  <View style={styles.integrationInfo}>
-                    <Text style={styles.integrationTitle}>SMS Notifications</Text>
-                    <Text style={styles.integrationSubtitle}>Text message alerts</Text>
-                  </View>
-                  <View style={styles.integrationBadgeDisabled}>
-                    <Text style={[styles.integrationBadgeText, { color: colors.mutedForeground }]}>
-                      Coming Soon
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.integrationDetails}>
-                  <Text style={styles.detailSubtext}>
-                    Send appointment reminders and job updates via SMS. Keep customers informed automatically.
                   </Text>
                 </View>
               </View>

@@ -2983,6 +2983,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // SMS Preview Route - Demo mode for mobile app
+  app.post("/api/integrations/test-sms-preview", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const settings = await storage.getBusinessSettings(effectiveUserId);
+      
+      const businessName = settings?.businessName || 'Your Business';
+      const templates = [
+        {
+          type: 'appointment_reminder',
+          title: 'Appointment Reminder',
+          message: `Hi [Client Name], reminder: Your appointment with ${businessName} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm.`,
+        },
+        {
+          type: 'job_on_the_way',
+          title: 'On The Way',
+          message: `Hi [Client Name], ${businessName} is on the way! Expected arrival: 15 minutes.`,
+        },
+        {
+          type: 'job_complete',
+          title: 'Job Complete',
+          message: `Hi [Client Name], your job is complete! Thank you for choosing ${businessName}. Invoice will be sent shortly.`,
+        },
+        {
+          type: 'payment_received',
+          title: 'Payment Received',
+          message: `Hi [Client Name], thank you! We received your payment of $[Amount]. Receipt sent to your email. - ${businessName}`,
+        },
+      ];
+      
+      res.json({
+        success: true,
+        demoMode: true,
+        message: 'SMS is in demo mode. Preview templates below.',
+        templates,
+        preview: templates[0],
+      });
+    } catch (error: any) {
+      console.error("Error generating SMS preview:", error);
+      res.status(500).json({ error: error.message || "Failed to generate SMS preview" });
+    }
+  });
+
   // General SMS send endpoint for Smart Actions logging
   const sendSmsInputSchema = z.object({
     to: z.string().min(1, "Phone number is required"),
@@ -3440,6 +3484,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Xero Integration Routes
+  
+  // Xero connect link for mobile app - provides web URL for OAuth
+  app.get("/api/integrations/xero/connect-link", requireAuth, async (req: any, res) => {
+    try {
+      const configured = xeroService.isXeroConfigured();
+      const protocol = req.protocol || 'https';
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      
+      res.json({
+        configured,
+        connectUrl: `${baseUrl}/integrations?action=connect-xero`,
+        baseUrl,
+      });
+    } catch (error: any) {
+      console.error("Error generating Xero connect link:", error);
+      res.status(500).json({ error: error.message || "Failed to generate connect link" });
+    }
+  });
+
   app.post("/api/integrations/xero/connect", requireAuth, async (req: any, res) => {
     try {
       if (!xeroService.isXeroConfigured()) {
