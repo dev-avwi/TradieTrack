@@ -1626,7 +1626,16 @@ export default function DashboardScreen() {
     </ScrollView>
     
     {/* Floating Action Button - Non-staff only */}
-    {!isStaffUser && <FloatingActionButton />}
+    {!isStaffUser && (
+      <FloatingActionButton 
+        isTeamOwner={isOwnerUser && hasActiveTeam}
+        onAssignPress={() => {
+          if (schedulerY > 0) {
+            scrollRef.current?.scrollTo({ y: schedulerY - 20, animated: true });
+          }
+        }}
+      />
+    )}
   </>
   );
 }

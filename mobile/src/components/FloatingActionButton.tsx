@@ -118,7 +118,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 });
 
-export function FloatingActionButton() {
+interface FloatingActionButtonProps {
+  isTeamOwner?: boolean;
+  onAssignPress?: () => void;
+}
+
+export function FloatingActionButton({ isTeamOwner = false, onAssignPress }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -248,16 +253,29 @@ export function FloatingActionButton() {
                 <Feather name="zap" size={14} color={colors.primary} />
                 <Text style={styles.quickActionText}>AI Assistant</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickAction}
-                onPress={() => {
-                  setIsOpen(false);
-                  router.push('/(tabs)/collect');
-                }}
-              >
-                <Feather name="credit-card" size={14} color={colors.success} />
-                <Text style={styles.quickActionText}>Collect Payment</Text>
-              </TouchableOpacity>
+              {isTeamOwner ? (
+                <TouchableOpacity 
+                  style={styles.quickAction}
+                  onPress={() => {
+                    setIsOpen(false);
+                    onAssignPress?.();
+                  }}
+                >
+                  <Feather name="users" size={14} color={colors.info} />
+                  <Text style={styles.quickActionText}>Assign Job</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity 
+                  style={styles.quickAction}
+                  onPress={() => {
+                    setIsOpen(false);
+                    router.push('/(tabs)/collect');
+                  }}
+                >
+                  <Feather name="credit-card" size={14} color={colors.success} />
+                  <Text style={styles.quickActionText}>Collect Payment</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </Pressable>
