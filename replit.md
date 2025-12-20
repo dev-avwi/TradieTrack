@@ -39,6 +39,8 @@ Key architectural features include:
 -   **Automation**: Rule-based SMS automation for reminders and follow-ups.
 -   **Client Asset Library & Smart Pre-fill**: API endpoints for retrieving and reusing job photos, quote items, invoice items, and notes. Smart pre-fill suggestions for new jobs/quotes/invoices.
 -   **Activity Feed with Navigation**: Dedicated activity_logs table storing meaningful lifecycle events (job created/status changes, quote created/sent, invoice created/sent/paid). Activities include entityType and entityId for clickable navigation to detail views. Both web (using wouter) and mobile (using expo-router) support navigation to jobs, quotes, and invoices from activity items.
+-   **Unified Dashboard API**: Single endpoint at `/api/dashboard/unified` aggregates all dashboard data for consistent web/mobile experience. Returns stats, todaysJobs, unassignedJobs, teamMembers, activities, and role flags (isOwner, canManageTeam, hasActiveTeam). Role-based filtering ensures managers with view_all permissions see team data alongside owners.
+-   **Role-Based Quick Actions**: Dashboard quick actions are contextual based on user role. Owners/managers with teams see "Assign Job" button (with count of unassigned jobs) that scrolls to job scheduler section on both web and mobile.
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)
