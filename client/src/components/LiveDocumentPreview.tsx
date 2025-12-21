@@ -512,8 +512,8 @@ export default function LiveDocumentPreview({
           </div>
         )}
 
-        {/* Job Completion Signatures Section - Shows for both invoices and quotes linked to jobs */}
-        {jobSignatures.length > 0 && (
+        {/* Job Completion Signatures Section - Only show on invoices, not quotes */}
+        {type === 'invoice' && jobSignatures.length > 0 && (
           <div className="mb-8 p-5 border border-slate-200 rounded-lg bg-slate-50">
             <div className="font-semibold mb-4 text-[#374151] text-[12px] uppercase tracking-wide">
               Job Completion Signatures

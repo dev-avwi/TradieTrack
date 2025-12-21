@@ -975,8 +975,8 @@ export default function LiveDocumentPreview({
             </View>
           )}
 
-          {/* Job Completion Signatures Section - Shows for both invoices and quotes linked to jobs */}
-          {jobSignatures.length > 0 && (
+          {/* Job Completion Signatures Section - Only show on invoices, not quotes */}
+          {type === 'invoice' && jobSignatures.length > 0 && (
             <View style={styles.jobSignaturesSection}>
               <Text style={styles.jobSignaturesTitle}>Job Completion Signatures</Text>
               <View style={styles.jobSignaturesContainer}>

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, StyleSheet, Alert, InteractionManager } from 'react-native';
+import { View, StyleSheet, Alert, InteractionManager, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -7,6 +7,14 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import * as Linking from 'expo-linking';
 import { useAuthStore } from '../src/lib/store';
 import "../global.css";
+
+// Polyfill for expo-router's dev sitemap which tries to access window.location.origin
+// This prevents "Cannot read property 'origin' of undefined" errors on native
+if (Platform.OS !== 'web' && typeof global !== 'undefined') {
+  if (!(global as any).location) {
+    (global as any).location = { origin: 'app://tradietrack', href: 'app://tradietrack' };
+  }
+}
 import { useNotifications, useOfflineStorage, useLocationTracking } from '../src/hooks/useServices';
 import notificationService from '../src/lib/notifications';
 import { router } from 'expo-router';
