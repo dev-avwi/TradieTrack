@@ -9,10 +9,11 @@ import { useAuthStore } from '../src/lib/store';
 import "../global.css";
 
 // Polyfill for expo-router's dev sitemap which tries to access window.location.origin
-// This prevents "Cannot read property 'origin' of undefined" errors on native
+// Use empty string to prevent "Cannot read property 'origin' of undefined" without
+// interfering with React Native's module loading
 if (Platform.OS !== 'web' && typeof global !== 'undefined') {
   if (!(global as any).location) {
-    (global as any).location = { origin: 'app://tradietrack', href: 'app://tradietrack' };
+    (global as any).location = { origin: '', href: '', pathname: '' };
   }
 }
 import { useNotifications, useOfflineStorage, useLocationTracking } from '../src/hooks/useServices';
