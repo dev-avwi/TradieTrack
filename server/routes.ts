@@ -6775,14 +6775,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Standalone payment link generation (for mobile collect screen QR codes)
-  app.post("/api/payment-links", requireAuth, async (req: any, res) => {
+  // Requires WRITE_INVOICES permission as payment collection is an invoicing capability
+  const paymentLinkSchema = z.object({
+    amount: z.number().int().min(500, "Minimum payment amount is $5.00 AUD (500 cents)"),
+    description: z.string().optional(),
+    clientId: z.string().uuid().optional(),
+  });
+
+  app.post("/api/payment-links", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
-      const { amount, description, clientId } = req.body;
-      
-      // Validate amount (in cents)
-      if (!amount || typeof amount !== 'number' || amount < 500) {
-        return res.status(400).json({ error: "Minimum payment amount is $5.00 AUD (500 cents)" });
+      // Validate request body with Zod
+      const validationResult = paymentLinkSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ error: validationResult.error.errors[0]?.message || "Invalid request" });
       }
+      const { amount, description, clientId } = validationResult.data;
 
       const business = await storage.getBusinessSettings(req.userId);
       if (!business) {
@@ -6860,18 +6867,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send payment link via SMS or Email (for mobile collect screen)
-  app.post("/api/payment-links/send", requireAuth, async (req: any, res) => {
-    try {
-      const { amount, description, method, recipient } = req.body;
-      
-      // Validate amount (in cents)
-      if (!amount || typeof amount !== 'number' || amount < 500) {
-        return res.status(400).json({ error: "Minimum payment amount is $5.00 AUD (500 cents)" });
-      }
+  // Requires WRITE_INVOICES permission as payment collection is an invoicing capability
+  const paymentLinkSendSchema = z.object({
+    amount: z.number().int().min(500, "Minimum payment amount is $5.00 AUD (500 cents)"),
+    description: z.string().optional(),
+    method: z.enum(['sms', 'email'], { errorMap: () => ({ message: "Method must be 'sms' or 'email'" }) }),
+    recipient: z.string().optional(),
+  });
 
-      if (!method || !['sms', 'email'].includes(method)) {
-        return res.status(400).json({ error: "Method must be 'sms' or 'email'" });
+  app.post("/api/payment-links/send", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      // Validate request body with Zod
+      const validationResult = paymentLinkSendSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ error: validationResult.error.errors[0]?.message || "Invalid request" });
       }
+      const { amount, description, method, recipient } = validationResult.data;
 
       const business = await storage.getBusinessSettings(req.userId);
       if (!business) {
