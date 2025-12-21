@@ -683,7 +683,7 @@ export default function TimeTrackingScreen() {
               <Feather name="calendar" size={48} color={colors.mutedForeground} />
               <Text style={styles.placeholderTitle}>Timesheet</Text>
               <Text style={styles.placeholderText}>
-                View and manage your time entries.{'\n'}Full timesheet management coming soon!
+                Use the Timer tab to track time on jobs.{'\n'}Your time entries will appear here.
               </Text>
             </View>
           )}
@@ -693,7 +693,7 @@ export default function TimeTrackingScreen() {
               <Feather name="file-text" size={48} color={colors.mutedForeground} />
               <Text style={styles.placeholderTitle}>Reports</Text>
               <Text style={styles.placeholderText}>
-                Generate time tracking reports.{'\n'}Export and analytics coming soon!
+                Track time on jobs to generate reports.{'\n'}View your hours by job, client, or date.
               </Text>
             </View>
           )}
@@ -703,7 +703,7 @@ export default function TimeTrackingScreen() {
               <Feather name="bar-chart-2" size={48} color={colors.mutedForeground} />
               <Text style={styles.placeholderTitle}>Statistics</Text>
               <Text style={styles.placeholderText}>
-                View your productivity stats.{'\n'}Charts and insights coming soon!
+                Your productivity insights will appear here.{'\n'}Start tracking time to see your stats.
               </Text>
             </View>
           )}

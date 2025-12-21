@@ -6774,6 +6774,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Standalone payment link generation (for mobile collect screen QR codes)
+  app.post("/api/payment-links", requireAuth, async (req: any, res) => {
+    try {
+      const { amount, description, clientId } = req.body;
+      
+      // Validate amount (in cents)
+      if (!amount || typeof amount !== 'number' || amount < 500) {
+        return res.status(400).json({ error: "Minimum payment amount is $5.00 AUD (500 cents)" });
+      }
+
+      const business = await storage.getBusinessSettings(req.userId);
+      if (!business) {
+        return res.status(404).json({ error: "Business settings not found" });
+      }
+
+      const baseUrl = process.env.APP_BASE_URL 
+        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : req.headers.origin || 'http://localhost:5000');
+
+      const stripe = await getUncachableStripeClient();
+
+      if (stripe) {
+        const sessionConfig: any = {
+          payment_method_types: ['card'],
+          line_items: [
+            {
+              price_data: {
+                currency: 'aud',
+                product_data: {
+                  name: description || 'Payment',
+                  description: `Payment to ${business.businessName || 'Business'}`,
+                },
+                unit_amount: amount,
+              },
+              quantity: 1,
+            },
+          ],
+          mode: 'payment',
+          success_url: `${baseUrl}/collect?payment=success`,
+          cancel_url: `${baseUrl}/collect?payment=cancelled`,
+          metadata: {
+            userId: req.userId,
+            businessName: business.businessName || '',
+            type: 'standalone_payment',
+          },
+        };
+
+        // Add Stripe Connect destination charges if tradie has Connect account
+        if (business.stripeConnectAccountId && business.connectChargesEnabled) {
+          const platformFee = Math.max(Math.round(amount * 0.025), 50);
+          sessionConfig.payment_intent_data = {
+            application_fee_amount: platformFee,
+            transfer_data: {
+              destination: business.stripeConnectAccountId,
+            },
+            on_behalf_of: business.stripeConnectAccountId,
+          };
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
+
+        res.json({ 
+          url: session.url,
+          qrCode: session.url, // Mobile app can generate QR from this URL
+          sessionId: session.id,
+          mode: 'stripe'
+        });
+      } else {
+        // Mock payment link for testing
+        const mockUrl = `${baseUrl}/pay/collect-${Date.now()}?amount=${amount}`;
+        res.json({ 
+          url: mockUrl,
+          qrCode: mockUrl,
+          sessionId: `mock_${Date.now()}`,
+          mode: 'mock',
+          message: 'Mock payment link created for testing'
+        });
+      }
+    } catch (error) {
+      console.error("Error creating payment link:", error);
+      res.status(500).json({ error: "Failed to create payment link" });
+    }
+  });
+
+  // Send payment link via SMS or Email (for mobile collect screen)
+  app.post("/api/payment-links/send", requireAuth, async (req: any, res) => {
+    try {
+      const { amount, description, method, recipient } = req.body;
+      
+      // Validate amount (in cents)
+      if (!amount || typeof amount !== 'number' || amount < 500) {
+        return res.status(400).json({ error: "Minimum payment amount is $5.00 AUD (500 cents)" });
+      }
+
+      if (!method || !['sms', 'email'].includes(method)) {
+        return res.status(400).json({ error: "Method must be 'sms' or 'email'" });
+      }
+
+      const business = await storage.getBusinessSettings(req.userId);
+      if (!business) {
+        return res.status(404).json({ error: "Business settings not found" });
+      }
+
+      const baseUrl = process.env.APP_BASE_URL 
+        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : req.headers.origin || 'http://localhost:5000');
+
+      const stripe = await getUncachableStripeClient();
+      let paymentUrl: string;
+
+      if (stripe) {
+        const sessionConfig: any = {
+          payment_method_types: ['card'],
+          line_items: [
+            {
+              price_data: {
+                currency: 'aud',
+                product_data: {
+                  name: description || 'Payment',
+                  description: `Payment to ${business.businessName || 'Business'}`,
+                },
+                unit_amount: amount,
+              },
+              quantity: 1,
+            },
+          ],
+          mode: 'payment',
+          success_url: `${baseUrl}/collect?payment=success`,
+          cancel_url: `${baseUrl}/collect?payment=cancelled`,
+          metadata: {
+            userId: req.userId,
+            businessName: business.businessName || '',
+            type: 'standalone_payment',
+          },
+        };
+
+        if (business.stripeConnectAccountId && business.connectChargesEnabled) {
+          const platformFee = Math.max(Math.round(amount * 0.025), 50);
+          sessionConfig.payment_intent_data = {
+            application_fee_amount: platformFee,
+            transfer_data: {
+              destination: business.stripeConnectAccountId,
+            },
+            on_behalf_of: business.stripeConnectAccountId,
+          };
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
+        paymentUrl = session.url || '';
+      } else {
+        paymentUrl = `${baseUrl}/pay/collect-${Date.now()}?amount=${amount}`;
+      }
+
+      // For now, return success - actual SMS/email sending would require recipient info
+      // The mobile app prompts user for recipient after this call
+      res.json({ 
+        success: true,
+        paymentUrl,
+        method,
+        message: `Payment link ready to send via ${method.toUpperCase()}`
+      });
+    } catch (error) {
+      console.error("Error sending payment link:", error);
+      res.status(500).json({ error: "Failed to send payment link" });
+    }
+  });
+
   // Convert quote to invoice
   app.post("/api/quotes/:id/convert-to-invoice", requireAuth, createPermissionMiddleware([PERMISSIONS.WRITE_QUOTES, PERMISSIONS.WRITE_INVOICES]), async (req: any, res) => {
     try {

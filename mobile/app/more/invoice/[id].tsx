@@ -854,7 +854,7 @@ export default function InvoiceDetailScreen() {
                     onPress={() => {
                       Alert.alert(
                         'Edit Schedule',
-                        'Recurring schedule editing coming soon. You can stop this recurring invoice and create a new one with updated settings.',
+                        'To change the schedule, stop this recurring invoice and create a new one with your preferred settings.',
                         [{ text: 'OK' }]
                       );
                     }}
