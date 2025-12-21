@@ -1477,9 +1477,20 @@ export default function JobDetailScreen() {
   const [scheduleDate, setScheduleDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [isDeletingJob, setIsDeletingJob] = useState(false);
   
   const { updateJobStatus, updateJobNotes } = useJobsStore();
-  const { businessSettings } = useAuthStore();
+  const { businessSettings, roleInfo, user } = useAuthStore();
+  
+  // Check if user can delete jobs (owner, admin, or manager only)
+  // - If roleInfo exists: check if they're OWNER/ADMIN/MANAGER
+  // - If roleInfo is null and user exists with their own business: they're a solo owner
+  // - Staff/tradie roles (STAFF, TECHNICIAN, etc.) will have roleInfo but not be in the allowed list
+  const isOwnerOrManager = roleInfo 
+    ? ['OWNER', 'ADMIN', 'MANAGER'].includes(roleInfo.roleName?.toUpperCase() || '')
+    : false;
+  const isSoloOwner = user && businessSettings && !roleInfo;
+  const canDeleteJobs = isOwnerOrManager || isSoloOwner;
   const { 
     activeTimer, 
     fetchActiveTimer, 
@@ -1846,6 +1857,35 @@ export default function JobDetailScreen() {
             } catch (error) {
               console.error('Error deleting voice note:', error);
               Alert.alert('Error', 'Failed to delete voice note');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteJob = () => {
+    if (!job) return;
+    
+    Alert.alert(
+      'Delete Job',
+      `Are you sure you want to delete "${job.title}"? This action cannot be undone.\n\nAll photos, notes, and other data associated with this job will be permanently deleted.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeletingJob(true);
+            try {
+              await api.delete(`/api/jobs/${job.id}`);
+              Alert.alert('Job Deleted', 'The job has been permanently deleted');
+              router.back();
+            } catch (error) {
+              console.error('Error deleting job:', error);
+              Alert.alert('Error', 'Failed to delete job');
+            } finally {
+              setIsDeletingJob(false);
             }
           },
         },
@@ -3916,6 +3956,20 @@ export default function JobDetailScreen() {
           title: '',
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
+          headerRight: () => canDeleteJobs ? (
+            <TouchableOpacity
+              onPress={handleDeleteJob}
+              disabled={isDeletingJob}
+              style={{ padding: spacing.sm, marginRight: spacing.sm }}
+              data-testid="button-delete-job"
+            >
+              {isDeletingJob ? (
+                <ActivityIndicator size="small" color={colors.destructive} />
+              ) : (
+                <Feather name="trash-2" size={iconSizes.md} color={colors.destructive} />
+              )}
+            </TouchableOpacity>
+          ) : null,
           headerStyle: {
             backgroundColor: colors.background,
           },

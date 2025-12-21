@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2 } from "lucide-react";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
@@ -149,6 +149,7 @@ export default function JobDetailView({
   const [showEmptyJobWarning, setShowEmptyJobWarning] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const { userRole, isTradie, isSolo, actionPermissions } = useAppMode();
   const { data: businessSettings } = useBusinessSettings();
@@ -337,6 +338,38 @@ export default function JobDetailView({
     saveNotesMutation.mutate(editedNotes);
   };
 
+  // Delete job mutation
+  const deleteJobMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", `/api/jobs/${jobId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/kpis'] });
+      toast({
+        title: "Job Deleted",
+        description: "The job has been permanently deleted",
+      });
+      onBack();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete job",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteJob = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteJob = () => {
+    setShowDeleteConfirm(false);
+    deleteJobMutation.mutate();
+  };
+
   const isLoading = jobLoading || clientLoading;
 
   // Initialize smart actions when job and client are loaded
@@ -493,6 +526,28 @@ export default function JobDetailView({
           </div>
         </div>
 
+        <div className="flex items-center gap-2">
+          {onEditJob && (
+            <Button variant="outline" size="icon" onClick={() => onEditJob(jobId)} data-testid="button-edit-job">
+              <Edit className="h-4 w-4" />
+            </Button>
+          )}
+          {!isTradie && (
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleDeleteJob}
+              disabled={deleteJobMutation.isPending}
+              data-testid="button-delete-job"
+            >
+              {deleteJobMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 text-destructive" />
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -1051,6 +1106,33 @@ export default function JobDetailView({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Job Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent data-testid="dialog-delete-job">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Delete Job?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{job.title}"? This action cannot be undone.
+              <br /><br />
+              All photos, notes, and other data associated with this job will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteJob}
+              className="bg-destructive hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              Delete Job
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageShell>
   );
 }
