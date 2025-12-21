@@ -1853,6 +1853,25 @@ export default function TeamManagementScreen() {
             {member.inviteStatus === 'accepted' && (
               <>
                 <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={() => {
+                    Alert.alert(
+                      'Change Role',
+                      `Select new role for ${member.firstName || member.user?.firstName || 'this member'}`,
+                      [
+                        { text: 'Admin', onPress: () => handleRoleChange(member.id, 'admin') },
+                        { text: 'Supervisor', onPress: () => handleRoleChange(member.id, 'supervisor') },
+                        { text: 'Staff', onPress: () => handleRoleChange(member.id, 'staff') },
+                        { text: 'Cancel', style: 'cancel' },
+                      ]
+                    );
+                  }}
+                >
+                  <Feather name="shield" size={14} color={colors.primary} />
+                  <Text style={styles.actionButtonText}>Role</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
                   style={styles.permissionsButton}
                   onPress={() => openPermissionsModal(member)}
                 >
@@ -1865,7 +1884,7 @@ export default function TeamManagementScreen() {
                   onPress={() => openAssignJobModal(member)}
                 >
                   <Feather name="briefcase" size={14} color={colors.primary} />
-                  <Text style={styles.actionButtonText}>Assign Job</Text>
+                  <Text style={styles.actionButtonText}>Assign</Text>
                 </TouchableOpacity>
               </>
             )}

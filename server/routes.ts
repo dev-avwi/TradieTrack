@@ -54,6 +54,13 @@ import {
   tradieStatus,
   // Digital signatures
   digitalSignatures,
+  // Tables for admin dashboard
+  users,
+  jobs,
+  invoices,
+  quotes,
+  clients,
+  businessSettings,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc } from "drizzle-orm";
