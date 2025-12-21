@@ -21,7 +21,8 @@ import {
   getSidebarSettingsItems,
   type NavItem 
 } from "@/lib/navigation-config";
-import appIconUrl from '@assets/Photo 1-12-2025, 6 03 07 pm (1)_1764576362665.png';
+// TradieTrack logo from public folder
+const tradietrackLogo = '/tradietrack-logo.png';
 
 interface AppSidebarProps {
   onLogout?: () => void;
@@ -59,12 +60,11 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
               />
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-lg overflow-hidden relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-400/10 to-blue-500/10 rounded-lg"></div>
+            <div className="w-8 h-8 rounded-lg overflow-hidden relative bg-background">
               <img 
-                src={appIconUrl} 
+                src={tradietrackLogo} 
                 alt="TradieTrack" 
-                className="w-full h-full object-contain relative z-10"
+                className="w-full h-full object-contain"
                 data-testid="img-tradietrack-icon"
               />
             </div>
