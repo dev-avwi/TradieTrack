@@ -1391,7 +1391,9 @@ export default function TeamManagementScreen() {
   
   // Use auth store tier as source of truth, fall back to API response
   const currentTier = userSubscriptionTier || subscriptionStatus?.tier || 'free';
-  const hasTeamPlan = currentTier === 'team';
+  // Show team interface if user has team plan OR if they already have team members
+  // This ensures users with existing teams (like demo accounts) can manage them
+  const hasTeamPlan = currentTier === 'team' || BETA_MODE || teamMembers.length > 0;
   const teamPrice = TEAM_BASE_PRICE + (seatCount * TEAM_SEAT_PRICE);
 
   useEffect(() => {

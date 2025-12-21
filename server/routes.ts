@@ -5256,13 +5256,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Assign job to team member (for team owners/managers)
+  // Also supports unassigning by passing assignedTo: null
   app.post("/api/jobs/:id/assign", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { assignedTo } = req.body;
       
-      if (!assignedTo) {
-        return res.status(400).json({ error: "assignedTo is required" });
+      // Allow null for unassigning jobs
+      if (assignedTo === null || assignedTo === undefined) {
+        // Unassign the job - only owners/managers can do this
+        if (!userContext.isOwner && !userContext.hasViewAll) {
+          return res.status(403).json({ error: "You don't have permission to unassign jobs" });
+        }
+        
+        const job = await storage.updateJob(req.params.id, userContext.effectiveUserId, { 
+          assignedTo: null
+        });
+        
+        if (!job) {
+          return res.status(404).json({ error: "Job not found" });
+        }
+        
+        return res.json(job);
       }
       
       // Validate job assignment RBAC: Owner assigns to anyone, Manager assigns to workers only
