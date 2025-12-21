@@ -7,11 +7,13 @@ import type { Express } from 'express';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
-// Use VITE_APP_URL (custom domain) first, then fall back to REPLIT_DOMAINS
+// Use VITE_APP_URL for production only, Replit domain for development
 const getBaseUrl = () => {
-  if (process.env.VITE_APP_URL) {
+  // In production mode, use custom domain if available
+  if (process.env.NODE_ENV === 'production' && process.env.VITE_APP_URL) {
     return process.env.VITE_APP_URL;
   }
+  // In development, use Replit domain so OAuth works with the dev environment
   const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0];
   if (replitDomain) {
     return `https://${replitDomain}`;
