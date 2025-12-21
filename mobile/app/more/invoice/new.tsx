@@ -648,6 +648,9 @@ export default function NewInvoiceScreen() {
   const [showCatalog, setShowCatalog] = useState(false);
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
+  const [showQuickAddClient, setShowQuickAddClient] = useState(false);
+  const [quickAddForm, setQuickAddForm] = useState({ name: '', email: '', phone: '' });
+  const [isCreatingClient, setIsCreatingClient] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [jobId, setJobId] = useState<string | null>(params.jobId || null);
@@ -844,6 +847,41 @@ export default function NewInvoiceScreen() {
       clientName: client.name
     });
     setShowClientPicker(false);
+  };
+
+  const handleQuickAddClient = async () => {
+    if (!quickAddForm.name.trim()) {
+      Alert.alert('Error', 'Please enter a client name');
+      return;
+    }
+
+    setIsCreatingClient(true);
+    try {
+      const response = await api.post('/api/clients', {
+        name: quickAddForm.name.trim(),
+        email: quickAddForm.email.trim() || undefined,
+        phone: quickAddForm.phone.trim() || undefined,
+      });
+      
+      await fetchClients();
+      
+      setForm({
+        ...form,
+        clientId: response.data.id,
+        clientName: response.data.name
+      });
+      
+      setShowQuickAddClient(false);
+      setShowClientPicker(false);
+      setQuickAddForm({ name: '', email: '', phone: '' });
+      
+      Alert.alert('Success', `${response.data.name} has been added and selected`);
+    } catch (error: any) {
+      console.error('Failed to create client:', error);
+      Alert.alert('Error', error.response?.data?.error || 'Failed to create client');
+    } finally {
+      setIsCreatingClient(false);
+    }
   };
 
   const selectedClient = clients.find(c => c.id === form.clientId);
@@ -1413,53 +1451,140 @@ export default function NewInvoiceScreen() {
         visible={showClientPicker}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowClientPicker(false)}
+        onRequestClose={() => {
+          setShowClientPicker(false);
+          setShowQuickAddClient(false);
+          setQuickAddForm({ name: '', email: '', phone: '' });
+        }}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select Client</Text>
-            <TouchableOpacity onPress={() => setShowClientPicker(false)}>
-              <Feather name="x" size={24} color={colors.foreground} />
+            <Text style={styles.modalTitle}>{showQuickAddClient ? 'Quick Add Client' : 'Select Client'}</Text>
+            <TouchableOpacity onPress={() => {
+              if (showQuickAddClient) {
+                setShowQuickAddClient(false);
+                setQuickAddForm({ name: '', email: '', phone: '' });
+              } else {
+                setShowClientPicker(false);
+              }
+            }}>
+              <Feather name={showQuickAddClient ? 'arrow-left' : 'x'} size={24} color={colors.foreground} />
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.modalContent}>
-            {clients.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Feather name="user" size={48} color={colors.mutedForeground} />
-                <Text style={styles.emptyStateText}>No clients found</Text>
+          
+          {showQuickAddClient ? (
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+              <ScrollView style={styles.modalContent}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Client Name *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={quickAddForm.name}
+                    onChangeText={(text) => setQuickAddForm({ ...quickAddForm, name: text })}
+                    placeholder="e.g. John Smith"
+                    placeholderTextColor={colors.mutedForeground}
+                    autoFocus
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Email (optional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={quickAddForm.email}
+                    onChangeText={(text) => setQuickAddForm({ ...quickAddForm, email: text })}
+                    placeholder="john@email.com"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Phone (optional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={quickAddForm.phone}
+                    onChangeText={(text) => setQuickAddForm({ ...quickAddForm, phone: text })}
+                    placeholder="0400 000 000"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="phone-pad"
+                  />
+                </View>
                 <TouchableOpacity
-                  style={styles.createClientButton}
-                  onPress={() => {
-                    setShowClientPicker(false);
-                    router.push('/more/client/new');
-                  }}
+                  style={[styles.saveItemButton, { opacity: isCreatingClient ? 0.6 : 1 }]}
+                  onPress={handleQuickAddClient}
+                  disabled={isCreatingClient}
                 >
-                  <Feather name="plus" size={18} color={colors.primary} />
-                  <Text style={styles.createClientButtonText}>Create Client</Text>
+                  {isCreatingClient ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Text style={styles.saveItemButtonText}>Add & Select Client</Text>
+                  )}
                 </TouchableOpacity>
-              </View>
-            ) : (
-              clients.map((client) => (
-                <TouchableOpacity
-                  key={client.id}
-                  style={styles.clientOption}
-                  onPress={() => handleSelectClient(client)}
-                >
-                  <View style={styles.clientOptionAvatar}>
-                    <Text style={styles.clientOptionAvatarText}>
-                      {client.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.clientOptionInfo}>
-                    <Text style={styles.clientOptionName}>{client.name}</Text>
-                    {client.email && (
-                      <Text style={styles.clientOptionEmail}>{client.email}</Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </ScrollView>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          ) : (
+            <ScrollView style={styles.modalContent}>
+              {/* Quick Add Client Button */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: colors.primaryLight,
+                  padding: 14,
+                  borderRadius: 10,
+                  marginBottom: 16,
+                  gap: 10,
+                }}
+                onPress={() => setShowQuickAddClient(true)}
+              >
+                <View style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: colors.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Feather name="user-plus" size={18} color={colors.primaryForeground} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>Quick Add Client</Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Create a new client without leaving this screen</Text>
+                </View>
+                <Feather name="chevron-right" size={20} color={colors.primary} />
+              </TouchableOpacity>
+
+              {clients.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Feather name="user" size={48} color={colors.mutedForeground} />
+                  <Text style={styles.emptyStateText}>No clients found</Text>
+                  <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: 'center', marginTop: 4 }}>
+                    Use Quick Add above to create your first client
+                  </Text>
+                </View>
+              ) : (
+                clients.map((client) => (
+                  <TouchableOpacity
+                    key={client.id}
+                    style={styles.clientOption}
+                    onPress={() => handleSelectClient(client)}
+                  >
+                    <View style={styles.clientOptionAvatar}>
+                      <Text style={styles.clientOptionAvatarText}>
+                        {client.name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.clientOptionInfo}>
+                      <Text style={styles.clientOptionName}>{client.name}</Text>
+                      {client.email && (
+                        <Text style={styles.clientOptionEmail}>{client.email}</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          )}
         </View>
       </Modal>
 
