@@ -163,7 +163,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress }: Flo
       color: colors.info,
       onPress: () => {
         setIsOpen(false);
-        router.push('/more/quotes/create');
+        router.push('/more/quote/new');
       },
     },
     {
@@ -172,7 +172,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress }: Flo
       color: colors.success,
       onPress: () => {
         setIsOpen(false);
-        router.push('/more/invoices/create');
+        router.push('/more/invoice/new');
       },
     },
     {
@@ -181,7 +181,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress }: Flo
       color: colors.warning,
       onPress: () => {
         setIsOpen(false);
-        router.push('/more/clients/create');
+        router.push('/more/client/new');
       },
     },
   ];
