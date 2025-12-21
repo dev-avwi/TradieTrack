@@ -62,7 +62,6 @@ import DispatchBoard from "@/pages/DispatchBoard";
 import SchedulePage from "@/pages/SchedulePage";
 import Automations from "@/pages/Automations";
 import CustomForms from "@/pages/CustomForms";
-import MyAccount from "@/pages/MyAccount";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
 import AdminDashboard from "@/pages/AdminDashboard";
