@@ -61,3 +61,8 @@ externalPort = 8081
 [[ports]]
 localPort = 8082
 externalPort = 3002
+
+[userenv]
+
+[userenv.shared]
+VITE_APP_URL = "https://tradietrack.com"

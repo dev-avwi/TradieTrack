@@ -7,9 +7,18 @@ import type { Express } from 'express';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
-// Use REPLIT_DOMAINS for the callback URL (works in both dev and production on Replit)
-const REPLIT_DOMAIN = process.env.REPLIT_DOMAINS?.split(',')[0];
-const BASE_URL = REPLIT_DOMAIN ? `https://${REPLIT_DOMAIN}` : (process.env.REPL_URL || 'http://localhost:5000');
+// Use VITE_APP_URL (custom domain) first, then fall back to REPLIT_DOMAINS
+const getBaseUrl = () => {
+  if (process.env.VITE_APP_URL) {
+    return process.env.VITE_APP_URL;
+  }
+  const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0];
+  if (replitDomain) {
+    return `https://${replitDomain}`;
+  }
+  return process.env.REPL_URL || 'http://localhost:5000';
+};
+const BASE_URL = getBaseUrl();
 
 export function setupGoogleAuth(app: Express) {
   // Development mode - simulate Google OAuth without real credentials

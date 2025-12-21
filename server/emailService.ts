@@ -1274,7 +1274,7 @@ export async function sendWelcomeEmail(
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="https://tradietrack.replit.app" style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
+            <a href="${effectiveBaseUrl}" style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
               Get Started Now
             </a>
           </div>
