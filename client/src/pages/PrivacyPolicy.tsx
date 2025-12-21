@@ -108,7 +108,7 @@ export default function PrivacyPolicy() {
                 </ul>
                 <p className="text-muted-foreground leading-relaxed mt-3">
                   If you believe your data may have been compromised, please contact us immediately at 
-                  privacy@tradietrack.com.au.
+                  admin@avwebinnovation.com.
                 </p>
               </section>
 
@@ -172,8 +172,8 @@ export default function PrivacyPolicy() {
                 <div className="mt-3 p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">
                     <strong>TradieTrack Support</strong><br />
-                    Email: privacy@tradietrack.com.au<br />
-                    Phone: 1300 TRADIE (1300 872 343)
+                    Email: admin@avwebinnovation.com<br />
+                    Website: tradietrack.com
                   </p>
                 </div>
               </section>
