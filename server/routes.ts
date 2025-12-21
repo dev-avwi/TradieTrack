@@ -894,7 +894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trialStatus: user.trialStatus,
         trialEndsAt: user.trialEndsAt,
         trialUsedAt: user.trialUsedAt,
-        isPlatformAdmin: user.isPlatformAdmin || false,
+        isPlatformAdmin: user.isPlatformAdmin ?? (user as any).is_platform_admin ?? false,
       };
       
       res.json(safeUser);
@@ -15137,7 +15137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const user = await storage.getUser(userId);
       // Only isPlatformAdmin flag grants admin access - no email fallbacks
-      if (!user || user.isPlatformAdmin !== true) {
+      const isAdmin = user?.isPlatformAdmin === true || (user as any)?.is_platform_admin === true;
+      if (!user || !isAdmin) {
         return res.status(403).json({ error: 'Access denied. Admin only.' });
       }
       
