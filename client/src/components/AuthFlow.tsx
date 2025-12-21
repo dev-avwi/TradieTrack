@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,17 @@ interface AuthFlowProps {
 
 export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowProps) {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  
+  // Check URL for mode parameter to set initial auth mode
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    if (mode === 'signup' || mode === 'register') {
+      setAuthMode('register');
+    } else if (mode === 'login') {
+      setAuthMode('login');
+    }
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState('');

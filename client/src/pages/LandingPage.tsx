@@ -40,8 +40,22 @@ export default function LandingPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
+    e.preventDefault();
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const offset = 80; // Account for fixed header
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+      window.scrollTo({
+        top: elementPosition - offset,
+        behavior: "smooth"
+      });
+    }
+    setMobileMenuOpen(false);
+  };
+
   return (
-    <div className="min-h-screen bg-white text-gray-900 antialiased overflow-x-hidden">
+    <div className="min-h-screen bg-white text-gray-900 antialiased overflow-x-hidden scroll-smooth">
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled 
@@ -62,30 +76,45 @@ export default function LandingPage() {
                 className="h-9 w-auto"
               />
               <span className="text-xl font-bold tracking-tight">
-                <span className="text-gray-900">Tradie</span>
-                <span className="text-blue-600">Track</span>
+                <span className="text-blue-600">Tradie</span>
+                <span className="text-orange-500">Track</span>
               </span>
             </button>
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-10">
-              <a href="#features" className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" data-testid="nav-features">Features</a>
-              <a href="#how-it-works" className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" data-testid="nav-how-it-works">How It Works</a>
-              <a href="#testimonials" className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" data-testid="nav-testimonials">What People Say</a>
+              <a 
+                href="#features" 
+                onClick={(e) => scrollToSection(e, "features")}
+                className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                data-testid="nav-features"
+              >
+                Features
+              </a>
+              <a 
+                href="#how-it-works" 
+                onClick={(e) => scrollToSection(e, "how-it-works")}
+                className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                data-testid="nav-how-it-works"
+              >
+                How It Works
+              </a>
             </div>
 
-            {/* Desktop CTA */}
-            <div className="hidden lg:flex items-center gap-3">
-              <Link href="/auth">
-                <Button variant="ghost" className="text-[15px] font-medium h-10 px-4" data-testid="nav-login">
-                  Log In
-                </Button>
-              </Link>
-              <Link href="/auth">
-                <Button className="bg-orange-500 hover:bg-orange-600 text-white text-[15px] font-semibold h-10 px-5 rounded-lg shadow-sm hover:shadow-md transition-all" data-testid="nav-get-started">
-                  Get Started Free
-                </Button>
-              </Link>
+            {/* Desktop CTA - Get Started and Login grouped together */}
+            <div className="hidden lg:flex items-center">
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <Link href="/auth?mode=login">
+                  <Button variant="ghost" className="text-[15px] font-medium h-9 px-4 rounded-md hover:bg-white hover:shadow-sm transition-all" data-testid="nav-login">
+                    Log In
+                  </Button>
+                </Link>
+                <Link href="/auth?mode=signup">
+                  <Button className="bg-orange-500 hover:bg-orange-600 text-white text-[15px] font-semibold h-9 px-5 rounded-md shadow-sm transition-all" data-testid="nav-get-started">
+                    Get Started Free
+                  </Button>
+                </Link>
+              </div>
             </div>
 
             {/* Mobile menu button */}
@@ -125,8 +154,8 @@ export default function LandingPage() {
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <span className="text-lg font-bold">
-                <span className="text-gray-900">Tradie</span>
-                <span className="text-blue-600">Track</span>
+                <span className="text-blue-600">Tradie</span>
+                <span className="text-orange-500">Track</span>
               </span>
               <button
                 onClick={() => setMobileMenuOpen(false)}
@@ -143,7 +172,7 @@ export default function LandingPage() {
               <nav className="space-y-1">
                 <a 
                   href="#features" 
-                  onClick={() => setMobileMenuOpen(false)} 
+                  onClick={(e) => scrollToSection(e, "features")} 
                   className="flex items-center gap-3 py-3 px-3 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors" 
                   data-testid="mobile-nav-features"
                 >
@@ -152,33 +181,24 @@ export default function LandingPage() {
                 </a>
                 <a 
                   href="#how-it-works" 
-                  onClick={() => setMobileMenuOpen(false)} 
+                  onClick={(e) => scrollToSection(e, "how-it-works")} 
                   className="flex items-center gap-3 py-3 px-3 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors" 
                   data-testid="mobile-nav-how-it-works"
                 >
                   <Play className="w-5 h-5 text-gray-400" />
                   How It Works
                 </a>
-                <a 
-                  href="#testimonials" 
-                  onClick={() => setMobileMenuOpen(false)} 
-                  className="flex items-center gap-3 py-3 px-3 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors" 
-                  data-testid="mobile-nav-testimonials"
-                >
-                  <Users className="w-5 h-5 text-gray-400" />
-                  What People Say
-                </a>
               </nav>
             </div>
 
-            {/* Bottom CTAs */}
+            {/* Bottom CTAs - Grouped together */}
             <div className="p-5 border-t border-gray-100 space-y-3">
-              <Link href="/auth" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)}>
                 <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12 text-[15px] font-semibold rounded-lg" data-testid="mobile-get-started">
                   Get Started Free
                 </Button>
               </Link>
-              <Link href="/auth" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/auth?mode=login" onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="outline" className="w-full h-12 text-[15px] font-medium rounded-lg" data-testid="mobile-login">
                   Log In
                 </Button>
@@ -213,13 +233,16 @@ export default function LandingPage() {
 
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
-                <Link href="/auth">
+                <Link href="/auth?mode=signup">
                   <Button size="lg" className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-semibold h-12 px-7 text-base rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all" data-testid="hero-start-trial">
                     Start Using Free
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
-                <a href="#how-it-works">
+                <a 
+                  href="#how-it-works"
+                  onClick={(e) => scrollToSection(e, "how-it-works")}
+                >
                   <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-7 text-base font-medium rounded-lg border-gray-300 hover:bg-gray-50 hover:scale-[1.02] transition-all" data-testid="hero-watch-demo">
                     <Play className="mr-2 h-4 w-4" />
                     See How It Works
@@ -278,7 +301,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 lg:py-28">
+      <section id="features" className="py-20 lg:py-28 scroll-mt-20">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
           {/* Section Header */}
           <div className="text-center mb-16 lg:mb-20">
@@ -329,7 +352,12 @@ export default function LandingPage() {
               <p className="text-gray-600 text-lg leading-relaxed mb-6">
                 Plan your day visually. Track your team's locations in real-time and optimise routes to save time and fuel.
               </p>
-              <a href="#how-it-works" className="inline-flex items-center text-blue-600 font-semibold hover:text-blue-700 transition-colors group" data-testid="link-explore-maps">
+              <a 
+                href="#how-it-works" 
+                onClick={(e) => scrollToSection(e, "how-it-works")}
+                className="inline-flex items-center text-blue-600 font-semibold hover:text-blue-700 transition-colors group" 
+                data-testid="link-explore-maps"
+              >
                 Learn more <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </a>
             </div>
@@ -384,7 +412,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 lg:py-28 bg-gray-50">
+      <section id="how-it-works" className="py-20 lg:py-28 bg-gray-50 scroll-mt-20">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
           <div className="text-center mb-16">
             <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">How It Works</span>
@@ -419,39 +447,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials - Renamed to "What People Say" with softer messaging */}
-      <section id="testimonials" className="py-20 lg:py-28">
-        <div className="max-w-6xl mx-auto px-5 lg:px-8">
-          <div className="text-center mb-16">
-            <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Early Feedback</span>
-            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
-              What our beta users are saying
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              We're just getting started, but here's what early users think.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
-            <FeedbackCard
-              quote="Finally an app that gets what tradies actually need. Super easy to use."
-              author="Mike T."
-              role="Electrician"
-            />
-            <FeedbackCard
-              quote="Love being able to do quotes on-site and send them straight away. Saves so much time."
-              author="Sarah C."
-              role="Plumber"
-            />
-            <FeedbackCard
-              quote="The job map is brilliant. Can see where all my jobs are and plan my day better."
-              author="Tom W."
-              role="Builder"
-            />
-          </div>
-        </div>
-      </section>
-
       {/* Final CTA */}
       <section className="py-20 lg:py-28 bg-gradient-to-b from-blue-600 to-blue-700">
         <div className="max-w-3xl mx-auto px-5 lg:px-8 text-center">
@@ -461,7 +456,7 @@ export default function LandingPage() {
           <p className="text-lg lg:text-xl text-blue-100 mb-10 max-w-xl mx-auto">
             Join our growing community of Australian tradies. Free while we're in beta.
           </p>
-          <Link href="/auth">
+          <Link href="/auth?mode=signup">
             <Button size="lg" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold h-14 px-10 text-lg rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" data-testid="cta-start-trial">
               Get Started Free
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -488,8 +483,8 @@ export default function LandingPage() {
                   className="h-8 w-auto brightness-0 invert"
                 />
                 <span className="text-lg font-bold">
-                  <span className="text-white">Tradie</span>
-                  <span className="text-blue-400">Track</span>
+                  <span className="text-blue-400">Tradie</span>
+                  <span className="text-orange-400">Track</span>
                 </span>
               </button>
               <p className="text-sm leading-relaxed">
@@ -499,8 +494,26 @@ export default function LandingPage() {
             <div>
               <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-5">Product</h3>
               <ul className="space-y-3 text-sm">
-                <li><a href="#features" className="hover:text-white transition-colors" data-testid="link-features">Features</a></li>
-                <li><a href="#how-it-works" className="hover:text-white transition-colors" data-testid="link-how-it-works">How It Works</a></li>
+                <li>
+                  <a 
+                    href="#features" 
+                    onClick={(e) => scrollToSection(e, "features")}
+                    className="hover:text-white transition-colors" 
+                    data-testid="link-features"
+                  >
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="#how-it-works" 
+                    onClick={(e) => scrollToSection(e, "how-it-works")}
+                    className="hover:text-white transition-colors" 
+                    data-testid="link-how-it-works"
+                  >
+                    How It Works
+                  </a>
+                </li>
                 <li><a href="#" className="hover:text-white transition-colors" data-testid="link-mobile-app">Mobile App</a></li>
               </ul>
             </div>
@@ -530,19 +543,22 @@ export default function LandingPage() {
       {/* Global Styles for animations */}
       <style>{`
         @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(20px); }
+          from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in {
           animation: fade-in 0.6s ease-out forwards;
         }
         .animate-fade-in-up {
-          animation: fade-in-up 0.6s ease-out 0.2s forwards;
+          animation: fade-in-up 0.8s ease-out 0.2s forwards;
           opacity: 0;
+        }
+        html {
+          scroll-behavior: smooth;
         }
       `}</style>
     </div>
@@ -593,7 +609,7 @@ function StepCard({
   description: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300">
+    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 hover:-translate-y-1">
       <div className="flex items-center gap-4 mb-5">
         <div className="w-10 h-10 bg-blue-600 text-white rounded-lg flex items-center justify-center font-bold text-lg">
           {number}
@@ -602,31 +618,6 @@ function StepCard({
       </div>
       <h3 className="text-xl font-semibold text-gray-900 mb-3">{title}</h3>
       <p className="text-gray-600 leading-relaxed">{description}</p>
-    </div>
-  );
-}
-
-function FeedbackCard({ 
-  quote, 
-  author, 
-  role
-}: { 
-  quote: string; 
-  author: string; 
-  role: string;
-}) {
-  return (
-    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300">
-      <p className="text-gray-700 leading-relaxed mb-6 text-lg">"{quote}"</p>
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-          {author.charAt(0)}
-        </div>
-        <div>
-          <p className="font-semibold text-gray-900">{author}</p>
-          <p className="text-sm text-gray-500">{role}</p>
-        </div>
-      </div>
     </div>
   );
 }

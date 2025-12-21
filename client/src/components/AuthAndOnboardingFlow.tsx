@@ -48,6 +48,17 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
   const [currentStep, setCurrentStep] = useState<FlowStep>('auth');
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Check URL for mode parameter to set initial auth mode
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    if (mode === 'signup' || mode === 'register') {
+      setAuthMode('register');
+    } else if (mode === 'login') {
+      setAuthMode('login');
+    }
+  }, []);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showPassword, setShowPassword] = useState(false);
