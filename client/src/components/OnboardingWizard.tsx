@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, ArrowLeft, ArrowRight, Building2, Palette, DollarSign, Users } from "lucide-react";
+import { CheckCircle, ArrowLeft, ArrowRight, Building2, Palette, DollarSign, Users, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 // Import step components
 import BusinessProfileStep from "./onboarding/BusinessProfileStep";
@@ -58,6 +59,7 @@ export interface OnboardingData {
 interface OnboardingWizardProps {
   onComplete: (data: OnboardingData) => void;
   onSkip?: () => void;
+  onSignOut?: () => void;
 }
 
 const STEPS = [
@@ -91,7 +93,7 @@ const STEPS = [
   },
 ];
 
-export default function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) {
+export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: OnboardingWizardProps) {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
@@ -336,6 +338,22 @@ export default function OnboardingWizard({ onComplete, onSkip }: OnboardingWizar
   return (
     <div className="min-h-screen bg-background" data-testid="onboarding-wizard">
       <div className="max-w-4xl mx-auto p-4 md:p-6">
+        {/* Top bar with sign out option */}
+        {onSignOut && (
+          <div className="flex justify-end mb-4">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={onSignOut}
+              data-testid="button-signout-onboarding"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Wrong account? Sign out
+            </Button>
+          </div>
+        )}
+        
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">Welcome to TradieTrack!</h1>

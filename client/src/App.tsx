@@ -853,7 +853,7 @@ function AppLayout() {
   if (userCheck && businessSettings === null && !isTeamMember) {
     // User exists but no business settings AND not a team member - show onboarding wizard
     // Staff users (team members) skip onboarding - they use their employer's business settings
-    return <OnboardingWizard onComplete={handleOnboardingComplete} />;
+    return <OnboardingWizard onComplete={handleOnboardingComplete} onSignOut={handleLogout} />;
   }
 
   // If authenticated, show main app below (existing code continues...)
