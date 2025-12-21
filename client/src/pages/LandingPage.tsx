@@ -15,7 +15,9 @@ import {
   ArrowRight,
   Play,
   Sparkles,
-  Download
+  Download,
+  Globe,
+  Monitor
 } from "lucide-react";
 import { SiApple, SiGoogleplay } from "react-icons/si";
 
@@ -466,6 +468,95 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Download Section - Web & Mobile Apps */}
+      <section id="download" className="scroll-mt-20 py-20 lg:py-28 bg-gray-50">
+        <div className="max-w-5xl mx-auto px-5 lg:px-8">
+          <div className="text-center mb-14">
+            <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Get TradieTrack</span>
+            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
+              Use it anywhere — web or mobile
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              TradieTrack works on any device. Use the web app on your computer or download the mobile app to manage your business on the go.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Web App Card */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300">
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <Monitor className="w-7 h-7 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Web App</h3>
+                  <p className="text-sm text-gray-500">Works in any browser</p>
+                </div>
+              </div>
+              <p className="text-gray-600 mb-6">
+                Access TradieTrack from your computer, laptop, or tablet. Perfect for office work, detailed quotes, and managing your business from your desk.
+              </p>
+              <Link href="/auth?mode=signup">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-12 rounded-lg" data-testid="download-web-app">
+                  <Globe className="w-5 h-5 mr-2" />
+                  Open Web App
+                </Button>
+              </Link>
+            </div>
+
+            {/* Mobile App Card */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300">
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <Smartphone className="w-7 h-7 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Mobile App</h3>
+                  <p className="text-sm text-gray-500">iOS & Android</p>
+                </div>
+              </div>
+              <p className="text-gray-600 mb-6">
+                Take photos, track time, and manage jobs on-site. The mobile app keeps everything synced with your web account automatically.
+              </p>
+              
+              {/* App Store Badges */}
+              <div className="flex flex-col gap-3">
+                <a 
+                  href="https://apps.apple.com/app/tradietrack/id6756844699"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-3 bg-black text-white rounded-lg px-5 py-3 hover:bg-gray-800 transition-colors"
+                  data-testid="download-app-store"
+                >
+                  <SiApple className="w-6 h-6" />
+                  <div className="text-left">
+                    <div className="text-[9px] uppercase tracking-wider opacity-80">Download on the</div>
+                    <div className="text-base font-semibold -mt-0.5">App Store</div>
+                  </div>
+                </a>
+                
+                <a 
+                  href="#"
+                  className="flex items-center justify-center gap-3 bg-black text-white rounded-lg px-5 py-3 opacity-50 cursor-not-allowed"
+                  data-testid="download-google-play"
+                  title="Coming Soon"
+                >
+                  <SiGoogleplay className="w-5 h-5" />
+                  <div className="text-left">
+                    <div className="text-[9px] uppercase tracking-wider opacity-80">Coming soon to</div>
+                    <div className="text-base font-semibold -mt-0.5">Google Play</div>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          <p className="text-center text-sm text-gray-500 mt-8">
+            Your data syncs seamlessly between web and mobile — work from anywhere!
+          </p>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section className="py-20 lg:py-28 bg-gradient-to-b from-blue-600 to-blue-700">
         <div className="max-w-3xl mx-auto px-5 lg:px-8 text-center">
@@ -483,55 +574,6 @@ export default function LandingPage() {
           </Link>
           <p className="text-sm text-blue-200 mt-5">
             No credit card required. No commitment.
-          </p>
-        </div>
-      </section>
-
-      {/* Download Section */}
-      <section id="download" className="scroll-mt-20 py-20 lg:py-28 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-5 lg:px-8 text-center">
-          <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Download Now</span>
-          <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
-            Get the TradieTrack App
-          </h2>
-          <p className="text-lg text-gray-600 max-w-xl mx-auto mb-10">
-            Available on iOS and Android. Take your business with you wherever you go.
-          </p>
-          
-          {/* App Store Badges */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            {/* App Store Badge */}
-            <a 
-              href="https://apps.apple.com/app/tradietrack/id6756844699"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 bg-black text-white rounded-xl px-6 py-3 hover:bg-gray-800 transition-colors group"
-              data-testid="download-app-store"
-            >
-              <SiApple className="w-8 h-8" />
-              <div className="text-left">
-                <div className="text-[10px] uppercase tracking-wider opacity-80">Download on the</div>
-                <div className="text-lg font-semibold -mt-0.5">App Store</div>
-              </div>
-            </a>
-            
-            {/* Google Play Badge */}
-            <a 
-              href="#"
-              className="flex items-center gap-3 bg-black text-white rounded-xl px-6 py-3 hover:bg-gray-800 transition-colors group opacity-60 cursor-not-allowed"
-              data-testid="download-google-play"
-              title="Coming Soon"
-            >
-              <SiGoogleplay className="w-7 h-7" />
-              <div className="text-left">
-                <div className="text-[10px] uppercase tracking-wider opacity-80">Get it on</div>
-                <div className="text-lg font-semibold -mt-0.5">Google Play</div>
-              </div>
-            </a>
-          </div>
-          
-          <p className="text-sm text-gray-500 mt-6">
-            Android version coming soon!
           </p>
         </div>
       </section>
