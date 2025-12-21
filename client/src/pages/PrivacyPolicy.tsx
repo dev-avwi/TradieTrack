@@ -19,7 +19,7 @@ export default function PrivacyPolicy() {
         <Card>
           <CardContent className="p-8">
             <h1 className="text-3xl font-bold mb-2" data-testid="heading-privacy-policy">Privacy Policy</h1>
-            <p className="text-muted-foreground mb-8">Last updated: November 2025</p>
+            <p className="text-muted-foreground mb-8">Last updated: December 2025</p>
 
             <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
               <section>
