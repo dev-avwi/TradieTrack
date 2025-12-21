@@ -15310,7 +15310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const host = req.headers.host || req.headers['x-forwarded-host'] || 'localhost:5000';
     const baseUrl = `${protocol}://${host}`;
-    const logoUrl = `${baseUrl}/public/tradietrack-logo.png`;
+    const logoUrl = `${baseUrl}/tradietrack-logo.png`;
     
     const sampleUser = { firstName: 'Mike', email: 'mike@example.com' };
     

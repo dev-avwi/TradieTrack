@@ -723,7 +723,7 @@ export const createJobConfirmationEmailHtml = (job: any, client: any, business: 
 const createEmailVerificationEmail = (user: any, verificationToken: string) => {
   const baseUrl = getBaseUrl();
   const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
-  const logoUrl = `${baseUrl}/public/tradietrack-logo.png`;
+  const logoUrl = `${baseUrl}/tradietrack-logo.png`;
 
   return {
     to: user.email,
@@ -929,7 +929,7 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
 
   const baseUrl = getBaseUrl();
   const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
-  const logoUrl = `${baseUrl}/public/tradietrack-logo.png`;
+  const logoUrl = `${baseUrl}/tradietrack-logo.png`;
 
   const emailData = {
     to: user.email,
@@ -1193,7 +1193,7 @@ export async function sendWelcomeEmail(
   const userName = user.firstName || user.email.split('@')[0];
   const displayBusinessName = businessName || 'your business';
   const effectiveBaseUrl = baseUrl || getBaseUrl();
-  const logoUrl = `${effectiveBaseUrl}/public/tradietrack-logo.png`;
+  const logoUrl = `${effectiveBaseUrl}/tradietrack-logo.png`;
 
   const emailData = {
     to: user.email,
@@ -1389,7 +1389,7 @@ export async function sendTeamInviteEmail(
   const emailService = isSendGridConfigured ? sgMail : mockEmailService;
   const displayName = inviteeName || inviteeEmail.split('@')[0];
   const acceptUrl = `${baseUrl}/accept-invite/${inviteToken}`;
-  const logoUrl = `${baseUrl}/public/tradietrack-logo.png`;
+  const logoUrl = `${baseUrl}/tradietrack-logo.png`;
 
   const emailData = {
     to: inviteeEmail,
