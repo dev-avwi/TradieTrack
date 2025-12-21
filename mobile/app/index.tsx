@@ -4,7 +4,7 @@ import { useAuthStore } from '../src/lib/store';
 import { LoadingScreen } from '../src/components/ui/LoadingScreen';
 
 export default function Index() {
-  const { isAuthenticated, isLoading, isInitialized, checkAuth } = useAuthStore();
+  const { isAuthenticated, isLoading, isInitialized, checkAuth, user } = useAuthStore();
 
   useEffect(() => {
     checkAuth();
@@ -15,6 +15,10 @@ export default function Index() {
   }
 
   if (isAuthenticated) {
+    // Platform admins go directly to admin dashboard
+    if (user?.isPlatformAdmin === true) {
+      return <Redirect href="/more/admin" />;
+    }
     return <Redirect href="/(tabs)" />;
   }
 

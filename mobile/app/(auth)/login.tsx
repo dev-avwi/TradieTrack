@@ -25,10 +25,20 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { login, checkAuth, isLoading, error, clearError } = useAuthStore();
+  const { login, checkAuth, isLoading, error, clearError, isAuthenticated, user } = useAuthStore();
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const params = useLocalSearchParams();
+
+  // Helper function to determine redirect path based on user type
+  const getRedirectPath = (isNewUser: boolean, isPlatformAdmin: boolean): string => {
+    // Platform admins go directly to admin dashboard
+    if (isPlatformAdmin) {
+      return '/more/admin';
+    }
+    // New users go to onboarding, existing users go to dashboard
+    return isNewUser ? '/(onboarding)/setup' : '/(tabs)';
+  };
 
   // Handle Google OAuth callback via deep link
   useEffect(() => {
@@ -36,15 +46,14 @@ export default function LoginScreen() {
       // Check if this is a new user who needs onboarding
       const isNewUser = params.isNewUser === 'true';
       
-      // Refresh auth state after Google login
-      checkAuth().then((isLoggedIn) => {
-        if (isLoggedIn) {
-          // New users go to onboarding, existing users go to dashboard
-          if (isNewUser) {
-            router.replace('/(onboarding)/setup');
-          } else {
-            router.replace('/(tabs)');
-          }
+      // Refresh auth state after Google login, then check store state
+      checkAuth().then(() => {
+        // Get the current state after checkAuth completes
+        const { isAuthenticated: loggedIn, user: currentUser } = useAuthStore.getState();
+        if (loggedIn) {
+          const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
+          const redirectPath = getRedirectPath(isNewUser, isPlatformAdmin);
+          router.replace(redirectPath);
         }
       });
     }
@@ -59,7 +68,11 @@ export default function LoginScreen() {
     const success = await login(email.trim(), password);
     
     if (success) {
-      router.replace('/(tabs)');
+      // Check if user is platform admin after successful login
+      const { user: currentUser } = useAuthStore.getState();
+      const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
+      const redirectPath = getRedirectPath(false, isPlatformAdmin);
+      router.replace(redirectPath);
     }
   };
 
@@ -81,12 +94,9 @@ export default function LoginScreen() {
         // Parse the callback URL for auth status
         const url = new URL(result.url);
         const auth = url.searchParams.get('auth');
-        const error = url.searchParams.get('error');
+        const errorParam = url.searchParams.get('error');
         const token = url.searchParams.get('token');
         const isNewUser = url.searchParams.get('isNewUser') === 'true';
-        
-        // Determine where to redirect - new users go to onboarding
-        const redirectPath = isNewUser ? '/(onboarding)/setup' : '/(tabs)';
         
         if ((auth === 'success' || auth === 'google_success') && token) {
           // Save the session token from OAuth
@@ -95,21 +105,29 @@ export default function LoginScreen() {
           
           // Now check auth state from server with the token
           await checkAuth();
+          
+          // Determine redirect based on user type
+          const { user: currentUser } = useAuthStore.getState();
+          const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
+          const redirectPath = getRedirectPath(isNewUser, isPlatformAdmin);
           router.replace(redirectPath);
         } else if (auth === 'success' || auth === 'google_success') {
           // No token but auth success - try checkAuth anyway
-          const isLoggedIn = await checkAuth();
-          if (isLoggedIn) {
+          await checkAuth();
+          const { isAuthenticated: loggedIn, user: currentUser } = useAuthStore.getState();
+          if (loggedIn) {
+            const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
+            const redirectPath = getRedirectPath(isNewUser, isPlatformAdmin);
             router.replace(redirectPath);
           } else {
             Alert.alert('Error', 'Failed to complete sign-in. Please try again.');
           }
-        } else if (error) {
+        } else if (errorParam) {
           Alert.alert('Error', 'Google sign-in failed. Please try again.');
         }
       }
-    } catch (error) {
-      console.error('Google Sign-In error:', error);
+    } catch (err) {
+      console.error('Google Sign-In error:', err);
       Alert.alert('Error', 'Failed to sign in with Google. Please try again.');
     } finally {
       setGoogleLoading(false);
