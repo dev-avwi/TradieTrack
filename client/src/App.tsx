@@ -68,7 +68,6 @@ import WorkPage from "@/pages/WorkPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminAppShell from "@/components/AdminAppShell";
 import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
-import DemoModeBanner from "@/components/DemoModeBanner";
 
 // Types for job completion
 interface JobPhoto {
@@ -922,8 +921,6 @@ function AppLayout() {
                 onSettingsClick={() => setLocation('/settings')}
                 onLogoutClick={handleLogout}
               />
-              {/* Demo Mode Banner */}
-              <DemoModeBanner userEmail={userCheck?.email} />
               {/* Offline Indicator */}
               <OfflineIndicator />
             </div>
