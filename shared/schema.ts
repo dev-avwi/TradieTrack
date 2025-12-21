@@ -320,6 +320,8 @@ export const clients = pgTable("clients", {
   phone: text("phone"),
   address: text("address"),
   notes: text("notes"),
+  savedSignatureData: text("saved_signature_data"),
+  savedSignatureDate: timestamp("saved_signature_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1179,13 +1181,15 @@ export const digitalSignatures = pgTable("digital_signatures", {
   jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'cascade' }),
   quoteId: varchar("quote_id").references(() => quotes.id, { onDelete: 'cascade' }),
   invoiceId: varchar("invoice_id").references(() => invoices.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
   signerName: text("signer_name").notNull(),
   signerEmail: text("signer_email"),
+  signerRole: text("signer_role").default('client'), // 'client', 'worker', 'owner'
   signatureData: text("signature_data").notNull(), // Base64 signature image
   signedAt: timestamp("signed_at").notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  documentType: text("document_type").notNull(), // 'quote', 'invoice', 'form', 'contract'
+  documentType: text("document_type").notNull(), // 'quote', 'invoice', 'form', 'contract', 'job_completion'
   isValid: boolean("is_valid").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
