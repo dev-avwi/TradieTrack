@@ -4092,6 +4092,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get client's saved signature for auto-fill
+  app.get("/api/clients/:clientId/saved-signature", requireAuth, async (req: any, res) => {
+    try {
+      const { clientId } = req.params;
+      const userContext = await getUserContext(req.userId);
+      
+      const client = await storage.getClient(clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      res.json({
+        hasSavedSignature: !!client.savedSignatureData,
+        signatureData: client.savedSignatureData,
+        signatureDate: client.savedSignatureDate,
+        clientName: client.name,
+      });
+    } catch (error) {
+      console.error("Error fetching client saved signature:", error);
+      res.status(500).json({ error: "Failed to fetch client signature" });
+    }
+  });
+  
+  // Save/update client's signature for auto-fill
+  app.post("/api/clients/:clientId/saved-signature", requireAuth, async (req: any, res) => {
+    try {
+      const { clientId } = req.params;
+      const { signatureData } = req.body;
+      const userContext = await getUserContext(req.userId);
+      
+      const client = await storage.getClient(clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      await db.update(clients)
+        .set({ 
+          savedSignatureData: signatureData,
+          savedSignatureDate: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(clients.id, clientId));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error saving client signature:", error);
+      res.status(500).json({ error: "Failed to save client signature" });
+    }
+  });
+  
+  // Clear client's saved signature
+  app.delete("/api/clients/:clientId/saved-signature", requireAuth, async (req: any, res) => {
+    try {
+      const { clientId } = req.params;
+      const userContext = await getUserContext(req.userId);
+      
+      const client = await storage.getClient(clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      await db.update(clients)
+        .set({ 
+          savedSignatureData: null,
+          savedSignatureDate: null,
+          updatedAt: new Date()
+        })
+        .where(eq(clients.id, clientId));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error clearing client signature:", error);
+      res.status(500).json({ error: "Failed to clear client signature" });
+    }
+  });
+
   // Smart Pre-fill - Suggest data based on client history
   app.get("/api/clients/:clientId/prefill-suggestions", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
@@ -11195,8 +11271,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mappedSignatures = signatures.map(sig => ({
         id: sig.id,
         jobId: sig.jobId,
+        clientId: sig.clientId,
         signerName: sig.signerName,
         signerEmail: sig.signerEmail,
+        signerRole: sig.signerRole || 'client',
         signatureData: sig.signatureData,
         signedAt: sig.signedAt,
         documentType: sig.documentType,
@@ -11216,7 +11294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       const { jobId } = req.params;
-      const { signerName, signerEmail, signatureData } = req.body;
+      const { signerName, signerEmail, signatureData, signerRole, saveToClient } = req.body;
       
       if (!signerName || !signatureData) {
         return res.status(400).json({ error: 'Signer name and signature data are required' });
@@ -11233,8 +11311,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [signature] = await db.insert(digitalSignatures).values({
         jobId,
+        clientId: job.clientId,
         signerName,
         signerEmail: signerEmail || null,
+        signerRole: signerRole || 'client',
         signatureData,
         signedAt: new Date(),
         documentType: 'job_completion',
@@ -11242,12 +11322,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.headers['user-agent'],
       }).returning();
       
+      // If saveToClient is true and signerRole is 'client', save signature to client profile
+      if (saveToClient && (signerRole === 'client' || !signerRole)) {
+        try {
+          await db.update(clients)
+            .set({ 
+              savedSignatureData: signatureData,
+              savedSignatureDate: new Date(),
+              updatedAt: new Date()
+            })
+            .where(eq(clients.id, job.clientId));
+        } catch (clientError) {
+          console.log('Could not save signature to client profile:', clientError);
+        }
+      }
+      
       // Return with explicit camelCase property names
       res.json({
         id: signature.id,
         jobId: signature.jobId,
+        clientId: signature.clientId,
         signerName: signature.signerName,
         signerEmail: signature.signerEmail,
+        signerRole: signature.signerRole || 'client',
         signatureData: signature.signatureData,
         signedAt: signature.signedAt,
         documentType: signature.documentType,

@@ -144,6 +144,7 @@ interface DigitalSignature {
   signatureData: string;
   signedAt: string;
   documentType: string;
+  signerRole?: 'client' | 'worker' | 'owner';
 }
 
 interface JobExpense {
@@ -1450,6 +1451,9 @@ export default function JobDetailScreen() {
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [isSavingSignature, setIsSavingSignature] = useState(false);
   const [signerName, setSignerName] = useState('');
+  const [signerRole, setSignerRole] = useState<'client' | 'worker' | 'owner'>('client');
+  const [saveToClient, setSaveToClient] = useState(true);
+  const [clientSavedSignature, setClientSavedSignature] = useState<{ signatureData: string; signerName: string } | null>(null);
   
   const [sliderRadius, setSliderRadius] = useState(100);
   
@@ -1530,6 +1534,28 @@ export default function JobDetailScreen() {
       setSmartActions(actions);
     }
   }, [job?.status, client?.email, client?.phone, quote?.id, invoice?.id]);
+
+  // Fetch client's saved signature when client changes
+  useEffect(() => {
+    const fetchClientSavedSignature = async () => {
+      if (!client?.id) {
+        setClientSavedSignature(null);
+        return;
+      }
+      try {
+        const response = await api.get<{ signatureData: string; signerName: string }>(`/api/clients/${client.id}/saved-signature`);
+        if (response.data && response.data.signatureData) {
+          setClientSavedSignature(response.data);
+        } else {
+          setClientSavedSignature(null);
+        }
+      } catch (error) {
+        console.log('No saved signature for client:', error);
+        setClientSavedSignature(null);
+      }
+    };
+    fetchClientSavedSignature();
+  }, [client?.id]);
 
   const handleSmartActionToggle = (actionId: string, enabled: boolean) => {
     setSmartActions(prev => 
@@ -1844,9 +1870,17 @@ export default function JobDetailScreen() {
     
     setIsSavingSignature(true);
     try {
-      await api.post(`/api/jobs/${job.id}/signatures`, data);
+      await api.post(`/api/jobs/${job.id}/signatures`, {
+        signerName: data.signerName,
+        signerEmail: data.signerEmail,
+        signatureData: data.signatureData,
+        signerRole: signerRole,
+        saveToClient: saveToClient && signerRole === 'client'
+      });
       await loadSignatures();
       setShowSignaturePad(false);
+      setSignerRole('client');
+      setSaveToClient(true);
       Alert.alert('Success', 'Signature captured successfully');
     } catch (error) {
       console.error('Error saving signature:', error);
@@ -3184,11 +3218,83 @@ export default function JobDetailScreen() {
             <View style={[styles.photosIconContainer, { backgroundColor: `${colors.primary}15` }]}>
               <Feather name="edit-3" size={iconSizes.lg} color={colors.primary} />
             </View>
-            <Text style={styles.photosHeaderLabel}>Client Signature</Text>
+            <Text style={styles.photosHeaderLabel}>Signatures</Text>
           </View>
           
           {showSignaturePad ? (
             <View style={{ gap: spacing.md }}>
+              {/* Role Selector - Segmented Buttons */}
+              <View>
+                <Text style={{ color: colors.mutedForeground, fontSize: 13, fontWeight: '600', marginBottom: spacing.sm }}>
+                  Signer Role
+                </Text>
+                <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+                  {(['client', 'worker', 'owner'] as const).map((role) => (
+                    <TouchableOpacity
+                      key={role}
+                      style={{
+                        flex: 1,
+                        paddingVertical: spacing.sm,
+                        paddingHorizontal: spacing.md,
+                        borderRadius: 8,
+                        backgroundColor: signerRole === role ? colors.primary : colors.muted,
+                        borderWidth: 1,
+                        borderColor: signerRole === role ? colors.primary : colors.border,
+                        alignItems: 'center',
+                        minHeight: 44,
+                        justifyContent: 'center',
+                      }}
+                      onPress={() => setSignerRole(role)}
+                      activeOpacity={0.7}
+                      data-testid={`button-role-${role}`}
+                    >
+                      <Text style={{ 
+                        color: signerRole === role ? colors.primaryForeground : colors.foreground,
+                        fontWeight: '600',
+                        fontSize: 14,
+                        textTransform: 'capitalize',
+                      }}>
+                        {role}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Use Saved Signature Button - Only show when role is client and client has saved signature */}
+              {signerRole === 'client' && clientSavedSignature && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: spacing.sm,
+                    backgroundColor: colors.success + '15',
+                    paddingVertical: spacing.md,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: colors.success + '30',
+                    minHeight: 44,
+                  }}
+                  onPress={() => {
+                    if (clientSavedSignature) {
+                      handleSaveSignature({
+                        signerName: clientSavedSignature.signerName || client?.name || 'Client',
+                        signatureData: clientSavedSignature.signatureData,
+                      });
+                      setSignerName('');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                  data-testid="button-use-saved-signature"
+                >
+                  <Feather name="check-circle" size={18} color={colors.success} />
+                  <Text style={{ color: colors.success, fontWeight: '600', fontSize: 14 }}>
+                    Use Saved Signature
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <TextInput
                 style={{
                   backgroundColor: colors.background,
@@ -3200,15 +3306,17 @@ export default function JobDetailScreen() {
                   borderColor: colors.border,
                   minHeight: 44,
                 }}
-                placeholder="Client's name *"
+                placeholder={`${signerRole.charAt(0).toUpperCase() + signerRole.slice(1)}'s name *`}
                 placeholderTextColor={colors.mutedForeground}
                 value={signerName}
                 onChangeText={setSignerName}
+                data-testid="input-signer-name"
               />
+
               <SignaturePad
                 onSave={(signatureData) => {
                   if (!signerName.trim()) {
-                    Alert.alert('Error', 'Please enter the client\'s name');
+                    Alert.alert('Error', `Please enter the ${signerRole}'s name`);
                     return;
                   }
                   handleSaveSignature({
@@ -3220,14 +3328,51 @@ export default function JobDetailScreen() {
                 onClear={() => {}}
                 showControls={true}
               />
+
+              {/* Save to Client Checkbox - Only show when role is client */}
+              {signerRole === 'client' && client?.id && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.sm,
+                    paddingVertical: spacing.sm,
+                  }}
+                  onPress={() => setSaveToClient(!saveToClient)}
+                  activeOpacity={0.7}
+                  data-testid="checkbox-save-to-client"
+                >
+                  <View style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 4,
+                    borderWidth: 2,
+                    borderColor: saveToClient ? colors.primary : colors.border,
+                    backgroundColor: saveToClient ? colors.primary : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    {saveToClient && (
+                      <Feather name="check" size={14} color={colors.primaryForeground} />
+                    )}
+                  </View>
+                  <Text style={{ color: colors.foreground, fontSize: 14, flex: 1 }}>
+                    Save signature to client profile for future use
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <TouchableOpacity
                   style={[styles.takePhotoInlineButton, { flex: 1, backgroundColor: colors.muted, minHeight: 44 }]}
                   onPress={() => {
                     setShowSignaturePad(false);
                     setSignerName('');
+                    setSignerRole('client');
+                    setSaveToClient(true);
                   }}
                   activeOpacity={0.7}
+                  data-testid="button-cancel-signature"
                 >
                   <Text style={[styles.takePhotoInlineText, { color: colors.foreground }]}>Cancel</Text>
                 </TouchableOpacity>
@@ -3245,10 +3390,36 @@ export default function JobDetailScreen() {
                 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: colors.foreground, fontWeight: '600' }}>
-                        Signed by {sig.signerName}
-                      </Text>
-                      <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
+                        <Text style={{ color: colors.foreground, fontWeight: '600' }}>
+                          Signed by {sig.signerName}
+                        </Text>
+                        {/* Role Badge */}
+                        <View style={{
+                          paddingHorizontal: spacing.sm,
+                          paddingVertical: 2,
+                          borderRadius: 4,
+                          backgroundColor: sig.signerRole === 'client' 
+                            ? colors.primary + '20' 
+                            : sig.signerRole === 'worker' 
+                              ? colors.warning + '20'
+                              : colors.success + '20',
+                        }}>
+                          <Text style={{ 
+                            fontSize: 11, 
+                            fontWeight: '600',
+                            textTransform: 'capitalize',
+                            color: sig.signerRole === 'client' 
+                              ? colors.primary 
+                              : sig.signerRole === 'worker' 
+                                ? colors.warning
+                                : colors.success,
+                          }}>
+                            {sig.signerRole || 'Client'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 2 }}>
                         {new Date(sig.signedAt).toLocaleDateString('en-AU', { 
                           day: 'numeric', 
                           month: 'short', 
@@ -3279,12 +3450,14 @@ export default function JobDetailScreen() {
                           );
                         }}
                         style={{ padding: spacing.xs }}
+                        data-testid={`button-resign-${sig.id}`}
                       >
                         <Feather name="edit-2" size={18} color={colors.primary} />
                       </TouchableOpacity>
                       <TouchableOpacity 
                         onPress={() => handleDeleteSignature(sig.id)}
                         style={{ padding: spacing.xs }}
+                        data-testid={`button-delete-signature-${sig.id}`}
                       >
                         <Feather name="trash-2" size={18} color={colors.destructive} />
                       </TouchableOpacity>
@@ -3319,6 +3492,16 @@ export default function JobDetailScreen() {
                   </View>
                 </View>
               ))}
+              {/* Add Another Signature Button */}
+              <TouchableOpacity 
+                style={[styles.takePhotoInlineButton, { marginTop: spacing.xs }]}
+                onPress={() => setShowSignaturePad(true)}
+                activeOpacity={0.7}
+                data-testid="button-add-another-signature"
+              >
+                <Feather name="plus" size={18} color={colors.primaryForeground} />
+                <Text style={styles.takePhotoInlineText}>Add Another Signature</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.emptyPhotosContainer}>
@@ -3326,9 +3509,10 @@ export default function JobDetailScreen() {
                 style={styles.takePhotoInlineButton}
                 onPress={() => setShowSignaturePad(true)}
                 activeOpacity={0.7}
+                data-testid="button-capture-signature"
               >
                 <Feather name="edit-3" size={18} color={colors.primaryForeground} />
-                <Text style={styles.takePhotoInlineText}>Capture Client Signature</Text>
+                <Text style={styles.takePhotoInlineText}>Capture Signature</Text>
               </TouchableOpacity>
             </View>
           )}
