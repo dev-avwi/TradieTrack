@@ -10,13 +10,13 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/attached_assets/generated_images/Clean_pin_hard_hat_icon_eae36170.png",
+      "src": "/tradietrack-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/attached_assets/generated_images/Clean_pin_hard_hat_icon_eae36170.png",
+      "src": "/tradietrack-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
