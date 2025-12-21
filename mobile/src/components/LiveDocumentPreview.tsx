@@ -47,6 +47,14 @@ interface SignatureInfo {
   signedAt?: string;
 }
 
+interface JobSignature {
+  id: string | number;
+  signerName: string;
+  signatureData: string;
+  signedAt: string | Date;
+  documentType?: string;
+}
+
 interface LiveDocumentPreviewProps {
   type: 'quote' | 'invoice';
   documentNumber?: string;
@@ -69,6 +77,7 @@ interface LiveDocumentPreviewProps {
   templateId?: TemplateId;
   templateCustomization?: TemplateCustomization;
   signature?: SignatureInfo;
+  jobSignatures?: JobSignature[];
 }
 
 function formatCurrency(amount: number): string {
@@ -111,6 +120,7 @@ export default function LiveDocumentPreview({
   templateId = DEFAULT_TEMPLATE,
   templateCustomization,
   signature,
+  jobSignatures = [],
 }: LiveDocumentPreviewProps) {
   const { colors: themeColors } = useTheme();
   
@@ -626,6 +636,59 @@ export default function LiveDocumentPreview({
       fontWeight: '600',
       color: colors.text,
     },
+    jobSignaturesSection: {
+      marginTop: 24,
+      marginBottom: 24,
+      padding: 16,
+      backgroundColor: colors.borderLight,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    jobSignaturesTitle: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.text,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 16,
+      textAlign: 'center',
+    },
+    jobSignaturesContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: 20,
+    },
+    jobSignatureItem: {
+      alignItems: 'center',
+      minWidth: 130,
+    },
+    jobSignatureImageBox: {
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 6,
+      padding: 8,
+      marginBottom: 8,
+    },
+    jobSignatureImage: {
+      width: 100,
+      height: 40,
+    },
+    jobSignatureName: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    jobSignatureRole: {
+      fontSize: 10,
+      color: colors.textMuted,
+    },
+    jobSignatureDate: {
+      fontSize: 9,
+      color: colors.textLight,
+    },
   }), [template, primaryColor, headingStyle, isPaid, gstEnabled, type, tableHeaderStyle, colors]);
 
   const noteStyle = getNoteStyle();
@@ -912,8 +975,36 @@ export default function LiveDocumentPreview({
             </View>
           )}
 
-          {/* Captured Signature Display */}
-          {signature && signature.dataUrl && (
+          {/* Job Completion Signatures Section - Shows for both invoices and quotes linked to jobs */}
+          {jobSignatures.length > 0 && (
+            <View style={styles.jobSignaturesSection}>
+              <Text style={styles.jobSignaturesTitle}>Job Completion Signatures</Text>
+              <View style={styles.jobSignaturesContainer}>
+                {jobSignatures.filter(sig => sig.signatureData).map((sig) => {
+                  const sigDataUrl = sig.signatureData.startsWith('data:') 
+                    ? sig.signatureData 
+                    : `data:image/png;base64,${sig.signatureData}`;
+                  return (
+                    <View key={sig.id} style={styles.jobSignatureItem}>
+                      <View style={styles.jobSignatureImageBox}>
+                        <Image 
+                          source={{ uri: sigDataUrl }} 
+                          style={styles.jobSignatureImage}
+                          resizeMode="contain"
+                        />
+                      </View>
+                      <Text style={styles.jobSignatureName}>{sig.signerName || 'Client'}</Text>
+                      <Text style={styles.jobSignatureRole}>Client Signature</Text>
+                      <Text style={styles.jobSignatureDate}>{formatDate(sig.signedAt)}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Captured Signature Display (Legacy single signature) */}
+          {signature && signature.dataUrl && jobSignatures.length === 0 && (
             <View style={styles.signatureDisplaySection}>
               <Text style={styles.signatureDisplayTitle}>
                 <Feather name="edit-3" size={14} color={colors.primary} /> Authorised Signature

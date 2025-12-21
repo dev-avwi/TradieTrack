@@ -21,6 +21,15 @@ import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { API_URL, api } from '../../../src/lib/api';
 
+interface Signature {
+  id: string;
+  signatureData: string;
+  signerName?: string;
+  signedAt?: string;
+  documentType?: string;
+  signerRole?: string;
+}
+
 const TEMPLATE_OPTIONS = [
   { id: 'professional', name: 'Professional', description: 'Clean, minimal design' },
   { id: 'modern', name: 'Modern', description: 'Contemporary with accent colors' },
@@ -44,7 +53,7 @@ export default function QuoteDetailScreen() {
     expired: { label: 'Expired', color: colors.mutedForeground, bg: colors.cardHover },
   }), [colors]);
   const [quote, setQuote] = useState<any>(null);
-  const [quoteSignature, setQuoteSignature] = useState<any>(null);
+  const [allSignatures, setAllSignatures] = useState<Signature[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
@@ -68,24 +77,45 @@ export default function QuoteDetailScreen() {
     setQuote(quoteData);
     await fetchClients();
     
-    // Fetch signature if quote is accepted
-    if (quoteData?.status === 'accepted') {
+    const signatures: Signature[] = [];
+    const authToken = await api.getToken();
+    
+    // Fetch quote signatures
+    try {
+      const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote&documentId=${id}`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (response.ok) {
+        const quoteSignatures = await response.json();
+        quoteSignatures.forEach((sig: any) => {
+          signatures.push({ ...sig, documentType: 'quote' });
+        });
+      }
+    } catch (err) {
+      console.log('Could not fetch quote signature:', err);
+    }
+    
+    // Fetch job signatures if quote has jobId
+    if (quoteData?.jobId) {
       try {
-        const authToken = await api.getToken();
-        const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote&documentId=${id}`, {
+        const response = await fetch(`${API_URL}/api/jobs/${quoteData.jobId}/signatures`, {
           headers: { 'Authorization': `Bearer ${authToken}` }
         });
         if (response.ok) {
-          const signatures = await response.json();
-          if (signatures.length > 0) {
-            setQuoteSignature(signatures[0]);
-          }
+          const jobSignatures = await response.json();
+          jobSignatures.forEach((sig: any) => {
+            signatures.push({ 
+              ...sig, 
+              documentType: sig.documentType || 'job_completion' 
+            });
+          });
         }
       } catch (err) {
-        console.log('Could not fetch signature:', err);
+        console.log('Could not fetch job signatures:', err);
       }
     }
     
+    setAllSignatures(signatures);
     setIsLoading(false);
   };
 
@@ -656,29 +686,31 @@ export default function QuoteDetailScreen() {
             </>
           )}
 
-          {/* Accepted Quote Signature */}
-          {quote.status === 'accepted' && quoteSignature && (
+          {/* Accepted Quote Signatures */}
+          {quote.status === 'accepted' && allSignatures.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Quote Accepted</Text>
-              <View style={[styles.card, styles.acceptedCard]}>
-                <View style={styles.signatureImageContainer}>
-                  <Text style={styles.signatureLabel}>Client Signature:</Text>
+              {allSignatures.filter(sig => sig.documentType === 'quote').map((sig, index) => (
+                <View key={sig.id || index} style={[styles.card, styles.acceptedCard]}>
+                  <View style={styles.signatureImageContainer}>
+                    <Text style={styles.signatureLabel}>Client Signature:</Text>
+                  </View>
+                  {sig.signerName && (
+                    <Text style={styles.acceptedInfo}>
+                      Accepted by: {sig.signerName}
+                    </Text>
+                  )}
+                  {sig.signedAt && (
+                    <Text style={styles.acceptedInfo}>
+                      Date: {formatDate(sig.signedAt)}
+                    </Text>
+                  )}
                 </View>
-                {quoteSignature.signerName && (
-                  <Text style={styles.acceptedInfo}>
-                    Accepted by: {quoteSignature.signerName}
-                  </Text>
-                )}
-                {quoteSignature.signedAt && (
-                  <Text style={styles.acceptedInfo}>
-                    Date: {formatDate(quoteSignature.signedAt)}
-                  </Text>
-                )}
-              </View>
+              ))}
             </>
           )}
 
-          {quote.status === 'accepted' && !quoteSignature && quote.acceptedBy && (
+          {quote.status === 'accepted' && allSignatures.filter(sig => sig.documentType === 'quote').length === 0 && quote.acceptedBy && (
             <>
               <Text style={styles.sectionTitle}>Quote Accepted</Text>
               <View style={[styles.card, styles.acceptedCard]}>
@@ -797,6 +829,13 @@ export default function QuoteDetailScreen() {
             status={quote.status}
             templateId={businessSettings?.documentTemplate}
             templateCustomization={businessSettings?.documentTemplateSettings}
+            jobSignatures={allSignatures.map(sig => ({
+              id: sig.id,
+              signerName: sig.signerName || 'Client',
+              signatureData: sig.signatureData,
+              signedAt: sig.signedAt || new Date().toISOString(),
+              documentType: sig.documentType,
+            }))}
           />
         </View>
       </Modal>

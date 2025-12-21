@@ -1253,6 +1253,13 @@ export default function InvoiceDetailScreen() {
             status={invoice.status}
             templateId={businessSettings?.documentTemplate}
             templateCustomization={businessSettings?.documentTemplateSettings}
+            jobSignatures={allSignatures.map(sig => ({
+              id: sig.id,
+              signerName: sig.signerName || 'Client',
+              signatureData: sig.signatureData,
+              signedAt: sig.signedAt || new Date().toISOString(),
+              documentType: sig.documentType,
+            }))}
           />
         </View>
       </Modal>
