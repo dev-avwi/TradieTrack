@@ -68,6 +68,7 @@ import WorkPage from "@/pages/WorkPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminAppShell from "@/components/AdminAppShell";
 import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
+import LandingPage from "@/pages/LandingPage";
 
 // Types for job completion
 interface JobPhoto {
@@ -805,14 +806,19 @@ function AppLayout() {
     );
   }
 
-  // If not authenticated, show modern auth flow
+  // If not authenticated, show landing page or auth flow based on route
   if (error || !userCheck) {
-    return (
-      <AuthFlow 
-        onLoginSuccess={handleLoginSuccess}
-        onNeedOnboarding={handleNeedOnboarding}
-      />
-    );
+    // Show auth flow at /auth route
+    if (location === '/auth' || location.startsWith('/auth')) {
+      return (
+        <AuthFlow 
+          onLoginSuccess={handleLoginSuccess}
+          onNeedOnboarding={handleNeedOnboarding}
+        />
+      );
+    }
+    // Show landing page for all other routes when not authenticated
+    return <LandingPage />;
   }
 
   // Platform admin users get a completely different interface - check early before tradie-specific logic
