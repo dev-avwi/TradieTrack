@@ -836,6 +836,9 @@ export default function QuoteDetailScreen() {
               signedAt: sig.signedAt || new Date().toISOString(),
               documentType: sig.documentType,
             }))}
+            acceptedAt={quote.acceptedAt}
+            acceptedBy={quote.acceptedBy}
+            clientSignatureData={client?.savedSignatureData}
           />
         </View>
       </Modal>

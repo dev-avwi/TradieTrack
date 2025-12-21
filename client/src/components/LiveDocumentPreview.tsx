@@ -60,6 +60,9 @@ interface LiveDocumentPreviewProps {
   templateId?: TemplateId;
   templateCustomization?: TemplateCustomization;
   jobSignatures?: JobSignature[];
+  acceptedAt?: string | Date | null;
+  acceptedBy?: string | null;
+  clientSignatureData?: string | null;
 }
 
 function formatCurrency(amount: number): string {
@@ -102,6 +105,9 @@ export default function LiveDocumentPreview({
   templateId = DEFAULT_TEMPLATE,
   templateCustomization,
   jobSignatures = [],
+  acceptedAt,
+  acceptedBy,
+  clientSignatureData,
 }: LiveDocumentPreviewProps) {
   const safeParseFloat = (val: string | number): number => {
     if (typeof val === 'number') return isNaN(val) ? 0 : val;
@@ -572,18 +578,34 @@ export default function LiveDocumentPreview({
         {/* Accepted Quote Confirmation */}
         {type === 'quote' && status === 'accepted' && (
           <div 
-            className="mb-8 p-4 rounded-r-md"
+            className="mb-8 p-5 rounded-lg"
             style={{ 
               background: '#dcfce7',
               borderLeft: '4px solid #22c55e'
             }}
           >
-            <div className="font-semibold mb-2" style={{ color: '#166534' }}>
+            <div className="font-semibold mb-3" style={{ color: '#166534' }}>
               Quote Accepted
             </div>
-            <div className="text-[10px]" style={{ color: '#166534' }}>
-              This quote has been accepted.
+            {clientSignatureData && (
+              <div className="mb-3 bg-white border border-slate-200 rounded-md p-3 inline-block">
+                <img 
+                  src={clientSignatureData.startsWith('data:') ? clientSignatureData : `data:image/png;base64,${clientSignatureData}`}
+                  alt="Client signature"
+                  className="max-h-[50px] max-w-[150px] w-auto"
+                />
+              </div>
+            )}
+            <div className="text-[11px]" style={{ color: '#166534' }}>
+              {acceptedBy && <span className="font-medium">Signed by: {acceptedBy}</span>}
+              {acceptedBy && acceptedAt && <span className="mx-2">•</span>}
+              {acceptedAt && <span>Date: {formatDate(acceptedAt)}</span>}
             </div>
+            {!acceptedBy && !acceptedAt && (
+              <div className="text-[10px]" style={{ color: '#166534' }}>
+                This quote has been accepted.
+              </div>
+            )}
           </div>
         )}
 

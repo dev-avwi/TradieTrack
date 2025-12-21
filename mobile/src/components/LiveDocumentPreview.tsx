@@ -78,6 +78,9 @@ interface LiveDocumentPreviewProps {
   templateCustomization?: TemplateCustomization;
   signature?: SignatureInfo;
   jobSignatures?: JobSignature[];
+  acceptedAt?: string | Date | null;
+  acceptedBy?: string | null;
+  clientSignatureData?: string | null;
 }
 
 function formatCurrency(amount: number): string {
@@ -121,6 +124,9 @@ export default function LiveDocumentPreview({
   templateCustomization,
   signature,
   jobSignatures = [],
+  acceptedAt,
+  acceptedBy,
+  clientSignatureData,
 }: LiveDocumentPreviewProps) {
   const { colors: themeColors } = useTheme();
   
@@ -550,6 +556,19 @@ export default function LiveDocumentPreview({
       fontSize: 10,
       color: colors.successText,
     },
+    acceptedSignatureBox: {
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 6,
+      padding: 12,
+      marginVertical: 8,
+      alignSelf: 'flex-start',
+    },
+    acceptedSignatureImage: {
+      height: 50,
+      width: 150,
+    },
     footer: {
       marginTop: 24,
       paddingTop: 16,
@@ -963,7 +982,24 @@ export default function LiveDocumentPreview({
           {type === 'quote' && status === 'accepted' && (
             <View style={styles.confirmationBox}>
               <Text style={styles.confirmationTitle}>Quote Accepted</Text>
-              <Text style={styles.confirmationText}>This quote has been accepted.</Text>
+              {clientSignatureData && (
+                <View style={styles.acceptedSignatureBox}>
+                  <Image 
+                    source={{ uri: clientSignatureData.startsWith('data:') ? clientSignatureData : `data:image/png;base64,${clientSignatureData}` }}
+                    style={styles.acceptedSignatureImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
+              {(acceptedBy || acceptedAt) ? (
+                <Text style={styles.confirmationText}>
+                  {acceptedBy && `Signed by: ${acceptedBy}`}
+                  {acceptedBy && acceptedAt && ' • '}
+                  {acceptedAt && `Date: ${formatDate(acceptedAt)}`}
+                </Text>
+              ) : (
+                <Text style={styles.confirmationText}>This quote has been accepted.</Text>
+              )}
             </View>
           )}
 
