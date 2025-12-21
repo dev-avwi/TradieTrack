@@ -850,9 +850,10 @@ function AppLayout() {
     );
   }
 
-  if (userCheck && businessSettings === null && !isTeamMember) {
-    // User exists but no business settings AND not a team member - show onboarding wizard
+  if (userCheck && businessSettings === null && !isTeamMember && !userCheck.isPlatformAdmin) {
+    // User exists but no business settings AND not a team member AND not a platform admin - show onboarding wizard
     // Staff users (team members) skip onboarding - they use their employer's business settings
+    // Platform admins don't need business settings - they have a separate admin interface
     return <OnboardingWizard onComplete={handleOnboardingComplete} onSignOut={handleLogout} />;
   }
 
