@@ -15,6 +15,7 @@ import { Feather } from '@expo/vector-icons';
 import { useClientsStore, useJobsStore, useQuotesStore, useInvoicesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../../src/lib/design-tokens';
+import api from '../../../src/lib/api';
 
 interface ActivityItem {
   id: string;
@@ -33,11 +34,14 @@ export default function ClientDetailScreen() {
   const { invoices, fetchInvoices } = useInvoicesStore();
   const [client, setClient] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [savedSignature, setSavedSignature] = useState<{ signatureData: string | null; signatureDate: string | null } | null>(null);
+  const [isLoadingSignature, setIsLoadingSignature] = useState(false);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
     loadData();
+    fetchSavedSignature();
   }, [id]);
 
   const loadData = async () => {
@@ -46,6 +50,49 @@ export default function ClientDetailScreen() {
     setClient(clientData);
     await Promise.all([fetchJobs(), fetchQuotes(), fetchInvoices()]);
     setIsLoading(false);
+  };
+
+  const fetchSavedSignature = async () => {
+    if (!id) return;
+    setIsLoadingSignature(true);
+    try {
+      const response = await api.get<{ signatureData: string | null; signatureDate: string | null }>(`/api/clients/${id}/saved-signature`);
+      if (response.data) {
+        setSavedSignature(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching saved signature:', error);
+    } finally {
+      setIsLoadingSignature(false);
+    }
+  };
+
+  const handleClearSignature = () => {
+    Alert.alert(
+      'Clear Signature',
+      'Are you sure you want to clear the saved signature for this client?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Clear', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await api.delete(`/api/clients/${id}/saved-signature`);
+              if (response.data) {
+                setSavedSignature(null);
+                Alert.alert('Success', 'Signature cleared successfully');
+              } else {
+                Alert.alert('Error', 'Failed to clear signature');
+              }
+            } catch (error) {
+              console.error('Error clearing signature:', error);
+              Alert.alert('Error', 'An error occurred while clearing the signature');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const clientJobs = jobs.filter(j => j.clientId === id);
@@ -260,6 +307,40 @@ export default function ClientDetailScreen() {
               </>
             ) : (
               <Text style={styles.noInfoText}>No contact information</Text>
+            )}
+          </View>
+
+          {/* Saved Signature */}
+          <Text style={styles.sectionTitle}>Saved Signature</Text>
+          <View style={styles.card}>
+            {isLoadingSignature ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.md }} />
+            ) : savedSignature?.signatureData ? (
+              <View style={styles.signatureContainer}>
+                <Image 
+                  source={{ uri: savedSignature.signatureData }} 
+                  style={styles.signatureImage} 
+                  resizeMode="contain"
+                />
+                <View style={styles.signatureFooter}>
+                  <Text style={styles.signatureDate}>
+                    Saved on {new Date(savedSignature.signatureDate!).toLocaleDateString('en-AU', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.clearSignatureButton}
+                    onPress={handleClearSignature}
+                  >
+                    <Feather name="x-circle" size={16} color={colors.destructive} />
+                    <Text style={styles.clearSignatureText}>Clear Signature</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.noInfoText}>No saved signature - signatures can be saved during job sign-off</Text>
             )}
           </View>
 
@@ -677,6 +758,39 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     textAlign: 'center',
     paddingVertical: spacing.sm,
+  },
+  signatureContainer: {
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  signatureImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#fff',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  signatureFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: spacing.xs,
+  },
+  signatureDate: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  clearSignatureButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  clearSignatureText: {
+    ...typography.caption,
+    color: colors.destructive,
+    fontWeight: '600',
   },
   timelineCard: {
     backgroundColor: colors.card,

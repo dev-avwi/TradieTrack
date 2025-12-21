@@ -4031,6 +4031,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Client saved signature routes
+  app.get("/api/clients/:id/saved-signature", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const signature = await storage.getClientSignature(req.params.id, userContext.effectiveUserId);
+      if (!signature) {
+        return res.status(404).json({ error: "Client not found or access denied" });
+      }
+      res.json(signature);
+    } catch (error) {
+      console.error("Error fetching client signature:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/clients/:id/saved-signature", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_CLIENTS), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const success = await storage.deleteClientSignature(req.params.id, userContext.effectiveUserId);
+      if (!success) {
+        return res.status(404).json({ error: "Client not found or access denied" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting client signature:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Client Assets - Photos, signatures, documents across all jobs for a client
   app.get("/api/clients/:clientId/assets", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {

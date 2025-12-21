@@ -238,6 +238,8 @@ export interface IStorage {
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, userId: string, client: Partial<InsertClient>): Promise<Client | undefined>;
   deleteClient(id: string, userId: string): Promise<boolean>;
+  getClientSignature(id: string, userId: string): Promise<{ signatureData: string | null; signatureDate: Date | null } | undefined>;
+  deleteClientSignature(id: string, userId: string): Promise<boolean>;
 
   // Jobs
   getJobs(userId: string, includeArchived?: boolean): Promise<Job[]>;
@@ -999,6 +1001,31 @@ export class PostgresStorage implements IStorage {
       .delete(clients)
       .where(and(eq(clients.id, id), eq(clients.userId, userId)));
     return result.rowCount > 0;
+  }
+
+  async getClientSignature(id: string, userId: string): Promise<{ signatureData: string | null; signatureDate: Date | null } | undefined> {
+    const result = await db
+      .select({
+        signatureData: clients.savedSignatureData,
+        signatureDate: clients.savedSignatureDate,
+      })
+      .from(clients)
+      .where(and(eq(clients.id, id), eq(clients.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async deleteClientSignature(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .update(clients)
+      .set({
+        savedSignatureData: null,
+        savedSignatureDate: null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(clients.id, id), eq(clients.userId, userId)))
+      .returning();
+    return result.length > 0;
   }
 
   // Jobs
