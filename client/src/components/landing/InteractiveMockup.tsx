@@ -155,7 +155,6 @@ function WebMockup({ isDark }: { isDark: boolean }) {
             </div>
             <div>
               <p className={`font-bold text-sm ${text}`}>Harris Electrical</p>
-              <p className={`text-[10px] ${textMuted}`}>Job Management</p>
             </div>
           </div>
 

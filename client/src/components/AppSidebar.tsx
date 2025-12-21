@@ -73,7 +73,6 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
             <h1 className="font-bold text-lg" data-testid="text-business-name">
               {businessName}
             </h1>
-            <p className="text-xs text-muted-foreground">Job Management</p>
           </div>
         </div>
       </SidebarHeader>
