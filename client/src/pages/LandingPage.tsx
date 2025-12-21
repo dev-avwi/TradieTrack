@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { 
@@ -12,9 +12,9 @@ import {
   Check,
   ChevronRight,
   Smartphone,
-  Star,
   ArrowRight,
-  Play
+  Play,
+  Sparkles
 } from "lucide-react";
 
 import tradietrackLogo from "/tradietrack-logo.png";
@@ -26,15 +26,36 @@ import quotePreviewScreenshot from "@assets/appstore_screenshots/07_quote_previe
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 antialiased">
+    <div className="min-h-screen bg-white text-gray-900 antialiased overflow-x-hidden">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled 
+          ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100" 
+          : "bg-white/80 backdrop-blur-sm"
+      }`}>
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-18">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-3" data-testid="nav-logo">
+            {/* Logo - Click to scroll to top */}
+            <button 
+              onClick={scrollToTop}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity" 
+              data-testid="nav-logo"
+            >
               <img 
                 src={tradietrackLogo} 
                 alt="TradieTrack" 
@@ -44,13 +65,13 @@ export default function LandingPage() {
                 <span className="text-gray-900">Tradie</span>
                 <span className="text-blue-600">Track</span>
               </span>
-            </Link>
+            </button>
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-10">
               <a href="#features" className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" data-testid="nav-features">Features</a>
               <a href="#how-it-works" className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" data-testid="nav-how-it-works">How It Works</a>
-              <a href="#testimonials" className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" data-testid="nav-testimonials">Testimonials</a>
+              <a href="#testimonials" className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" data-testid="nav-testimonials">What People Say</a>
             </div>
 
             {/* Desktop CTA */}
@@ -61,68 +82,122 @@ export default function LandingPage() {
                 </Button>
               </Link>
               <Link href="/auth">
-                <Button className="bg-orange-500 hover:bg-orange-600 text-white text-[15px] font-semibold h-10 px-5 rounded-lg shadow-sm" data-testid="nav-get-started">
-                  Start Free Trial
+                <Button className="bg-orange-500 hover:bg-orange-600 text-white text-[15px] font-semibold h-10 px-5 rounded-lg shadow-sm hover:shadow-md transition-all" data-testid="nav-get-started">
+                  Get Started Free
                 </Button>
               </Link>
             </div>
 
             {/* Mobile menu button */}
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 -mr-2"
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden p-2 -mr-2 hover:bg-gray-100 rounded-lg transition-colors"
               data-testid="button-mobile-menu"
-              aria-label="Toggle menu"
+              aria-label="Open menu"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              <Menu className="w-6 h-6" />
             </button>
           </div>
         </div>
+      </nav>
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg">
-            <div className="px-5 py-6 space-y-1">
-              <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block py-3 text-[15px] text-gray-700 font-medium" data-testid="mobile-nav-features">
-                Features
-              </a>
-              <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block py-3 text-[15px] text-gray-700 font-medium" data-testid="mobile-nav-how-it-works">
-                How It Works
-              </a>
-              <a href="#testimonials" onClick={() => setMobileMenuOpen(false)} className="block py-3 text-[15px] text-gray-700 font-medium" data-testid="mobile-nav-testimonials">
-                Testimonials
-              </a>
-              <div className="pt-4 flex flex-col gap-3">
-                <Link href="/auth" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full h-11 text-[15px] font-medium" data-testid="mobile-login">
-                    Log In
-                  </Button>
-                </Link>
-                <Link href="/auth" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white h-11 text-[15px] font-semibold" data-testid="mobile-get-started">
-                    Start Free Trial
-                  </Button>
-                </Link>
-              </div>
+      {/* Mobile Menu - Slide from right with blur */}
+      <div 
+        className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${
+          mobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        {/* Backdrop with blur */}
+        <div 
+          className={`absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity duration-300 ${
+            mobileMenuOpen ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+        
+        {/* Slide-in panel */}
+        <div 
+          className={`absolute top-0 right-0 bottom-0 w-[280px] bg-white shadow-2xl transform transition-transform duration-300 ease-out ${
+            mobileMenuOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <span className="text-lg font-bold">
+                <span className="text-gray-900">Tradie</span>
+                <span className="text-blue-600">Track</span>
+              </span>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 -mr-2 hover:bg-gray-100 rounded-lg transition-colors"
+                data-testid="button-close-menu"
+                aria-label="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Navigation Links */}
+            <div className="flex-1 px-5 py-6">
+              <nav className="space-y-1">
+                <a 
+                  href="#features" 
+                  onClick={() => setMobileMenuOpen(false)} 
+                  className="flex items-center gap-3 py-3 px-3 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors" 
+                  data-testid="mobile-nav-features"
+                >
+                  <Sparkles className="w-5 h-5 text-gray-400" />
+                  Features
+                </a>
+                <a 
+                  href="#how-it-works" 
+                  onClick={() => setMobileMenuOpen(false)} 
+                  className="flex items-center gap-3 py-3 px-3 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors" 
+                  data-testid="mobile-nav-how-it-works"
+                >
+                  <Play className="w-5 h-5 text-gray-400" />
+                  How It Works
+                </a>
+                <a 
+                  href="#testimonials" 
+                  onClick={() => setMobileMenuOpen(false)} 
+                  className="flex items-center gap-3 py-3 px-3 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors" 
+                  data-testid="mobile-nav-testimonials"
+                >
+                  <Users className="w-5 h-5 text-gray-400" />
+                  What People Say
+                </a>
+              </nav>
+            </div>
+
+            {/* Bottom CTAs */}
+            <div className="p-5 border-t border-gray-100 space-y-3">
+              <Link href="/auth" onClick={() => setMobileMenuOpen(false)}>
+                <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12 text-[15px] font-semibold rounded-lg" data-testid="mobile-get-started">
+                  Get Started Free
+                </Button>
+              </Link>
+              <Link href="/auth" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="outline" className="w-full h-12 text-[15px] font-medium rounded-lg" data-testid="mobile-login">
+                  Log In
+                </Button>
+              </Link>
             </div>
           </div>
-        )}
-      </nav>
+        </div>
+      </div>
 
       {/* Hero Section */}
       <section className="pt-28 lg:pt-36 pb-16 lg:pb-24 px-5 lg:px-8">
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Left: Content */}
-            <div className="text-center lg:text-left">
-              {/* Trust Badge */}
-              <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2 mb-8">
-                <div className="flex items-center">
-                  {[1,2,3,4,5].map(i => (
-                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                  ))}
-                </div>
-                <span className="text-sm font-medium text-gray-700">4.9/5 from 2,000+ reviews</span>
+            <div className="text-center lg:text-left animate-fade-in">
+              {/* Beta Badge */}
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-orange-50 border border-blue-100 rounded-full px-4 py-2 mb-8">
+                <Sparkles className="w-4 h-4 text-orange-500" />
+                <span className="text-sm font-semibold text-gray-700">Free for early users</span>
               </div>
 
               {/* Main Headline */}
@@ -139,30 +214,30 @@ export default function LandingPage() {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
                 <Link href="/auth">
-                  <Button size="lg" className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-semibold h-12 px-7 text-base rounded-lg shadow-md hover:shadow-lg transition-all" data-testid="hero-start-trial">
-                    Start Free Trial
+                  <Button size="lg" className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-semibold h-12 px-7 text-base rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all" data-testid="hero-start-trial">
+                    Start Using Free
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
                 <a href="#how-it-works">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-7 text-base font-medium rounded-lg border-gray-300 hover:bg-gray-50" data-testid="hero-watch-demo">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-7 text-base font-medium rounded-lg border-gray-300 hover:bg-gray-50 hover:scale-[1.02] transition-all" data-testid="hero-watch-demo">
                     <Play className="mr-2 h-4 w-4" />
-                    Watch Demo
+                    See How It Works
                   </Button>
                 </a>
               </div>
 
-              {/* No credit card */}
+              {/* Free access note */}
               <p className="text-sm text-gray-500">
-                14-day free trial. No credit card required.
+                Currently free while in beta. No credit card required.
               </p>
             </div>
 
             {/* Right: Phone Mockup */}
-            <div className="relative flex justify-center lg:justify-end">
+            <div className="relative flex justify-center lg:justify-end animate-fade-in-up">
               <div className="relative w-[280px] sm:w-[300px]">
                 {/* Phone Frame */}
-                <div className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-2xl shadow-gray-400/30">
+                <div className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-2xl shadow-gray-400/30 hover:shadow-gray-400/40 transition-shadow duration-500">
                   {/* Dynamic Island */}
                   <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
                   
@@ -185,12 +260,18 @@ export default function LandingPage() {
       </section>
 
       {/* Social Proof Bar */}
-      <section className="py-8 border-y border-gray-100 bg-gray-50/50">
+      <section className="py-10 border-y border-gray-100 bg-gray-50/50">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
-          <p className="text-center text-sm text-gray-500 mb-6">Trusted by trade businesses across Australia</p>
-          <div className="flex flex-wrap justify-center items-center gap-8 lg:gap-14">
-            {["Electricians", "Plumbers", "Builders", "HVAC Techs", "Property Maintenance"].map((trade) => (
-              <span key={trade} className="text-gray-400 font-medium text-sm uppercase tracking-wider">{trade}</span>
+          <p className="text-center text-sm text-gray-500 mb-6">Built for trade businesses across Australia</p>
+          <div className="flex flex-wrap justify-center items-center gap-6 lg:gap-12">
+            {["Electricians", "Plumbers", "Builders", "HVAC Techs", "Property Maintenance"].map((trade, i) => (
+              <span 
+                key={trade} 
+                className="text-gray-400 font-medium text-sm uppercase tracking-wider hover:text-gray-600 transition-colors cursor-default"
+                style={{ animationDelay: `${i * 100}ms` }}
+              >
+                {trade}
+              </span>
             ))}
           </div>
         </div>
@@ -248,8 +329,8 @@ export default function LandingPage() {
               <p className="text-gray-600 text-lg leading-relaxed mb-6">
                 Plan your day visually. Track your team's locations in real-time and optimise routes to save time and fuel.
               </p>
-              <a href="#how-it-works" className="inline-flex items-center text-blue-600 font-semibold hover:text-blue-700 transition-colors" data-testid="link-explore-maps">
-                Learn more <ChevronRight className="ml-1 h-4 w-4" />
+              <a href="#how-it-works" className="inline-flex items-center text-blue-600 font-semibold hover:text-blue-700 transition-colors group" data-testid="link-explore-maps">
+                Learn more <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </a>
             </div>
           </div>
@@ -311,7 +392,7 @@ export default function LandingPage() {
               Get up and running in minutes
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              No complicated setup. No training needed. Just download and start managing your business.
+              No complicated setup. No training needed. Just sign up and start managing your business.
             </p>
           </div>
 
@@ -319,8 +400,8 @@ export default function LandingPage() {
             <StepCard 
               number={1}
               icon={Smartphone}
-              title="Download the app"
-              description="Available on iOS and Android. Create your account in under 2 minutes."
+              title="Create your account"
+              description="Sign up in under 2 minutes. Available on iOS, Android, and web."
             />
             <StepCard 
               number={2}
@@ -338,37 +419,34 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Testimonials - Renamed to "What People Say" with softer messaging */}
       <section id="testimonials" className="py-20 lg:py-28">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
           <div className="text-center mb-16">
-            <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Testimonials</span>
+            <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Early Feedback</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
-              Loved by tradies across Australia
+              What our beta users are saying
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Join thousands who've simplified their business with TradieTrack.
+              We're just getting started, but here's what early users think.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
-            <TestimonialCard
-              quote="I used to spend hours on paperwork every Sunday. Now I do everything from my phone between jobs. Absolute game changer."
-              author="Mike Thompson"
+            <FeedbackCard
+              quote="Finally an app that gets what tradies actually need. Super easy to use."
+              author="Mike T."
               role="Electrician"
-              location="Sydney"
             />
-            <TestimonialCard
-              quote="The payment links cut our invoice-to-payment time in half. Clients just click and pay. No more chasing invoices."
-              author="Sarah Chen"
+            <FeedbackCard
+              quote="Love being able to do quotes on-site and send them straight away. Saves so much time."
+              author="Sarah C."
               role="Plumber"
-              location="Melbourne"
             />
-            <TestimonialCard
-              quote="Finally an app that works offline! I update jobs on remote sites with no signal and it syncs when I'm back online."
-              author="Tom Williams"
+            <FeedbackCard
+              quote="The job map is brilliant. Can see where all my jobs are and plan my day better."
+              author="Tom W."
               role="Builder"
-              location="Gold Coast"
             />
           </div>
         </div>
@@ -378,19 +456,19 @@ export default function LandingPage() {
       <section className="py-20 lg:py-28 bg-gradient-to-b from-blue-600 to-blue-700">
         <div className="max-w-3xl mx-auto px-5 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white tracking-tight mb-6">
-            Ready to run your business smarter?
+            Ready to simplify your business?
           </h2>
           <p className="text-lg lg:text-xl text-blue-100 mb-10 max-w-xl mx-auto">
-            Join thousands of Australian tradies who've made the switch. Start your free trial today.
+            Join our growing community of Australian tradies. Free while we're in beta.
           </p>
           <Link href="/auth">
-            <Button size="lg" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold h-14 px-10 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all" data-testid="cta-start-trial">
-              Start Your Free Trial
+            <Button size="lg" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold h-14 px-10 text-lg rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" data-testid="cta-start-trial">
+              Get Started Free
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
           <p className="text-sm text-blue-200 mt-5">
-            No credit card required. Cancel anytime.
+            No credit card required. No commitment.
           </p>
         </div>
       </section>
@@ -400,7 +478,10 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
             <div>
-              <div className="flex items-center gap-3 mb-5">
+              <button 
+                onClick={scrollToTop}
+                className="flex items-center gap-3 mb-5 hover:opacity-80 transition-opacity"
+              >
                 <img 
                   src={tradietrackLogo} 
                   alt="TradieTrack" 
@@ -410,7 +491,7 @@ export default function LandingPage() {
                   <span className="text-white">Tradie</span>
                   <span className="text-blue-400">Track</span>
                 </span>
-              </div>
+              </button>
               <p className="text-sm leading-relaxed">
                 Job management software built for Australian tradies. Simple. Powerful. Mobile-first.
               </p>
@@ -445,15 +526,34 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Global Styles for animations */}
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out forwards;
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.6s ease-out 0.2s forwards;
+          opacity: 0;
+        }
+      `}</style>
     </div>
   );
 }
 
 function PhoneMockup({ screenshot }: { screenshot: string }) {
   return (
-    <div className="relative w-[260px] sm:w-[280px]">
+    <div className="relative w-[260px] sm:w-[280px] group">
       {/* Phone Frame */}
-      <div className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-xl">
+      <div className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-xl group-hover:shadow-2xl transition-shadow duration-500">
         {/* Dynamic Island */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
         
@@ -493,7 +593,7 @@ function StepCard({
   description: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300">
       <div className="flex items-center gap-4 mb-5">
         <div className="w-10 h-10 bg-blue-600 text-white rounded-lg flex items-center justify-center font-bold text-lg">
           {number}
@@ -506,28 +606,26 @@ function StepCard({
   );
 }
 
-function TestimonialCard({ 
+function FeedbackCard({ 
   quote, 
   author, 
-  role,
-  location
+  role
 }: { 
   quote: string; 
   author: string; 
   role: string;
-  location: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-      <div className="flex gap-1 mb-5">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-        ))}
-      </div>
-      <p className="text-gray-700 leading-relaxed mb-6">"{quote}"</p>
-      <div>
-        <p className="font-semibold text-gray-900">{author}</p>
-        <p className="text-sm text-gray-500">{role} · {location}</p>
+    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300">
+      <p className="text-gray-700 leading-relaxed mb-6 text-lg">"{quote}"</p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+          {author.charAt(0)}
+        </div>
+        <div>
+          <p className="font-semibold text-gray-900">{author}</p>
+          <p className="text-sm text-gray-500">{role}</p>
+        </div>
       </div>
     </div>
   );
