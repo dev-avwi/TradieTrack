@@ -161,6 +161,12 @@ export function setupGoogleAuth(app: Express) {
       if (existingUser) {
         // Attach isNewUser flag to user object for callback to use
         (existingUser as any).isNewUser = false;
+        console.log('🔐 Google OAuth - Found existing user:', {
+          email: existingUser.email,
+          isPlatformAdmin: existingUser.isPlatformAdmin,
+          is_platform_admin: (existingUser as any).is_platform_admin,
+          googleId: profile.id
+        });
         return done(null, existingUser);
       }
 

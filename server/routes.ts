@@ -897,6 +897,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPlatformAdmin: user.isPlatformAdmin ?? (user as any).is_platform_admin ?? false,
       };
       
+      // Debug logging for admin users
+      if (safeUser.email === 'admin@avwebinnovation.com' || safeUser.isPlatformAdmin) {
+        console.log('🔑 Admin user detected:', {
+          email: safeUser.email,
+          isPlatformAdmin: safeUser.isPlatformAdmin,
+          rawIsPlatformAdmin: user.isPlatformAdmin,
+          rawIs_platform_admin: (user as any).is_platform_admin,
+        });
+      }
+      
       res.json(safeUser);
     } catch (error) {
       console.error("Auth check error:", error);
