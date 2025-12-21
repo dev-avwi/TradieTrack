@@ -14,8 +14,10 @@ import {
   Smartphone,
   ArrowRight,
   Play,
-  Sparkles
+  Sparkles,
+  Download
 } from "lucide-react";
+import { SiApple, SiGoogleplay } from "react-icons/si";
 
 import tradietrackLogo from "/tradietrack-logo.png";
 import dashboardScreenshot from "@assets/appstore_screenshots/01_dashboard.png";
@@ -98,6 +100,14 @@ export default function LandingPage() {
                 data-testid="nav-how-it-works"
               >
                 How It Works
+              </a>
+              <a 
+                href="#download" 
+                onClick={(e) => scrollToSection(e, "download")}
+                className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                data-testid="nav-download"
+              >
+                Download
               </a>
             </div>
 
@@ -187,6 +197,15 @@ export default function LandingPage() {
                 >
                   <Play className="w-5 h-5 text-gray-400" />
                   How It Works
+                </a>
+                <a 
+                  href="#download" 
+                  onClick={(e) => scrollToSection(e, "download")} 
+                  className="flex items-center gap-3 py-3 px-3 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors" 
+                  data-testid="mobile-nav-download"
+                >
+                  <Download className="w-5 h-5 text-gray-400" />
+                  Download App
                 </a>
               </nav>
             </div>
@@ -468,6 +487,55 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Download Section */}
+      <section id="download" className="scroll-mt-20 py-20 lg:py-28 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-5 lg:px-8 text-center">
+          <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Download Now</span>
+          <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
+            Get the TradieTrack App
+          </h2>
+          <p className="text-lg text-gray-600 max-w-xl mx-auto mb-10">
+            Available on iOS and Android. Take your business with you wherever you go.
+          </p>
+          
+          {/* App Store Badges */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            {/* App Store Badge */}
+            <a 
+              href="https://apps.apple.com/app/tradietrack/id6756844699"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 bg-black text-white rounded-xl px-6 py-3 hover:bg-gray-800 transition-colors group"
+              data-testid="download-app-store"
+            >
+              <SiApple className="w-8 h-8" />
+              <div className="text-left">
+                <div className="text-[10px] uppercase tracking-wider opacity-80">Download on the</div>
+                <div className="text-lg font-semibold -mt-0.5">App Store</div>
+              </div>
+            </a>
+            
+            {/* Google Play Badge */}
+            <a 
+              href="#"
+              className="flex items-center gap-3 bg-black text-white rounded-xl px-6 py-3 hover:bg-gray-800 transition-colors group opacity-60 cursor-not-allowed"
+              data-testid="download-google-play"
+              title="Coming Soon"
+            >
+              <SiGoogleplay className="w-7 h-7" />
+              <div className="text-left">
+                <div className="text-[10px] uppercase tracking-wider opacity-80">Get it on</div>
+                <div className="text-lg font-semibold -mt-0.5">Google Play</div>
+              </div>
+            </a>
+          </div>
+          
+          <p className="text-sm text-gray-500 mt-6">
+            Android version coming soon!
+          </p>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-gray-900 text-gray-400 py-12 lg:py-16">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
@@ -514,7 +582,16 @@ export default function LandingPage() {
                     How It Works
                   </a>
                 </li>
-                <li><a href="#" className="hover:text-white transition-colors" data-testid="link-mobile-app">Mobile App</a></li>
+                <li>
+                  <a 
+                    href="#download" 
+                    onClick={(e) => scrollToSection(e, "download")}
+                    className="hover:text-white transition-colors" 
+                    data-testid="link-mobile-app"
+                  >
+                    Download App
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
