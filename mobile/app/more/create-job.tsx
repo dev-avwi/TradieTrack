@@ -628,43 +628,65 @@ export default function CreateJobScreen() {
     if (!validateJob()) return;
 
     setIsSaving(true);
+    
+    const { isOnline } = useOfflineStore.getState();
+    const selectedClient = clients.find(c => c.id === clientId);
 
+    const jobData: any = {
+      title: title.trim(),
+      description: description.trim() || null,
+      clientId: clientId || null,
+      clientName: selectedClient?.name,
+      address: address.trim() || null,
+      status,
+      notes: notes.trim() || null,
+    };
+
+    if (scheduledAt) {
+      jobData.scheduledAt = scheduledAt.toISOString();
+      if (status === 'pending') {
+        jobData.status = 'scheduled';
+      }
+    }
+
+    if (estimatedDuration) {
+      const hours = parseFloat(estimatedDuration);
+      if (!isNaN(hours) && hours > 0) {
+        jobData.estimatedDuration = Math.round(hours * 60);
+      }
+    }
+
+    // Add recurring job fields
+    if (isRecurring) {
+      const baseDate = scheduledAt ? scheduledAt.toISOString() : new Date().toISOString();
+      jobData.isRecurring = true;
+      jobData.recurrencePattern = recurrencePattern;
+      jobData.recurrenceInterval = 1;
+      jobData.nextRecurrenceDate = calculateNextRecurrenceDate(baseDate, recurrencePattern);
+      if (recurrenceEndDate) {
+        jobData.recurrenceEndDate = new Date(recurrenceEndDate).toISOString();
+      }
+    }
+    
+    // Offline-first: save offline if no connection
+    if (!isOnline) {
+      try {
+        await offlineStorage.saveJobOffline(jobData, 'create');
+        Alert.alert(
+          'Saved Offline', 
+          'Job saved locally and will sync when you\'re back online.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      } catch (error) {
+        console.error('Failed to save job offline:', error);
+        Alert.alert('Error', 'Failed to save job offline. Please try again.');
+      }
+      setIsSaving(false);
+      return;
+    }
+    
+    // Online: try API first, fallback to offline if network error
     try {
-      const jobData: any = {
-        title: title.trim(),
-        description: description.trim() || null,
-        clientId: clientId || null,
-        address: address.trim() || null,
-        status,
-        notes: notes.trim() || null,
-      };
-
-      if (scheduledAt) {
-        jobData.scheduledAt = scheduledAt.toISOString();
-        if (status === 'pending') {
-          jobData.status = 'scheduled';
-        }
-      }
-
-      if (estimatedDuration) {
-        const hours = parseFloat(estimatedDuration);
-        if (!isNaN(hours) && hours > 0) {
-          jobData.estimatedDuration = Math.round(hours * 60);
-        }
-      }
-
-      // Add recurring job fields
-      if (isRecurring) {
-        const baseDate = scheduledAt ? scheduledAt.toISOString() : new Date().toISOString();
-        jobData.isRecurring = true;
-        jobData.recurrencePattern = recurrencePattern;
-        jobData.recurrenceInterval = 1;
-        jobData.nextRecurrenceDate = calculateNextRecurrenceDate(baseDate, recurrencePattern);
-        if (recurrenceEndDate) {
-          jobData.recurrenceEndDate = new Date(recurrenceEndDate).toISOString();
-        }
-      }
-
       const response = await api.post<{ id: string }>('/api/jobs', jobData);
 
       if (response.data?.id) {
@@ -686,11 +708,26 @@ export default function CreateJobScreen() {
         );
       }
     } catch (error: any) {
-      console.error('Save job error:', error);
-      Alert.alert(
-        'Error',
-        error.response?.data?.error || 'Failed to save job. Please try again.'
-      );
+      // Network error - save offline
+      if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
+        try {
+          await offlineStorage.saveJobOffline(jobData, 'create');
+          Alert.alert(
+            'Saved Offline', 
+            'Job saved locally and will sync when connection is restored.',
+            [{ text: 'OK', onPress: () => router.back() }]
+          );
+        } catch (offlineError) {
+          console.error('Failed to save job offline:', offlineError);
+          Alert.alert('Error', 'Failed to save job. Please try again.');
+        }
+      } else {
+        console.error('Save job error:', error);
+        Alert.alert(
+          'Error',
+          error.response?.data?.error || 'Failed to save job. Please try again.'
+        );
+      }
     } finally {
       setIsSaving(false);
     }
