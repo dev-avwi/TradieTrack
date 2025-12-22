@@ -21,6 +21,7 @@ import { useClientsStore, useJobsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 import api from '../../src/lib/api';
+import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 
@@ -714,21 +715,39 @@ export default function CreateJobScreen() {
     }
 
     setIsAddingClient(true);
+    const { isOnline } = useOfflineStore.getState();
+    
     try {
-      const response = await api.post<{ id: string }>('/api/clients', {
-        name: quickClientName.trim(),
-        email: quickClientEmail.trim() || null,
-        phone: quickClientPhone.trim() || null,
-      });
+      if (isOnline) {
+        const response = await api.post<{ id: string }>('/api/clients', {
+          name: quickClientName.trim(),
+          email: quickClientEmail.trim() || null,
+          phone: quickClientPhone.trim() || null,
+        });
 
-      if (response.data?.id) {
+        if (response.data?.id) {
+          await fetchClients();
+          handleClientSelect(response.data.id);
+          setShowQuickAddClient(false);
+          setQuickClientName('');
+          setQuickClientEmail('');
+          setQuickClientPhone('');
+          Alert.alert('Success', 'Client added successfully');
+        }
+      } else {
+        const savedClient = await offlineStorage.saveClientOffline({
+          name: quickClientName.trim(),
+          email: quickClientEmail.trim() || undefined,
+          phone: quickClientPhone.trim() || undefined,
+        }, 'create');
+
         await fetchClients();
-        handleClientSelect(response.data.id);
+        handleClientSelect(savedClient.id);
         setShowQuickAddClient(false);
         setQuickClientName('');
         setQuickClientEmail('');
         setQuickClientPhone('');
-        Alert.alert('Success', 'Client added successfully');
+        Alert.alert('Saved Offline', 'Client saved offline. Will sync when back online.');
       }
     } catch (error: any) {
       console.error('Quick add client error:', error);
