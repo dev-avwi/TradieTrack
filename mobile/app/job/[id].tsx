@@ -41,6 +41,7 @@ import { JobForms } from '../../src/components/FormRenderer';
 import { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
 import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from '../../src/components/JobWorkflowComponents';
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
+import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 
 interface Job {
   id: string;
@@ -2297,21 +2298,38 @@ export default function JobDetailScreen() {
           text: 'Stop Recurring',
           style: 'destructive',
           onPress: async () => {
+            const { isOnline } = useOfflineStore.getState();
+            const updates = { isRecurring: false, nextRecurrenceDate: null };
+            
+            // Optimistic UI update
+            setJob({ ...job, ...updates });
+            
+            if (!isOnline) {
+              await offlineStorage.updateJobOffline(job.id, updates);
+              Alert.alert('Saved Offline', 'Changes will sync when online');
+              return;
+            }
+            
             try {
-              const response = await api.patch(`/api/jobs/${job.id}`, {
-                isRecurring: false,
-                nextRecurrenceDate: null,
-              });
+              const response = await api.patch(`/api/jobs/${job.id}`, updates);
               
               if (response.data) {
-                setJob({ ...job, isRecurring: false, nextRecurrenceDate: null });
                 Alert.alert('Success', 'Recurring schedule stopped');
               } else {
+                // Revert on failure
+                setJob(job);
                 Alert.alert('Error', 'Failed to stop recurring schedule');
               }
-            } catch (error) {
-              console.error('Error stopping recurring:', error);
-              Alert.alert('Error', 'Failed to stop recurring schedule');
+            } catch (error: any) {
+              if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
+                await offlineStorage.updateJobOffline(job.id, updates);
+                Alert.alert('Saved Offline', 'Changes will sync when connection is restored');
+              } else {
+                // Revert on error
+                setJob(job);
+                console.error('Error stopping recurring:', error);
+                Alert.alert('Error', 'Failed to stop recurring schedule');
+              }
             }
           }
         }
@@ -2476,26 +2494,51 @@ export default function JobDetailScreen() {
       return;
     }
     
+    const { isOnline } = useOfflineStore.getState();
+    const previousStatus = job.status;
+    const scheduledAtISO = scheduleDate.toISOString();
+    
+    // Optimistic UI update
+    setJob({ ...job, status: 'scheduled', scheduledAt: scheduledAtISO });
+    setShowScheduleModal(false);
+    
+    if (!isOnline) {
+      await offlineStorage.updateJobStatusOffline(job.id, 'scheduled', previousStatus);
+      await offlineStorage.updateJobOffline(job.id, { scheduledAt: scheduledAtISO });
+      Alert.alert('Saved Offline', 'Job will be scheduled when online');
+      return;
+    }
+    
     try {
       const response = await api.patch(`/api/jobs/${job.id}`, {
         status: 'scheduled',
-        scheduledAt: scheduleDate.toISOString(),
+        scheduledAt: scheduledAtISO,
       });
       
       if (response.data) {
-        // Update local job state
-        setJob({ ...job, status: 'scheduled', scheduledAt: scheduleDate.toISOString() });
-        
         // Refresh the jobs store to update any cached job lists
         const { fetchJobs, fetchTodaysJobs } = useJobsStore.getState();
         fetchJobs();
         fetchTodaysJobs();
         
-        setShowScheduleModal(false);
         Alert.alert('Success', 'Job scheduled successfully');
+      } else {
+        // Revert on failure
+        setJob({ ...job, status: previousStatus });
+        setShowScheduleModal(true);
+        Alert.alert('Error', 'Failed to schedule job');
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to schedule job. Please try again.');
+    } catch (error: any) {
+      if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
+        await offlineStorage.updateJobStatusOffline(job.id, 'scheduled', previousStatus);
+        await offlineStorage.updateJobOffline(job.id, { scheduledAt: scheduledAtISO });
+        Alert.alert('Saved Offline', 'Job will be scheduled when connection is restored');
+      } else {
+        // Revert on error
+        setJob({ ...job, status: previousStatus });
+        setShowScheduleModal(true);
+        Alert.alert('Error', 'Failed to schedule job. Please try again.');
+      }
     }
   };
 
@@ -2503,15 +2546,40 @@ export default function JobDetailScreen() {
     if (!job) return;
     
     setIsSavingNotes(true);
+    const { isOnline } = useOfflineStore.getState();
+    const previousNotes = job.notes;
+    
+    // Optimistic UI update
+    setJob({ ...job, notes: editedNotes });
+    setShowNotesModal(false);
+    
+    if (!isOnline) {
+      await offlineStorage.updateJobOffline(job.id, { notes: editedNotes });
+      Alert.alert('Saved Offline', 'Notes will sync when online');
+      setIsSavingNotes(false);
+      return;
+    }
+    
     try {
       const response = await api.patch(`/api/jobs/${job.id}`, { notes: editedNotes });
       if (response.data) {
-        setJob({ ...job, notes: editedNotes });
-        setShowNotesModal(false);
         Alert.alert('Saved', 'Notes updated successfully');
+      } else {
+        // Revert on failure
+        setJob({ ...job, notes: previousNotes });
+        setShowNotesModal(true);
+        Alert.alert('Error', 'Failed to save notes');
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save notes. Please try again.');
+    } catch (error: any) {
+      if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
+        await offlineStorage.updateJobOffline(job.id, { notes: editedNotes });
+        Alert.alert('Saved Offline', 'Notes will sync when connection is restored');
+      } else {
+        // Revert on error
+        setJob({ ...job, notes: previousNotes });
+        setShowNotesModal(true);
+        Alert.alert('Error', 'Failed to save notes. Please try again.');
+      }
     }
     setIsSavingNotes(false);
   };
@@ -3934,11 +4002,28 @@ export default function JobDetailScreen() {
               <Switch
                 value={job.geofenceEnabled || false}
                 onValueChange={async (value) => {
+                  const { isOnline } = useOfflineStore.getState();
+                  const previousValue = job.geofenceEnabled;
+                  
+                  // Optimistic UI update
+                  setJob({ ...job, geofenceEnabled: value });
+                  
+                  if (!isOnline) {
+                    await offlineStorage.updateJobOffline(job.id, { geofenceEnabled: value });
+                    Alert.alert('Saved Offline', 'Settings will sync when online');
+                    return;
+                  }
+                  
                   try {
                     await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceEnabled: value });
-                    setJob({ ...job, geofenceEnabled: value });
-                  } catch (e) {
-                    Alert.alert('Error', 'Failed to update geofence settings');
+                  } catch (e: any) {
+                    if (e.message?.includes('Network') || e.code === 'ECONNABORTED') {
+                      await offlineStorage.updateJobOffline(job.id, { geofenceEnabled: value });
+                      Alert.alert('Saved Offline', 'Settings will sync when connection is restored');
+                    } else {
+                      setJob({ ...job, geofenceEnabled: previousValue });
+                      Alert.alert('Error', 'Failed to update geofence settings');
+                    }
                   }
                 }}
                 trackColor={{ false: colors.muted, true: colors.primary }}
@@ -3959,11 +4044,29 @@ export default function JobDetailScreen() {
                     value={sliderRadius}
                     onValueChange={(value) => setSliderRadius(value)}
                     onSlidingComplete={async (value) => {
+                      const { isOnline } = useOfflineStore.getState();
+                      const previousValue = job.geofenceRadius;
+                      
+                      // Optimistic UI update
+                      setJob({ ...job, geofenceRadius: value });
+                      
+                      if (!isOnline) {
+                        await offlineStorage.updateJobOffline(job.id, { geofenceRadius: value });
+                        Alert.alert('Saved Offline', 'Radius will sync when online');
+                        return;
+                      }
+                      
                       try {
                         await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceRadius: value });
-                        setJob({ ...job, geofenceRadius: value });
-                      } catch (e) {
-                        Alert.alert('Error', 'Failed to update radius');
+                      } catch (e: any) {
+                        if (e.message?.includes('Network') || e.code === 'ECONNABORTED') {
+                          await offlineStorage.updateJobOffline(job.id, { geofenceRadius: value });
+                          Alert.alert('Saved Offline', 'Radius will sync when connection is restored');
+                        } else {
+                          setJob({ ...job, geofenceRadius: previousValue });
+                          setSliderRadius(previousValue || 100);
+                          Alert.alert('Error', 'Failed to update radius');
+                        }
                       }
                     }}
                     minimumTrackTintColor={colors.primary}
@@ -3983,11 +4086,28 @@ export default function JobDetailScreen() {
                   <Switch
                     value={job.geofenceAutoClockIn || false}
                     onValueChange={async (value) => {
+                      const { isOnline } = useOfflineStore.getState();
+                      const previousValue = job.geofenceAutoClockIn;
+                      
+                      // Optimistic UI update
+                      setJob({ ...job, geofenceAutoClockIn: value });
+                      
+                      if (!isOnline) {
+                        await offlineStorage.updateJobOffline(job.id, { geofenceAutoClockIn: value });
+                        Alert.alert('Saved Offline', 'Settings will sync when online');
+                        return;
+                      }
+                      
                       try {
                         await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceAutoClockIn: value });
-                        setJob({ ...job, geofenceAutoClockIn: value });
-                      } catch (e) {
-                        Alert.alert('Error', 'Failed to update setting');
+                      } catch (e: any) {
+                        if (e.message?.includes('Network') || e.code === 'ECONNABORTED') {
+                          await offlineStorage.updateJobOffline(job.id, { geofenceAutoClockIn: value });
+                          Alert.alert('Saved Offline', 'Settings will sync when connection is restored');
+                        } else {
+                          setJob({ ...job, geofenceAutoClockIn: previousValue });
+                          Alert.alert('Error', 'Failed to update setting');
+                        }
                       }
                     }}
                     trackColor={{ false: colors.muted, true: colors.success }}
@@ -4006,11 +4126,28 @@ export default function JobDetailScreen() {
                   <Switch
                     value={job.geofenceAutoClockOut || false}
                     onValueChange={async (value) => {
+                      const { isOnline } = useOfflineStore.getState();
+                      const previousValue = job.geofenceAutoClockOut;
+                      
+                      // Optimistic UI update
+                      setJob({ ...job, geofenceAutoClockOut: value });
+                      
+                      if (!isOnline) {
+                        await offlineStorage.updateJobOffline(job.id, { geofenceAutoClockOut: value });
+                        Alert.alert('Saved Offline', 'Settings will sync when online');
+                        return;
+                      }
+                      
                       try {
                         await api.patch(`/api/jobs/${job.id}/geofence`, { geofenceAutoClockOut: value });
-                        setJob({ ...job, geofenceAutoClockOut: value });
-                      } catch (e) {
-                        Alert.alert('Error', 'Failed to update setting');
+                      } catch (e: any) {
+                        if (e.message?.includes('Network') || e.code === 'ECONNABORTED') {
+                          await offlineStorage.updateJobOffline(job.id, { geofenceAutoClockOut: value });
+                          Alert.alert('Saved Offline', 'Settings will sync when connection is restored');
+                        } else {
+                          setJob({ ...job, geofenceAutoClockOut: previousValue });
+                          Alert.alert('Error', 'Failed to update setting');
+                        }
                       }
                     }}
                     trackColor={{ false: colors.muted, true: colors.warning }}

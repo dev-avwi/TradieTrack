@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore } from '../../src/lib/store';
+import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
@@ -232,6 +233,16 @@ function TimeTrackingWidget() {
     if (!activeTimer) return;
     setIsStopping(true);
     try {
+      const { isOnline } = useOfflineStore.getState();
+      
+      if (!isOnline) {
+        await offlineStorage.stopTimeEntryOffline(activeTimer.id);
+        setActiveTimer(null);
+        Alert.alert('Saved Offline', 'Time entry will sync when online');
+        loadTimeData();
+        return;
+      }
+      
       const { default: api } = await import('../../src/lib/api');
       const endTime = new Date();
       const startTime = new Date(activeTimer.startTime);
@@ -242,8 +253,15 @@ function TimeTrackingWidget() {
       setActiveTimer(null);
       Alert.alert('Timer Stopped', 'Time has been recorded');
       loadTimeData();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to stop timer');
+    } catch (error: any) {
+      if (error.message?.includes('Network')) {
+        await offlineStorage.stopTimeEntryOffline(activeTimer.id);
+        setActiveTimer(null);
+        Alert.alert('Saved Offline', 'Changes will sync when connection restored');
+        loadTimeData();
+      } else {
+        Alert.alert('Error', 'Failed to stop timer');
+      }
     } finally {
       setIsStopping(false);
     }
@@ -1016,17 +1034,39 @@ export default function DashboardScreen() {
   const handleAssignJob = async (jobId: string, userId: string) => {
     setIsAssigning(true);
     try {
+      const { isOnline } = useOfflineStore.getState();
+      
+      if (!isOnline) {
+        await offlineStorage.updateJobOffline(jobId, { assignedTo: userId });
+        Alert.alert('Saved Offline', 'Assignment will sync when online');
+        setSelectedJob(null);
+        await Promise.all([
+          fetchTeamData(),
+          fetchTodaysJobs(),
+        ]);
+        return;
+      }
+      
       const { default: api } = await import('../../src/lib/api');
       await api.post(`/api/jobs/${jobId}/assign`, { assignedTo: userId });
       Alert.alert('Success', 'Job assigned successfully');
       setSelectedJob(null);
-      // Refresh team data and today's jobs (cache invalidation like web)
       await Promise.all([
         fetchTeamData(),
         fetchTodaysJobs(),
       ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to assign job');
+    } catch (error: any) {
+      if (error.message?.includes('Network')) {
+        await offlineStorage.updateJobOffline(jobId, { assignedTo: userId });
+        Alert.alert('Saved Offline', 'Changes will sync when connection restored');
+        setSelectedJob(null);
+        await Promise.all([
+          fetchTeamData(),
+          fetchTodaysJobs(),
+        ]);
+      } else {
+        Alert.alert('Error', 'Failed to assign job');
+      }
     } finally {
       setIsAssigning(false);
     }
@@ -1044,6 +1084,18 @@ export default function DashboardScreen() {
           onPress: async () => {
             setIsAssigning(true);
             try {
+              const { isOnline } = useOfflineStore.getState();
+              
+              if (!isOnline) {
+                await offlineStorage.updateJobOffline(job.id, { assignedTo: undefined });
+                Alert.alert('Saved Offline', 'Unassignment will sync when online');
+                await Promise.all([
+                  fetchTeamData(),
+                  fetchTodaysJobs(),
+                ]);
+                return;
+              }
+              
               const { default: api } = await import('../../src/lib/api');
               await api.post(`/api/jobs/${job.id}/assign`, { assignedTo: null });
               Alert.alert('Success', 'Job unassigned');
@@ -1051,8 +1103,17 @@ export default function DashboardScreen() {
                 fetchTeamData(),
                 fetchTodaysJobs(),
               ]);
-            } catch (error) {
-              Alert.alert('Error', 'Failed to unassign job');
+            } catch (error: any) {
+              if (error.message?.includes('Network')) {
+                await offlineStorage.updateJobOffline(job.id, { assignedTo: undefined });
+                Alert.alert('Saved Offline', 'Changes will sync when connection restored');
+                await Promise.all([
+                  fetchTeamData(),
+                  fetchTodaysJobs(),
+                ]);
+              } else {
+                Alert.alert('Error', 'Failed to unassign job');
+              }
             } finally {
               setIsAssigning(false);
             }
@@ -1127,12 +1188,27 @@ export default function DashboardScreen() {
           onPress: async () => {
             setIsUpdating(true);
             try {
+              const { isOnline } = useOfflineStore.getState();
+              
+              if (!isOnline) {
+                if (clientId) {
+                  await offlineStorage.updateJobOffline(jobId, { status: 'en_route' });
+                  Alert.alert('Saved Offline', 'On my way notification will sync when online');
+                }
+                router.push(`/job/${jobId}`);
+                return;
+              }
+              
               if (clientId) {
                 await api.post(`/api/jobs/${jobId}/on-my-way`);
                 Alert.alert('Sent!', 'Client has been notified.');
               }
               router.push(`/job/${jobId}`);
-            } catch (error) {
+            } catch (error: any) {
+              if (error.message?.includes('Network') && clientId) {
+                await offlineStorage.updateJobOffline(jobId, { status: 'en_route' });
+                Alert.alert('Saved Offline', 'Changes will sync when connection restored');
+              }
               router.push(`/job/${jobId}`);
             } finally {
               setIsUpdating(false);
