@@ -729,8 +729,8 @@ class OfflineStorageService {
       `INSERT OR REPLACE INTO jobs 
        (id, title, description, address, status, scheduled_at, client_id, client_name, assigned_to, notes, cached_at, pending_sync, sync_action, local_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-      [id, job.title || '', job.description, job.address, job.status || 'pending', 
-       job.scheduledAt, job.clientId, job.clientName, job.assignedTo, job.notes, now, action, localId]
+      [id, job.title || '', job.description ?? null, job.address ?? null, job.status || 'pending', 
+       job.scheduledAt ?? null, job.clientId ?? null, job.clientName ?? null, job.assignedTo ?? null, job.notes ?? null, now, action, localId ?? null]
     );
     
     await this.addToSyncQueue('job', action, { ...job, id, localId });
@@ -754,13 +754,59 @@ class OfflineStorageService {
           client_id = ?, client_name = ?, assigned_to = ?, notes = ?,
           cached_at = ?, pending_sync = 1, sync_action = ?
          WHERE id = ?`,
-        [updated.title, updated.description, updated.address, updated.status, updated.scheduledAt,
-         updated.clientId, updated.clientName, updated.assignedTo, updated.notes,
+        [updated.title, updated.description ?? null, updated.address ?? null, updated.status, updated.scheduledAt ?? null,
+         updated.clientId ?? null, updated.clientName ?? null, updated.assignedTo ?? null, updated.notes ?? null,
          now, 'update', jobId]
       );
       
-      await this.addToSyncQueue('job', 'update', { id: jobId, ...updates });
+      await this.addToSyncQueue('job', 'update', { 
+        id: jobId, 
+        ...updates,
+        _previousValues: {
+          status: existing.status,
+          title: existing.title,
+          description: existing.description,
+          address: existing.address,
+          notes: existing.notes,
+        }
+      });
       await this.updatePendingSyncCount();
+    }
+  }
+
+  /**
+   * Update job status offline with status progression tracking
+   * Specialized method for status changes that tracks the previous status
+   */
+  async updateJobStatusOffline(jobId: string, newStatus: string, previousStatus: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    const existing = await this.getCachedJob(jobId);
+    
+    if (existing) {
+      await this.db.runAsync(
+        `UPDATE jobs SET 
+          status = ?, cached_at = ?, pending_sync = 1, sync_action = ?
+         WHERE id = ?`,
+        [newStatus, now, 'update', jobId]
+      );
+      
+      await this.addToSyncQueue('job', 'update', { 
+        id: jobId, 
+        status: newStatus,
+        _previousValues: {
+          status: previousStatus
+        },
+        _statusChange: {
+          from: previousStatus,
+          to: newStatus,
+          changedAt: new Date().toISOString()
+        }
+      });
+      await this.updatePendingSyncCount();
+      
+      console.log(`[OfflineStorage] Updated job ${jobId} status: ${previousStatus} -> ${newStatus}`);
     }
   }
 
@@ -842,7 +888,7 @@ class OfflineStorageService {
       `INSERT OR REPLACE INTO clients 
        (id, name, email, phone, address, notes, cached_at, pending_sync, sync_action, local_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-      [id, client.name || '', client.email, client.phone, client.address, client.notes, now, action, localId]
+      [id, client.name || '', client.email ?? null, client.phone ?? null, client.address ?? null, client.notes ?? null, now, action, localId ?? null]
     );
     
     await this.addToSyncQueue('client', action, { ...client, id, localId });
@@ -865,11 +911,21 @@ class OfflineStorageService {
           name = ?, email = ?, phone = ?, address = ?, notes = ?,
           cached_at = ?, pending_sync = 1, sync_action = ?
          WHERE id = ?`,
-        [updated.name, updated.email, updated.phone, updated.address, updated.notes,
+        [updated.name, updated.email ?? null, updated.phone ?? null, updated.address ?? null, updated.notes ?? null,
          now, 'update', clientId]
       );
       
-      await this.addToSyncQueue('client', 'update', { id: clientId, ...updates });
+      await this.addToSyncQueue('client', 'update', { 
+        id: clientId, 
+        ...updates,
+        _previousValues: {
+          name: existing.name,
+          email: existing.email,
+          phone: existing.phone,
+          address: existing.address,
+          notes: existing.notes,
+        }
+      });
       await this.updatePendingSyncCount();
     }
   }
@@ -969,7 +1025,7 @@ class OfflineStorageService {
           status = ?, subtotal = ?, gst_amount = ?, total = ?, valid_until = ?, notes = ?,
           cached_at = ?, pending_sync = 1, sync_action = ?
          WHERE id = ?`,
-        [updated.status, updated.subtotal, updated.gstAmount, updated.total, updated.validUntil, updated.notes,
+        [updated.status, updated.subtotal, updated.gstAmount, updated.total, updated.validUntil ?? null, updated.notes ?? null,
          now, 'update', quoteId]
       );
       
@@ -1013,8 +1069,8 @@ class OfflineStorageService {
       `INSERT INTO quotes 
        (id, quote_number, client_id, client_name, job_id, status, subtotal, gst_amount, total, valid_until, notes, created_at, cached_at, pending_sync, sync_action, local_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'create', ?)`,
-      [id, null, quote.clientId, quote.clientName, quote.jobId, 'draft', 
-       quote.subtotal, quote.gstAmount, quote.total, quote.validUntil, quote.notes,
+      [id, null, quote.clientId, quote.clientName ?? null, quote.jobId ?? null, 'draft', 
+       quote.subtotal, quote.gstAmount, quote.total, quote.validUntil ?? null, quote.notes ?? null,
        new Date().toISOString(), now, localId]
     );
     
@@ -1202,11 +1258,24 @@ class OfflineStorageService {
           status = ?, subtotal = ?, gst_amount = ?, total = ?, amount_paid = ?, due_date = ?, paid_at = ?, notes = ?,
           cached_at = ?, pending_sync = 1, sync_action = ?
          WHERE id = ?`,
-        [updated.status, updated.subtotal, updated.gstAmount, updated.total, updated.amountPaid, updated.dueDate, updated.paidAt, updated.notes,
+        [updated.status, updated.subtotal, updated.gstAmount, updated.total, updated.amountPaid, updated.dueDate ?? null, updated.paidAt ?? null, updated.notes ?? null,
          now, 'update', invoiceId]
       );
       
-      await this.addToSyncQueue('invoice', 'update', { id: invoiceId, ...updates });
+      await this.addToSyncQueue('invoice', 'update', { 
+        id: invoiceId, 
+        ...updates,
+        _previousValues: {
+          status: existing.status,
+          subtotal: existing.subtotal,
+          gstAmount: existing.gstAmount,
+          total: existing.total,
+          amountPaid: existing.amountPaid,
+          dueDate: existing.dueDate,
+          paidAt: existing.paidAt,
+          notes: existing.notes,
+        }
+      });
       await this.updatePendingSyncCount();
     }
   }
@@ -1247,8 +1316,8 @@ class OfflineStorageService {
       `INSERT INTO invoices 
        (id, invoice_number, client_id, client_name, job_id, quote_id, status, subtotal, gst_amount, total, amount_paid, due_date, paid_at, notes, created_at, cached_at, pending_sync, sync_action, local_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'create', ?)`,
-      [id, null, invoice.clientId, invoice.clientName, invoice.jobId, invoice.quoteId, 'draft', 
-       invoice.subtotal, invoice.gstAmount, invoice.total, 0, invoice.dueDate, null, invoice.notes,
+      [id, null, invoice.clientId, invoice.clientName ?? null, invoice.jobId ?? null, invoice.quoteId ?? null, 'draft', 
+       invoice.subtotal, invoice.gstAmount, invoice.total, 0, invoice.dueDate ?? null, null, invoice.notes ?? null,
        new Date().toISOString(), now, localId]
     );
     
@@ -1394,13 +1463,108 @@ class OfflineStorageService {
       `INSERT OR REPLACE INTO time_entries 
        (id, user_id, job_id, description, start_time, end_time, notes, cached_at, pending_sync, sync_action, local_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-      [id, entry.userId || '', entry.jobId, entry.description, entry.startTime || new Date().toISOString(), entry.endTime, entry.notes, now, action, localId]
+      [id, entry.userId || '', entry.jobId ?? null, entry.description ?? null, entry.startTime || new Date().toISOString(), entry.endTime ?? null, entry.notes ?? null, now, action, localId ?? null]
     );
     
     await this.addToSyncQueue('timeEntry', action, { ...entry, id, localId });
     await this.updatePendingSyncCount();
     
     return { ...entry, id, cachedAt: now, pendingSync: true, syncAction: action, localId } as CachedTimeEntry;
+  }
+
+  /**
+   * Start a time entry offline with local timestamp
+   * Creates a new time entry with the current time as start time
+   */
+  async startTimeEntryOffline(userId: string, jobId?: string, description?: string): Promise<CachedTimeEntry> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    const localId = `local_${now}_${Math.random().toString(36).substr(2, 9)}`;
+    const startTime = new Date().toISOString();
+    
+    await this.db.runAsync(
+      `INSERT INTO time_entries 
+       (id, user_id, job_id, description, start_time, end_time, notes, cached_at, pending_sync, sync_action, local_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'create', ?)`,
+      [localId, userId, jobId ?? null, description ?? null, startTime, null, null, now, localId]
+    );
+    
+    const entry: CachedTimeEntry = {
+      id: localId,
+      userId,
+      jobId,
+      description,
+      startTime,
+      endTime: undefined,
+      notes: undefined,
+      cachedAt: now,
+      pendingSync: true,
+      syncAction: 'create',
+      localId,
+    };
+    
+    await this.addToSyncQueue('timeEntry', 'create', entry);
+    await this.updatePendingSyncCount();
+    
+    console.log(`[OfflineStorage] Started time entry offline: ${localId}`);
+    return entry;
+  }
+
+  /**
+   * Stop a time entry offline and queue for sync
+   * Updates the end time of an existing time entry
+   */
+  async stopTimeEntryOffline(entryId: string): Promise<CachedTimeEntry | null> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    const endTime = new Date().toISOString();
+    
+    // Get existing entry
+    const row = await this.db.getFirstAsync(
+      'SELECT * FROM time_entries WHERE id = ?',
+      [entryId]
+    ) as any;
+    
+    if (!row) {
+      console.warn(`[OfflineStorage] Time entry ${entryId} not found`);
+      return null;
+    }
+    
+    // Update the entry with end time
+    await this.db.runAsync(
+      `UPDATE time_entries SET 
+        end_time = ?, cached_at = ?, pending_sync = 1, sync_action = ?
+       WHERE id = ?`,
+      [endTime, now, 'update', entryId]
+    );
+    
+    const entry: CachedTimeEntry = {
+      id: row.id,
+      userId: row.user_id,
+      jobId: row.job_id,
+      description: row.description,
+      startTime: row.start_time,
+      endTime,
+      notes: row.notes,
+      cachedAt: now,
+      pendingSync: true,
+      syncAction: 'update',
+      localId: row.local_id,
+    };
+    
+    await this.addToSyncQueue('timeEntry', 'update', { 
+      id: entryId, 
+      endTime,
+      _previousValues: {
+        endTime: row.end_time
+      }
+    });
+    await this.updatePendingSyncCount();
+    
+    console.log(`[OfflineStorage] Stopped time entry offline: ${entryId}`);
+    return entry;
   }
 
   // ============ ATTACHMENTS ============
@@ -1524,9 +1688,9 @@ class OfflineStorageService {
       `INSERT OR REPLACE INTO attachments 
        (id, job_id, quote_id, invoice_id, client_id, type, filename, mime_type, local_uri, remote_url, file_size, description, cached_at, pending_sync, sync_action, local_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'create', ?)`,
-      [id, attachment.jobId, attachment.quoteId, attachment.invoiceId, attachment.clientId,
-       attachment.type, attachment.filename, attachment.mimeType, attachment.localUri,
-       attachment.remoteUrl, attachment.fileSize, attachment.description, now, localId]
+      [id, attachment.jobId ?? null, attachment.quoteId ?? null, attachment.invoiceId ?? null, attachment.clientId ?? null,
+       attachment.type ?? 'photo', attachment.filename ?? 'unknown', attachment.mimeType ?? 'application/octet-stream', attachment.localUri ?? null,
+       attachment.remoteUrl ?? null, attachment.fileSize ?? null, attachment.description ?? null, now, localId]
     );
     
     // Add to sync queue - attachment upload handled specially
@@ -2061,7 +2225,7 @@ class OfflineStorageService {
 
   // ============ METADATA & UTILITIES ============
 
-  private async setMetadata(key: string, value: string): Promise<void> {
+  async setMetadata(key: string, value: string): Promise<void> {
     if (!this.db) return;
     
     await this.db.runAsync(
