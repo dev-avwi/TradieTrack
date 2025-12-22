@@ -233,17 +233,27 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
         return [result];
       });
       
-      toast({
-        title: "Client created",
-        description: `${parsed.name} has been added and selected`,
-      });
+      // Show appropriate message based on whether created offline
+      if (result.isOffline) {
+        toast({
+          title: "Client saved offline",
+          description: `${parsed.name} will be synced when you're back online`,
+        });
+      } else {
+        toast({
+          title: "Client created",
+          description: `${parsed.name} has been added and selected`,
+        });
+      }
       
       // Reset and close
       setQuickClientData({ name: "", email: "", phone: "", address: "" });
       setShowQuickAddClient(false);
       
-      // Background refetch to sync with server (non-blocking)
-      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      // Background refetch to sync with server (non-blocking) - only if online
+      if (!result.isOffline) {
+        queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({

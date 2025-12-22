@@ -45,7 +45,7 @@ import {
   Calendar
 } from "lucide-react";
 import { SiStripe, SiGmail, SiXero } from "react-icons/si";
-import { RefreshCw, Link2Off } from "lucide-react";
+import { RefreshCw, Link2Off, Users } from "lucide-react";
 
 interface XeroStatus {
   configured: boolean;
@@ -275,22 +275,53 @@ export default function Integrations() {
     },
   });
 
-  const syncXeroMutation = useMutation({
+  const syncXeroContactsMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/integrations/xero/sync');
+      const response = await apiRequest('POST', '/api/integrations/xero/sync', { type: 'contacts' });
       return response;
     },
     onSuccess: (data: any) => {
+      const result = data.result;
+      const syncedCount = result?.synced || 0;
+      const errorCount = result?.errors || 0;
       toast({
-        title: "Sync Complete",
-        description: "Data has been synced with Xero",
+        title: "Contacts Synced",
+        description: syncedCount > 0 
+          ? `Imported ${syncedCount} contact${syncedCount !== 1 ? 's' : ''} from Xero${errorCount > 0 ? ` (${errorCount} error${errorCount !== 1 ? 's' : ''})` : ''}`
+          : "No new contacts to import",
       });
       refetchXero();
     },
     onError: (error: any) => {
       toast({
-        title: "Sync Failed",
-        description: error.message || "Failed to sync with Xero",
+        title: "Contact Sync Failed",
+        description: error.message || "Failed to sync contacts with Xero",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const syncXeroInvoicesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/xero/sync', { type: 'invoices' });
+      return response;
+    },
+    onSuccess: (data: any) => {
+      const result = data.result;
+      const syncedCount = result?.synced || 0;
+      const errorCount = result?.errors || 0;
+      toast({
+        title: "Invoices Pushed",
+        description: syncedCount > 0 
+          ? `Pushed ${syncedCount} invoice${syncedCount !== 1 ? 's' : ''} to Xero${errorCount > 0 ? ` (${errorCount} error${errorCount !== 1 ? 's' : ''})` : ''}`
+          : "No invoices to push (all sent invoices already synced)",
+      });
+      refetchXero();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Invoice Push Failed",
+        description: error.message || "Failed to push invoices to Xero",
         variant: "destructive",
       });
     },
@@ -809,36 +840,59 @@ export default function Integrations() {
                     </p>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => syncXeroMutation.mutate()}
-                    disabled={syncXeroMutation.isPending}
-                    data-testid="button-sync-xero"
-                  >
-                    {syncXeroMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Sync Now
-                      </>
-                    )}
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => disconnectXeroMutation.mutate()}
-                    disabled={disconnectXeroMutation.isPending}
-                    data-testid="button-disconnect-xero"
-                  >
-                    {disconnectXeroMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Link2Off className="w-4 h-4" />
-                    )}
-                  </Button>
+                
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-foreground">Sync Actions</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncXeroContactsMutation.mutate()}
+                      disabled={syncXeroContactsMutation.isPending || syncXeroInvoicesMutation.isPending}
+                      data-testid="button-sync-xero-contacts"
+                    >
+                      {syncXeroContactsMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Users className="w-4 h-4 mr-2" />
+                      )}
+                      Sync Contacts
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncXeroInvoicesMutation.mutate()}
+                      disabled={syncXeroInvoicesMutation.isPending || syncXeroContactsMutation.isPending}
+                      data-testid="button-sync-xero-invoices"
+                    >
+                      {syncXeroInvoicesMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <FileText className="w-4 h-4 mr-2" />
+                      )}
+                      Push Invoices
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Contacts are imported from Xero. Sent invoices are pushed to Xero.
+                  </p>
                 </div>
+
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => disconnectXeroMutation.mutate()}
+                  disabled={disconnectXeroMutation.isPending}
+                  className="w-full"
+                  data-testid="button-disconnect-xero"
+                >
+                  {disconnectXeroMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Link2Off className="w-4 h-4 mr-2" />
+                  )}
+                  Disconnect Xero
+                </Button>
               </>
             ) : xeroStatus?.configured === false ? (
               <XeroSetupGuide

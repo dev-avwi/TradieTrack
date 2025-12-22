@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload } from "lucide-react";
+import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -120,6 +121,30 @@ export default function InvoiceDetailView({
       toast({
         title: "Error",
         description: error.message || "Failed to update online payment setting",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const { data: xeroStatus } = useQuery<{ configured: boolean; connected: boolean }>({
+    queryKey: ['/api/integrations/xero/status'],
+  });
+
+  const pushToXeroMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', `/api/integrations/xero/push-invoice/${invoiceId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', invoiceId] });
+      toast({
+        title: "Pushed to Xero",
+        description: "Invoice has been synced to Xero successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Push to Xero Failed",
+        description: error.message || "Failed to push invoice to Xero",
         variant: "destructive",
       });
     }
@@ -379,6 +404,22 @@ export default function InvoiceDetailView({
               <Button onClick={() => onMarkPaid(invoice.id)} className="w-full sm:w-auto" data-testid={`button-mark-paid-${invoice.id}`}>
                 <CreditCard className="h-4 w-4 mr-2" />
                 Mark Paid
+              </Button>
+            )}
+            {xeroStatus?.connected && invoice.status === 'sent' && !invoice.xeroInvoiceId && (
+              <Button 
+                variant="outline" 
+                onClick={() => pushToXeroMutation.mutate()}
+                disabled={pushToXeroMutation.isPending}
+                className="w-full sm:w-auto"
+                data-testid="button-push-to-xero"
+              >
+                {pushToXeroMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <SiXero className="h-4 w-4 mr-2" />
+                )}
+                Push to Xero
               </Button>
             )}
             <Button variant="outline" onClick={handlePrint} className="w-full sm:w-auto" data-testid="button-print">

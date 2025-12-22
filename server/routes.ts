@@ -3665,6 +3665,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/integrations/xero/push-invoice/:invoiceId", requireAuth, async (req: any, res) => {
+    try {
+      const { invoiceId } = req.params;
+      const result = await xeroService.syncSingleInvoiceToXero(req.userId, invoiceId);
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          xeroInvoiceId: result.xeroInvoiceId,
+          message: result.xeroInvoiceId ? "Invoice pushed to Xero successfully" : "No Xero connection found"
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          error: result.error || "Failed to push invoice to Xero" 
+        });
+      }
+    } catch (error: any) {
+      console.error("Error pushing invoice to Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to push invoice to Xero" });
+    }
+  });
+
   // MYOB Integration Routes
   app.post("/api/integrations/myob/connect", requireAuth, async (req: any, res) => {
     try {
