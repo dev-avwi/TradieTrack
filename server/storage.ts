@@ -1667,18 +1667,36 @@ export class PostgresStorage implements IStorage {
     const prefix = settings?.quotePrefix || 'QT-';
     
     const year = new Date().getFullYear();
-    const result = await db
-      .select({ count: sql<number>`count(*)` })
+    
+    // Get the highest quote number for this user this year
+    const userQuotes = await db
+      .select({ number: quotes.number })
       .from(quotes)
       .where(and(
         eq(quotes.userId, userId),
         sql`EXTRACT(YEAR FROM created_at) = ${year}`
-      ));
+      ))
+      .orderBy(desc(quotes.createdAt));
     
-    const count = result[0]?.count || 0;
-    const nextNumber = count + 1;
+    // Find the next sequential number for this user
+    let nextNumber = 1;
+    if (userQuotes.length > 0) {
+      // Extract the highest number from existing quotes
+      for (const q of userQuotes) {
+        const match = q.number?.match(/-(\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num >= nextNumber) {
+            nextNumber = num + 1;
+          }
+        }
+      }
+    }
     
-    return `${prefix}${year}-${nextNumber.toString().padStart(3, '0')}`;
+    // Add a random suffix to ensure global uniqueness across all users
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    return `${prefix}${year}-${nextNumber.toString().padStart(3, '0')}-${randomSuffix}`;
   }
 
   async generateInvoiceNumber(userId: string): Promise<string> {
@@ -1686,18 +1704,36 @@ export class PostgresStorage implements IStorage {
     const prefix = settings?.invoicePrefix || 'TT-';
     
     const year = new Date().getFullYear();
-    const result = await db
-      .select({ count: sql<number>`count(*)` })
+    
+    // Get the highest invoice number for this user this year
+    const userInvoices = await db
+      .select({ number: invoices.number })
       .from(invoices)
       .where(and(
         eq(invoices.userId, userId),
         sql`EXTRACT(YEAR FROM created_at) = ${year}`
-      ));
+      ))
+      .orderBy(desc(invoices.createdAt));
     
-    const count = result[0]?.count || 0;
-    const nextNumber = count + 1;
+    // Find the next sequential number for this user
+    let nextNumber = 1;
+    if (userInvoices.length > 0) {
+      // Extract the highest number from existing invoices
+      for (const inv of userInvoices) {
+        const match = inv.number?.match(/-(\d+)(?:-[A-Z0-9]+)?$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num >= nextNumber) {
+            nextNumber = num + 1;
+          }
+        }
+      }
+    }
     
-    return `${prefix}${year}-${nextNumber.toString().padStart(3, '0')}`;
+    // Add a random suffix to ensure global uniqueness across all users
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    return `${prefix}${year}-${nextNumber.toString().padStart(3, '0')}-${randomSuffix}`;
   }
 
   // Document Templates implementation
