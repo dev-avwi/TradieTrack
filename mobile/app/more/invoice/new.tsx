@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore, useClientsStore, useInvoicesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors, getVisibleButtonColors } from '../../../src/lib/theme';
 import api from '../../../src/lib/api';
-import { offlineStorage, useOfflineStore } from '../../../src/lib/offline-storage';
+import offlineStorage, { useOfflineStore } from '../../../src/lib/offline-storage';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { getBottomNavHeight } from '../../../src/components/BottomNav';
 
