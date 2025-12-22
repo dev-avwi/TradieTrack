@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -17,6 +17,8 @@ import {
   Switch,
   KeyboardAvoidingView,
   Dimensions,
+  Animated,
+  Easing,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
@@ -1466,6 +1468,23 @@ export default function JobDetailScreen() {
   
   const [jobExpenses, setJobExpenses] = useState<JobExpense[]>([]);
   const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
+  const [availableForms, setAvailableForms] = useState<any[]>([]);
+  const [formSubmissions, setFormSubmissions] = useState<any[]>([]);
+
+  const isSafetyForm = (form: any) => {
+    const name = (form.name || '').toLowerCase();
+    return name.includes('swms') || name.includes('jsa') || name.includes('safety') || name.includes('compliance');
+  };
+
+  const pendingSafetyForms = useMemo(() => {
+    return availableForms.filter(f => {
+      if (!isSafetyForm(f)) return false;
+      return !formSubmissions.some(s => s.formId === f.id && s.status === 'submitted');
+    });
+  }, [availableForms, formSubmissions]);
+
+  // Forms data is loaded by JobForms component and passed via onFormsChange/onSubmissionsChange callbacks
+  // This eliminates duplicate API calls
   
   const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes'>('overview');
   
@@ -1503,6 +1522,34 @@ export default function JobDetailScreen() {
 
   const isTimerForThisJob = activeTimer?.jobId === id;
 
+  // Pulse animation for active timer
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  
+  useEffect(() => {
+    if (isTimerForThisJob) {
+      const pulseAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.02,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulseAnimation.start();
+      return () => pulseAnimation.stop();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [isTimerForThisJob]);
+
   useEffect(() => {
     loadJob();
     fetchActiveTimer();
@@ -1513,6 +1560,7 @@ export default function JobDetailScreen() {
     loadTimeEntries();
     loadActivityLog();
     loadJobExpenses();
+    // Forms data is loaded by JobForms component via callbacks
   }, [id]);
 
   useEffect(() => {
@@ -2101,7 +2149,8 @@ export default function JobDetailScreen() {
       loadRelatedDocuments(),
       loadTimeEntries(),
       loadActivityLog(),
-      loadJobExpenses()
+      loadJobExpenses(),
+      // Forms data is refreshed by JobForms component
     ]);
     setRefreshing(false);
   };
@@ -2362,6 +2411,28 @@ export default function JobDetailScreen() {
     }
 
     // For other transitions (scheduled -> in_progress), show confirmation
+    if (action.next === 'in_progress' && pendingSafetyForms.length > 0) {
+      Alert.alert(
+        'Safety Check',
+        `There are ${pendingSafetyForms.length} safety forms (SWMS/JSA) pending. It is recommended to complete these before starting work. Do you want to continue?`,
+        [
+          { text: 'Go to Forms', onPress: () => setActiveTab('documents') },
+          { 
+            text: 'Start Anyway', 
+            onPress: async () => {
+              const success = await updateJobStatus(job.id, action.next as any);
+              if (success) {
+                setJob({ ...job, status: action.next as any });
+              }
+            },
+            style: 'destructive'
+          },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+      return;
+    }
+
     Alert.alert(
       action.label,
       `Are you sure you want to ${action.label.toLowerCase()}?`,
@@ -2785,6 +2856,43 @@ export default function JobDetailScreen() {
       {/* Job Progress Bar - Visual workflow indicator */}
       <JobProgressBar status={job.status} />
 
+      {/* Safety & Compliance Section - Prominent before work starts */}
+      {(job.status === 'scheduled' || job.status === 'in_progress') && availableForms.some(isSafetyForm) && (
+        <View style={[
+          styles.card, 
+          pendingSafetyForms.length > 0 && { borderColor: colors.warning, borderWidth: 2, backgroundColor: `${colors.warning}05` }
+        ]}>
+          <View style={[styles.cardIconContainer, { backgroundColor: pendingSafetyForms.length > 0 ? `${colors.warning}15` : `${colors.success}15` }]}>
+            <Feather 
+              name={pendingSafetyForms.length > 0 ? "alert-triangle" : "shield-check"} 
+              size={iconSizes.xl} 
+              color={pendingSafetyForms.length > 0 ? colors.warning : colors.success} 
+            />
+          </View>
+          <View style={styles.cardContent}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              <Text style={styles.cardLabel}>Safety & Compliance</Text>
+              {pendingSafetyForms.length > 0 && (
+                <View style={{ backgroundColor: colors.warning, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>REQUIRED</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.cardValue, pendingSafetyForms.length > 0 && { color: colors.warning, fontWeight: '700' }]}>
+              {pendingSafetyForms.length > 0 
+                ? `${pendingSafetyForms.length} safety form${pendingSafetyForms.length > 1 ? 's' : ''} pending`
+                : 'All safety forms completed'}
+            </Text>
+          </View>
+          <TouchableOpacity 
+            onPress={() => setActiveTab('documents')}
+            style={{ padding: spacing.sm }}
+          >
+            <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Next Action Card - CTA when job is done without invoice */}
       <NextActionCard
         jobStatus={job.status}
@@ -2903,9 +3011,15 @@ export default function JobDetailScreen() {
         </View>
       )}
 
-      {/* Time Tracking Card */}
+      {/* Time Tracking Card with Pulse Animation */}
       {(job.status === 'scheduled' || job.status === 'in_progress') && (
-        <View style={[styles.timerCard, isTimerForThisJob && styles.timerActiveCard]}>
+        <Animated.View 
+          style={[
+            styles.timerCard, 
+            isTimerForThisJob && styles.timerActiveCard,
+            { transform: [{ scale: isTimerForThisJob ? pulseAnim : 1 }] }
+          ]}
+        >
           <View style={[styles.timerIconContainer, isTimerForThisJob && styles.timerActiveIcon]}>
             <Feather 
               name="clock" 
@@ -2943,7 +3057,7 @@ export default function JobDetailScreen() {
               <Feather name="play" size={iconSizes.md} color={colors.primaryForeground} />
             )}
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       )}
 
       {/* Linked Documents Card */}
@@ -3248,7 +3362,12 @@ export default function JobDetailScreen() {
 
       {/* Job Checklist Section - available for all job statuses */}
       <View style={styles.photosCard}>
-        <JobForms jobId={job.id} readOnly={job.status === 'invoiced'} />
+        <JobForms 
+          jobId={job.id} 
+          readOnly={job.status === 'invoiced'} 
+          onSubmissionsChange={setFormSubmissions}
+          onFormsChange={setAvailableForms}
+        />
       </View>
 
       {/* Client Signature Section */}

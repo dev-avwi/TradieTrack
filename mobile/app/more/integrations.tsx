@@ -69,6 +69,13 @@ interface IntegrationHealth {
   };
 }
 
+interface GoogleCalendarStatus {
+  connected: boolean;
+  calendarEmail?: string;
+  calendarName?: string;
+  lastSyncAt?: string;
+}
+
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
@@ -351,20 +358,24 @@ export default function IntegrationsScreen() {
   const { businessSettings, fetchBusinessSettings } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncingContacts, setIsSyncingContacts] = useState(false);
+  const [isPushingInvoices, setIsPushingInvoices] = useState(false);
   const [isSendingTestSms, setIsSendingTestSms] = useState(false);
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
   const [integrationHealth, setIntegrationHealth] = useState<IntegrationHealth | null>(null);
   const [xeroStatus, setXeroStatus] = useState<XeroStatus | null>(null);
+  const [googleCalendarStatus, setGoogleCalendarStatus] = useState<GoogleCalendarStatus | null>(null);
+  const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
   const [showSmsPreview, setShowSmsPreview] = useState(false);
 
   const fetchIntegrationStatus = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [stripeResponse, healthResponse, xeroResponse] = await Promise.all([
+      const [stripeResponse, healthResponse, xeroResponse, calendarResponse] = await Promise.all([
         api.get<StripeConnectStatus>('/api/stripe-connect/status'),
         api.get<IntegrationHealth>('/api/integrations/health'),
-        api.get<XeroStatus>('/api/integrations/xero/status')
+        api.get<XeroStatus>('/api/integrations/xero/status'),
+        api.get<GoogleCalendarStatus>('/api/integrations/google-calendar/status')
       ]);
       
       if (stripeResponse.data) {
@@ -375,6 +386,9 @@ export default function IntegrationsScreen() {
       }
       if (xeroResponse.data) {
         setXeroStatus(xeroResponse.data);
+      }
+      if (calendarResponse.data) {
+        setGoogleCalendarStatus(calendarResponse.data);
       }
       
       await fetchBusinessSettings();
@@ -489,16 +503,59 @@ export default function IntegrationsScreen() {
     );
   };
 
-  const handleSyncXero = async () => {
-    setIsSyncing(true);
+  const handleSyncXeroContacts = async () => {
+    setIsSyncingContacts(true);
     try {
-      await api.post('/api/integrations/xero/sync');
-      Alert.alert('Success', 'Data has been synced with Xero');
+      const response = await api.post<{ 
+        success: boolean;
+        imported?: number;
+        updated?: number;
+        skipped?: number;
+        message?: string;
+      }>('/api/integrations/xero/sync-contacts');
+      
+      if (response.data?.success) {
+        const { imported = 0, updated = 0, skipped = 0 } = response.data;
+        Alert.alert(
+          'Contacts Synced',
+          `Successfully synced contacts from Xero.\n\n${imported} imported\n${updated} updated\n${skipped} skipped (duplicates)`
+        );
+      } else {
+        Alert.alert('Sync Complete', response.data?.message || 'Contacts synced from Xero');
+      }
       fetchIntegrationStatus();
     } catch (error: any) {
-      Alert.alert('Sync Failed', error.message || 'Failed to sync with Xero');
+      Alert.alert('Sync Failed', error.response?.data?.error || error.message || 'Failed to sync contacts from Xero');
     } finally {
-      setIsSyncing(false);
+      setIsSyncingContacts(false);
+    }
+  };
+
+  const handlePushXeroInvoices = async () => {
+    setIsPushingInvoices(true);
+    try {
+      const response = await api.post<{
+        success: boolean;
+        pushed?: number;
+        skipped?: number;
+        failed?: number;
+        message?: string;
+      }>('/api/integrations/xero/push-invoices');
+      
+      if (response.data?.success) {
+        const { pushed = 0, skipped = 0, failed = 0 } = response.data;
+        Alert.alert(
+          'Invoices Pushed',
+          `Successfully pushed invoices to Xero.\n\n${pushed} pushed\n${skipped} skipped (already synced)\n${failed} failed`
+        );
+      } else {
+        Alert.alert('Push Complete', response.data?.message || 'Invoices pushed to Xero');
+      }
+      fetchIntegrationStatus();
+    } catch (error: any) {
+      Alert.alert('Push Failed', error.response?.data?.error || error.message || 'Failed to push invoices to Xero');
+    } finally {
+      setIsPushingInvoices(false);
     }
   };
 
@@ -524,6 +581,62 @@ export default function IntegrationsScreen() {
     } finally {
       setIsSendingTestSms(false);
     }
+  };
+
+  const handleConnectGoogleCalendar = async () => {
+    setIsConnectingCalendar(true);
+    try {
+      const response = await api.post<{ authUrl: string }>('/api/integrations/google-calendar/connect');
+      if (response.data?.authUrl) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          response.data.authUrl,
+          'tradietrack://google-calendar-callback'
+        );
+        
+        if (result.type === 'success') {
+          // OAuth flow completed - check server-side status
+          const statusCheck = await api.get<GoogleCalendarStatus>('/api/integrations/google-calendar/status');
+          if (statusCheck.data?.connected) {
+            setGoogleCalendarStatus(statusCheck.data);
+            Alert.alert('Success', 'Google Calendar connected successfully!');
+          } else {
+            // OAuth redirect happened but connection not confirmed
+            Alert.alert('Connection Incomplete', 'Please try connecting again.');
+          }
+        } else if (result.type === 'dismiss' || result.type === 'cancel') {
+          // User cancelled OAuth flow - no action needed
+        }
+      } else {
+        Alert.alert('Error', 'Could not initiate Google Calendar connection');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to connect Google Calendar');
+    } finally {
+      setIsConnectingCalendar(false);
+    }
+  };
+
+  const handleDisconnectGoogleCalendar = async () => {
+    Alert.alert(
+      'Disconnect Google Calendar',
+      'Are you sure you want to disconnect your Google Calendar? Job sync will stop working.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Disconnect',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.post('/api/integrations/google-calendar/disconnect');
+              Alert.alert('Success', 'Google Calendar has been disconnected');
+              fetchIntegrationStatus();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to disconnect Google Calendar');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const isStripeFullyConnected = stripeStatus?.connected && stripeStatus?.chargesEnabled;
@@ -825,30 +938,47 @@ export default function IntegrationsScreen() {
                       <Text style={styles.detailSubtext}>
                         Invoices are automatically synced to Xero when sent. Contacts can be imported from Xero.
                       </Text>
-                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                      <View style={{ gap: 8, marginTop: 8 }}>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TouchableOpacity 
+                            style={[styles.actionButton, styles.actionButtonPrimary, { flex: 1 }]}
+                            onPress={handleSyncXeroContacts}
+                            disabled={isSyncingContacts || isPushingInvoices}
+                            data-testid="button-sync-xero-contacts"
+                          >
+                            {isSyncingContacts ? (
+                              <ActivityIndicator size="small" color={colors.primaryForeground} />
+                            ) : (
+                              <Feather name="download" size={16} color={colors.primaryForeground} />
+                            )}
+                            <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                              {isSyncingContacts ? 'Syncing...' : 'Sync Contacts'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={[styles.actionButton, styles.actionButtonPrimary, { flex: 1 }]}
+                            onPress={handlePushXeroInvoices}
+                            disabled={isSyncingContacts || isPushingInvoices}
+                            data-testid="button-push-xero-invoices"
+                          >
+                            {isPushingInvoices ? (
+                              <ActivityIndicator size="small" color={colors.primaryForeground} />
+                            ) : (
+                              <Feather name="upload" size={16} color={colors.primaryForeground} />
+                            )}
+                            <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                              {isPushingInvoices ? 'Pushing...' : 'Push Invoices'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
                         <TouchableOpacity 
-                          style={[styles.actionButton, styles.actionButtonPrimary, { flex: 1 }]}
-                          onPress={handleSyncXero}
-                          disabled={isSyncing}
-                          data-testid="button-sync-xero"
-                        >
-                          {isSyncing ? (
-                            <ActivityIndicator size="small" color={colors.primaryForeground} />
-                          ) : (
-                            <Feather name="refresh-cw" size={16} color={colors.primaryForeground} />
-                          )}
-                          <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
-                            {isSyncing ? 'Syncing...' : 'Sync Now'}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.actionButtonSecondary, { flex: 1 }]}
+                          style={[styles.actionButton, styles.actionButtonSecondary]}
                           onPress={handleDisconnectXero}
                           data-testid="button-disconnect-xero"
                         >
                           <Feather name="link-2" size={16} color={colors.destructive} />
                           <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
-                            Disconnect
+                            Disconnect Xero
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -965,27 +1095,92 @@ export default function IntegrationsScreen() {
                 </View>
               </View>
 
-              <Text style={styles.sectionTitle}>Coming Soon</Text>
+              <Text style={styles.sectionTitle}>Calendar</Text>
 
-              <View style={[styles.integrationCard, { opacity: 0.7 }]} data-testid="card-calendar-integration">
+              <View style={styles.integrationCard} data-testid="card-calendar-integration">
                 <View style={styles.integrationHeader}>
                   <View style={[styles.integrationIconContainer, { backgroundColor: '#4285f420' }]}>
                     <Feather name="calendar" size={22} color="#4285f4" />
                   </View>
                   <View style={styles.integrationInfo}>
                     <Text style={styles.integrationTitle}>Google Calendar</Text>
-                    <Text style={styles.integrationSubtitle}>Sync job schedules</Text>
+                    <Text style={styles.integrationSubtitle}>
+                      {googleCalendarStatus?.connected ? googleCalendarStatus.calendarEmail : 'Sync job schedules'}
+                    </Text>
                   </View>
-                  <View style={styles.integrationBadgeDisabled}>
-                    <Text style={[styles.integrationBadgeText, { color: colors.mutedForeground }]}>
-                      Coming Soon
+                  <View style={[
+                    styles.integrationBadge,
+                    googleCalendarStatus?.connected ? styles.integrationBadgeSuccess : styles.integrationBadgeDisabled
+                  ]}>
+                    <Text style={[
+                      styles.integrationBadgeText,
+                      { color: googleCalendarStatus?.connected ? colors.success : colors.mutedForeground }
+                    ]}>
+                      {googleCalendarStatus?.connected ? 'Connected' : 'Not Connected'}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.integrationDetails}>
-                  <Text style={styles.detailSubtext}>
-                    Automatically sync your job schedules with Google Calendar. See all appointments in one place.
-                  </Text>
+                  {googleCalendarStatus?.connected ? (
+                    <>
+                      <View style={styles.detailRow}>
+                        <View style={styles.detailIconContainer}>
+                          <Feather name="check-circle" size={16} color={colors.success} />
+                        </View>
+                        <Text style={styles.detailText}>
+                          Connected to {googleCalendarStatus.calendarEmail || 'Google Calendar'}
+                        </Text>
+                      </View>
+                      <Text style={styles.detailSubtext}>
+                        Jobs with scheduled dates will automatically sync to your Google Calendar.
+                      </Text>
+                      <TouchableOpacity 
+                        style={[styles.actionButton, styles.actionButtonSecondary]}
+                        onPress={handleDisconnectGoogleCalendar}
+                        data-testid="button-disconnect-google-calendar"
+                      >
+                        <Feather name="link-2" size={16} color={colors.destructive} />
+                        <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
+                          Disconnect
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.detailSubtext}>
+                        Automatically sync your job schedules with Google Calendar. See all appointments in one place.
+                      </Text>
+                      <View style={styles.featureList}>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>Auto-sync scheduled jobs</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>View all appointments in calendar</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>Get reminders on your phone</Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity 
+                        style={[styles.actionButton, styles.actionButtonPrimary]}
+                        onPress={handleConnectGoogleCalendar}
+                        disabled={isConnectingCalendar}
+                        data-testid="button-connect-google-calendar"
+                      >
+                        {isConnectingCalendar ? (
+                          <ActivityIndicator size="small" color={colors.primaryForeground} />
+                        ) : (
+                          <Feather name="link" size={16} color={colors.primaryForeground} />
+                        )}
+                        <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                          {isConnectingCalendar ? 'Connecting...' : 'Connect Google Calendar'}
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </View>
               </View>
 

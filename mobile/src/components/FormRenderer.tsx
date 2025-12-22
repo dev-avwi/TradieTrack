@@ -52,9 +52,11 @@ interface FormSubmission {
 interface JobFormsProps {
   jobId: string;
   readOnly?: boolean;
+  onSubmissionsChange?: (submissions: FormSubmission[]) => void;
+  onFormsChange?: (forms: CustomForm[]) => void;
 }
 
-export function JobForms({ jobId, readOnly = false }: JobFormsProps) {
+export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onFormsChange }: JobFormsProps) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   
@@ -80,10 +82,13 @@ export function JobForms({ jobId, readOnly = false }: JobFormsProps) {
       ]);
       
       if (formsRes.data) {
-        setForms(formsRes.data.filter(f => f.isActive));
+        const activeForms = formsRes.data.filter(f => f.isActive);
+        setForms(activeForms);
+        onFormsChange?.(activeForms);
       }
       if (submissionsRes.data) {
         setSubmissions(submissionsRes.data);
+        onSubmissionsChange?.(submissionsRes.data);
       }
     } catch (error) {
       console.error('Error loading forms:', error);
