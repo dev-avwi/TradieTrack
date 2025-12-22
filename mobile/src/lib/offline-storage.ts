@@ -978,6 +978,88 @@ class OfflineStorageService {
     }
   }
 
+  /**
+   * Save a quote offline for later sync
+   * Includes line items which will be sent along with the quote
+   */
+  async saveQuoteOffline(quote: {
+    clientId: string;
+    clientName?: string;
+    jobId?: string;
+    title?: string;
+    description?: string;
+    notes?: string;
+    validUntil?: string;
+    subtotal: number;
+    gstAmount: number;
+    total: number;
+    depositRequired?: boolean;
+    depositPercent?: number;
+    depositAmount?: number;
+    lineItems: Array<{
+      description: string;
+      quantity: number;
+      unitPrice: number;
+    }>;
+  }): Promise<CachedQuote> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    const localId = `local_${now}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = localId;
+    
+    // Insert quote record
+    await this.db.runAsync(
+      `INSERT INTO quotes 
+       (id, quote_number, client_id, client_name, job_id, status, subtotal, gst_amount, total, valid_until, notes, created_at, cached_at, pending_sync, sync_action, local_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'create', ?)`,
+      [id, null, quote.clientId, quote.clientName, quote.jobId, 'draft', 
+       quote.subtotal, quote.gstAmount, quote.total, quote.validUntil, quote.notes,
+       new Date().toISOString(), now, localId]
+    );
+    
+    // Cache line items locally
+    const lineItemsWithIds = quote.lineItems.map((item, index) => ({
+      id: `${localId}_item_${index}`,
+      quoteId: id,
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      total: item.quantity * item.unitPrice,
+    }));
+    
+    await this.cacheQuoteLineItems(id, lineItemsWithIds);
+    
+    // Add to sync queue with all data including line items
+    await this.addToSyncQueue('quote', 'create', { 
+      ...quote, 
+      id, 
+      localId,
+      lineItems: quote.lineItems 
+    });
+    await this.updatePendingSyncCount();
+    
+    console.log(`[OfflineStorage] Saved quote offline: ${id}`);
+    return { 
+      id, 
+      quoteNumber: '', 
+      clientId: quote.clientId,
+      clientName: quote.clientName,
+      jobId: quote.jobId,
+      status: 'draft',
+      subtotal: quote.subtotal,
+      gstAmount: quote.gstAmount,
+      total: quote.total,
+      validUntil: quote.validUntil,
+      notes: quote.notes,
+      createdAt: new Date().toISOString(),
+      cachedAt: now, 
+      pendingSync: true, 
+      syncAction: 'create', 
+      localId 
+    };
+  }
+
   // ============ QUOTE LINE ITEMS ============
 
   async cacheQuoteLineItems(quoteId: string, lineItems: any[]): Promise<void> {
@@ -1127,6 +1209,92 @@ class OfflineStorageService {
       await this.addToSyncQueue('invoice', 'update', { id: invoiceId, ...updates });
       await this.updatePendingSyncCount();
     }
+  }
+
+  /**
+   * Save an invoice offline for later sync
+   * Includes line items which will be sent along with the invoice
+   */
+  async saveInvoiceOffline(invoice: {
+    clientId: string;
+    clientName?: string;
+    jobId?: string;
+    quoteId?: string;
+    title?: string;
+    description?: string;
+    notes?: string;
+    dueDate?: string;
+    subtotal: number;
+    gstAmount: number;
+    total: number;
+    isRecurring?: boolean;
+    recurrencePattern?: string;
+    recurrenceEndDate?: string;
+    lineItems: Array<{
+      description: string;
+      quantity: number;
+      unitPrice: number;
+    }>;
+  }): Promise<CachedInvoice> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const now = Date.now();
+    const localId = `local_${now}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = localId;
+    
+    // Insert invoice record
+    await this.db.runAsync(
+      `INSERT INTO invoices 
+       (id, invoice_number, client_id, client_name, job_id, quote_id, status, subtotal, gst_amount, total, amount_paid, due_date, paid_at, notes, created_at, cached_at, pending_sync, sync_action, local_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'create', ?)`,
+      [id, null, invoice.clientId, invoice.clientName, invoice.jobId, invoice.quoteId, 'draft', 
+       invoice.subtotal, invoice.gstAmount, invoice.total, 0, invoice.dueDate, null, invoice.notes,
+       new Date().toISOString(), now, localId]
+    );
+    
+    // Cache line items locally
+    const lineItemsWithIds = invoice.lineItems.map((item, index) => ({
+      id: `${localId}_item_${index}`,
+      invoiceId: id,
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      total: item.quantity * item.unitPrice,
+    }));
+    
+    await this.cacheInvoiceLineItems(id, lineItemsWithIds);
+    
+    // Add to sync queue with all data including line items
+    await this.addToSyncQueue('invoice', 'create', { 
+      ...invoice, 
+      id, 
+      localId,
+      lineItems: invoice.lineItems 
+    });
+    await this.updatePendingSyncCount();
+    
+    console.log(`[OfflineStorage] Saved invoice offline: ${id}`);
+    return { 
+      id, 
+      invoiceNumber: '', 
+      clientId: invoice.clientId,
+      clientName: invoice.clientName,
+      jobId: invoice.jobId,
+      quoteId: invoice.quoteId,
+      status: 'draft',
+      subtotal: invoice.subtotal,
+      gstAmount: invoice.gstAmount,
+      total: invoice.total,
+      amountPaid: 0,
+      dueDate: invoice.dueDate,
+      paidAt: undefined,
+      notes: invoice.notes,
+      createdAt: new Date().toISOString(),
+      cachedAt: now, 
+      pendingSync: true, 
+      syncAction: 'create', 
+      localId 
+    };
   }
 
   // ============ INVOICE LINE ITEMS ============
