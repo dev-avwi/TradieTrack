@@ -25,6 +25,14 @@ Key architectural decisions and features include:
 -   **Team Management Hub**: Comprehensive interface for owners/managers to manage team members, including location sharing toggles, job assignment, and permissions editing.
 -   **Workflow-Integrated Smart Actions**: Contextual automation suggestions with user approval.
 -   **Mobile App (React Native/Expo)**: Full API integration, Zustand for state management, SQLite-based offline mode with background sync, and permission-aware navigation. Supports native email integration and AI Photo Analysis with streaming. Team Management and Integrations screens mirror web functionality.
+-   **Comprehensive Offline Mode**: Full offline-first support for all major workflows:
+    - **Job Management**: Create, edit, status updates (pending→scheduled→in_progress→done→invoiced), notes editing, geofence settings (enabled, radius, auto clock in/out)
+    - **Time Tracking**: Start/stop timer entries offline with local timestamps
+    - **Dashboard Actions**: Quick status changes, job assignment/unassignment, "On My Way" notifications (queued as special action type)
+    - **Invoice Management**: Create, edit, status updates
+    - **Quote Management**: Create, edit with line items
+    - **Client Management**: Create, edit with conflict detection
+    - **Smart Sync**: Field-level change tracking to prevent null overwrites, exponential backoff retry (30s→2m→5m→15m→30m), max 10 retries, _previousValues for conflict detection, server-wins with local backup
 -   **Media Sync**: Photos, videos, voice notes, and text notes sync between mobile and web apps.
 -   **Photo Markup/Annotation**: WebView-based canvas editor with various tools integrated into the job photo viewer.
 -   **Video Capture**: Record or select videos up to 60 seconds.
