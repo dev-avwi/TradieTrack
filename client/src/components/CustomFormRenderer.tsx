@@ -37,6 +37,9 @@ import {
   AlertCircle,
   FileText,
   CalendarDays,
+  Shield,
+  ShieldCheck,
+  ClipboardList,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { CustomForm, FormSubmission, Job } from "@shared/schema";
@@ -544,6 +547,23 @@ export function FormSubmissionList({ jobId, onFillForm }: FormSubmissionListProp
 
   const getFormById = (formId: string) => forms?.find(f => f.id === formId);
 
+  const isSafetyForm = (form: CustomForm | undefined) => 
+    form?.formType === 'safety' || form?.formType === 'compliance' || form?.formType === 'inspection';
+
+  const getFormIcon = (form: CustomForm | undefined) => {
+    if (isSafetyForm(form)) {
+      return <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />;
+    }
+    return <FileText className="h-4 w-4 text-primary" />;
+  };
+
+  const getFormIconBg = (form: CustomForm | undefined) => {
+    if (isSafetyForm(form)) {
+      return "bg-green-100 dark:bg-green-900";
+    }
+    return "bg-primary/10";
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'submitted':
@@ -567,12 +587,16 @@ export function FormSubmissionList({ jobId, onFillForm }: FormSubmissionListProp
     );
   }
 
-  const activeForms = forms?.filter(f => f.isActive) || [];
+  const activeForms = forms?.filter(f => f.isActive && !isSafetyForm(f)) || [];
+  const nonSafetySubmissions = submissions?.filter(s => !isSafetyForm(getFormById(s.formId))) || [];
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
-        <h3 className="font-medium">Forms</h3>
+        <h3 className="font-medium flex items-center gap-2">
+          <ClipboardList className="h-4 w-4" />
+          General Forms
+        </h3>
         {activeForms.length > 0 && (
           <Button size="sm" onClick={() => setShowFormPicker(true)} data-testid="button-fill-form">
             Fill Form
@@ -580,15 +604,15 @@ export function FormSubmissionList({ jobId, onFillForm }: FormSubmissionListProp
         )}
       </div>
 
-      {(!submissions || submissions.length === 0) && (!forms || forms.length === 0) ? (
-        <div className="text-center py-8 text-muted-foreground">
-          <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No forms available</p>
+      {nonSafetySubmissions.length === 0 && activeForms.length === 0 ? (
+        <div className="text-center py-6 text-muted-foreground">
+          <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm">No general forms available</p>
           <p className="text-xs">Create forms in Settings to use them on jobs</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {submissions?.map(submission => {
+          {nonSafetySubmissions.map(submission => {
             const form = getFormById(submission.formId);
             return (
               <Card 
@@ -598,8 +622,8 @@ export function FormSubmissionList({ jobId, onFillForm }: FormSubmissionListProp
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <FileText className="h-4 w-4 text-primary" />
+                    <div className={`h-8 w-8 rounded-lg ${getFormIconBg(form)} flex items-center justify-center shrink-0`}>
+                      {getFormIcon(form)}
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium truncate">{form?.name || 'Unknown Form'}</p>
@@ -614,7 +638,7 @@ export function FormSubmissionList({ jobId, onFillForm }: FormSubmissionListProp
             );
           })}
 
-          {(!submissions || submissions.length === 0) && (
+          {nonSafetySubmissions.length === 0 && activeForms.length > 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">No forms filled yet</p>
           )}
         </div>

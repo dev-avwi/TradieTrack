@@ -17,7 +17,10 @@ import {
   Users,
   AlertCircle,
   ExternalLink,
-  Briefcase
+  Briefcase,
+  MapPin,
+  CheckCircle2,
+  Timer
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -45,48 +48,58 @@ interface ActiveTimer {
   elapsedSeconds: number;
 }
 
-// Timer Widget Component
+// Timer Widget Component - Enhanced with brand colors, animations, GPS status
 export function TimerWidget({ 
   jobId, 
   jobTitle, 
   onTimerStart, 
-  onTimerStop 
+  onTimerStop,
+  compact = false
 }: {
   jobId?: string;
   jobTitle?: string;
   onTimerStart?: () => void;
   onTimerStop?: () => void;
+  compact?: boolean;
 }) {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [locationStatus, setLocationStatus] = useState<'checking' | 'captured' | 'unavailable' | 'idle'>('idle');
   const { toast } = useToast();
 
   // Get active timer
   const { data: globalActiveTimer, isLoading } = useQuery({
     queryKey: ['/api/time-entries/active/current'],
-    refetchInterval: 1000, // Update every second
+    refetchInterval: 1000,
   });
 
-  // Get today's completed time entries for this job to show saved entries
+  // Get ALL time entries for this job (not just today's) to show total time
   const { data: allTimeEntries = [] } = useQuery<TimeEntry[]>({
     queryKey: ['/api/time-entries', jobId],
     enabled: !!jobId,
   });
 
-  // Filter to get today's entries for this job, sorted by startTime descending
+  // Filter to get today's entries for this job
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todaysJobEntries = jobId ? (allTimeEntries as TimeEntry[])
     .filter((entry: TimeEntry) => {
       if (entry.jobId !== jobId) return false;
       const entryDate = new Date(entry.startTime);
-      return entryDate >= todayStart && entry.endTime; // Only completed entries
+      return entryDate >= todayStart && entry.endTime;
     })
     .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
   : [];
 
-  // Latest completed entry for this job today (now properly sorted)
-  const latestCompletedEntry = todaysJobEntries[0];
-  
+  // Calculate TOTAL time for this job (all time, not just today)
+  const totalMinutesAllTime = jobId ? (allTimeEntries as TimeEntry[])
+    .filter((entry: TimeEntry) => entry.jobId === jobId && entry.endTime)
+    .reduce((total: number, entry: TimeEntry) => {
+      const start = new Date(entry.startTime).getTime();
+      const end = new Date(entry.endTime!).getTime();
+      return total + Math.floor((end - start) / 60000);
+    }, 0)
+  : 0;
+
   // Calculate total time today for this job
   const totalMinutesToday = todaysJobEntries.reduce((total: number, entry: TimeEntry) => {
     if (entry.endTime) {
@@ -97,11 +110,25 @@ export function TimerWidget({
     return total;
   }, 0);
 
-  // If no jobId provided (global view), show any active timer
-  // If jobId provided (job-specific view), only show timer if it belongs to this job
+  const latestCompletedEntry = todaysJobEntries[0];
+
   const activeTimer = jobId 
     ? (globalActiveTimer && (globalActiveTimer as any).jobId === jobId ? globalActiveTimer : null)
     : globalActiveTimer;
+
+  // Check location when timer starts
+  const captureLocation = () => {
+    setLocationStatus('checking');
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        () => setLocationStatus('captured'),
+        () => setLocationStatus('unavailable'),
+        { timeout: 5000, enableHighAccuracy: true }
+      );
+    } else {
+      setLocationStatus('unavailable');
+    }
+  };
 
   // Start timer mutation
   const startTimerMutation = useMutation({
@@ -112,6 +139,7 @@ export function TimerWidget({
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
+      captureLocation();
       onTimerStart?.();
       toast({
         title: "Timer Started",
@@ -136,6 +164,7 @@ export function TimerWidget({
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
+      setLocationStatus('idle');
       onTimerStop?.();
       toast({
         title: "Time Saved",
@@ -182,7 +211,13 @@ export function TimerWidget({
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate elapsed time
+  // If timer is active but location wasn't captured, try now
+  useEffect(() => {
+    if (activeTimer && locationStatus === 'idle') {
+      captureLocation();
+    }
+  }, [activeTimer]);
+
   const getElapsedTime = (startTime: string) => {
     const start = new Date(startTime);
     const now = currentTime;
@@ -196,7 +231,6 @@ export function TimerWidget({
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Format duration in minutes to hours:minutes
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -207,9 +241,7 @@ export function TimerWidget({
   };
 
   const handleStartTimer = () => {
-    // Prevent starting if any timer is already active
     if (globalActiveTimer) {
-      // If it's a different job, show which job is running
       if (jobId && (globalActiveTimer as any).jobId !== jobId) {
         toast({
           title: "Timer Already Running",
@@ -218,7 +250,6 @@ export function TimerWidget({
         });
         return;
       }
-      // If it's the same job or global view, still prevent duplicate starts
       if (!jobId || (globalActiveTimer as any).jobId === jobId) {
         toast({
           title: "Timer Already Running", 
@@ -232,8 +263,8 @@ export function TimerWidget({
     const description = jobTitle ? `Working on ${jobTitle}` : 'General work';
     startTimerMutation.mutate({
       description,
-      ...(jobId && { jobId }), // Only include jobId if it's not null/undefined
-      hourlyRate: '85.00', // Default rate as string for Drizzle decimal type
+      ...(jobId && { jobId }),
+      hourlyRate: '85.00',
     });
   };
 
@@ -249,111 +280,232 @@ export function TimerWidget({
     }
   };
 
+  // GPS Location status indicator
+  const LocationIndicator = () => {
+    if (locationStatus === 'idle') return null;
+    return (
+      <div className="flex items-center justify-center gap-1 text-xs mt-2" data-testid="location-status">
+        {locationStatus === 'checking' && (
+          <>
+            <MapPin className="h-3 w-3 text-muted-foreground animate-pulse" />
+            <span className="text-muted-foreground">Capturing location...</span>
+          </>
+        )}
+        {locationStatus === 'captured' && (
+          <>
+            <MapPin className="h-3 w-3 text-green-600 dark:text-green-400" />
+            <span className="text-green-600 dark:text-green-400">Location captured</span>
+          </>
+        )}
+        {locationStatus === 'unavailable' && (
+          <>
+            <MapPin className="h-3 w-3 text-muted-foreground" />
+            <span className="text-muted-foreground">Location unavailable</span>
+          </>
+        )}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-6" data-testid="timer-loading-state">
+      <div className="flex items-center justify-center p-4" data-testid="timer-loading-state">
         <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  // If there's an active timer for this job, show running state
+  // ACTIVE TIMER STATE - Enhanced with pulsing animation and brand colors
   if (activeTimer && typeof activeTimer === 'object' && 'startTime' in activeTimer) {
     return (
-      <div className="space-y-4" data-testid="timer-running-state">
-        <div className="text-center">
-          <div className="text-3xl font-mono font-bold text-primary mb-2" data-testid="text-elapsed-time">
-            {getElapsedTime(activeTimer.startTime as string)}
-          </div>
-          <p className="text-sm text-muted-foreground" data-testid="text-timer-description">
-            {(activeTimer as any).description || 'Working...'}
-          </p>
-        </div>
+      <div 
+        className="relative rounded-xl overflow-hidden" 
+        style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}
+        data-testid="timer-running-state"
+      >
+        {/* Pulsing border animation */}
+        <div 
+          className="absolute inset-0 rounded-xl animate-pulse"
+          style={{ 
+            border: '2px solid hsl(var(--trade) / 0.5)',
+            animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+          }}
+        />
         
-        <Button 
-          variant="destructive" 
-          className="w-full" 
-          onClick={handleStopTimer}
-          disabled={stopTimerMutation.isPending}
-          data-testid="button-stop-timer"
-        >
-          <Square className="h-4 w-4 mr-2" />
-          {stopTimerMutation.isPending ? 'Saving...' : 'Stop & Save Time'}
-        </Button>
+        <div className="relative p-4 space-y-3">
+          {/* Live timer display */}
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div 
+                className="w-3 h-3 rounded-full animate-pulse" 
+                style={{ backgroundColor: 'hsl(var(--trade))' }}
+              />
+              <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'hsl(var(--trade))' }}>
+                Timer Running
+              </span>
+            </div>
+            <div 
+              className="text-4xl font-mono font-bold tracking-wider" 
+              style={{ color: 'hsl(var(--trade))' }}
+              data-testid="text-elapsed-time"
+            >
+              {getElapsedTime(activeTimer.startTime as string)}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1" data-testid="text-timer-description">
+              {(activeTimer as any).description || 'Working...'}
+            </p>
+            <LocationIndicator />
+          </div>
+
+          {/* Total time on job */}
+          {totalMinutesAllTime > 0 && (
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground border-t border-border/50 pt-2">
+              <Clock className="h-3 w-3" />
+              <span>Total on job: {formatDuration(totalMinutesAllTime)}</span>
+            </div>
+          )}
+          
+          {/* Stop button - prominent */}
+          <Button 
+            variant="destructive" 
+            className="w-full h-12 text-base font-semibold" 
+            onClick={handleStopTimer}
+            disabled={stopTimerMutation.isPending}
+            data-testid="button-stop-timer"
+          >
+            <Square className="h-5 w-5 mr-2" />
+            {stopTimerMutation.isPending ? 'Saving...' : 'Clock Out'}
+          </Button>
+        </div>
       </div>
     );
   }
 
-  // If there are completed entries today, show the saved state
+  // SAVED TIME STATE - Show today's entries and allow adding more
   if (jobId && todaysJobEntries.length > 0) {
     return (
-      <div className="space-y-4" data-testid="timer-saved-state">
-        <div className="text-center bg-muted/50 rounded-lg p-4">
-          <div className="flex items-center justify-center gap-2 text-lg font-semibold text-foreground mb-1">
-            <Clock className="h-5 w-5 text-primary" />
-            <span data-testid="text-time-saved">{formatDuration(totalMinutesToday)}</span>
+      <div className="space-y-3" data-testid="timer-saved-state">
+        {/* Today's summary */}
+        <div 
+          className="rounded-xl p-4"
+          style={{ backgroundColor: 'hsl(var(--trade) / 0.08)' }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}
+              >
+                <Timer className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+              </div>
+              <div>
+                <div className="text-lg font-bold" data-testid="text-time-saved">
+                  {formatDuration(totalMinutesToday)}
+                </div>
+                <p className="text-xs text-muted-foreground">Today</p>
+              </div>
+            </div>
+            {totalMinutesAllTime !== totalMinutesToday && (
+              <div className="text-right">
+                <div className="text-sm font-medium text-muted-foreground">
+                  {formatDuration(totalMinutesAllTime)}
+                </div>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground">
-            Time recorded today
+
+          {/* Today's entries quick view */}
+          <div className="border-t border-border/50 pt-2 mt-2">
+            <p className="text-xs text-muted-foreground mb-1">Today's entries:</p>
+            <div className="space-y-1">
+              {todaysJobEntries.slice(0, 3).map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">
+                    {format(new Date(entry.startTime), 'h:mm a')} - {entry.endTime ? format(new Date(entry.endTime), 'h:mm a') : 'Now'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">
+                      {formatDuration(Math.floor((new Date(entry.endTime!).getTime() - new Date(entry.startTime).getTime()) / 60000))}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={() => handleDeleteEntry(entry.id)}
+                      disabled={deleteEntryMutation.isPending}
+                      data-testid={`button-delete-entry-${entry.id}`}
+                    >
+                      <AlertCircle className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {todaysJobEntries.length > 3 && (
+                <p className="text-xs text-muted-foreground text-center">
+                  +{todaysJobEntries.length - 3} more entries
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Add more time button */}
+        <Button 
+          className="w-full h-12 text-base font-semibold text-white" 
+          style={{ backgroundColor: 'hsl(var(--trade))' }}
+          onClick={handleStartTimer}
+          disabled={startTimerMutation.isPending || !!globalActiveTimer}
+          data-testid="button-start-timer"
+        >
+          <Play className="h-5 w-5 mr-2" />
+          Clock In Again
+        </Button>
+        
+        {globalActiveTimer && (globalActiveTimer as any).jobId !== jobId && (
+          <p className="text-xs text-center text-amber-600">
+            Timer running on another job
           </p>
-          {todaysJobEntries.length > 1 && (
-            <Badge variant="secondary" className="mt-2">
-              {todaysJobEntries.length} entries
-            </Badge>
-          )}
-        </div>
-        
-        {/* Show latest entry details */}
-        {latestCompletedEntry && (
-          <div className="text-xs text-muted-foreground text-center space-y-1">
-            <p>
-              Last entry: {format(new Date(latestCompletedEntry.startTime), 'h:mm a')} - {' '}
-              {latestCompletedEntry.endTime ? format(new Date(latestCompletedEntry.endTime), 'h:mm a') : 'Now'}
-            </p>
-          </div>
         )}
-        
-        <div className="flex gap-2">
-          {latestCompletedEntry && (
-            <Button 
-              variant="outline"
-              size="icon"
-              onClick={() => handleDeleteEntry(latestCompletedEntry.id)}
-              disabled={deleteEntryMutation.isPending}
-              data-testid="button-delete-entry"
-              title="Delete last entry to start fresh"
-            >
-              <AlertCircle className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-        <p className="text-xs text-center text-muted-foreground">
-          Delete the entry above to re-track time
-        </p>
       </div>
     );
   }
 
-  // Default: Ready to start state
+  // READY TO START STATE
   return (
-    <div className="space-y-4" data-testid="timer-ready-state">
-      <div className="text-center">
-        <div className="text-2xl font-mono text-muted-foreground mb-2">
+    <div className="space-y-3" data-testid="timer-ready-state">
+      {/* Total time on job (if any previous entries exist) */}
+      {totalMinutesAllTime > 0 && (
+        <div 
+          className="rounded-xl p-3 flex items-center justify-between"
+          style={{ backgroundColor: 'hsl(var(--trade) / 0.08)' }}
+        >
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+            <span className="text-sm font-medium">Total on job:</span>
+          </div>
+          <span className="font-bold">{formatDuration(totalMinutesAllTime)}</span>
+        </div>
+      )}
+      
+      <div className="text-center py-2">
+        <div className="text-3xl font-mono text-muted-foreground mb-1">
           00:00:00
         </div>
         <p className="text-sm text-muted-foreground">
-          Ready to start tracking time
+          Ready to track time
         </p>
       </div>
       
       <Button 
-        className="w-full" 
+        className="w-full h-12 text-base font-semibold text-white" 
+        style={{ backgroundColor: 'hsl(var(--trade))' }}
         onClick={handleStartTimer}
         disabled={startTimerMutation.isPending || !!globalActiveTimer}
         data-testid="button-start-timer"
       >
-        <Play className="h-4 w-4 mr-2" />
-        Start Timer
+        <Play className="h-5 w-5 mr-2" />
+        Clock In
       </Button>
       
       {globalActiveTimer && (globalActiveTimer as any).jobId !== jobId && (

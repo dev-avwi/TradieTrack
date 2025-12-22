@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { addToOfflineQueue, isOnline as checkOnline } from "./offlineQueue";
 
 // Session token storage key for iOS/Safari fallback
 const SESSION_TOKEN_KEY = 'tradietrack_session_token';
@@ -68,6 +69,54 @@ export async function apiRequest(
 
   await throwIfResNotOk(res);
   return res;
+}
+
+export interface OfflineQueueResult {
+  queued: true;
+  mutationId: string;
+  message: string;
+}
+
+export type OfflineAwareResult = Response | OfflineQueueResult;
+
+export function isOfflineQueueResult(result: OfflineAwareResult): result is OfflineQueueResult {
+  return 'queued' in result && result.queued === true;
+}
+
+export async function offlineAwareApiRequest(
+  method: string,
+  url: string,
+  data?: unknown,
+  options?: { mutationType?: string }
+): Promise<OfflineAwareResult> {
+  if (!checkOnline()) {
+    const mutationType = options?.mutationType || getMutationTypeFromUrl(url, method);
+    const mutation = addToOfflineQueue(mutationType, url, method, data);
+    return {
+      queued: true,
+      mutationId: mutation.id,
+      message: 'Your changes have been saved offline and will sync when you reconnect.',
+    };
+  }
+
+  return apiRequest(method, url, data);
+}
+
+function getMutationTypeFromUrl(url: string, method: string): string {
+  const segments = url.split('/').filter(Boolean);
+  const resource = segments[1] || 'unknown';
+  
+  switch (method.toUpperCase()) {
+    case 'POST':
+      return `create_${resource.replace(/s$/, '')}`;
+    case 'PUT':
+    case 'PATCH':
+      return `update_${resource.replace(/s$/, '')}`;
+    case 'DELETE':
+      return `delete_${resource.replace(/s$/, '')}`;
+    default:
+      return `${method.toLowerCase()}_${resource}`;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

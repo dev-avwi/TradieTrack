@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Calendar, User, Camera, Play, Square, Clock, FileText, Receipt, DollarSign, ArrowRight, AlertCircle, CheckCircle2, TrendingUp, TrendingDown } from "lucide-react";
+import { MapPin, Calendar, User, Camera, Play, Square, Clock, FileText, Receipt, DollarSign, ArrowRight, AlertCircle, CheckCircle2, TrendingUp, TrendingDown, Timer } from "lucide-react";
 import StatusBadge from "./StatusBadge";
-import { TimerWidget } from "@/components/TimeTracking";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 
@@ -41,6 +41,14 @@ interface JobCardProps {
   onViewExpenses?: (id: string) => void;
 }
 
+// Time entry interface for job cards
+interface TimeEntry {
+  id: string;
+  jobId: string;
+  startTime: string;
+  endTime: string | null;
+}
+
 export default function JobCard({ 
   id, 
   title, 
@@ -59,6 +67,40 @@ export default function JobCard({
   onViewExpenses
 }: JobCardProps) {
   const [, setLocation] = useLocation();
+  
+  // Fetch time entries for this job
+  const { data: timeEntries = [] } = useQuery<TimeEntry[]>({
+    queryKey: ['/api/time-entries', id],
+    enabled: !!id,
+  });
+  
+  // Fetch active timer to check if it's for this job
+  const { data: activeTimer } = useQuery({
+    queryKey: ['/api/time-entries/active/current'],
+    refetchInterval: 5000, // Check every 5 seconds
+  });
+  
+  // Check if timer is active for THIS job
+  const hasActiveTimer = activeTimer && (activeTimer as any).jobId === id;
+  
+  // Calculate total time logged for this job (completed entries only)
+  const totalMinutesLogged = (timeEntries as TimeEntry[])
+    .filter((entry) => entry.jobId === id && entry.endTime)
+    .reduce((total, entry) => {
+      const start = new Date(entry.startTime).getTime();
+      const end = new Date(entry.endTime!).getTime();
+      return total + Math.floor((end - start) / 60000);
+    }, 0);
+  
+  // Format duration
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
+  };
   
   // Get priority color for next action badge
   const getPriorityColor = (priority: 'high' | 'medium' | 'low') => {
@@ -144,15 +186,33 @@ export default function JobCard({
           )}
         </div>
         
-        {/* Time Tracking Widget - show for scheduled and in_progress jobs */}
-        {(status === 'scheduled' || status === 'in_progress') && (
-          <div className="border-t pt-3">
-            <TimerWidget 
-              jobId={id} 
-              jobTitle={title}
-              onTimerStart={() => {}}
-              onTimerStop={() => {}}
-            />
+        {/* Time Tracking Summary - show for all active job states */}
+        {(totalMinutesLogged > 0 || hasActiveTimer) && (
+          <div 
+            className="rounded-lg p-2 flex items-center justify-between"
+            style={{ backgroundColor: 'hsl(var(--trade) / 0.08)' }}
+            data-testid={`time-summary-${id}`}
+          >
+            <div className="flex items-center gap-2">
+              <Timer className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+              <span className="text-sm font-medium">
+                {totalMinutesLogged > 0 ? formatDuration(totalMinutesLogged) : '0m'}
+              </span>
+              {totalMinutesLogged > 0 && (
+                <span className="text-xs text-muted-foreground">logged</span>
+              )}
+            </div>
+            {hasActiveTimer && (
+              <div className="flex items-center gap-1.5" data-testid={`active-timer-indicator-${id}`}>
+                <div 
+                  className="w-2 h-2 rounded-full animate-pulse" 
+                  style={{ backgroundColor: 'hsl(var(--trade))' }}
+                />
+                <span className="text-xs font-medium" style={{ color: 'hsl(var(--trade))' }}>
+                  Recording
+                </span>
+              </div>
+            )}
           </div>
         )}
         

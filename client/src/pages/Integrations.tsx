@@ -41,7 +41,8 @@ import {
   BarChart3,
   Eye,
   EyeOff,
-  HelpCircle
+  HelpCircle,
+  Calendar
 } from "lucide-react";
 import { SiStripe, SiGmail, SiXero } from "react-icons/si";
 import { RefreshCw, Link2Off } from "lucide-react";
@@ -53,6 +54,13 @@ interface XeroStatus {
   tenantId?: string;
   lastSyncAt?: string;
   status?: string;
+  message?: string;
+}
+
+interface GoogleCalendarStatus {
+  configured: boolean;
+  connected: boolean;
+  email?: string;
   message?: string;
 }
 
@@ -290,6 +298,51 @@ export default function Integrations() {
 
   // MYOB integration - Removed from UI per user request (focusing on Xero)
   // Backend routes remain available for future use
+
+  // Google Calendar integration queries and mutations
+  const { data: googleCalendarStatus, refetch: refetchGoogleCalendar } = useQuery<GoogleCalendarStatus>({
+    queryKey: ['/api/integrations/google-calendar/status'],
+  });
+
+  const connectGoogleCalendarMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/google-calendar/connect');
+      return response;
+    },
+    onSuccess: (data: any) => {
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to start Google Calendar connection",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disconnectGoogleCalendarMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/google-calendar/disconnect');
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Disconnected",
+        description: "Google Calendar has been disconnected successfully",
+      });
+      refetchGoogleCalendar();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to disconnect Google Calendar",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Twilio SMS integration queries and mutations
   const { data: twilioSettings, refetch: refetchTwilio } = useQuery<TwilioSettings>({
@@ -821,6 +874,138 @@ export default function Integrations() {
                     <SiXero className="w-4 h-4 mr-2" />
                   )}
                   Connect to Xero
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Google Calendar Integration */}
+        <Card data-testid="card-google-calendar-integration">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  googleCalendarStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
+                  googleCalendarStatus?.configured ? 'bg-gray-100 dark:bg-gray-800/50' :
+                  'bg-gray-100 dark:bg-gray-800/50'
+                }`}>
+                  <Calendar className={`w-5 h-5 ${
+                    googleCalendarStatus?.connected ? 'text-green-600 dark:text-green-400' :
+                    'text-gray-500 dark:text-gray-400'
+                  }`} />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Google Calendar</CardTitle>
+                  <p className="text-xs text-muted-foreground">Sync scheduled jobs to your calendar</p>
+                </div>
+              </div>
+              {googleCalendarStatus?.connected ? (
+                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Connected
+                </Badge>
+              ) : googleCalendarStatus?.configured === false ? (
+                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                  Not Configured
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                  Not Connected
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-4">
+            {googleCalendarStatus?.connected ? (
+              <>
+                <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                      {googleCalendarStatus.email || 'Google Calendar'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-700 dark:text-green-300">
+                    Jobs can now be synced to your calendar
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-foreground">Features enabled:</p>
+                  <ul className="text-xs text-muted-foreground space-y-1.5">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3 h-3 text-green-500" />
+                      Sync scheduled jobs to calendar
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3 h-3 text-green-500" />
+                      Automatic event reminders
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3 h-3 text-green-500" />
+                      View upcoming events
+                    </li>
+                  </ul>
+                </div>
+                <Button 
+                  variant="outline"
+                  onClick={() => disconnectGoogleCalendarMutation.mutate()}
+                  disabled={disconnectGoogleCalendarMutation.isPending}
+                  className="w-full"
+                  data-testid="button-disconnect-google-calendar"
+                >
+                  {disconnectGoogleCalendarMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Link2Off className="w-4 h-4 mr-2" />
+                      Disconnect
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : googleCalendarStatus?.configured === false ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Google Calendar integration is not configured. Please contact support to enable this feature.
+                </p>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                    <div className="text-xs text-muted-foreground">
+                      <p>GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET must be configured.</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Connect your Google Calendar to automatically sync scheduled jobs. Never miss an appointment again.
+                </p>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p><strong>One-way sync:</strong> Jobs sync from TradieTrack to Calendar</p>
+                      <p><strong>Event details:</strong> Job title, client, address, and notes</p>
+                      <p><strong>Reminders:</strong> Automatic 60min and 15min reminders</p>
+                    </div>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => connectGoogleCalendarMutation.mutate()}
+                  disabled={connectGoogleCalendarMutation.isPending}
+                  className="w-full"
+                  data-testid="button-connect-google-calendar"
+                >
+                  {connectGoogleCalendarMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Calendar className="w-4 h-4 mr-2" />
+                  )}
+                  Connect Google Calendar
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </>

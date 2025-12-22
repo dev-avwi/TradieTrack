@@ -8,6 +8,7 @@ import { JobVoiceNotes } from "./JobVoiceNotes";
 import { JobSignature } from "./JobSignature";
 import { AIPhotoAnalysis } from "./AIPhotoAnalysis";
 import { JobForms } from "./CustomFormRenderer";
+import { SafetyFormsSection, SafetyCheckDialog } from "./SafetyFormsSection";
 import { JobChat } from "./JobChat";
 import SmartActionsPanel, { getJobSmartActions, SmartAction } from "./SmartActionsPanel";
 import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
@@ -150,6 +151,7 @@ export default function JobDetailView({
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSafetyCheck, setShowSafetyCheck] = useState(false);
   
   const { userRole, isTradie, isSolo, actionPermissions } = useAppMode();
   const { data: businessSettings } = useBusinessSettings();
@@ -226,6 +228,38 @@ export default function JobDetailView({
     queryKey: ['/api/jobs', jobId, 'signatures'],
     enabled: !!jobId,
   });
+
+  // Fetch safety form submissions to check if safety forms have been completed
+  interface FormSubmissionWithForm {
+    id: string;
+    formId: string;
+    status: string;
+    submissionData: Record<string, any>;
+  }
+  
+  const { data: formSubmissions = [] } = useQuery<FormSubmissionWithForm[]>({
+    queryKey: ['/api/jobs', jobId, 'form-submissions'],
+    enabled: !!jobId,
+  });
+
+  const { data: customForms = [] } = useQuery<{ id: string; formType: string; requiresSignature: boolean }[]>({
+    queryKey: ['/api/custom-forms'],
+    enabled: !!jobId,
+  });
+
+  // Check if any safety forms exist and if any are completed
+  const safetyForms = customForms.filter(f => 
+    f.formType === 'safety' || f.formType === 'compliance' || f.formType === 'inspection'
+  );
+  
+  const hasSafetyForms = safetyForms.length > 0;
+  
+  const safetyFormSubmissions = formSubmissions.filter(s => {
+    const form = customForms.find(f => f.id === s.formId);
+    return form && (form.formType === 'safety' || form.formType === 'compliance' || form.formType === 'inspection');
+  });
+  
+  const hasCompletedSafetyForm = safetyFormSubmissions.length > 0;
 
   // Check if job is "empty" (no documentation)
   const isEmptyJob = () => {
@@ -727,12 +761,16 @@ export default function JobDetailView({
           />
         )}
 
-        {/* Time Tracking Widget - Show for in_progress jobs */}
-        {job.status === 'in_progress' && (
-          <Card data-testid="card-time-tracking">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Timer className="h-4 w-4" />
+        {/* Time Tracking Widget - Show for scheduled and in_progress jobs */}
+        {(job.status === 'scheduled' || job.status === 'in_progress') && (
+          <Card 
+            className="border-2"
+            style={{ borderColor: 'hsl(var(--trade) / 0.3)' }}
+            data-testid="card-time-tracking"
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2" style={{ color: 'hsl(var(--trade))' }}>
+                <Timer className="h-5 w-5" />
                 Time Tracking
               </CardTitle>
             </CardHeader>
@@ -854,6 +892,12 @@ export default function JobDetailView({
           </Card>
         )}
 
+        {/* Safety Forms Section - Prominent before job starts */}
+        <SafetyFormsSection 
+          jobId={jobId} 
+          jobStatus={job.status}
+        />
+
         {/* Photos - show for ALL job statuses so team sync works */}
         <JobPhotoGallery jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
@@ -912,7 +956,7 @@ export default function JobDetailView({
           {/* Scheduled → Start (Begin work on site) */}
           {job.status === 'scheduled' && (
             <Button
-              onClick={() => updateJobMutation.mutate({ status: 'in_progress' })}
+              onClick={() => setShowSafetyCheck(true)}
               disabled={updateJobMutation.isPending}
               data-testid="button-start-job"
               className="w-full text-white"
@@ -1133,6 +1177,28 @@ export default function JobDetailView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Safety Check Dialog - prompts before starting work */}
+      <SafetyCheckDialog
+        open={showSafetyCheck}
+        onOpenChange={setShowSafetyCheck}
+        onContinue={() => {
+          setShowSafetyCheck(false);
+          updateJobMutation.mutate({ status: 'in_progress' });
+        }}
+        onAddSafetyForm={() => {
+          setShowSafetyCheck(false);
+          const safetySection = document.querySelector('[data-testid="card-safety-forms"]');
+          if (safetySection) {
+            safetySection.scrollIntoView({ behavior: 'smooth' });
+            const addButton = safetySection.querySelector('[data-testid="button-add-safety-form"]') as HTMLButtonElement;
+            if (addButton) {
+              setTimeout(() => addButton.click(), 300);
+            }
+          }
+        }}
+        hasSafetyForms={hasSafetyForms && !hasCompletedSafetyForm}
+      />
     </PageShell>
   );
 }
