@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore, useClientsStore, useInvoicesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors, getVisibleButtonColors } from '../../../src/lib/theme';
 import api from '../../../src/lib/api';
+import { offlineStorage, useOfflineStore } from '../../../src/lib/offline-storage';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { getBottomNavHeight } from '../../../src/components/BottomNav';
 
@@ -640,6 +641,7 @@ export default function NewInvoiceScreen() {
   const { clients, fetchClients } = useClientsStore();
   const { fetchInvoices } = useInvoicesStore();
   const { colors, isDark } = useTheme();
+  const { isOnline, pendingSyncCount } = useOfflineStore();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [isLoading, setIsLoading] = useState(false);
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -903,34 +905,54 @@ export default function NewInvoiceScreen() {
     }
 
     setIsLoading(true);
-    try {
-      const invoiceData: any = {
-        clientId: form.clientId,
-        jobId: jobId || undefined,
-        title: form.title.trim(),
-        description: form.description.trim() || undefined,
-        notes: form.notes.trim() || undefined,
-        dueDate: new Date(form.dueDate).toISOString(),
-        subtotal: parseFloat(subtotal.toFixed(2)),
-        gstAmount: parseFloat(gst.toFixed(2)),
-        total: parseFloat(total.toFixed(2)),
-        lineItems: lineItems.map(item => ({
-          description: item.description,
-          quantity: parseFloat(item.quantity),
-          unitPrice: parseFloat(item.unitPrice),
-        })),
-      };
+    
+    const invoiceData: any = {
+      clientId: form.clientId,
+      clientName: selectedClient?.name,
+      jobId: jobId || undefined,
+      title: form.title.trim(),
+      description: form.description.trim() || undefined,
+      notes: form.notes.trim() || undefined,
+      dueDate: new Date(form.dueDate).toISOString(),
+      subtotal: parseFloat(subtotal.toFixed(2)),
+      gstAmount: parseFloat(gst.toFixed(2)),
+      total: parseFloat(total.toFixed(2)),
+      lineItems: lineItems.map(item => ({
+        description: item.description,
+        quantity: parseFloat(item.quantity),
+        unitPrice: parseFloat(item.unitPrice),
+      })),
+    };
 
-      if (isRecurring) {
-        invoiceData.isRecurring = true;
-        invoiceData.recurrencePattern = recurrencePattern;
-        invoiceData.recurrenceInterval = 1;
-        invoiceData.nextRecurrenceDate = calculateNextRecurrenceDate(form.dueDate, recurrencePattern);
-        if (recurrenceEndDate) {
-          invoiceData.recurrenceEndDate = new Date(recurrenceEndDate).toISOString();
-        }
+    if (isRecurring) {
+      invoiceData.isRecurring = true;
+      invoiceData.recurrencePattern = recurrencePattern;
+      invoiceData.recurrenceInterval = 1;
+      invoiceData.nextRecurrenceDate = calculateNextRecurrenceDate(form.dueDate, recurrencePattern);
+      if (recurrenceEndDate) {
+        invoiceData.recurrenceEndDate = new Date(recurrenceEndDate).toISOString();
       }
-
+    }
+    
+    // Offline-first: save offline if no connection
+    if (!isOnline) {
+      try {
+        await offlineStorage.saveInvoiceOffline(invoiceData);
+        Alert.alert(
+          'Saved Offline', 
+          'Invoice saved locally and will sync when you\'re back online.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      } catch (error) {
+        console.error('Failed to save invoice offline:', error);
+        Alert.alert('Error', 'Failed to save invoice offline. Please try again.');
+      }
+      setIsLoading(false);
+      return;
+    }
+    
+    // Online: try API first, fallback to offline if network error
+    try {
       const response = await api.post('/api/invoices', invoiceData);
 
       if (response.data) {
@@ -941,8 +963,23 @@ export default function NewInvoiceScreen() {
       } else {
         Alert.alert('Error', response.error || 'Failed to create invoice');
       }
-    } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again.');
+    } catch (error: any) {
+      // Network error - save offline
+      if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
+        try {
+          await offlineStorage.saveInvoiceOffline(invoiceData);
+          Alert.alert(
+            'Saved Offline', 
+            'Invoice saved locally and will sync when connection is restored.',
+            [{ text: 'OK', onPress: () => router.back() }]
+          );
+        } catch (offlineError) {
+          console.error('Failed to save invoice offline:', offlineError);
+          Alert.alert('Error', 'Failed to save invoice. Please try again.');
+        }
+      } else {
+        Alert.alert('Error', 'Failed to create invoice. Please try again.');
+      }
     }
     setIsLoading(false);
   };

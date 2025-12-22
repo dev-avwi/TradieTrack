@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore, useClientsStore, useQuotesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors, getVisibleButtonColors } from '../../../src/lib/theme';
 import api from '../../../src/lib/api';
+import { offlineStorage, useOfflineStore } from '../../../src/lib/offline-storage';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { getBottomNavHeight } from '../../../src/components/BottomNav';
 
@@ -583,6 +584,7 @@ export default function NewQuoteScreen() {
   const { clients, fetchClients } = useClientsStore();
   const { fetchQuotes } = useQuotesStore();
   const { colors, isDark } = useTheme();
+  const { isOnline, pendingSyncCount } = useOfflineStore();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [isLoading, setIsLoading] = useState(false);
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -770,26 +772,48 @@ export default function NewQuoteScreen() {
     }
 
     setIsLoading(true);
+    
+    const quoteData = {
+      clientId: form.clientId,
+      clientName: selectedClient?.name,
+      jobId: jobId || undefined,
+      title: form.title.trim(),
+      description: form.description.trim() || undefined,
+      notes: form.notes.trim() || undefined,
+      validUntil: new Date(form.validUntil).toISOString(),
+      subtotal: parseFloat(subtotal.toFixed(2)),
+      gstAmount: parseFloat(gst.toFixed(2)),
+      total: parseFloat(total.toFixed(2)),
+      depositRequired: form.requireDeposit,
+      depositPercent: form.requireDeposit ? parseInt(form.depositPercent) : 0,
+      depositAmount: form.requireDeposit ? parseFloat((total * (parseInt(form.depositPercent) / 100)).toFixed(2)) : 0,
+      lineItems: lineItems.map(item => ({
+        description: item.description,
+        quantity: parseFloat(item.quantity),
+        unitPrice: parseFloat(item.unitPrice),
+      })),
+    };
+    
+    // Offline-first: save offline if no connection
+    if (!isOnline) {
+      try {
+        await offlineStorage.saveQuoteOffline(quoteData);
+        Alert.alert(
+          'Saved Offline', 
+          'Quote saved locally and will sync when you\'re back online.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      } catch (error) {
+        console.error('Failed to save quote offline:', error);
+        Alert.alert('Error', 'Failed to save quote offline. Please try again.');
+      }
+      setIsLoading(false);
+      return;
+    }
+    
+    // Online: try API first, fallback to offline if network error
     try {
-      const response = await api.post('/api/quotes', {
-        clientId: form.clientId,
-        jobId: jobId || undefined,
-        title: form.title.trim(),
-        description: form.description.trim() || undefined,
-        notes: form.notes.trim() || undefined,
-        validUntil: new Date(form.validUntil).toISOString(),
-        subtotal: parseFloat(subtotal.toFixed(2)),
-        gstAmount: parseFloat(gst.toFixed(2)),
-        total: parseFloat(total.toFixed(2)),
-        depositRequired: form.requireDeposit,
-        depositPercent: form.requireDeposit ? parseInt(form.depositPercent) : 0,
-        depositAmount: form.requireDeposit ? parseFloat((total * (parseInt(form.depositPercent) / 100)).toFixed(2)) : 0,
-        lineItems: lineItems.map(item => ({
-          description: item.description,
-          quantity: parseFloat(item.quantity),
-          unitPrice: parseFloat(item.unitPrice),
-        })),
-      });
+      const response = await api.post('/api/quotes', quoteData);
 
       if (response.data) {
         await fetchQuotes();
@@ -799,8 +823,23 @@ export default function NewQuoteScreen() {
       } else {
         Alert.alert('Error', response.error || 'Failed to create quote');
       }
-    } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again.');
+    } catch (error: any) {
+      // Network error - save offline
+      if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
+        try {
+          await offlineStorage.saveQuoteOffline(quoteData);
+          Alert.alert(
+            'Saved Offline', 
+            'Quote saved locally and will sync when connection is restored.',
+            [{ text: 'OK', onPress: () => router.back() }]
+          );
+        } catch (offlineError) {
+          console.error('Failed to save quote offline:', offlineError);
+          Alert.alert('Error', 'Failed to save quote. Please try again.');
+        }
+      } else {
+        Alert.alert('Error', 'Failed to create quote. Please try again.');
+      }
     }
     setIsLoading(false);
   };
