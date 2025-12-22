@@ -14,12 +14,41 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import api, { API_URL } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { Card, CardContent } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+// Step configuration with colors
+const STEP_CONFIG = {
+  business: { 
+    title: 'Business Setup', 
+    icon: 'business' as const,
+    color: '#2563eb', // blue
+    lightColor: '#dbeafe',
+  },
+  integrations: { 
+    title: 'Payments', 
+    icon: 'card' as const,
+    color: '#8b5cf6', // purple
+    lightColor: '#ede9fe',
+  },
+  team: { 
+    title: 'Team', 
+    icon: 'people' as const,
+    color: '#f97316', // orange
+    lightColor: '#fed7aa',
+  },
+  complete: { 
+    title: 'Done!', 
+    icon: 'checkmark-circle' as const,
+    color: '#22c55e', // green
+    lightColor: '#dcfce7',
+  },
+};
 
 type OnboardingStep = 'business' | 'integrations' | 'team' | 'complete';
 
@@ -688,38 +717,172 @@ export default function OnboardingSetupScreen() {
     </View>
   );
 
+  const allSteps: OnboardingStep[] = isTeamMode 
+    ? ['business', 'integrations', 'team', 'complete']
+    : ['business', 'integrations', 'complete'];
+
+  const currentStepConfig = STEP_CONFIG[currentStep];
+
   if (isCheckingSettings) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Setting up...</Text>
-        </View>
-      </SafeAreaView>
+      <LinearGradient
+        colors={['#2563eb', '#3b82f6', '#f97316']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientContainer}
+      >
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+          <View style={styles.loadingContainer}>
+            <View style={styles.loadingCircle}>
+              <ActivityIndicator size="large" color="#2563eb" />
+            </View>
+            <Text style={styles.loadingTextWhite}>Setting up your account...</Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${getProgress()}%` }]} />
+    <LinearGradient
+      colors={['#2563eb', '#3b82f6', '#f97316']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradientContainer}
+    >
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        {/* Header with logo and step indicators */}
+        <View style={styles.header}>
+          <View style={styles.logoRow}>
+            <Text style={styles.logoText}>
+              <Text style={{ color: '#FFFFFF' }}>Tradie</Text>
+              <Text style={{ color: '#fed7aa' }}>Track</Text>
+            </Text>
+          </View>
+          
+          {/* Step indicators */}
+          <View style={styles.stepIndicators}>
+            {allSteps.map((step, index) => {
+              const stepConfig = STEP_CONFIG[step];
+              const currentIndex = allSteps.indexOf(currentStep);
+              const isActive = step === currentStep;
+              const isCompleted = index < currentIndex;
+              
+              return (
+                <View key={step} style={styles.stepIndicatorWrapper}>
+                  <View style={[
+                    styles.stepDot,
+                    isActive && { backgroundColor: '#FFFFFF', transform: [{ scale: 1.2 }] },
+                    isCompleted && { backgroundColor: '#22c55e' },
+                    !isActive && !isCompleted && { backgroundColor: 'rgba(255,255,255,0.3)' }
+                  ]}>
+                    {isCompleted && (
+                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                    )}
+                    {isActive && (
+                      <Ionicons name={stepConfig.icon} size={12} color={stepConfig.color} />
+                    )}
+                  </View>
+                  <Text style={[
+                    styles.stepLabel,
+                    isActive && { color: '#FFFFFF', fontWeight: '600' },
+                    !isActive && { color: 'rgba(255,255,255,0.6)' }
+                  ]}>
+                    {stepConfig.title}
+                  </Text>
+                  {index < allSteps.length - 1 && (
+                    <View style={[
+                      styles.stepConnector,
+                      isCompleted && { backgroundColor: '#22c55e' }
+                    ]} />
+                  )}
+                </View>
+              );
+            })}
+          </View>
         </View>
-        <Text style={styles.progressText}>{Math.round(getProgress())}% complete</Text>
-      </View>
 
-      {currentStep === 'business' && renderBusinessStep()}
-      {currentStep === 'integrations' && renderIntegrationsStep()}
-      {currentStep === 'team' && renderTeamStep()}
-      {currentStep === 'complete' && renderCompleteStep()}
-    </SafeAreaView>
+        {/* Progress bar */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBarWhite}>
+            <View style={[styles.progressFillOrange, { width: `${getProgress()}%` }]} />
+          </View>
+          <Text style={styles.progressTextWhite}>{Math.round(getProgress())}%</Text>
+        </View>
+
+        {/* Content card */}
+        <View style={styles.contentCard}>
+          {/* Step header with color */}
+          <View style={[styles.stepHeaderBar, { backgroundColor: currentStepConfig.lightColor }]}>
+            <View style={[styles.stepHeaderIcon, { backgroundColor: currentStepConfig.color }]}>
+              <Ionicons name={currentStepConfig.icon} size={20} color="#FFFFFF" />
+            </View>
+            <Text style={[styles.stepHeaderTitle, { color: currentStepConfig.color }]}>
+              {currentStepConfig.title}
+            </Text>
+          </View>
+
+          {currentStep === 'business' && renderBusinessStep()}
+          {currentStep === 'integrations' && renderIntegrationsStep()}
+          {currentStep === 'team' && renderTeamStep()}
+          {currentStep === 'complete' && renderCompleteStep()}
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  gradientContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logoText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  stepIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  stepIndicatorWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  stepDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  stepLabel: {
+    fontSize: 10,
+    textAlign: 'center',
+  },
+  stepConnector: {
+    position: 'absolute',
+    top: 14,
+    left: '60%',
+    right: '-40%',
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    zIndex: -1,
   },
   loadingContainer: {
     flex: 1,
@@ -727,34 +890,70 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  loadingText: {
+  loadingCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingTextWhite: {
     fontSize: 16,
-    color: colors.mutedForeground,
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 8,
     gap: 12,
   },
-  progressBar: {
+  progressBarWhite: {
     flex: 1,
     height: 6,
-    backgroundColor: colors.cardBorder,
+    backgroundColor: 'rgba(255,255,255,0.3)',
     borderRadius: 3,
     overflow: 'hidden',
   },
-  progressFill: {
+  progressFillOrange: {
     height: '100%',
-    backgroundColor: colors.primary,
+    backgroundColor: '#f97316',
     borderRadius: 3,
   },
-  progressText: {
+  progressTextWhite: {
     fontSize: 12,
-    color: colors.mutedForeground,
-    minWidth: 70,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    minWidth: 35,
     textAlign: 'right',
+  },
+  contentCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  stepHeaderBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  stepHeaderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   stepContainer: {
     flex: 1,

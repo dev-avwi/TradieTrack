@@ -3,9 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, ArrowLeft, ArrowRight, Building2, Palette, DollarSign, Users, LogOut } from "lucide-react";
+import { CheckCircle, ArrowLeft, ArrowRight, Building2, Palette, DollarSign, Users, LogOut, Sparkles, Wrench, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import tradietrackLogo from "/tradietrack-logo.png";
 
 // Import step components
 import BusinessProfileStep from "./onboarding/BusinessProfileStep";
@@ -69,6 +70,11 @@ const STEPS = [
     description: 'Set up your company information',
     icon: Building2,
     required: true,
+    color: 'blue',
+    bgColor: 'bg-blue-500',
+    lightBg: 'bg-blue-50',
+    textColor: 'text-blue-600',
+    borderColor: 'border-blue-200',
   },
   {
     id: 'branding',
@@ -76,6 +82,11 @@ const STEPS = [
     description: 'Customize your business appearance',
     icon: Palette,
     required: false,
+    color: 'orange',
+    bgColor: 'bg-orange-500',
+    lightBg: 'bg-orange-50',
+    textColor: 'text-orange-600',
+    borderColor: 'border-orange-200',
   },
   {
     id: 'default-rates',
@@ -83,6 +94,11 @@ const STEPS = [
     description: 'Configure your pricing and terms',
     icon: DollarSign,
     required: true,
+    color: 'green',
+    bgColor: 'bg-green-500',
+    lightBg: 'bg-green-50',
+    textColor: 'text-green-600',
+    borderColor: 'border-green-200',
   },
   {
     id: 'team-invitation',
@@ -90,6 +106,11 @@ const STEPS = [
     description: 'Invite team members (optional)',
     icon: Users,
     required: false,
+    color: 'purple',
+    bgColor: 'bg-purple-500',
+    lightBg: 'bg-purple-50',
+    textColor: 'text-purple-600',
+    borderColor: 'border-purple-200',
   },
 ];
 
@@ -335,94 +356,163 @@ export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: Onbo
     }
   };
 
+  const currentStepData = STEPS[currentStep];
+
   return (
-    <div className="min-h-screen bg-background" data-testid="onboarding-wizard">
-      <div className="max-w-4xl mx-auto p-4 md:p-6">
-        {/* Top bar with sign out option */}
-        {onSignOut && (
-          <div className="flex justify-end mb-4">
+    <div className="min-h-screen relative overflow-hidden" data-testid="onboarding-wizard">
+      {/* Vibrant gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-400" />
+      
+      {/* Decorative shapes */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-orange-400/30 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-700/40 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
+      <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-white/10 rounded-full blur-2xl" />
+      
+      {/* Content */}
+      <div className="relative z-10 max-w-4xl mx-auto p-4 md:p-6 min-h-screen flex flex-col">
+        {/* Top bar */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <img src={tradietrackLogo} alt="TradieTrack" className="h-10 w-auto" />
+            <span className="text-xl font-bold text-white hidden sm:inline">
+              <span className="text-white">Tradie</span>
+              <span className="text-orange-200">Track</span>
+            </span>
+          </div>
+          {onSignOut && (
             <Button 
               variant="ghost" 
               size="sm"
               onClick={onSignOut}
               data-testid="button-signout-onboarding"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-white/80 hover:text-white hover:bg-white/10"
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Wrong account? Sign out
+              <span className="hidden sm:inline">Wrong account?</span> Sign out
             </Button>
-          </div>
-        )}
+          )}
+        </div>
         
-        {/* Header */}
+        {/* Header with welcome message */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome to TradieTrack!</h1>
-          <p className="text-muted-foreground mb-6">
-            Let's get your business set up in just a few steps
-          </p>
-          
-          {/* Progress Bar */}
-          <div className="max-w-md mx-auto mb-4">
-            <Progress value={progressPercentage} className="h-2" />
-            <p className="text-sm text-muted-foreground mt-2">
-              Step {currentStep + 1} of {STEPS.length}
-            </p>
+          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-full mb-4">
+            <Sparkles className="h-4 w-4" />
+            Getting you set up
           </div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+            Welcome to TradieTrack!
+          </h1>
+          <p className="text-lg text-blue-100 max-w-md mx-auto">
+            Let's get your business set up in just a few quick steps
+          </p>
         </div>
 
-        {/* Step Indicator */}
-        <div className="flex flex-wrap justify-center mb-8 gap-2 md:gap-4">
+        {/* Step Progress Cards */}
+        <div className="flex justify-center gap-2 sm:gap-3 mb-8 flex-wrap">
           {STEPS.map((step, index) => {
             const Icon = step.icon;
             const isActive = index === currentStep;
             const isCompleted = completedSteps.has(index);
+            const isPast = index < currentStep;
             
             return (
               <div
                 key={step.id}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
+                className={`relative flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-xl transition-all duration-300 ${
                   isActive
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-white text-gray-900 shadow-lg scale-105'
                     : isCompleted
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                    : 'bg-muted text-muted-foreground'
+                    ? 'bg-green-400/90 text-white'
+                    : isPast
+                    ? 'bg-white/30 text-white'
+                    : 'bg-white/20 text-white/70'
                 }`}
               >
-                {isCompleted ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <Icon className="h-4 w-4" />
-                )}
-                <span className="text-sm font-medium hidden md:inline">
-                  {step.title}
-                </span>
-                {step.required && !isCompleted && (
-                  <Badge variant="secondary" className="text-xs hidden md:inline-flex">
-                    Required
-                  </Badge>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  isActive 
+                    ? `${step.lightBg} ${step.textColor}` 
+                    : isCompleted 
+                    ? 'bg-green-500 text-white'
+                    : 'bg-white/20'
+                }`}>
+                  {isCompleted ? (
+                    <CheckCircle className="h-5 w-5" />
+                  ) : (
+                    <Icon className="h-5 w-5" />
+                  )}
+                </div>
+                <div className="hidden sm:block">
+                  <p className="text-sm font-semibold leading-tight">{step.title}</p>
+                  {step.required && !isCompleted && isActive && (
+                    <span className="text-xs opacity-75">Required</span>
+                  )}
+                </div>
+                {/* Connector line */}
+                {index < STEPS.length - 1 && (
+                  <div className={`hidden md:block absolute -right-3 top-1/2 w-3 h-0.5 ${
+                    isCompleted || isPast ? 'bg-white/50' : 'bg-white/20'
+                  }`} />
                 )}
               </div>
             );
           })}
         </div>
 
-        {/* Current Step Content */}
-        <div className="mb-8">
-          {renderCurrentStep()}
+        {/* Progress indicator */}
+        <div className="max-w-md mx-auto w-full mb-6">
+          <div className="flex items-center justify-between text-white/80 text-sm mb-2">
+            <span>Step {currentStep + 1} of {STEPS.length}</span>
+            <span>{Math.round(progressPercentage)}% complete</span>
+          </div>
+          <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-orange-400 to-orange-300 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progressPercentage}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Current Step Content Card */}
+        <div className="flex-1 mb-6">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+            {/* Step header bar */}
+            <div className={`px-6 py-4 ${currentStepData.lightBg} ${currentStepData.borderColor} border-b flex items-center gap-3`}>
+              <div className={`w-10 h-10 rounded-xl ${currentStepData.bgColor} text-white flex items-center justify-center shadow-sm`}>
+                <currentStepData.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className={`font-semibold ${currentStepData.textColor}`}>{currentStepData.title}</h2>
+                <p className="text-sm text-gray-500">{currentStepData.description}</p>
+              </div>
+            </div>
+            
+            {/* Step content */}
+            <div className="p-2">
+              {renderCurrentStep()}
+            </div>
+          </div>
         </div>
 
         {/* Skip Option */}
         {onSkip && (
-          <div className="text-center">
+          <div className="text-center pb-4">
             <Button 
               variant="ghost" 
               onClick={onSkip}
               data-testid="button-skip-onboarding"
+              className="text-white/80 hover:text-white hover:bg-white/10"
             >
-              Skip Setup (Setup Later)
+              Skip Setup (Complete Later)
             </Button>
           </div>
         )}
+        
+        {/* Decorative footer element */}
+        <div className="flex justify-center gap-2 pb-4">
+          <Wrench className="h-5 w-5 text-white/30" />
+          <Zap className="h-5 w-5 text-orange-300/50" />
+          <Wrench className="h-5 w-5 text-white/30" />
+        </div>
       </div>
     </div>
   );
