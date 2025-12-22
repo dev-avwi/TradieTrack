@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore } from '../../src/lib/store';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
+import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
@@ -1192,8 +1193,10 @@ export default function DashboardScreen() {
               
               if (!isOnline) {
                 if (clientId) {
-                  await offlineStorage.updateJobOffline(jobId, { status: 'en_route' });
-                  Alert.alert('Saved Offline', 'On my way notification will sync when online');
+                  // Queue the on-my-way notification as a special action type
+                  // Don't update status to invalid 'en_route' - just queue the notification
+                  await offlineStorage.queueOnMyWayNotification(jobId);
+                  Alert.alert('Saved Offline', 'On my way notification will be sent when online');
                 }
                 router.push(`/job/${jobId}`);
                 return;
@@ -1206,8 +1209,9 @@ export default function DashboardScreen() {
               router.push(`/job/${jobId}`);
             } catch (error: any) {
               if (error.message?.includes('Network') && clientId) {
-                await offlineStorage.updateJobOffline(jobId, { status: 'en_route' });
-                Alert.alert('Saved Offline', 'Changes will sync when connection restored');
+                // Queue the notification for later sync instead of invalid status update
+                await offlineStorage.queueOnMyWayNotification(jobId);
+                Alert.alert('Saved Offline', 'Notification will be sent when connection restored');
               }
               router.push(`/job/${jobId}`);
             } finally {

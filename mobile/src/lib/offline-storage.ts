@@ -746,7 +746,21 @@ class OfflineStorageService {
     const existing = await this.getCachedJob(jobId);
     
     if (existing) {
-      const updated = { ...existing, ...updates, cachedAt: now, pendingSync: true, syncAction: 'update' as const };
+      // Only apply fields that are explicitly provided (not undefined)
+      // This prevents null overwriting of existing values
+      const updated = { ...existing };
+      const changedFields: Record<string, any> = {};
+      
+      for (const [key, value] of Object.entries(updates)) {
+        if (value !== undefined && key !== 'cachedAt' && key !== 'pendingSync' && key !== 'syncAction' && key !== 'localId') {
+          (updated as any)[key] = value;
+          changedFields[key] = value;
+        }
+      }
+      
+      updated.cachedAt = now;
+      updated.pendingSync = true;
+      updated.syncAction = 'update';
       
       await this.db.runAsync(
         `UPDATE jobs SET 
@@ -759,16 +773,11 @@ class OfflineStorageService {
          now, 'update', jobId]
       );
       
+      // Only include changed fields in sync queue payload (not null/undefined fields)
+      // This ensures PATCH only updates what was explicitly changed
       await this.addToSyncQueue('job', 'update', { 
         id: jobId, 
-        ...updates,
-        _previousValues: {
-          status: existing.status,
-          title: existing.title,
-          description: existing.description,
-          address: existing.address,
-          notes: existing.notes,
-        }
+        ...changedFields
       });
       await this.updatePendingSyncCount();
     }
@@ -904,7 +913,21 @@ class OfflineStorageService {
     const existing = await this.getCachedClient(clientId);
     
     if (existing) {
-      const updated = { ...existing, ...updates, cachedAt: now, pendingSync: true, syncAction: 'update' as const };
+      // Only apply fields that are explicitly provided (not undefined)
+      // This prevents null overwriting of existing values
+      const updated = { ...existing };
+      const changedFields: Record<string, any> = {};
+      
+      for (const [key, value] of Object.entries(updates)) {
+        if (value !== undefined && key !== 'cachedAt' && key !== 'pendingSync' && key !== 'syncAction' && key !== 'localId') {
+          (updated as any)[key] = value;
+          changedFields[key] = value;
+        }
+      }
+      
+      updated.cachedAt = now;
+      updated.pendingSync = true;
+      updated.syncAction = 'update';
       
       await this.db.runAsync(
         `UPDATE clients SET 
@@ -915,16 +938,10 @@ class OfflineStorageService {
          now, 'update', clientId]
       );
       
+      // Only include changed fields in sync queue payload
       await this.addToSyncQueue('client', 'update', { 
         id: clientId, 
-        ...updates,
-        _previousValues: {
-          name: existing.name,
-          email: existing.email,
-          phone: existing.phone,
-          address: existing.address,
-          notes: existing.notes,
-        }
+        ...changedFields
       });
       await this.updatePendingSyncCount();
     }
@@ -1029,7 +1046,14 @@ class OfflineStorageService {
          now, 'update', quoteId]
       );
       
-      await this.addToSyncQueue('quote', 'update', { id: quoteId, ...updates });
+      // Only include changed fields in sync queue payload
+      const changedFields: Record<string, any> = {};
+      for (const [key, value] of Object.entries(updates)) {
+        if (value !== undefined && key !== 'cachedAt' && key !== 'pendingSync' && key !== 'syncAction' && key !== 'localId') {
+          changedFields[key] = value;
+        }
+      }
+      await this.addToSyncQueue('quote', 'update', { id: quoteId, ...changedFields });
       await this.updatePendingSyncCount();
     }
   }
@@ -1728,6 +1752,26 @@ class OfflineStorageService {
 
   // ============ SYNC QUEUE ============
 
+  /**
+   * Queue an "on my way" notification for offline sync
+   * This is a special action that calls the job's on-my-way endpoint
+   */
+  async queueOnMyWayNotification(jobId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const id = `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = Date.now();
+    
+    await this.db.runAsync(
+      `INSERT INTO sync_queue (id, type, action, data, created_at, retry_count)
+       VALUES (?, ?, ?, ?, ?, 0)`,
+      [id, 'job', 'on_my_way', JSON.stringify({ id: jobId }), now]
+    );
+    
+    await this.updatePendingSyncCount();
+    console.log(`[OfflineStorage] Queued on_my_way notification for job ${jobId}`);
+  }
+
   private async addToSyncQueue(
     type: 'job' | 'client' | 'quote' | 'invoice' | 'timeEntry' | 'attachment',
     action: 'create' | 'update' | 'delete',
@@ -1985,6 +2029,22 @@ class OfflineStorageService {
       return this.syncAttachment(action, data);
     }
     
+    // Handle special actions
+    if (action === 'on_my_way') {
+      try {
+        const response = await api.post(`/api/jobs/${data.id}/on-my-way`);
+        if (response.error) {
+          console.error(`[OfflineStorage] API error for on_my_way:`, response.error);
+          return false;
+        }
+        console.log(`[OfflineStorage] Successfully synced on_my_way notification`);
+        return true;
+      } catch (error) {
+        console.error(`[OfflineStorage] Failed to sync on_my_way:`, error);
+        return false;
+      }
+    }
+    
     const endpoints: Record<string, string> = {
       job: '/api/jobs',
       client: '/api/clients',
@@ -2021,12 +2081,15 @@ class OfflineStorageService {
           break;
           
         case 'update':
+          // Only send the changed fields - clean up any metadata
           const updateData = { ...data };
           delete updateData.localId;
           delete updateData.cachedAt;
           delete updateData.pendingSync;
           delete updateData.syncAction;
           delete updateData.id;
+          delete updateData._previousValues;
+          delete updateData._statusChange;
           
           response = await api.patch(`${endpoint}/${data.id}`, updateData);
           break;
