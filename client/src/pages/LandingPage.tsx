@@ -314,8 +314,17 @@ export default function LandingPage() {
             {/* Right: Phone Mockup */}
             <div className="relative flex justify-center lg:justify-end animate-fade-in-up">
               <div className="relative w-[280px] sm:w-[300px]">
+                {/* Mobile App Label */}
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md border border-gray-200 z-30">
+                  <Smartphone className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-semibold text-gray-700">Mobile App Preview</span>
+                </div>
+                
                 {/* Phone Frame */}
-                <div className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-2xl shadow-gray-400/30 hover:shadow-gray-400/40 transition-shadow duration-500">
+                <div 
+                  className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-2xl shadow-gray-400/30 hover:shadow-gray-400/40 transition-shadow duration-500 will-change-auto"
+                  style={{ transform: 'translateZ(0)' }}
+                >
                   {/* Dynamic Island */}
                   <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
                   
@@ -797,14 +806,24 @@ export default function LandingPage() {
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in {
-          animation: fade-in 0.6s ease-out forwards;
+          animation: fade-in 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+          will-change: opacity, transform;
         }
         .animate-fade-in-up {
-          animation: fade-in-up 0.8s ease-out 0.2s forwards;
+          animation: fade-in-up 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.15s forwards;
           opacity: 0;
+          will-change: opacity, transform;
         }
         html {
           scroll-behavior: smooth;
+        }
+        /* Prevent layout shift during image load */
+        img {
+          content-visibility: auto;
+        }
+        /* Smooth transitions for interactive elements */
+        .group:hover .group-hover\\:shadow-2xl {
+          transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
       `}</style>
 
@@ -903,19 +922,30 @@ export default function LandingPage() {
 }
 
 function PhoneMockup({ screenshot }: { screenshot: string }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  
   return (
     <div className="relative w-[260px] sm:w-[280px] group">
-      {/* Phone Frame */}
-      <div className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-xl group-hover:shadow-2xl transition-shadow duration-500">
+      {/* Phone Frame - added will-change for smoother transitions */}
+      <div 
+        className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-xl group-hover:shadow-2xl transition-shadow duration-500 will-change-auto"
+        style={{ transform: 'translateZ(0)' }} // Force GPU layer
+      >
         {/* Dynamic Island */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
         
         {/* Screen */}
         <div className="relative bg-white rounded-[2.25rem] overflow-hidden">
+          {/* Placeholder to prevent layout shift */}
+          <div 
+            className={`w-full aspect-[9/19.5] bg-gray-100 transition-opacity duration-300 ${imageLoaded ? 'opacity-0 absolute inset-0' : 'opacity-100'}`}
+          />
           <img 
             src={screenshot} 
             alt="TradieTrack App"
-            className="w-full h-auto"
+            className={`w-full h-auto transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            onLoad={() => setImageLoaded(true)}
+            loading="lazy"
           />
         </div>
       </div>
