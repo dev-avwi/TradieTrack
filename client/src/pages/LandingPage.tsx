@@ -31,6 +31,23 @@ import quotePreviewScreenshot from "@assets/appstore_screenshots/07_quote_previe
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showAppPopup, setShowAppPopup] = useState(false);
+
+  // Show mobile app popup after a short delay on first visit
+  useEffect(() => {
+    const hasSeenPopup = localStorage.getItem('tradietrack_app_popup_dismissed');
+    if (!hasSeenPopup) {
+      const timer = setTimeout(() => {
+        setShowAppPopup(true);
+      }, 3000); // Show after 3 seconds
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const dismissAppPopup = () => {
+    setShowAppPopup(false);
+    localStorage.setItem('tradietrack_app_popup_dismissed', 'true');
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -790,6 +807,97 @@ export default function LandingPage() {
           scroll-behavior: smooth;
         }
       `}</style>
+
+      {/* Mobile App Download CTA Popup */}
+      {showAppPopup && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" style={{ animationFillMode: 'both' }}>
+          <div 
+            className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all"
+            style={{ animation: 'fade-in-up 0.4s ease-out forwards' }}
+          >
+            {/* Close button */}
+            <button
+              onClick={dismissAppPopup}
+              className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors z-10"
+              data-testid="button-close-app-popup"
+            >
+              <X className="w-4 h-4 text-gray-500" />
+            </button>
+
+            {/* Gradient header */}
+            <div className="bg-gradient-to-r from-blue-600 to-orange-500 p-6 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 backdrop-blur rounded-2xl mb-4">
+                <Smartphone className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-1">
+                Get the TradieTrack App
+              </h3>
+              <p className="text-white/90 text-sm">
+                Manage your business from anywhere
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Check className="w-4 h-4 text-green-600" />
+                  </div>
+                  <span className="text-gray-700 text-sm">Take job photos on-site</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Check className="w-4 h-4 text-green-600" />
+                  </div>
+                  <span className="text-gray-700 text-sm">Track time and GPS location</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Check className="w-4 h-4 text-green-600" />
+                  </div>
+                  <span className="text-gray-700 text-sm">Works offline, syncs automatically</span>
+                </div>
+              </div>
+
+              {/* App Store Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <a 
+                  href="#" 
+                  className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-800 text-white rounded-lg py-3 px-4 transition-colors"
+                  data-testid="popup-app-store"
+                >
+                  <SiApple className="w-6 h-6" />
+                  <div className="text-left">
+                    <div className="text-[9px] uppercase tracking-wider opacity-80">Download on the</div>
+                    <div className="text-sm font-semibold -mt-0.5">App Store</div>
+                  </div>
+                </a>
+                <a 
+                  href="#" 
+                  className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-800 text-white rounded-lg py-3 px-4 transition-colors"
+                  data-testid="popup-google-play"
+                >
+                  <SiGoogleplay className="w-5 h-5" />
+                  <div className="text-left">
+                    <div className="text-[9px] uppercase tracking-wider opacity-80">Get it on</div>
+                    <div className="text-sm font-semibold -mt-0.5">Google Play</div>
+                  </div>
+                </a>
+              </div>
+
+              {/* Dismiss link */}
+              <button
+                onClick={dismissAppPopup}
+                className="w-full text-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                data-testid="button-dismiss-app-popup"
+              >
+                Maybe later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
