@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,16 @@ const features = [
 export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowProps) {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [currentScreenshot, setCurrentScreenshot] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const autoRotateRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Preload all screenshot images to prevent flash/glitch during transitions
+  useEffect(() => {
+    screenshots.forEach(({ src }) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
   
   // Check URL for mode parameter to set initial auth mode
   useEffect(() => {
@@ -65,13 +75,35 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
     }
   }, []);
 
-  // Auto-rotate screenshots
-  useEffect(() => {
-    const timer = setInterval(() => {
+  // Start/restart auto-rotate timer
+  const startAutoRotate = useCallback(() => {
+    if (autoRotateRef.current) {
+      clearInterval(autoRotateRef.current);
+    }
+    autoRotateRef.current = setInterval(() => {
       setCurrentScreenshot((prev) => (prev + 1) % screenshots.length);
-    }, 4000);
-    return () => clearInterval(timer);
+    }, 5000); // Slightly longer interval for smoother experience
   }, []);
+
+  // Auto-rotate screenshots with proper cleanup
+  useEffect(() => {
+    startAutoRotate();
+    return () => {
+      if (autoRotateRef.current) {
+        clearInterval(autoRotateRef.current);
+      }
+    };
+  }, [startAutoRotate]);
+
+  // Handle manual screenshot change - reset timer to prevent race condition
+  const handleScreenshotChange = useCallback((index: number) => {
+    if (isTransitioning || index === currentScreenshot) return;
+    setIsTransitioning(true);
+    setCurrentScreenshot(index);
+    startAutoRotate(); // Reset timer on manual interaction
+    // Allow next transition after animation completes
+    setTimeout(() => setIsTransitioning(false), 400);
+  }, [currentScreenshot, isTransitioning, startAutoRotate]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -671,13 +703,14 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                 {screenshots.map((_, index) => (
                   <button
                     key={index}
-                    onClick={() => setCurrentScreenshot(index)}
-                    className={`w-2 h-2 rounded-full transition-all ${
+                    onClick={() => handleScreenshotChange(index)}
+                    className={`h-2 rounded-full transition-all duration-300 ${
                       index === currentScreenshot 
                         ? 'bg-white w-6' 
-                        : 'bg-white/40 hover:bg-white/60'
+                        : 'bg-white/40 hover:bg-white/60 w-2'
                     }`}
                     data-testid={`carousel-dot-${index}`}
+                    disabled={isTransitioning}
                   />
                 ))}
               </div>
