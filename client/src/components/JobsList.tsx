@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus, Briefcase, User, Clock, MapPin, MoreVertical, Edit, FileText, CheckCircle, AlertCircle, LayoutGrid, List, ChevronRight, Play, ArrowRight, Clipboard, Lightbulb, Columns3, Calendar, Receipt } from "lucide-react";
 import PasteJobModal from "./PasteJobModal";
+import XeroRibbon from "./XeroRibbon";
 import { PageShell, PageHeader, SectionTitle } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
 import { FilterChips, SearchBar } from "@/components/ui/filter-chips";
@@ -64,7 +65,17 @@ export default function JobsList({
       accessorKey: "title",
       sortable: true,
       cell: (row) => (
-        <div className="font-medium">{row.title || "Untitled Job"}</div>
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{row.title || "Untitled Job"}</span>
+          {row.isXeroImport && (
+            <Badge 
+              variant="secondary" 
+              className="text-[10px] px-1.5 py-0 bg-[#13B5EA]/10 text-[#13B5EA] border-[#13B5EA]/20"
+            >
+              XERO
+            </Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -623,10 +634,11 @@ export default function JobsList({
                           statusJobs.map((job: any) => (
                             <div
                               key={job.id}
-                              className="bg-background rounded-lg p-3 border hover-elevate cursor-pointer"
+                              className="bg-background rounded-lg p-3 border hover-elevate cursor-pointer relative overflow-hidden"
                               onClick={() => onViewJob?.(job.id)}
                               data-testid={`kanban-job-${job.id}`}
                             >
+                              {job.isXeroImport && <XeroRibbon size="sm" />}
                               <p className="font-medium text-sm truncate mb-1">
                                 {job.title || 'Untitled Job'}
                               </p>
@@ -683,11 +695,12 @@ export default function JobsList({
               {filteredJobs.map((job: any, index: number) => (
                 <div 
                   key={job.id} 
-                  className={`feed-card card-press cursor-pointer animate-slide-in stagger-delay-${Math.min(index + 1, 8)}`}
+                  className={`feed-card card-press cursor-pointer animate-slide-in stagger-delay-${Math.min(index + 1, 8)} relative overflow-hidden`}
                   style={{ opacity: 0 }}
                   onClick={() => onViewJob?.(job.id)}
                   data-testid={`job-item-${job.id}`}
                 >
+                  {job.isXeroImport && <XeroRibbon size="sm" />}
                   <div className="card-padding">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">

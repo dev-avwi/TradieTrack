@@ -10554,6 +10554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           scheduledDate: job.scheduledDate,
           priority: job.priority,
           clientId: job.clientId,
+          isXeroImport: job.isXeroImport || false,
         })),
         unassignedJobs: unassignedJobs.slice(0, 10).map(job => ({
           id: job.id,
@@ -10563,6 +10564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           scheduledDate: job.scheduledDate,
           priority: job.priority,
           clientId: job.clientId,
+          isXeroImport: job.isXeroImport || false,
         })),
         recentActivity: memberActivityLogs.map(log => ({
           id: log.id,
