@@ -2975,27 +2975,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Integration Status (platform-level - what integrations are configured)
-  app.get("/api/integrations/status", requireAuth, async (req: any, res) => {
-    try {
-      // Check platform integration status
-      const stripe = await getUncachableStripeClient();
-      const stripeConfigured = !!stripe;
-      
-      // SendGrid is always configured via platform
-      const sendgridConfigured = !!process.env.SENDGRID_API_KEY;
-      
-      res.json({
-        stripe: stripeConfigured,
-        sendgrid: sendgridConfigured,
-        googleAuth: false, // Coming soon
-      });
-    } catch (error) {
-      console.error("Error fetching integration status:", error);
-      res.json({ stripe: false, sendgrid: false, googleAuth: false });
-    }
-  });
-  
   // Integration Settings Routes
   app.get("/api/integrations/settings", requireAuth, async (req: any, res) => {
     try {
