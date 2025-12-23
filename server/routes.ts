@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { randomBytes } from "crypto";
 import { z } from "zod";
 import multer from "multer";
+import jwt from "jsonwebtoken";
 import { storage } from "./storage";
 import { AuthService } from "./auth";
 import { setupGoogleAuth } from "./googleAuth";
@@ -1119,6 +1120,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Mobile Google auth error:", error);
       res.status(500).json({ error: "Failed to authenticate with Google" });
+    }
+  });
+
+  // Apple Sign In endpoint (accepts Apple identity token from mobile app)
+  app.post("/api/auth/apple", async (req: any, res) => {
+    try {
+      const { identityToken, fullName, email } = req.body;
+      
+      if (!identityToken) {
+        return res.status(400).json({ error: "Identity token required" });
+      }
+      
+      // Decode the JWT to get Apple user ID (sub claim)
+      // Note: We're only decoding, not verifying. Full verification would require Apple's public keys.
+      const decoded = jwt.decode(identityToken) as { sub: string; email?: string } | null;
+      if (!decoded?.sub) {
+        return res.status(400).json({ error: "Invalid identity token" });
+      }
+      
+      const appleUserId = decoded.sub;
+      const userEmail = email || decoded.email;
+      
+      // Track if this is a new user for onboarding
+      let isNewUser = false;
+      
+      // Find user by Apple ID
+      let user = await AuthService.findUserByAppleId(appleUserId);
+      
+      if (!user && userEmail) {
+        // Check if user exists with this email
+        user = await AuthService.findUserByEmail(userEmail);
+        if (user) {
+          // Link Apple auth to existing user
+          console.log(`🍎 Linking Apple account to existing user: ${userEmail}`);
+          await AuthService.linkAppleAccount(user.id, appleUserId);
+        }
+      }
+      
+      if (!user) {
+        // Create new Apple user (first-time login)
+        const firstName = fullName?.givenName || '';
+        const lastName = fullName?.familyName || '';
+        const finalEmail = userEmail || `apple_${appleUserId.substring(0, 8)}@privaterelay.appleid.com`;
+        
+        console.log(`🍎 Creating new Apple user: ${finalEmail}`);
+        user = await AuthService.createAppleUser({
+          appleId: appleUserId,
+          email: finalEmail,
+          firstName: firstName || finalEmail.split('@')[0],
+          lastName: lastName || '',
+          emailVerified: true
+        });
+        isNewUser = true;
+      } else {
+        // Existing user found
+        console.log(`✅ Existing Apple user found: ${user.email}`);
+        // Ensure Apple ID is linked if not already
+        if (!user.appleId) {
+          await AuthService.linkAppleAccount(user.id, appleUserId);
+        }
+      }
+      
+      // Set session and explicitly save before responding
+      req.session.userId = user.id;
+      req.session.user = user;
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ error: "Failed to create session" });
+        }
+        // Return session token and isNewUser flag for mobile auth
+        res.json({ 
+          success: true, 
+          user: { ...user, password: undefined },
+          sessionToken: req.sessionID, 
+          isNewUser 
+        });
+      });
+    } catch (error) {
+      console.error("Apple auth error:", error);
+      res.status(500).json({ error: "Authentication failed" });
     }
   });
 

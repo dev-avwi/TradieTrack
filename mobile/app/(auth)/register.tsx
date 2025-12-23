@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import api, { API_URL } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { Card, CardContent } from '../../src/components/ui/Card';
@@ -29,6 +30,7 @@ export default function RegisterScreen() {
   const [businessName, setBusinessName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const login = useAuthStore((state) => state.login);
@@ -120,6 +122,50 @@ export default function RegisterScreen() {
     }
   };
 
+  const handleAppleSignUp = async () => {
+    try {
+      setAppleLoading(true);
+      
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      
+      if (credential.identityToken) {
+        const response = await api.request('/api/auth/apple', {
+          method: 'POST',
+          body: JSON.stringify({
+            identityToken: credential.identityToken,
+            fullName: credential.fullName,
+            email: credential.email,
+          }),
+        });
+        
+        if (response.error) {
+          Alert.alert('Error', response.error);
+          return;
+        }
+        
+        if (response.token) {
+          await api.setToken(response.token);
+        }
+        
+        await checkAuth();
+        router.replace('/(onboarding)/setup');
+      }
+    } catch (err: any) {
+      if (err.code === 'ERR_REQUEST_CANCELED') {
+        return;
+      }
+      console.error('Apple Sign-Up error:', err);
+      Alert.alert('Error', 'Failed to sign up with Apple. Please try again.');
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -163,6 +209,24 @@ export default function RegisterScreen() {
                   </>
                 )}
               </TouchableOpacity>
+
+              {Platform.OS === 'ios' && (
+                <View style={styles.appleButtonContainer}>
+                  {appleLoading ? (
+                    <View style={styles.appleLoadingContainer}>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    </View>
+                  ) : (
+                    <AppleAuthentication.AppleAuthenticationButton
+                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                      cornerRadius={8}
+                      style={styles.appleButton}
+                      onPress={handleAppleSignUp}
+                    />
+                  )}
+                </View>
+              )}
 
               <View style={styles.divider}>
                 <View style={styles.dividerLine} />
@@ -383,6 +447,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     fontSize: 16,
     fontWeight: '500',
+  },
+  appleButtonContainer: {
+    marginTop: 12,
+    width: '100%',
+  },
+  appleButton: {
+    width: '100%',
+    height: 48,
+  },
+  appleLoadingContainer: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#000000',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   divider: {
     flexDirection: 'row',

@@ -187,11 +187,13 @@ export interface IStorage {
   getUserByVerificationToken(token: string): Promise<User | undefined>;
   getUserByPasswordResetToken(token: string): Promise<User | undefined>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
+  getUserByAppleId(appleId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   updateUserJobCount(id: string, count: number): Promise<User | undefined>;
   resetUserJobCount(id: string, nextResetDate: Date): Promise<User | undefined>;
   linkGoogleAccount(userId: string, googleId: string): Promise<void>;
+  linkAppleAccount(userId: string, appleId: string): Promise<void>;
 
   // Login Codes (Passwordless Email Auth)
   createLoginCode(email: string, code: string): Promise<void>;
@@ -650,6 +652,22 @@ export class PostgresStorage implements IStorage {
     await db
       .update(users)
       .set({ googleId: googleId, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+  }
+
+  async getUserByAppleId(appleId: string): Promise<User | undefined> {
+    const result = await db
+      .select()
+      .from(users)
+      .where(eq(users.appleId, appleId))
+      .limit(1);
+    return result[0];
+  }
+
+  async linkAppleAccount(userId: string, appleId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ appleId: appleId, updatedAt: new Date() })
       .where(eq(users.id, userId));
   }
 

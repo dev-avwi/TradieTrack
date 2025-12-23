@@ -349,6 +349,78 @@ export class AuthService {
       throw error;
     }
   }
+
+  // Apple Sign In methods
+  static async findUserByAppleId(appleId: string): Promise<SafeUser | null> {
+    try {
+      const user = await storage.getUserByAppleId(appleId);
+      if (!user) return null;
+      
+      // Return safe user data without password
+      const { password, ...safeUser } = user;
+      return safeUser;
+    } catch (error) {
+      console.error('Error finding user by Apple ID:', error);
+      return null;
+    }
+  }
+
+  static async linkAppleAccount(userId: string, appleId: string): Promise<void> {
+    try {
+      await storage.linkAppleAccount(userId, appleId);
+    } catch (error) {
+      console.error('Error linking Apple account:', error);
+      throw error;
+    }
+  }
+
+  static async createAppleUser(userData: {
+    appleId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    emailVerified: boolean;
+  }): Promise<SafeUser> {
+    try {
+      // Generate username from email
+      const username = userData.email.split('@')[0] + '_' + Math.random().toString(36).substring(2, 8);
+      
+      // Create base user
+      const user = await storage.createUser({
+        email: userData.email,
+        username: username,
+        password: '', // No password for Apple users
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+      });
+
+      // Update with Apple-specific fields
+      await storage.updateUser(user.id, {
+        emailVerified: userData.emailVerified,
+        appleId: userData.appleId,
+      } as any);
+
+      // Fetch the updated user
+      const updatedUser = await storage.getUserById(user.id);
+      if (!updatedUser) throw new Error('Failed to fetch updated user');
+
+      // Send welcome email (async, don't block user creation)
+      sendWelcomeEmail({
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName
+      }).catch(err => {
+        console.error('Failed to send welcome email for Apple user:', err);
+      });
+
+      // Return safe user data without password
+      const { password, ...safeUser } = updatedUser;
+      return safeUser;
+    } catch (error) {
+      console.error('Error creating Apple user:', error);
+      throw error;
+    }
+  }
 }
 
 // Session middleware type

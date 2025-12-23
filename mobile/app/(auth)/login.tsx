@@ -14,17 +14,19 @@ import {
 } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuthStore } from '../../src/lib/store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { GoogleLogo } from '../../src/components/ui/GoogleLogo';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { API_URL } from '../../src/lib/api';
+import api, { API_URL } from '../../src/lib/api';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const { login, checkAuth, isLoading, error, clearError, isAuthenticated, user } = useAuthStore();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -131,6 +133,55 @@ export default function LoginScreen() {
       Alert.alert('Error', 'Failed to sign in with Google. Please try again.');
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      setAppleLoading(true);
+      
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      
+      if (credential.identityToken) {
+        const response = await api.request('/api/auth/apple', {
+          method: 'POST',
+          body: JSON.stringify({
+            identityToken: credential.identityToken,
+            fullName: credential.fullName,
+            email: credential.email,
+          }),
+        });
+        
+        if (response.error) {
+          Alert.alert('Error', response.error);
+          return;
+        }
+        
+        if (response.token) {
+          await api.setToken(response.token);
+        }
+        
+        await checkAuth();
+        
+        const { user: currentUser } = useAuthStore.getState();
+        const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
+        const isNewUser = response.isNewUser === true;
+        const redirectPath = getRedirectPath(isNewUser, isPlatformAdmin);
+        router.replace(redirectPath);
+      }
+    } catch (err: any) {
+      if (err.code === 'ERR_REQUEST_CANCELED') {
+        return;
+      }
+      console.error('Apple Sign-In error:', err);
+      Alert.alert('Error', 'Failed to sign in with Apple. Please try again.');
+    } finally {
+      setAppleLoading(false);
     }
   };
 
@@ -256,6 +307,24 @@ export default function LoginScreen() {
                   </>
                 )}
               </TouchableOpacity>
+
+              {Platform.OS === 'ios' && (
+                <View style={styles.appleButtonContainer}>
+                  {appleLoading ? (
+                    <View style={styles.appleLoadingContainer}>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    </View>
+                  ) : (
+                    <AppleAuthentication.AppleAuthenticationButton
+                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                      cornerRadius={8}
+                      style={styles.appleButton}
+                      onPress={handleAppleSignIn}
+                    />
+                  )}
+                </View>
+              )}
             </CardContent>
           </Card>
 
@@ -411,6 +480,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     fontSize: 16,
     fontWeight: '500',
+  },
+  appleButtonContainer: {
+    marginTop: 12,
+    width: '100%',
+  },
+  appleButton: {
+    width: '100%',
+    height: 48,
+  },
+  appleLoadingContainer: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#000000',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   spacer: {
     height: 16,

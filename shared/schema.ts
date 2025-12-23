@@ -76,6 +76,7 @@ export const users = pgTable("users", {
   username: text("username").unique(), // Keep for existing users, new users get this from email or generated
   password: text("password"), // Keep for backwards compatibility but make nullable
   googleId: varchar("google_id").unique(), // For Google OAuth linkage
+  appleId: varchar("apple_id").unique(), // For Apple Sign In linkage
   firstName: varchar("first_name"), // From Replit Auth claims
   lastName: varchar("last_name"), // From Replit Auth claims
   profileImageUrl: varchar("profile_image_url"), // From Replit Auth claims
