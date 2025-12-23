@@ -10398,6 +10398,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Worker Command Center - Get comprehensive worker details (owner/manager only)
+  app.get("/api/team/members/:id/command-center", requireAuth, async (req: any, res) => {
+    try {
+      const memberId = req.params.id;
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const requestingUserId = req.userId;
+      
+      // Authorization: Only business owner or managers with TEAM_VIEW permission can access
+      if (requestingUserId !== effectiveUserId) {
+        // Check if requesting user has TEAM_VIEW permission
+        const userContext = req.userContext;
+        if (!userContext?.permissions?.includes('team_view') && !userContext?.permissions?.includes('team_manage')) {
+          return res.status(403).json({ error: 'You do not have permission to view team member details' });
+        }
+      }
+      
+      // Verify the team member belongs to this business
+      const allMembers = await storage.getTeamMembers(effectiveUserId);
+      const member = allMembers.find(m => m.id === memberId || m.memberId === memberId);
+      
+      if (!member) {
+        return res.status(404).json({ error: 'Team member not found' });
+      }
+      
+      // Get the member's user profile
+      const memberUser = member.memberId ? await storage.getUser(member.memberId) : null;
+      
+      // Get member's role
+      const role = await storage.getUserRole(member.roleId);
+      
+      // Get current location status (Life360-style)
+      const tradieStatusData = member.memberId ? await storage.getTradieStatus(member.memberId) : null;
+      
+      // Fall back to location tracking if no tradie status
+      const locationData = member.memberId ? await storage.getLatestLocationForUser(member.memberId) : null;
+      
+      // Get recent activity logs for this member
+      const allActivityLogs = await storage.getActivityLogs(effectiveUserId, 50);
+      const memberActivityLogs = allActivityLogs.filter(log => 
+        log.userId === member.memberId || 
+        log.metadata && (log.metadata as any).assignedTo === member.memberId
+      ).slice(0, 10);
+      
+      // Get all jobs
+      const allJobs = await storage.getJobs(effectiveUserId);
+      
+      // Jobs assigned to this member
+      const assignedJobs = allJobs.filter(job => 
+        job.assignedTo === member.memberId || 
+        job.assignedTo === member.id ||
+        job.assignedTeamMemberId === member.id
+      );
+      
+      // Unscheduled/unassigned jobs that could be assigned
+      const unassignedJobs = allJobs.filter(job => 
+        !job.assignedTo && 
+        !job.assignedTeamMemberId &&
+        job.status !== 'done' && 
+        job.status !== 'invoiced' &&
+        job.status !== 'archived'
+      );
+      
+      // Get time entries for this member (today)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const timeEntries = member.memberId ? await storage.getTimeEntriesByDateRange(
+        effectiveUserId,
+        today,
+        new Date(),
+        member.memberId
+      ) : [];
+      
+      // Calculate today's hours
+      const todayHours = timeEntries.reduce((total, entry) => {
+        const start = new Date(entry.startTime);
+        const end = entry.endTime ? new Date(entry.endTime) : new Date();
+        return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+      }, 0);
+      
+      // Build location object
+      const location = tradieStatusData ? {
+        latitude: tradieStatusData.latitude ? parseFloat(String(tradieStatusData.latitude)) : null,
+        longitude: tradieStatusData.longitude ? parseFloat(String(tradieStatusData.longitude)) : null,
+        lastUpdated: tradieStatusData.updatedAt,
+        status: tradieStatusData.status || 'unknown',
+        currentActivity: tradieStatusData.currentActivity || null,
+        batteryLevel: tradieStatusData.batteryLevel || null,
+      } : locationData ? {
+        latitude: locationData.latitude ? parseFloat(locationData.latitude) : null,
+        longitude: locationData.longitude ? parseFloat(locationData.longitude) : null,
+        lastUpdated: locationData.timestamp,
+        status: 'unknown',
+        currentActivity: null,
+        batteryLevel: null,
+      } : null;
+      
+      res.json({
+        member: {
+          id: member.id,
+          memberId: member.memberId,
+          firstName: member.firstName || memberUser?.firstName || '',
+          lastName: member.lastName || memberUser?.lastName || '',
+          email: member.email,
+          phone: member.phone || memberUser?.phone || null,
+          profileImageUrl: memberUser?.profileImageUrl || null,
+          themeColor: memberUser?.themeColor || null,
+          role: role?.name || 'Team Member',
+          roleId: member.roleId,
+          isActive: member.isActive,
+          inviteStatus: member.inviteStatus,
+          hourlyRate: member.hourlyRate,
+          locationEnabledByOwner: member.locationEnabledByOwner ?? true,
+          locationEnabledByUser: member.locationEnabledByUser ?? true,
+        },
+        location,
+        stats: {
+          todayHours: Math.round(todayHours * 100) / 100,
+          activeTimeEntry: timeEntries.find(e => !e.endTime) || null,
+          totalAssignedJobs: assignedJobs.length,
+          activeJobs: assignedJobs.filter(j => j.status === 'in_progress').length,
+          completedJobs: assignedJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length,
+        },
+        assignedJobs: assignedJobs.slice(0, 10).map(job => ({
+          id: job.id,
+          title: job.title,
+          status: job.status,
+          address: job.address,
+          scheduledDate: job.scheduledDate,
+          priority: job.priority,
+          clientId: job.clientId,
+        })),
+        unassignedJobs: unassignedJobs.slice(0, 10).map(job => ({
+          id: job.id,
+          title: job.title,
+          status: job.status,
+          address: job.address,
+          scheduledDate: job.scheduledDate,
+          priority: job.priority,
+          clientId: job.clientId,
+        })),
+        recentActivity: memberActivityLogs.map(log => ({
+          id: log.id,
+          action: log.action,
+          entityType: log.entityType,
+          entityId: log.entityId,
+          description: log.description,
+          createdAt: log.createdAt,
+          metadata: log.metadata,
+        })),
+      });
+    } catch (error) {
+      console.error('Error fetching worker command center data:', error);
+      res.status(500).json({ error: 'Failed to fetch worker details' });
+    }
+  });
+
   // ===== THEME COLOR ROUTES =====
   
   // Predefined color palette for team members (professional tradie colors)

@@ -41,11 +41,13 @@ import {
   Search,
   Users,
   UserCheck,
-  UserX
+  UserX,
+  Eye
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TeamMember, UserRole } from "@shared/schema";
+import WorkerCommandCenter from "@/components/WorkerCommandCenter";
 
 // Permission type from API
 interface PermissionItem {
@@ -437,6 +439,7 @@ export default function TeamManagement() {
   const [permissionsMember, setPermissionsMember] = useState<TeamMember | null>(null);
   const [assignJobMember, setAssignJobMember] = useState<TeamMember | null>(null);
   const [selectedJobId, setSelectedJobId] = useState("");
+  const [commandCenterMemberId, setCommandCenterMemberId] = useState<string | null>(null);
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -968,6 +971,14 @@ export default function TeamManagement() {
                       {member.inviteStatus === 'accepted' && (
                         <>
                           <Button
+                            size="sm"
+                            onClick={() => setCommandCenterMemberId(member.id)}
+                            data-testid={`button-view-details-${member.id}`}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View Details
+                          </Button>
+                          <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setAssignJobMember(member)}
@@ -1226,6 +1237,13 @@ export default function TeamManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Worker Command Center Sheet */}
+      <WorkerCommandCenter
+        memberId={commandCenterMemberId || ''}
+        open={!!commandCenterMemberId}
+        onOpenChange={(open) => !open && setCommandCenterMemberId(null)}
+      />
     </div>
   );
 }
