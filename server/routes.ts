@@ -4292,33 +4292,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Google Calendar Integration Routes (using Replit Connector)
+  // Google Calendar Integration Routes (per-user OAuth)
   app.get("/api/integrations/google-calendar/status", requireAuth, async (req: any, res) => {
     try {
-      const { isGoogleCalendarConnected, getCalendarInfo } = await import('./googleCalendarClient');
+      const { isGoogleCalendarConnected, getCalendarInfo, isGoogleCalendarConfigured } = await import('./googleCalendarClient');
       
-      const connected = await isGoogleCalendarConnected();
-      if (!connected) {
+      const configured = isGoogleCalendarConfigured();
+      if (!configured) {
         return res.json({ 
-          configured: true, 
+          configured: false, 
           connected: false,
-          message: "Google Calendar not connected. Please connect via Replit integrations."
+          message: "Google Calendar integration not configured. Please set GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET."
         });
       }
       
-      const calendarInfo = await getCalendarInfo();
+      const userContext = await getUserContext(req.userId);
+      const calendarInfo = await getCalendarInfo(userContext.effectiveUserId);
+      
       res.json({ 
         configured: true, 
-        connected: true,
-        email: calendarInfo?.email 
+        connected: calendarInfo?.connected || false,
+        email: calendarInfo?.email
       });
     } catch (error: any) {
       console.error("Error getting Google Calendar status:", error);
       res.json({ 
-        configured: true, 
+        configured: false, 
         connected: false,
         message: error.message || "Google Calendar connection not available"
       });
+    }
+  });
+
+  // Google Calendar OAuth - Start connection flow
+  app.post("/api/integrations/google-calendar/connect", requireAuth, async (req: any, res) => {
+    try {
+      const { getAuthorizationUrl, isGoogleCalendarConfigured } = await import('./googleCalendarClient');
+      
+      if (!isGoogleCalendarConfigured()) {
+        return res.status(400).json({ error: "Google Calendar integration not configured" });
+      }
+      
+      const userContext = await getUserContext(req.userId);
+      const authUrl = getAuthorizationUrl(userContext.effectiveUserId);
+      
+      res.json({ authUrl });
+    } catch (error: any) {
+      console.error("Error starting Google Calendar connection:", error);
+      res.status(500).json({ error: error.message || "Failed to start Google Calendar connection" });
+    }
+  });
+
+  // Google Calendar OAuth callback
+  app.get("/api/integrations/google-calendar/callback", async (req: any, res) => {
+    try {
+      const { handleOAuthCallback } = await import('./googleCalendarClient');
+      const { code, state } = req.query;
+      
+      if (!code || !state) {
+        return res.redirect('/integrations?error=missing_params');
+      }
+      
+      const userId = state as string;
+      const result = await handleOAuthCallback(code as string, userId);
+      
+      if (result.success) {
+        res.redirect('/integrations?success=google_calendar_connected');
+      } else {
+        res.redirect(`/integrations?error=${encodeURIComponent(result.error || 'connection_failed')}`);
+      }
+    } catch (error: any) {
+      console.error("Error handling Google Calendar callback:", error);
+      res.redirect(`/integrations?error=${encodeURIComponent(error.message || 'callback_failed')}`);
+    }
+  });
+
+  // Google Calendar disconnect
+  app.post("/api/integrations/google-calendar/disconnect", requireAuth, async (req: any, res) => {
+    try {
+      const { disconnectCalendar } = await import('./googleCalendarClient');
+      
+      const userContext = await getUserContext(req.userId);
+      await disconnectCalendar(userContext.effectiveUserId);
+      
+      res.json({ success: true, message: "Google Calendar disconnected successfully" });
+    } catch (error: any) {
+      console.error("Error disconnecting Google Calendar:", error);
+      res.status(500).json({ error: error.message || "Failed to disconnect Google Calendar" });
     }
   });
 
@@ -4331,13 +4391,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Job ID is required" });
       }
       
-      const connected = await isGoogleCalendarConnected();
+      const userContext = await getUserContext(req.userId);
+      const connected = await isGoogleCalendarConnected(userContext.effectiveUserId);
       if (!connected) {
-        return res.status(400).json({ error: "Google Calendar not connected. Please connect via Replit integrations." });
+        return res.status(400).json({ error: "Google Calendar not connected. Please connect your Google Calendar in Settings." });
       }
       
       // Get job details
-      const userContext = await getUserContext(req.userId);
       const job = await storage.getJob(jobId, userContext.effectiveUserId);
       
       if (!job) {
@@ -4359,7 +4419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clientEmail = client?.email || undefined;
       }
       
-      const result = await syncJobToCalendar({
+      const result = await syncJobToCalendar(userContext.effectiveUserId, {
         id: job.id,
         title: job.title,
         description: job.description,
@@ -4392,15 +4452,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/integrations/google-calendar/events", requireAuth, async (req: any, res) => {
     try {
-      const { listUpcomingEvents, isGoogleCalendarConnected } = await import('./googleCalendarClient');
+      const { getUpcomingEvents, isGoogleCalendarConnected } = await import('./googleCalendarClient');
       
-      const connected = await isGoogleCalendarConnected();
+      const userContext = await getUserContext(req.userId);
+      const connected = await isGoogleCalendarConnected(userContext.effectiveUserId);
       if (!connected) {
         return res.status(400).json({ error: "Google Calendar not connected" });
       }
       
       const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
-      const events = await listUpcomingEvents(limit);
+      const events = await getUpcomingEvents(userContext.effectiveUserId, limit);
       
       res.json({ 
         events: events.map(event => ({
@@ -4424,12 +4485,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { syncJobToCalendar, isGoogleCalendarConnected } = await import('./googleCalendarClient');
       
-      const connected = await isGoogleCalendarConnected();
+      const userContext = await getUserContext(req.userId);
+      const connected = await isGoogleCalendarConnected(userContext.effectiveUserId);
       if (!connected) {
         return res.status(400).json({ error: "Google Calendar not connected" });
       }
       
-      const userContext = await getUserContext(req.userId);
       const jobs = await storage.getJobs(userContext.effectiveUserId);
       const clients = await storage.getClients(userContext.effectiveUserId);
       const clientsMap = new Map(clients.map(c => [c.id, c]));
@@ -4447,7 +4508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const client = job.clientId ? clientsMap.get(job.clientId) : null;
           
-          const result = await syncJobToCalendar({
+          const result = await syncJobToCalendar(userContext.effectiveUserId, {
             id: job.id,
             title: job.title,
             description: job.description,
@@ -4493,31 +4554,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Admin endpoint to initialize Stripe products (creates Pro and Team tier products/prices)
+  app.post("/api/admin/init-stripe-products", async (req, res) => {
+    try {
+      const { initializeStripeProducts } = await import('./billingService');
+      const result = await initializeStripeProducts();
+      
+      if (!result.success) {
+        return res.status(500).json({ error: result.error || 'Failed to initialize Stripe products' });
+      }
+      
+      res.json({
+        success: true,
+        message: 'Stripe products initialized successfully',
+        products: result.products
+      });
+    } catch (error: any) {
+      console.error("Error initializing Stripe products:", error);
+      res.status(500).json({ error: error.message || "Failed to initialize Stripe products" });
+    }
+  });
+
   // Unified integrations status endpoint for mobile and web
   app.get("/api/integrations/status", requireAuth, async (req: any, res) => {
     try {
-      const { isGoogleCalendarConnected, getCalendarInfo } = await import('./googleCalendarClient');
+      const { isGoogleCalendarConnected, getCalendarInfo, isGoogleCalendarConfigured } = await import('./googleCalendarClient');
       const xeroService = await import('./xeroService');
       
-      // Google Calendar status
+      const userContext = await getUserContext(req.userId);
+      
+      // Google Calendar status (per-user)
       let googleCalendarStatus = {
-        configured: false,
+        configured: isGoogleCalendarConfigured(),
         connected: false,
         email: undefined as string | undefined,
         message: undefined as string | undefined
       };
       try {
-        const calendarConnected = await isGoogleCalendarConnected();
-        googleCalendarStatus.configured = true; // If isGoogleCalendarConnected doesn't throw, connector is configured
+        const calendarConnected = await isGoogleCalendarConnected(userContext.effectiveUserId);
         if (calendarConnected) {
-          const calendarInfo = await getCalendarInfo();
+          const calendarInfo = await getCalendarInfo(userContext.effectiveUserId);
           googleCalendarStatus.connected = true;
           googleCalendarStatus.email = calendarInfo?.email;
         }
       } catch (e: any) {
-        // If getAccessToken throws, connector is not configured
-        googleCalendarStatus.configured = false;
-        googleCalendarStatus.message = e.message || 'Google Calendar connector not configured';
+        // Calendar not connected for this user
+        googleCalendarStatus.message = e.message || 'Google Calendar not connected';
       }
       
       // Xero status
@@ -4527,10 +4609,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         organisationName: undefined as string | undefined
       };
       try {
-        const xeroConnected = await xeroService.isXeroConnected(req.userId);
+        const xeroConnected = await xeroService.isXeroConnected(userContext.effectiveUserId);
         if (xeroConnected) {
           xeroStatus.connected = true;
-          const xeroOrg = await xeroService.getXeroOrganisation(req.userId);
+          const xeroOrg = await xeroService.getXeroOrganisation(userContext.effectiveUserId);
           xeroStatus.organisationName = xeroOrg?.name;
         }
       } catch (e) {

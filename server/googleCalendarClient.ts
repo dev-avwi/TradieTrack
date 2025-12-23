@@ -1,68 +1,163 @@
 // Google Calendar Client for TradieTrack
-// Uses Replit Connector integration for secure OAuth management
-// Manages calendar operations for syncing jobs to Google Calendar
+// Supports per-user OAuth tokens stored in businessSettings
+// Each tradie connects their own Google Calendar account
 
 import { google, calendar_v3 } from 'googleapis';
+import { storage } from './storage';
 
-// Cache for connection settings to avoid repeated API calls
-let connectionSettingsCache: any = null;
+// Google OAuth credentials from environment
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CALENDAR_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CALENDAR_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
 
-// Get access token from Replit Connector (handles refresh automatically)
-async function getAccessToken(): Promise<string> {
-  // Check if cached token is still valid
-  if (connectionSettingsCache?.settings?.expires_at && 
-      new Date(connectionSettingsCache.settings.expires_at).getTime() > Date.now()) {
-    return connectionSettingsCache.settings.access_token;
+// Get OAuth2 client configured with app credentials
+function getOAuth2Client(): any {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    throw new Error('Google Calendar credentials not configured');
   }
   
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken || !hostname) {
-    throw new Error('Replit connector environment not available');
-  }
-
-  const response = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-calendar',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
+  const redirectUri = process.env.REPLIT_DOMAINS
+    ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}/api/integrations/google-calendar/callback`
+    : 'http://localhost:5000/api/integrations/google-calendar/callback';
+  
+  return new google.auth.OAuth2(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    redirectUri
   );
-  
-  const data = await response.json();
-  connectionSettingsCache = data.items?.[0];
-
-  const accessToken = connectionSettingsCache?.settings?.access_token || 
-                      connectionSettingsCache?.settings?.oauth?.credentials?.access_token;
-
-  if (!connectionSettingsCache || !accessToken) {
-    throw new Error('Google Calendar not connected via Replit connector');
-  }
-  
-  return accessToken;
 }
 
-// Check if Google Calendar is connected via Replit connector
-export async function isGoogleCalendarConnected(): Promise<boolean> {
+// Generate authorization URL for a user to connect their Google Calendar
+export function getAuthorizationUrl(userId: string): string {
+  const oauth2Client = getOAuth2Client();
+  
+  return oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/userinfo.email'
+    ],
+    state: userId
+  });
+}
+
+// Exchange authorization code for tokens and store them
+export async function handleOAuthCallback(code: string, userId: string): Promise<{
+  success: boolean;
+  email?: string;
+  error?: string;
+}> {
   try {
-    await getAccessToken();
-    return true;
+    const oauth2Client = getOAuth2Client();
+    const { tokens } = await oauth2Client.getToken(code);
+    
+    oauth2Client.setCredentials(tokens);
+    
+    // Get user's email from Google
+    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const userInfo = await oauth2.userinfo.get();
+    const email = userInfo.data.email || undefined;
+    
+    // Store tokens in businessSettings
+    await storage.updateBusinessSettings(userId, {
+      googleCalendarConnected: true,
+      googleCalendarAccessToken: tokens.access_token || null,
+      googleCalendarRefreshToken: tokens.refresh_token || null,
+      googleCalendarTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+      googleCalendarEmail: email || null,
+    });
+    
+    console.log(`[GoogleCalendar] Connected for user ${userId}: ${email}`);
+    return { success: true, email };
+  } catch (error: any) {
+    console.error('[GoogleCalendar] OAuth callback error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Disconnect Google Calendar for a user
+export async function disconnectCalendar(userId: string): Promise<void> {
+  await storage.updateBusinessSettings(userId, {
+    googleCalendarConnected: false,
+    googleCalendarAccessToken: null,
+    googleCalendarRefreshToken: null,
+    googleCalendarTokenExpiry: null,
+    googleCalendarEmail: null,
+  });
+  console.log(`[GoogleCalendar] Disconnected for user ${userId}`);
+}
+
+// Get access token for a user, refreshing if necessary
+async function getUserAccessToken(userId: string): Promise<string> {
+  const settings = await storage.getBusinessSettings(userId);
+  
+  if (!settings?.googleCalendarConnected || !settings.googleCalendarRefreshToken) {
+    throw new Error('Google Calendar not connected for this user');
+  }
+  
+  // Check if token is expired or about to expire (within 5 minutes)
+  const tokenExpiry = settings.googleCalendarTokenExpiry 
+    ? new Date(settings.googleCalendarTokenExpiry).getTime() 
+    : 0;
+  const isExpired = tokenExpiry < Date.now() + 5 * 60 * 1000;
+  
+  if (!isExpired && settings.googleCalendarAccessToken) {
+    return settings.googleCalendarAccessToken;
+  }
+  
+  // Refresh the token
+  try {
+    const oauth2Client = getOAuth2Client();
+    oauth2Client.setCredentials({
+      refresh_token: settings.googleCalendarRefreshToken
+    });
+    
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    
+    // Update stored tokens
+    await storage.updateBusinessSettings(userId, {
+      googleCalendarAccessToken: credentials.access_token || null,
+      googleCalendarTokenExpiry: credentials.expiry_date ? new Date(credentials.expiry_date) : null,
+    });
+    
+    console.log(`[GoogleCalendar] Refreshed token for user ${userId}`);
+    return credentials.access_token!;
+  } catch (error: any) {
+    console.error('[GoogleCalendar] Token refresh failed:', error);
+    
+    // If refresh fails, mark as disconnected
+    await storage.updateBusinessSettings(userId, {
+      googleCalendarConnected: false,
+    });
+    
+    throw new Error('Google Calendar token expired - please reconnect');
+  }
+}
+
+// Check if Google Calendar is connected for a user
+export async function isGoogleCalendarConnected(userId?: string): Promise<boolean> {
+  // If no userId provided, check if credentials are configured (for integration status page)
+  if (!userId) {
+    return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+  }
+  
+  try {
+    const settings = await storage.getBusinessSettings(userId);
+    return !!(settings?.googleCalendarConnected && settings.googleCalendarRefreshToken);
   } catch (error) {
     return false;
   }
 }
 
-// Get calendar client using Replit connector (platform-level auth)
-// WARNING: Never cache this client - access tokens expire
-export async function getCalendarClient(): Promise<calendar_v3.Calendar> {
-  const accessToken = await getAccessToken();
+// Check if Google Calendar is configured (credentials exist)
+export function isGoogleCalendarConfigured(): boolean {
+  return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+}
+
+// Get calendar client for a specific user
+export async function getCalendarClient(userId: string): Promise<calendar_v3.Calendar> {
+  const accessToken = await getUserAccessToken(userId);
   
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({
@@ -72,45 +167,140 @@ export async function getCalendarClient(): Promise<calendar_v3.Calendar> {
   return google.calendar({ version: 'v3', auth: oauth2Client });
 }
 
-// Get connected calendar info
-export async function getCalendarInfo(): Promise<{
+// Get connected calendar info for a user
+export async function getCalendarInfo(userId?: string): Promise<{
   connected: boolean;
+  configured: boolean;
   email?: string;
   calendarId?: string;
 } | null> {
+  // Check if configured
+  const configured = isGoogleCalendarConfigured();
+  
+  if (!userId) {
+    return { connected: false, configured };
+  }
+  
   try {
-    const calendar = await getCalendarClient();
-    const calendarList = await calendar.calendarList.list();
+    const settings = await storage.getBusinessSettings(userId);
     
-    const primaryCalendar = calendarList.data.items?.find(cal => cal.primary);
+    if (!settings?.googleCalendarConnected) {
+      return { connected: false, configured, email: undefined };
+    }
     
     return {
       connected: true,
-      email: primaryCalendar?.id || undefined,
-      calendarId: primaryCalendar?.id || 'primary'
+      configured: true,
+      email: settings.googleCalendarEmail || undefined,
+      calendarId: 'primary'
     };
   } catch (error) {
     console.error('[GoogleCalendar] Failed to get calendar info:', error);
-    return null;
+    return { connected: false, configured };
   }
 }
 
-// Create or update a calendar event for a job
-export async function syncJobToCalendar(job: {
-  id: string;
+// Status colors based on job status
+const STATUS_COLORS: Record<string, string> = {
+  'pending': '5',      // Yellow
+  'scheduled': '1',    // Lavender/Blue
+  'in_progress': '6',  // Orange
+  'done': '10',        // Green
+  'invoiced': '2',     // Light green/Sage
+  'cancelled': '8',    // Gray
+};
+
+// Build event summary with status emoji
+function buildEventSummary(job: {
+  title: string;
+  status?: string;
+  clientName?: string;
+}): string {
+  const statusEmojis: Record<string, string> = {
+    'pending': '⏳',
+    'scheduled': '📅',
+    'in_progress': '🔧',
+    'done': '✅',
+    'invoiced': '💰',
+    'cancelled': '❌',
+  };
+  
+  const emoji = statusEmojis[job.status || 'scheduled'] || '📅';
+  const clientPart = job.clientName ? ` - ${job.clientName}` : '';
+  
+  return `${emoji} ${job.title}${clientPart}`;
+}
+
+// Build detailed event description with tradie workflow info
+function buildEventDescription(job: {
   title: string;
   description?: string | null;
   notes?: string | null;
-  address?: string | null;
-  scheduledAt: Date;
-  estimatedDuration?: number; // in hours
   clientName?: string;
   clientPhone?: string;
   clientEmail?: string;
+  address?: string | null;
   status?: string;
-  calendarEventId?: string | null;
-}): Promise<{ eventId: string; eventLink: string }> {
-  const calendar = await getCalendarClient();
+}): string {
+  const sections: string[] = [];
+  
+  // Client contact info section
+  if (job.clientName || job.clientPhone || job.clientEmail) {
+    sections.push('📋 CLIENT DETAILS');
+    if (job.clientName) sections.push(`   Name: ${job.clientName}`);
+    if (job.clientPhone) sections.push(`   Phone: ${job.clientPhone}`);
+    if (job.clientEmail) sections.push(`   Email: ${job.clientEmail}`);
+    sections.push('');
+  }
+  
+  // Address for navigation
+  if (job.address) {
+    sections.push('📍 ADDRESS');
+    sections.push(`   ${job.address}`);
+    sections.push(`   → Open in Maps: https://maps.google.com/?q=${encodeURIComponent(job.address)}`);
+    sections.push('');
+  }
+  
+  // Job details
+  sections.push('🔧 JOB DETAILS');
+  sections.push(`   Title: ${job.title}`);
+  if (job.status) sections.push(`   Status: ${job.status.toUpperCase()}`);
+  if (job.description) sections.push(`   Description: ${job.description}`);
+  sections.push('');
+  
+  // Notes
+  if (job.notes) {
+    sections.push('📝 NOTES');
+    sections.push(`   ${job.notes}`);
+    sections.push('');
+  }
+  
+  // Footer
+  sections.push('─────────────────');
+  sections.push('Synced from TradieTrack');
+  
+  return sections.join('\n');
+}
+
+// Create or update a calendar event for a job (user-specific)
+export async function syncJobToCalendar(
+  userId: string,
+  job: {
+    id: string;
+    title: string;
+    description?: string | null;
+    notes?: string | null;
+    address?: string | null;
+    scheduledAt: Date;
+    estimatedDuration?: number;
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    status?: string;
+    calendarEventId?: string | null;
+  }
+): Promise<{ eventId: string; eventLink: string }> {
+  const calendar = await getCalendarClient(userId);
   
   const startTime = new Date(job.scheduledAt);
   const endTime = new Date(startTime.getTime() + (job.estimatedDuration || 2) * 60 * 60 * 1000);
@@ -127,180 +317,89 @@ export async function syncJobToCalendar(job: {
       dateTime: endTime.toISOString(),
       timeZone: 'Australia/Sydney'
     },
+    colorId: STATUS_COLORS[job.status || 'scheduled'] || '1',
     reminders: {
       useDefault: false,
       overrides: [
         { method: 'popup', minutes: 60 },
-        { method: 'popup', minutes: 15 }
-      ]
+        { method: 'popup', minutes: 15 },
+      ],
     },
-    colorId: getEventColorByStatus(job.status)
+    extendedProperties: {
+      private: {
+        tradietrackJobId: job.id,
+        source: 'tradietrack',
+      }
+    }
   };
 
-  let response;
+  let event: calendar_v3.Schema$Event;
   
+  // Try to update existing event, or create new one
   if (job.calendarEventId) {
-    // Update existing event
     try {
-      response = await calendar.events.update({
+      const response = await calendar.events.update({
         calendarId: 'primary',
         eventId: job.calendarEventId,
-        requestBody: eventData
+        requestBody: eventData,
       });
-      console.log('[GoogleCalendar] Updated event:', response.data.id);
-    } catch (error: any) {
-      // If event doesn't exist anymore, create a new one
-      if (error.code === 404) {
-        response = await calendar.events.insert({
+      event = response.data;
+      console.log(`[GoogleCalendar] Updated event ${job.calendarEventId} for job ${job.id}`);
+    } catch (updateError: any) {
+      if (updateError.code === 404) {
+        const response = await calendar.events.insert({
           calendarId: 'primary',
-          requestBody: eventData
+          requestBody: eventData,
         });
-        console.log('[GoogleCalendar] Created new event (old one missing):', response.data.id);
+        event = response.data;
+        console.log(`[GoogleCalendar] Created new event (old not found) for job ${job.id}`);
       } else {
-        throw error;
+        throw updateError;
       }
     }
   } else {
-    // Create new event
-    response = await calendar.events.insert({
+    const response = await calendar.events.insert({
       calendarId: 'primary',
-      requestBody: eventData
+      requestBody: eventData,
     });
-    console.log('[GoogleCalendar] Created event:', response.data.id);
+    event = response.data;
+    console.log(`[GoogleCalendar] Created event ${event.id} for job ${job.id}`);
   }
 
   return {
-    eventId: response.data.id || '',
-    eventLink: response.data.htmlLink || ''
+    eventId: event.id!,
+    eventLink: event.htmlLink!,
   };
 }
 
 // Delete a calendar event
-export async function deleteCalendarEvent(eventId: string): Promise<void> {
+export async function deleteCalendarEvent(userId: string, eventId: string): Promise<void> {
   try {
-    const calendar = await getCalendarClient();
+    const calendar = await getCalendarClient(userId);
     await calendar.events.delete({
       calendarId: 'primary',
-      eventId: eventId
+      eventId: eventId,
     });
-    console.log('[GoogleCalendar] Deleted event:', eventId);
+    console.log(`[GoogleCalendar] Deleted event ${eventId}`);
   } catch (error: any) {
     if (error.code !== 404) {
+      console.error('[GoogleCalendar] Failed to delete event:', error);
       throw error;
     }
-    // Event already deleted, that's fine
   }
 }
 
-// List upcoming events
-export async function listUpcomingEvents(maxResults: number = 10): Promise<calendar_v3.Schema$Event[]> {
-  const calendar = await getCalendarClient();
+// Get upcoming calendar events
+export async function getUpcomingEvents(userId: string, maxResults: number = 10): Promise<calendar_v3.Schema$Event[]> {
+  const calendar = await getCalendarClient(userId);
   
   const response = await calendar.events.list({
     calendarId: 'primary',
     timeMin: new Date().toISOString(),
-    maxResults: maxResults,
+    maxResults,
     singleEvents: true,
-    orderBy: 'startTime'
+    orderBy: 'startTime',
   });
-
+  
   return response.data.items || [];
-}
-
-// Helper function to build event summary (calendar title)
-function buildEventSummary(job: {
-  title: string;
-  clientName?: string;
-}): string {
-  if (job.clientName) {
-    return `${job.title} - ${job.clientName}`;
-  }
-  return job.title || 'TradieTrack Job';
-}
-
-// Helper function to build comprehensive event description for tradie workflows
-function buildEventDescription(job: {
-  description?: string | null;
-  notes?: string | null;
-  clientName?: string;
-  clientPhone?: string;
-  clientEmail?: string;
-  address?: string | null;
-  status?: string;
-  id: string;
-}): string {
-  const parts: string[] = [];
-  
-  // Client contact section
-  if (job.clientName || job.clientPhone || job.clientEmail) {
-    parts.push('📋 CLIENT DETAILS');
-    if (job.clientName) parts.push(`Name: ${job.clientName}`);
-    if (job.clientPhone) parts.push(`Phone: ${job.clientPhone}`);
-    if (job.clientEmail) parts.push(`Email: ${job.clientEmail}`);
-    parts.push('');
-  }
-  
-  // Address for navigation
-  if (job.address) {
-    parts.push('📍 ADDRESS');
-    parts.push(job.address);
-    parts.push('');
-  }
-  
-  // Job status
-  if (job.status) {
-    const statusEmoji = getStatusEmoji(job.status);
-    parts.push(`${statusEmoji} Status: ${job.status.toUpperCase()}`);
-    parts.push('');
-  }
-  
-  // Job description/scope of work
-  if (job.description) {
-    parts.push('🔧 JOB DETAILS');
-    parts.push(job.description);
-    parts.push('');
-  }
-  
-  // Notes (important for tradies)
-  if (job.notes) {
-    parts.push('📝 NOTES');
-    parts.push(job.notes);
-    parts.push('');
-  }
-  
-  // Footer
-  parts.push('---');
-  parts.push('Managed by TradieTrack');
-  parts.push(`Job ID: ${job.id}`);
-  
-  return parts.join('\n');
-}
-
-// Get status emoji for visual identification
-function getStatusEmoji(status: string): string {
-  const statusMap: Record<string, string> = {
-    'pending': '⏳',
-    'scheduled': '📅',
-    'in_progress': '🔨',
-    'done': '✅',
-    'invoiced': '💰',
-    'cancelled': '❌'
-  };
-  return statusMap[status?.toLowerCase()] || '📋';
-}
-
-// Get Google Calendar color ID by job status
-function getEventColorByStatus(status?: string): string {
-  // Google Calendar color IDs:
-  // 1 = Lavender, 2 = Sage, 3 = Grape, 4 = Flamingo, 5 = Banana
-  // 6 = Tangerine, 7 = Peacock, 8 = Graphite, 9 = Blueberry, 10 = Basil, 11 = Tomato
-  const colorMap: Record<string, string> = {
-    'pending': '5',      // Banana (yellow) - needs attention
-    'scheduled': '9',    // Blueberry (blue) - scheduled
-    'in_progress': '6',  // Tangerine (orange) - active work
-    'done': '10',        // Basil (green) - completed
-    'invoiced': '2',     // Sage (light green) - billed
-    'cancelled': '8'     // Graphite (grey) - cancelled
-  };
-  return colorMap[status?.toLowerCase() || ''] || '7'; // Default to Peacock (teal)
 }

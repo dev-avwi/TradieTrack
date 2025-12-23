@@ -821,3 +821,56 @@ export async function handleSubscriptionWebhook(
 export async function getPublishableKey(): Promise<string | null> {
   return await getStripePublishableKey();
 }
+
+// Initialize all Stripe products and prices for TradieTrack subscription tiers
+export async function initializeStripeProducts(): Promise<{
+  success: boolean;
+  products: {
+    pro?: { productId: string; priceId: string };
+    teamBase?: { productId: string; priceId: string };
+    teamSeat?: { productId: string; priceId: string };
+  };
+  error?: string;
+}> {
+  const stripe = await getUncachableStripeClient();
+  if (!stripe) {
+    return { success: false, products: {}, error: 'Stripe not configured' };
+  }
+
+  try {
+    const products: {
+      pro?: { productId: string; priceId: string };
+      teamBase?: { productId: string; priceId: string };
+      teamSeat?: { productId: string; priceId: string };
+    } = {};
+
+    // Create Pro product and price
+    const proPriceId = await getOrCreateProPrice(stripe);
+    const proPrice = await stripe.prices.retrieve(proPriceId);
+    products.pro = {
+      productId: typeof proPrice.product === 'string' ? proPrice.product : proPrice.product.id,
+      priceId: proPriceId,
+    };
+
+    // Create Team products and prices
+    const { basePriceId, seatPriceId } = await getOrCreateTeamPrices(stripe);
+    
+    const basePrice = await stripe.prices.retrieve(basePriceId);
+    products.teamBase = {
+      productId: typeof basePrice.product === 'string' ? basePrice.product : basePrice.product.id,
+      priceId: basePriceId,
+    };
+
+    const seatPrice = await stripe.prices.retrieve(seatPriceId);
+    products.teamSeat = {
+      productId: typeof seatPrice.product === 'string' ? seatPrice.product : seatPrice.product.id,
+      priceId: seatPriceId,
+    };
+
+    console.log('✅ Stripe products initialized:', products);
+    return { success: true, products };
+  } catch (error: any) {
+    console.error('Failed to initialize Stripe products:', error);
+    return { success: false, products: {}, error: error.message };
+  }
+}
