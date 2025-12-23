@@ -1166,3 +1166,157 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     res.status(500).json(friendlyError);
   }
 };
+
+// Send payment link email to customer for an existing invoice
+export const handleSendPaymentLink = async (req: any, res: any, storage: any) => {
+  try {
+    const invoiceId = req.params.id;
+    const userId = req.userId;
+    
+    // 1. Get invoice
+    const invoice = await storage.getInvoice(invoiceId, userId);
+    if (!invoice) {
+      return res.status(404).json({ 
+        title: "Invoice Not Found",
+        message: "We couldn't find this invoice.",
+        fix: "The invoice may have been deleted. Go back to your Invoices list and try again."
+      });
+    }
+    
+    // 2. Check if online payment is enabled
+    if (!invoice.allowOnlinePayment || !invoice.paymentToken) {
+      return res.status(400).json({ 
+        title: "Online Payment Not Enabled",
+        message: "Online payment isn't enabled for this invoice.",
+        fix: "Enable 'Allow Online Payment' toggle first, then try sending the payment link."
+      });
+    }
+    
+    // 3. Get client
+    const client = await storage.getClient(invoice.clientId, userId);
+    if (!client) {
+      return res.status(404).json({ 
+        title: "Client Not Found",
+        message: "The client for this invoice no longer exists.",
+        fix: "Update the invoice to select a different client."
+      });
+    }
+    
+    // 4. Validate client email
+    if (!client.email || !client.email.trim()) {
+      return res.status(400).json({ 
+        title: "Client Email Missing",
+        message: `${client.name} doesn't have an email address.`,
+        fix: `Go to Clients → ${client.name} → Edit and add their email address.`
+      });
+    }
+    
+    // 5. Get business settings
+    const businessSettings = await storage.getBusinessSettings(userId);
+    if (!businessSettings) {
+      return res.status(404).json({ 
+        title: "Business Setup Incomplete",
+        message: "Your business details haven't been set up yet.",
+        fix: "Go to Settings and complete your business profile."
+      });
+    }
+    
+    // 6. Generate payment URL
+    const baseUrl = process.env.APP_BASE_URL 
+      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+        : 'http://localhost:5000');
+    const paymentUrl = `${baseUrl}/pay/${invoice.paymentToken}`;
+    
+    // 7. Build email content
+    const brandColor = businessSettings.brandColor || '#16a34a';
+    const formattedTotal = new Intl.NumberFormat('en-AU', { 
+      style: 'currency', 
+      currency: 'AUD' 
+    }).format(parseFloat(invoice.total || '0'));
+    const isGstRegistered = businessSettings.gstEnabled && businessSettings.abn;
+    const documentType = isGstRegistered ? 'Tax Invoice' : 'Invoice';
+    
+    const subject = `Payment Link for ${documentType} #${invoice.number || invoice.id} from ${businessSettings.businessName}`;
+    
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
+          ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 25px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
+          <p style="margin: 0 0 16px 0;">G'day ${client.name},</p>
+          
+          <p style="margin: 0 0 16px 0;">Here's a quick link to pay your invoice online. It only takes a minute!</p>
+          
+          <div style="background: white; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+            <p style="margin: 0 0 8px 0; color: #666; font-size: 13px;">${documentType} Details:</p>
+            <p style="margin: 0 0 4px 0; font-weight: 600;">${invoice.title || `Invoice #${invoice.number}`}</p>
+            <p style="margin: 0; font-size: 24px; color: ${brandColor}; font-weight: 700;">${formattedTotal}</p>
+            ${invoice.dueDate ? `<p style="margin: 8px 0 0 0; color: #666; font-size: 13px;">Due: ${new Date(invoice.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}</p>` : ''}
+          </div>
+          
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${paymentUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 16px;">Pay Now Securely</a>
+          </div>
+          
+          <p style="text-align: center; color: #666; font-size: 13px; margin: 0 0 16px 0;">Secure payment powered by Stripe.</p>
+          
+          <p style="margin: 16px 0 0 0;">Cheers,<br>${businessSettings.businessName}</p>
+          
+          ${businessSettings.phone ? `<p style="margin: 8px 0 0 0; color: #666; font-size: 13px;">Phone: ${businessSettings.phone}</p>` : ''}
+          ${businessSettings.email ? `<p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">Email: ${businessSettings.email}</p>` : ''}
+        </div>
+      </body>
+      </html>
+    `;
+    
+    // 8. Send email
+    const emailResult = await sendEmailViaIntegration({
+      to: client.email,
+      subject,
+      html: emailHtml,
+      from: businessSettings.email || 'noreply@tradietrack.com.au',
+      fromName: businessSettings.businessName,
+      type: 'payment_link'
+    });
+    
+    if (!emailResult.success) {
+      const friendlyError = getTradieFriendlyEmailError(emailResult.error || 'Email send failed');
+      return res.status(500).json(friendlyError);
+    }
+    
+    // 9. Log activity
+    try {
+      await storage.addActivityLog(userId, {
+        action: 'payment_link_sent',
+        title: `Payment link sent for Invoice #${invoice.number}`,
+        description: `Payment link emailed to ${client.name} (${client.email})`,
+        entityType: 'invoice',
+        entityId: invoice.id,
+        metadata: { invoiceNumber: invoice.number, clientName: client.name, clientEmail: client.email, total: invoice.total }
+      });
+    } catch (activityError) {
+      console.error('Failed to log payment link sent activity:', activityError);
+    }
+    
+    res.json({ 
+      success: true,
+      message: `Payment link sent to ${client.email}`,
+      paymentUrl
+    });
+    
+  } catch (error: any) {
+    console.error("Error sending payment link:", error);
+    const friendlyError = getTradieFriendlyEmailError(error.message || 'Unknown error');
+    res.status(500).json(friendlyError);
+  }
+};

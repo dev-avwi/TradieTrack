@@ -7152,6 +7152,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { handleInvoiceSend } = await import('./emailRoutes');
     return handleInvoiceSend(req, res, storage);
   });
+  
+  // Send payment link email to customer
+  app.post("/api/invoices/:id/send-payment-link", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    const { handleSendPaymentLink } = await import('./emailRoutes');
+    return handleSendPaymentLink(req, res, storage);
+  });
 
   // Create Gmail draft with invoice PDF automatically attached
   app.post("/api/invoices/:id/email-with-pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {

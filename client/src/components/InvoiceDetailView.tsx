@@ -150,6 +150,25 @@ export default function InvoiceDetailView({
     }
   });
 
+  const sendPaymentLinkMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', `/api/invoices/${invoiceId}/send-payment-link`);
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Payment link sent",
+        description: data.message || "Payment link emailed to customer",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.title || "Error sending payment link",
+        description: error.message || "Failed to send payment link",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleCopyPaymentLink = () => {
     if (invoice?.paymentToken) {
       const paymentUrl = `${window.location.origin}/pay/${invoice.paymentToken}`;
@@ -465,27 +484,47 @@ export default function InvoiceDetailView({
 
               {invoice.allowOnlinePayment && invoice.paymentToken && (
                 <div className="mt-4 p-3 bg-muted rounded-lg">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <Label className="text-sm font-medium">Payment Link:</Label>
-                    <div className="flex-1 flex items-center gap-2">
-                      <code className="text-xs bg-background p-2 rounded flex-1 overflow-x-auto">
-                        {`${window.location.origin}/pay/${invoice.paymentToken}`}
-                      </code>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <Label className="text-sm font-medium">Payment Link:</Label>
+                      <div className="flex-1 flex items-center gap-2">
+                        <code className="text-xs bg-background p-2 rounded flex-1 overflow-x-auto">
+                          {`${window.location.origin}/pay/${invoice.paymentToken}`}
+                        </code>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={handleCopyPaymentLink}
+                          data-testid="button-copy-payment-link"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => window.open(`/pay/${invoice.paymentToken}`, '_blank')}
+                          data-testid="button-open-payment-link"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                      <p className="text-sm text-muted-foreground">
+                        Send this link to your customer so they can pay online
+                      </p>
                       <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={handleCopyPaymentLink}
-                        data-testid="button-copy-payment-link"
+                        size="sm"
+                        onClick={() => sendPaymentLinkMutation.mutate()}
+                        disabled={sendPaymentLinkMutation.isPending}
+                        data-testid="button-send-payment-link"
                       >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => window.open(`/pay/${invoice.paymentToken}`, '_blank')}
-                        data-testid="button-open-payment-link"
-                      >
-                        <ExternalLink className="h-4 w-4" />
+                        {sendPaymentLinkMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Send className="h-4 w-4 mr-2" />
+                        )}
+                        Email to Customer
                       </Button>
                     </div>
                   </div>
