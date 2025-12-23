@@ -3,6 +3,7 @@ import { processOverdueReminders } from './reminderService';
 import { processRecurringForUser } from './recurringService';
 import { checkAndExpireTrials } from './subscriptionService';
 import { processTimeBasedAutomations } from './automationService';
+import { runDailyBillingReminders } from './billingReminderService';
 import { jobs, quotes, invoices, smsAutomationRules } from '@shared/schema';
 import { and, or, eq, lt, isNull, gte, lte } from 'drizzle-orm';
 
@@ -12,6 +13,7 @@ let trialInterval: NodeJS.Timeout | null = null;
 let automationInterval: NodeJS.Timeout | null = null;
 let archiveInterval: NodeJS.Timeout | null = null;
 let smsAutomationInterval: NodeJS.Timeout | null = null;
+let billingReminderInterval: NodeJS.Timeout | null = null;
 
 const REMINDER_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const RECURRING_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
@@ -19,6 +21,7 @@ const TRIAL_CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const AUTOMATION_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 const ARCHIVE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (daily)
 const SMS_AUTOMATION_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+const BILLING_REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (daily)
 
 async function processAllUserReminders(): Promise<void> {
   console.log('[Scheduler] Processing automatic reminders...');
@@ -480,6 +483,37 @@ export function startSmsAutomationScheduler(): void {
   console.log(`[Scheduler] SMS automation scheduler running every ${SMS_AUTOMATION_INTERVAL_MS / 60000} minutes`);
 }
 
+export function startBillingReminderScheduler(): void {
+  console.log('[Scheduler] Starting billing reminder scheduler...');
+  
+  if (billingReminderInterval) {
+    clearInterval(billingReminderInterval);
+  }
+  
+  // Run first time after a delay
+  setTimeout(async () => {
+    console.log('[Scheduler] Processing billing reminders...');
+    try {
+      const stats = await runDailyBillingReminders();
+      console.log(`[Scheduler] Billing reminders: ${stats.emailsSent} emails, ${stats.smsSent} SMS, ${stats.errors} errors`);
+    } catch (error) {
+      console.error('[Scheduler] Error processing billing reminders:', error);
+    }
+  }, 15000);
+  
+  billingReminderInterval = setInterval(async () => {
+    console.log('[Scheduler] Processing billing reminders...');
+    try {
+      const stats = await runDailyBillingReminders();
+      console.log(`[Scheduler] Billing reminders: ${stats.emailsSent} emails, ${stats.smsSent} SMS, ${stats.errors} errors`);
+    } catch (error) {
+      console.error('[Scheduler] Error processing billing reminders:', error);
+    }
+  }, BILLING_REMINDER_INTERVAL_MS);
+  
+  console.log(`[Scheduler] Billing reminder scheduler running every ${BILLING_REMINDER_INTERVAL_MS / 3600000} hours`);
+}
+
 export function startAllSchedulers(): void {
   startReminderScheduler();
   startRecurringScheduler();
@@ -487,6 +521,7 @@ export function startAllSchedulers(): void {
   startAutomationScheduler();
   startArchiveScheduler();
   startSmsAutomationScheduler();
+  startBillingReminderScheduler();
 }
 
 export function stopAllSchedulers(): void {
@@ -518,6 +553,11 @@ export function stopAllSchedulers(): void {
   if (smsAutomationInterval) {
     clearInterval(smsAutomationInterval);
     smsAutomationInterval = null;
+  }
+  
+  if (billingReminderInterval) {
+    clearInterval(billingReminderInterval);
+    billingReminderInterval = null;
   }
   
   console.log('[Scheduler] All schedulers stopped');

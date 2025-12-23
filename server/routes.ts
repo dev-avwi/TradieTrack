@@ -1286,6 +1286,198 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== SUBSCRIPTION API ENDPOINTS (Cross-Platform Sync) =====
+
+  // GET /api/subscription/status - Returns current subscription status for authenticated user
+  app.get("/api/subscription/status", requireAuth, async (req: any, res) => {
+    try {
+      const { getSubscriptionStatus, getPaymentMethodDetails } = await import('./billingService');
+      const userId = req.userId!;
+      
+      const status = await getSubscriptionStatus(userId);
+      const paymentMethod = await getPaymentMethodDetails(userId);
+      const user = await storage.getUser(userId);
+      const businessSettings = await storage.getBusinessSettings(userId);
+      
+      // Determine upgrade/downgrade eligibility
+      const canUpgrade = status.tier === 'free' || status.tier === 'trial' || status.tier === 'pro';
+      const canDowngrade = status.tier === 'team' || status.tier === 'pro';
+      
+      res.json({
+        tier: status.tier,
+        status: status.status,
+        trialEndsAt: user?.trialEndsAt || null,
+        nextBillingDate: status.currentPeriodEnd || null,
+        cancelAtPeriodEnd: status.cancelAtPeriodEnd || false,
+        paymentMethod: paymentMethod.success ? {
+          last4: paymentMethod.last4,
+          brand: paymentMethod.brand,
+        } : null,
+        seats: status.tier === 'team' ? status.seatCount : undefined,
+        canUpgrade,
+        canDowngrade,
+      });
+    } catch (error: any) {
+      console.error('Error getting subscription status:', error);
+      res.status(500).json({ error: error.message || 'Failed to get subscription status' });
+    }
+  });
+
+  // POST /api/subscription/create-checkout - Creates Stripe checkout session with trial
+  app.post("/api/subscription/create-checkout", requireAuth, async (req: any, res) => {
+    try {
+      const { createSubscriptionCheckout, createTeamSubscriptionCheckout } = await import('./billingService');
+      const userId = req.userId!;
+      const { tier, seats } = req.body;
+      
+      // Validate tier
+      if (!tier || !['pro', 'team'].includes(tier)) {
+        return res.status(400).json({ error: 'Invalid tier. Must be "pro" or "team"' });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user?.email) {
+        return res.status(400).json({ error: 'User email is required for checkout' });
+      }
+      
+      // Get base URL for success/cancel redirects
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers.host;
+      const baseUrl = `${protocol}://${host}`;
+      
+      let result;
+      if (tier === 'team') {
+        const seatCount = Math.max(0, Math.min(50, parseInt(seats) || 0));
+        result = await createTeamSubscriptionCheckout(
+          userId,
+          user.email,
+          `${baseUrl}/settings?tab=billing&success=true`,
+          `${baseUrl}/settings?tab=billing&canceled=true`,
+          seatCount
+        );
+      } else {
+        result = await createSubscriptionCheckout(
+          userId,
+          user.email,
+          `${baseUrl}/settings?tab=billing&success=true`,
+          `${baseUrl}/settings?tab=billing&canceled=true`
+        );
+      }
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+      
+      res.json({ url: result.sessionUrl });
+    } catch (error: any) {
+      console.error('Error creating checkout session:', error);
+      res.status(500).json({ error: error.message || 'Failed to create checkout session' });
+    }
+  });
+
+  // POST /api/subscription/manage - Creates Stripe customer portal session
+  app.post("/api/subscription/manage", requireAuth, async (req: any, res) => {
+    try {
+      const { createBillingPortalSession } = await import('./billingService');
+      const userId = req.userId!;
+      
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers.host;
+      const returnUrl = `${protocol}://${host}/settings?tab=billing`;
+      
+      const result = await createBillingPortalSession(userId, returnUrl);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+      
+      res.json({ url: result.url });
+    } catch (error: any) {
+      console.error('Error creating portal session:', error);
+      res.status(500).json({ error: error.message || 'Failed to create portal session' });
+    }
+  });
+
+  // GET /api/subscription/invoices - Returns list of recent invoices from Stripe
+  app.get("/api/subscription/invoices", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const businessSettings = await storage.getBusinessSettings(userId);
+      
+      if (!businessSettings?.stripeCustomerId) {
+        return res.json({ invoices: [] });
+      }
+      
+      const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.json({ invoices: [] });
+      }
+      
+      const stripeInvoices = await stripe.invoices.list({
+        customer: businessSettings.stripeCustomerId,
+        limit: 12,
+      });
+      
+      const invoices = stripeInvoices.data.map((inv: any) => ({
+        id: inv.id,
+        amount: inv.amount_paid / 100, // Convert from cents
+        currency: inv.currency?.toUpperCase() || 'AUD',
+        status: inv.status,
+        date: inv.created ? new Date(inv.created * 1000).toISOString() : null,
+        pdfUrl: inv.invoice_pdf || null,
+      }));
+      
+      res.json({ invoices });
+    } catch (error: any) {
+      console.error('Error fetching invoices:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch invoices' });
+    }
+  });
+
+  // POST /api/subscription/cancel - Cancels subscription at period end
+  app.post("/api/subscription/cancel", requireAuth, async (req: any, res) => {
+    try {
+      const { cancelSubscription } = await import('./billingService');
+      const userId = req.userId!;
+      
+      const result = await cancelSubscription(userId);
+      
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Your subscription has been cancelled. You will retain access until the end of your current billing period.' 
+      });
+    } catch (error: any) {
+      console.error('Error cancelling subscription:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to cancel subscription' });
+    }
+  });
+
+  // POST /api/subscription/reactivate - Reactivates cancelled subscription
+  app.post("/api/subscription/reactivate", requireAuth, async (req: any, res) => {
+    try {
+      const { resumeSubscription } = await import('./billingService');
+      const userId = req.userId!;
+      
+      const result = await resumeSubscription(userId);
+      
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Your subscription has been reactivated. You will continue to be billed at the end of your billing period.' 
+      });
+    } catch (error: any) {
+      console.error('Error reactivating subscription:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to reactivate subscription' });
+    }
+  });
+
   // Comprehensive profile endpoint - returns user info, team membership, role, and permissions
   app.get("/api/profile/me", requireAuth, async (req: any, res) => {
     try {
