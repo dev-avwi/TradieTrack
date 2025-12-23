@@ -249,6 +249,12 @@ export const businessSettings = pgTable("business_settings", {
   aiEnabled: boolean("ai_enabled").default(true), // Enable/disable all AI features
   aiPhotoAnalysisEnabled: boolean("ai_photo_analysis_enabled").default(true), // Enable AI photo analysis
   aiSuggestionsEnabled: boolean("ai_suggestions_enabled").default(true), // Enable AI suggestions
+  // Google Calendar Integration (per-user OAuth)
+  googleCalendarConnected: boolean("google_calendar_connected").default(false),
+  googleCalendarAccessToken: text("google_calendar_access_token"),
+  googleCalendarRefreshToken: text("google_calendar_refresh_token"),
+  googleCalendarTokenExpiry: timestamp("google_calendar_token_expiry"),
+  googleCalendarEmail: text("google_calendar_email"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

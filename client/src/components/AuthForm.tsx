@@ -290,23 +290,25 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
               <TabsTrigger value="register" data-testid="tab-register">Register</TabsTrigger>
             </TabsList>
             
-            {/* Error/Success Messages */}
-            {error && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            
-            {success && (
-              <Alert className="mt-4 border-green-200 bg-green-50 text-green-800">
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
-            )}
+            {/* Error/Success Messages - using min-height to prevent layout shifts */}
+            <div className="min-h-[1rem] mt-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              
+              {success && (
+                <Alert className="border-green-200 bg-green-50 text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300">
+                  <CheckCircle className="h-4 w-4" />
+                  <AlertDescription>{success}</AlertDescription>
+                </Alert>
+              )}
+            </div>
 
             {/* Login Tab */}
-            <TabsContent value="login" className="space-y-4 mt-4">
+            <TabsContent value="login" className="space-y-4 mt-4 min-h-[280px]">
               {/* Toggle between password and email code login */}
               <div className="flex items-center justify-center gap-2 text-sm">
                 <Button
@@ -494,7 +496,7 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
             </TabsContent>
 
             {/* Register Tab */}
-            <TabsContent value="register" className="space-y-4 mt-4">
+            <TabsContent value="register" className="space-y-4 mt-4 min-h-[280px]">
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
