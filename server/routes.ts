@@ -13632,18 +13632,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const context = await getTeamChatContext(userId);
       let teamChatUnread = 0;
+      let smsUnread = 0;
       
       if (context.hasAccess && context.businessOwnerId) {
         teamChatUnread = await storage.getUnreadTeamChatCount(context.businessOwnerId, userId);
+        
+        // Get SMS unread counts - sum all unread from SMS conversations for this business
+        const smsConversations = await storage.getSmsConversationsByBusiness(context.businessOwnerId);
+        smsUnread = smsConversations.reduce((total, conv) => total + (conv.unreadCount || 0), 0);
       }
       
-      // For now, return team chat count as total
-      // Future: Add DM and job chat unread counts
+      // Return all chat type unread counts
       res.json({ 
         teamChat: teamChatUnread,
         directMessages: 0,
         jobChats: 0,
-        total: teamChatUnread
+        sms: smsUnread,
+        total: teamChatUnread + smsUnread
       });
     } catch (error: any) {
       console.error('Error getting unread counts:', error);

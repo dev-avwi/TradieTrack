@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/sidebar";
 import { LogOut, User, LayoutDashboard } from "lucide-react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useAppMode } from "@/hooks/use-app-mode";
@@ -24,6 +26,14 @@ import {
 // TradieTrack logo from public folder
 const tradietrackLogo = '/tradietrack-logo.png';
 
+interface UnreadCounts {
+  teamChat: number;
+  directMessages: number;
+  jobChats: number;
+  sms: number;
+  total: number;
+}
+
 interface AppSidebarProps {
   onLogout?: () => void;
   onNavigate?: (path: string) => void;
@@ -34,9 +44,22 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
   const { data: businessSettings } = useBusinessSettings();
   const { isTeam, isTradie, isOwner, isManager, userRole } = useAppMode();
 
+  // Fetch unread counts for notification badges
+  const { data: unreadCounts } = useQuery<UnreadCounts>({
+    queryKey: ['/api/chat/unread-counts'],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
   const filterOptions = { isTeam, isTradie, isOwner, isManager, userRole };
   const visibleMenuItems = getSidebarMenuItems(filterOptions);
   const visibleSettingsItems = getSidebarSettingsItems(filterOptions);
+
+  // Get badge count for specific menu items
+  const getBadgeCount = (url: string): number => {
+    if (!unreadCounts) return 0;
+    if (url === '/chat') return unreadCounts.total;
+    return 0;
+  };
 
   const businessName = businessSettings?.businessName || 'TradieTrack';
   const initials = businessName
@@ -85,6 +108,7 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
               {visibleMenuItems.map((item: NavItem) => {
                 const isActive = location === item.url;
                 const Icon = item.icon || LayoutDashboard;
+                const badgeCount = getBadgeCount(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton 
@@ -98,7 +122,17 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
 
                       } : {}}
                     >
-                      <Icon className="h-4 w-4" />
+                      <div className="relative">
+                        <Icon className="h-4 w-4" />
+                        {badgeCount > 0 && (
+                          <span 
+                            className="absolute -top-1.5 -right-1.5 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-medium px-0.5"
+                            data-testid={`badge-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                          >
+                            {badgeCount > 99 ? '99+' : badgeCount}
+                          </span>
+                        )}
+                      </div>
                       <span>{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
