@@ -70,13 +70,15 @@ export async function handleOAuthCallback(code: string, userId: string): Promise
     const email = userInfo.data.email || undefined;
     
     // Store tokens in businessSettings
-    await storage.updateBusinessSettings(userId, {
+    console.log(`[GoogleCalendar] Saving tokens for user ${userId}, email: ${email}, hasRefreshToken: ${!!tokens.refresh_token}`);
+    const updateResult = await storage.updateBusinessSettings(userId, {
       googleCalendarConnected: true,
       googleCalendarAccessToken: tokens.access_token || null,
       googleCalendarRefreshToken: tokens.refresh_token || null,
       googleCalendarTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
       googleCalendarEmail: email || null,
     });
+    console.log(`[GoogleCalendar] Update result:`, updateResult ? 'success' : 'failed', updateResult?.googleCalendarConnected);
     
     console.log(`[GoogleCalendar] Connected for user ${userId}: ${email}`);
     return { success: true, email };
