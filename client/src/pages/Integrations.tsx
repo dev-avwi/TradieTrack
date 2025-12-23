@@ -188,7 +188,7 @@ export default function Integrations() {
   const connectStripeMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', '/api/stripe-connect/onboard');
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
       if (data.onboardingUrl) {
@@ -238,7 +238,7 @@ export default function Integrations() {
   const connectXeroMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', '/api/integrations/xero/connect');
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
       if (data.authUrl) {
@@ -278,7 +278,7 @@ export default function Integrations() {
   const syncXeroContactsMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', '/api/integrations/xero/sync', { type: 'contacts' });
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
       const result = data.result;
@@ -304,7 +304,7 @@ export default function Integrations() {
   const syncXeroInvoicesMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', '/api/integrations/xero/sync', { type: 'invoices' });
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
       const result = data.result;
@@ -338,7 +338,7 @@ export default function Integrations() {
   const connectGoogleCalendarMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', '/api/integrations/google-calendar/connect');
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
       if (data.authUrl) {
@@ -406,7 +406,7 @@ export default function Integrations() {
   const testTwilioMutation = useMutation({
     mutationFn: async (data: { twilioAccountSid: string; twilioAuthToken: string; twilioPhoneNumber: string }) => {
       const response = await apiRequest('POST', '/api/settings/sms-branding/test', data);
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
       toast({
