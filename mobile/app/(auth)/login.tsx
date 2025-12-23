@@ -148,13 +148,10 @@ export default function LoginScreen() {
       });
       
       if (credential.identityToken) {
-        const response = await api.request('/api/auth/apple', {
-          method: 'POST',
-          body: JSON.stringify({
-            identityToken: credential.identityToken,
-            fullName: credential.fullName,
-            email: credential.email,
-          }),
+        const response = await api.post<{ success: boolean; sessionToken: string; isNewUser: boolean }>('/api/auth/apple', {
+          identityToken: credential.identityToken,
+          fullName: credential.fullName,
+          email: credential.email,
         });
         
         if (response.error) {
@@ -162,15 +159,15 @@ export default function LoginScreen() {
           return;
         }
         
-        if (response.token) {
-          await api.setToken(response.token);
+        if (response.data?.sessionToken) {
+          await api.setToken(response.data.sessionToken);
         }
         
         await checkAuth();
         
         const { user: currentUser } = useAuthStore.getState();
         const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
-        const isNewUser = response.isNewUser === true;
+        const isNewUser = response.data?.isNewUser === true;
         const redirectPath = getRedirectPath(isNewUser, isPlatformAdmin);
         router.replace(redirectPath);
       }

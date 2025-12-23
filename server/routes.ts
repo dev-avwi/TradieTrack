@@ -1133,10 +1133,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Decode the JWT to get Apple user ID (sub claim)
-      // Note: We're only decoding, not verifying. Full verification would require Apple's public keys.
-      const decoded = jwt.decode(identityToken) as { sub: string; email?: string } | null;
+      // TODO: Implement full JWKS verification by fetching Apple's public keys from
+      // https://appleid.apple.com/auth/keys and verifying the JWT signature.
+      // For now, we do basic claim validation to prevent simple forgery.
+      const decoded = jwt.decode(identityToken) as { 
+        sub: string; 
+        email?: string; 
+        iss?: string; 
+        aud?: string;
+      } | null;
+      
       if (!decoded?.sub) {
         return res.status(400).json({ error: "Invalid identity token" });
+      }
+      
+      // Basic validation: check issuer is Apple
+      if (decoded.iss !== 'https://appleid.apple.com') {
+        console.error('Apple auth: Invalid issuer:', decoded.iss);
+        return res.status(400).json({ error: "Invalid token issuer" });
+      }
+      
+      // Basic validation: check audience matches our app's bundle ID
+      const expectedBundleId = process.env.APPLE_BUNDLE_ID || 'com.tradietrack.app';
+      if (decoded.aud !== expectedBundleId) {
+        console.error('Apple auth: Invalid audience:', decoded.aud, 'expected:', expectedBundleId);
+        return res.status(400).json({ error: "Invalid token audience" });
       }
       
       const appleUserId = decoded.sub;
