@@ -7276,7 +7276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let paymentToken = invoice.paymentToken;
       if (allowOnlinePayment && !paymentToken) {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-        const bytes = crypto.randomBytes(12);
+        const bytes = randomBytes(12);
         paymentToken = '';
         for (let i = 0; i < 12; i++) {
           paymentToken += chars[bytes[i] % chars.length];
@@ -11099,7 +11099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let paymentToken = invoice.paymentToken;
       if (!paymentToken) {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-        const bytes = crypto.randomBytes(12);
+        const bytes = randomBytes(12);
         paymentToken = '';
         for (let i = 0; i < 12; i++) {
           paymentToken += chars[bytes[i] % chars.length];
