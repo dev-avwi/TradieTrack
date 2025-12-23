@@ -88,9 +88,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/team', label: 'Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   { path: '/team/invite', label: 'Invite Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   
-  // Chat - all team roles
-  { path: '/chat', label: 'Chat', allowedRoles: ['owner', 'manager', 'staff_tradie'], showInNav: true },
-  { path: '/team-chat', label: 'Team Chat', allowedRoles: ['owner', 'manager', 'staff_tradie'], showInNav: false },
+  // Chat - all roles including solo owners for SMS conversations
+  { path: '/chat', label: 'Chat', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
+  { path: '/team-chat', label: 'Team Chat', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
   
   // Map - owner/solo_owner/manager (solo owners can view job locations)
   { path: '/map', label: 'Map', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
