@@ -681,20 +681,18 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                 {/* Dynamic Island */}
                 <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
                 
-                {/* Screen with Carousel */}
-                <div className="relative bg-white rounded-[2.25rem] overflow-hidden">
-                  <AnimatePresence mode="wait">
-                    <motion.img
-                      key={currentScreenshot}
-                      src={screenshots[currentScreenshot].src}
-                      alt={screenshots[currentScreenshot].title}
-                      className="w-full h-auto"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3 }}
+                {/* Screen with Carousel - fixed height to prevent layout shifts */}
+                <div className="relative bg-white rounded-[2.25rem] overflow-hidden" style={{ aspectRatio: '9/19.5' }}>
+                  {/* Render all images, only show current one with crossfade */}
+                  {screenshots.map((screenshot, index) => (
+                    <img
+                      key={index}
+                      src={screenshot.src}
+                      alt={screenshot.title}
+                      className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ease-in-out"
+                      style={{ opacity: index === currentScreenshot ? 1 : 0 }}
                     />
-                  </AnimatePresence>
+                  ))}
                 </div>
               </div>
 
