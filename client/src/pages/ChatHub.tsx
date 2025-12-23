@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { ChatMessage } from "@/components/ChatMessage";
@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { 
   Users, 
   Loader2, 
@@ -27,6 +30,9 @@ import {
   Clock,
   AlertTriangle,
   ExternalLink,
+  Plus,
+  User,
+  X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
@@ -128,6 +134,13 @@ interface SmsMessage {
   intentType?: 'quote_request' | 'job_request' | 'enquiry' | 'followup' | 'other' | null;
   suggestedJobTitle?: string | null;
   jobCreatedFromSms?: string | null;
+}
+
+interface Client {
+  id: string;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
 }
 
 type FilterType = 'all' | 'team' | 'direct' | 'jobs' | 'sms';
@@ -273,6 +286,14 @@ export default function ChatHub() {
   const [selectedSmsConversation, setSelectedSmsConversation] = useState<SmsConversation | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [smsNewMessage, setSmsNewMessage] = useState('');
+  
+  // New SMS dialog state
+  const [newSmsDialogOpen, setNewSmsDialogOpen] = useState(false);
+  const [newSmsClientSearch, setNewSmsClientSearch] = useState('');
+  const [newSmsSelectedClient, setNewSmsSelectedClient] = useState<Client | null>(null);
+  const [newSmsPhoneNumber, setNewSmsPhoneNumber] = useState('');
+  const [newSmsInitialMessage, setNewSmsInitialMessage] = useState('');
+  const [newSmsPhoneError, setNewSmsPhoneError] = useState('');
 
   const { data: currentUser } = useQuery<User>({
     queryKey: ['/api/auth/me'],
@@ -330,6 +351,11 @@ export default function ChatHub() {
   const { data: smsConversations = [], isLoading: smsLoading } = useQuery<SmsConversation[]>({
     queryKey: ['/api/sms/conversations'],
     refetchInterval: 30000,
+  });
+
+  const { data: allClients = [] } = useQuery<Client[]>({
+    queryKey: ['/api/clients'],
+    enabled: newSmsDialogOpen,
   });
 
   const { data: directMessages = [], refetch: refetchDirectMessages } = useQuery<DirectMessage[]>({
@@ -730,6 +756,175 @@ export default function ChatHub() {
     }
   };
 
+  // Australian phone number formatting and validation
+  const formatAustralianPhone = (value: string): string => {
+    // Remove all non-digit characters except +
+    let cleaned = value.replace(/[^\d+]/g, '');
+    
+    // Handle +61 format
+    if (cleaned.startsWith('+61')) {
+      const digits = cleaned.slice(3);
+      if (digits.length <= 3) return `+61 ${digits}`;
+      if (digits.length <= 6) return `+61 ${digits.slice(0, 3)} ${digits.slice(3)}`;
+      return `+61 ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 9)}`;
+    }
+    
+    // Handle 04xx format (Australian mobile)
+    if (cleaned.startsWith('04') || cleaned.startsWith('0')) {
+      if (cleaned.length <= 4) return cleaned;
+      if (cleaned.length <= 7) return `${cleaned.slice(0, 4)} ${cleaned.slice(4)}`;
+      return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7, 10)}`;
+    }
+    
+    // Just return cleaned value for other cases
+    return cleaned;
+  };
+
+  const normalizePhoneForApi = (phone: string): string => {
+    // Remove all non-digit characters except +
+    let cleaned = phone.replace(/[^\d+]/g, '');
+    
+    // Convert 04xx to +614xx format
+    if (cleaned.startsWith('04')) {
+      cleaned = '+61' + cleaned.slice(1);
+    } else if (cleaned.startsWith('0')) {
+      cleaned = '+61' + cleaned.slice(1);
+    } else if (!cleaned.startsWith('+')) {
+      // Assume Australian number if no country code
+      cleaned = '+61' + cleaned;
+    }
+    
+    return cleaned;
+  };
+
+  const validateAustralianPhone = (phone: string): string | null => {
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    
+    // Check for +61 format
+    if (cleaned.startsWith('+61')) {
+      const digits = cleaned.slice(3);
+      if (digits.length !== 9) {
+        return 'Australian mobile numbers should have 9 digits after +61';
+      }
+      if (!digits.startsWith('4')) {
+        return 'Australian mobile numbers should start with 04 or +614';
+      }
+      return null;
+    }
+    
+    // Check for 04xx format
+    if (cleaned.startsWith('04')) {
+      if (cleaned.length !== 10) {
+        return 'Australian mobile numbers should be 10 digits (e.g., 0412 345 678)';
+      }
+      return null;
+    }
+    
+    // Check for 0x format (landline)
+    if (cleaned.startsWith('0') && cleaned.length === 10) {
+      return null;
+    }
+    
+    return 'Please enter a valid Australian phone number (e.g., 0412 345 678 or +61 412 345 678)';
+  };
+
+  const handlePhoneInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatAustralianPhone(e.target.value);
+    setNewSmsPhoneNumber(formatted);
+    setNewSmsPhoneError('');
+  };
+
+  // Filtered clients for search
+  const filteredClients = useMemo(() => {
+    if (!newSmsClientSearch.trim()) return [];
+    const search = newSmsClientSearch.toLowerCase();
+    return allClients
+      .filter(c => 
+        (c.name?.toLowerCase().includes(search) || 
+         c.phone?.toLowerCase().includes(search) ||
+         c.email?.toLowerCase().includes(search)) &&
+        c.phone // Only show clients with phone numbers
+      )
+      .slice(0, 5);
+  }, [allClients, newSmsClientSearch]);
+
+  const resetNewSmsDialog = () => {
+    setNewSmsClientSearch('');
+    setNewSmsSelectedClient(null);
+    setNewSmsPhoneNumber('');
+    setNewSmsInitialMessage('');
+    setNewSmsPhoneError('');
+  };
+
+  const handleStartNewSms = () => {
+    // Validate phone if manually entered
+    if (!newSmsSelectedClient && newSmsPhoneNumber) {
+      const error = validateAustralianPhone(newSmsPhoneNumber);
+      if (error) {
+        setNewSmsPhoneError(error);
+        return;
+      }
+    }
+    
+    const phone = newSmsSelectedClient?.phone || normalizePhoneForApi(newSmsPhoneNumber);
+    const clientId = newSmsSelectedClient?.id;
+    const clientName = newSmsSelectedClient?.name;
+    
+    if (!phone) {
+      setNewSmsPhoneError('Please select a client or enter a phone number');
+      return;
+    }
+    
+    // Check if conversation already exists
+    const existingConvo = smsConversations.find(c => 
+      (clientId && c.clientId === clientId) || 
+      c.clientPhone === phone
+    );
+    
+    if (existingConvo) {
+      // Open existing conversation
+      setSelectedSmsConversation(existingConvo);
+      setView('sms-chat');
+      markSmsReadMutation.mutate(existingConvo.id);
+      
+      // If there's an initial message, send it
+      if (newSmsInitialMessage.trim()) {
+        sendSmsMutation.mutate({
+          clientId: existingConvo.clientId || undefined,
+          clientPhone: existingConvo.clientPhone,
+          message: newSmsInitialMessage.trim(),
+        });
+      }
+    } else {
+      // Create temporary conversation and optionally send first message
+      const tempConvo: SmsConversation = {
+        id: 'new',
+        businessOwnerId: '',
+        clientId: clientId || null,
+        clientPhone: phone,
+        clientName: clientName || null,
+        jobId: null,
+        lastMessageAt: null,
+        unreadCount: 0,
+        deletedAt: null,
+      };
+      setSelectedSmsConversation(tempConvo);
+      setView('sms-chat');
+      
+      // If there's an initial message, send it
+      if (newSmsInitialMessage.trim()) {
+        sendSmsMutation.mutate({
+          clientId: clientId,
+          clientPhone: phone,
+          message: newSmsInitialMessage.trim(),
+        });
+      }
+    }
+    
+    setNewSmsDialogOpen(false);
+    resetNewSmsDialog();
+  };
+
   // Calculate total SMS unread count
   const smsUnreadCount = smsConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 
@@ -1115,12 +1310,23 @@ export default function ChatHub() {
           >
             <MessageCircle className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
           </div>
-          <div className="min-w-0">
+          <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold">Messages</h1>
             <p className="text-xs text-muted-foreground">
               Stay connected with your team
             </p>
           </div>
+          {(filter === 'all' || filter === 'sms') && (
+            <Button
+              onClick={() => setNewSmsDialogOpen(true)}
+              size="sm"
+              className="shrink-0 gap-1.5 bg-green-600 hover:bg-green-700"
+              data-testid="button-new-sms"
+            >
+              <Plus className="h-4 w-4" />
+              New SMS
+            </Button>
+          )}
         </div>
 
         {/* Search */}
@@ -1343,6 +1549,171 @@ export default function ChatHub() {
           </div>
         )}
       </div>
+
+      {/* New SMS Dialog */}
+      <Dialog open={newSmsDialogOpen} onOpenChange={(open) => {
+        setNewSmsDialogOpen(open);
+        if (!open) resetNewSmsDialog();
+      }}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-new-sms">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Phone className="h-5 w-5 text-green-600" />
+              New SMS Conversation
+            </DialogTitle>
+            <DialogDescription>
+              Search for an existing client or enter a phone number to start a new SMS conversation.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Selected Client Display */}
+            {newSmsSelectedClient && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <User className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{newSmsSelectedClient.name}</p>
+                  <p className="text-sm text-muted-foreground truncate">{newSmsSelectedClient.phone}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setNewSmsSelectedClient(null);
+                    setNewSmsClientSearch('');
+                  }}
+                  data-testid="button-clear-selected-client"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Client Search or Phone Entry */}
+            {!newSmsSelectedClient && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="client-search">Search clients</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="client-search"
+                      placeholder="Search by name or phone..."
+                      value={newSmsClientSearch}
+                      onChange={(e) => setNewSmsClientSearch(e.target.value)}
+                      className="pl-9"
+                      data-testid="input-client-search"
+                    />
+                  </div>
+
+                  {/* Client Search Results */}
+                  {filteredClients.length > 0 && (
+                    <div className="rounded-lg border divide-y max-h-48 overflow-y-auto">
+                      {filteredClients.map((client) => (
+                        <div
+                          key={client.id}
+                          className="flex items-center gap-3 p-3 cursor-pointer hover-elevate"
+                          onClick={() => {
+                            setNewSmsSelectedClient(client);
+                            setNewSmsClientSearch('');
+                            setNewSmsPhoneNumber('');
+                          }}
+                          data-testid={`client-option-${client.id}`}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{client.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{client.phone}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {newSmsClientSearch && filteredClients.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      No clients found with that name or phone number
+                    </p>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone-number">Enter phone number</Label>
+                  <Input
+                    id="phone-number"
+                    placeholder="0412 345 678 or +61 412 345 678"
+                    value={newSmsPhoneNumber}
+                    onChange={handlePhoneInputChange}
+                    className={newSmsPhoneError ? 'border-destructive' : ''}
+                    data-testid="input-phone-number"
+                  />
+                  {newSmsPhoneError && (
+                    <p className="text-sm text-destructive flex items-center gap-1" data-testid="text-phone-error">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      {newSmsPhoneError}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Initial Message */}
+            <div className="space-y-2">
+              <Label htmlFor="initial-message">Initial message (optional)</Label>
+              <Textarea
+                id="initial-message"
+                placeholder="Type your first message..."
+                value={newSmsInitialMessage}
+                onChange={(e) => setNewSmsInitialMessage(e.target.value)}
+                rows={3}
+                data-testid="textarea-initial-message"
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave blank to just open the conversation without sending a message.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setNewSmsDialogOpen(false);
+                resetNewSmsDialog();
+              }}
+              data-testid="button-cancel-new-sms"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleStartNewSms}
+              disabled={!newSmsSelectedClient && !newSmsPhoneNumber.trim()}
+              className="gap-1.5 bg-green-600 hover:bg-green-700"
+              data-testid="button-start-sms"
+            >
+              {sendSmsMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MessageCircle className="h-4 w-4" />
+              )}
+              {newSmsInitialMessage.trim() ? 'Send & Open' : 'Open Conversation'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
