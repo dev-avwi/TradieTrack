@@ -334,7 +334,7 @@ export default function OwnerManagerDashboard({
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="p-0">
-                <AIAssistant onNavigate={onNavigate} />
+                <AIAssistant onNavigate={onNavigate} embedded={true} />
               </CardContent>
             </CollapsibleContent>
           </Card>

@@ -9,15 +9,25 @@ import { storage } from './storage';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CALENDAR_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CALENDAR_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
 
+// Get the redirect URI for OAuth - consistent with Xero approach
+function getRedirectUri(): string {
+  const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+      : 'http://localhost:5000';
+  const redirectUri = `${baseUrl}/api/integrations/google-calendar/callback`;
+  console.log('[GoogleCalendar] Using redirect URI:', redirectUri);
+  return redirectUri;
+}
+
 // Get OAuth2 client configured with app credentials
 function getOAuth2Client(): any {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     throw new Error('Google Calendar credentials not configured');
   }
   
-  const redirectUri = process.env.REPLIT_DOMAINS
-    ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}/api/integrations/google-calendar/callback`
-    : 'http://localhost:5000/api/integrations/google-calendar/callback';
+  const redirectUri = getRedirectUri();
   
   return new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,

@@ -8,10 +8,12 @@ const XERO_SCOPES = "openid profile email accounting.transactions accounting.con
 function getRedirectUri(): string {
   const baseUrl = process.env.REPLIT_DEV_DOMAIN 
     ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-    : process.env.REPL_SLUG && process.env.REPL_OWNER 
-      ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+    : process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
       : "http://localhost:5000";
-  return `${baseUrl}/api/integrations/xero/callback`;
+  const redirectUri = `${baseUrl}/api/integrations/xero/callback`;
+  console.log('[Xero] Using redirect URI:', redirectUri);
+  return redirectUri;
 }
 
 function createXeroClient(): XeroClient {

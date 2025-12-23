@@ -186,9 +186,10 @@ function NotificationBadge({ notifications }: { notifications: AINotification[] 
 
 interface AIAssistantProps {
   onNavigate?: (path: string) => void;
+  embedded?: boolean;
 }
 
-export default function AIAssistant({ onNavigate }: AIAssistantProps) {
+export default function AIAssistant({ onNavigate, embedded = false }: AIAssistantProps) {
   const [, setLocation] = useLocation();
   const [chatMessage, setChatMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -345,24 +346,8 @@ export default function AIAssistant({ onNavigate }: AIAssistantProps) {
     );
   };
 
-  return (
-    <Card className="flex flex-col" data-testid="ai-assistant">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-          <div 
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ 
-              backgroundColor: 'hsl(var(--trade) / 0.1)',
-              border: '1px solid hsl(var(--trade) / 0.2)'
-            }}
-          >
-            <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" style={{ color: 'hsl(var(--trade))' }} />
-          </div>
-          <span className="truncate">AI Assistant</span>
-        </CardTitle>
-        {notifications.length > 0 && <NotificationBadge notifications={notifications} />}
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-3 sm:gap-4 p-4 sm:p-6">
+  const content = (
+    <div className={`flex-1 flex flex-col gap-3 sm:gap-4 ${embedded ? 'p-4 sm:p-6' : ''}`}>
         <p className="text-xs sm:text-sm text-muted-foreground">
           I can help with jobs, quotes, invoices, and more. Just ask!
         </p>
@@ -471,6 +456,32 @@ export default function AIAssistant({ onNavigate }: AIAssistantProps) {
             )}
           </Button>
         </form>
+    </div>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <Card className="flex flex-col" data-testid="ai-assistant">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+          <div 
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ 
+              backgroundColor: 'hsl(var(--trade) / 0.1)',
+              border: '1px solid hsl(var(--trade) / 0.2)'
+            }}
+          >
+            <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" style={{ color: 'hsl(var(--trade))' }} />
+          </div>
+          <span className="truncate">AI Assistant</span>
+        </CardTitle>
+        {notifications.length > 0 && <NotificationBadge notifications={notifications} />}
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col gap-3 sm:gap-4 p-4 sm:p-6">
+        {content}
       </CardContent>
     </Card>
   );
