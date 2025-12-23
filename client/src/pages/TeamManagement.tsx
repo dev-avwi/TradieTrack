@@ -37,7 +37,11 @@ import {
   Key,
   MapPin,
   Briefcase,
-  Phone
+  Phone,
+  Search,
+  Users,
+  UserCheck,
+  UserX
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -434,6 +438,10 @@ export default function TeamManagement() {
   const [assignJobMember, setAssignJobMember] = useState<TeamMember | null>(null);
   const [selectedJobId, setSelectedJobId] = useState("");
   
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  
   // Form state for invite
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteFirstName, setInviteFirstName] = useState("");
@@ -626,6 +634,27 @@ export default function TeamManagement() {
     });
   };
 
+  // Team statistics
+  const teamStats = {
+    total: teamMembers?.length || 0,
+    active: teamMembers?.filter(m => m.inviteStatus === 'accepted').length || 0,
+    pending: teamMembers?.filter(m => m.inviteStatus === 'pending').length || 0,
+    declined: teamMembers?.filter(m => m.inviteStatus === 'declined').length || 0,
+  };
+
+  // Filter team members based on search and status
+  const filteredMembers = teamMembers?.filter(member => {
+    // Search filter
+    const matchesSearch = searchQuery === "" || 
+      `${member.firstName} ${member.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Status filter
+    const matchesStatus = statusFilter === "all" || member.inviteStatus === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  }) || [];
+
   const getStatusBadge = (member: TeamMember) => {
     if (member.inviteStatus === 'accepted') {
       return <Badge variant="default" className="bg-green-500"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
@@ -661,12 +690,12 @@ export default function TeamManagement() {
   return (
     <div className="w-full px-6 lg:px-8 py-6 space-y-6" data-testid="page-team-management">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-page-title">Team Management</h1>
           <p className="text-muted-foreground">Manage your team members and roles</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             onClick={() => setRolesDialogOpen(true)}
@@ -685,13 +714,117 @@ export default function TeamManagement() {
         </div>
       </div>
 
+      {/* Team Stats Overview */}
+      {teamMembers && teamMembers.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card 
+            className={`cursor-pointer transition-all ${statusFilter === 'all' ? 'ring-2 ring-primary' : 'hover-elevate'}`}
+            onClick={() => setStatusFilter('all')}
+            data-testid="card-stat-total"
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold" data-testid="stat-total">{teamStats.total}</p>
+                  <p className="text-xs text-muted-foreground">Total Team</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card 
+            className={`cursor-pointer transition-all ${statusFilter === 'accepted' ? 'ring-2 ring-green-500' : 'hover-elevate'}`}
+            onClick={() => setStatusFilter('accepted')}
+            data-testid="card-stat-active"
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                  <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold" data-testid="stat-active">{teamStats.active}</p>
+                  <p className="text-xs text-muted-foreground">Active</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card 
+            className={`cursor-pointer transition-all ${statusFilter === 'pending' ? 'ring-2 ring-yellow-500' : 'hover-elevate'}`}
+            onClick={() => setStatusFilter('pending')}
+            data-testid="card-stat-pending"
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center">
+                  <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold" data-testid="stat-pending">{teamStats.pending}</p>
+                  <p className="text-xs text-muted-foreground">Pending</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card 
+            className={`cursor-pointer transition-all ${statusFilter === 'declined' ? 'ring-2 ring-red-500' : 'hover-elevate'}`}
+            onClick={() => setStatusFilter('declined')}
+            data-testid="card-stat-declined"
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                  <UserX className="h-5 w-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold" data-testid="stat-declined">{teamStats.declined}</p>
+                  <p className="text-xs text-muted-foreground">Declined</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Team Members List */}
       <Card>
         <CardHeader>
-          <CardTitle>Team Members</CardTitle>
-          <CardDescription>
-            {teamMembers?.length || 0} team member{teamMembers?.length !== 1 ? 's' : ''}
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle>Team Members</CardTitle>
+              <CardDescription>
+                {filteredMembers.length} of {teamMembers?.length || 0} team member{teamMembers?.length !== 1 ? 's' : ''}
+                {statusFilter !== 'all' && ` (filtered by ${statusFilter})`}
+              </CardDescription>
+            </div>
+            {teamMembers && teamMembers.length > 0 && (
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search members..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 w-full sm:w-[200px]"
+                    data-testid="input-search-members"
+                  />
+                </div>
+                {(searchQuery || statusFilter !== 'all') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setSearchQuery(""); setStatusFilter("all"); }}
+                    data-testid="button-clear-filters"
+                  >
+                    <X className="h-4 w-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {!teamMembers || teamMembers.length === 0 ? (
@@ -734,9 +867,32 @@ export default function TeamManagement() {
                 </div>
               </div>
             </div>
+          ) : filteredMembers.length === 0 ? (
+            <div className="text-center py-8 space-y-4" data-testid="no-results-state">
+              <div className="w-16 h-16 mx-auto rounded-full bg-muted flex items-center justify-center">
+                <Search className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-semibold text-lg">No members found</h3>
+                <p className="text-muted-foreground text-sm">
+                  {searchQuery 
+                    ? `No team members match "${searchQuery}"`
+                    : `No ${statusFilter} team members`
+                  }
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setSearchQuery(""); setStatusFilter("all"); }}
+                data-testid="button-clear-filters-empty"
+              >
+                Clear Filters
+              </Button>
+            </div>
           ) : (
             <div className="space-y-4">
-              {teamMembers.map((member) => (
+              {filteredMembers.map((member) => (
                 <div
                   key={member.id}
                   className="p-4 border rounded-lg hover-elevate"
