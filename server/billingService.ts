@@ -184,7 +184,8 @@ export async function createSubscriptionCheckout(
   email: string,
   successUrl: string,
   cancelUrl: string,
-  businessName?: string
+  businessName?: string,
+  trialDays: number = 14
 ): Promise<CheckoutSessionResult> {
   const stripe = await getUncachableStripeClient();
   if (!stripe) {
@@ -198,6 +199,7 @@ export async function createSubscriptionCheckout(
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
+      payment_method_collection: 'always',
       line_items: [
         {
           price: priceId,
@@ -218,6 +220,12 @@ export async function createSubscriptionCheckout(
           userId,
           tier: 'pro',
           platform: 'tradietrack',
+        },
+        trial_period_days: trialDays,
+        trial_settings: {
+          end_behavior: {
+            missing_payment_method: 'cancel',
+          },
         },
       },
       metadata: {
@@ -245,7 +253,8 @@ export async function createTeamSubscriptionCheckout(
   successUrl: string,
   cancelUrl: string,
   additionalSeats: number = 0,
-  businessName?: string
+  businessName?: string,
+  trialDays: number = 14
 ): Promise<CheckoutSessionResult> {
   const stripe = await getUncachableStripeClient();
   if (!stripe) {
@@ -277,6 +286,7 @@ export async function createTeamSubscriptionCheckout(
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
+      payment_method_collection: 'always',
       line_items: lineItems,
       mode: 'subscription',
       success_url: successUrl,
@@ -293,6 +303,12 @@ export async function createTeamSubscriptionCheckout(
           tier: 'team',
           seatCount: String(additionalSeats),
           platform: 'tradietrack',
+        },
+        trial_period_days: trialDays,
+        trial_settings: {
+          end_behavior: {
+            missing_payment_method: 'cancel',
+          },
         },
       },
       metadata: {
@@ -311,6 +327,195 @@ export async function createTeamSubscriptionCheckout(
   } catch (error: any) {
     console.error('Error creating team subscription checkout:', error);
     return { success: false, error: error.message || 'Failed to create checkout session' };
+  }
+}
+
+// Create a trial subscription directly (for API-based signups)
+export interface TrialSubscriptionResult {
+  success: boolean;
+  subscriptionId?: string;
+  customerId?: string;
+  trialEndsAt?: Date;
+  error?: string;
+}
+
+export async function createTrialSubscription(
+  userId: string,
+  email: string,
+  paymentMethodId: string,
+  tier: 'pro' | 'team' = 'pro',
+  businessName?: string
+): Promise<TrialSubscriptionResult> {
+  const stripe = await getUncachableStripeClient();
+  if (!stripe) {
+    return { success: false, error: 'Payment system not configured' };
+  }
+
+  try {
+    const customerId = await getOrCreateStripeCustomer(stripe, userId, email, businessName);
+    
+    // Attach payment method to customer
+    await stripe.paymentMethods.attach(paymentMethodId, {
+      customer: customerId,
+    });
+
+    // Set as default payment method
+    await stripe.customers.update(customerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
+
+    // Get the price ID based on tier
+    let priceId: string;
+    if (tier === 'team') {
+      const { basePriceId } = await getOrCreateTeamPrices(stripe);
+      priceId = basePriceId;
+    } else {
+      priceId = await getOrCreateProPrice(stripe);
+    }
+
+    // Create subscription with 14-day trial
+    const subscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{ price: priceId }],
+      trial_period_days: 14,
+      trial_settings: {
+        end_behavior: {
+          missing_payment_method: 'cancel',
+        },
+      },
+      metadata: {
+        userId,
+        tier,
+        platform: 'tradietrack',
+      },
+    });
+
+    const trialEnd = subscription.trial_end 
+      ? new Date(subscription.trial_end * 1000) 
+      : undefined;
+
+    // Update user and business settings
+    await storage.updateUser(userId, {
+      subscriptionTier: tier,
+      trialStatus: 'active',
+      trialStartedAt: new Date(),
+      trialEndsAt: trialEnd,
+    });
+
+    const businessSettings = await storage.getBusinessSettings(userId);
+    if (businessSettings) {
+      await storage.updateBusinessSettings(userId, {
+        stripeSubscriptionId: subscription.id,
+        stripeCustomerId: customerId,
+        subscriptionStatus: subscription.status,
+        trialStartDate: new Date(),
+        trialEndDate: trialEnd,
+        nextBillingDate: trialEnd,
+      });
+    }
+
+    return {
+      success: true,
+      subscriptionId: subscription.id,
+      customerId,
+      trialEndsAt: trialEnd,
+    };
+  } catch (error: any) {
+    console.error('Error creating trial subscription:', error);
+    return { success: false, error: error.message || 'Failed to create trial subscription' };
+  }
+}
+
+// Get payment method details for a user
+export interface PaymentMethodDetails {
+  success: boolean;
+  last4?: string;
+  brand?: string;
+  expiryMonth?: number;
+  expiryYear?: number;
+  error?: string;
+}
+
+export async function getPaymentMethodDetails(userId: string): Promise<PaymentMethodDetails> {
+  const stripe = await getUncachableStripeClient();
+  if (!stripe) {
+    return { success: false, error: 'Payment system not configured' };
+  }
+
+  try {
+    const businessSettings = await storage.getBusinessSettings(userId);
+    const customerId = businessSettings?.stripeCustomerId;
+
+    if (!customerId) {
+      return { success: false, error: 'No billing account found' };
+    }
+
+    // Get the customer to find default payment method
+    const customer = await stripe.customers.retrieve(customerId);
+    
+    if ('deleted' in customer && customer.deleted) {
+      return { success: false, error: 'Customer account not found' };
+    }
+
+    const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
+
+    if (!defaultPaymentMethodId) {
+      // Try to get from subscriptions
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId,
+        limit: 1,
+      });
+
+      if (subscriptions.data.length === 0) {
+        return { success: false, error: 'No payment method on file' };
+      }
+
+      const sub = subscriptions.data[0];
+      const pmId = sub.default_payment_method;
+      
+      if (!pmId) {
+        return { success: false, error: 'No payment method on file' };
+      }
+
+      const paymentMethod = await stripe.paymentMethods.retrieve(
+        typeof pmId === 'string' ? pmId : pmId.id
+      );
+
+      if (paymentMethod.type === 'card' && paymentMethod.card) {
+        return {
+          success: true,
+          last4: paymentMethod.card.last4,
+          brand: paymentMethod.card.brand,
+          expiryMonth: paymentMethod.card.exp_month,
+          expiryYear: paymentMethod.card.exp_year,
+        };
+      }
+
+      return { success: false, error: 'No card payment method found' };
+    }
+
+    const paymentMethod = await stripe.paymentMethods.retrieve(
+      typeof defaultPaymentMethodId === 'string' 
+        ? defaultPaymentMethodId 
+        : defaultPaymentMethodId.id
+    );
+
+    if (paymentMethod.type === 'card' && paymentMethod.card) {
+      return {
+        success: true,
+        last4: paymentMethod.card.last4,
+        brand: paymentMethod.card.brand,
+        expiryMonth: paymentMethod.card.exp_month,
+        expiryYear: paymentMethod.card.exp_year,
+      };
+    }
+
+    return { success: false, error: 'No card payment method found' };
+  } catch (error: any) {
+    console.error('Error getting payment method details:', error);
+    return { success: false, error: error.message || 'Failed to get payment method' };
   }
 }
 
@@ -465,11 +670,14 @@ export async function resumeSubscription(userId: string): Promise<{ success: boo
 export async function handleSubscriptionWebhook(
   event: Stripe.Event
 ): Promise<void> {
+  const stripe = await getUncachableStripeClient();
+  
   switch (event.type) {
     case 'customer.subscription.created':
     case 'customer.subscription.updated': {
       const subscription = event.data.object as Stripe.Subscription;
       const userId = subscription.metadata?.userId;
+      const tier = subscription.metadata?.tier || 'pro';
 
       if (!userId) {
         console.log('No userId in subscription metadata');
@@ -477,20 +685,76 @@ export async function handleSubscriptionWebhook(
       }
 
       const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+      const isTrialing = subscription.status === 'trialing';
+      const sub = subscription as any;
+      
+      // Calculate next billing date and trial end
+      const currentPeriodEnd = sub.current_period_end 
+        ? new Date(sub.current_period_end * 1000) 
+        : undefined;
+      const trialEnd = sub.trial_end 
+        ? new Date(sub.trial_end * 1000) 
+        : undefined;
 
+      // Update user with subscription and trial info
       await storage.updateUser(userId, {
-        subscriptionTier: isActive ? 'pro' : 'free',
-        trialStatus: isActive && subscription.status === 'trialing' ? 'active' : undefined,
+        subscriptionTier: isActive ? tier : 'free',
+        trialStatus: isTrialing ? 'active' : (isActive ? 'converted' : undefined),
+        trialStartedAt: isTrialing && event.type === 'customer.subscription.created' ? new Date() : undefined,
+        trialEndsAt: trialEnd,
       });
 
       const businessSettings = await storage.getBusinessSettings(userId);
       if (businessSettings) {
-        const sub = subscription as any;
-        await storage.updateBusinessSettings(userId, {
+        // Prepare business settings update
+        const businessUpdate: any = {
           stripeSubscriptionId: subscription.id,
           subscriptionStatus: subscription.status,
-          currentPeriodEnd: new Date((sub.current_period_end || 0) * 1000),
-        });
+          currentPeriodEnd,
+          nextBillingDate: isTrialing ? trialEnd : currentPeriodEnd,
+        };
+
+        // Add trial tracking if trialing
+        if (isTrialing) {
+          businessUpdate.trialStartDate = event.type === 'customer.subscription.created' ? new Date() : undefined;
+          businessUpdate.trialEndDate = trialEnd;
+        }
+
+        // If subscription just became active (converted from trial), mark conversion
+        if (subscription.status === 'active' && !isTrialing) {
+          businessUpdate.trialConverted = true;
+        }
+
+        // Try to get and store payment method details
+        if (stripe) {
+          try {
+            const customerId = typeof subscription.customer === 'string' 
+              ? subscription.customer 
+              : subscription.customer.id;
+            
+            const customer = await stripe.customers.retrieve(customerId);
+            
+            if (!('deleted' in customer && customer.deleted)) {
+              const defaultPmId = (customer as Stripe.Customer).invoice_settings?.default_payment_method 
+                || subscription.default_payment_method;
+              
+              if (defaultPmId) {
+                const pmId = typeof defaultPmId === 'string' ? defaultPmId : defaultPmId.id;
+                const paymentMethod = await stripe.paymentMethods.retrieve(pmId);
+                
+                if (paymentMethod.type === 'card' && paymentMethod.card) {
+                  businessUpdate.paymentMethodLast4 = paymentMethod.card.last4;
+                  businessUpdate.paymentMethodBrand = paymentMethod.card.brand;
+                  businessUpdate.defaultPaymentMethodId = pmId;
+                }
+              }
+            }
+          } catch (pmError) {
+            console.error('Error fetching payment method in webhook:', pmError);
+          }
+        }
+
+        await storage.updateBusinessSettings(userId, businessUpdate);
       }
       break;
     }

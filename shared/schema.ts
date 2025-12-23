@@ -212,9 +212,22 @@ export const businessSettings = pgTable("business_settings", {
   // TradieTrack Subscription Billing (tradie paying us $39/month)
   stripeCustomerId: text("stripe_customer_id"), // Platform customer ID for subscription billing
   stripeSubscriptionId: text("stripe_subscription_id"), // Active subscription ID
-  subscriptionStatus: text("subscription_status").default('none'), // none, active, past_due, canceled
+  subscriptionStatus: text("subscription_status").default('none'), // none, active, trialing, past_due, canceled
   currentPeriodEnd: timestamp("current_period_end"), // When current billing period ends
   seatCount: integer("seat_count").default(0), // Number of additional team seats purchased (for Team plan)
+  // Payment method info (for display and reminders)
+  paymentMethodLast4: text("payment_method_last4"), // Last 4 digits of saved card
+  paymentMethodBrand: text("payment_method_brand"), // Card brand (visa, mastercard, etc.)
+  defaultPaymentMethodId: text("default_payment_method_id"), // Stripe payment method ID
+  // Billing reminder tracking
+  nextBillingDate: timestamp("next_billing_date"), // Next charge date (for reminder scheduling)
+  lastBillingReminderSentAt: timestamp("last_billing_reminder_sent_at"), // Prevent duplicate reminders
+  billingReminderDays: json("billing_reminder_days").default([3, 1]), // Days before billing to send reminders
+  billingRemindersEnabled: boolean("billing_reminders_enabled").default(true), // User can disable reminders
+  // Trial tracking (at business level)
+  trialStartDate: timestamp("trial_start_date"), // When trial started
+  trialEndDate: timestamp("trial_end_date"), // When trial ends (14 days after start)
+  trialConverted: boolean("trial_converted").default(false), // Did trial convert to paid?
   // Digital Signature Settings
   defaultSignature: text("default_signature"), // Base64 encoded signature image for quotes/invoices
   signatureName: text("signature_name"), // Name displayed under signature
