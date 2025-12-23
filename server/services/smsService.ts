@@ -284,9 +284,71 @@ export async function handleIncomingSms(
   // Find all conversations with this client phone number
   const conversations = await storage.getSmsConversationsByClientPhone(formattedFromPhone);
   
+  let isNewConversation = false;
+  let isUnknownCaller = false;
+  
   if (conversations.length === 0) {
-    console.log(`[SMS] No conversation found for incoming SMS from ${formattedFromPhone}`);
-    return null;
+    console.log(`[SMS] No conversation found for incoming SMS from ${formattedFromPhone} - auto-creating...`);
+    
+    // Try to find ALL business owners and match against their clients
+    // For now, we'll need to iterate through all businesses to find a client match
+    // This is a necessary trade-off for handling truly unknown inbound SMS
+    const allBusinessSettings = await storage.getAllBusinessSettings();
+    
+    let matchedClient = null;
+    let matchedBusinessOwnerId = null;
+    
+    for (const business of allBusinessSettings) {
+      const client = await storage.getClientByPhone(business.userId, formattedFromPhone);
+      if (client) {
+        matchedClient = client;
+        matchedBusinessOwnerId = business.userId;
+        console.log(`[SMS] Found matching client "${client.name}" for business ${business.businessName}`);
+        break;
+      }
+    }
+    
+    if (matchedClient && matchedBusinessOwnerId) {
+      // Create conversation linked to the found client
+      const newConversation = await storage.createSmsConversation({
+        businessOwnerId: matchedBusinessOwnerId,
+        clientId: matchedClient.id,
+        clientPhone: formattedFromPhone,
+        clientName: matchedClient.name,
+        jobId: null,
+        lastMessageAt: new Date(),
+        unreadCount: 0,
+        isArchived: false,
+        deletedAt: null,
+      });
+      conversations.push(newConversation);
+      isNewConversation = true;
+      console.log(`[SMS] Created new conversation ${newConversation.id} for existing client "${matchedClient.name}"`);
+    } else {
+      // No client match found - create conversation with Unknown Caller
+      // Use the first business as default (or could be configured)
+      if (allBusinessSettings.length > 0) {
+        const defaultBusiness = allBusinessSettings[0];
+        const newConversation = await storage.createSmsConversation({
+          businessOwnerId: defaultBusiness.userId,
+          clientId: null,
+          clientPhone: formattedFromPhone,
+          clientName: `Unknown Caller (${formattedFromPhone})`,
+          jobId: null,
+          lastMessageAt: new Date(),
+          unreadCount: 0,
+          isArchived: false,
+          deletedAt: null,
+        });
+        conversations.push(newConversation);
+        isNewConversation = true;
+        isUnknownCaller = true;
+        console.log(`[SMS] Created new conversation ${newConversation.id} for unknown caller ${formattedFromPhone}`);
+      } else {
+        console.log(`[SMS] No business settings found - cannot create conversation for ${formattedFromPhone}`);
+        return null;
+      }
+    }
   }
   
   // Multi-tenant safety: Find the conversation that most recently sent an outbound message
@@ -397,6 +459,9 @@ export async function handleIncomingSms(
       // Include job request flag for UI to show action button
       isJobRequest: intentData.isJobRequest,
       suggestedJobTitle: intentData.suggestedJobTitle,
+      // Include flags for new/unknown conversations
+      isNewConversation,
+      isUnknownCaller,
     });
   } catch (wsError) {
     console.error('[SMS] Error broadcasting WebSocket notification:', wsError);

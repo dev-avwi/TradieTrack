@@ -238,6 +238,7 @@ export interface IStorage {
   getClients(userId: string): Promise<Client[]>;
   getClient(id: string, userId: string): Promise<Client | undefined>;
   getClientById(id: string): Promise<Client | undefined>;
+  getClientByPhone(userId: string, phone: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, userId: string, client: Partial<InsertClient>): Promise<Client | undefined>;
   deleteClient(id: string, userId: string): Promise<boolean>;
@@ -1004,6 +1005,39 @@ export class PostgresStorage implements IStorage {
       .where(eq(clients.id, id))
       .limit(1);
     return result[0];
+  }
+
+  // Get client by phone number for a specific business owner
+  // Normalizes phone numbers to +61 format for Australian numbers
+  async getClientByPhone(userId: string, phone: string): Promise<Client | undefined> {
+    // Normalize the search phone
+    let normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
+    if (normalizedPhone.startsWith('0')) {
+      normalizedPhone = '+61' + normalizedPhone.slice(1);
+    } else if (!normalizedPhone.startsWith('+')) {
+      normalizedPhone = '+61' + normalizedPhone.replace(/^61/, '');
+    }
+    
+    // Get all clients for this user and check phone matches
+    const allClients = await db.select().from(clients).where(eq(clients.userId, userId));
+    
+    for (const client of allClients) {
+      if (!client.phone) continue;
+      
+      // Normalize client phone for comparison
+      let clientPhone = client.phone.replace(/[\s\-\(\)]/g, '');
+      if (clientPhone.startsWith('0')) {
+        clientPhone = '+61' + clientPhone.slice(1);
+      } else if (!clientPhone.startsWith('+')) {
+        clientPhone = '+61' + clientPhone.replace(/^61/, '');
+      }
+      
+      if (clientPhone === normalizedPhone) {
+        return client;
+      }
+    }
+    
+    return undefined;
   }
 
   async createClient(client: InsertClient & { userId: string }): Promise<Client> {

@@ -212,6 +212,10 @@ export function broadcastSmsNotification(
     messagePreview: string;
     jobId?: string | null;
     unreadCount: number;
+    isNewConversation?: boolean;
+    isUnknownCaller?: boolean;
+    isJobRequest?: boolean;
+    suggestedJobTitle?: string;
   }
 ) {
   const message = {
