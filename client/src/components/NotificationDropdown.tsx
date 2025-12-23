@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Bell, Check, X, Calendar, DollarSign, CheckCircle, FileText, Users, Briefcase, BellOff, CheckCheck, ChevronRight, Trash2 } from "lucide-react";
+import { Bell, Check, Calendar, DollarSign, CheckCircle, FileText, Users, Briefcase, BellOff, CheckCheck, ChevronRight, Trash2, Phone, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
 
-interface Notification {
+interface UnifiedNotification {
   id: string;
   type: string;
   title: string;
@@ -25,24 +25,48 @@ interface Notification {
   read: boolean;
   dismissed: boolean;
   createdAt: string;
+  notificationType: 'system' | 'sms' | 'chat';
+  unreadCount?: number;
+}
+
+interface UnifiedNotificationsResponse {
+  notifications: UnifiedNotification[];
+  unreadCount: number;
 }
 
 export default function NotificationDropdown() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
 
-  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
-    queryKey: ['/api/notifications'],
+  const { data, isLoading } = useQuery<UnifiedNotificationsResponse>({
+    queryKey: ['/api/notifications/unified'],
   });
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const notifications = data?.notifications || [];
+  const unreadCount = data?.unreadCount || 0;
   const activeNotifications = notifications.filter(n => !n.dismissed);
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => 
       apiRequest(`/api/notifications/${id}/read`, 'PATCH'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unified'] });
+    },
+  });
+
+  const markSmsAsReadMutation = useMutation({
+    mutationFn: (conversationId: string) => 
+      apiRequest(`/api/notifications/sms/${conversationId}/read`, 'PATCH'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unified'] });
+    },
+  });
+
+  const markChatAsReadMutation = useMutation({
+    mutationFn: (messageId: string) => 
+      apiRequest(`/api/notifications/chat/${messageId}/read`, 'PATCH'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unified'] });
     },
   });
 
@@ -50,24 +74,41 @@ export default function NotificationDropdown() {
     mutationFn: (id: string) => 
       apiRequest(`/api/notifications/${id}/dismiss`, 'PATCH'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unified'] });
     },
   });
 
   const markAllAsReadMutation = useMutation({
     mutationFn: () => apiRequest('/api/notifications/read-all', 'PATCH'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unified'] });
     },
   });
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = (notification: UnifiedNotification) => {
     if (!notification.read) {
-      markAsReadMutation.mutate(notification.id);
+      if (notification.notificationType === 'sms' && notification.relatedId) {
+        markSmsAsReadMutation.mutate(notification.relatedId);
+      } else if (notification.notificationType === 'chat' && notification.relatedId) {
+        markChatAsReadMutation.mutate(notification.relatedId);
+      } else if (notification.notificationType === 'system') {
+        markAsReadMutation.mutate(notification.id);
+      }
+    }
+    
+    setOpen(false);
+    
+    if (notification.notificationType === 'sms') {
+      setLocation(`/settings?tab=sms&conversation=${notification.relatedId}`);
+      return;
+    }
+    
+    if (notification.notificationType === 'chat') {
+      setLocation('/settings?tab=team-chat');
+      return;
     }
     
     if (notification.relatedType && notification.relatedId) {
-      setOpen(false);
       switch (notification.relatedType) {
         case 'job':
           setLocation(`/jobs?selected=${notification.relatedId}`);
@@ -90,13 +131,22 @@ export default function NotificationDropdown() {
     }
   };
 
-  const handleDismiss = (e: React.MouseEvent, id: string) => {
+  const handleDismiss = (e: React.MouseEvent, notification: UnifiedNotification) => {
     e.stopPropagation();
-    dismissMutation.mutate(id);
+    if (notification.notificationType === 'system') {
+      dismissMutation.mutate(notification.id);
+    }
   };
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
+  const getNotificationIcon = (notification: UnifiedNotification) => {
+    if (notification.notificationType === 'sms') {
+      return Phone;
+    }
+    if (notification.notificationType === 'chat') {
+      return MessageCircle;
+    }
+    
+    switch (notification.type) {
       case 'job_reminder':
       case 'job_scheduled':
         return Calendar;
@@ -122,8 +172,15 @@ export default function NotificationDropdown() {
     }
   };
 
-  const getNotificationColor = (type: string) => {
-    switch (type) {
+  const getNotificationColor = (notification: UnifiedNotification) => {
+    if (notification.notificationType === 'sms') {
+      return { bg: 'bg-emerald-100 dark:bg-emerald-900/40', icon: 'text-emerald-600 dark:text-emerald-400' };
+    }
+    if (notification.notificationType === 'chat') {
+      return { bg: 'bg-indigo-100 dark:bg-indigo-900/40', icon: 'text-indigo-600 dark:text-indigo-400' };
+    }
+    
+    switch (notification.type) {
       case 'payment_received':
       case 'quote_accepted':
       case 'invoice_paid':
@@ -144,6 +201,24 @@ export default function NotificationDropdown() {
     }
   };
 
+  const getNotificationTypeBadge = (notification: UnifiedNotification) => {
+    if (notification.notificationType === 'sms') {
+      return (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
+          SMS
+        </Badge>
+      );
+    }
+    if (notification.notificationType === 'chat') {
+      return (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800">
+          Chat
+        </Badge>
+      );
+    }
+    return null;
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -155,7 +230,10 @@ export default function NotificationDropdown() {
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-5 min-w-5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-medium px-1 animate-pulse-soft">
+            <span 
+              className="absolute -top-0.5 -right-0.5 h-5 min-w-5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-medium px-1 animate-pulse-soft"
+              data-testid="badge-notification-count"
+            >
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
@@ -165,8 +243,8 @@ export default function NotificationDropdown() {
       <SheetContent 
         side="right" 
         className="w-full sm:max-w-md p-0 flex flex-col"
+        data-testid="sheet-notifications"
       >
-        {/* Header */}
         <SheetHeader className="px-4 py-4 border-b bg-muted/30 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -176,7 +254,7 @@ export default function NotificationDropdown() {
               <div>
                 <SheetTitle className="text-lg">Notifications</SheetTitle>
                 {unreadCount > 0 && (
-                  <p className="text-sm text-muted-foreground">{unreadCount} unread</p>
+                  <p className="text-sm text-muted-foreground" data-testid="text-unread-count">{unreadCount} unread</p>
                 )}
               </div>
             </div>
@@ -196,14 +274,13 @@ export default function NotificationDropdown() {
           </div>
         </SheetHeader>
         
-        {/* Notification List */}
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1" data-testid="scroll-notifications">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
               <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : activeNotifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="flex flex-col items-center justify-center py-16 px-4" data-testid="empty-notifications">
               <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
                 <BellOff className="h-8 w-8 text-muted-foreground" />
               </div>
@@ -213,10 +290,11 @@ export default function NotificationDropdown() {
               </p>
             </div>
           ) : (
-            <div className="py-2">
+            <div className="py-2" data-testid="list-notifications">
               {activeNotifications.map((notification, index) => {
-                const Icon = getNotificationIcon(notification.type);
-                const colors = getNotificationColor(notification.type);
+                const Icon = getNotificationIcon(notification);
+                const colors = getNotificationColor(notification);
+                const typeBadge = getNotificationTypeBadge(notification);
                 
                 return (
                   <div 
@@ -229,70 +307,83 @@ export default function NotificationDropdown() {
                         !notification.read ? 'bg-primary/5' : ''
                       }`}
                       onClick={() => handleNotificationClick(notification)}
-                      data-testid={`notification-${notification.id}`}
+                      data-testid={`notification-item-${notification.id}`}
                     >
                       <div className="flex gap-4">
-                        {/* Icon */}
                         <div className={`h-11 w-11 rounded-full flex items-center justify-center flex-shrink-0 ${colors.bg}`}>
                           <Icon className={`h-5 w-5 ${colors.icon}`} />
                         </div>
                         
-                        {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className={`text-sm leading-tight ${!notification.read ? 'font-semibold' : 'font-medium'}`}>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p 
+                                  className={`text-sm leading-tight ${!notification.read ? 'font-semibold' : 'font-medium'}`}
+                                  data-testid={`notification-title-${notification.id}`}
+                                >
                                   {notification.title}
                                 </p>
+                                {typeBadge}
                                 {!notification.read && (
-                                  <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />
+                                  <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0" data-testid={`indicator-unread-${notification.id}`} />
                                 )}
                               </div>
-                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                              <p 
+                                className="text-sm text-muted-foreground mt-1 line-clamp-2"
+                                data-testid={`notification-message-${notification.id}`}
+                              >
                                 {notification.message}
                               </p>
-                              <p className="text-xs text-muted-foreground/70 mt-2">
+                              <p 
+                                className="text-xs text-muted-foreground/70 mt-2"
+                                data-testid={`notification-time-${notification.id}`}
+                              >
                                 {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                               </p>
                             </div>
                             
-                            {/* Actions */}
                             <div className="flex items-center gap-1 flex-shrink-0">
-                              {notification.relatedType && (
+                              {notification.unreadCount && notification.unreadCount > 1 && (
+                                <Badge variant="secondary" className="text-xs" data-testid={`badge-unread-${notification.id}`}>
+                                  {notification.unreadCount}
+                                </Badge>
+                              )}
+                              {(notification.relatedType || notification.notificationType !== 'system') && (
                                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
                               )}
                             </div>
                           </div>
                           
-                          {/* Action buttons */}
-                          <div className="flex items-center gap-2 mt-3">
-                            {!notification.read && (
+                          {notification.notificationType === 'system' && (
+                            <div className="flex items-center gap-2 mt-3">
+                              {!notification.read && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    markAsReadMutation.mutate(notification.id);
+                                  }}
+                                  data-testid={`button-mark-read-${notification.id}`}
+                                >
+                                  <Check className="h-3.5 w-3.5 mr-1" />
+                                  Mark read
+                                </Button>
+                              )}
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                className="h-8 text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  markAsReadMutation.mutate(notification.id);
-                                }}
-                                data-testid={`button-mark-read-${notification.id}`}
+                                className="h-8 text-xs text-muted-foreground hover:text-destructive"
+                                onClick={(e) => handleDismiss(e, notification)}
+                                data-testid={`button-dismiss-${notification.id}`}
                               >
-                                <Check className="h-3.5 w-3.5 mr-1" />
-                                Mark read
+                                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                                Dismiss
                               </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 text-xs text-muted-foreground hover:text-destructive"
-                              onClick={(e) => handleDismiss(e, notification.id)}
-                              data-testid={`button-dismiss-${notification.id}`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-1" />
-                              Dismiss
-                            </Button>
-                          </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -303,7 +394,6 @@ export default function NotificationDropdown() {
           )}
         </ScrollArea>
         
-        {/* Footer */}
         <div className="px-4 py-3 border-t bg-muted/20 flex-shrink-0">
           <Button
             variant="ghost"

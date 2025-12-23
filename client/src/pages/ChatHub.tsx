@@ -33,7 +33,9 @@ import {
   Plus,
   User,
   X,
+  Trash2,
 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
 import { useAppMode } from "@/hooks/use-app-mode";
@@ -294,6 +296,9 @@ export default function ChatHub() {
   const [newSmsPhoneNumber, setNewSmsPhoneNumber] = useState('');
   const [newSmsInitialMessage, setNewSmsInitialMessage] = useState('');
   const [newSmsPhoneError, setNewSmsPhoneError] = useState('');
+  
+  // Delete SMS conversation state
+  const [smsToDelete, setSmsToDelete] = useState<SmsConversation | null>(null);
 
   const { data: currentUser } = useQuery<User>({
     queryKey: ['/api/auth/me'],
@@ -454,6 +459,34 @@ export default function ChatHub() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
+    },
+  });
+
+  const deleteSmsConversationMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      await apiRequest('DELETE', `/api/sms/conversations/${conversationId}`);
+    },
+    onSuccess: (_, deletedId) => {
+      toast({
+        title: "Conversation deleted",
+        description: "The SMS conversation has been removed.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
+      // Clear selected conversation if it was deleted
+      if (selectedSmsConversation?.id === deletedId) {
+        setSelectedSmsConversation(null);
+        setView('list');
+      }
+      setSmsToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to delete conversation",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+      setSmsToDelete(null);
     },
   });
 
@@ -1450,7 +1483,7 @@ export default function ChatHub() {
             {conversationList.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 p-4 hover-elevate cursor-pointer"
+                className="flex items-center gap-3 p-4 hover-elevate cursor-pointer group"
                 onClick={() => handleConversationClick(item)}
                 data-testid={`conversation-${item.id}`}
               >
@@ -1502,11 +1535,27 @@ export default function ChatHub() {
                     <p className="text-sm text-muted-foreground truncate">
                       {item.lastMessage || item.subtitle || 'No messages yet'}
                     </p>
-                    {item.unreadCount > 0 && (
-                      <Badge className="shrink-0 h-5 min-w-5 px-1.5 bg-destructive text-destructive-foreground">
-                        {item.unreadCount}
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {item.unreadCount > 0 && (
+                        <Badge className="shrink-0 h-5 min-w-5 px-1.5 bg-destructive text-destructive-foreground">
+                          {item.unreadCount}
+                        </Badge>
+                      )}
+                      {item.type === 'sms' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSmsToDelete(item.data);
+                          }}
+                          data-testid={`button-delete-sms-${item.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1714,6 +1763,47 @@ export default function ChatHub() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete SMS Conversation Confirmation Dialog */}
+      <AlertDialog open={!!smsToDelete} onOpenChange={(open) => !open && setSmsToDelete(null)}>
+        <AlertDialogContent data-testid="dialog-delete-sms-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete SMS Conversation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the conversation with{' '}
+              <span className="font-medium">
+                {smsToDelete?.clientName || smsToDelete?.clientPhone}
+              </span>
+              ? This action cannot be undone and all messages will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setSmsToDelete(null)}
+              data-testid="button-cancel-delete-sms"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (smsToDelete) {
+                  deleteSmsConversationMutation.mutate(smsToDelete.id);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteSmsConversationMutation.isPending}
+              data-testid="button-confirm-delete-sms"
+            >
+              {deleteSmsConversationMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete Conversation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

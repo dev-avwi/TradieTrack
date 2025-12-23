@@ -3449,6 +3449,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Unified Notifications - combines regular notifications, SMS messages, and team chat
+  app.get("/api/notifications/unified", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      
+      // Get regular notifications
+      const regularNotifications = await storage.getNotifications(userId);
+      
+      // Get SMS conversations with unread messages
+      const smsConversations = await storage.getSmsConversationsByBusiness(userId);
+      
+      // Get team chat messages (for team members, get their business owner's chat)
+      const user = await storage.getUser(userId);
+      const businessOwnerId = user?.businessOwnerId || userId;
+      const teamChatMessages = await storage.getTeamChatMessages(businessOwnerId);
+      
+      // Build unified notification list
+      const unifiedNotifications: any[] = [];
+      
+      // Add regular notifications
+      for (const n of regularNotifications) {
+        unifiedNotifications.push({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          message: n.message,
+          relatedId: n.relatedId,
+          relatedType: n.relatedType,
+          read: n.read,
+          dismissed: n.dismissed,
+          createdAt: n.createdAt,
+          notificationType: 'system'
+        });
+      }
+      
+      // Add SMS conversations as notifications (only those with unread inbound messages)
+      for (const conv of smsConversations) {
+        if ((conv.unreadCount || 0) > 0) {
+          // Get the last message for this conversation
+          const messages = await storage.getSmsMessages(conv.id);
+          const lastUnreadInbound = messages
+            .filter(m => m.direction === 'inbound' && !m.readAt)
+            .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())[0];
+          
+          if (lastUnreadInbound) {
+            unifiedNotifications.push({
+              id: `sms-${conv.id}`,
+              type: 'sms_received',
+              title: conv.clientName || conv.clientPhone || 'Unknown',
+              message: lastUnreadInbound.body.length > 100 
+                ? lastUnreadInbound.body.substring(0, 100) + '...' 
+                : lastUnreadInbound.body,
+              relatedId: conv.id,
+              relatedType: 'sms_conversation',
+              read: false,
+              dismissed: false,
+              createdAt: lastUnreadInbound.createdAt,
+              notificationType: 'sms',
+              unreadCount: conv.unreadCount
+            });
+          }
+        }
+      }
+      
+      // Add unread team chat messages
+      const unreadTeamChats = teamChatMessages
+        .filter(msg => {
+          const readBy = (msg.readBy as string[]) || [];
+          return !readBy.includes(userId) && msg.userId !== userId;
+        })
+        .slice(0, 10); // Limit to most recent 10
+      
+      for (const msg of unreadTeamChats) {
+        const sender = await storage.getUser(msg.userId);
+        unifiedNotifications.push({
+          id: `chat-${msg.id}`,
+          type: 'team_chat',
+          title: sender ? `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email : 'Team Member',
+          message: msg.content.length > 100 
+            ? msg.content.substring(0, 100) + '...' 
+            : msg.content,
+          relatedId: msg.id,
+          relatedType: 'team_chat',
+          read: false,
+          dismissed: false,
+          createdAt: msg.createdAt,
+          notificationType: 'chat'
+        });
+      }
+      
+      // Sort by createdAt descending
+      unifiedNotifications.sort((a, b) => 
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
+      
+      // Calculate total unread count
+      const unreadCount = unifiedNotifications.filter(n => !n.read && !n.dismissed).length;
+      
+      res.json({
+        notifications: unifiedNotifications.slice(0, 50), // Limit to 50 most recent
+        unreadCount
+      });
+    } catch (error) {
+      console.error("Error fetching unified notifications:", error);
+      res.status(500).json({ error: "Failed to fetch unified notifications" });
+    }
+  });
+
+  // Mark SMS conversation as read (for notification dropdown)
+  app.patch("/api/notifications/sms/:conversationId/read", requireAuth, async (req: any, res) => {
+    try {
+      await storage.markSmsMessagesAsRead(req.params.conversationId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking SMS as read:", error);
+      res.status(500).json({ error: "Failed to mark SMS as read" });
+    }
+  });
+
+  // Mark team chat message as read (for notification dropdown)
+  app.patch("/api/notifications/chat/:messageId/read", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const user = await storage.getUser(userId);
+      const businessOwnerId = user?.businessOwnerId || userId;
+      
+      // Mark the team chat as read for this user
+      await storage.markTeamChatAsRead(businessOwnerId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking chat as read:", error);
+      res.status(500).json({ error: "Failed to mark chat as read" });
+    }
+  });
+
   // Push Token Routes (Mobile App)
   const pushTokenInputSchema = z.object({
     token: z.string().min(1, "Push token is required"),
