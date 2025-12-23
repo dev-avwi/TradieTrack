@@ -4,19 +4,55 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Eye, EyeOff, AlertCircle, Check, X } from "lucide-react";
+import { 
+  Loader2, 
+  Eye, 
+  EyeOff, 
+  AlertCircle, 
+  Check, 
+  X, 
+  ArrowRight,
+  Sparkles,
+  Clock,
+  FileText,
+  CreditCard,
+  Users,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 import appIconUrl from '@assets/Photo 1-12-2025, 6 03 07 pm (1)_1764576362665.png';
+
+// App screenshots for carousel
+import dashboardScreenshot from "@assets/appstore_screenshots/01_dashboard.png";
+import jobsListScreenshot from "@assets/appstore_screenshots/02_jobs_list.png";
+import scheduleScreenshot from "@assets/appstore_screenshots/04_schedule.png";
+import quotePreviewScreenshot from "@assets/appstore_screenshots/07_quote_preview.png";
 
 interface AuthFlowProps {
   onLoginSuccess: () => void;
   onNeedOnboarding: () => void;
 }
 
+const screenshots = [
+  { src: dashboardScreenshot, title: "Your Dashboard", desc: "See your day at a glance" },
+  { src: jobsListScreenshot, title: "Manage Jobs", desc: "Track every job easily" },
+  { src: scheduleScreenshot, title: "Smart Schedule", desc: "Never miss an appointment" },
+  { src: quotePreviewScreenshot, title: "Professional Quotes", desc: "Win more work" },
+];
+
+const features = [
+  { icon: FileText, text: "Create quotes & invoices in seconds" },
+  { icon: Clock, text: "Track time on every job" },
+  { icon: CreditCard, text: "Get paid faster with online payments" },
+  { icon: Users, text: "Manage your team effortlessly" },
+];
+
 export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowProps) {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [currentScreenshot, setCurrentScreenshot] = useState(0);
   
   // Check URL for mode parameter to set initial auth mode
   useEffect(() => {
@@ -28,6 +64,15 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
       setAuthMode('login');
     }
   }, []);
+
+  // Auto-rotate screenshots
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentScreenshot((prev) => (prev + 1) % screenshots.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState('');
@@ -65,9 +110,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
   const handleGoogleSignIn = () => {
     setIsGoogleLoading(true);
     setError('');
-    // Mark OAuth in progress so App.tsx can detect the return
     sessionStorage.setItem('oauth-in-progress', 'true');
-    // Direct redirect to Google OAuth - no custom picker
     window.location.href = '/api/auth/google';
   };
 
@@ -91,9 +134,6 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
           title: "Welcome back!",
           description: `Signed in as ${result.user.firstName || result.user.username}`
         });
-        
-        // Let App.tsx handle business settings check
-        // It already has the logic with react-query
         onLoginSuccess();
       } else {
         setError(result.error || 'Login failed');
@@ -118,7 +158,6 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
       return;
     }
 
-    // Validate all password requirements are met
     if (!allRequirementsMet) {
       setError('Please meet all password requirements');
       return;
@@ -128,7 +167,6 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
     setError('');
 
     try {
-      // Auto-generate username from email if not provided
       const username = registerData.username || registerData.email.split('@')[0];
       
       const response = await apiRequest('POST', '/api/auth/register', {
@@ -142,7 +180,6 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
           title: "Account created!",
           description: "Let's set up your business profile"
         });
-        // Trigger auth refresh first, then app will detect missing business settings
         onLoginSuccess();
       } else {
         setError(result.error || 'Registration failed');
@@ -155,52 +192,105 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8">
-        {/* Modern Header */}
-        <div className="text-center space-y-6">
-          <div className="flex justify-center">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-orange-500 to-blue-600 p-1 shadow-xl">
-              <div className="w-full h-full rounded-xl bg-background flex items-center justify-center">
-                <img src={appIconUrl} alt="TradieTrack" className="w-20 h-20 object-contain" />
+    <div className="min-h-screen bg-white dark:bg-gray-950 flex">
+      {/* Left Panel - Form */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 py-12 lg:px-16 xl:px-24">
+        <div className="w-full max-w-md mx-auto">
+          {/* Logo & Header */}
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-8"
+          >
+            <a href="/" className="inline-flex items-center gap-3 mb-8 hover:opacity-80 transition-opacity" data-testid="link-home">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-blue-600 p-0.5 shadow-lg">
+                <div className="w-full h-full rounded-[10px] bg-white dark:bg-gray-950 flex items-center justify-center">
+                  <img src={appIconUrl} alt="TradieTrack" className="w-10 h-10 object-contain" />
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-500 via-orange-400 to-blue-600 bg-clip-text text-transparent">
-              TradieTrack
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              {authMode === 'login' ? 'Welcome back!' : 'Start your free trial'}
-            </p>
-          </div>
-        </div>
+              <span className="text-2xl font-bold">
+                <span className="text-blue-600">Tradie</span>
+                <span className="text-orange-500">Track</span>
+              </span>
+            </a>
 
-        {/* Auth Card */}
-        <Card className="border-2 shadow-2xl">
-          <CardContent className="pt-6">
-            <Tabs value={authMode} onValueChange={(value) => setAuthMode(value as 'login' | 'register')}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login" data-testid="tab-login">Sign In</TabsTrigger>
-                <TabsTrigger value="register" data-testid="tab-register">Sign Up</TabsTrigger>
-              </TabsList>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={authMode}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                  {authMode === 'login' ? 'Welcome back!' : 'Start your free trial'}
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 text-lg">
+                  {authMode === 'login' 
+                    ? 'Sign in to manage your trade business' 
+                    : 'Join thousands of Australian tradies'}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
 
-              {/* Error Alert */}
-              {error && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+          {/* Auth Form Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <Card className="border-0 shadow-xl bg-white dark:bg-gray-900">
+              <CardContent className="p-6 lg:p-8">
+                {/* Mode Toggle */}
+                <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg mb-6">
+                  <button
+                    onClick={() => { setAuthMode('login'); setError(''); }}
+                    className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
+                      authMode === 'login'
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                    data-testid="tab-login"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => { setAuthMode('register'); setError(''); }}
+                    className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
+                      authMode === 'register'
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                    data-testid="tab-register"
+                  >
+                    Sign Up
+                  </button>
+                </div>
 
-              {/* Login Tab */}
-              <TabsContent value="login" className="space-y-4 mt-0">
+                {/* Error Alert */}
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                    >
+                      <Alert variant="destructive" className="mb-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Google Sign-In Button */}
                 <Button 
                   onClick={handleGoogleSignIn}
                   disabled={isLoading || isGoogleLoading}
                   variant="outline"
-                  className="w-full h-11 text-base font-medium border-2 hover-elevate"
+                  className="w-full h-12 text-base font-medium border-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
                   data-testid="button-google-signin"
                 >
                   {isGoogleLoading ? (
@@ -221,286 +311,410 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                   )}
                 </Button>
 
-                <div className="relative">
+                <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
+                    <span className="w-full border-t border-gray-200 dark:border-gray-700" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-3 text-muted-foreground font-medium">Or continue with email</span>
+                    <span className="bg-white dark:bg-gray-900 px-3 text-gray-500 font-medium">
+                      Or continue with email
+                    </span>
                   </div>
                 </div>
 
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={loginData.email}
-                      onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="your@email.com"
-                      disabled={isLoading}
-                      data-testid="input-login-email"
-                    />
-                  </div>
+                <AnimatePresence mode="wait">
+                  {authMode === 'login' ? (
+                    <motion.form
+                      key="login-form"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.2 }}
+                      onSubmit={handleLogin}
+                      className="space-y-4"
+                    >
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={loginData.email}
+                          onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="tradie@example.com"
+                          disabled={isLoading}
+                          className="h-11"
+                          data-testid="input-login-email"
+                        />
+                      </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password">Password</Label>
-                      <a 
-                        href="/reset-password" 
-                        className="text-sm text-primary hover:underline"
-                        data-testid="link-forgot-password"
-                      >
-                        Forgot password?
-                      </a>
-                    </div>
-                    <div className="relative">
-                      <Input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        value={loginData.password}
-                        onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
-                        placeholder="Enter your password"
-                        disabled={isLoading}
-                        className="pr-10"
-                        data-testid="input-login-password"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowPassword(!showPassword)}
-                        tabIndex={-1}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button 
-                    type="submit"
-                    disabled={isLoading}
-                    variant="brand"
-                    className="w-full h-11 text-base font-semibold shadow-md"
-                    data-testid="button-login"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Signing in...
-                      </>
-                    ) : (
-                      'Sign In'
-                    )}
-                  </Button>
-                </form>
-
-              </TabsContent>
-
-              {/* Register Tab */}
-              <TabsContent value="register" className="space-y-4 mt-0">
-                {/* Google Sign-Up Button */}
-                <Button 
-                  onClick={handleGoogleSignIn}
-                  disabled={isLoading || isGoogleLoading}
-                  variant="outline"
-                  className="w-full h-11 text-base font-medium border-2 hover-elevate"
-                  data-testid="button-google-signup"
-                >
-                  {isGoogleLoading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-3 animate-spin" />
-                      Connecting to Google...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                      </svg>
-                      Sign up with Google
-                    </>
-                  )}
-                </Button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-3 text-muted-foreground font-medium">Or create with email</span>
-                  </div>
-                </div>
-
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name *</Label>
-                      <Input
-                        id="firstName"
-                        value={registerData.firstName}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, firstName: e.target.value }))}
-                        placeholder="John"
-                        disabled={isLoading}
-                        data-testid="input-first-name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        value={registerData.lastName}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, lastName: e.target.value }))}
-                        placeholder="Smith"
-                        disabled={isLoading}
-                        data-testid="input-last-name"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="registerEmail">Email *</Label>
-                    <Input
-                      id="registerEmail"
-                      type="email"
-                      value={registerData.email}
-                      onChange={(e) => setRegisterData(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="your@email.com"
-                      disabled={isLoading}
-                      data-testid="input-register-email"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="registerPassword">Password *</Label>
-                    <div className="relative">
-                      <Input
-                        id="registerPassword"
-                        type={showPassword ? "text" : "password"}
-                        value={registerData.password}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, password: e.target.value }))}
-                        placeholder="Create a strong password"
-                        disabled={isLoading}
-                        className="pr-10"
-                        data-testid="input-register-password"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowPassword(!showPassword)}
-                        tabIndex={-1}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
-                    {registerData.password.length > 0 && (
-                      <div className="space-y-1 pt-1" data-testid="password-requirements">
-                        {passwordRequirements.map((req, index) => (
-                          <div 
-                            key={index} 
-                            className={`flex items-center gap-2 text-xs ${req.met ? 'text-green-600' : 'text-muted-foreground'}`}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="password" className="text-gray-700 dark:text-gray-300">Password</Label>
+                          <a 
+                            href="/reset-password" 
+                            className="text-sm text-orange-500 hover:text-orange-600 font-medium"
+                            data-testid="link-forgot-password"
                           >
-                            {req.met ? (
-                              <Check className="h-3 w-3" />
+                            Forgot password?
+                          </a>
+                        </div>
+                        <div className="relative">
+                          <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            value={loginData.password}
+                            onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
+                            placeholder="Enter your password"
+                            disabled={isLoading}
+                            className="h-11 pr-10"
+                            data-testid="input-login-password"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3"
+                            onClick={() => setShowPassword(!showPassword)}
+                            tabIndex={-1}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4 text-gray-400" />
                             ) : (
-                              <X className="h-3 w-3" />
+                              <Eye className="h-4 w-4 text-gray-400" />
                             )}
-                            <span>{req.label}</span>
-                          </div>
-                        ))}
+                          </Button>
+                        </div>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                    <div className="relative">
-                      <Input
-                        id="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={registerData.confirmPassword}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                        placeholder="Confirm your password"
+                      <Button 
+                        type="submit"
                         disabled={isLoading}
-                        className="pr-10"
-                        data-testid="input-confirm-password"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        tabIndex={-1}
+                        className="w-full h-12 text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/25"
+                        data-testid="button-login"
                       >
-                        {showConfirmPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Signing in...
+                          </>
                         ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
+                          <>
+                            Sign In
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </>
                         )}
                       </Button>
-                    </div>
-                    {registerData.confirmPassword.length > 0 && (
-                      <div className={`flex items-center gap-2 text-xs pt-1 ${passwordsMatch ? 'text-green-600' : 'text-destructive'}`}>
-                        {passwordsMatch ? (
+                    </motion.form>
+                  ) : (
+                    <motion.form
+                      key="register-form"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.2 }}
+                      onSubmit={handleRegister}
+                      className="space-y-4"
+                    >
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="firstName" className="text-gray-700 dark:text-gray-300">First Name *</Label>
+                          <Input
+                            id="firstName"
+                            value={registerData.firstName}
+                            onChange={(e) => setRegisterData(prev => ({ ...prev, firstName: e.target.value }))}
+                            placeholder="John"
+                            disabled={isLoading}
+                            className="h-11"
+                            data-testid="input-first-name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="lastName" className="text-gray-700 dark:text-gray-300">Last Name</Label>
+                          <Input
+                            id="lastName"
+                            value={registerData.lastName}
+                            onChange={(e) => setRegisterData(prev => ({ ...prev, lastName: e.target.value }))}
+                            placeholder="Smith"
+                            disabled={isLoading}
+                            className="h-11"
+                            data-testid="input-last-name"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="registerEmail" className="text-gray-700 dark:text-gray-300">Email *</Label>
+                        <Input
+                          id="registerEmail"
+                          type="email"
+                          value={registerData.email}
+                          onChange={(e) => setRegisterData(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="tradie@example.com"
+                          disabled={isLoading}
+                          className="h-11"
+                          data-testid="input-register-email"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="registerPassword" className="text-gray-700 dark:text-gray-300">Password *</Label>
+                        <div className="relative">
+                          <Input
+                            id="registerPassword"
+                            type={showPassword ? "text" : "password"}
+                            value={registerData.password}
+                            onChange={(e) => setRegisterData(prev => ({ ...prev, password: e.target.value }))}
+                            placeholder="Create a strong password"
+                            disabled={isLoading}
+                            className="h-11 pr-10"
+                            data-testid="input-register-password"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3"
+                            onClick={() => setShowPassword(!showPassword)}
+                            tabIndex={-1}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4 text-gray-400" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
+                        </div>
+                        {registerData.password.length > 0 && (
+                          <div className="grid grid-cols-2 gap-1 pt-1" data-testid="password-requirements">
+                            {passwordRequirements.map((req, index) => (
+                              <div 
+                                key={index} 
+                                className={`flex items-center gap-1.5 text-xs ${req.met ? 'text-green-600' : 'text-gray-400'}`}
+                              >
+                                {req.met ? (
+                                  <Check className="h-3 w-3" />
+                                ) : (
+                                  <X className="h-3 w-3" />
+                                )}
+                                <span>{req.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword" className="text-gray-700 dark:text-gray-300">Confirm Password *</Label>
+                        <div className="relative">
+                          <Input
+                            id="confirmPassword"
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={registerData.confirmPassword}
+                            onChange={(e) => setRegisterData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                            placeholder="Confirm your password"
+                            disabled={isLoading}
+                            className="h-11 pr-10"
+                            data-testid="input-confirm-password"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            tabIndex={-1}
+                          >
+                            {showConfirmPassword ? (
+                              <EyeOff className="h-4 w-4 text-gray-400" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
+                        </div>
+                        {registerData.confirmPassword.length > 0 && (
+                          <div className={`flex items-center gap-1.5 text-xs pt-1 ${passwordsMatch ? 'text-green-600' : 'text-red-500'}`}>
+                            {passwordsMatch ? (
+                              <>
+                                <Check className="h-3 w-3" />
+                                <span>Passwords match</span>
+                              </>
+                            ) : (
+                              <>
+                                <X className="h-3 w-3" />
+                                <span>Passwords don't match</span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <Button 
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full h-12 text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/25"
+                        data-testid="button-register"
+                      >
+                        {isLoading ? (
                           <>
-                            <Check className="h-3 w-3" />
-                            <span>Passwords match</span>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Creating account...
                           </>
                         ) : (
                           <>
-                            <X className="h-3 w-3" />
-                            <span>Passwords don't match</span>
+                            Create Free Account
+                            <ArrowRight className="w-4 h-4 ml-2" />
                           </>
                         )}
-                      </div>
-                    )}
-                  </div>
+                      </Button>
 
-                  <Button 
-                    type="submit"
-                    disabled={isLoading}
-                    variant="brand"
-                    className="w-full h-11 text-base font-semibold shadow-md"
-                    data-testid="button-register"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 w-4 mr-2 animate-spin" />
-                        Creating account...
-                      </>
-                    ) : (
-                      'Create Account'
-                    )}
-                  </Button>
+                      <p className="text-xs text-center text-gray-500">
+                        By creating an account, you agree to our Terms of Service
+                      </p>
+                    </motion.form>
+                  )}
+                </AnimatePresence>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-                  <p className="text-xs text-center text-muted-foreground">
-                    By creating an account, you agree to our Terms of Service
-                  </p>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+          {/* Footer */}
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-center text-sm text-gray-500 mt-8"
+          >
+            Professional business management for Australian tradies
+          </motion.p>
+        </div>
+      </div>
 
-        {/* Footer */}
-        <p className="text-center text-sm text-muted-foreground">
-          Professional business management for Australian tradies
-        </p>
+      {/* Right Panel - App Showcase (Hidden on mobile) */}
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-blue-600 via-blue-700 to-orange-500 relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col justify-center items-center w-full p-12">
+          {/* Badge */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-6"
+          >
+            <Sparkles className="w-4 h-4 text-yellow-300" />
+            <span className="text-sm font-semibold text-white">Free for early users</span>
+          </motion.div>
+
+          {/* Title */}
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-3xl xl:text-4xl font-bold text-white text-center mb-4"
+          >
+            Run your trade business
+            <br />smarter, not harder.
+          </motion.h2>
+
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-white/80 text-center text-lg mb-8 max-w-md"
+          >
+            Join Australian tradies who save hours every week with TradieTrack
+          </motion.p>
+
+          {/* Phone Mockup with Screenshot Carousel */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+            className="relative"
+          >
+            {/* Phone Frame */}
+            <div className="relative w-[260px] xl:w-[280px]">
+              <div className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-2xl">
+                {/* Dynamic Island */}
+                <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
+                
+                {/* Screen with Carousel */}
+                <div className="relative bg-white rounded-[2.25rem] overflow-hidden">
+                  <AnimatePresence mode="wait">
+                    <motion.img
+                      key={currentScreenshot}
+                      src={screenshots[currentScreenshot].src}
+                      alt={screenshots[currentScreenshot].title}
+                      className="w-full h-auto"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* Screenshot Navigation Dots */}
+              <div className="flex justify-center gap-2 mt-4">
+                {screenshots.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentScreenshot(index)}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      index === currentScreenshot 
+                        ? 'bg-white w-6' 
+                        : 'bg-white/40 hover:bg-white/60'
+                    }`}
+                    data-testid={`carousel-dot-${index}`}
+                  />
+                ))}
+              </div>
+
+              {/* Screenshot Label */}
+              <motion.div 
+                key={currentScreenshot}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center mt-4"
+              >
+                <p className="text-white font-semibold">{screenshots[currentScreenshot].title}</p>
+                <p className="text-white/70 text-sm">{screenshots[currentScreenshot].desc}</p>
+              </motion.div>
+            </div>
+
+            {/* Decorative gradient blob */}
+            <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-gradient-to-br from-orange-400/30 via-transparent to-blue-400/30 rounded-full blur-3xl"></div>
+          </motion.div>
+
+          {/* Features List */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mt-8 grid grid-cols-2 gap-3 max-w-md"
+          >
+            {features.map((feature, index) => (
+              <div key={index} className="flex items-center gap-2 text-white/90 text-sm">
+                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <feature.icon className="w-3.5 h-3.5" />
+                </div>
+                <span>{feature.text}</span>
+              </div>
+            ))}
+          </motion.div>
+        </div>
       </div>
     </div>
   );

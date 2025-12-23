@@ -13,7 +13,7 @@ Key architectural decisions and features include:
 -   **PDF Generation**: Server-side PDF generation for quotes and invoices via Puppeteer.
 -   **Theming & Branding**: Customizable brand colors and typography.
 -   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, and a "Today's Schedule" dashboard. Includes Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation.
--   **Adaptive Solo/Team Mode**: Adjusts UI based on team size, enabling time tracking and GPS check-in for team mode.
+-   **Adaptive Solo/Team Mode**: Adjusts UI based on team size, enabling time tracking and GPS check-in for team mode. Onboarding wizard starts with "How many people work in your business?" question - solo users skip team invitation step.
 -   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators and professional confirmation emails.
 -   **Live Quote/Invoice Editor**: Real-time preview with templates, catalog items, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
 -   **Stripe Payment Links**: Auto-generated links for invoices with webhook-triggered payment status sync.

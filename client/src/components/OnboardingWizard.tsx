@@ -9,12 +9,18 @@ import { queryClient } from "@/lib/queryClient";
 import tradietrackLogo from "/tradietrack-logo.png";
 
 // Import step components
+import TeamSizeStep from "./onboarding/TeamSizeStep";
 import BusinessProfileStep from "./onboarding/BusinessProfileStep";
 import BrandingStep from "./onboarding/BrandingStep";
 import DefaultRatesStep from "./onboarding/DefaultRatesStep";
 import TeamInvitationStep from "./onboarding/TeamInvitationStep";
 
 export interface OnboardingData {
+  // Team Size - FIRST QUESTION
+  teamSize: {
+    teamSize: 'solo' | 'small' | 'medium' | 'large';
+  };
+  
   // Business Profile
   businessProfile: {
     companyName: string;
@@ -47,7 +53,7 @@ export interface OnboardingData {
     gstRate: number;
   };
   
-  // Team Invitation (optional)
+  // Team Invitation (optional - only for non-solo)
   teamInvitation: {
     inviteTeamMembers: boolean;
     invitations: Array<{
@@ -63,7 +69,20 @@ interface OnboardingWizardProps {
   onSignOut?: () => void;
 }
 
-const STEPS = [
+const ALL_STEPS = [
+  {
+    id: 'team-size',
+    title: 'Team Size',
+    description: 'How many people in your business?',
+    icon: Users,
+    required: true,
+    color: 'orange',
+    bgColor: 'bg-orange-500',
+    lightBg: 'bg-orange-50',
+    textColor: 'text-orange-600',
+    borderColor: 'border-orange-200',
+    showForSolo: true,
+  },
   {
     id: 'business-profile',
     title: 'Business Profile',
@@ -75,6 +94,7 @@ const STEPS = [
     lightBg: 'bg-blue-50',
     textColor: 'text-blue-600',
     borderColor: 'border-blue-200',
+    showForSolo: true,
   },
   {
     id: 'branding',
@@ -82,11 +102,12 @@ const STEPS = [
     description: 'Customize your business appearance',
     icon: Palette,
     required: false,
-    color: 'orange',
-    bgColor: 'bg-orange-500',
-    lightBg: 'bg-orange-50',
-    textColor: 'text-orange-600',
-    borderColor: 'border-orange-200',
+    color: 'green',
+    bgColor: 'bg-green-500',
+    lightBg: 'bg-green-50',
+    textColor: 'text-green-600',
+    borderColor: 'border-green-200',
+    showForSolo: true,
   },
   {
     id: 'default-rates',
@@ -94,16 +115,17 @@ const STEPS = [
     description: 'Configure your pricing and terms',
     icon: DollarSign,
     required: true,
-    color: 'green',
-    bgColor: 'bg-green-500',
-    lightBg: 'bg-green-50',
-    textColor: 'text-green-600',
-    borderColor: 'border-green-200',
+    color: 'blue',
+    bgColor: 'bg-blue-500',
+    lightBg: 'bg-blue-50',
+    textColor: 'text-blue-600',
+    borderColor: 'border-blue-200',
+    showForSolo: true,
   },
   {
     id: 'team-invitation',
     title: 'Team Setup',
-    description: 'Invite team members (optional)',
+    description: 'Invite your team members',
     icon: Users,
     required: false,
     color: 'purple',
@@ -111,6 +133,7 @@ const STEPS = [
     lightBg: 'bg-purple-50',
     textColor: 'text-purple-600',
     borderColor: 'border-purple-200',
+    showForSolo: false, // Only show for teams
   },
 ];
 
@@ -121,6 +144,9 @@ export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: Onbo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [finalizationRequested, setFinalizationRequested] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
+    teamSize: {
+      teamSize: 'solo', // Default to solo
+    },
     businessProfile: {
       companyName: '',
       abn: '',
@@ -152,11 +178,16 @@ export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: Onbo
     },
   });
 
+  // Filter steps based on team size - solo users skip team invitation
+  const isSolo = onboardingData.teamSize.teamSize === 'solo';
+  const STEPS = ALL_STEPS.filter(step => isSolo ? step.showForSolo : true);
+
   // Calculate progress percentage
   const progressPercentage = ((currentStep + 1) / STEPS.length) * 100;
 
   // Map step IDs to OnboardingData keys
   const STEP_KEY_MAPPING: Record<string, keyof OnboardingData> = {
+    'team-size': 'teamSize',
     'business-profile': 'businessProfile',
     'branding': 'branding', 
     'default-rates': 'defaultRates',
@@ -257,13 +288,21 @@ export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: Onbo
     const stepId = STEPS[currentStep].id;
     
     switch (stepId) {
+      case 'team-size':
+        return (
+          <TeamSizeStep
+            data={onboardingData.teamSize}
+            onComplete={(data) => handleStepComplete(currentStep, data)}
+          />
+        );
+      
       case 'business-profile':
         return (
           <BusinessProfileStep
             data={onboardingData.businessProfile}
             onComplete={(data) => handleStepComplete(currentStep, data)}
             onPrevious={handlePrevious}
-            isFirst={currentStep === 0}
+            isFirst={false}
           />
         );
       
