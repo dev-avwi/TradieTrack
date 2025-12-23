@@ -34,6 +34,7 @@ interface JobCardProps {
   hasPhotos?: boolean;
   nextAction?: NextAction;
   profitData?: ProfitData;
+  isXeroImport?: boolean;
   onViewClick?: (id: string) => void;
   onStatusChange?: (id: string, newStatus: JobStatus) => void;
   onGenerateQuote?: (id: string) => void;
@@ -60,6 +61,7 @@ export default function JobCard({
   hasPhotos,
   nextAction,
   profitData,
+  isXeroImport,
   onViewClick, 
   onStatusChange,
   onGenerateQuote,
@@ -140,7 +142,22 @@ export default function JobCard({
   };
   
   return (
-    <Card className="hover-elevate" data-testid={`job-card-${id}`}>
+    <Card className="hover-elevate relative overflow-visible" data-testid={`job-card-${id}`}>
+      {/* Xero Import Ribbon */}
+      {isXeroImport && (
+        <div 
+          className="absolute -top-1 -right-1 z-10"
+          data-testid={`xero-ribbon-${id}`}
+        >
+          <div className="bg-sky-500 text-white text-xs font-semibold px-2 py-0.5 rounded-md shadow-sm flex items-center gap-1">
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+            </svg>
+            Xero
+          </div>
+        </div>
+      )}
+      
       {/* Next Action Banner - The Standout Feature */}
       {nextAction && nextAction.priority !== 'low' && (
         <div className={`px-3 py-1.5 flex items-center gap-2 text-xs font-medium border-b ${getPriorityColor(nextAction.priority)}`} data-testid={`next-action-${id}`}>

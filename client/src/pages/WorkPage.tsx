@@ -52,6 +52,8 @@ interface Job {
   address?: string;
   scheduledAt?: string;
   status: JobStatus;
+  isXeroImport?: boolean;
+  xeroJobId?: string;
 }
 
 interface WorkPageProps {
@@ -257,11 +259,26 @@ export default function WorkPage({
 
     return (
       <Card 
-        className="hover-elevate cursor-pointer"
+        className="hover-elevate cursor-pointer relative overflow-visible"
         style={{ borderRadius: '12px' }}
         onClick={() => onViewJob?.(job.id)}
         data-testid={`job-card-${job.id}`}
       >
+        {/* Xero Import Ribbon */}
+        {job.isXeroImport && (
+          <div 
+            className="absolute -top-1 -right-1 z-10"
+            data-testid={`xero-ribbon-${job.id}`}
+          >
+            <div className="bg-sky-500 text-white text-xs font-semibold px-2 py-0.5 rounded-md shadow-sm flex items-center gap-1">
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+              </svg>
+              Xero
+            </div>
+          </div>
+        )}
+        
         <CardContent className="p-3">
           <div className="space-y-2">
             <div className="flex items-start justify-between gap-1">

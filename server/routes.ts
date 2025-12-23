@@ -3983,6 +3983,198 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Seed mock Xero jobs for testing (development only)
+  app.post("/api/integrations/xero/seed-mock-jobs", requireAuth, async (req: any, res) => {
+    // Block this endpoint in production to prevent data pollution
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    
+    try {
+      const userId = req.userId!;
+      
+      // Get existing clients or create mock ones
+      let clients = await storage.getClients(userId);
+      
+      // Create mock Xero clients if needed
+      if (clients.length < 2) {
+        const mockClients = [
+          { userId, name: "Xero Import - Smith Renovations", email: "smith@xerotest.com", phone: "0412 345 678", address: "42 Harbour St, Sydney NSW 2000" },
+          { userId, name: "Xero Import - Jones Construction", email: "jones@xerotest.com", phone: "0423 456 789", address: "15 Market St, Melbourne VIC 3000" },
+        ];
+        for (const clientData of mockClients) {
+          await storage.createClient(clientData);
+        }
+        clients = await storage.getClients(userId);
+      }
+      
+      // Generate unique Xero IDs
+      const xeroJobId1 = `xero-proj-${Date.now()}-001`;
+      const xeroJobId2 = `xero-proj-${Date.now()}-002`;
+      const xeroJobId3 = `xero-proj-${Date.now()}-003`;
+      const xeroContactId1 = `xero-contact-${Date.now()}-001`;
+      const xeroContactId2 = `xero-contact-${Date.now()}-002`;
+      
+      // Create mock Xero jobs with realistic Australian tradie data
+      const mockXeroJobs = [
+        {
+          userId,
+          clientId: clients[0]?.id || clients[clients.length - 1].id,
+          title: "Kitchen Renovation - Full Refit",
+          description: "Complete kitchen renovation including new cabinetry, benchtops, splashback tiles, and plumbing. Imported from Xero Projects.",
+          address: "42 Harbour St, Sydney NSW 2000",
+          status: "in_progress" as const,
+          scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+          scheduledTime: "08:00",
+          estimatedDuration: 480, // 8 hours
+          notes: "Xero Notes: Client requested white marble benchtops. Materials ordered via Xero Purchase Orders. Contact: Jane Smith 0412 345 678",
+          isXeroImport: true,
+          xeroJobId: xeroJobId1,
+          xeroContactId: xeroContactId1,
+          xeroSyncedAt: new Date(),
+        },
+        {
+          userId,
+          clientId: clients[Math.min(1, clients.length - 1)]?.id || clients[0].id,
+          title: "Bathroom Waterproofing & Tiling",
+          description: "Complete bathroom waterproofing with membrane installation, floor and wall tiling. Synced from Xero with quote and invoice attached.",
+          address: "15 Market St, Melbourne VIC 3000",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
+          scheduledTime: "07:30",
+          estimatedDuration: 600, // 10 hours
+          notes: "Xero Notes: Large format tiles 600x600mm. Waterproofing warranty 10 years. Invoice partially paid via Xero Payments.",
+          isXeroImport: true,
+          xeroJobId: xeroJobId2,
+          xeroContactId: xeroContactId2,
+          xeroSyncedAt: new Date(),
+        },
+        {
+          userId,
+          clientId: clients[0]?.id || clients[clients.length - 1].id,
+          title: "Emergency Plumbing Repair",
+          description: "Burst pipe repair and water damage assessment. Emergency callout imported from Xero with completed invoice.",
+          address: "88 Collins St, Melbourne VIC 3000",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+          scheduledTime: "06:00",
+          estimatedDuration: 180, // 3 hours
+          notes: "Xero Notes: Emergency callout - burst copper pipe under sink. Replaced 2m of pipe and fittings. Invoice #INV-0045 paid in full via Xero.",
+          isXeroImport: true,
+          xeroJobId: xeroJobId3,
+          xeroContactId: xeroContactId1,
+          xeroSyncedAt: new Date(),
+        },
+      ];
+
+      const createdJobs = [];
+      for (const jobData of mockXeroJobs) {
+        const job = await storage.createJob(jobData);
+        createdJobs.push(job);
+        
+        // Create associated quote for scheduled job
+        if (job.status === 'scheduled' || job.status === 'in_progress') {
+          const quoteNumber = `XQ-${Date.now().toString().slice(-6)}`;
+          const quote = await storage.createQuote({
+            userId,
+            clientId: job.clientId,
+            jobId: job.id,
+            number: quoteNumber,
+            title: `Quote for ${job.title}`,
+            description: `Imported from Xero - ${job.description}`,
+            subtotal: "4500.00",
+            gst: "450.00",
+            total: "4950.00",
+            status: "accepted",
+            validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          });
+          
+          // Add quote line items
+          await storage.createQuoteLineItem({
+            quoteId: quote.id,
+            description: "Labour - skilled tradesperson",
+            quantity: "8",
+            unitPrice: "85.00",
+            total: "680.00",
+            sortOrder: 0,
+          });
+          await storage.createQuoteLineItem({
+            quoteId: quote.id,
+            description: "Materials and supplies",
+            quantity: "1",
+            unitPrice: "2500.00",
+            total: "2500.00",
+            sortOrder: 1,
+          });
+          await storage.createQuoteLineItem({
+            quoteId: quote.id,
+            description: "Equipment hire",
+            quantity: "1",
+            unitPrice: "320.00",
+            total: "320.00",
+            sortOrder: 2,
+          });
+        }
+        
+        // Create associated invoice for done job
+        if (job.status === 'done') {
+          const invoiceNumber = `XI-${Date.now().toString().slice(-6)}`;
+          const invoice = await storage.createInvoice({
+            userId,
+            clientId: job.clientId,
+            jobId: job.id,
+            invoiceNumber,
+            title: `Invoice for ${job.title}`,
+            description: `Imported from Xero - ${job.description}`,
+            subtotal: "850.00",
+            gst: "85.00",
+            total: "935.00",
+            status: "paid",
+            issueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+            dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+            xeroInvoiceId: `xero-inv-${Date.now()}`,
+            xeroSyncedAt: new Date(),
+          });
+          
+          // Add invoice line items
+          await storage.createInvoiceLineItem({
+            invoiceId: invoice.id,
+            description: "Emergency callout fee",
+            quantity: "1",
+            unitPrice: "150.00",
+            total: "150.00",
+            sortOrder: 0,
+          });
+          await storage.createInvoiceLineItem({
+            invoiceId: invoice.id,
+            description: "Labour - emergency repair (3 hrs)",
+            quantity: "3",
+            unitPrice: "120.00",
+            total: "360.00",
+            sortOrder: 1,
+          });
+          await storage.createInvoiceLineItem({
+            invoiceId: invoice.id,
+            description: "Copper pipe and fittings",
+            quantity: "1",
+            unitPrice: "340.00",
+            total: "340.00",
+            sortOrder: 2,
+          });
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        message: `Created ${createdJobs.length} mock Xero jobs with associated quotes and invoices`,
+        jobs: createdJobs.map(j => ({ id: j.id, title: j.title, xeroJobId: j.xeroJobId }))
+      });
+    } catch (error: any) {
+      console.error("Error seeding mock Xero jobs:", error);
+      res.status(500).json({ error: error.message || "Failed to seed mock Xero jobs" });
+    }
+  });
+
   // MYOB Integration Routes
   app.post("/api/integrations/myob/connect", requireAuth, async (req: any, res) => {
     try {
