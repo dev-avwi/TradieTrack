@@ -49,6 +49,10 @@ Key architectural decisions and features include:
 -   **Google Calendar Integration**: Per-user OAuth flow where each tradie connects their own Google Calendar account. Tokens stored in businessSettings (access_token, refresh_token, expiry, email). Jobs auto-sync to calendar when created/updated/scheduled (non-blocking). Events include comprehensive tradie workflow data: client contact info, address for navigation, job notes, status tracking with color-coded events (pending=yellow, scheduled=blue, in_progress=orange, done=green, invoiced=light green, cancelled=grey). Automatic 60min and 15min reminders configured per event.
 -   **Unified Integrations Status API**: Single endpoint (`/api/integrations/status`) returns status for Google Calendar, Xero, Stripe, and Twilio integrations. Used by mobile app for consistent cross-platform integration status display.
 -   **Safety Form Templates**: Australian-standard WHS compliance templates (SWMS, JSA, etc.) with digital signature support.
+-   **UX Polish (Dec 2024)**: Production-ready polishing across key features:
+    - **ChatHub**: Skeleton loaders, offline banners ("You're offline — messages will send when reconnected"), tradie-focused empty states, job context cards for SMS, "last seen" indicators
+    - **Reports**: Executive summary with Australian vernacular ("You've banked $X"), GST/BAS readiness badges (Q3 FY 2024-25), "Last refreshed" timestamp, actionable insights ("Chase overdue invoices"), skeleton loaders, export toasts
+    - **Integrations/Email**: Verified status badge, "Send Test Email" CTA, Australian compliance tips (ABN, GST, ATO requirements), setup checklist with visual checkmarks
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)
