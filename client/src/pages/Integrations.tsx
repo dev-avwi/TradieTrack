@@ -343,6 +343,8 @@ export default function Integrations() {
   // Google Calendar integration queries and mutations
   const { data: googleCalendarStatus, refetch: refetchGoogleCalendar } = useQuery<GoogleCalendarStatus>({
     queryKey: ['/api/integrations/google-calendar/status'],
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // Don't cache
   });
 
   const connectGoogleCalendarMutation = useMutation({
@@ -673,12 +675,12 @@ export default function Integrations() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  stripeConnected ? 'bg-green-100 dark:bg-green-900/50' :
+                  stripeConnected ? 'bg-purple-100 dark:bg-purple-900/50' :
                   stripePartiallyConnected ? 'bg-orange-100 dark:bg-orange-900/50' :
                   'bg-gray-100 dark:bg-gray-800/50'
                 }`}>
                   <SiStripe className={`w-5 h-5 ${
-                    stripeConnected ? 'text-green-600 dark:text-green-400' :
+                    stripeConnected ? 'text-purple-600 dark:text-purple-400' :
                     stripePartiallyConnected ? 'text-orange-600 dark:text-orange-400' :
                     'text-gray-500 dark:text-gray-400'
                   }`} />
@@ -689,7 +691,7 @@ export default function Integrations() {
                 </div>
               </div>
               {stripeConnected ? (
-                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+                <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border-0">
                   <CheckCircle className="w-3 h-3 mr-1" />
                   Connected
                 </Badge>
@@ -708,14 +710,14 @@ export default function Integrations() {
           <CardContent className="pt-0 space-y-4">
             {stripeConnected ? (
               <>
-                <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg space-y-2">
+                <div className="p-4 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg space-y-2">
                   <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                    <Building2 className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-800 dark:text-purple-200">
                       {stripeConnect?.businessName || 'Your Business'}
                     </span>
                   </div>
-                  <p className="text-xs text-green-700 dark:text-green-300">
+                  <p className="text-xs text-purple-700 dark:text-purple-300">
                     Payments are processed and deposited directly to your bank account.
                   </p>
                 </div>
@@ -809,13 +811,13 @@ export default function Integrations() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-100 dark:bg-green-900/50">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-red-100 dark:bg-red-900/50">
                   <SiGmail className="w-5 h-5 text-red-500" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <CardTitle className="text-base">Email - Ready to Go!</CardTitle>
-                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0 text-xs">
+                    <Badge className="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0 text-xs">
                       <Shield className="w-3 h-3 mr-1" />
                       Verified
                     </Badge>
@@ -823,7 +825,7 @@ export default function Integrations() {
                   <p className="text-xs text-muted-foreground">Send quotes and invoices from your Gmail</p>
                 </div>
               </div>
-              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+              <Badge className="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0">
                 <CheckCircle className="w-3 h-3 mr-1" />
                 Working
               </Badge>
@@ -831,14 +833,14 @@ export default function Integrations() {
           </CardHeader>
           <CardContent className="pt-0 space-y-4">
             {/* Delivery Confidence Message */}
-            <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+            <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
               <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                <CheckCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-1">
                     No setup needed - it just works!
                   </p>
-                  <p className="text-sm text-green-700 dark:text-green-300">
+                  <p className="text-sm text-red-700 dark:text-red-300">
                     Emails from your Gmail will land in your client's inbox, not spam. When you click "Send" on a quote or invoice, Gmail opens with everything ready.
                   </p>
                 </div>
@@ -848,24 +850,24 @@ export default function Integrations() {
             {/* Email Setup Checklist */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-foreground flex items-center gap-1">
-                <CheckCircle className="w-3 h-3 text-green-600" />
+                <CheckCircle className="w-3 h-3 text-red-600" />
                 Setup Checklist
               </p>
               <div className="grid gap-1.5">
                 <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <CheckCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
                   <span className="text-foreground">Email delivery connected</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <CheckCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
                   <span className="text-foreground">Quote templates ready</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <CheckCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
                   <span className="text-foreground">Invoice templates ready</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <CheckCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
                   <span className="text-foreground">Professional PDF generation</span>
                 </div>
               </div>

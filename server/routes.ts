@@ -4422,6 +4422,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Calendar Integration Routes (per-user OAuth)
   app.get("/api/integrations/google-calendar/status", requireAuth, async (req: any, res) => {
     try {
+      // Prevent caching to ensure fresh status on every request
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      
       const { isGoogleCalendarConnected, getCalendarInfo, isGoogleCalendarConfigured } = await import('./googleCalendarClient');
       
       const configured = isGoogleCalendarConfigured();
