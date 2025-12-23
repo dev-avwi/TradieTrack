@@ -415,6 +415,26 @@ export default function Integrations() {
     },
   });
 
+  const syncAllJobsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/google-calendar/sync-all-jobs');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Jobs Synced",
+        description: `Successfully synced ${data.synced || 0} jobs to Google Calendar`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to sync jobs to Google Calendar",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Twilio SMS integration queries and mutations
   const { data: twilioSettings, refetch: refetchTwilio } = useQuery<TwilioSettings>({
     queryKey: ['/api/settings/sms-branding'],
@@ -1129,22 +1149,33 @@ export default function Integrations() {
                     </li>
                   </ul>
                 </div>
-                <Button 
-                  variant="outline"
-                  onClick={() => disconnectGoogleCalendarMutation.mutate()}
-                  disabled={disconnectGoogleCalendarMutation.isPending}
-                  className="w-full"
-                  data-testid="button-disconnect-google-calendar"
-                >
-                  {disconnectGoogleCalendarMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Link2Off className="w-4 h-4 mr-2" />
-                      Disconnect
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => syncAllJobsMutation.mutate()}
+                    disabled={syncAllJobsMutation.isPending}
+                    className="flex-1"
+                    data-testid="button-sync-all-jobs"
+                  >
+                    {syncAllJobsMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Sync All Jobs
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => disconnectGoogleCalendarMutation.mutate()}
+                    disabled={disconnectGoogleCalendarMutation.isPending}
+                    data-testid="button-disconnect-google-calendar"
+                  >
+                    {disconnectGoogleCalendarMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Link2Off className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
               </>
             ) : googleCalendarStatus?.configured === false ? (
               <>
