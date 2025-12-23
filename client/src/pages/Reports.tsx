@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
@@ -6,9 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import { 
   DollarSign, 
   TrendingUp, 
+  TrendingDown,
   FileText, 
   Users, 
   Calendar,
@@ -20,12 +23,16 @@ import {
   CreditCard,
   Wallet,
   ArrowUpRight,
+  ArrowRight,
   ExternalLink,
   RefreshCw,
-  Banknote
+  Banknote,
+  Receipt,
+  FileCheck,
+  ChevronRight
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { 
   BarChart, 
   Bar, 
@@ -174,8 +181,8 @@ interface TeamReport {
 
 const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
-const downloadCSV = (data: any[], filename: string) => {
-  if (data.length === 0) return;
+const downloadCSV = (data: any[], filename: string): boolean => {
+  if (data.length === 0) return false;
   
   const headers = Object.keys(data[0]);
   const csvContent = [
@@ -198,12 +205,75 @@ const downloadCSV = (data: any[], filename: string) => {
   link.download = `${filename}_${format(new Date(), 'yyyy-MM-dd')}.csv`;
   link.click();
   URL.revokeObjectURL(link.href);
+  return true;
 };
+
+const getBASQuarter = () => {
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  const fyYear = month >= 6 ? year : year - 1;
+  const quarter = month >= 6 && month <= 8 ? 1 : month >= 9 && month <= 11 ? 2 : month >= 0 && month <= 2 ? 3 : 4;
+  return `Q${quarter} FY ${fyYear}-${(fyYear + 1).toString().slice(-2)}`;
+};
+
+function KPICardSkeleton() {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-32" />
+          </div>
+          <Skeleton className="h-10 w-10 rounded-full" />
+        </div>
+        <Skeleton className="h-3 w-28 mt-2" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function ExecutiveSummarySkeleton() {
+  return (
+    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+      <CardContent className="pt-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-6 w-40" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActionableInsightsSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-5 w-32" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Reports() {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const [dateRange, setDateRange] = useState<'ytd' | 'month' | 'quarter' | 'year'>('ytd');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   const getDateRange = () => {
     const now = new Date();
@@ -229,7 +299,7 @@ export default function Reports() {
     return { startDate: start.toISOString(), endDate: now.toISOString() };
   };
 
-  const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery<ReportSummary>({
+  const { data: summary, isLoading: summaryLoading, error: summaryError, refetch: refetchSummary, dataUpdatedAt: summaryUpdatedAt } = useQuery<ReportSummary>({
     queryKey: ['/api/reports/summary', dateRange],
     queryFn: async () => {
       const range = getDateRange();
@@ -242,7 +312,7 @@ export default function Reports() {
     retry: 1,
   });
 
-  const { data: revenueData, isLoading: revenueLoading } = useQuery<MonthlyRevenue>({
+  const { data: revenueData, isLoading: revenueLoading, refetch: refetchRevenue } = useQuery<MonthlyRevenue>({
     queryKey: ['/api/reports/revenue', selectedYear],
     queryFn: async () => {
       const res = await fetch(`/api/reports/revenue?year=${selectedYear}`, {
@@ -254,7 +324,7 @@ export default function Reports() {
     retry: 1,
   });
 
-  const { data: clientData, isLoading: clientsLoading } = useQuery<ClientReport>({
+  const { data: clientData, isLoading: clientsLoading, refetch: refetchClients } = useQuery<ClientReport>({
     queryKey: ['/api/reports/clients'],
     queryFn: async () => {
       const res = await fetch('/api/reports/clients?limit=10', {
@@ -279,7 +349,7 @@ export default function Reports() {
     retry: 1,
   });
 
-  const { data: teamData, isLoading: teamLoading } = useQuery<TeamReport>({
+  const { data: teamData, isLoading: teamLoading, refetch: refetchTeam } = useQuery<TeamReport>({
     queryKey: ['/api/reports/team', dateRange],
     queryFn: async () => {
       const range = getDateRange();
@@ -295,6 +365,27 @@ export default function Reports() {
     retry: 1,
   });
 
+  useEffect(() => {
+    if (summaryUpdatedAt) {
+      setLastRefreshed(new Date(summaryUpdatedAt));
+    }
+  }, [summaryUpdatedAt]);
+
+  const handleRefreshAll = async () => {
+    await Promise.all([
+      refetchSummary(),
+      refetchRevenue(),
+      refetchClients(),
+      refetchStripe(),
+      refetchTeam()
+    ]);
+    setLastRefreshed(new Date());
+    toast({
+      title: "Data refreshed",
+      description: "All reports have been updated with the latest figures.",
+    });
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
@@ -304,130 +395,283 @@ export default function Reports() {
     }).format(amount);
   };
 
+  const handleExportRevenue = () => {
+    if (revenueData?.months && revenueData.months.length > 0) {
+      const exportData = revenueData.months.map(m => ({
+        Month: m.month,
+        'Revenue (AUD)': m.revenue,
+        'GST (AUD)': m.gst,
+        'Invoices Paid': m.invoicesPaid
+      }));
+      const success = downloadCSV(exportData, `revenue_report_${selectedYear}`);
+      if (success) {
+        toast({
+          title: "Export complete",
+          description: `Revenue report for ${selectedYear} has been downloaded.`,
+        });
+      }
+    }
+  };
+
+  const handleExportClients = () => {
+    if (clientData?.clients && clientData.clients.length > 0) {
+      const exportData = clientData.clients.map(c => ({
+        Name: c.name,
+        Email: c.email,
+        Phone: c.phone || '',
+        'Revenue (AUD)': c.totalRevenue,
+        'Outstanding (AUD)': c.outstandingBalance,
+        'Jobs Completed': c.jobsCompleted
+      }));
+      const success = downloadCSV(exportData, 'client_report');
+      if (success) {
+        toast({
+          title: "Export complete",
+          description: "Client report has been downloaded.",
+        });
+      }
+    }
+  };
+
   const jobPieData = summary ? [
     { name: 'Completed', value: summary.jobs.completed, color: 'hsl(var(--chart-1))' },
     { name: 'In Progress', value: summary.jobs.inProgress, color: 'hsl(var(--chart-2))' },
     { name: 'Other', value: summary.jobs.total - summary.jobs.completed - summary.jobs.inProgress, color: 'hsl(var(--chart-3))' },
   ].filter(d => d.value > 0) : [];
 
+  const getDateRangeLabel = () => {
+    switch (dateRange) {
+      case 'month': return 'this month';
+      case 'quarter': return 'this quarter';
+      case 'year': return 'the last 12 months';
+      case 'ytd':
+      default: return 'this financial year';
+    }
+  };
+
+  const clientsWithOutstanding = clientData?.clients.filter(c => c.outstandingBalance > 0) || [];
+
   return (
     <PageShell>
       <PageHeader
         title="Reports"
-        subtitle="Business performance insights and analytics"
+        subtitle="Your business at a glance"
         leading={<BarChart3 className="h-6 w-6" />}
       />
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-          <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
-            <SelectTrigger className="w-[180px]" data-testid="select-date-range">
-              <SelectValue placeholder="Select period" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="month">This Month</SelectItem>
-              <SelectItem value="quarter">This Quarter</SelectItem>
-              <SelectItem value="ytd">Year to Date</SelectItem>
-              <SelectItem value="year">Last 12 Months</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-4">
+            <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
+              <SelectTrigger className="w-[180px]" data-testid="select-date-range">
+                <SelectValue placeholder="Select period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">This Month</SelectItem>
+                <SelectItem value="quarter">This Quarter</SelectItem>
+                <SelectItem value="ytd">Year to Date</SelectItem>
+                <SelectItem value="year">Last 12 Months</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span className="hidden sm:inline">Updated</span> {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleRefreshAll}
+                data-testid="button-refresh-all"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
           
           <Button 
             variant="outline" 
             data-testid="button-export-report"
             disabled={!revenueData?.months || revenueData.months.length === 0}
-            onClick={() => {
-              if (revenueData?.months && revenueData.months.length > 0) {
-                const exportData = revenueData.months.map(m => ({
-                  Month: m.month,
-                  'Revenue (AUD)': m.revenue,
-                  'GST (AUD)': m.gst,
-                  'Invoices Paid': m.invoicesPaid
-                }));
-                downloadCSV(exportData, `revenue_report_${selectedYear}`);
-              }
-            }}
+            onClick={handleExportRevenue}
           >
             <Download className="h-4 w-4 mr-2" />
             Export Revenue
           </Button>
         </div>
 
+        {summaryLoading ? (
+          <ExecutiveSummarySkeleton />
+        ) : summary && (
+          <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
+                    <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold" data-testid="text-executive-summary">
+                      You've banked {formatCurrency(summary.revenue.total)} {getDateRangeLabel()}
+                    </h2>
+                    <p className="text-muted-foreground">
+                      {summary.jobs.completed} jobs completed, {summary.invoices.paid} invoices paid
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge 
+                    variant="outline" 
+                    className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700"
+                    data-testid="badge-gst-status"
+                  >
+                    <Receipt className="h-3 w-3 mr-1" />
+                    GST collected: {formatCurrency(summary.revenue.gstCollected)}
+                  </Badge>
+                  <Badge 
+                    variant="outline" 
+                    className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
+                    data-testid="badge-bas-quarter"
+                  >
+                    <FileCheck className="h-3 w-3 mr-1" />
+                    BAS: {getBASQuarter()}
+                  </Badge>
+                </div>
+              </div>
+
+              {(summary.invoices.overdue > 0 || summary.quotes.pending > 0) && (
+                <div className="mt-4 pt-4 border-t border-primary/20 space-y-2">
+                  {summary.invoices.overdue > 0 && (
+                    <div 
+                      className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg cursor-pointer hover-elevate"
+                      onClick={() => navigate('/invoices?status=overdue')}
+                      data-testid="action-chase-overdue"
+                    >
+                      <div className="flex items-center gap-3">
+                        <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        <div>
+                          <p className="font-medium text-red-700 dark:text-red-300">
+                            Chase {summary.invoices.overdue} overdue invoice{summary.invoices.overdue !== 1 ? 's' : ''} worth {formatCurrency(summary.revenue.overdue)}
+                          </p>
+                          <p className="text-sm text-red-600/80 dark:text-red-400/80">
+                            Get on the blower and chase that cash today
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    </div>
+                  )}
+                  
+                  {summary.quotes.pending > 0 && (
+                    <div 
+                      className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg cursor-pointer hover-elevate"
+                      onClick={() => navigate('/quotes?status=pending')}
+                      data-testid="action-follow-quotes"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                        <div>
+                          <p className="font-medium text-yellow-700 dark:text-yellow-300">
+                            Follow up on {summary.quotes.pending} pending quote{summary.quotes.pending !== 1 ? 's' : ''}
+                          </p>
+                          <p className="text-sm text-yellow-600/80 dark:text-yellow-400/80">
+                            Give them a nudge before they go cold
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Revenue</p>
-                  <p className="text-2xl font-bold" data-testid="text-total-revenue">
-                    {summaryLoading ? '...' : formatCurrency(summary?.revenue.total || 0)}
+          {summaryLoading ? (
+            <>
+              <KPICardSkeleton />
+              <KPICardSkeleton />
+              <KPICardSkeleton />
+              <KPICardSkeleton />
+            </>
+          ) : (
+            <>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Revenue</p>
+                      <p className="text-2xl font-bold" data-testid="text-total-revenue">
+                        {formatCurrency(summary?.revenue.total || 0)}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Incl. GST: {formatCurrency(summary?.revenue.gstCollected || 0)}
                   </p>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                  <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Incl. GST: {formatCurrency(summary?.revenue.gstCollected || 0)}
-              </p>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold" data-testid="text-pending-revenue">
-                    {summaryLoading ? '...' : formatCurrency(summary?.revenue.pending || 0)}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Pending</p>
+                      <p className="text-2xl font-bold" data-testid="text-pending-revenue">
+                        {formatCurrency(summary?.revenue.pending || 0)}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                      <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {summary?.invoices.unpaid || 0} unpaid invoices
                   </p>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
-                  <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {summary?.invoices.unpaid || 0} unpaid invoices
-              </p>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Overdue</p>
-                  <p className="text-2xl font-bold text-red-600" data-testid="text-overdue-revenue">
-                    {summaryLoading ? '...' : formatCurrency(summary?.revenue.overdue || 0)}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Overdue</p>
+                      <p className="text-2xl font-bold text-red-600" data-testid="text-overdue-revenue">
+                        {formatCurrency(summary?.revenue.overdue || 0)}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                      <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {summary?.invoices.overdue || 0} overdue invoices
                   </p>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {summary?.invoices.overdue || 0} overdue invoices
-              </p>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Quote Conversion</p>
-                  <p className="text-2xl font-bold" data-testid="text-conversion-rate">
-                    {summaryLoading ? '...' : `${(summary?.quotes.conversionRate || 0).toFixed(0)}%`}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Quote Conversion</p>
+                      <p className="text-2xl font-bold" data-testid="text-conversion-rate">
+                        {`${(summary?.quotes.conversionRate || 0).toFixed(0)}%`}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {summary?.quotes.accepted || 0} of {summary?.quotes.total || 0} quotes
                   </p>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                  <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {summary?.quotes.accepted || 0} of {summary?.quotes.total || 0} quotes
-              </p>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
         <Tabs defaultValue="revenue" className="w-full">
@@ -455,42 +699,56 @@ export default function Reports() {
                 </Select>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={revenueData?.months || []}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="month" 
-                        className="text-xs"
-                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                      />
-                      <YAxis 
-                        className="text-xs"
-                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                        tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
-                      />
-                      <Tooltip 
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-4 flex gap-8 justify-center text-sm text-muted-foreground">
-                  <div>
-                    <span className="font-medium text-foreground">Total: </span>
-                    {formatCurrency(revenueData?.yearTotal || 0)}
+                {revenueLoading ? (
+                  <div className="h-[300px] flex items-center justify-center">
+                    <div className="space-y-4 w-full">
+                      <Skeleton className="h-[250px] w-full" />
+                      <div className="flex gap-8 justify-center">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-4 w-32" />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-medium text-foreground">GST: </span>
-                    {formatCurrency(revenueData?.yearGst || 0)}
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={revenueData?.months || []}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis 
+                            dataKey="month" 
+                            className="text-xs"
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          />
+                          <YAxis 
+                            className="text-xs"
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                            tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
+                          />
+                          <Tooltip 
+                            formatter={(value: number) => formatCurrency(value)}
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--card))',
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                          />
+                          <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-4 flex gap-8 justify-center text-sm text-muted-foreground">
+                      <div>
+                        <span className="font-medium text-foreground">Total: </span>
+                        {formatCurrency(revenueData?.yearTotal || 0)}
+                      </div>
+                      <div>
+                        <span className="font-medium text-foreground">GST: </span>
+                        {formatCurrency(revenueData?.yearGst || 0)}
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -498,11 +756,35 @@ export default function Reports() {
           <TabsContent value="payments" className="mt-6">
             <div className="space-y-6">
               {stripeLoading ? (
-                <Card>
-                  <CardContent className="flex items-center justify-center py-12">
-                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </CardContent>
-                </Card>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <KPICardSkeleton />
+                    <KPICardSkeleton />
+                    <KPICardSkeleton />
+                    <KPICardSkeleton />
+                  </div>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <Card>
+                      <CardHeader>
+                        <Skeleton className="h-5 w-32" />
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <Skeleton className="h-5 w-32" />
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
               ) : !stripeData?.available ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12">
@@ -710,45 +992,53 @@ export default function Reports() {
                   <CardTitle>Job Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={jobPieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
-                          {jobPieData.map((entry, index) => (
-                            <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--card))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px'
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex justify-center gap-6 mt-4">
-                    {jobPieData.map((item, index) => (
-                      <div key={item.name} className="flex items-center gap-2">
-                        <div 
-                          className="h-3 w-3 rounded-full" 
-                          style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
-                        />
-                        <span className="text-sm text-muted-foreground">
-                          {item.name}: {item.value}
-                        </span>
+                  {summaryLoading ? (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <Skeleton className="h-[200px] w-[200px] rounded-full" />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={jobPieData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={100}
+                              paddingAngle={5}
+                              dataKey="value"
+                            >
+                              {jobPieData.map((entry, index) => (
+                                <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '8px'
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
                       </div>
-                    ))}
-                  </div>
+                      <div className="flex justify-center gap-6 mt-4">
+                        {jobPieData.map((item, index) => (
+                          <div key={item.name} className="flex items-center gap-2">
+                            <div 
+                              className="h-3 w-3 rounded-full" 
+                              style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {item.name}: {item.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -757,33 +1047,43 @@ export default function Reports() {
                   <CardTitle>Job Metrics</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <span>Jobs Completed</span>
-                    </div>
-                    <span className="text-xl font-semibold" data-testid="text-jobs-completed">
-                      {summary?.jobs.completed || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-5 w-5 text-blue-600" />
-                      <span>In Progress</span>
-                    </div>
-                    <span className="text-xl font-semibold" data-testid="text-jobs-in-progress">
-                      {summary?.jobs.inProgress || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-5 w-5 text-purple-600" />
-                      <span>Total Jobs</span>
-                    </div>
-                    <span className="text-xl font-semibold" data-testid="text-jobs-total">
-                      {summary?.jobs.total || 0}
-                    </span>
-                  </div>
+                  {summaryLoading ? (
+                    <>
+                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-16 w-full" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span>Jobs Completed</span>
+                        </div>
+                        <span className="text-xl font-semibold" data-testid="text-jobs-completed">
+                          {summary?.jobs.completed || 0}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Clock className="h-5 w-5 text-blue-600" />
+                          <span>In Progress</span>
+                        </div>
+                        <span className="text-xl font-semibold" data-testid="text-jobs-in-progress">
+                          {summary?.jobs.inProgress || 0}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-purple-600" />
+                          <span>Total Jobs</span>
+                        </div>
+                        <span className="text-xl font-semibold" data-testid="text-jobs-total">
+                          {summary?.jobs.total || 0}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -798,82 +1098,82 @@ export default function Reports() {
                   size="sm"
                   data-testid="button-export-clients"
                   disabled={!clientData?.clients || clientData.clients.length === 0}
-                  onClick={() => {
-                    if (clientData?.clients && clientData.clients.length > 0) {
-                      const exportData = clientData.clients.map(c => ({
-                        Name: c.name,
-                        Email: c.email,
-                        Phone: c.phone || '',
-                        'Revenue (AUD)': c.totalRevenue,
-                        'Outstanding (AUD)': c.outstandingBalance,
-                        'Jobs Completed': c.jobsCompleted
-                      }));
-                      downloadCSV(exportData, 'client_report');
-                    }
-                  }}
+                  onClick={handleExportClients}
                 >
                   <Download className="h-4 w-4 mr-1" />
                   Export
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-2 font-medium text-muted-foreground">Client</th>
-                        <th className="text-right py-3 px-2 font-medium text-muted-foreground">Revenue</th>
-                        <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden sm:table-cell">Outstanding</th>
-                        <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden md:table-cell">Jobs</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {clientData?.clients.map((client) => (
-                        <tr 
-                          key={client.id} 
-                          className="border-b hover-elevate cursor-pointer" 
-                          onClick={() => navigate(`/clients/${client.id}`)}
-                          data-testid={`row-client-${client.id}`}
-                        >
-                          <td className="py-3 px-2">
-                            <div>
-                              <p className="font-medium text-primary hover:underline">{client.name}</p>
-                              <p className="text-xs text-muted-foreground">{client.email}</p>
-                            </div>
-                          </td>
-                          <td className="text-right py-3 px-2 font-medium text-green-600">
-                            {formatCurrency(client.totalRevenue)}
-                          </td>
-                          <td className="text-right py-3 px-2 hidden sm:table-cell">
-                            {client.outstandingBalance > 0 ? (
-                              <span className="text-yellow-600">{formatCurrency(client.outstandingBalance)}</span>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </td>
-                          <td className="text-right py-3 px-2 hidden md:table-cell">
-                            {client.jobsCompleted}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {clientData && (
-                  <div className="mt-4 pt-4 border-t flex gap-8 justify-end text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Total Revenue: </span>
-                      <span className="font-semibold text-green-600">
-                        {formatCurrency(clientData.totals.totalRevenue)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Total Outstanding: </span>
-                      <span className="font-semibold text-yellow-600">
-                        {formatCurrency(clientData.totals.totalOutstanding)}
-                      </span>
-                    </div>
+                {clientsLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
                   </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-3 px-2 font-medium text-muted-foreground">Client</th>
+                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Revenue</th>
+                            <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden sm:table-cell">Outstanding</th>
+                            <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden md:table-cell">Jobs</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {clientData?.clients.map((client) => (
+                            <tr 
+                              key={client.id} 
+                              className="border-b hover-elevate cursor-pointer" 
+                              onClick={() => navigate(`/clients/${client.id}`)}
+                              data-testid={`row-client-${client.id}`}
+                            >
+                              <td className="py-3 px-2">
+                                <div>
+                                  <p className="font-medium text-primary hover:underline">{client.name}</p>
+                                  <p className="text-xs text-muted-foreground">{client.email}</p>
+                                </div>
+                              </td>
+                              <td className="text-right py-3 px-2 font-medium text-green-600">
+                                {formatCurrency(client.totalRevenue)}
+                              </td>
+                              <td className="text-right py-3 px-2 hidden sm:table-cell">
+                                {client.outstandingBalance > 0 ? (
+                                  <span className="text-yellow-600">{formatCurrency(client.outstandingBalance)}</span>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </td>
+                              <td className="text-right py-3 px-2 hidden md:table-cell">
+                                {client.jobsCompleted}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {clientData && (
+                      <div className="mt-4 pt-4 border-t flex gap-8 justify-end text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Total Revenue: </span>
+                          <span className="font-semibold text-green-600">
+                            {formatCurrency(clientData.totals.totalRevenue)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Total Outstanding: </span>
+                          <span className="font-semibold text-yellow-600">
+                            {formatCurrency(clientData.totals.totalOutstanding)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -883,75 +1183,86 @@ export default function Reports() {
             <TabsContent value="team" className="mt-6">
               <div className="space-y-6">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Team Members</p>
-                          <p className="text-2xl font-bold" data-testid="text-team-members">
-                            {teamLoading ? '...' : teamData.totals.totalMembers}
-                          </p>
-                        </div>
-                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  {teamLoading ? (
+                    <>
+                      <KPICardSkeleton />
+                      <KPICardSkeleton />
+                      <KPICardSkeleton />
+                      <KPICardSkeleton />
+                    </>
+                  ) : (
+                    <>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Team Members</p>
+                              <p className="text-2xl font-bold" data-testid="text-team-members">
+                                {teamData.totals.totalMembers}
+                              </p>
+                            </div>
+                            <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                              <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Jobs Completed</p>
-                          <p className="text-2xl font-bold text-green-600" data-testid="text-team-jobs-completed">
-                            {teamLoading ? '...' : teamData.totals.totalJobsCompleted}
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Jobs Completed</p>
+                              <p className="text-2xl font-bold text-green-600" data-testid="text-team-jobs-completed">
+                                {teamData.totals.totalJobsCompleted}
+                              </p>
+                            </div>
+                            <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {teamData.totals.totalJobsAssigned} assigned
                           </p>
-                        </div>
-                        <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {teamData.totals.totalJobsAssigned} assigned
-                      </p>
-                    </CardContent>
-                  </Card>
+                        </CardContent>
+                      </Card>
 
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Hours Worked</p>
-                          <p className="text-2xl font-bold" data-testid="text-team-hours">
-                            {teamLoading ? '...' : teamData.totals.totalHoursWorked}
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Hours Worked</p>
+                              <p className="text-2xl font-bold" data-testid="text-team-hours">
+                                {teamData.totals.totalHoursWorked}
+                              </p>
+                            </div>
+                            <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                              <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Total tracked hours
                           </p>
-                        </div>
-                        <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                          <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Total tracked hours
-                      </p>
-                    </CardContent>
-                  </Card>
+                        </CardContent>
+                      </Card>
 
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Avg Jobs/Member</p>
-                          <p className="text-2xl font-bold" data-testid="text-team-avg-jobs">
-                            {teamLoading ? '...' : teamData.totals.avgJobsPerMember}
-                          </p>
-                        </div>
-                        <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
-                          <BarChart3 className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Avg Jobs/Member</p>
+                              <p className="text-2xl font-bold" data-testid="text-team-avg-jobs">
+                                {teamData.totals.avgJobsPerMember}
+                              </p>
+                            </div>
+                            <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                              <BarChart3 className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
                 </div>
 
                 <Card>
@@ -959,59 +1270,69 @@ export default function Reports() {
                     <CardTitle>Team Performance</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-3 px-2 font-medium text-muted-foreground">Team Member</th>
-                            <th className="text-center py-3 px-2 font-medium text-muted-foreground">Role</th>
-                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Completed</th>
-                            <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden sm:table-cell">In Progress</th>
-                            <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden md:table-cell">Hours</th>
-                            <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden lg:table-cell">Avg Hrs/Job</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {teamData.members.map((member) => (
-                            <tr 
-                              key={member.id} 
-                              className="border-b"
-                              data-testid={`row-team-member-${member.id}`}
-                            >
-                              <td className="py-3 px-2">
-                                <div>
-                                  <p className="font-medium">{member.name}</p>
-                                  <p className="text-xs text-muted-foreground">{member.email}</p>
-                                </div>
-                              </td>
-                              <td className="text-center py-3 px-2">
-                                <Badge variant={member.role === 'OWNER' ? 'default' : member.role === 'ADMIN' ? 'secondary' : 'outline'}>
-                                  {member.role}
-                                </Badge>
-                              </td>
-                              <td className="text-right py-3 px-2 font-medium text-green-600">
-                                {member.jobsCompleted}
-                              </td>
-                              <td className="text-right py-3 px-2 hidden sm:table-cell text-blue-600">
-                                {member.jobsInProgress}
-                              </td>
-                              <td className="text-right py-3 px-2 hidden md:table-cell">
-                                {member.hoursWorked}h
-                              </td>
-                              <td className="text-right py-3 px-2 hidden lg:table-cell text-muted-foreground">
-                                {member.avgHoursPerJob}h
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    {teamData.members.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>No team members yet</p>
-                        <p className="text-sm">Add team members to see performance data</p>
+                    {teamLoading ? (
+                      <div className="space-y-3">
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
                       </div>
+                    ) : (
+                      <>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="text-left py-3 px-2 font-medium text-muted-foreground">Team Member</th>
+                                <th className="text-center py-3 px-2 font-medium text-muted-foreground">Role</th>
+                                <th className="text-right py-3 px-2 font-medium text-muted-foreground">Completed</th>
+                                <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden sm:table-cell">In Progress</th>
+                                <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden md:table-cell">Hours</th>
+                                <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden lg:table-cell">Avg Hrs/Job</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {teamData.members.map((member) => (
+                                <tr 
+                                  key={member.id} 
+                                  className="border-b"
+                                  data-testid={`row-team-member-${member.id}`}
+                                >
+                                  <td className="py-3 px-2">
+                                    <div>
+                                      <p className="font-medium">{member.name}</p>
+                                      <p className="text-xs text-muted-foreground">{member.email}</p>
+                                    </div>
+                                  </td>
+                                  <td className="text-center py-3 px-2">
+                                    <Badge variant={member.role === 'OWNER' ? 'default' : member.role === 'ADMIN' ? 'secondary' : 'outline'}>
+                                      {member.role}
+                                    </Badge>
+                                  </td>
+                                  <td className="text-right py-3 px-2 font-medium text-green-600">
+                                    {member.jobsCompleted}
+                                  </td>
+                                  <td className="text-right py-3 px-2 hidden sm:table-cell text-blue-600">
+                                    {member.jobsInProgress}
+                                  </td>
+                                  <td className="text-right py-3 px-2 hidden md:table-cell">
+                                    {member.hoursWorked}h
+                                  </td>
+                                  <td className="text-right py-3 px-2 hidden lg:table-cell text-muted-foreground">
+                                    {member.avgHoursPerJob}h
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        {teamData.members.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No team members yet</p>
+                            <p className="text-sm">Add team members to see performance data</p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </CardContent>
                 </Card>

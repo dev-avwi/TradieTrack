@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Users, 
   Loader2, 
@@ -23,6 +24,9 @@ import {
   Phone,
   Wifi,
   WifiOff,
+  Clock,
+  AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
@@ -150,6 +154,104 @@ const STATUS_COLORS: Record<string, string> = {
   done: '#10B981',
   invoiced: '#8B5CF6',
 };
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  scheduled: 'Scheduled',
+  in_progress: 'In Progress',
+  done: 'Completed',
+  invoiced: 'Invoiced',
+};
+
+function ConversationSkeleton() {
+  return (
+    <div className="divide-y">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-center gap-3 p-4">
+          <Skeleton className="w-12 h-12 rounded-full shrink-0" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <Skeleton className="h-3 w-48" />
+              <Skeleton className="h-5 w-5 rounded-full" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OfflineBanner({ isConnected }: { isConnected: boolean }) {
+  if (isConnected) return null;
+  
+  return (
+    <div className="shrink-0 px-4 py-2 bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-800">
+      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+        <WifiOff className="h-4 w-4 shrink-0" />
+        <span className="text-sm font-medium">You're offline</span>
+        <span className="text-xs text-amber-600 dark:text-amber-500">
+          — messages will send when reconnected
+        </span>
+      </div>
+    </div>
+  );
+}
+
+interface JobContextCardProps {
+  job: Job;
+  onViewJob: () => void;
+}
+
+function JobContextCard({ job, onViewJob }: JobContextCardProps) {
+  const statusColor = STATUS_COLORS[job.status] || STATUS_COLORS.pending;
+  const statusLabel = STATUS_LABELS[job.status] || 'Unknown';
+  
+  return (
+    <Card className="shrink-0 mx-4 mt-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+      <CardContent className="py-3 px-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div 
+              className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+              style={{ backgroundColor: statusColor + '20' }}
+            >
+              <Briefcase className="h-5 w-5" style={{ color: statusColor }} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm truncate">{job.title}</span>
+                <Badge 
+                  variant="secondary" 
+                  className="shrink-0 text-xs px-1.5 py-0"
+                  style={{ backgroundColor: statusColor + '20', color: statusColor }}
+                >
+                  {statusLabel}
+                </Badge>
+              </div>
+              {job.address && (
+                <p className="text-xs text-muted-foreground truncate">{job.address.split(',')[0]}</p>
+              )}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onViewJob}
+            className="shrink-0 gap-1.5"
+            data-testid="button-view-job-context"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            View Job
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function ChatHub() {
   const queryClient = useQueryClient();
@@ -668,15 +770,18 @@ export default function ChatHub() {
           </Card>
         )}
 
+        {/* Offline Banner */}
+        <OfflineBanner isConnected={smsSocketConnected} />
+
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-2">
           {teamMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-8">
               <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                 <Users className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="font-medium text-base mb-1">No messages yet</h3>
-              <p className="text-sm text-muted-foreground text-center">
-                Start a conversation with your team
+              <h3 className="font-medium text-base mb-1">Team chat's quiet</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-xs">
+                Share updates, coordinate jobs, or just check in with your crew
               </p>
             </div>
           ) : (
@@ -725,12 +830,19 @@ export default function ChatHub() {
           </div>
         </div>
 
+        {/* Offline Banner */}
+        <OfflineBanner isConnected={smsSocketConnected} />
+
         <div className="flex-1 overflow-y-auto px-4 py-2">
           {directMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-8">
-              <MessageCircle className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No messages yet</p>
-              <p className="text-sm text-muted-foreground">Start the conversation!</p>
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <MessageCircle className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-medium text-base mb-1">Start chatting</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-xs">
+                Message {getUserDisplayName(selectedDirectUser)} directly — great for quick updates or questions
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -806,32 +918,39 @@ export default function ChatHub() {
               {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS Conversation'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {selectedSmsConversation.jobId && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setLocation(`/jobs/${selectedSmsConversation.jobId}`)}
-                className="gap-1.5"
-                data-testid="button-view-linked-job"
-              >
-                <Briefcase className="h-3.5 w-3.5" />
-                View Job
-              </Button>
-            )}
-            <Badge variant="outline" className="shrink-0 gap-1">
-              <Phone className="h-3 w-3" />
-              SMS
-            </Badge>
-          </div>
+          <Badge variant="outline" className="shrink-0 gap-1">
+            <Phone className="h-3 w-3" />
+            SMS
+          </Badge>
         </div>
+
+        {/* Offline Banner */}
+        <OfflineBanner isConnected={smsSocketConnected} />
+
+        {/* Job Context Card for linked jobs */}
+        {selectedSmsConversation.jobId && (() => {
+          const linkedJob = jobs.find(j => j.id === selectedSmsConversation.jobId);
+          if (linkedJob) {
+            return (
+              <JobContextCard 
+                job={linkedJob} 
+                onViewJob={() => setLocation(`/jobs/${selectedSmsConversation.jobId}`)} 
+              />
+            );
+          }
+          return null;
+        })()}
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
           {smsMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-8">
-              <Phone className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No messages yet</p>
-              <p className="text-sm text-muted-foreground">Send your first SMS!</p>
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Phone className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-medium text-base mb-1">No messages yet</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-xs">
+                Send a text to {selectedSmsConversation.clientName || 'this client'} — perfect for quick updates or appointment reminders
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1097,26 +1216,27 @@ export default function ChatHub() {
         </div>
       </div>
 
+      {/* Offline Banner */}
+      <OfflineBanner isConnected={smsSocketConnected} />
+
       {/* Conversation List */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <ConversationSkeleton />
         ) : conversationList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
               <MessageCircle className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="font-medium text-base mb-1">No conversations</h3>
-            <p className="text-sm text-muted-foreground text-center">
+            <h3 className="font-medium text-base mb-1">No messages yet</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-xs">
               {filter === 'direct' 
-                ? 'Start a conversation with a team member'
+                ? 'Message your crew directly — conversations with team members will show up here'
                 : filter === 'jobs'
-                ? 'Create a job to start chatting'
+                ? 'Job chat threads will appear here when you create jobs'
                 : filter === 'sms'
-                ? 'Send an SMS to a client to start chatting'
-                : 'Your messages will appear here'}
+                ? 'Text your clients directly — SMS conversations will appear here'
+                : 'Your team chat and messages will appear here'}
             </p>
           </div>
         ) : (
@@ -1163,11 +1283,14 @@ export default function ChatHub() {
                         {item.type === 'team' ? 'Team' : item.type === 'direct' ? 'DM' : item.type === 'sms' ? 'SMS' : 'Job'}
                       </Badge>
                     </div>
-                    {item.lastMessageTime && (
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {formatTime(item.lastMessageTime)}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {item.lastMessageTime && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatDistanceToNow(new Date(item.lastMessageTime), { addSuffix: true })}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-0.5">
                     <p className="text-sm text-muted-foreground truncate">
