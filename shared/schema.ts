@@ -380,6 +380,12 @@ export const jobs = pgTable("jobs", {
   // Google Calendar integration
   calendarEventId: text("calendar_event_id"), // Google Calendar event ID for synced jobs
   archivedAt: timestamp("archived_at"), // When the job was archived
+  // Xero integration tracking
+  isXeroImport: boolean("is_xero_import").default(false), // Whether job was imported from Xero
+  xeroJobId: varchar("xero_job_id"), // Xero project/job ID
+  xeroContactId: varchar("xero_contact_id"), // Xero contact ID for client mapping
+  xeroQuoteId: varchar("xero_quote_id"), // Xero quote ID if associated
+  xeroSyncedAt: timestamp("xero_synced_at"), // When job was last synced with Xero
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
