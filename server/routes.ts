@@ -4292,26 +4292,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Google Calendar Integration Routes
+  // Google Calendar Integration Routes (using Replit Connector)
   app.get("/api/integrations/google-calendar/status", requireAuth, async (req: any, res) => {
     try {
       const { isGoogleCalendarConnected, getCalendarInfo } = await import('./googleCalendarClient');
       
-      const configured = !!(process.env.GOOGLE_CALENDAR_CLIENT_ID && process.env.GOOGLE_CALENDAR_CLIENT_SECRET);
-      if (!configured) {
+      const connected = await isGoogleCalendarConnected();
+      if (!connected) {
         return res.json({ 
-          configured: false,
+          configured: true, 
           connected: false,
-          message: "Google Calendar integration not configured" 
+          message: "Google Calendar not connected. Please connect via Replit integrations."
         });
       }
       
-      const connected = await isGoogleCalendarConnected(req.userId);
-      if (!connected) {
-        return res.json({ configured: true, connected: false });
-      }
-      
-      const calendarInfo = await getCalendarInfo(req.userId);
+      const calendarInfo = await getCalendarInfo();
       res.json({ 
         configured: true, 
         connected: true,
@@ -4319,97 +4314,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Error getting Google Calendar status:", error);
-      res.status(500).json({ error: error.message || "Failed to get Google Calendar status" });
-    }
-  });
-
-  app.post("/api/integrations/google-calendar/connect", requireAuth, async (req: any, res) => {
-    try {
-      const { getAuthUrl } = await import('./googleCalendarClient');
-      
-      if (!process.env.GOOGLE_CALENDAR_CLIENT_ID || !process.env.GOOGLE_CALENDAR_CLIENT_SECRET) {
-        return res.status(400).json({ 
-          error: "Google Calendar integration not configured. Please add GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET environment variables." 
-        });
-      }
-      
-      const state = `${req.userId}_${Date.now()}_${randomBytes(8).toString('hex')}`;
-      req.session.googleCalendarOAuthState = state;
-      
-      const authUrl = getAuthUrl(state);
-      res.json({ authUrl });
-    } catch (error: any) {
-      console.error("Error getting Google Calendar auth URL:", error);
-      res.status(500).json({ error: error.message || "Failed to generate Google Calendar auth URL" });
-    }
-  });
-
-  app.get("/api/integrations/google-calendar/callback", async (req: any, res) => {
-    try {
-      const { exchangeCodeForTokens, storeTokens, getCalendarInfo } = await import('./googleCalendarClient');
-      
-      const stateFromQuery = req.query.state as string;
-      const storedState = req.session?.googleCalendarOAuthState;
-      const code = req.query.code as string;
-      const error = req.query.error as string;
-      
-      if (error) {
-        console.error("Google Calendar OAuth error:", error);
-        return res.redirect('/integrations?google-calendar=error&message=' + encodeURIComponent(error));
-      }
-      
-      if (!code) {
-        return res.redirect('/integrations?google-calendar=error&message=' + encodeURIComponent('Missing authorization code.'));
-      }
-      
-      // Extract userId from state if session state doesn't match (mobile flow)
-      let userId: string | null = null;
-      
-      if (stateFromQuery && storedState && stateFromQuery === storedState) {
-        // Session-based auth
-        userId = req.userId;
-        delete req.session.googleCalendarOAuthState;
-      } else if (stateFromQuery) {
-        // Extract userId from state parameter
-        const stateParts = stateFromQuery.split('_');
-        if (stateParts.length >= 2) {
-          userId = stateParts[0];
-        }
-      }
-      
-      if (!userId) {
-        return res.redirect('/integrations?google-calendar=error&message=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
-      }
-      
-      const tokens = await exchangeCodeForTokens(code);
-      await storeTokens(userId, tokens);
-      
-      // Get calendar email to store
-      const calendarInfo = await getCalendarInfo(userId);
-      if (calendarInfo?.email) {
-        const { integrationSettings } = await import('@shared/schema');
-        const { eq } = await import('drizzle-orm');
-        await db
-          .update(integrationSettings)
-          .set({ googleCalendarEmail: calendarInfo.email })
-          .where(eq(integrationSettings.userId, userId));
-      }
-      
-      res.redirect('/integrations?google-calendar=connected');
-    } catch (error: any) {
-      console.error("Error handling Google Calendar callback:", error);
-      res.redirect('/integrations?google-calendar=error&message=' + encodeURIComponent(error.message || 'Connection failed'));
-    }
-  });
-
-  app.post("/api/integrations/google-calendar/disconnect", requireAuth, async (req: any, res) => {
-    try {
-      const { disconnectGoogleCalendar } = await import('./googleCalendarClient');
-      await disconnectGoogleCalendar(req.userId);
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("Error disconnecting Google Calendar:", error);
-      res.status(500).json({ error: error.message || "Failed to disconnect Google Calendar" });
+      res.json({ 
+        configured: true, 
+        connected: false,
+        message: error.message || "Google Calendar connection not available"
+      });
     }
   });
 
@@ -4422,9 +4331,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Job ID is required" });
       }
       
-      const connected = await isGoogleCalendarConnected(req.userId);
+      const connected = await isGoogleCalendarConnected();
       if (!connected) {
-        return res.status(400).json({ error: "Google Calendar not connected" });
+        return res.status(400).json({ error: "Google Calendar not connected. Please connect via Replit integrations." });
       }
       
       // Get job details
@@ -4439,21 +4348,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Job is not scheduled" });
       }
       
-      // Get client name if available
+      // Get client details if available
       let clientName: string | undefined;
+      let clientPhone: string | undefined;
+      let clientEmail: string | undefined;
       if (job.clientId) {
         const client = await storage.getClient(job.clientId, userContext.effectiveUserId);
         clientName = client?.name;
+        clientPhone = client?.phone || undefined;
+        clientEmail = client?.email || undefined;
       }
       
-      const result = await syncJobToCalendar(req.userId, {
+      const result = await syncJobToCalendar({
         id: job.id,
         title: job.title,
         description: job.description,
+        notes: job.notes,
         address: job.address,
         scheduledAt: new Date(job.scheduledAt),
-        estimatedDuration: job.estimatedDuration ? job.estimatedDuration / 60 : 2, // Convert minutes to hours
+        estimatedDuration: job.estimatedDuration ? job.estimatedDuration / 60 : 2,
         clientName,
+        clientPhone,
+        clientEmail,
+        status: job.status,
         calendarEventId: job.calendarEventId
       });
       
@@ -4477,13 +4394,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { listUpcomingEvents, isGoogleCalendarConnected } = await import('./googleCalendarClient');
       
-      const connected = await isGoogleCalendarConnected(req.userId);
+      const connected = await isGoogleCalendarConnected();
       if (!connected) {
         return res.status(400).json({ error: "Google Calendar not connected" });
       }
       
       const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
-      const events = await listUpcomingEvents(req.userId, limit);
+      const events = await listUpcomingEvents(limit);
       
       res.json({ 
         events: events.map(event => ({
@@ -4502,6 +4419,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sync all scheduled jobs to Google Calendar
+  app.post("/api/integrations/google-calendar/sync-all-jobs", requireAuth, async (req: any, res) => {
+    try {
+      const { syncJobToCalendar, isGoogleCalendarConnected } = await import('./googleCalendarClient');
+      
+      const connected = await isGoogleCalendarConnected();
+      if (!connected) {
+        return res.status(400).json({ error: "Google Calendar not connected" });
+      }
+      
+      const userContext = await getUserContext(req.userId);
+      const jobs = await storage.getJobs(userContext.effectiveUserId);
+      const clients = await storage.getClients(userContext.effectiveUserId);
+      const clientsMap = new Map(clients.map(c => [c.id, c]));
+      
+      // Filter to jobs with scheduled dates
+      const scheduledJobs = jobs.filter(job => job.scheduledAt && job.status !== 'cancelled');
+      
+      const results = {
+        synced: 0,
+        failed: 0,
+        errors: [] as string[]
+      };
+      
+      for (const job of scheduledJobs) {
+        try {
+          const client = job.clientId ? clientsMap.get(job.clientId) : null;
+          
+          const result = await syncJobToCalendar({
+            id: job.id,
+            title: job.title,
+            description: job.description,
+            notes: job.notes,
+            address: job.address,
+            scheduledAt: new Date(job.scheduledAt!),
+            estimatedDuration: job.estimatedDuration ? job.estimatedDuration / 60 : 2,
+            clientName: client?.name,
+            clientPhone: client?.phone || undefined,
+            clientEmail: client?.email || undefined,
+            status: job.status,
+            calendarEventId: job.calendarEventId
+          });
+          
+          await storage.updateJob(job.id, userContext.effectiveUserId, {
+            calendarEventId: result.eventId
+          });
+          
+          results.synced++;
+        } catch (error: any) {
+          results.failed++;
+          results.errors.push(`Job ${job.title}: ${error.message}`);
+        }
+      }
+      
+      res.json({ 
+        success: true, 
+        ...results,
+        message: `Synced ${results.synced} jobs to Google Calendar`
+      });
+    } catch (error: any) {
+      console.error("Error syncing all jobs to Google Calendar:", error);
+      res.status(500).json({ error: error.message || "Failed to sync jobs to calendar" });
+    }
+  });
+
   // Platform stats endpoint - returns beta status
   app.get("/api/platform/stats", async (req, res) => {
     res.json({
@@ -4509,6 +4491,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       isFree: true,
       message: "Free during beta",
     });
+  });
+
+  // Unified integrations status endpoint for mobile and web
+  app.get("/api/integrations/status", requireAuth, async (req: any, res) => {
+    try {
+      const { isGoogleCalendarConnected, getCalendarInfo } = await import('./googleCalendarClient');
+      const xeroService = await import('./xeroService');
+      
+      // Google Calendar status
+      let googleCalendarStatus = {
+        configured: true,
+        connected: false,
+        email: undefined as string | undefined
+      };
+      try {
+        const calendarConnected = await isGoogleCalendarConnected();
+        if (calendarConnected) {
+          const calendarInfo = await getCalendarInfo();
+          googleCalendarStatus = {
+            configured: true,
+            connected: true,
+            email: calendarInfo?.email
+          };
+        }
+      } catch (e) {
+        // Calendar not connected
+      }
+      
+      // Xero status
+      let xeroStatus = {
+        configured: !!(process.env.XERO_CLIENT_ID && process.env.XERO_CLIENT_SECRET),
+        connected: false,
+        organisationName: undefined as string | undefined
+      };
+      try {
+        const xeroConnected = await xeroService.isXeroConnected(req.userId);
+        if (xeroConnected) {
+          xeroStatus.connected = true;
+          const xeroOrg = await xeroService.getXeroOrganisation(req.userId);
+          xeroStatus.organisationName = xeroOrg?.name;
+        }
+      } catch (e) {
+        // Xero not connected
+      }
+      
+      // Stripe status
+      const stripeStatus = {
+        configured: !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY),
+        connected: !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY)
+      };
+      
+      // Twilio status
+      const twilioStatus = {
+        configured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
+        connected: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER)
+      };
+      
+      res.json({
+        googleCalendar: googleCalendarStatus,
+        xero: xeroStatus,
+        stripe: stripeStatus,
+        twilio: twilioStatus
+      });
+    } catch (error: any) {
+      console.error("Error getting integrations status:", error);
+      res.status(500).json({ error: error.message || "Failed to get integrations status" });
+    }
   });
 
   // Recent activity endpoint - shows user's recent system activity with navigation links
@@ -5772,6 +5821,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { jobTitle: job.title, clientName: client?.name, status: job.status }
       );
       
+      // Auto-sync to Google Calendar if connected and job is scheduled
+      if (job.scheduledAt) {
+        try {
+          const { syncJobToCalendar, isGoogleCalendarConnected } = await import('./googleCalendarClient');
+          const connected = await isGoogleCalendarConnected();
+          if (connected) {
+            const result = await syncJobToCalendar({
+              id: job.id,
+              title: job.title,
+              description: job.description,
+              notes: job.notes,
+              address: job.address,
+              scheduledAt: new Date(job.scheduledAt),
+              estimatedDuration: job.estimatedDuration ? job.estimatedDuration / 60 : 2,
+              clientName: client?.name,
+              clientPhone: client?.phone || undefined,
+              clientEmail: client?.email || undefined,
+              status: job.status,
+              calendarEventId: null
+            });
+            // Update job with calendar event ID
+            await storage.updateJob(job.id, effectiveUserId, { calendarEventId: result.eventId });
+            console.log(`[GoogleCalendar] Auto-synced new job ${job.id} to calendar`);
+          }
+        } catch (calendarError) {
+          console.error('[GoogleCalendar] Auto-sync failed for new job:', calendarError);
+          // Don't fail job creation if calendar sync fails
+        }
+      }
+      
       res.status(201).json(job);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -5869,6 +5948,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await logActivity(effectiveUserId, 'job_completed', `Job completed: ${job.title}`, `Client: ${clientName}`, 'job', job.id, { jobTitle: job.title, clientName, oldStatus: existingJob.status, newStatus: data.status });
         } else {
           await logActivity(effectiveUserId, 'job_status_changed', `Job status updated: ${job.title}`, `${existingJob.status} → ${data.status}`, 'job', job.id, { jobTitle: job.title, clientName, oldStatus: existingJob.status, newStatus: data.status });
+        }
+      }
+      
+      // Auto-sync to Google Calendar if connected and job has schedule changes
+      const scheduleChanged = data.scheduledAt || data.title || data.address || data.description || data.notes || data.status;
+      if (scheduleChanged && job.scheduledAt) {
+        try {
+          const { syncJobToCalendar, isGoogleCalendarConnected } = await import('./googleCalendarClient');
+          const connected = await isGoogleCalendarConnected();
+          if (connected) {
+            const client = job.clientId ? await storage.getClient(job.clientId, effectiveUserId) : null;
+            const result = await syncJobToCalendar({
+              id: job.id,
+              title: job.title,
+              description: job.description,
+              notes: job.notes,
+              address: job.address,
+              scheduledAt: new Date(job.scheduledAt),
+              estimatedDuration: job.estimatedDuration ? job.estimatedDuration / 60 : 2,
+              clientName: client?.name,
+              clientPhone: client?.phone || undefined,
+              clientEmail: client?.email || undefined,
+              status: job.status,
+              calendarEventId: job.calendarEventId
+            });
+            // Update job with calendar event ID if new
+            if (result.eventId !== job.calendarEventId) {
+              await storage.updateJob(job.id, effectiveUserId, { calendarEventId: result.eventId });
+            }
+            console.log(`[GoogleCalendar] Auto-synced updated job ${job.id} to calendar`);
+          }
+        } catch (calendarError) {
+          console.error('[GoogleCalendar] Auto-sync failed for job update:', calendarError);
+          // Don't fail job update if calendar sync fails
         }
       }
 

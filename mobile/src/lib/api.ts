@@ -327,6 +327,101 @@ class ApiClient {
   }>> {
     return this.get('/api/subscription/invoices');
   }
+
+  // Google Calendar Integration API methods
+  async getGoogleCalendarStatus(): Promise<ApiResponse<{
+    configured: boolean;
+    connected: boolean;
+    email?: string;
+    message?: string;
+  }>> {
+    return this.get('/api/integrations/google-calendar/status');
+  }
+
+  async syncJobToCalendar(jobId: string): Promise<ApiResponse<{
+    success: boolean;
+    eventId: string;
+    eventLink: string;
+  }>> {
+    return this.post('/api/integrations/google-calendar/sync-job', { jobId });
+  }
+
+  async syncAllJobsToCalendar(): Promise<ApiResponse<{
+    success: boolean;
+    synced: number;
+    failed: number;
+    errors: string[];
+    message: string;
+  }>> {
+    return this.post('/api/integrations/google-calendar/sync-all-jobs');
+  }
+
+  async getGoogleCalendarEvents(limit?: number): Promise<ApiResponse<{
+    events: Array<{
+      id: string;
+      summary: string;
+      description: string;
+      location: string;
+      start: string;
+      end: string;
+      htmlLink: string;
+    }>
+  }>> {
+    return this.get(`/api/integrations/google-calendar/events${limit ? `?limit=${limit}` : ''}`);
+  }
+
+  // Xero Integration API methods
+  async getXeroStatus(): Promise<ApiResponse<{
+    connected: boolean;
+    configured: boolean;
+    organisationName?: string;
+    email?: string;
+    lastSyncedAt?: string;
+    message?: string;
+  }>> {
+    return this.get('/api/integrations/xero/status');
+  }
+
+  async syncContactsFromXero(): Promise<ApiResponse<{
+    success: boolean;
+    imported: number;
+    skipped: number;
+    errors: string[];
+  }>> {
+    return this.post('/api/integrations/xero/sync-contacts');
+  }
+
+  async pushInvoiceToXero(invoiceId: string): Promise<ApiResponse<{
+    success: boolean;
+    xeroInvoiceId: string;
+    xeroInvoiceNumber: string;
+  }>> {
+    return this.post('/api/integrations/xero/push-invoice', { invoiceId });
+  }
+
+  // All integrations status (unified endpoint for mobile)
+  async getAllIntegrationsStatus(): Promise<ApiResponse<{
+    googleCalendar: {
+      configured: boolean;
+      connected: boolean;
+      email?: string;
+    };
+    xero: {
+      configured: boolean;
+      connected: boolean;
+      organisationName?: string;
+    };
+    stripe: {
+      configured: boolean;
+      connected: boolean;
+    };
+    twilio: {
+      configured: boolean;
+      connected: boolean;
+    };
+  }>> {
+    return this.get('/api/integrations/status');
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL);
