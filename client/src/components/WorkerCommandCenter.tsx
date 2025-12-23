@@ -175,7 +175,7 @@ export default function WorkerCommandCenter({ memberId, open, onOpenChange }: Wo
 
   const assignJobMutation = useMutation({
     mutationFn: async (jobId: string) => {
-      const response = await apiRequest('PATCH', `/api/jobs/${jobId}/assign`, {
+      const response = await apiRequest('POST', `/api/jobs/${jobId}/assign`, {
         assignedTo: data?.member.memberId || memberId,
       });
       return response.json();
@@ -256,6 +256,7 @@ export default function WorkerCommandCenter({ memberId, open, onOpenChange }: Wo
       <SheetContent 
         className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-hidden p-0 flex flex-col" 
         data-testid="sheet-worker-command-center"
+        hideClose
       >
         {isLoading ? (
           <div className="p-6 space-y-6">
