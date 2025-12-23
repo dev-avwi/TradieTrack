@@ -185,6 +185,16 @@ export default function RegisterScreen() {
             <Text style={styles.subtitle}>Join TradieTrack today</Text>
           </View>
 
+          <View style={styles.trialInfoCard}>
+            <Text style={styles.trialInfoTitle}>Start with our Free plan</Text>
+            <Text style={styles.trialInfoText}>
+              Upgrade to Pro or Team to get a 14-day free trial
+            </Text>
+            <Text style={styles.trialInfoSubtext}>
+              Card collected upfront, charged after trial ends
+            </Text>
+          </View>
+
           <Card>
             <CardContent style={styles.cardContent}>
               {/* Google Sign-Up Button First */}
@@ -530,5 +540,31 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     fontSize: 15,
+  },
+  trialInfoCard: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  trialInfoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  trialInfoText: {
+    fontSize: 14,
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  trialInfoSubtext: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    textAlign: 'center',
   },
 });

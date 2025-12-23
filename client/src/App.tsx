@@ -68,6 +68,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import AdminAppShell from "@/components/AdminAppShell";
 import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
 import LandingPage from "@/pages/LandingPage";
+import SubscriptionPage from "@/pages/SubscriptionPage";
 
 // Types for job completion
 interface JobPhoto {
@@ -392,6 +393,10 @@ function Router({
       
       <Route path="/integrations" component={() => (
         <Integrations />
+      )} />
+      
+      <Route path="/subscription" component={() => (
+        <SubscriptionPage />
       )} />
       
       <Route path="/time-tracking" component={() => (

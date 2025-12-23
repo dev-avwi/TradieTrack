@@ -304,8 +304,14 @@ export async function processBillingReminders(): Promise<{
   }
 }
 
-export async function runDailyBillingReminders(): Promise<void> {
+export async function runDailyBillingReminders(): Promise<{
+  processed: number;
+  emailsSent: number;
+  smsSent: number;
+  errors: number;
+}> {
   console.log('[BillingReminder] Running daily billing reminder check...');
   const stats = await processBillingReminders();
   console.log('[BillingReminder] Daily check complete:', stats);
+  return stats;
 }

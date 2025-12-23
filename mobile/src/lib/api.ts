@@ -292,6 +292,41 @@ class ApiClient {
     
     return { success: true, message: response.data?.message };
   }
+
+  // Subscription API methods
+  async getSubscriptionStatus(): Promise<ApiResponse<{
+    tier: string;
+    status: string;
+    trialEndsAt: string | null;
+    nextBillingDate: string | null;
+    cancelAtPeriodEnd: boolean;
+    paymentMethod: { last4: string; brand: string } | null;
+    seats: number | null;
+    canUpgrade: boolean;
+    canDowngrade: boolean;
+  }>> {
+    return this.get('/api/subscription/status');
+  }
+
+  async createSubscriptionCheckout(tier: 'pro' | 'team', seats?: number): Promise<ApiResponse<{ url: string }>> {
+    return this.post('/api/subscription/create-checkout', { tier, seats });
+  }
+
+  async getSubscriptionManageUrl(): Promise<ApiResponse<{ url: string }>> {
+    return this.post('/api/subscription/manage');
+  }
+
+  async getSubscriptionInvoices(): Promise<ApiResponse<{ 
+    invoices: Array<{ 
+      id: string; 
+      amount: number; 
+      status: string; 
+      date: string; 
+      pdfUrl: string | null 
+    }> 
+  }>> {
+    return this.get('/api/subscription/invoices');
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL);
