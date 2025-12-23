@@ -4702,6 +4702,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // OAuth redirect URIs helper endpoint - shows required URIs for OAuth setup
+  // This helps users configure their Google Cloud Console and Xero Developer Portal correctly
+  app.get("/api/integrations/oauth-uris", async (req, res) => {
+    const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : process.env.REPLIT_DOMAINS
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : 'http://localhost:5000';
+    
+    res.json({
+      baseUrl,
+      googleCalendar: {
+        callbackUri: `${baseUrl}/api/integrations/google-calendar/callback`,
+        instructions: "Add this URI to your Google Cloud Console under APIs & Services > Credentials > OAuth 2.0 Client IDs > Authorized redirect URIs"
+      },
+      xero: {
+        callbackUri: `${baseUrl}/api/integrations/xero/callback`,
+        instructions: "Add this URI to your Xero Developer Portal under App Details > Redirect URIs"
+      },
+      googleAuth: {
+        callbackUri: `${baseUrl}/api/auth/google/callback`,
+        instructions: "Add this URI to your Google Cloud Console for authentication/login OAuth"
+      }
+    });
+  });
+
   // Unified integrations status endpoint for mobile and web
   app.get("/api/integrations/status", requireAuth, async (req: any, res) => {
     try {

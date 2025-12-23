@@ -460,7 +460,11 @@ export default function AIAssistant({ onNavigate, embedded = false }: AIAssistan
   );
 
   if (embedded) {
-    return content;
+    return (
+      <div data-testid="ai-assistant">
+        {content}
+      </div>
+    );
   }
 
   return (
