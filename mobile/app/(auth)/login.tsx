@@ -193,15 +193,21 @@ export default function LoginScreen() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image 
-                source={require('../../assets/tradietrack-logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
+            <View style={styles.logoGradientContainer}>
+              <View style={styles.logoInner}>
+                <Image 
+                  source={require('../../assets/tradietrack-logo.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
             </View>
-            <Text style={styles.appName}>TradieTrack</Text>
-            <Text style={styles.tagline}>Welcome back, mate!</Text>
+            <View style={styles.appNameContainer}>
+              <Text style={styles.appNameBlue}>Tradie</Text>
+              <Text style={styles.appNameOrange}>Track</Text>
+            </View>
+            <Text style={styles.tagline}>Welcome back!</Text>
+            <Text style={styles.taglineSubtext}>Sign in to manage your trade business</Text>
           </View>
 
           <Card>
@@ -245,11 +251,13 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {error && (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              )}
+              <View style={styles.messageContainer}>
+                {error ? (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                ) : null}
+              </View>
 
               <TouchableOpacity
                 style={{
@@ -361,36 +369,58 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: colors.card,
+  logoGradientContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    padding: 2,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    // Simulate gradient border with dual color border
+    backgroundColor: '#f97316', // orange base
+    borderWidth: 2,
+    borderColor: '#2563eb', // blue accent
+  },
+  logoInner: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    overflow: 'hidden',
   },
   logo: {
-    width: 60,
-    height: 60,
+    width: 48,
+    height: 48,
   },
-  appName: {
-    fontSize: 28,
+  appNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  appNameBlue: {
+    fontSize: 32,
     fontWeight: 'bold',
+    color: '#2563eb',
+  },
+  appNameOrange: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#f97316',
+  },
+  tagline: {
+    fontSize: 22,
+    fontWeight: '600',
     color: colors.foreground,
     marginBottom: 4,
   },
-  tagline: {
-    fontSize: 16,
+  taglineSubtext: {
+    fontSize: 15,
     color: colors.mutedForeground,
+    textAlign: 'center',
   },
   inputGroup: {
     marginBottom: 16,
@@ -411,15 +441,41 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     fontSize: 16,
   },
+  messageContainer: {
+    minHeight: 52,
+    marginBottom: 16,
+  },
   errorContainer: {
     padding: 12,
     backgroundColor: colors.destructiveLight,
-    borderRadius: 8,
-    marginBottom: 16,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.destructive,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   errorText: {
+    flex: 1,
     color: colors.destructive,
     fontSize: 14,
+    fontWeight: '500',
+  },
+  successContainer: {
+    padding: 12,
+    backgroundColor: colors.successLight,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.success,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  successText: {
+    flex: 1,
+    color: colors.success,
+    fontSize: 14,
+    fontWeight: '500',
   },
   forgotPassword: {
     alignItems: 'center',

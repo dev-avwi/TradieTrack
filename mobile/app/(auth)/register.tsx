@@ -174,15 +174,21 @@ export default function RegisterScreen() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image 
-                source={require('../../assets/tradietrack-logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
+            <View style={styles.logoGradientContainer}>
+              <View style={styles.logoInner}>
+                <Image 
+                  source={require('../../assets/tradietrack-logo.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
             </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join TradieTrack today</Text>
+            <View style={styles.appNameContainer}>
+              <Text style={styles.appNameBlue}>Tradie</Text>
+              <Text style={styles.appNameOrange}>Track</Text>
+            </View>
+            <Text style={styles.title}>Start your free trial</Text>
+            <Text style={styles.subtitle}>Join thousands of Australian tradies</Text>
           </View>
 
           <View style={styles.trialInfoCard}>
@@ -325,11 +331,13 @@ export default function RegisterScreen() {
                 />
               </View>
 
-              {error && (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              )}
+              <View style={styles.messageContainer}>
+                {error ? (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                ) : null}
+              </View>
 
               <TouchableOpacity
                 style={{
@@ -388,34 +396,54 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: colors.card,
+  logoGradientContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    padding: 2,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    backgroundColor: '#f97316',
+    borderWidth: 2,
+    borderColor: '#2563eb',
+  },
+  logoInner: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    overflow: 'hidden',
   },
   logo: {
-    width: 60,
-    height: 60,
+    width: 48,
+    height: 48,
+  },
+  appNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  appNameBlue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#2563eb',
+  },
+  appNameOrange: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#f97316',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '600',
     color: colors.foreground,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.mutedForeground,
     marginTop: 4,
   },
@@ -513,15 +541,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     fontSize: 16,
   },
+  messageContainer: {
+    minHeight: 52,
+    marginBottom: 16,
+  },
   errorContainer: {
     padding: 12,
     backgroundColor: colors.destructiveLight,
-    borderRadius: 8,
-    marginBottom: 16,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.destructive,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   errorText: {
+    flex: 1,
     color: colors.destructive,
     fontSize: 14,
+    fontWeight: '500',
   },
   spacer: {
     flex: 1,

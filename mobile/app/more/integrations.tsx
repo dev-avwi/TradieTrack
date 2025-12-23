@@ -367,6 +367,7 @@ export default function IntegrationsScreen() {
   const [googleCalendarStatus, setGoogleCalendarStatus] = useState<GoogleCalendarStatus | null>(null);
   const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
   const [showSmsPreview, setShowSmsPreview] = useState(false);
+  const [isSyncingAllJobs, setIsSyncingAllJobs] = useState(false);
 
   const fetchIntegrationStatus = useCallback(async () => {
     setIsLoading(true);
@@ -637,6 +638,34 @@ export default function IntegrationsScreen() {
         }
       ]
     );
+  };
+
+  const handleSyncAllJobs = async () => {
+    setIsSyncingAllJobs(true);
+    try {
+      const response = await api.post<{
+        success: boolean;
+        synced?: number;
+        skipped?: number;
+        failed?: number;
+        message?: string;
+      }>('/api/integrations/google-calendar/sync-all-jobs');
+      
+      if (response.data?.success) {
+        const { synced = 0, skipped = 0, failed = 0 } = response.data;
+        Alert.alert(
+          'Jobs Synced to Calendar',
+          `Successfully synced your jobs to Google Calendar.\n\n${synced} synced\n${skipped} skipped (already synced or no date)\n${failed} failed`
+        );
+      } else {
+        Alert.alert('Sync Complete', response.data?.message || 'Jobs synced to Google Calendar');
+      }
+      fetchIntegrationStatus();
+    } catch (error: any) {
+      Alert.alert('Sync Failed', error.response?.data?.error || error.message || 'Failed to sync jobs to Google Calendar');
+    } finally {
+      setIsSyncingAllJobs(false);
+    }
   };
 
   const isStripeFullyConnected = stripeStatus?.connected && stripeStatus?.chargesEnabled;
@@ -1134,6 +1163,21 @@ export default function IntegrationsScreen() {
                       <Text style={styles.detailSubtext}>
                         Jobs with scheduled dates will automatically sync to your Google Calendar.
                       </Text>
+                      <TouchableOpacity 
+                        style={[styles.actionButton, styles.actionButtonPrimary, { marginBottom: 8 }]}
+                        onPress={handleSyncAllJobs}
+                        disabled={isSyncingAllJobs}
+                        data-testid="button-sync-all-jobs"
+                      >
+                        {isSyncingAllJobs ? (
+                          <ActivityIndicator size="small" color={colors.primaryForeground} />
+                        ) : (
+                          <Feather name="refresh-cw" size={16} color={colors.primaryForeground} />
+                        )}
+                        <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                          {isSyncingAllJobs ? 'Syncing...' : 'Sync All Jobs to Calendar'}
+                        </Text>
+                      </TouchableOpacity>
                       <TouchableOpacity 
                         style={[styles.actionButton, styles.actionButtonSecondary]}
                         onPress={handleDisconnectGoogleCalendar}
