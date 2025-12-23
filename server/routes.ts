@@ -4501,22 +4501,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Google Calendar status
       let googleCalendarStatus = {
-        configured: true,
+        configured: false,
         connected: false,
-        email: undefined as string | undefined
+        email: undefined as string | undefined,
+        message: undefined as string | undefined
       };
       try {
         const calendarConnected = await isGoogleCalendarConnected();
+        googleCalendarStatus.configured = true; // If isGoogleCalendarConnected doesn't throw, connector is configured
         if (calendarConnected) {
           const calendarInfo = await getCalendarInfo();
-          googleCalendarStatus = {
-            configured: true,
-            connected: true,
-            email: calendarInfo?.email
-          };
+          googleCalendarStatus.connected = true;
+          googleCalendarStatus.email = calendarInfo?.email;
         }
-      } catch (e) {
-        // Calendar not connected
+      } catch (e: any) {
+        // If getAccessToken throws, connector is not configured
+        googleCalendarStatus.configured = false;
+        googleCalendarStatus.message = e.message || 'Google Calendar connector not configured';
       }
       
       // Xero status

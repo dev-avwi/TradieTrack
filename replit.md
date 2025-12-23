@@ -45,7 +45,9 @@ Key architectural decisions and features include:
 -   **Unified Dashboard API**: Single endpoint (`/api/dashboard/unified`) for consistent web/mobile experience, aggregating dashboard data.
 -   **Role-Based Quick Actions**: Dashboard quick actions contextualized by user role.
 -   **Platform Admin Dashboard**: Dedicated interface for platform administrators (`isPlatformAdmin=true`) with views for Overview, Users, Platform Activity, System Health, and Settings.
--   **Xero Integration**: Full OAuth 2.0 flow for contacts sync and invoices push, with duplicate prevention.
+-   **Xero Integration**: Full OAuth 2.0 flow for contacts sync and invoices push, with duplicate prevention. Mobile API methods for status check, contacts sync, and invoice push.
+-   **Google Calendar Integration**: Uses Replit Connector for automatic OAuth token refresh. Jobs auto-sync to calendar when created/updated/scheduled (non-blocking). Events include comprehensive tradie workflow data: client contact info (📋), address for navigation (📍), job notes (📝), status tracking with color-coded events (pending=yellow, scheduled=blue, in_progress=orange, done=green, invoiced=light green). Automatic 60min and 15min reminders configured per event.
+-   **Unified Integrations Status API**: Single endpoint (`/api/integrations/status`) returns status for Google Calendar, Xero, Stripe, and Twilio integrations. Used by mobile app for consistent cross-platform integration status display.
 -   **Safety Form Templates**: Australian-standard WHS compliance templates (SWMS, JSA, etc.) with digital signature support.
 
 ### External Dependencies

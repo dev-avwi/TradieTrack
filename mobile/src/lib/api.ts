@@ -405,6 +405,7 @@ class ApiClient {
       configured: boolean;
       connected: boolean;
       email?: string;
+      message?: string;
     };
     xero: {
       configured: boolean;
