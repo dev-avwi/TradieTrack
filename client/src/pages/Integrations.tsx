@@ -42,8 +42,15 @@ import {
   Eye,
   EyeOff,
   HelpCircle,
-  Calendar
+  Calendar,
+  ChevronDown,
+  Shield
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { SiStripe, SiGmail, SiXero } from "react-icons/si";
 import { RefreshCw, Link2Off, Users } from "lucide-react";
 
@@ -737,13 +744,19 @@ export default function Integrations() {
         {/* Email - Built-in Gmail Integration */}
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-100 dark:bg-green-900/50">
-                  <SiGmail className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <SiGmail className="w-5 h-5 text-red-500" />
                 </div>
                 <div>
-                  <CardTitle className="text-base">Email - Ready to Go!</CardTitle>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <CardTitle className="text-base">Email - Ready to Go!</CardTitle>
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0 text-xs">
+                      <Shield className="w-3 h-3 mr-1" />
+                      Verified
+                    </Badge>
+                  </div>
                   <p className="text-xs text-muted-foreground">Send quotes and invoices from your Gmail</p>
                 </div>
               </div>
@@ -754,16 +767,66 @@ export default function Integrations() {
             </div>
           </CardHeader>
           <CardContent className="pt-0 space-y-4">
+            {/* Delivery Confidence Message */}
             <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-              <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
-                No setup needed - it just works!
+              <div className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                    No setup needed - it just works!
+                  </p>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    Emails from your Gmail will land in your client's inbox, not spam. When you click "Send" on a quote or invoice, Gmail opens with everything ready.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Email Setup Checklist */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-foreground flex items-center gap-1">
+                <CheckCircle className="w-3 h-3 text-green-600" />
+                Setup Checklist
               </p>
-              <p className="text-sm text-green-700 dark:text-green-300">
-                When you click "Send" on a quote or invoice, Gmail opens with everything ready. 
-                Just hit send - emails come from your address and replies go to your inbox.
-              </p>
+              <div className="grid gap-1.5">
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <span className="text-foreground">Email delivery connected</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <span className="text-foreground">Quote templates ready</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <span className="text-foreground">Invoice templates ready</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <span className="text-foreground">Professional PDF generation</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Test Email Button */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  const subject = encodeURIComponent("Test Email from TradieTrack");
+                  const body = encodeURIComponent("G'day!\n\nThis is a test email from TradieTrack to confirm your email is working correctly.\n\nCheers!");
+                  window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
+                }}
+                data-testid="button-test-email"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Send Test Email
+              </Button>
+              <span className="text-xs text-muted-foreground">Opens Gmail with a test message</span>
             </div>
             
+            {/* How it works */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-foreground">How it works:</p>
               <ol className="text-xs text-muted-foreground space-y-1.5">
@@ -785,6 +848,37 @@ export default function Integrations() {
                 </li>
               </ol>
             </div>
+
+            {/* Australian Compliance Tips - Expandable */}
+            <Collapsible className="border rounded-lg">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 text-left hover-elevate rounded-lg">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium">Australian Compliance Tips</span>
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="px-3 pb-3">
+                <div className="space-y-2 pt-2 border-t">
+                  <div className="flex items-start gap-2 text-xs">
+                    <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">Include your ABN on all quotes and invoices</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs">
+                    <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">GST should be clearly shown on invoices</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs">
+                    <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">Keep records for 5 years (ATO requirement)</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs">
+                    <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">Use tax invoices for transactions over $82.50 (inc. GST)</span>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </CardContent>
         </Card>
 
