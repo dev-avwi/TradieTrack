@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -185,6 +185,39 @@ export default function Integrations() {
   const [twilioPhoneNumber, setTwilioPhoneNumber] = useState('');
   const [showAuthToken, setShowAuthToken] = useState(false);
   const { toast } = useToast();
+
+  // Handle OAuth callback success/error messages from URL params
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+    
+    if (success === 'google_calendar_connected') {
+      toast({
+        title: "Google Calendar Connected",
+        description: "Your Google Calendar has been successfully linked. Jobs will now sync automatically.",
+      });
+      // Clean up URL
+      window.history.replaceState({}, '', '/integrations');
+    } else if (success === 'xero_connected') {
+      toast({
+        title: "Xero Connected",
+        description: "Your Xero account has been successfully linked.",
+      });
+      window.history.replaceState({}, '', '/integrations');
+    } else if (error) {
+      toast({
+        title: "Connection Failed",
+        description: error === 'xero_auth_failed' 
+          ? "Failed to connect to Xero. Please try again."
+          : error === 'google_calendar_auth_failed'
+          ? "Failed to connect to Google Calendar. Please try again."
+          : `Connection error: ${error}`,
+        variant: "destructive",
+      });
+      window.history.replaceState({}, '', '/integrations');
+    }
+  }, [toast]);
 
   const { data: health, isLoading, isError, refetch } = useQuery<HealthStatus>({
     queryKey: ['/api/integrations/health'],
