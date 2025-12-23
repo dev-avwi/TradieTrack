@@ -3560,7 +3560,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mark SMS conversation as read (for notification dropdown)
   app.patch("/api/notifications/sms/:conversationId/read", requireAuth, async (req: any, res) => {
     try {
-      await storage.markSmsMessagesAsRead(req.params.conversationId);
+      const userId = req.userId!;
+      const businessOwnerId = req.businessOwnerId || userId;
+      const { conversationId } = req.params;
+      
+      // Verify ownership - conversation must belong to this business
+      const conversation = await storage.getSmsConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      if (conversation.businessOwnerId !== businessOwnerId) {
+        return res.status(403).json({ error: 'Unauthorized access to this conversation' });
+      }
+      
+      await storage.markSmsMessagesAsRead(conversationId);
       res.json({ success: true });
     } catch (error) {
       console.error("Error marking SMS as read:", error);
@@ -14209,6 +14222,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error: any) {
       console.error('Error deleting SMS conversation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update SMS conversation (link client)
+  app.patch("/api/sms/conversations/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const businessOwnerId = req.businessOwnerId || userId;
+      const { id } = req.params;
+      const { clientId, clientName } = req.body;
+      
+      // Verify ownership - conversation must belong to this business
+      const conversation = await storage.getSmsConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      if (conversation.businessOwnerId !== businessOwnerId) {
+        return res.status(403).json({ error: 'Unauthorized access to this conversation' });
+      }
+      
+      const updates: { clientId?: string; clientName?: string } = {};
+      if (clientId !== undefined) updates.clientId = clientId;
+      if (clientName !== undefined) updates.clientName = clientName;
+      
+      const updated = await storage.updateSmsConversation(id, updates);
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error updating SMS conversation:', error);
       res.status(500).json({ error: error.message });
     }
   });

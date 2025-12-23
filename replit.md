@@ -20,7 +20,14 @@ Key architectural decisions and features include:
 -   **Subscription & Billing System**: Three-tier pricing (Free, Pro $39/month, Team $59/month + $29/seat) with 14-day free trials. Stripe checkout with upfront card collection, automated billing reminders (email/SMS 3 and 1 days before billing), cross-platform subscription sync via REST API. Subscription page with pricing cards and trial information.
 -   **Email Automation**: SendGrid integration for invoice/quote emails with PDF attachments and customisable templates with AI suggestions.
 -   **PWA Support**: Offline capabilities via web manifest and service worker.
--   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and role-based access. Includes two-way SMS integration via Twilio with AI analysis for job/quote requests.
+-   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and role-based access. Includes two-way SMS integration via Twilio with AI analysis for job/quote requests. Enhanced SMS Hub features:
+    - Auto-creation of conversations for inbound SMS from unknown numbers (no messages lost)
+    - Client phone matching with Australian number normalization (+61, 04xx formats)
+    - "New SMS" dialog for initiating conversations with client search or manual phone entry
+    - Delete/archive SMS conversations with confirmation
+    - Unified notification dropdown showing SMS, chat, and system notifications
+    - Sidebar notification badges with unread counts (refreshes every 30s)
+    - "Create Client" option for unknown phone numbers directly from SMS view
 -   **Live360-Style Interactive Map**: (Owner/Manager only) Displays job pins and real-time location tracking for team members with activity status and geofence alerts.
 -   **Role-Based Access Control (RBAC)**: Granular permissions (OWNER, ADMIN, MANAGER, SUPERVISOR, STAFF) enforced by middleware.
 -   **Team Management Hub**: Comprehensive interface for owners/managers to manage team members, including location sharing toggles, job assignment, and permissions editing.

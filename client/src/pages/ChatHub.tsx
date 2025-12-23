@@ -299,6 +299,13 @@ export default function ChatHub() {
   
   // Delete SMS conversation state
   const [smsToDelete, setSmsToDelete] = useState<SmsConversation | null>(null);
+  
+  // Create client from SMS dialog state
+  const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
+  const [newClientAddress, setNewClientAddress] = useState('');
 
   const { data: currentUser } = useQuery<User>({
     queryKey: ['/api/auth/me'],
@@ -520,6 +527,84 @@ export default function ChatHub() {
       });
     },
   });
+
+  const createClientFromSmsMutation = useMutation({
+    mutationFn: async ({ name, phone, email, address }: { name: string; phone: string; email?: string; address?: string }) => {
+      const response = await apiRequest('POST', '/api/clients', {
+        name,
+        phone,
+        email: email || undefined,
+        address: address || undefined,
+      });
+      return response.json() as Promise<{ id: string; name: string }>;
+    },
+    onSuccess: async (newClient) => {
+      if (selectedSmsConversation && selectedSmsConversation.id !== 'new') {
+        await apiRequest('PATCH', `/api/sms/conversations/${selectedSmsConversation.id}`, {
+          clientId: newClient.id,
+          clientName: newClient.name,
+        });
+        
+        setSelectedSmsConversation({
+          ...selectedSmsConversation,
+          clientId: newClient.id,
+          clientName: newClient.name,
+        });
+      }
+      
+      toast({
+        title: "Client Created",
+        description: `${newClient.name} has been added and linked to this conversation.`,
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
+      
+      setCreateClientDialogOpen(false);
+      setNewClientName('');
+      setNewClientEmail('');
+      setNewClientAddress('');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create client",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOpenCreateClientDialog = () => {
+    if (selectedSmsConversation) {
+      setNewClientPhone(selectedSmsConversation.clientPhone);
+      setNewClientName('');
+      setNewClientEmail('');
+      setNewClientAddress('');
+      setCreateClientDialogOpen(true);
+    }
+  };
+
+  const handleCreateClientSubmit = () => {
+    if (!newClientName.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please enter a name for the client",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    createClientFromSmsMutation.mutate({
+      name: newClientName.trim(),
+      phone: newClientPhone,
+      email: newClientEmail.trim() || undefined,
+      address: newClientAddress.trim() || undefined,
+    });
+  };
+
+  const isUnknownClient = selectedSmsConversation && 
+    (!selectedSmsConversation.clientId || 
+     (selectedSmsConversation.clientName?.toLowerCase().includes('unknown')));
 
   // Handle deep-link navigation
   useEffect(() => {
@@ -1169,6 +1254,36 @@ export default function ChatHub() {
           return null;
         })()}
 
+        {/* Create Client Banner for unknown numbers */}
+        {isUnknownClient && selectedSmsConversation.id !== 'new' && (
+          <Card className="shrink-0 mx-4 mt-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <User className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm">Unknown contact</p>
+                    <p className="text-xs text-muted-foreground">
+                      Save this number as a new client
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleOpenCreateClientDialog}
+                  className="shrink-0 gap-1.5"
+                  data-testid="button-create-client-from-sms"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Create Client
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="flex-1 overflow-y-auto px-4 py-2">
           {smsMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-8">
@@ -1804,6 +1919,95 @@ export default function ChatHub() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Client from SMS Dialog */}
+      <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
+        <DialogContent data-testid="dialog-create-client-from-sms">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Create Client from SMS
+            </DialogTitle>
+            <DialogDescription>
+              Add this phone number as a new client. They'll be linked to this conversation.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="client-name">
+                Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="client-name"
+                placeholder="e.g., John Smith or ABC Constructions"
+                value={newClientName}
+                onChange={(e) => setNewClientName(e.target.value)}
+                data-testid="input-create-client-name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="client-phone">Phone Number</Label>
+              <Input
+                id="client-phone"
+                value={newClientPhone}
+                onChange={(e) => setNewClientPhone(e.target.value)}
+                placeholder="0412 345 678"
+                data-testid="input-create-client-phone"
+              />
+              <p className="text-xs text-muted-foreground">
+                Pre-filled from the SMS conversation
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="client-email">Email (optional)</Label>
+              <Input
+                id="client-email"
+                type="email"
+                placeholder="client@example.com"
+                value={newClientEmail}
+                onChange={(e) => setNewClientEmail(e.target.value)}
+                data-testid="input-create-client-email"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="client-address">Address (optional)</Label>
+              <Input
+                id="client-address"
+                placeholder="123 Main Street, Sydney NSW 2000"
+                value={newClientAddress}
+                onChange={(e) => setNewClientAddress(e.target.value)}
+                data-testid="input-create-client-address"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setCreateClientDialogOpen(false)}
+              data-testid="button-cancel-create-client"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateClientSubmit}
+              disabled={!newClientName.trim() || createClientFromSmsMutation.isPending}
+              data-testid="button-submit-create-client"
+            >
+              {createClientFromSmsMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Create Client
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
