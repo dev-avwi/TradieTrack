@@ -104,6 +104,14 @@ export default function LandingPage() {
                 How It Works
               </a>
               <a 
+                href="#pricing" 
+                onClick={(e) => scrollToSection(e, "pricing")}
+                className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                data-testid="nav-pricing"
+              >
+                Pricing
+              </a>
+              <a 
                 href="#download" 
                 onClick={(e) => scrollToSection(e, "download")}
                 className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" 
@@ -199,6 +207,15 @@ export default function LandingPage() {
                 >
                   <Play className="w-5 h-5 text-gray-400" />
                   How It Works
+                </a>
+                <a 
+                  href="#pricing" 
+                  onClick={(e) => scrollToSection(e, "pricing")} 
+                  className="flex items-center gap-3 py-3 px-3 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors" 
+                  data-testid="mobile-nav-pricing"
+                >
+                  <CreditCard className="w-5 h-5 text-gray-400" />
+                  Pricing
                 </a>
                 <a 
                   href="#download" 
@@ -468,6 +485,89 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <section id="pricing" className="py-20 lg:py-28 scroll-mt-20">
+        <div className="max-w-6xl mx-auto px-5 lg:px-8">
+          <div className="text-center mb-16">
+            <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Pricing</span>
+            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
+              Simple, transparent pricing
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Start free, upgrade when you're ready. All prices in AUD including GST.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {/* Free Plan */}
+            <PricingCard
+              name="Free"
+              price="$0"
+              period="forever"
+              description="Perfect for trying out TradieTrack"
+              features={[
+                "5 jobs per month",
+                "5 invoices per month",
+                "10 quotes per month",
+                "Up to 10 clients",
+                "50MB photo storage",
+                "3 document templates"
+              ]}
+              buttonText="Get Started"
+              buttonVariant="outline"
+            />
+
+            {/* Pro Plan - Most Popular */}
+            <PricingCard
+              name="Pro"
+              price="$39"
+              period="/month"
+              description="Unlimited everything for solo tradies"
+              features={[
+                "Unlimited jobs",
+                "Unlimited quotes & invoices",
+                "Unlimited clients",
+                "Unlimited photo storage",
+                "All templates",
+                "Automatic reminders",
+                "AI Assistant",
+                "Custom branding",
+                "Recurring invoices",
+                "Priority support"
+              ]}
+              buttonText="Start 14-Day Trial"
+              buttonVariant="default"
+              popular={true}
+            />
+
+            {/* Team Plan */}
+            <PricingCard
+              name="Team"
+              price="$59"
+              period="/month + $29/seat"
+              description="Full power for growing businesses"
+              features={[
+                "Everything in Pro",
+                "Unlimited team members",
+                "Live team tracking",
+                "Team chat & messaging",
+                "Role-based access",
+                "Dispatch board",
+                "Geofence clock in/out",
+                "Job assignments",
+                "Advanced reporting"
+              ]}
+              buttonText="Contact Sales"
+              buttonVariant="outline"
+            />
+          </div>
+
+          <p className="text-center text-sm text-gray-500 mt-10">
+            All plans include a 14-day free trial of Pro features. No credit card required to start.
+          </p>
+        </div>
+      </section>
+
       {/* Download Section - Web & Mobile Apps */}
       <section id="download" className="scroll-mt-20 py-20 lg:py-28 bg-gray-50">
         <div className="max-w-5xl mx-auto px-5 lg:px-8">
@@ -626,6 +726,16 @@ export default function LandingPage() {
                 </li>
                 <li>
                   <a 
+                    href="#pricing" 
+                    onClick={(e) => scrollToSection(e, "pricing")}
+                    className="hover:text-white transition-colors" 
+                    data-testid="link-pricing"
+                  >
+                    Pricing
+                  </a>
+                </li>
+                <li>
+                  <a 
                     href="#download" 
                     onClick={(e) => scrollToSection(e, "download")}
                     className="hover:text-white transition-colors" 
@@ -737,6 +847,74 @@ function StepCard({
       </div>
       <h3 className="text-xl font-semibold text-gray-900 mb-3">{title}</h3>
       <p className="text-gray-600 leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function PricingCard({
+  name,
+  price,
+  period,
+  description,
+  features,
+  buttonText,
+  buttonVariant = "default",
+  popular = false
+}: {
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  features: string[];
+  buttonText: string;
+  buttonVariant?: "default" | "outline";
+  popular?: boolean;
+}) {
+  return (
+    <div className={`relative bg-white rounded-2xl p-8 shadow-sm border transition-all duration-300 hover:shadow-md ${
+      popular ? "border-orange-500 ring-2 ring-orange-500/20" : "border-gray-100 hover:border-gray-200"
+    }`}>
+      {popular && (
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+          <span className="bg-orange-500 text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-md">
+            Most Popular
+          </span>
+        </div>
+      )}
+      
+      <div className="text-center mb-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-2">{name}</h3>
+        <div className="flex items-baseline justify-center gap-1">
+          <span className="text-4xl font-extrabold text-gray-900">{price}</span>
+          <span className="text-gray-500 text-sm">{period}</span>
+        </div>
+        <p className="text-gray-600 text-sm mt-2">{description}</p>
+      </div>
+
+      <ul className="space-y-3 mb-8">
+        {features.map((feature, i) => (
+          <li key={i} className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mt-0.5">
+              <Check className="w-3 h-3 text-green-600" />
+            </div>
+            <span className="text-gray-700 text-sm">{feature}</span>
+          </li>
+        ))}
+      </ul>
+
+      <Link href="/auth?mode=signup">
+        <Button 
+          variant={buttonVariant as any}
+          className={`w-full h-12 font-semibold rounded-lg ${
+            buttonVariant === "default" 
+              ? "bg-orange-500 hover:bg-orange-600 text-white" 
+              : ""
+          }`}
+          data-testid={`pricing-${name.toLowerCase()}-cta`}
+        >
+          {buttonText}
+        </Button>
+      </Link>
     </div>
   );
 }
