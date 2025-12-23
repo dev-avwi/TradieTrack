@@ -186,38 +186,8 @@ export default function Integrations() {
   const [showAuthToken, setShowAuthToken] = useState(false);
   const { toast } = useToast();
 
-  // Handle OAuth callback success/error messages from URL params
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const success = urlParams.get('success');
-    const error = urlParams.get('error');
-    
-    if (success === 'google_calendar_connected') {
-      toast({
-        title: "Google Calendar Connected",
-        description: "Your Google Calendar has been successfully linked. Jobs will now sync automatically.",
-      });
-      // Clean up URL
-      window.history.replaceState({}, '', '/integrations');
-    } else if (success === 'xero_connected') {
-      toast({
-        title: "Xero Connected",
-        description: "Your Xero account has been successfully linked.",
-      });
-      window.history.replaceState({}, '', '/integrations');
-    } else if (error) {
-      toast({
-        title: "Connection Failed",
-        description: error === 'xero_auth_failed' 
-          ? "Failed to connect to Xero. Please try again."
-          : error === 'google_calendar_auth_failed'
-          ? "Failed to connect to Google Calendar. Please try again."
-          : `Connection error: ${error}`,
-        variant: "destructive",
-      });
-      window.history.replaceState({}, '', '/integrations');
-    }
-  }, [toast]);
+  // Track if we've already handled the URL params (to avoid duplicate toasts)
+  const [urlParamsHandled, setUrlParamsHandled] = useState(false);
 
   const { data: health, isLoading, isError, refetch } = useQuery<HealthStatus>({
     queryKey: ['/api/integrations/health'],
@@ -482,6 +452,46 @@ export default function Integrations() {
       });
     },
   });
+
+  // Handle OAuth callback success/error messages from URL params
+  useEffect(() => {
+    if (urlParamsHandled) return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+    
+    if (success === 'google_calendar_connected') {
+      setUrlParamsHandled(true);
+      toast({
+        title: "Google Calendar Connected",
+        description: "Your Google Calendar has been successfully linked. Jobs will now sync automatically.",
+      });
+      refetchGoogleCalendar();
+      // Clean up URL
+      window.history.replaceState({}, '', '/integrations');
+    } else if (success === 'xero_connected') {
+      setUrlParamsHandled(true);
+      toast({
+        title: "Xero Connected",
+        description: "Your Xero account has been successfully linked.",
+      });
+      refetchXero();
+      window.history.replaceState({}, '', '/integrations');
+    } else if (error) {
+      setUrlParamsHandled(true);
+      toast({
+        title: "Connection Failed",
+        description: error === 'xero_auth_failed' 
+          ? "Failed to connect to Xero. Please try again."
+          : error === 'google_calendar_auth_failed'
+          ? "Failed to connect to Google Calendar. Please try again."
+          : `Connection error: ${error}`,
+        variant: "destructive",
+      });
+      window.history.replaceState({}, '', '/integrations');
+    }
+  }, [urlParamsHandled, toast, refetchGoogleCalendar, refetchXero]);
 
   const handleOpenTwilioSetup = () => {
     // Pre-fill with existing values (don't show masked values in editable fields)
