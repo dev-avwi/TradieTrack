@@ -109,11 +109,12 @@ function NavButton({
       >
         <Feather 
           name={item.icon} 
-          size={22}
-          color={active ? colors.foreground : colors.mutedForeground}
+          size={24}
+          color={active ? colors.primary : colors.mutedForeground}
         />
         <Text style={[
           styles.navLabel,
+          { color: active ? colors.primary : colors.mutedForeground },
           active && styles.navLabelActive,
         ]}>
           {item.title}
@@ -207,10 +208,10 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     backgroundColor: isIOS ? 'transparent' : colors.card,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: isIOS 
-      ? (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)')
+      ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
       : colors.border,
     ...(isIOS ? {} : {
-      elevation: 4,
+      elevation: 8,
     }),
     overflow: 'hidden',
   },
@@ -219,23 +220,21 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     alignItems: 'center',
     justifyContent: 'space-around',
     height: BOTTOM_NAV_HEIGHT,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   navButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    minWidth: 64,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    minWidth: 72,
   },
   navLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
-    color: colors.mutedForeground,
-    marginTop: 3,
+    marginTop: 4,
   },
   navLabelActive: {
     fontWeight: '600',
-    color: colors.foreground,
   },
 });
