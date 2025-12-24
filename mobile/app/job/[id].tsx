@@ -1725,6 +1725,15 @@ export default function JobDetailScreen() {
           router.push(`/more/create-job?copyFromId=${job.id}`);
           return true;
 
+        case 'collect_payment':
+          // Navigate to Collect Payment screen with invoice pre-selected
+          if (invoice?.id) {
+            router.push(`/(tabs)/collect?invoiceId=${invoice.id}`);
+          } else {
+            Alert.alert('No Invoice', 'Please create an invoice first to collect payment.');
+          }
+          return true;
+
         default:
           // Fall back to type-based routing for any other actions
           switch (action.type) {

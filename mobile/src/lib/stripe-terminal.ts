@@ -246,4 +246,12 @@ class StripeTerminalSimulator {
 // Export singleton simulator for fallback mode
 export const terminalSimulator = new StripeTerminalSimulator();
 
+/**
+ * Check if currently running in simulation mode (no real SDK available)
+ * When true, payments are simulated and no actual charges occur
+ */
+export const isSimulationMode = (): boolean => {
+  return !sdkAvailable;
+};
+
 export default terminalSimulator;

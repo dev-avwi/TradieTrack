@@ -425,6 +425,39 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     letterSpacing: 0.5,
     marginTop: 2,
   },
+  demoModeBanner: {
+    backgroundColor: colors.warningLight,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.warning,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  demoModeText: {
+    flex: 1,
+  },
+  demoModeTitle: {
+    color: colors.warning,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  demoModeDescription: {
+    color: colors.mutedForeground,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  receiptInput: {
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+    color: colors.foreground,
+    fontSize: 14,
+  },
 });
 
 interface PaymentMethodCardProps {
@@ -527,6 +560,8 @@ export default function CollectScreen() {
   const [selectedInvoice, setSelectedInvoice] = useState<SelectedInvoice | null>(null);
   const [lastPaymentAmount, setLastPaymentAmount] = useState(0);
   const [sendingReceipt, setSendingReceipt] = useState(false);
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualPhone, setManualPhone] = useState('');
   const hasAutoSelectedInvoice = useRef(false);
   
   const { invoices, fetchInvoices } = useInvoicesStore();
@@ -664,9 +699,9 @@ export default function CollectScreen() {
         if (selectedInvoice) {
           try {
             await api.post(`/api/invoices/${selectedInvoice.id}/record-payment`, {
-              amount: amountCents,
-              method: 'tap_to_pay',
-              notes: 'Tap to Pay payment',
+              amount: (amountCents / 100).toFixed(2), // Server expects dollars, not cents
+              paymentMethod: 'card', // Server accepts: cash, bank_transfer, cheque, card, other
+              notes: 'Tap to Pay contactless payment',
             });
             // Refresh invoices
             fetchInvoices();
@@ -694,9 +729,9 @@ export default function CollectScreen() {
   const sendReceiptEmail = async () => {
     setSendingReceipt(true);
     try {
-      const recipientEmail = selectedInvoice?.clientEmail;
+      const recipientEmail = manualEmail || selectedInvoice?.clientEmail;
       if (!recipientEmail) {
-        Alert.alert('No Email', 'This client does not have an email address on file. Please add one in client settings.');
+        Alert.alert('No Email', 'Please enter an email address to send the receipt.');
         setSendingReceipt(false);
         return;
       }
@@ -725,9 +760,9 @@ export default function CollectScreen() {
   const sendReceiptSMS = async () => {
     setSendingReceipt(true);
     try {
-      const recipientPhone = selectedInvoice?.clientPhone;
+      const recipientPhone = manualPhone || selectedInvoice?.clientPhone;
       if (!recipientPhone) {
-        Alert.alert('No Phone', 'This client does not have a phone number on file. Please add one in client settings.');
+        Alert.alert('No Phone', 'Please enter a phone number to send the receipt.');
         setSendingReceipt(false);
         return;
       }
@@ -763,6 +798,8 @@ export default function CollectScreen() {
     setDescription('');
     setSelectedInvoice(null);
     setLastPaymentAmount(0);
+    setManualEmail('');
+    setManualPhone('');
   };
 
   const handleCancelPayment = async () => {
@@ -954,6 +991,18 @@ export default function CollectScreen() {
             <Text style={styles.pageTitle}>Collect Payment</Text>
             <Text style={styles.pageSubtitle}>Get paid instantly with multiple options</Text>
           </View>
+
+          {terminal.isSimulation && (
+            <View style={styles.demoModeBanner}>
+              <Feather name="alert-triangle" size={24} color={colors.warning} />
+              <View style={styles.demoModeText}>
+                <Text style={styles.demoModeTitle}>Demo Mode Active</Text>
+                <Text style={styles.demoModeDescription}>
+                  Payments are simulated. No actual charges will be made.
+                </Text>
+              </View>
+            </View>
+          )}
 
           <View style={styles.headerBanner}>
             <View style={styles.headerBannerRow}>
@@ -1193,55 +1242,81 @@ export default function CollectScreen() {
             )}
 
             <View style={{ marginTop: spacing.xl, width: '100%', gap: spacing.md }}>
-              <TouchableOpacity
-                style={[
-                  styles.paymentMethodCard,
-                  sendingReceipt && styles.paymentMethodCardDisabled
-                ]}
-                onPress={sendReceiptEmail}
-                disabled={sendingReceipt}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.paymentMethodIcon, { backgroundColor: colors.infoLight }]}>
-                  <Feather name="mail" size={24} color={colors.info} />
-                </View>
-                <View style={styles.paymentMethodContent}>
-                  <Text style={styles.paymentMethodTitle}>Email Receipt</Text>
-                  <Text style={styles.paymentMethodDescription}>
-                    {selectedInvoice?.clientEmail || 'No email on file'}
-                  </Text>
-                </View>
-                {sendingReceipt ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Feather name="send" size={20} color={colors.mutedForeground} />
+              <View>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentMethodCard,
+                    sendingReceipt && styles.paymentMethodCardDisabled
+                  ]}
+                  onPress={sendReceiptEmail}
+                  disabled={sendingReceipt}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.paymentMethodIcon, { backgroundColor: colors.infoLight }]}>
+                    <Feather name="mail" size={24} color={colors.info} />
+                  </View>
+                  <View style={styles.paymentMethodContent}>
+                    <Text style={styles.paymentMethodTitle}>Email Receipt</Text>
+                    <Text style={styles.paymentMethodDescription}>
+                      {manualEmail || selectedInvoice?.clientEmail || 'Enter email below'}
+                    </Text>
+                  </View>
+                  {sendingReceipt ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Feather name="send" size={20} color={colors.mutedForeground} />
+                  )}
+                </TouchableOpacity>
+                {!selectedInvoice?.clientEmail && (
+                  <TextInput
+                    style={styles.receiptInput}
+                    placeholder="Enter email address"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={manualEmail}
+                    onChangeText={setManualEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
                 )}
-              </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.paymentMethodCard,
-                  sendingReceipt && styles.paymentMethodCardDisabled
-                ]}
-                onPress={sendReceiptSMS}
-                disabled={sendingReceipt}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.paymentMethodIcon, { backgroundColor: colors.successLight }]}>
-                  <Feather name="message-circle" size={24} color={colors.success} />
-                </View>
-                <View style={styles.paymentMethodContent}>
-                  <Text style={styles.paymentMethodTitle}>SMS Receipt</Text>
-                  <Text style={styles.paymentMethodDescription}>
-                    {selectedInvoice?.clientPhone || 'No phone on file'}
-                  </Text>
-                </View>
-                {sendingReceipt ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Feather name="send" size={20} color={colors.mutedForeground} />
+              <View>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentMethodCard,
+                    sendingReceipt && styles.paymentMethodCardDisabled
+                  ]}
+                  onPress={sendReceiptSMS}
+                  disabled={sendingReceipt}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.paymentMethodIcon, { backgroundColor: colors.successLight }]}>
+                    <Feather name="message-circle" size={24} color={colors.success} />
+                  </View>
+                  <View style={styles.paymentMethodContent}>
+                    <Text style={styles.paymentMethodTitle}>SMS Receipt</Text>
+                    <Text style={styles.paymentMethodDescription}>
+                      {manualPhone || selectedInvoice?.clientPhone || 'Enter phone below'}
+                    </Text>
+                  </View>
+                  {sendingReceipt ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Feather name="send" size={20} color={colors.mutedForeground} />
+                  )}
+                </TouchableOpacity>
+                {!selectedInvoice?.clientPhone && (
+                  <TextInput
+                    style={styles.receiptInput}
+                    placeholder="Enter phone number"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={manualPhone}
+                    onChangeText={setManualPhone}
+                    keyboardType="phone-pad"
+                  />
                 )}
-              </TouchableOpacity>
+              </View>
             </View>
           </View>
 

@@ -616,6 +616,32 @@ export function getJobSmartActions(job: any, client: any, linkedQuote?: any, lin
     }
   }
 
+  // Add Collect Payment action when invoice exists and isn't paid
+  if (linkedInvoice && linkedInvoice.status !== 'paid') {
+    const invoiceTotal = linkedInvoice.total || 0;
+    const amountPaid = linkedInvoice.amountPaid || linkedInvoice.paidAmount || 0;
+    const amountDue = invoiceTotal - amountPaid;
+    const invoiceNumber = linkedInvoice.invoiceNumber || linkedInvoice.number || 'Invoice';
+    
+    if (amountDue > 0) {
+      actions.push({
+        id: 'collect_payment',
+        type: 'collect_payment',
+        title: 'Collect Payment',
+        description: `Take payment for ${invoiceNumber}`,
+        icon: 'payment',
+        status: 'suggested',
+        enabled: true,
+        preview: {
+          amount: `$${(amountDue / 100).toFixed(2)}`,
+          recipient: clientName,
+        },
+        aiSuggestion: 'Use Tap to Pay for quick contactless payment',
+        requirements: ['Invoice created', 'Payment amount due'],
+      });
+    }
+  }
+
   if (job.status === 'pending' || job.status === 'scheduled') {
     if (!linkedQuote) {
       actions.push({
