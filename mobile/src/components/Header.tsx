@@ -1,10 +1,15 @@
 import { useMemo, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Image, Animated, Easing } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image, Animated, Easing, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../lib/store';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useNotificationsStore } from '../lib/notifications-store';
+import { HEADER_HEIGHT } from '../lib/design-tokens';
+
+const isIOS = Platform.OS === 'ios';
 
 interface HeaderProps {
   title?: string;
@@ -13,7 +18,8 @@ interface HeaderProps {
   onBackPress?: () => void;
 }
 
-export const HEADER_HEIGHT = 56;
+// Re-export for backward compatibility
+export { HEADER_HEIGHT };
 
 function HeaderIconButton({ 
   icon, 
@@ -117,7 +123,8 @@ export function Header({
 }: HeaderProps) {
   const { user, isOwner, roleInfo } = useAuthStore();
   const { colors, isDark, setThemeMode, themeMode } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, isDark, insets.top), [colors, isDark, insets.top]);
   const { unreadCount } = useNotificationsStore();
   const pathname = usePathname();
   const isManager = roleInfo?.roleName === 'MANAGER' || roleInfo?.roleName === 'manager';
@@ -171,8 +178,8 @@ export function Header({
     }).start();
   };
 
-  return (
-    <View style={styles.header}>
+  const headerContent = (
+    <>
       <View style={styles.headerContent}>
         <View style={styles.leftSection}>
           {showBackButton ? (
@@ -252,13 +259,36 @@ export function Header({
       </View>
       
       <View style={styles.headerBorder} />
+    </>
+  );
+
+  // iOS: Use BlurView for Liquid Glass effect
+  if (isIOS) {
+    return (
+      <BlurView 
+        intensity={80} 
+        tint={isDark ? 'dark' : 'light'}
+        style={styles.header}
+      >
+        {headerContent}
+      </BlurView>
+    );
+  }
+
+  // Android: Solid background
+  return (
+    <View style={styles.header}>
+      {headerContent}
     </View>
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean, topInset: number) => StyleSheet.create({
   header: {
-    backgroundColor: colors.background,
+    // iOS: transparent background for blur effect, Android: solid background
+    backgroundColor: isIOS ? 'transparent' : colors.background,
+    paddingTop: isIOS ? topInset : 0,
+    overflow: 'hidden',
   },
   headerContent: {
     flexDirection: 'row',
@@ -269,8 +299,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     height: HEADER_HEIGHT,
   },
   headerBorder: {
-    height: 1,
-    backgroundColor: colors.border,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: isIOS 
+      ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
+      : colors.border,
   },
   leftSection: {
     flexDirection: 'row',

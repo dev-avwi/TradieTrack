@@ -5,6 +5,10 @@
 import { StyleSheet, Platform, Dimensions } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isIOS = Platform.OS === 'ios';
+
+// Header height for Liquid Glass effect calculations
+export const HEADER_HEIGHT = 56;
 
 // === SPACING (matches web's tailwind spacing scale exactly) ===
 // Web uses: gap-4 = 16px, p-4 = 16px, p-5 = 20px, space-y-6 = 24px
@@ -20,9 +24,10 @@ export const spacing = {
 } as const;
 
 // Page shell padding (matches web's PageShell component exactly)
+// On iOS, content needs extra top padding for Liquid Glass header
 export const pageShell = {
   paddingHorizontal: spacing.lg, // 16px - web's px-4
-  paddingTop: spacing.lg,        // 16px - web's pt-4
+  paddingTop: isIOS ? HEADER_HEIGHT + spacing.lg : spacing.lg, // iOS: header height + standard padding
   paddingBottom: spacing['2xl'], // 24px - section gap
   sectionGap: spacing['2xl'],    // 24px - web's space-y-6
 } as const;
