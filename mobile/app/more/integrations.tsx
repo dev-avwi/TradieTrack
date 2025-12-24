@@ -10,7 +10,7 @@ import {
   Alert,
   ActivityIndicator
 } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../../src/lib/store';
@@ -402,7 +402,14 @@ export default function IntegrationsScreen() {
 
   useEffect(() => {
     fetchIntegrationStatus();
-  }, []);
+  }, [fetchIntegrationStatus]);
+
+  // Refresh data when screen gains focus (syncs with web app)
+  useFocusEffect(
+    useCallback(() => {
+      fetchIntegrationStatus();
+    }, [fetchIntegrationStatus])
+  );
 
   const handleConnectStripe = async () => {
     setIsConnecting(true);
