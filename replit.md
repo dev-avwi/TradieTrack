@@ -17,6 +17,14 @@ Key architectural decisions and features include:
 -   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators and professional confirmation emails.
 -   **Live Quote/Invoice Editor**: Real-time preview with templates, catalog items, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
 -   **Stripe Payment Links**: Auto-generated links for invoices with webhook-triggered payment status sync.
+-   **Tap to Pay Payment Collection**: Complete mobile payment system with:
+    - Simulation mode detection with demo banner on collect screen
+    - PDF receipt generation with business branding, GST breakdown, and "PAID" watermark via `generatePaymentReceiptPDF()` in pdfService.ts
+    - Receipt delivery via email (SendGrid with PDF attachment) and SMS (Twilio)
+    - QR code payment support using qrserver.com API with scannable codes
+    - Payment link generation via `/api/payment-requests` endpoint
+    - Invoice pre-selection from job detail page via "Collect Payment" smart action
+    - Mobile collect screen with QR modal, Payment Link modal, and clipboard/share functionality (expo-clipboard)
 -   **Subscription & Billing System**: Three-tier pricing (Free, Pro $39/month, Team $59/month + $29/seat) with 14-day free trials. Stripe checkout with upfront card collection, automated billing reminders (email/SMS 3 and 1 days before billing), cross-platform subscription sync via REST API. Subscription page with pricing cards and trial information.
 -   **Email Automation**: SendGrid integration for invoice/quote emails with PDF attachments and customisable templates with AI suggestions.
 -   **PWA Support**: Offline capabilities via web manifest and service worker.
