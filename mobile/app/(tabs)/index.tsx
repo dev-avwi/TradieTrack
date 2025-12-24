@@ -11,7 +11,7 @@ import {
   Alert,
   Platform
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore } from '../../src/lib/store';
@@ -1003,6 +1003,13 @@ export default function DashboardScreen() {
   useEffect(() => {
     refreshData();
   }, []);
+
+  // Refresh data when screen gains focus (syncs with web app)
+  useFocusEffect(
+    useCallback(() => {
+      refreshData();
+    }, [refreshData])
+  );
 
   // Fetch team data for job scheduler (owners only)
   const fetchTeamData = useCallback(async () => {

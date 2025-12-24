@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -94,6 +94,13 @@ export default function ClientsScreen() {
   useEffect(() => {
     refreshData();
   }, []);
+
+  // Refresh data when screen gains focus (syncs with web app)
+  useFocusEffect(
+    useCallback(() => {
+      refreshData();
+    }, [refreshData])
+  );
 
   const filterCounts = {
     all: clients.length,

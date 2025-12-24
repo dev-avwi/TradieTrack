@@ -10,7 +10,7 @@ import {
   Modal,
   RefreshControl,
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../../src/lib/api';
@@ -463,11 +463,7 @@ export default function CustomFormsScreen() {
   const [showFormBuilder, setShowFormBuilder] = useState(false);
   const [editingForm, setEditingForm] = useState<CustomForm | null>(null);
 
-  useEffect(() => {
-    loadForms();
-  }, []);
-
-  const loadForms = async () => {
+  const loadForms = useCallback(async () => {
     try {
       setIsLoading(true);
       const res = await api.get<CustomForm[]>('/api/custom-forms');
@@ -479,7 +475,18 @@ export default function CustomFormsScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadForms();
+  }, [loadForms]);
+
+  // Refresh data when screen gains focus (syncs with web app)
+  useFocusEffect(
+    useCallback(() => {
+      loadForms();
+    }, [loadForms])
+  );
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

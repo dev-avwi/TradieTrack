@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Alert
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
@@ -398,6 +398,13 @@ export default function CalendarScreen() {
   useEffect(() => {
     refreshData();
   }, []);
+
+  // Refresh data when screen gains focus (syncs with web app)
+  useFocusEffect(
+    useCallback(() => {
+      refreshData();
+    }, [refreshData])
+  );
 
   const getClientName = (clientId?: string) => {
     if (!clientId) return undefined;

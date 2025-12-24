@@ -12,7 +12,7 @@ import {
   Modal,
   Linking,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
@@ -1398,7 +1398,14 @@ export default function TeamManagementScreen() {
 
   useEffect(() => {
     fetchTeam();
-  }, []);
+  }, [fetchTeam]);
+
+  // Refresh data when screen gains focus (syncs with web app)
+  useFocusEffect(
+    useCallback(() => {
+      fetchTeam();
+    }, [fetchTeam])
+  );
   
   const getRolePermissions = useCallback((roleId: string): string[] => {
     const role = roles.find(r => r.id === roleId);
