@@ -11824,7 +11824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Send payment receipt via email or SMS
+  // Send payment receipt via email or SMS (with PDF attachment)
   const sendReceiptSchema = z.object({
     email: z.string().email().optional(),
     phone: z.string().optional(),
@@ -11833,6 +11833,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     invoiceId: z.string().optional(),
     invoiceNumber: z.string().optional(),
     clientName: z.string().optional(),
+    clientEmail: z.string().optional(),
+    clientPhone: z.string().optional(),
+    jobTitle: z.string().optional(),
+    paymentMethod: z.string().optional(),
+    reference: z.string().optional(),
     method: z.enum(['email', 'sms']),
   });
 
@@ -11846,11 +11851,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: parseResult.error.errors[0]?.message || 'Invalid request' });
       }
       
-      const { email, phone, amount, description, invoiceId, invoiceNumber, clientName, method } = parseResult.data;
+      const { email, phone, amount, description, invoiceId, invoiceNumber, clientName, clientEmail, clientPhone, jobTitle, paymentMethod, reference, method } = parseResult.data;
       
       const settings = await storage.getBusinessSettings(userId);
-      const businessName = settings?.businessName || 'TradieTrack Business';
-      const businessEmail = settings?.businessEmail || settings?.email;
+      if (!settings) {
+        return res.status(400).json({ error: 'Business settings not found' });
+      }
+      
+      const businessName = settings.businessName || 'TradieTrack Business';
+      const businessEmail = settings.businessEmail || settings.email;
       const formattedAmount = `$${(amount / 100).toFixed(2)}`;
       const receiptDate = new Date().toLocaleDateString('en-AU', {
         day: 'numeric',
@@ -11860,8 +11869,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         minute: '2-digit',
       });
 
+      // Generate PDF receipt
+      const { generatePaymentReceiptPDF, generatePDFBuffer, PaymentReceiptData } = await import('./pdfService');
+      
+      const receiptData: any = {
+        payment: {
+          id: `RCP-${Date.now().toString(36).toUpperCase()}`,
+          amount,
+          paymentMethod: paymentMethod || 'card',
+          reference: reference || description || 'Payment',
+          paidAt: new Date(),
+        },
+        client: clientName ? {
+          name: clientName,
+          email: clientEmail || email,
+          phone: clientPhone || phone,
+        } : undefined,
+        business: settings,
+        invoice: invoiceNumber ? { number: invoiceNumber } : undefined,
+        job: jobTitle ? { title: jobTitle } : undefined,
+      };
+      
+      let pdfBuffer: Buffer | null = null;
+      try {
+        const receiptHtml = generatePaymentReceiptPDF(receiptData);
+        pdfBuffer = await generatePDFBuffer(receiptHtml);
+      } catch (pdfError) {
+        console.error('PDF generation failed, sending without attachment:', pdfError);
+      }
+
       if (method === 'email' && email) {
-        // Send email receipt
+        // Send email receipt with PDF attachment
         const emailHtml = `
           <!DOCTYPE html>
           <html>
@@ -11869,18 +11907,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <style>
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
               .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-              .header { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 32px; text-align: center; }
+              .header { background: linear-gradient(135deg, #16a34a, #15803d); color: white; padding: 32px; text-align: center; }
               .header h1 { margin: 0; font-size: 28px; }
               .header p { margin: 8px 0 0; opacity: 0.9; }
               .content { padding: 32px; }
-              .success-icon { width: 64px; height: 64px; background: #dcfce7; border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
-              .success-icon svg { width: 32px; height: 32px; color: #16a34a; }
-              .amount { font-size: 48px; font-weight: bold; color: #1f2937; text-align: center; margin: 24px 0; }
+              .amount { font-size: 42px; font-weight: bold; color: #1f2937; text-align: center; margin: 24px 0 8px; }
+              .status { text-align: center; color: #16a34a; font-weight: 600; margin-bottom: 24px; }
               .details { background: #f9fafb; border-radius: 8px; padding: 20px; margin: 24px 0; }
-              .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+              .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
               .detail-row:last-child { border-bottom: none; }
               .detail-label { color: #6b7280; }
               .detail-value { color: #1f2937; font-weight: 500; }
+              .pdf-note { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 24px 0; text-align: center; }
+              .pdf-note p { margin: 0; color: #166534; }
               .footer { background: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
             </style>
           </head>
@@ -11891,13 +11930,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 <p>from ${businessName}</p>
               </div>
               <div class="content">
-                <div style="text-align: center; margin-bottom: 24px;">
-                  <div style="width: 64px; height: 64px; background: #dcfce7; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
-                    <span style="font-size: 32px;">✓</span>
-                  </div>
-                </div>
                 <div class="amount">${formattedAmount}</div>
-                <p style="text-align: center; color: #6b7280;">Payment received successfully</p>
+                <p class="status">Payment Received - Thank You!</p>
                 <div class="details">
                   <div class="detail-row">
                     <span class="detail-label">Date</span>
@@ -11909,48 +11943,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     <span class="detail-value">${invoiceNumber}</span>
                   </div>
                   ` : ''}
+                  ${jobTitle ? `
+                  <div class="detail-row">
+                    <span class="detail-label">Job</span>
+                    <span class="detail-value">${jobTitle}</span>
+                  </div>
+                  ` : ''}
                   <div class="detail-row">
                     <span class="detail-label">Description</span>
                     <span class="detail-value">${description || 'Payment'}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">Payment Method</span>
-                    <span class="detail-value">Contactless Card</span>
+                    <span class="detail-value">${paymentMethod === 'card' ? 'Contactless Card (Tap to Pay)' : paymentMethod || 'Card'}</span>
                   </div>
+                  ${settings.abn ? `
+                  <div class="detail-row">
+                    <span class="detail-label">ABN</span>
+                    <span class="detail-value">${settings.abn}</span>
+                  </div>
+                  ` : ''}
                 </div>
+                ${pdfBuffer ? `
+                <div class="pdf-note">
+                  <p><strong>Your tax receipt is attached</strong> as a PDF for your records.</p>
+                </div>
+                ` : ''}
               </div>
               <div class="footer">
                 <p>Thank you for your payment!</p>
                 <p>${businessName}${businessEmail ? ` • ${businessEmail}` : ''}</p>
+                ${settings.phone ? `<p>Phone: ${settings.phone}</p>` : ''}
               </div>
             </div>
           </body>
           </html>
         `;
 
-        // Try SendGrid first
+        // Try SendGrid with PDF attachment
         const sgMail = require('@sendgrid/mail');
         if (process.env.SENDGRID_API_KEY) {
           sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-          await sgMail.send({
+          
+          const emailPayload: any = {
             to: email,
             from: businessEmail || 'noreply@tradietrack.com.au',
             subject: `Payment Receipt - ${formattedAmount} from ${businessName}`,
             html: emailHtml,
-          });
+          };
+          
+          // Attach PDF if generated successfully
+          if (pdfBuffer) {
+            emailPayload.attachments = [{
+              content: pdfBuffer.toString('base64'),
+              filename: `Receipt-${receiptData.payment.id}.pdf`,
+              type: 'application/pdf',
+              disposition: 'attachment',
+            }];
+          }
+          
+          await sgMail.send(emailPayload);
         } else {
           return res.status(400).json({ error: 'Email service not configured' });
         }
 
-        return res.json({ success: true, method: 'email', recipient: email });
+        return res.json({ success: true, method: 'email', recipient: email, hasPdf: !!pdfBuffer });
       }
 
       if (method === 'sms' && phone) {
-        // SMS is disabled during beta
-        return res.status(400).json({ 
-          error: 'SMS notifications are disabled during beta. Please use email instead.',
-          disabled: true
-        });
+        // Format SMS message with receipt details
+        const smsMessage = `Payment Receipt from ${businessName}: ${formattedAmount} received. ${invoiceNumber ? `Invoice: ${invoiceNumber}. ` : ''}Thank you for your payment!`;
+        
+        // Try to send via Twilio
+        const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+        const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+        const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+        
+        if (twilioSid && twilioToken && twilioPhone) {
+          const twilio = require('twilio')(twilioSid, twilioToken);
+          await twilio.messages.create({
+            body: smsMessage,
+            from: twilioPhone,
+            to: phone,
+          });
+          return res.json({ success: true, method: 'sms', recipient: phone });
+        } else {
+          return res.status(400).json({ 
+            error: 'SMS service not configured. Please use email instead.',
+            disabled: true
+          });
+        }
       }
 
       return res.status(400).json({ error: 'Invalid method or missing recipient' });

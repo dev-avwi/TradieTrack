@@ -9,8 +9,11 @@ import {
   ActivityIndicator,
   Modal,
   StyleSheet,
-  RefreshControl
+  RefreshControl,
+  Share,
+  Image
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useStripeTerminal } from '../../src/hooks/useServices';
@@ -458,6 +461,74 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     fontSize: 14,
   },
+  qrCodeContainer: {
+    width: 220,
+    height: 220,
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.xl,
+    padding: spacing.sm,
+  },
+  qrCodeWrapper: {
+    width: 200,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrCodeImage: {
+    width: 200,
+    height: 200,
+  },
+  qrCodePlaceholder: {
+    width: 180,
+    height: 180,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrAmountDisplay: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  qrUrlContainer: {
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  qrUrlText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  qrActionButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.xl,
+    width: '100%',
+  },
+  paymentLinkInputContainer: {
+    width: '100%',
+    marginTop: spacing.lg,
+    gap: spacing.md,
+  },
+  paymentLinkLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
+    marginBottom: spacing.xs,
+  },
 });
 
 interface PaymentMethodCardProps {
@@ -563,6 +634,19 @@ export default function CollectScreen() {
   const [manualEmail, setManualEmail] = useState('');
   const [manualPhone, setManualPhone] = useState('');
   const hasAutoSelectedInvoice = useRef(false);
+  
+  // QR Code Modal state
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrPaymentUrl, setQrPaymentUrl] = useState('');
+  const [qrPaymentRequest, setQrPaymentRequest] = useState<any>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  
+  // Payment Link Modal state
+  const [showPaymentLinkModal, setShowPaymentLinkModal] = useState(false);
+  const [paymentLinkRequest, setPaymentLinkRequest] = useState<any>(null);
+  const [linkRecipientEmail, setLinkRecipientEmail] = useState('');
+  const [linkRecipientPhone, setLinkRecipientPhone] = useState('');
+  const [sendingLink, setSendingLink] = useState(false);
   
   const { invoices, fetchInvoices } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
@@ -815,22 +899,69 @@ export default function CollectScreen() {
       return;
     }
 
+    setQrLoading(true);
+    setShowQRModal(true);
+
     try {
-      const response = await api.post<{ url: string; qrCode: string }>('/api/payment-links', {
-        amount: amountCents,
+      const response = await api.post<{ 
+        id: string; 
+        token: string; 
+        paymentUrl: string; 
+        amount: string;
+        status: string;
+      }>('/api/payment-requests', {
+        amount: amountCents / 100, // API expects dollars
         description: description || 'Payment',
+        invoiceId: selectedInvoice?.id,
+        clientId: selectedInvoice?.clientId,
+        reference: selectedInvoice?.invoiceNumber,
       });
 
       if (response.data) {
-        Alert.alert(
-          'QR Code Generated',
-          `Payment link created for $${(amountCents / 100).toFixed(2)}. Customer can scan the QR code to pay.`,
-          [{ text: 'OK' }]
-        );
+        setQrPaymentUrl(response.data.paymentUrl);
+        setQrPaymentRequest(response.data);
       }
     } catch (error) {
+      console.error('Failed to generate QR code:', error);
       Alert.alert('Error', 'Failed to generate QR code');
+      setShowQRModal(false);
+    } finally {
+      setQrLoading(false);
     }
+  };
+
+  const handleCopyPaymentUrl = async () => {
+    if (qrPaymentUrl) {
+      try {
+        await Clipboard.setStringAsync(qrPaymentUrl);
+        Alert.alert('Copied!', 'Payment link copied to clipboard');
+      } catch (error) {
+        Alert.alert('Payment Link', qrPaymentUrl, [{ text: 'OK' }]);
+      }
+    }
+  };
+
+  const handleSharePaymentUrl = async () => {
+    if (qrPaymentUrl) {
+      try {
+        const amountDisplay = (getAmountInCents() / 100).toFixed(2);
+        await Share.share({
+          message: `Please pay $${amountDisplay} using this secure link: ${qrPaymentUrl}`,
+          url: qrPaymentUrl,
+        });
+      } catch (error) {
+        console.error('Share error:', error);
+      }
+    }
+  };
+
+  const handleCloseQRModal = () => {
+    setShowQRModal(false);
+    setQrPaymentUrl('');
+    setQrPaymentRequest(null);
+    setAmount('');
+    setDescription('');
+    setSelectedInvoice(null);
   };
 
   const handlePaymentLink = async () => {
@@ -840,33 +971,127 @@ export default function CollectScreen() {
       return;
     }
 
-    Alert.alert(
-      'Send Payment Link',
-      `Send a payment link for $${(amountCents / 100).toFixed(2)} via SMS or Email`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'SMS', onPress: () => sendPaymentLink('sms') },
-        { text: 'Email', onPress: () => sendPaymentLink('email') },
-      ]
-    );
-  };
-
-  const sendPaymentLink = async (method: 'sms' | 'email') => {
+    // Pre-fill recipient from selected invoice if available
+    setLinkRecipientEmail(selectedInvoice?.clientEmail || '');
+    setLinkRecipientPhone(selectedInvoice?.clientPhone || '');
+    
+    setSendingLink(true);
+    
     try {
-      const response = await api.post('/api/payment-links/send', {
-        amount: getAmountInCents(),
+      // Create payment request first
+      const response = await api.post<{ 
+        id: string; 
+        token: string; 
+        paymentUrl: string; 
+        amount: string;
+        status: string;
+      }>('/api/payment-requests', {
+        amount: amountCents / 100, // API expects dollars
         description: description || 'Payment',
-        method,
+        invoiceId: selectedInvoice?.id,
+        clientId: selectedInvoice?.clientId,
+        reference: selectedInvoice?.invoiceNumber,
       });
 
       if (response.data) {
-        Alert.alert('Success', `Payment link sent via ${method.toUpperCase()}`);
-        setAmount('');
-        setDescription('');
+        setPaymentLinkRequest(response.data);
+        setShowPaymentLinkModal(true);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to send payment link');
+      console.error('Failed to create payment request:', error);
+      Alert.alert('Error', 'Failed to create payment link');
+    } finally {
+      setSendingLink(false);
     }
+  };
+
+  const sendPaymentLinkViaEmail = async () => {
+    if (!paymentLinkRequest?.id) return;
+    
+    const email = linkRecipientEmail.trim();
+    if (!email) {
+      Alert.alert('Email Required', 'Please enter an email address');
+      return;
+    }
+    
+    setSendingLink(true);
+    try {
+      await api.post(`/api/payment-requests/${paymentLinkRequest.id}/send-email`, {
+        email,
+      });
+      
+      Alert.alert('Success', `Payment link sent to ${email}`);
+      handleClosePaymentLinkModal();
+    } catch (error) {
+      console.error('Failed to send email:', error);
+      Alert.alert('Error', 'Failed to send payment link via email');
+    } finally {
+      setSendingLink(false);
+    }
+  };
+
+  const sendPaymentLinkViaSMS = async () => {
+    if (!paymentLinkRequest?.id) return;
+    
+    const phone = linkRecipientPhone.trim();
+    if (!phone) {
+      Alert.alert('Phone Required', 'Please enter a phone number');
+      return;
+    }
+    
+    setSendingLink(true);
+    try {
+      await api.post(`/api/payment-requests/${paymentLinkRequest.id}/send-sms`, {
+        phone,
+      });
+      
+      Alert.alert('Success', `Payment link sent to ${phone}`);
+      handleClosePaymentLinkModal();
+    } catch (error: any) {
+      console.error('Failed to send SMS:', error);
+      if (error?.response?.data?.error?.includes('disabled')) {
+        Alert.alert('SMS Disabled', 'SMS is disabled during beta. Use email instead, or copy the link to share manually.');
+      } else {
+        Alert.alert('Error', 'Failed to send payment link via SMS');
+      }
+    } finally {
+      setSendingLink(false);
+    }
+  };
+
+  const handleCopyPaymentLink = async () => {
+    if (paymentLinkRequest?.paymentUrl) {
+      try {
+        await Clipboard.setStringAsync(paymentLinkRequest.paymentUrl);
+        Alert.alert('Copied!', 'Payment link copied to clipboard');
+      } catch (error) {
+        Alert.alert('Payment Link', paymentLinkRequest.paymentUrl, [{ text: 'OK' }]);
+      }
+    }
+  };
+
+  const handleSharePaymentLink = async () => {
+    if (paymentLinkRequest?.paymentUrl) {
+      try {
+        const amountDisplay = (getAmountInCents() / 100).toFixed(2);
+        await Share.share({
+          message: `Please pay $${amountDisplay} using this secure link: ${paymentLinkRequest.paymentUrl}`,
+          url: paymentLinkRequest.paymentUrl,
+        });
+      } catch (error) {
+        console.error('Share error:', error);
+      }
+    }
+  };
+
+  const handleClosePaymentLinkModal = () => {
+    setShowPaymentLinkModal(false);
+    setPaymentLinkRequest(null);
+    setLinkRecipientEmail('');
+    setLinkRecipientPhone('');
+    setAmount('');
+    setDescription('');
+    setSelectedInvoice(null);
   };
 
   const renderTapToPayModal = () => (
@@ -967,6 +1192,231 @@ export default function CollectScreen() {
             </Button>
           </View>
         )}
+      </View>
+    </Modal>
+  );
+
+  const renderQRModal = () => (
+    <Modal
+      visible={showQRModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={handleCloseQRModal}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Payment QR Code</Text>
+          <TouchableOpacity onPress={handleCloseQRModal} activeOpacity={0.7}>
+            <Feather name="x" size={24} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.modalContent}>
+          {qrLoading ? (
+            <>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.modalStepTitle}>Generating QR Code...</Text>
+            </>
+          ) : qrPaymentUrl ? (
+            <>
+              <Text style={styles.qrAmountDisplay}>
+                ${(getAmountInCents() / 100).toFixed(2)}
+              </Text>
+              
+              {selectedInvoice && (
+                <Text style={styles.modalStepSubtitle}>
+                  {selectedInvoice.invoiceNumber} • {selectedInvoice.clientName}
+                </Text>
+              )}
+              
+              <View style={[styles.qrCodeContainer, { marginTop: spacing.xl }]}>
+                <View style={styles.qrCodeWrapper}>
+                  <Image
+                    source={{ 
+                      uri: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrPaymentUrl)}&margin=10` 
+                    }}
+                    style={styles.qrCodeImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              </View>
+              
+              <Text style={styles.modalStepSubtitle}>
+                Customer can scan this code to pay securely online
+              </Text>
+
+              <TouchableOpacity 
+                style={styles.qrUrlContainer}
+                onPress={handleCopyPaymentUrl}
+                activeOpacity={0.7}
+              >
+                <Feather name="link" size={16} color={colors.mutedForeground} />
+                <Text style={styles.qrUrlText} numberOfLines={1}>
+                  {qrPaymentUrl}
+                </Text>
+                <Feather name="copy" size={16} color={colors.primary} />
+              </TouchableOpacity>
+
+              <View style={styles.qrActionButtons}>
+                <Button 
+                  variant="outline" 
+                  onPress={handleCopyPaymentUrl}
+                  style={{ flex: 1 }}
+                >
+                  <Feather name="copy" size={18} color={colors.foreground} />
+                  <Text style={{ marginLeft: spacing.xs }}>Copy Link</Text>
+                </Button>
+                <Button 
+                  variant="primary" 
+                  onPress={handleSharePaymentUrl}
+                  style={{ flex: 1 }}
+                >
+                  <Feather name="share" size={18} color={colors.primaryForeground} />
+                  <Text style={{ marginLeft: spacing.xs, color: colors.primaryForeground }}>Share</Text>
+                </Button>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.modalStepSubtitle}>Failed to generate QR code</Text>
+          )}
+        </View>
+
+        <View style={styles.modalFooter}>
+          <Button variant="outline" onPress={handleCloseQRModal} fullWidth>
+            Done
+          </Button>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderPaymentLinkModal = () => (
+    <Modal
+      visible={showPaymentLinkModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={handleClosePaymentLinkModal}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Send Payment Link</Text>
+          <TouchableOpacity onPress={handleClosePaymentLinkModal} activeOpacity={0.7}>
+            <Feather name="x" size={24} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
+          <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
+            <View style={styles.readyIcon}>
+              <Feather name="link" size={64} color={colors.primary} />
+            </View>
+            <Text style={styles.qrAmountDisplay}>
+              ${(getAmountInCents() / 100).toFixed(2)}
+            </Text>
+            {selectedInvoice && (
+              <Text style={styles.modalStepSubtitle}>
+                {selectedInvoice.invoiceNumber} • {selectedInvoice.clientName}
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.paymentLinkInputContainer}>
+            <View>
+              <Text style={styles.paymentLinkLabel}>Send via Email</Text>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <TextInput
+                  style={[styles.descriptionInput, { flex: 1, marginTop: 0 }]}
+                  placeholder="Enter email address"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={linkRecipientEmail}
+                  onChangeText={setLinkRecipientEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <Button 
+                  variant="primary" 
+                  onPress={sendPaymentLinkViaEmail}
+                  disabled={sendingLink || !linkRecipientEmail.trim()}
+                >
+                  {sendingLink ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Feather name="send" size={18} color={colors.primaryForeground} />
+                  )}
+                </Button>
+              </View>
+            </View>
+
+            <View>
+              <Text style={styles.paymentLinkLabel}>Send via SMS</Text>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <TextInput
+                  style={[styles.descriptionInput, { flex: 1, marginTop: 0 }]}
+                  placeholder="Enter phone number"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={linkRecipientPhone}
+                  onChangeText={setLinkRecipientPhone}
+                  keyboardType="phone-pad"
+                />
+                <Button 
+                  variant="primary" 
+                  onPress={sendPaymentLinkViaSMS}
+                  disabled={sendingLink || !linkRecipientPhone.trim()}
+                >
+                  {sendingLink ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Feather name="send" size={18} color={colors.primaryForeground} />
+                  )}
+                </Button>
+              </View>
+              <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: spacing.xs }}>
+                Note: SMS may be disabled during beta
+              </Text>
+            </View>
+
+            <View style={{ marginTop: spacing.lg }}>
+              <Text style={styles.paymentLinkLabel}>Or share manually</Text>
+              <TouchableOpacity 
+                style={styles.qrUrlContainer}
+                onPress={handleCopyPaymentLink}
+                activeOpacity={0.7}
+              >
+                <Feather name="link" size={16} color={colors.mutedForeground} />
+                <Text style={styles.qrUrlText} numberOfLines={1}>
+                  {paymentLinkRequest?.paymentUrl || 'Loading...'}
+                </Text>
+                <Feather name="copy" size={16} color={colors.primary} />
+              </TouchableOpacity>
+              
+              <View style={[styles.qrActionButtons, { marginTop: spacing.md }]}>
+                <Button 
+                  variant="outline" 
+                  onPress={handleCopyPaymentLink}
+                  style={{ flex: 1 }}
+                >
+                  <Feather name="copy" size={18} color={colors.foreground} />
+                  <Text style={{ marginLeft: spacing.xs }}>Copy</Text>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onPress={handleSharePaymentLink}
+                  style={{ flex: 1 }}
+                >
+                  <Feather name="share" size={18} color={colors.foreground} />
+                  <Text style={{ marginLeft: spacing.xs }}>Share</Text>
+                </Button>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        <View style={styles.modalFooter}>
+          <Button variant="outline" onPress={handleClosePaymentLinkModal} fullWidth>
+            Done
+          </Button>
+        </View>
       </View>
     </Modal>
   );
@@ -1206,6 +1656,8 @@ export default function CollectScreen() {
 
         {renderTapToPayModal()}
         {renderReceiptModal()}
+        {renderQRModal()}
+        {renderPaymentLinkModal()}
       </View>
     </>
   );

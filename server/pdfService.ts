@@ -2139,6 +2139,533 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
   `;
 };
 
+// Payment Receipt Data Interface
+export interface PaymentReceiptData {
+  payment: {
+    id: string;
+    amount: number; // in cents
+    gstAmount?: number;
+    paymentMethod: string;
+    reference?: string;
+    paidAt: Date;
+  };
+  client?: {
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  };
+  business: BusinessSettings;
+  invoice?: {
+    number: string;
+    title?: string;
+  };
+  job?: {
+    title: string;
+    address?: string;
+  };
+}
+
+// Format date with time for receipts
+const formatDateTime = (date: Date | string | null): string => {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+// Format cents to currency
+const formatCentsToAUD = (cents: number): string => {
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 2,
+  }).format(cents / 100);
+};
+
+// Generate Payment Receipt PDF HTML
+export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
+  const { payment, client, business, invoice, job } = data;
+  
+  // Use minimal template for clean receipt
+  const templateId = 'minimal' as TemplateId;
+  const templateCustomization = (business as any).documentTemplateSettings as TemplateCustomization | undefined;
+  const { template, accentColor } = getCustomizedTemplate(templateId, templateCustomization);
+  
+  // Convert cents to dollars for display
+  const amountDollars = payment.amount / 100;
+  const gstAmountDollars = payment.gstAmount ? payment.gstAmount / 100 : 0;
+  const subtotalDollars = gstAmountDollars > 0 ? amountDollars - gstAmountDollars : amountDollars;
+  
+  // Get payment method display name
+  const getPaymentMethodDisplay = (method: string): string => {
+    const methodMap: Record<string, string> = {
+      'card': 'Card Payment',
+      'tap_to_pay': 'Tap to Pay',
+      'bank_transfer': 'Bank Transfer',
+      'cash': 'Cash',
+      'cheque': 'Cheque',
+      'eftpos': 'EFTPOS',
+      'stripe': 'Online Payment',
+      'manual': 'Manual Payment',
+    };
+    return methodMap[method.toLowerCase()] || method;
+  };
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Receipt${payment.reference ? ` - ${payment.reference}` : ''} - ${business.businessName}</title>
+  ${generateGoogleFontsLink()}
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: ${template.fontFamily};
+      font-size: ${template.baseFontSize};
+      font-weight: ${template.bodyWeight};
+      line-height: 1.5;
+      color: #1a1a1a;
+      background: #fff;
+    }
+    
+    .document {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 40px;
+      position: relative;
+    }
+    
+    .paid-watermark {
+      position: absolute;
+      top: 120px;
+      right: 40px;
+      padding: 10px 24px;
+      border: 4px solid #22c55e;
+      color: #22c55e;
+      font-size: 24px;
+      font-weight: ${template.headingWeight};
+      text-transform: uppercase;
+      transform: rotate(-15deg);
+      opacity: 0.85;
+      letter-spacing: 2px;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .company-info {
+      flex: 1;
+    }
+    
+    .company-name {
+      font-size: 22px;
+      font-weight: ${template.headingWeight};
+      color: ${accentColor};
+      margin-bottom: 8px;
+    }
+    
+    .company-details {
+      color: #666;
+      font-size: 10px;
+      line-height: 1.6;
+    }
+    
+    .company-details p {
+      margin: 2px 0;
+    }
+    
+    .logo {
+      max-width: 120px;
+      max-height: 50px;
+      object-fit: contain;
+      margin-bottom: 12px;
+    }
+    
+    .document-type {
+      text-align: right;
+    }
+    
+    .document-title {
+      font-size: 28px;
+      font-weight: ${template.headingWeight};
+      color: ${accentColor};
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    
+    .receipt-number {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+    
+    .receipt-date {
+      font-size: 11px;
+      color: #888;
+      margin-top: 8px;
+    }
+    
+    .info-section {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+      gap: 30px;
+    }
+    
+    .info-block {
+      flex: 1;
+    }
+    
+    .info-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    
+    .info-value {
+      color: #1a1a1a;
+      line-height: 1.5;
+    }
+    
+    .info-value strong {
+      font-weight: 600;
+    }
+    
+    .payment-summary {
+      margin: 30px 0;
+      padding: 24px;
+      background: linear-gradient(135deg, #dcfce720, #bbf7d010);
+      border: 2px solid #22c55e;
+      border-radius: 12px;
+    }
+    
+    .payment-summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    .payment-summary-title {
+      font-size: 14px;
+      font-weight: ${template.headingWeight};
+      color: #166534;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .payment-status {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #22c55e;
+      color: white;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .payment-amount-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #bbf7d0;
+    }
+    
+    .payment-amount-row:last-child {
+      border-bottom: none;
+    }
+    
+    .payment-amount-row.total {
+      border-bottom: none;
+      border-top: 2px solid #22c55e;
+      padding-top: 12px;
+      margin-top: 8px;
+    }
+    
+    .payment-amount-row .label {
+      color: #166534;
+      font-size: 11px;
+    }
+    
+    .payment-amount-row .value {
+      font-weight: 600;
+      color: #166534;
+    }
+    
+    .payment-amount-row.total .label,
+    .payment-amount-row.total .value {
+      font-size: 18px;
+      font-weight: ${template.headingWeight};
+    }
+    
+    .details-section {
+      margin: 24px 0;
+    }
+    
+    .details-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    
+    .details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    
+    .detail-item {
+      padding: 12px;
+      background: #f9fafb;
+      border-radius: 6px;
+    }
+    
+    .detail-item-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+    
+    .detail-item-value {
+      font-size: 12px;
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+    
+    .linked-info {
+      margin: 24px 0;
+      padding: 16px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border-left: 3px solid ${accentColor};
+    }
+    
+    .linked-info-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #888;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    
+    .linked-info-content {
+      font-size: 12px;
+      color: #1a1a1a;
+    }
+    
+    .linked-info-content strong {
+      font-weight: 600;
+      color: ${accentColor};
+    }
+    
+    .thank-you {
+      text-align: center;
+      margin: 40px 0;
+      padding: 24px;
+      background: linear-gradient(135deg, ${accentColor}08, ${accentColor}03);
+      border-radius: 12px;
+    }
+    
+    .thank-you-text {
+      font-size: 18px;
+      font-weight: ${template.headingWeight};
+      color: ${accentColor};
+      margin-bottom: 8px;
+    }
+    
+    .thank-you-subtext {
+      font-size: 11px;
+      color: #666;
+    }
+    
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      font-size: 9px;
+      color: #888;
+    }
+    
+    .footer p {
+      margin: 4px 0;
+    }
+    
+    .footer-contact {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #e5e7eb;
+    }
+    
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .document { padding: 20px; }
+    }
+    
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+  </style>
+</head>
+<body>
+  <div class="document">
+    <div class="paid-watermark">PAID</div>
+    
+    <div class="header">
+      <div class="company-info">
+        ${business.logoUrl ? `<img src="${business.logoUrl}" alt="${business.businessName}" class="logo" />` : ''}
+        <div class="company-name">${business.businessName}</div>
+        <div class="company-details">
+          ${business.abn ? `<p><strong>ABN:</strong> ${business.abn}</p>` : ''}
+          ${business.address ? `<p>${business.address}</p>` : ''}
+          ${business.phone ? `<p>Phone: ${business.phone}</p>` : ''}
+          ${business.email ? `<p>Email: ${business.email}</p>` : ''}
+        </div>
+      </div>
+      <div class="document-type">
+        <div class="document-title">Receipt</div>
+        ${payment.reference ? `<div class="receipt-number">${payment.reference}</div>` : ''}
+        <div class="receipt-date">${formatDateTime(payment.paidAt)}</div>
+      </div>
+    </div>
+    
+    ${client ? `
+    <div class="info-section">
+      <div class="info-block">
+        <div class="info-label">Received From</div>
+        <div class="info-value">
+          <strong>${client.name}</strong>
+          ${client.address ? `<br/>${client.address}` : ''}
+          ${client.email ? `<br/>${client.email}` : ''}
+          ${client.phone ? `<br/>${client.phone}` : ''}
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Payment Details</div>
+        <div class="info-value">
+          <strong>Method:</strong> ${getPaymentMethodDisplay(payment.paymentMethod)}<br/>
+          <strong>Date:</strong> ${formatDate(payment.paidAt)}
+          ${payment.reference ? `<br/><strong>Ref:</strong> ${payment.reference}` : ''}
+        </div>
+      </div>
+    </div>
+    ` : ''}
+    
+    <div class="payment-summary">
+      <div class="payment-summary-header">
+        <div class="payment-summary-title">Payment Received</div>
+        <div class="payment-status">Paid</div>
+      </div>
+      
+      ${gstAmountDollars > 0 ? `
+        <div class="payment-amount-row">
+          <span class="label">Subtotal (excl. GST)</span>
+          <span class="value">${formatCurrency(subtotalDollars)}</span>
+        </div>
+        <div class="payment-amount-row">
+          <span class="label">GST (10%)</span>
+          <span class="value">${formatCurrency(gstAmountDollars)}</span>
+        </div>
+      ` : ''}
+      
+      <div class="payment-amount-row total">
+        <span class="label">Amount Paid${gstAmountDollars > 0 ? ' (incl. GST)' : ''}</span>
+        <span class="value">${formatCurrency(amountDollars)}</span>
+      </div>
+    </div>
+    
+    <div class="details-section">
+      <div class="details-title">Transaction Details</div>
+      <div class="details-grid">
+        <div class="detail-item">
+          <div class="detail-item-label">Payment Method</div>
+          <div class="detail-item-value">${getPaymentMethodDisplay(payment.paymentMethod)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-item-label">Transaction ID</div>
+          <div class="detail-item-value">${payment.id}</div>
+        </div>
+        ${payment.reference ? `
+        <div class="detail-item">
+          <div class="detail-item-label">Reference</div>
+          <div class="detail-item-value">${payment.reference}</div>
+        </div>
+        ` : ''}
+        <div class="detail-item">
+          <div class="detail-item-label">Date & Time</div>
+          <div class="detail-item-value">${formatDateTime(payment.paidAt)}</div>
+        </div>
+      </div>
+    </div>
+    
+    ${invoice ? `
+    <div class="linked-info">
+      <div class="linked-info-title">Invoice Reference</div>
+      <div class="linked-info-content">
+        <strong>Invoice #${invoice.number}</strong>
+        ${invoice.title ? `<br/>${invoice.title}` : ''}
+      </div>
+    </div>
+    ` : ''}
+    
+    ${job ? `
+    <div class="linked-info">
+      <div class="linked-info-title">Job Reference</div>
+      <div class="linked-info-content">
+        <strong>${job.title}</strong>
+        ${job.address ? `<br/>${job.address}` : ''}
+      </div>
+    </div>
+    ` : ''}
+    
+    <div class="thank-you">
+      <div class="thank-you-text">Thank you for your payment!</div>
+      <div class="thank-you-subtext">This receipt confirms your payment has been received and processed.</div>
+    </div>
+    
+    <div class="footer">
+      <p>Payment Receipt from ${business.businessName}</p>
+      ${business.abn ? `<p>ABN: ${business.abn}</p>` : ''}
+      <div class="footer-contact">
+        ${business.phone ? `<p>Phone: ${business.phone}</p>` : ''}
+        ${business.email ? `<p>Email: ${business.email}</p>` : ''}
+        ${business.address ? `<p>${business.address}</p>` : ''}
+      </div>
+      <p style="margin-top: 8px;">Generated by TradieTrack • ${formatDate(new Date())}</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+};
+
 // Convert HTML to actual PDF using Puppeteer
 export const generatePDFBuffer = async (html: string): Promise<Buffer> => {
   const puppeteer = await import('puppeteer');
