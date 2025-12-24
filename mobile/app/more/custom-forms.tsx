@@ -86,7 +86,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.xxl * 2,
+    paddingVertical: spacing['3xl'] * 2,
   },
   emptyIcon: {
     width: 64,

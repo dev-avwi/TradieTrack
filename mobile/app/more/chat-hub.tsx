@@ -285,10 +285,10 @@ export default function ChatHubScreen() {
         api.get('/api/team/members').catch(() => ({ data: [] }))
       ]);
       
-      setTeamMessages(teamRes.data || []);
-      setDmConversations(dmRes.data || []);
-      setJobs(jobsRes.data || []);
-      setTeamMembers(membersRes.data || []);
+      setTeamMessages(Array.isArray(teamRes.data) ? teamRes.data : []);
+      setDmConversations(Array.isArray(dmRes.data) ? dmRes.data : []);
+      setJobs(Array.isArray(jobsRes.data) ? jobsRes.data : []);
+      setTeamMembers(Array.isArray(membersRes.data) ? membersRes.data : []);
     } catch (error) {
       console.log('Failed to fetch chat data:', error);
     } finally {
