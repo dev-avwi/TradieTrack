@@ -1,28 +1,23 @@
 import { Stack } from 'expo-router';
 import { useTheme } from '../../src/lib/theme';
 import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
+import { getNavigationConfig } from '../../src/lib/platform';
 
 export default function MoreLayout() {
   const { colors } = useTheme();
+  const navigationConfig = getNavigationConfig(colors);
   
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
+        ...navigationConfig,
         headerBackVisible: false,
         headerLeft: () => <IOSBackButton />,
         headerTitle: '',
-        headerShadowVisible: false,
-        headerStyle: {
-          backgroundColor: colors.background,
-        },
         contentStyle: {
           backgroundColor: colors.background,
         },
-        animation: 'ios_from_right',
         animationDuration: 220,
-        gestureEnabled: true,
-        gestureDirection: 'horizontal',
         presentation: 'card',
         freezeOnBlur: true,
       }}

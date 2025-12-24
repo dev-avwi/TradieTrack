@@ -31,10 +31,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     position: 'absolute',
     bottom: 110,
     right: 20,
-    // iOS: Apple-style rounded rectangle (pill shape), Android: Material circular FAB
-    width: isIOS ? 56 : 56,
-    height: isIOS ? 56 : 56,
-    borderRadius: isIOS ? 18 : 28, // More Apple-like rounded rectangle on iOS
+    // iOS: True pill shape (wider, shorter), Android: Material circular FAB
+    width: isIOS ? 64 : 56,
+    height: isIOS ? 48 : 56,
+    borderRadius: isIOS ? 24 : 28, // iOS: half of height for true pill, Android: half of size for circle
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
