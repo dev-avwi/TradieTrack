@@ -8,7 +8,8 @@ import {
   Pressable,
   Animated,
   Dimensions,
-  Easing
+  Easing,
+  Platform
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -16,6 +17,7 @@ import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../lib/design-tokens';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const isIOS = Platform.OS === 'ios';
 
 interface FABAction {
   icon: keyof typeof Feather.glyphMap;
@@ -29,13 +31,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     position: 'absolute',
     bottom: 110,
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    // iOS: Apple-style rounded rectangle (pill shape), Android: Material circular FAB
+    width: isIOS ? 56 : 56,
+    height: isIOS ? 56 : 56,
+    borderRadius: isIOS ? 18 : 28, // More Apple-like rounded rectangle on iOS
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.lg,
+    // iOS: Subtle shadow, Android: Material elevation
+    ...(isIOS ? {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+    } : shadows.lg),
     zIndex: 1000,
   },
   fabButtonActive: {
