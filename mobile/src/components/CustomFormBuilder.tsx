@@ -69,6 +69,162 @@ function generateId(): string {
   return `field_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+type ViewMode = 'builder' | 'preview';
+
+function PreviewField({ field, colors, styles }: { field: FormField; colors: ThemeColors; styles: any }) {
+  if (field.type === 'section') {
+    return (
+      <View style={styles.previewSectionDivider}>
+        <Text style={styles.previewSectionLabel}>{field.label}</Text>
+      </View>
+    );
+  }
+
+  const renderInput = () => {
+    switch (field.type) {
+      case 'text':
+      case 'email':
+      case 'phone':
+      case 'number':
+        return (
+          <TextInput
+            style={styles.previewInput}
+            placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+            placeholderTextColor={colors.mutedForeground}
+            editable={false}
+            keyboardType={field.type === 'number' ? 'numeric' : field.type === 'email' ? 'email-address' : field.type === 'phone' ? 'phone-pad' : 'default'}
+          />
+        );
+      case 'textarea':
+        return (
+          <TextInput
+            style={[styles.previewInput, styles.previewTextarea]}
+            placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+            placeholderTextColor={colors.mutedForeground}
+            editable={false}
+            multiline
+            numberOfLines={3}
+          />
+        );
+      case 'checkbox':
+        return (
+          <View style={styles.previewCheckboxRow}>
+            <View style={styles.previewCheckbox}>
+              <Feather name="square" size={20} color={colors.mutedForeground} />
+            </View>
+            <Text style={styles.previewCheckboxLabel}>
+              {field.placeholder || 'Check if applicable'}
+            </Text>
+          </View>
+        );
+      case 'radio':
+        return (
+          <View style={styles.previewRadioGroup}>
+            {(field.options || ['Option 1', 'Option 2']).map((option, i) => (
+              <View key={i} style={styles.previewRadioRow}>
+                <View style={styles.previewRadio} />
+                <Text style={styles.previewRadioLabel}>{option}</Text>
+              </View>
+            ))}
+          </View>
+        );
+      case 'select':
+        return (
+          <View style={styles.previewSelect}>
+            <Text style={styles.previewSelectText}>
+              {field.placeholder || 'Select option'}
+            </Text>
+            <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+          </View>
+        );
+      case 'date':
+        return (
+          <View style={styles.previewDatetime}>
+            <Feather name="calendar" size={18} color={colors.mutedForeground} />
+            <Text style={styles.previewDatetimeText}>Select date</Text>
+          </View>
+        );
+      case 'time':
+        return (
+          <View style={styles.previewDatetime}>
+            <Feather name="clock" size={18} color={colors.mutedForeground} />
+            <Text style={styles.previewDatetimeText}>Select time</Text>
+          </View>
+        );
+      case 'photo':
+        return (
+          <View style={styles.previewPhotoPlaceholder}>
+            <Feather name="camera" size={24} color={colors.mutedForeground} />
+            <Text style={styles.previewPhotoText}>Take or upload photo</Text>
+          </View>
+        );
+      case 'signature':
+        return (
+          <View style={styles.previewSignaturePlaceholder}>
+            <Feather name="edit-3" size={24} color={colors.mutedForeground} />
+            <Text style={styles.previewSignatureText}>Tap to sign</Text>
+          </View>
+        );
+      default:
+        return (
+          <TextInput
+            style={styles.previewInput}
+            placeholder="Enter value"
+            placeholderTextColor={colors.mutedForeground}
+            editable={false}
+          />
+        );
+    }
+  };
+
+  return (
+    <View style={styles.previewFieldContainer}>
+      <Text style={styles.previewFieldLabel}>
+        {field.label}
+        {field.required && <Text style={styles.previewRequired}> *</Text>}
+      </Text>
+      {field.description && (
+        <Text style={styles.previewFieldDescription}>{field.description}</Text>
+      )}
+      {renderInput()}
+    </View>
+  );
+}
+
+function FormPreview({ 
+  fields, 
+  formName, 
+  colors, 
+  styles 
+}: { 
+  fields: FormField[]; 
+  formName: string; 
+  colors: ThemeColors; 
+  styles: any;
+}) {
+  return (
+    <ScrollView style={styles.previewContainer} showsVerticalScrollIndicator={false}>
+      <View style={styles.previewCard}>
+        <View style={styles.previewHeader}>
+          <Text style={styles.previewFormName}>{formName || 'Untitled Form'}</Text>
+        </View>
+        <View style={styles.previewContent}>
+          {fields.length === 0 ? (
+            <View style={styles.previewEmptyState}>
+              <Feather name="file-text" size={40} color={colors.mutedForeground} />
+              <Text style={styles.previewEmptyText}>Add fields to see preview</Text>
+            </View>
+          ) : (
+            fields.map(field => (
+              <PreviewField key={field.id} field={field} colors={colors} styles={styles} />
+            ))
+          )}
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
 export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderProps) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
@@ -79,6 +235,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
   const [fields, setFields] = useState<FormField[]>(form?.fields || []);
   const [isActive, setIsActive] = useState(form?.isActive ?? true);
   const [isSaving, setIsSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('builder');
 
   // Field type picker modal
   const [showFieldPicker, setShowFieldPicker] = useState(false);
@@ -192,6 +349,45 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
         </TouchableOpacity>
       </View>
 
+      {/* Tab Switcher */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tab, viewMode === 'builder' && styles.tabActive]}
+          onPress={() => setViewMode('builder')}
+        >
+          <Feather 
+            name="edit-2" 
+            size={16} 
+            color={viewMode === 'builder' ? colors.primary : colors.mutedForeground} 
+          />
+          <Text style={[styles.tabText, viewMode === 'builder' && styles.tabTextActive]}>
+            Builder
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, viewMode === 'preview' && styles.tabActive]}
+          onPress={() => setViewMode('preview')}
+        >
+          <Feather 
+            name="eye" 
+            size={16} 
+            color={viewMode === 'preview' ? colors.primary : colors.mutedForeground} 
+          />
+          <Text style={[styles.tabText, viewMode === 'preview' && styles.tabTextActive]}>
+            Preview
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Conditional Content */}
+      {viewMode === 'preview' ? (
+        <FormPreview 
+          fields={fields} 
+          formName={formName} 
+          colors={colors} 
+          styles={styles} 
+        />
+      ) : (
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Form Details */}
         <View style={styles.section}>
@@ -346,6 +542,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
           </TouchableOpacity>
         </View>
       </ScrollView>
+      )}
 
       {/* Field Type Picker Modal */}
       <Modal
@@ -957,6 +1154,215 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       borderRadius: radius.lg,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    // Tab Bar styles
+    tabBar: {
+      flexDirection: 'row',
+      backgroundColor: colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      paddingHorizontal: spacing.md,
+    },
+    tab: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.md,
+      gap: spacing.sm,
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
+    },
+    tabActive: {
+      borderBottomColor: colors.primary,
+    },
+    tabText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.mutedForeground,
+    },
+    tabTextActive: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    // Preview styles
+    previewContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    previewCard: {
+      margin: spacing.lg,
+      backgroundColor: colors.card,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...shadows.md,
+    },
+    previewHeader: {
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    previewFormName: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.foreground,
+    },
+    previewContent: {
+      padding: spacing.lg,
+      gap: spacing.lg,
+    },
+    previewEmptyState: {
+      alignItems: 'center',
+      paddingVertical: spacing['3xl'],
+    },
+    previewEmptyText: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+      marginTop: spacing.md,
+    },
+    previewFieldContainer: {
+      gap: spacing.sm,
+    },
+    previewFieldLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.foreground,
+    },
+    previewRequired: {
+      color: colors.destructive,
+    },
+    previewFieldDescription: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+    },
+    previewInput: {
+      backgroundColor: colors.muted,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      fontSize: 15,
+      color: colors.mutedForeground,
+      minHeight: 44,
+    },
+    previewTextarea: {
+      minHeight: 80,
+      textAlignVertical: 'top',
+    },
+    previewCheckboxRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    previewCheckbox: {
+      width: 24,
+      height: 24,
+      borderRadius: radius.sm,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.muted,
+    },
+    previewCheckboxLabel: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+    },
+    previewRadioGroup: {
+      gap: spacing.sm,
+    },
+    previewRadioRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    previewRadio: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: colors.border,
+      backgroundColor: colors.muted,
+    },
+    previewRadioLabel: {
+      fontSize: 14,
+      color: colors.foreground,
+    },
+    previewSelect: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.muted,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      minHeight: 44,
+    },
+    previewSelectText: {
+      fontSize: 15,
+      color: colors.mutedForeground,
+    },
+    previewDatetime: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.muted,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      minHeight: 44,
+    },
+    previewDatetimeText: {
+      fontSize: 15,
+      color: colors.mutedForeground,
+    },
+    previewPhotoPlaceholder: {
+      height: 100,
+      borderWidth: 2,
+      borderStyle: 'dashed',
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.muted,
+      gap: spacing.sm,
+    },
+    previewPhotoText: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+    },
+    previewSignaturePlaceholder: {
+      height: 100,
+      borderWidth: 2,
+      borderStyle: 'dashed',
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.muted,
+      gap: spacing.sm,
+    },
+    previewSignatureText: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+    },
+    previewSectionDivider: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      paddingBottom: spacing.sm,
+      paddingTop: spacing.md,
+    },
+    previewSectionLabel: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.foreground,
     },
   });
 
