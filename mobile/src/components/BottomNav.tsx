@@ -18,28 +18,28 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { 
-    title: 'Activity', 
+    title: 'Dashboard', 
     icon: 'home', 
     path: '/',
     matchPaths: ['/', '/index']
   },
   { 
-    title: 'Jobs', 
-    icon: 'list', 
+    title: 'Work', 
+    icon: 'briefcase', 
     path: '/jobs',
     matchPaths: ['/jobs', '/job']
   },
   { 
-    title: 'Notifications', 
-    icon: 'bell', 
-    path: '/more/notifications',
-    matchPaths: ['/more/notifications']
+    title: 'Chat', 
+    icon: 'message-circle', 
+    path: '/more/chat-hub',
+    matchPaths: ['/more/chat-hub', '/more/team-chat', '/more/direct-messages', '/more/sms']
   },
   { 
     title: 'More', 
-    icon: 'more-horizontal', 
+    icon: 'menu', 
     path: '/profile',
-    matchPaths: ['/profile', '/more', '/map', '/money', '/more/invoices', '/more/quotes', '/more/money-hub', '/collect', '/more/chat-hub', '/more/team-chat', '/more/direct-messages']
+    matchPaths: ['/profile', '/more', '/map', '/money', '/more/invoices', '/more/quotes', '/more/money-hub', '/collect', '/more/notifications', '/more/settings', '/more/clients', '/more/team-management']
   },
 ];
 
@@ -173,12 +173,12 @@ export function BottomNav() {
     </View>
   );
 
-  // iOS: Use BlurView for Liquid Glass effect
+  // iOS: Use BlurView for Liquid Glass effect - enhanced intensity for prominent glass look
   if (isIOS) {
     return (
       <BlurView 
-        intensity={80} 
-        tint={isDark ? 'dark' : 'light'}
+        intensity={100} 
+        tint={isDark ? 'systemMaterialDark' : 'systemMaterialLight'}
         style={containerStyle}
       >
         {navContent}

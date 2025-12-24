@@ -1,12 +1,9 @@
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useTheme, ThemeColors } from '../lib/theme';
+import { useTheme } from '../lib/theme';
 import { HEADER_HEIGHT } from '../lib/design-tokens';
-
-const isIOS = Platform.OS === 'ios';
 
 interface GlassHeaderProps {
   title?: string;
@@ -45,9 +42,9 @@ export function GlassHeader({
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         activeOpacity={0.7}
       >
-        <Feather name="chevron-left" size={28} color={colors.foreground} />
+        <Feather name="chevron-left" size={28} color={colors.primary} />
         {backLabel && (
-          <Text style={[styles.backLabel, { color: colors.foreground }]}>
+          <Text style={[styles.backLabel, { color: colors.primary }]}>
             {backLabel}
           </Text>
         )}
@@ -76,31 +73,14 @@ export function GlassHeader({
     );
   }
   
-  if (isIOS) {
-    return (
-      <BlurView
-        intensity={80}
-        tint={isDark ? 'dark' : 'light'}
-        style={[
-          styles.container,
-          { 
-            borderBottomWidth: StyleSheet.hairlineWidth,
-            borderBottomColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-          }
-        ]}
-      >
-        {headerContent}
-      </BlurView>
-    );
-  }
-  
+  // Simple solid header - liquid glass effect is on the bottom nav instead
   return (
     <View style={[
       styles.container, 
       { 
-        backgroundColor: colors.card,
+        backgroundColor: colors.background,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: colors.border,
+        borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
       }
     ]}>
       {headerContent}
