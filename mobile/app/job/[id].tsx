@@ -23,7 +23,7 @@ import {
 import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
-import { GlassHeader } from '../../src/components/GlassHeader';
+import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -34,7 +34,7 @@ import { Button } from '../../src/components/ui/Button';
 import { AIPhotoAnalysisModal } from '../../src/components/AIPhotoAnalysis';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, iconSizes, typography, pageShell, HEADER_HEIGHT } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
@@ -1196,7 +1196,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   fixedHeader: {
     paddingHorizontal: spacing.lg,
-    paddingTop: HEADER_HEIGHT + spacing.md,
+    paddingTop: spacing.md,
     paddingBottom: spacing.sm,
     backgroundColor: colors.background,
   },
@@ -4215,17 +4215,17 @@ export default function JobDetailScreen() {
   return (
     <>
       <View style={styles.container}>
-        <Stack.Screen options={{ headerShown: false }} />
-        
-        {/* ServiceM8-style Glass Header with back button */}
-        <GlassHeader
-          title=""
-          backLabel="Back"
-          rightActions={canDeleteJobs ? (
+        <Stack.Screen 
+        options={{ 
+          headerShown: true,
+          title: '',
+          headerBackVisible: false,
+          headerLeft: () => <IOSBackButton />,
+          headerRight: () => canDeleteJobs ? (
             <TouchableOpacity
               onPress={handleDeleteJob}
               disabled={isDeletingJob}
-              style={{ padding: spacing.sm }}
+              style={{ padding: spacing.sm, marginRight: spacing.sm }}
               data-testid="button-delete-job"
             >
               {isDeletingJob ? (
@@ -4234,8 +4234,14 @@ export default function JobDetailScreen() {
                 <Feather name="trash-2" size={iconSizes.md} color={colors.destructive} />
               )}
             </TouchableOpacity>
-          ) : undefined}
-        />
+          ) : null,
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerShadowVisible: false,
+          headerTintColor: colors.foreground,
+        }} 
+      />
 
       {/* Fixed Header */}
       <View style={styles.fixedHeader}>

@@ -33,13 +33,13 @@ const navItems: NavItem[] = [
     title: 'Chat', 
     icon: 'message-circle', 
     path: '/more/chat-hub',
-    matchPaths: ['/more/chat-hub', '/more/team-chat', '/more/direct-messages', '/more/sms']
+    matchPaths: ['/more/chat-hub', '/more/team-chat', '/more/direct-messages']
   },
   { 
     title: 'More', 
-    icon: 'menu', 
+    icon: 'more-horizontal', 
     path: '/profile',
-    matchPaths: ['/profile', '/more', '/map', '/money', '/more/invoices', '/more/quotes', '/more/money-hub', '/collect', '/more/notifications', '/more/settings', '/more/clients', '/more/team-management']
+    matchPaths: ['/profile', '/more', '/map', '/money', '/more/invoices', '/more/quotes', '/more/money-hub', '/collect']
   },
 ];
 
@@ -64,13 +64,13 @@ function NavButton({
   const handlePressIn = () => {
     Animated.parallel([
       Animated.timing(scale, {
-        toValue: 0.92,
+        toValue: 0.95,
         duration: 100,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
       Animated.timing(opacity, {
-        toValue: 0.7,
+        toValue: 0.8,
         duration: 100,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
@@ -110,12 +110,11 @@ function NavButton({
       >
         <Feather 
           name={item.icon} 
-          size={22}
+          size={20}
           color={active ? colors.primary : colors.mutedForeground}
         />
         <Text style={[
           styles.navLabel,
-          { color: active ? colors.primary : colors.mutedForeground },
           active && styles.navLabelActive,
         ]}>
           {item.title}
@@ -133,6 +132,15 @@ export function BottomNav() {
   const { triggerScrollToTop } = useScrollToTop();
 
   const isActive = (item: NavItem) => {
+    // Chat-specific routes should only highlight Chat, not More
+    const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];
+    const isChatRoute = chatRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
+    
+    // If current route is a chat route, only Chat tab should be active
+    if (isChatRoute) {
+      return item.title === 'Chat';
+    }
+    
     if (item.matchPaths) {
       return item.matchPaths.some(p => pathname === p || pathname.startsWith(p + '/'));
     }
@@ -140,12 +148,14 @@ export function BottomNav() {
   };
 
   const isOnMainPage = (item: NavItem) => {
+    // Check if we're on the exact main page for this tab (not a subpage)
     return pathname === item.path || 
            (item.path === '/' && (pathname === '/' || pathname === '/index'));
   };
 
   const handlePress = (item: NavItem) => {
     if (isActive(item)) {
+      // If on a subpage, navigate to main page; if already on main page, scroll to top
       if (isOnMainPage(item)) {
         triggerScrollToTop();
       } else {
@@ -173,32 +183,23 @@ export function BottomNav() {
     </View>
   );
 
-  // iOS: Use BlurView for glass effect with translucent overlay
+  // iOS: Use BlurView for Liquid Glass effect
   if (isIOS) {
     return (
-      <View style={styles.outerContainer}>
-        <BlurView 
-          intensity={80} 
-          tint={isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterial'}
-          style={containerStyle}
-        >
-          {/* Semi-transparent overlay for glass tint */}
-          <View style={[
-            StyleSheet.absoluteFill, 
-            { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.7)' }
-          ]} />
-          {navContent}
-        </BlurView>
-      </View>
+      <BlurView 
+        intensity={80} 
+        tint={isDark ? 'dark' : 'light'}
+        style={containerStyle}
+      >
+        {navContent}
+      </BlurView>
     );
   }
 
-  // Android: Solid background with subtle elevation
+  // Android: Solid background
   return (
-    <View style={styles.outerContainer}>
-      <View style={[containerStyle, styles.androidContainer]}>
-        {navContent}
-      </View>
+    <View style={containerStyle}>
+      {navContent}
     </View>
   );
 }
@@ -208,50 +209,54 @@ export function getBottomNavHeight(bottomInset: number): number {
 }
 
 const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
-  outerContainer: {
+  container: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-  },
-  container: {
-    overflow: 'hidden',
-    // Subtle top border for definition
+    // iOS: transparent background for blur effect, Android: solid background
+    backgroundColor: isIOS ? 'transparent' : colors.card,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-  },
-  androidContainer: {
-    backgroundColor: isDark ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)',
-    elevation: 8,
+    borderTopColor: isIOS 
+      ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
+      : colors.cardBorder,
+    // Subtle shadow on Android only
+    ...(isIOS ? {} : {
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 1,
+      shadowRadius: 8,
+      elevation: 8,
+    }),
+    overflow: 'hidden',
   },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'space-evenly',
     height: BOTTOM_NAV_HEIGHT,
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
   },
   navButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    minWidth: 72,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 9999,
+    gap: 2,
   },
-  // ServiceM8-style pill indicator for active state
   navButtonActive: {
-    backgroundColor: isDark 
-      ? `${colors.primary}20` 
-      : `${colors.primary}12`,
+    backgroundColor: colors.primaryLight,
   },
   navLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
-    marginTop: 3,
+    color: colors.mutedForeground,
+    marginTop: 2,
     letterSpacing: 0.1,
   },
   navLabelActive: {
     fontWeight: '600',
+    color: colors.primary,
   },
 });

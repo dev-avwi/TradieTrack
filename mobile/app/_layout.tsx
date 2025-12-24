@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { View, StyleSheet, Alert, InteractionManager, Platform } from 'react-native';
-import { Stack, usePathname } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -221,26 +221,6 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isOwner, isStaff, hasActiveTeam } = useAuthStore();
   const { colors } = useTheme();
   const { isOnline, isInitialized: offlineInitialized } = useOfflineStore();
-  const pathname = usePathname();
-  
-  // Detail pages that should NOT show global header (ServiceM8 style)
-  // These pages have their own contextual headers with back buttons
-  // Using comprehensive route matching for expo-router dynamic routes
-  const isDetailPage = pathname.startsWith('/job/') || 
-                       pathname.startsWith('/more/client/') ||
-                       pathname.startsWith('/more/quote/') ||
-                       pathname.startsWith('/more/invoice/') ||
-                       pathname.startsWith('/more/team-management') ||
-                       pathname.startsWith('/more/team-chat') ||
-                       pathname.startsWith('/more/chat-hub') ||
-                       pathname.startsWith('/more/direct-messages') ||
-                       pathname.startsWith('/more/sms') ||
-                       pathname.startsWith('/more/settings') ||
-                       pathname.startsWith('/more/clients') ||
-                       pathname.startsWith('/more/invoices') ||
-                       pathname.startsWith('/more/quotes') ||
-                       pathname.includes('/new') ||
-                       pathname.includes('/edit');
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -272,16 +252,16 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   // iOS Liquid Glass: Header is positioned absolutely with blur, content starts below it
   // Content can scroll underneath for the translucent effect
-  // Detail pages hide global header and manage their own header
+  // The layout provides the safe area + header height padding, screens add their own internal padding
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Main content area - starts below header (or safe area on detail pages) */}
+      {/* Main content area - starts below header, scrolls under both header and nav */}
       <View style={[
         styles.content, 
         { 
-          // Detail pages: just safe area top (they have their own header)
-          // Main pages: safe area + header height
-          paddingTop: isDetailPage ? insets.top : insets.top + HEADER_HEIGHT,
+          // Both platforms: add safe area + header height as top padding
+          // This ensures content starts below the header (translucent on iOS, solid on Android)
+          paddingTop: insets.top + HEADER_HEIGHT,
           paddingBottom: bottomNavHeight,
         }
       ]}>
@@ -296,12 +276,10 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       {/* FAB positioned above bottom nav */}
       {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} />}
       
-      {/* Global header - hidden on detail pages (they have contextual headers) */}
-      {!isDetailPage && (
-        <View style={styles.headerContainer}>
-          <Header />
-        </View>
-      )}
+      {/* Header positioned at top with blur effect on iOS */}
+      <View style={styles.headerContainer}>
+        <Header />
+      </View>
       
       {/* Bottom navigation with blur effect on iOS */}
       <BottomNav />
