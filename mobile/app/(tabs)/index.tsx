@@ -1761,11 +1761,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Activity Feed - compact
+  // Activity Feed - ServiceM8 style
   activityList: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: radius.lg,
+    borderWidth: 0,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
@@ -1803,8 +1803,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   activityEmpty: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: radius.lg,
+    borderWidth: 0,
     borderColor: colors.cardBorder,
     padding: spacing.xl,
     alignItems: 'center',
@@ -1872,8 +1872,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     minWidth: '46%',
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
+    borderRadius: radius.lg,
+    borderWidth: 0,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
@@ -1906,11 +1906,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 2,
   },
 
-  // Quick Actions - matches web feed-card styling
+  // Quick Actions - ServiceM8 style
   quickActionsCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
+    borderRadius: radius.lg,
+    borderWidth: 0,
     borderColor: colors.cardBorder,
     padding: spacing.lg,
     ...shadows.sm,
@@ -2113,7 +2113,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Job Cards - with left accent bar
+  // Job Cards - ServiceM8 style with left accent bar
   jobsList: {
     gap: spacing.md,
   },
@@ -2121,9 +2121,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },

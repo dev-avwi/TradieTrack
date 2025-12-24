@@ -36,14 +36,14 @@ export const pageShell = {
 // Bottom tab bar clearance - use this ONLY on screens that have bottom tabs visible
 export const bottomTabClearance = 90; // 64px nav + 26px safe area
 
-// === BORDER RADIUS (matches web's tailwind radius) ===
+// === BORDER RADIUS (ServiceM8-inspired - more rounded) ===
 export const radius = {
   xs: 4,      // rounded
-  sm: 6,      // rounded-md
-  md: 8,      // --radius in web (0.5rem)
-  lg: 10,     // rounded-lg
-  xl: 14,     // rounded-xl - main card radius (matches web)
-  '2xl': 16,  // rounded-2xl - feed cards, modals
+  sm: 8,      // rounded-md
+  md: 12,     // --radius in web
+  lg: 16,     // rounded-lg - main card radius (ServiceM8 style)
+  xl: 20,     // rounded-xl - larger cards
+  '2xl': 24,  // rounded-2xl - feed cards, modals
   pill: 9999, // fully rounded pills
   full: 9999,
 } as const;
@@ -79,16 +79,15 @@ export const sizes = {
   cardMinHeight: 80,
 } as const;
 
-// === SHADOWS (matches web's shadow system from index.css) ===
-// Web uses: shadow-sm, shadow, shadow-md, shadow-lg with HSL-based colors
+// === SHADOWS (ServiceM8-inspired - subtle, clean shadows) ===
 export const shadows = {
   none: {},
   '2xs': Platform.select({
     ios: {
-      shadowColor: '#1c2130',
+      shadowColor: '#000000',
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.03,
-      shadowRadius: 1,
+      shadowOpacity: 0.02,
+      shadowRadius: 2,
     },
     android: {
       elevation: 0.5,
@@ -96,10 +95,10 @@ export const shadows = {
   }) as object,
   xs: Platform.select({
     ios: {
-      shadowColor: '#1c2130',
+      shadowColor: '#000000',
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 2,
+      shadowOpacity: 0.03,
+      shadowRadius: 3,
     },
     android: {
       elevation: 1,
@@ -107,46 +106,46 @@ export const shadows = {
   }) as object,
   sm: Platform.select({
     ios: {
-      shadowColor: '#1c2130',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 4,
     },
     android: {
-      elevation: 1.5,
+      elevation: 2,
     },
   }) as object,
   md: Platform.select({
     ios: {
-      shadowColor: '#1c2130',
+      shadowColor: '#000000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.06,
-      shadowRadius: 6,
+      shadowRadius: 8,
     },
     android: {
-      elevation: 3,
+      elevation: 4,
     },
   }) as object,
   lg: Platform.select({
     ios: {
-      shadowColor: '#1c2130',
-      shadowOffset: { width: 0, height: 10 },
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.08,
-      shadowRadius: 15,
+      shadowRadius: 16,
     },
     android: {
-      elevation: 6,
+      elevation: 8,
     },
   }) as object,
   xl: Platform.select({
     ios: {
-      shadowColor: '#1c2130',
-      shadowOffset: { width: 0, height: 20 },
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 12 },
       shadowOpacity: 0.1,
-      shadowRadius: 25,
+      shadowRadius: 24,
     },
     android: {
-      elevation: 10,
+      elevation: 12,
     },
   }) as object,
 } as const;
