@@ -1,18 +1,24 @@
 import { Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/lib/theme';
 import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
-import { getNavigationConfig } from '../../src/lib/platform';
+import { getNavigationConfig, isIOS } from '../../src/lib/platform';
 
 export default function MoreLayout() {
   const { colors } = useTheme();
-  const navigationConfig = getNavigationConfig(colors);
+  const insets = useSafeAreaInsets();
+  const navigationConfig = getNavigationConfig(colors, { isDark: colors.isDark });
+  
+  // Calculate proper padding for translucent header on iOS
+  // Header height is typically 44pt + safe area top inset
+  const headerHeight = isIOS ? 44 + insets.top : 0;
   
   return (
     <Stack
       screenOptions={{
         ...navigationConfig,
         headerBackVisible: false,
-        headerLeft: () => <IOSBackButton />,
+        headerLeft: isIOS ? () => <IOSBackButton /> : undefined,
         headerTitle: '',
         contentStyle: {
           backgroundColor: colors.background,
