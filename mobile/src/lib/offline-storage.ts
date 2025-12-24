@@ -614,6 +614,16 @@ class OfflineStorageService {
         console.log('[OfflineStorage] Clients table "notes" column added successfully');
       }
       
+      // Check if jobs table is missing the "client_name" column (added in a later version)
+      const jobsInfo = await this.db.getAllAsync("PRAGMA table_info(jobs)");
+      const jobsClientNameCol = (jobsInfo as any[]).find((c: any) => c.name === 'client_name');
+      
+      if (!jobsClientNameCol) {
+        console.log('[OfflineStorage] Adding missing "client_name" column to jobs table...');
+        await this.db.execAsync(`ALTER TABLE jobs ADD COLUMN client_name TEXT`);
+        console.log('[OfflineStorage] Jobs table "client_name" column added successfully');
+      }
+      
     } catch (error) {
       console.error('[OfflineStorage] Migration error:', error);
       // Don't throw - we don't want to block initialization

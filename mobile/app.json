@@ -31,7 +31,8 @@
         "NSPhotoLibraryUsageDescription": "TradieTrack needs photo library access to upload job photos",
         "NSLocationWhenInUseUsageDescription": "TradieTrack needs location access to track job sites",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "TradieTrack needs location access for team tracking",
-        "NFCReaderUsageDescription": "TradieTrack uses NFC for Tap to Pay contactless payments"
+        "NFCReaderUsageDescription": "TradieTrack uses NFC for Tap to Pay contactless payments",
+        "UIBackgroundModes": ["fetch", "remote-notification"]
       }
     },
     "android": {

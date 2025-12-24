@@ -251,16 +251,17 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   }
 
   // iOS Liquid Glass: Header is positioned absolutely with blur, content starts below it
-  // but can scroll underneath for the translucent effect
+  // Content can scroll underneath for the translucent effect
+  // The layout provides the safe area + header height padding, screens add their own internal padding
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Main content area - starts below header, scrolls under both header and nav */}
       <View style={[
         styles.content, 
         { 
-          // On iOS: no top padding since header is transparent/blur (screens use pageShell for padding)
-          // Android: add top padding for solid header
-          paddingTop: isIOS ? 0 : (insets.top + HEADER_HEIGHT),
+          // Both platforms: add safe area + header height as top padding
+          // This ensures content starts below the header (translucent on iOS, solid on Android)
+          paddingTop: insets.top + HEADER_HEIGHT,
           paddingBottom: bottomNavHeight,
         }
       ]}>

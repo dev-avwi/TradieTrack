@@ -24,10 +24,11 @@ export const spacing = {
 } as const;
 
 // Page shell padding (matches web's PageShell component exactly)
-// On iOS, content needs extra top padding for Liquid Glass header
+// Note: The layout wrapper (_layout.tsx) handles safe area + header height padding
+// So screens only need internal content padding here
 export const pageShell = {
   paddingHorizontal: spacing.lg, // 16px - web's px-4
-  paddingTop: isIOS ? HEADER_HEIGHT + spacing.lg : spacing.lg, // iOS: header height + standard padding
+  paddingTop: spacing.lg,        // 16px - internal content padding
   paddingBottom: spacing['2xl'], // 24px - section gap
   sectionGap: spacing['2xl'],    // 24px - web's space-y-6
 } as const;
