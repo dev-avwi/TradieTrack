@@ -33,6 +33,7 @@ Key architectural decisions and features include:
 -   **Team Management Hub**: Comprehensive interface for owners/managers to manage team members, including location sharing toggles, job assignment, and permissions editing.
 -   **Workflow-Integrated Smart Actions**: Contextual automation suggestions with user approval.
 -   **Mobile App (React Native/Expo)**: Full API integration, Zustand for state management, SQLite-based offline mode with background sync, and permission-aware navigation. Supports native email integration and AI Photo Analysis with streaming. Team Management and Integrations screens mirror web functionality.
+    - **iOS Liquid Glass UI**: Native Apple-style translucent navigation using expo-blur BlurView (intensity 80) for both header and bottom tab bar. Content scrolls underneath for authentic iOS frosted glass effect. Android maintains solid Material Design backgrounds for platform consistency. HEADER_HEIGHT (56px) centralized in design-tokens.ts with platform-aware pageShell padding.
 -   **Comprehensive Offline Mode**: Full offline-first support for all major workflows:
     - **Job Management**: Create, edit, status updates (pending→scheduled→in_progress→done→invoiced), notes editing, geofence settings (enabled, radius, auto clock in/out)
     - **Time Tracking**: Start/stop timer entries offline with local timestamps
