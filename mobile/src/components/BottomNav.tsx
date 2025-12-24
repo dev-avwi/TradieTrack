@@ -18,28 +18,28 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { 
-    title: 'Dashboard', 
+    title: 'Activity', 
     icon: 'home', 
     path: '/',
     matchPaths: ['/', '/index']
   },
   { 
-    title: 'Work', 
-    icon: 'briefcase', 
+    title: 'Jobs', 
+    icon: 'list', 
     path: '/jobs',
     matchPaths: ['/jobs', '/job']
   },
   { 
-    title: 'Chat', 
-    icon: 'message-circle', 
-    path: '/more/chat-hub',
-    matchPaths: ['/more/chat-hub', '/more/team-chat', '/more/direct-messages']
+    title: 'Notifications', 
+    icon: 'bell', 
+    path: '/more/notifications',
+    matchPaths: ['/more/notifications']
   },
   { 
     title: 'More', 
     icon: 'more-horizontal', 
     path: '/profile',
-    matchPaths: ['/profile', '/more', '/map', '/money', '/more/invoices', '/more/quotes', '/more/money-hub', '/collect']
+    matchPaths: ['/profile', '/more', '/map', '/money', '/more/invoices', '/more/quotes', '/more/money-hub', '/collect', '/more/chat-hub', '/more/team-chat', '/more/direct-messages']
   },
 ];
 
@@ -104,14 +104,13 @@ function NavButton({
       <Animated.View 
         style={[
           styles.navButton,
-          active && styles.navButtonActive,
           { transform: [{ scale }], opacity }
         ]}
       >
         <Feather 
           name={item.icon} 
-          size={20}
-          color={active ? colors.primary : colors.mutedForeground}
+          size={22}
+          color={active ? colors.foreground : colors.mutedForeground}
         />
         <Text style={[
           styles.navLabel,
@@ -132,15 +131,6 @@ export function BottomNav() {
   const { triggerScrollToTop } = useScrollToTop();
 
   const isActive = (item: NavItem) => {
-    // Chat-specific routes should only highlight Chat, not More
-    const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];
-    const isChatRoute = chatRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
-    
-    // If current route is a chat route, only Chat tab should be active
-    if (isChatRoute) {
-      return item.title === 'Chat';
-    }
-    
     if (item.matchPaths) {
       return item.matchPaths.some(p => pathname === p || pathname.startsWith(p + '/'));
     }
@@ -214,49 +204,38 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     bottom: 0,
     left: 0,
     right: 0,
-    // iOS: transparent background for blur effect, Android: solid background
     backgroundColor: isIOS ? 'transparent' : colors.card,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: isIOS 
-      ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
-      : colors.cardBorder,
-    // Subtle shadow on Android only
+      ? (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)')
+      : colors.border,
     ...(isIOS ? {} : {
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 1,
-      shadowRadius: 8,
-      elevation: 8,
+      elevation: 4,
     }),
     overflow: 'hidden',
   },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-around',
     height: BOTTOM_NAV_HEIGHT,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
   },
   navButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 9999,
-    gap: 2,
-  },
-  navButtonActive: {
-    backgroundColor: colors.primaryLight,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    minWidth: 64,
   },
   navLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
     color: colors.mutedForeground,
-    marginTop: 2,
-    letterSpacing: 0.1,
+    marginTop: 3,
   },
   navLabelActive: {
     fontWeight: '600',
-    color: colors.primary,
+    color: colors.foreground,
   },
 });
