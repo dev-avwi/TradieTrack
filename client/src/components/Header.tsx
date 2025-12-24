@@ -88,8 +88,11 @@ export default function Header({
   }, []);
   return (
     <header 
-      className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 relative z-[20]"
-      style={{ borderBottom: '2px solid hsl(var(--trade) / 0.3)' }}
+      className="bg-background/80 backdrop-blur-xl px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 relative z-[20]"
+      style={{ 
+        borderBottom: '1px solid hsl(var(--border) / 0.5)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.03)'
+      }}
     >
       <div className="w-full flex items-center justify-between">
         <div className="flex items-center gap-3">
