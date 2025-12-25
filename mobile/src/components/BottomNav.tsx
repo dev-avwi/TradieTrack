@@ -1,13 +1,21 @@
-import { useMemo, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, Easing, Platform } from 'react-native';
+import { useMemo, useCallback } from 'react';
+import { View, Text, Pressable, StyleSheet, Platform, Dimensions } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useScrollToTop } from '../contexts/ScrollContext';
 
 const isIOS = Platform.OS === 'ios';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface NavItem {
   title: string;
@@ -43,74 +51,71 @@ const navItems: NavItem[] = [
   },
 ];
 
-export const BOTTOM_NAV_HEIGHT = 64;
+export const BOTTOM_NAV_HEIGHT = 56;
+
+const springConfig = {
+  damping: 20,
+  stiffness: 300,
+  mass: 0.8,
+};
 
 function NavButton({ 
   item, 
-  active, 
+  active,
+  index,
+  activeIndex,
   onPress,
   colors,
   styles,
 }: { 
   item: NavItem; 
-  active: boolean; 
+  active: boolean;
+  index: number;
+  activeIndex: { value: number };
   onPress: () => void;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const opacity = useRef(new Animated.Value(1)).current;
+  const animatedIconStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      activeIndex.value,
+      [index - 1, index, index + 1],
+      [1, 1.08, 1],
+      Extrapolation.CLAMP
+    );
+    const translateY = interpolate(
+      activeIndex.value,
+      [index - 1, index, index + 1],
+      [0, -2, 0],
+      Extrapolation.CLAMP
+    );
+    return {
+      transform: [{ scale }, { translateY }],
+    };
+  });
 
-  const handlePressIn = () => {
-    Animated.parallel([
-      Animated.timing(scale, {
-        toValue: 0.95,
-        duration: 100,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0.8,
-        duration: 100,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.parallel([
-      Animated.spring(scale, {
-        toValue: 1,
-        friction: 5,
-        tension: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 150,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
+  const animatedBgStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      activeIndex.value,
+      [index - 0.5, index, index + 0.5],
+      [0, 1, 0],
+      Extrapolation.CLAMP
+    );
+    return {
+      opacity,
+    };
+  });
 
   return (
     <Pressable
       onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+      style={styles.navButtonContainer}
     >
-      <Animated.View 
-        style={[
-          styles.navButton,
-          active && styles.navButtonActive,
-          { transform: [{ scale }], opacity }
-        ]}
-      >
+      <Animated.View style={[styles.navButtonBg, animatedBgStyle]} />
+      <Animated.View style={[styles.navButton, animatedIconStyle]}>
         <Feather 
           name={item.icon} 
-          size={20}
+          size={22}
           color={active ? colors.primary : colors.mutedForeground}
         />
         <Text style={[
@@ -131,12 +136,30 @@ export function BottomNav() {
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { triggerScrollToTop } = useScrollToTop();
 
+  const getActiveIndex = useCallback(() => {
+    const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];
+    const isChatRoute = chatRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
+    if (isChatRoute) return 2;
+
+    for (let i = 0; i < navItems.length; i++) {
+      const item = navItems[i];
+      if (item.matchPaths?.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+        return i;
+      }
+      if (pathname === item.path) return i;
+    }
+    return 0;
+  }, [pathname]);
+
+  const currentIndex = getActiveIndex();
+  const activeIndex = useSharedValue(currentIndex);
+
+  activeIndex.value = withSpring(currentIndex, springConfig);
+
   const isActive = (item: NavItem) => {
-    // Chat-specific routes should only highlight Chat, not More
     const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];
     const isChatRoute = chatRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
     
-    // If current route is a chat route, only Chat tab should be active
     if (isChatRoute) {
       return item.title === 'Chat';
     }
@@ -148,14 +171,14 @@ export function BottomNav() {
   };
 
   const isOnMainPage = (item: NavItem) => {
-    // Check if we're on the exact main page for this tab (not a subpage)
     return pathname === item.path || 
            (item.path === '/' && (pathname === '/' || pathname === '/index'));
   };
 
-  const handlePress = (item: NavItem) => {
+  const handlePress = (item: NavItem, index: number) => {
+    activeIndex.value = withSpring(index, springConfig);
+    
     if (isActive(item)) {
-      // If on a subpage, navigate to main page; if already on main page, scroll to top
       if (isOnMainPage(item)) {
         triggerScrollToTop();
       } else {
@@ -166,16 +189,18 @@ export function BottomNav() {
     }
   };
 
-  const containerStyle = [styles.container, { paddingBottom: Math.max(insets.bottom, 8) }];
+  const containerStyle = [styles.container, { paddingBottom: Math.max(insets.bottom, 6) }];
   
   const navContent = (
     <View style={styles.navBar}>
-      {navItems.map((item) => (
+      {navItems.map((item, index) => (
         <NavButton
           key={item.title}
           item={item}
+          index={index}
           active={isActive(item)}
-          onPress={() => handlePress(item)}
+          activeIndex={activeIndex}
+          onPress={() => handlePress(item, index)}
           colors={colors}
           styles={styles}
         />
@@ -183,29 +208,28 @@ export function BottomNav() {
     </View>
   );
 
-  // iOS: Use BlurView for Liquid Glass effect
   if (isIOS) {
     return (
       <BlurView 
-        intensity={80} 
+        intensity={60} 
         tint={isDark ? 'dark' : 'light'}
         style={containerStyle}
       >
+        <View style={styles.glassOverlay} />
         {navContent}
       </BlurView>
     );
   }
 
-  // Android: Solid background
   return (
-    <View style={containerStyle}>
+    <View style={[containerStyle, { backgroundColor: colors.chromeBackground }]}>
       {navContent}
     </View>
   );
 }
 
 export function getBottomNavHeight(bottomInset: number): number {
-  return BOTTOM_NAV_HEIGHT + Math.max(bottomInset, 8);
+  return BOTTOM_NAV_HEIGHT + Math.max(bottomInset, 6);
 }
 
 const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
@@ -214,46 +238,48 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     bottom: 0,
     left: 0,
     right: 0,
-    // iOS: transparent background for blur effect, Android: solid background
-    backgroundColor: isIOS ? 'transparent' : colors.card,
+    backgroundColor: isIOS ? 'transparent' : colors.chromeBackground,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: isIOS 
-      ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
-      : colors.cardBorder,
-    // Subtle shadow on Android only
-    ...(isIOS ? {} : {
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 1,
-      shadowRadius: 8,
-      elevation: 8,
-    }),
+    borderTopColor: colors.chromeBorder,
     overflow: 'hidden',
+  },
+  glassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.6)',
   },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-around',
     height: BOTTOM_NAV_HEIGHT,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
+  },
+  navButtonContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    position: 'relative',
+  },
+  navButtonBg: {
+    position: 'absolute',
+    width: 64,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.tabBarActive,
   },
   navButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 9999,
+    paddingVertical: 4,
     gap: 2,
   },
-  navButtonActive: {
-    backgroundColor: colors.primaryLight,
-  },
   navLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
     color: colors.mutedForeground,
-    marginTop: 2,
-    letterSpacing: 0.1,
+    marginTop: 1,
+    letterSpacing: 0.2,
   },
   navLabelActive: {
     fontWeight: '600',

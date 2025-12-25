@@ -100,41 +100,41 @@ export function Button({
           minHeight: 32, 
           paddingHorizontal: 12, 
           paddingVertical: 0, 
-          fontSize: 12, 
-          borderRadius: 6 
+          fontSize: 13, 
+          borderRadius: 10 
         };
       case 'lg':
         return { 
-          minHeight: 40, 
-          paddingHorizontal: 32, 
+          minHeight: 44, 
+          paddingHorizontal: 24, 
           paddingVertical: 0, 
-          fontSize: 14, 
-          borderRadius: 6 
+          fontSize: 15, 
+          borderRadius: 12 
         };
       case 'xl':
         return { 
-          minHeight: 56, 
+          minHeight: 52, 
           paddingHorizontal: 24, 
           paddingVertical: 14, 
           fontSize: 17, 
-          borderRadius: 12 
+          borderRadius: 14 
         };
       case 'icon':
         return { 
-          height: 36, 
-          width: 36, 
+          height: 40, 
+          width: 40, 
           paddingHorizontal: 0, 
           paddingVertical: 0, 
           fontSize: 14, 
-          borderRadius: 6 
+          borderRadius: 12 
         };
       default:
         return { 
-          minHeight: 36, 
+          minHeight: 40, 
           paddingHorizontal: 16, 
           paddingVertical: 8, 
-          fontSize: 14, 
-          borderRadius: 6 
+          fontSize: 15, 
+          borderRadius: 12 
         };
     }
   };
