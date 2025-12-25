@@ -77,6 +77,9 @@ interface Job {
   geofenceRadius?: number;
   geofenceAutoClockIn?: boolean;
   geofenceAutoClockOut?: boolean;
+  startedAt?: string;
+  completedAt?: string;
+  invoicedAt?: string;
 }
 
 interface Client {
@@ -153,6 +156,8 @@ export default function JobDetailView({
   const [editedNotes, setEditedNotes] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSafetyCheck, setShowSafetyCheck] = useState(false);
+  const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
+  const [rollbackTargetStatus, setRollbackTargetStatus] = useState<JobStatus | null>(null);
   
   const { userRole, isTradie, isSolo, actionPermissions } = useAppMode();
   const { data: businessSettings } = useBusinessSettings();
@@ -591,6 +596,12 @@ export default function JobDetailView({
           hasQuote={!!linkedQuote}
           hasInvoice={!!linkedInvoice}
           invoicePaid={linkedInvoice?.status === 'paid'}
+          timestamps={{
+            scheduledAt: job.scheduledAt,
+            startedAt: job.startedAt,
+            completedAt: job.completedAt,
+            invoicedAt: job.invoicedAt,
+          }}
           onCreateQuote={() => onCreateQuote?.(jobId)}
           onViewQuote={() => linkedQuote && navigate(`/quotes/${linkedQuote.id}`)}
           onSchedule={() => onEditJob?.(jobId)}
@@ -598,6 +609,10 @@ export default function JobDetailView({
           onComplete={handleCompleteJob}
           onCreateInvoice={() => onCreateInvoice?.(jobId)}
           onViewInvoice={() => linkedInvoice && navigate(`/invoices/${linkedInvoice.id}`)}
+          onStatusChange={(newStatus) => {
+            setRollbackTargetStatus(newStatus);
+            setShowRollbackConfirm(true);
+          }}
           data-testid="job-flow-wizard"
         />
 
@@ -1177,6 +1192,44 @@ export default function JobDetailView({
               data-testid="button-confirm-delete"
             >
               Delete Job
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Status Rollback Confirmation Dialog */}
+      <AlertDialog open={showRollbackConfirm} onOpenChange={setShowRollbackConfirm}>
+        <AlertDialogContent data-testid="dialog-rollback-status">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Change Job Status?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to change this job back to "{rollbackTargetStatus}"?
+              <br /><br />
+              This will clear the timestamps for any later stages. For example, reverting to "In Progress" will clear the "Done" and "Invoiced" timestamps.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setRollbackTargetStatus(null)}
+              data-testid="button-cancel-rollback"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (rollbackTargetStatus) {
+                  updateJobMutation.mutate({ status: rollbackTargetStatus });
+                }
+                setShowRollbackConfirm(false);
+                setRollbackTargetStatus(null);
+              }}
+              className="bg-amber-500 hover:bg-amber-600"
+              data-testid="button-confirm-rollback"
+            >
+              Change Status
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

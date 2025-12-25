@@ -13,14 +13,23 @@ import {
   ArrowRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
+
+interface StageTimestamps {
+  scheduledAt?: Date | string | null;
+  startedAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  invoicedAt?: Date | string | null;
+}
 
 interface JobFlowWizardProps {
   status: JobStatus;
   hasQuote?: boolean;
   hasInvoice?: boolean;
   invoicePaid?: boolean;
+  timestamps?: StageTimestamps;
   onCreateQuote?: () => void;
   onViewQuote?: () => void;
   onSchedule?: () => void;
@@ -29,6 +38,7 @@ interface JobFlowWizardProps {
   onCreateInvoice?: () => void;
   onViewInvoice?: () => void;
   onSendReminder?: () => void;
+  onStatusChange?: (newStatus: JobStatus) => void;
   className?: string;
 }
 
@@ -37,6 +47,19 @@ interface FlowStep {
   label: string;
   icon: React.ElementType;
   status: 'completed' | 'current' | 'upcoming';
+  timestamp?: Date | null;
+  clickable?: boolean;
+}
+
+// Helper to safely parse date
+function parseTimestamp(ts: Date | string | null | undefined): Date | null {
+  if (!ts) return null;
+  if (ts instanceof Date) return ts;
+  try {
+    return new Date(ts);
+  } catch {
+    return null;
+  }
 }
 
 export default function JobFlowWizard({
@@ -44,6 +67,7 @@ export default function JobFlowWizard({
   hasQuote = false,
   hasInvoice = false,
   invoicePaid = false,
+  timestamps = {},
   onCreateQuote,
   onViewQuote,
   onSchedule,
@@ -52,6 +76,7 @@ export default function JobFlowWizard({
   onCreateInvoice,
   onViewInvoice,
   onSendReminder,
+  onStatusChange,
   className
 }: JobFlowWizardProps) {
   
@@ -65,40 +90,50 @@ export default function JobFlowWizard({
         id: 'quote',
         label: 'Quote',
         icon: FileText,
-        status: hasQuote ? 'completed' : (status === 'pending' ? 'current' : 'upcoming')
+        status: hasQuote ? 'completed' : (status === 'pending' ? 'current' : 'upcoming'),
+        clickable: false
       },
       {
         id: 'scheduled',
         label: 'Scheduled',
         icon: Calendar,
-        status: currentIndex > 0 ? 'completed' : (status === 'pending' ? 'upcoming' : 'current')
+        status: currentIndex > 0 ? 'completed' : (status === 'pending' ? 'upcoming' : 'current'),
+        timestamp: parseTimestamp(timestamps.scheduledAt),
+        clickable: currentIndex > 0 && onStatusChange !== undefined
       },
       {
         id: 'in_progress',
         label: 'In Progress',
         icon: Play,
-        status: currentIndex > 1 ? 'completed' : (status === 'in_progress' ? 'current' : 'upcoming')
+        status: currentIndex > 1 ? 'completed' : (status === 'in_progress' ? 'current' : 'upcoming'),
+        timestamp: parseTimestamp(timestamps.startedAt),
+        clickable: currentIndex > 1 && onStatusChange !== undefined
       },
       {
         id: 'done',
         label: 'Done',
         icon: CheckCircle,
-        status: currentIndex > 2 ? 'completed' : (status === 'done' ? 'current' : 'upcoming')
+        status: currentIndex > 2 ? 'completed' : (status === 'done' ? 'current' : 'upcoming'),
+        timestamp: parseTimestamp(timestamps.completedAt),
+        clickable: currentIndex > 2 && onStatusChange !== undefined
       },
       {
         id: 'invoiced',
         label: 'Invoiced',
         icon: Receipt,
-        status: hasInvoice ? 'completed' : (status === 'done' ? 'current' : 'upcoming')
+        status: hasInvoice ? 'completed' : (status === 'done' ? 'current' : 'upcoming'),
+        timestamp: parseTimestamp(timestamps.invoicedAt),
+        clickable: false
       },
       {
         id: 'paid',
         label: 'Paid',
         icon: DollarSign,
-        status: invoicePaid ? 'completed' : (hasInvoice ? 'current' : 'upcoming')
+        status: invoicePaid ? 'completed' : (hasInvoice ? 'current' : 'upcoming'),
+        clickable: false
       }
     ];
-  }, [status, hasQuote, hasInvoice, invoicePaid]);
+  }, [status, hasQuote, hasInvoice, invoicePaid, timestamps, onStatusChange]);
 
   // Determine the next action
   const nextAction = useMemo(() => {
@@ -163,13 +198,32 @@ export default function JobFlowWizard({
             {steps.map((step, index) => (
               <div key={step.id} className="flex items-center">
                 {/* Step Circle */}
-                <div className="flex flex-col items-center min-w-[48px]">
+                <div 
+                  className={cn(
+                    "flex flex-col items-center min-w-[48px]",
+                    step.clickable && step.status === 'completed' && "cursor-pointer group"
+                  )}
+                  onClick={() => {
+                    if (step.clickable && step.status === 'completed' && onStatusChange) {
+                      const statusMap: Record<string, JobStatus> = {
+                        'scheduled': 'scheduled',
+                        'in_progress': 'in_progress', 
+                        'done': 'done'
+                      };
+                      if (statusMap[step.id]) {
+                        onStatusChange(statusMap[step.id]);
+                      }
+                    }
+                  }}
+                  title={step.clickable && step.status === 'completed' ? `Click to revert to ${step.label}` : undefined}
+                >
                   <div 
                     className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center transition-all",
                       step.status === 'completed' && "bg-green-500 text-white",
                       step.status === 'current' && "ring-2 ring-offset-2",
-                      step.status === 'upcoming' && "bg-muted text-muted-foreground"
+                      step.status === 'upcoming' && "bg-muted text-muted-foreground",
+                      step.clickable && step.status === 'completed' && "group-hover:ring-2 group-hover:ring-offset-2 group-hover:ring-amber-500"
                     )}
                     style={step.status === 'current' ? { 
                       backgroundColor: 'hsl(var(--trade))', 
@@ -191,6 +245,12 @@ export default function JobFlowWizard({
                   >
                     {step.label}
                   </span>
+                  {/* Timestamp display */}
+                  {step.timestamp && step.status === 'completed' && (
+                    <span className="text-[9px] text-muted-foreground mt-0.5 whitespace-nowrap">
+                      {format(step.timestamp, 'd MMM h:mma').toLowerCase()}
+                    </span>
+                  )}
                 </div>
 
                 {/* Connector Line */}
