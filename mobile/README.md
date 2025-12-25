@@ -106,7 +106,7 @@ mobile/
 Create a `.env` file in the mobile directory:
 
 ```
-EXPO_PUBLIC_API_URL=https://your-tradietrack-backend.replit.dev
+EXPO_PUBLIC_API_URL=https://tradietrack.com.au
 ```
 
 ## Feature Details

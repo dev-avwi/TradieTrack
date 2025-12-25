@@ -427,7 +427,7 @@ export default function BrandingScreen() {
     setIsUploadingLogo(true);
 
     try {
-      const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://ff735932-1a5e-42dc-89e5-b025f7feea5d-00-3hwzylsjthmgp.worf.replit.dev';
+      const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com.au';
       const token = await api.getToken();
       
       const filename = `logo-${Date.now()}.${asset.uri.split('.').pop() || 'jpg'}`;
