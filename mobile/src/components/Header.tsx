@@ -2,7 +2,6 @@ import { useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Image, Animated, Easing, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../lib/store';
 import { useTheme, ThemeColors } from '../lib/theme';
@@ -124,7 +123,7 @@ export function Header({
   const { user, isOwner, roleInfo } = useAuthStore();
   const { colors, isDark, setThemeMode, themeMode } = useTheme();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(colors, isDark, insets.top), [colors, isDark, insets.top]);
+  const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const { unreadCount } = useNotificationsStore();
   const pathname = usePathname();
   const isManager = roleInfo?.roleName === 'MANAGER' || roleInfo?.roleName === 'manager';
@@ -178,8 +177,8 @@ export function Header({
     }).start();
   };
 
-  const headerContent = (
-    <>
+  return (
+    <View style={styles.header}>
       <View style={styles.headerContent}>
         <View style={styles.leftSection}>
           {showBackButton ? (
@@ -259,36 +258,14 @@ export function Header({
       </View>
       
       <View style={styles.headerBorder} />
-    </>
-  );
-
-  // iOS: Use BlurView for Liquid Glass effect
-  if (isIOS) {
-    return (
-      <BlurView 
-        intensity={80} 
-        tint={isDark ? 'dark' : 'light'}
-        style={styles.header}
-      >
-        {headerContent}
-      </BlurView>
-    );
-  }
-
-  // Android: Solid background
-  return (
-    <View style={styles.header}>
-      {headerContent}
     </View>
   );
 }
 
-const createStyles = (colors: ThemeColors, isDark: boolean, topInset: number) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.create({
   header: {
-    // iOS: transparent background for blur effect, Android: solid background
-    backgroundColor: isIOS ? 'transparent' : colors.background,
+    backgroundColor: colors.background,
     paddingTop: isIOS ? topInset : 0,
-    overflow: 'hidden',
   },
   headerContent: {
     flexDirection: 'row',
@@ -300,9 +277,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean, topInset: number) =>
   },
   headerBorder: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: isIOS 
-      ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
-      : colors.border,
+    backgroundColor: colors.border,
   },
   leftSection: {
     flexDirection: 'row',

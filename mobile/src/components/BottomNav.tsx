@@ -1,13 +1,10 @@
 import { useMemo, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, Easing, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, Easing } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useScrollToTop } from '../contexts/ScrollContext';
-
-const isIOS = Platform.OS === 'ios';
 
 interface NavItem {
   title: string;
@@ -127,8 +124,8 @@ function NavButton({
 export function BottomNav() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { colors, isDark } = useTheme();
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { triggerScrollToTop } = useScrollToTop();
 
   const isActive = (item: NavItem) => {
@@ -167,39 +164,21 @@ export function BottomNav() {
   };
 
   const containerStyle = [styles.container, { paddingBottom: Math.max(insets.bottom, 8) }];
-  
-  const navContent = (
-    <View style={styles.navBar}>
-      {navItems.map((item) => (
-        <NavButton
-          key={item.title}
-          item={item}
-          active={isActive(item)}
-          onPress={() => handlePress(item)}
-          colors={colors}
-          styles={styles}
-        />
-      ))}
-    </View>
-  );
 
-  // iOS: Use BlurView for Liquid Glass effect
-  if (isIOS) {
-    return (
-      <BlurView 
-        intensity={80} 
-        tint={isDark ? 'dark' : 'light'}
-        style={containerStyle}
-      >
-        {navContent}
-      </BlurView>
-    );
-  }
-
-  // Android: Solid background
   return (
     <View style={containerStyle}>
-      {navContent}
+      <View style={styles.navBar}>
+        {navItems.map((item) => (
+          <NavButton
+            key={item.title}
+            item={item}
+            active={isActive(item)}
+            onPress={() => handlePress(item)}
+            colors={colors}
+            styles={styles}
+          />
+        ))}
+      </View>
     </View>
   );
 }
@@ -208,27 +187,15 @@ export function getBottomNavHeight(bottomInset: number): number {
   return BOTTOM_NAV_HEIGHT + Math.max(bottomInset, 8);
 }
 
-const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    // iOS: transparent background for blur effect, Android: solid background
-    backgroundColor: isIOS ? 'transparent' : colors.card,
+    backgroundColor: colors.card,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: isIOS 
-      ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
-      : colors.cardBorder,
-    // Subtle shadow on Android only
-    ...(isIOS ? {} : {
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 1,
-      shadowRadius: 8,
-      elevation: 8,
-    }),
-    overflow: 'hidden',
+    borderTopColor: colors.cardBorder,
   },
   navBar: {
     flexDirection: 'row',
