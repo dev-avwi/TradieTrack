@@ -115,6 +115,97 @@ function HeaderIconButton({
   );
 }
 
+function GlassyBackButton({ 
+  onPress, 
+  colors,
+  isDark,
+}: { 
+  onPress: () => void; 
+  colors: ThemeColors;
+  isDark: boolean;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.timing(scale, {
+      toValue: 0.95,
+      duration: 100,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      friction: 5,
+      tension: 400,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const buttonContent = (
+    <View style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    }}>
+      <Feather name="chevron-left" size={18} color={colors.foreground} />
+      <Text style={{ 
+        fontSize: 15, 
+        fontWeight: '500', 
+        color: colors.foreground,
+        letterSpacing: -0.2,
+      }}>Back</Text>
+    </View>
+  );
+
+  if (isIOS) {
+    return (
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        <Animated.View style={{ transform: [{ scale }], overflow: 'hidden', borderRadius: 20 }}>
+          <BlurView 
+            intensity={60} 
+            tint={isDark ? 'dark' : 'light'}
+            style={{
+              borderRadius: 20,
+              overflow: 'hidden',
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+            }}
+          >
+            {buttonContent}
+          </BlurView>
+        </Animated.View>
+      </Pressable>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View style={{
+        transform: [{ scale }],
+        backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+        borderRadius: 20,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
+      }}>
+        {buttonContent}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export function Header({ 
   title,
   showSearch = true, 
@@ -183,11 +274,10 @@ export function Header({
       <View style={styles.headerContent}>
         <View style={styles.leftSection}>
           {showBackButton ? (
-            <HeaderIconButton
-              icon="arrow-left"
+            <GlassyBackButton
               onPress={handleBack}
-              color={colors.foreground}
               colors={colors}
+              isDark={isDark}
             />
           ) : (
             <View style={styles.brandContainer}>
@@ -262,22 +352,26 @@ export function Header({
     </>
   );
 
-  // iOS: Use BlurView for Liquid Glass effect
+  // iOS: Use BlurView for Liquid Glass effect - more transparent and glassy
   if (isIOS) {
     return (
       <BlurView 
-        intensity={80} 
+        intensity={100} 
         tint={isDark ? 'dark' : 'light'}
-        style={styles.header}
+        style={[styles.header, { backgroundColor: 'transparent' }]}
       >
         {headerContent}
       </BlurView>
     );
   }
 
-  // Android: Solid background
+  // Android: Semi-transparent background with slight tint for glassy effect
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { 
+      backgroundColor: isDark 
+        ? 'rgba(20, 20, 25, 0.85)' 
+        : 'rgba(255, 255, 255, 0.85)',
+    }]}>
       {headerContent}
     </View>
   );
