@@ -597,17 +597,18 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     
     .accepted-stamp {
       position: absolute;
-      top: 180px;
-      right: 80px;
-      padding: 8px 16px;
+      top: 350px;
+      right: 40px;
+      padding: 8px 20px;
       border: 3px solid #22c55e;
       color: #22c55e;
-      font-size: 16px;
+      font-size: 18px;
       font-weight: ${template.headingWeight};
       text-transform: uppercase;
-      transform: rotate(-12deg);
-      opacity: 0.7;
+      transform: rotate(-15deg);
+      opacity: 0.5;
       z-index: 10;
+      background: rgba(255, 255, 255, 0.9);
     }
     
     .footer {
