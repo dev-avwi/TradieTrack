@@ -7583,6 +7583,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       processPaymentReceivedAutomation(req.userId, invoice.id)
         .catch(err => console.error('[Automations] Error processing payment received:', err));
       
+      // Auto-create receipt for the payment
+      try {
+        const receiptNumber = await storage.generateReceiptNumber(userContext.effectiveUserId);
+        const gstAmount = parsedAmount / 11; // GST = 1/11 of total (Australian standard)
+        const subtotal = parsedAmount - gstAmount;
+        
+        // Get client info if available
+        let clientId = null;
+        if (invoice.clientId) {
+          clientId = invoice.clientId;
+        }
+        
+        const receipt = await storage.createReceipt({
+          userId: userContext.effectiveUserId,
+          receiptNumber,
+          invoiceId: invoice.id,
+          jobId: invoice.jobId,
+          clientId,
+          amount: parsedAmount.toFixed(2),
+          gstAmount: gstAmount.toFixed(2),
+          subtotal: subtotal.toFixed(2),
+          paymentMethod: paymentMethod,
+          paymentReference: reference || null,
+          description: `Payment for Invoice ${invoice.number || invoice.id.substring(0, 8).toUpperCase()}`,
+          paidAt: new Date(),
+        });
+        
+        // Log receipt creation activity
+        await storage.createActivityLog({
+          userId: userContext.effectiveUserId,
+          entityType: 'receipt',
+          entityId: receipt.id,
+          action: 'created',
+          details: { 
+            receiptNumber,
+            amount: parsedAmount.toFixed(2),
+            invoiceId: invoice.id,
+            jobId: invoice.jobId,
+            paymentMethod
+          }
+        });
+        
+        console.log(`✅ Auto-created receipt ${receiptNumber} for invoice payment`);
+      } catch (receiptError) {
+        console.error('Failed to auto-create receipt:', receiptError);
+        // Don't fail the payment if receipt creation fails
+      }
+      
       res.json({
         ...updatedInvoice,
         message: `Payment of $${parsedAmount.toFixed(2)} recorded via ${paymentMethod}`
@@ -9170,6 +9218,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Payment of $${parseFloat(request.amount).toFixed(2)} received for: ${request.description}`,
         data: { paymentRequestId: request.id },
       });
+      
+      // Auto-create receipt for the online payment
+      try {
+        const receiptNumber = await storage.generateReceiptNumber(request.userId);
+        const amount = parseFloat(request.amount);
+        const gstAmount = parseFloat(request.gstAmount || String(amount / 11));
+        const subtotal = amount - gstAmount;
+        
+        // Get client info from invoice if linked
+        let clientId = null;
+        let jobId = null;
+        if (request.invoiceId) {
+          const invoice = await storage.getInvoice(request.invoiceId, request.userId);
+          if (invoice) {
+            clientId = invoice.clientId;
+            jobId = invoice.jobId;
+          }
+        }
+        
+        const receipt = await storage.createReceipt({
+          userId: request.userId,
+          receiptNumber,
+          invoiceId: request.invoiceId,
+          jobId,
+          clientId,
+          amount: amount.toFixed(2),
+          gstAmount: gstAmount.toFixed(2),
+          subtotal: subtotal.toFixed(2),
+          paymentMethod: paymentMethod || 'card',
+          paymentReference: paymentIntentId,
+          description: request.description || 'Online payment',
+          paidAt: new Date(),
+        });
+        
+        // Log receipt creation activity
+        await storage.createActivityLog({
+          userId: request.userId,
+          entityType: 'receipt',
+          entityId: receipt.id,
+          action: 'created',
+          details: { 
+            receiptNumber,
+            amount: amount.toFixed(2),
+            invoiceId: request.invoiceId,
+            paymentMethod: 'online'
+          }
+        });
+        
+        console.log(`✅ Auto-created receipt ${receiptNumber} for online payment`);
+      } catch (receiptError) {
+        console.error('Failed to auto-create receipt for online payment:', receiptError);
+        // Don't fail the payment confirmation if receipt creation fails
+      }
       
       res.json({ success: true });
     } catch (error) {
