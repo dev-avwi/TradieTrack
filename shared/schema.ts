@@ -378,6 +378,10 @@ export const jobs = pgTable("jobs", {
   recurrenceEndDate: timestamp("recurrence_end_date"), // When to stop recurring
   parentJobId: varchar("parent_job_id"), // Links to original recurring job
   nextRecurrenceDate: timestamp("next_recurrence_date"), // When to create next occurrence
+  // Stage timestamps for tracking when each phase was reached
+  startedAt: timestamp("started_at"), // When job moved to in_progress
+  completedAt: timestamp("completed_at"), // When job moved to done
+  invoicedAt: timestamp("invoiced_at"), // When job moved to invoiced
   // Geofence settings for automatic time tracking
   geofenceEnabled: boolean("geofence_enabled").default(false),
   geofenceRadius: integer("geofence_radius").default(100), // Radius in meters (default 100m)

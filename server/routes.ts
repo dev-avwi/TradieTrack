@@ -6215,6 +6215,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Auto-set stage timestamps when status changes
+      if (data.status && existingJob && data.status !== existingJob.status) {
+        const now = new Date();
+        if (data.status === 'in_progress' && !existingJob.startedAt) {
+          updateData.startedAt = now;
+        } else if (data.status === 'done' && !existingJob.completedAt) {
+          updateData.completedAt = now;
+        } else if (data.status === 'invoiced' && !existingJob.invoicedAt) {
+          updateData.invoicedAt = now;
+        }
+        // Clear timestamps if going back to earlier status (allow rollback)
+        if (data.status === 'pending') {
+          updateData.startedAt = null;
+          updateData.completedAt = null;
+          updateData.invoicedAt = null;
+        } else if (data.status === 'scheduled') {
+          updateData.startedAt = null;
+          updateData.completedAt = null;
+          updateData.invoicedAt = null;
+        } else if (data.status === 'in_progress') {
+          updateData.completedAt = null;
+          updateData.invoicedAt = null;
+        } else if (data.status === 'done') {
+          updateData.invoicedAt = null;
+        }
+      }
+      
       // Debug logging for updateData before saving
       console.log('[PATCH /api/jobs/:id] updateData being saved:', JSON.stringify(updateData, null, 2));
       console.log('[PATCH /api/jobs/:id] assignedTo in updateData:', updateData.assignedTo);
@@ -6341,8 +6368,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "You can only update status on jobs assigned to you" });
       }
       
-      // Update job status
-      const job = await storage.updateJob(req.params.id, effectiveUserId, { status });
+      // Build update data with stage timestamps
+      const now = new Date();
+      const updateData: any = { status };
+      
+      // Auto-set stage timestamps when status changes
+      if (status !== existingJob.status) {
+        if (status === 'in_progress' && !existingJob.startedAt) {
+          updateData.startedAt = now;
+        } else if (status === 'done' && !existingJob.completedAt) {
+          updateData.completedAt = now;
+        } else if (status === 'invoiced' && !existingJob.invoicedAt) {
+          updateData.invoicedAt = now;
+        }
+        // Clear timestamps if going back to earlier status
+        if (status === 'pending' || status === 'scheduled') {
+          updateData.startedAt = null;
+          updateData.completedAt = null;
+          updateData.invoicedAt = null;
+        } else if (status === 'in_progress') {
+          updateData.completedAt = null;
+          updateData.invoicedAt = null;
+        } else if (status === 'done') {
+          updateData.invoicedAt = null;
+        }
+      }
+      
+      // Update job status with timestamps
+      const job = await storage.updateJob(req.params.id, effectiveUserId, updateData);
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
       }
