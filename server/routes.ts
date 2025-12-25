@@ -14788,6 +14788,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get client insights for a conversation (for ServiceM8-style sidebar)
+  app.get("/api/sms/conversations/:id/client-insights", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userContext = await getUserContext(req.userId);
+      
+      // Get the conversation to find clientId
+      const conversation = await storage.getSmsConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      
+      // Verify the conversation belongs to the user's business
+      if (conversation.businessOwnerId !== userContext.effectiveUserId) {
+        return res.status(403).json({ error: 'Not authorized to access this conversation' });
+      }
+      
+      // If no linked client, return null client with empty arrays
+      if (!conversation.clientId) {
+        return res.json({
+          client: null,
+          outstandingInvoices: [],
+          recentJobs: [],
+          totalOutstanding: 0
+        });
+      }
+      
+      // Get client details
+      const client = await storage.getClient(conversation.clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.json({
+          client: null,
+          outstandingInvoices: [],
+          recentJobs: [],
+          totalOutstanding: 0
+        });
+      }
+      
+      // Get outstanding invoices (pending, sent, overdue status)
+      const allInvoices = await storage.getInvoices(userContext.effectiveUserId);
+      const outstandingInvoices = allInvoices
+        .filter(inv => 
+          inv.clientId === client.id && 
+          ['pending', 'sent', 'overdue'].includes(inv.status || '')
+        )
+        .slice(0, 5)
+        .map(inv => ({
+          id: inv.id,
+          number: inv.number,
+          total: inv.total,
+          status: inv.status,
+          dueDate: inv.dueDate
+        }));
+      
+      // Calculate total outstanding
+      const totalOutstanding = outstandingInvoices.reduce((sum, inv) => {
+        return sum + parseFloat(String(inv.total) || '0');
+      }, 0);
+      
+      // Get recent jobs (last 5)
+      const clientJobs = await storage.getJobsForClient(client.id, userContext.effectiveUserId);
+      const recentJobs = clientJobs
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+        .slice(0, 5)
+        .map(job => ({
+          id: job.id,
+          title: job.title,
+          status: job.status,
+          scheduledAt: job.scheduledAt,
+          createdAt: job.createdAt
+        }));
+      
+      res.json({
+        client: {
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          phone: client.phone,
+          address: client.address
+        },
+        outstandingInvoices,
+        recentJobs,
+        totalOutstanding
+      });
+    } catch (error: any) {
+      console.error('Error fetching client insights:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // Send SMS/MMS to a client
   app.post("/api/sms/send", requireAuth, async (req: any, res) => {
     try {

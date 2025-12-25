@@ -69,6 +69,11 @@ Key architectural decisions and features include:
     - **ChatHub**: Skeleton loaders, offline banners ("You're offline — messages will send when reconnected"), tradie-focused empty states, job context cards for SMS, "last seen" indicators
     - **Reports**: Executive summary with Australian vernacular ("You've banked $X"), GST/BAS readiness badges (Q3 FY 2024-25), "Last refreshed" timestamp, actionable insights ("Chase overdue invoices"), skeleton loaders, export toasts
     - **Integrations/Email**: Verified status badge, "Send Test Email" CTA, Australian compliance tips (ABN, GST, ATO requirements), setup checklist with visual checkmarks
+-   **ServiceM8-Style Chat Enhancements (Dec 2024)**: Enhanced SMS chat experience with:
+    - **Client Insights Panel**: Responsive side panel showing client details, outstanding invoices, recent jobs. Opens via Info button in SMS header, uses Sheet on mobile (slide-over) and fixed panel on desktop. API endpoint: `GET /api/sms/conversations/:id/client-insights`
+    - **Quick Actions Bar**: Horizontal scrollable row above input with Call, Create Job, and Create Quote buttons. Links to relevant pages with client/phone pre-filled
+    - **Quick Reply Templates**: Australian-friendly pre-written messages ("On my way!", "Running late", "Job done", "Thanks", "Confirm", "Quote sent") that populate the input field with one tap
+    - **Floating AI Chat**: Now hidden on `/chat` pages to prevent overlap with chat composer
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)

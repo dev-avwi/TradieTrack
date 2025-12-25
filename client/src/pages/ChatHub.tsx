@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import ClientInsightsPanel from "@/components/ClientInsightsPanel";
 import { 
   Users, 
   Loader2, 
@@ -34,6 +36,7 @@ import {
   User,
   X,
   Trash2,
+  Info,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -178,6 +181,15 @@ const STATUS_LABELS: Record<string, string> = {
   invoiced: 'Invoiced',
 };
 
+const QUICK_REPLY_TEMPLATES = [
+  { id: 'omw', label: "On my way!", message: "G'day! Just letting you know I'm on my way now. Should be there in about 20 minutes." },
+  { id: 'running-late', label: "Running late", message: "Apologies, I'm running a bit behind schedule. Will be there as soon as I can - should only be another 15-20 minutes." },
+  { id: 'job-done', label: "Job done", message: "All done! The job's been completed. Let me know if you have any questions or need anything else." },
+  { id: 'thanks', label: "Thanks", message: "Thanks for your business mate! Really appreciate it. Don't hesitate to reach out if you need anything." },
+  { id: 'confirm', label: "Confirm", message: "Just confirming our appointment. Please reply to let me know you're still available, or give us a bell if you need to reschedule." },
+  { id: 'quote-sent', label: "Quote sent", message: "I've sent through your quote. Have a look and let me know if you've got any questions or want to go ahead." },
+];
+
 function ConversationSkeleton() {
   return (
     <div className="divide-y">
@@ -288,6 +300,7 @@ export default function ChatHub() {
   const [selectedSmsConversation, setSelectedSmsConversation] = useState<SmsConversation | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [smsNewMessage, setSmsNewMessage] = useState('');
+  const [showClientInsights, setShowClientInsights] = useState(false);
   
   // New SMS dialog state
   const [newSmsDialogOpen, setNewSmsDialogOpen] = useState(false);
@@ -1223,76 +1236,85 @@ export default function ChatHub() {
   // SMS Chat View
   if (view === 'sms-chat' && selectedSmsConversation) {
     return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="shrink-0 p-4 border-b bg-background flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={handleBack} data-testid="button-back-sms">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-            <Phone className="h-5 w-5 text-green-600" />
+      <div className="flex h-full overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <div className="shrink-0 p-4 border-b bg-background flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={handleBack} data-testid="button-back-sms">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+              <Phone className="h-5 w-5 text-green-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold truncate">
+                {selectedSmsConversation.clientName || selectedSmsConversation.clientPhone}
+              </h2>
+              <p className="text-xs text-muted-foreground truncate">
+                {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS Conversation'}
+              </p>
+            </div>
+            <Badge variant="outline" className="shrink-0 gap-1">
+              <Phone className="h-3 w-3" />
+              SMS
+            </Badge>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setShowClientInsights(true)}
+              data-testid="button-show-client-insights"
+            >
+              <Info className="h-5 w-5" />
+            </Button>
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="font-semibold truncate">
-              {selectedSmsConversation.clientName || selectedSmsConversation.clientPhone}
-            </h2>
-            <p className="text-xs text-muted-foreground truncate">
-              {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS Conversation'}
-            </p>
-          </div>
-          <Badge variant="outline" className="shrink-0 gap-1">
-            <Phone className="h-3 w-3" />
-            SMS
-          </Badge>
-        </div>
 
-        {/* Offline Banner */}
-        <OfflineBanner isConnected={smsSocketConnected} />
+          {/* Offline Banner */}
+          <OfflineBanner isConnected={smsSocketConnected} />
 
-        {/* Job Context Card for linked jobs */}
-        {selectedSmsConversation.jobId && (() => {
-          const linkedJob = jobs.find(j => j.id === selectedSmsConversation.jobId);
-          if (linkedJob) {
-            return (
-              <JobContextCard 
-                job={linkedJob} 
-                onViewJob={() => setLocation(`/jobs/${selectedSmsConversation.jobId}`)} 
-              />
-            );
-          }
-          return null;
-        })()}
+          {/* Job Context Card for linked jobs */}
+          {selectedSmsConversation.jobId && (() => {
+            const linkedJob = jobs.find(j => j.id === selectedSmsConversation.jobId);
+            if (linkedJob) {
+              return (
+                <JobContextCard 
+                  job={linkedJob} 
+                  onViewJob={() => setLocation(`/jobs/${selectedSmsConversation.jobId}`)} 
+                />
+              );
+            }
+            return null;
+          })()}
 
-        {/* Create Client Banner for unknown numbers */}
-        {isUnknownClient && selectedSmsConversation.id !== 'new' && (
-          <Card className="shrink-0 mx-4 mt-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-            <CardContent className="py-3 px-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                    <User className="h-5 w-5 text-blue-600" />
+          {/* Create Client Banner for unknown numbers */}
+          {isUnknownClient && selectedSmsConversation.id !== 'new' && (
+            <Card className="shrink-0 mx-4 mt-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+              <CardContent className="py-3 px-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                      <User className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">Unknown contact</p>
+                      <p className="text-xs text-muted-foreground">
+                        Save this number as a new client
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm">Unknown contact</p>
-                    <p className="text-xs text-muted-foreground">
-                      Save this number as a new client
-                    </p>
-                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleOpenCreateClientDialog}
+                    className="shrink-0 gap-1.5"
+                    data-testid="button-create-client-from-sms"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Create Client
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={handleOpenCreateClientDialog}
-                  className="shrink-0 gap-1.5"
-                  data-testid="button-create-client-from-sms"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Create Client
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          )}
 
-        <div className="flex-1 overflow-y-auto px-4 py-2">
+          <div className="flex-1 overflow-y-auto px-4 py-2">
           {smsMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-8">
               <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -1429,27 +1451,125 @@ export default function ChatHub() {
           )}
         </div>
 
-        <div className="shrink-0 p-4 border-t bg-background">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Type an SMS message..."
-              value={smsNewMessage}
-              onChange={(e) => setSmsNewMessage(e.target.value)}
-              onKeyPress={handleSmsKeyPress}
-              className="flex-1"
-              data-testid="input-sms-message"
-            />
-            <Button
-              onClick={handleSendSms}
-              disabled={!smsNewMessage.trim() || sendSmsMutation.isPending}
-              size="icon"
-              className="bg-green-600 hover:bg-green-700"
-              data-testid="button-send-sms"
+          {/* Quick Reply Templates */}
+          <div className="shrink-0 px-4 pt-3 flex items-center gap-2 overflow-x-auto no-scrollbar border-t">
+            <span className="text-xs text-muted-foreground shrink-0">Quick:</span>
+            {QUICK_REPLY_TEMPLATES.map((template) => (
+              <Button
+                key={template.id}
+                variant="secondary"
+                size="sm"
+                className="shrink-0 text-xs"
+                onClick={() => setSmsNewMessage(template.message)}
+                data-testid={`quick-reply-${template.id}`}
+              >
+                {template.label}
+              </Button>
+            ))}
+          </div>
+
+          {/* Quick Actions Bar */}
+          <div className="shrink-0 px-4 pt-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <a href={`tel:${selectedSmsConversation.clientPhone}`}>
+              <Button variant="outline" size="sm" className="gap-1.5 shrink-0" data-testid="quick-action-call">
+                <Phone className="h-3.5 w-3.5" />
+                Call
+              </Button>
+            </a>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1.5 shrink-0"
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (selectedSmsConversation.clientId) {
+                  params.set('clientId', selectedSmsConversation.clientId);
+                } else {
+                  params.set('phone', selectedSmsConversation.clientPhone);
+                }
+                setLocation(`/jobs/new?${params.toString()}`);
+              }}
+              data-testid="quick-action-create-job"
             >
-              <Send className="h-4 w-4" />
+              <Briefcase className="h-3.5 w-3.5" />
+              Create Job
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1.5 shrink-0"
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (selectedSmsConversation.clientId) {
+                  params.set('clientId', selectedSmsConversation.clientId);
+                } else {
+                  params.set('phone', selectedSmsConversation.clientPhone);
+                }
+                setLocation(`/quotes/new?${params.toString()}`);
+              }}
+              data-testid="quick-action-create-quote"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Create Quote
             </Button>
           </div>
+
+          <div className="shrink-0 p-4 border-t bg-background">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Type an SMS message..."
+                value={smsNewMessage}
+                onChange={(e) => setSmsNewMessage(e.target.value)}
+                onKeyPress={handleSmsKeyPress}
+                className="flex-1"
+                data-testid="input-sms-message"
+              />
+              <Button
+                onClick={handleSendSms}
+                disabled={!smsNewMessage.trim() || sendSmsMutation.isPending}
+                size="icon"
+                className="bg-green-600 hover:bg-green-700"
+                data-testid="button-send-sms"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
+
+        {/* Desktop: Side panel when showClientInsights is true */}
+        {showClientInsights && (
+          <div className="hidden md:flex w-[320px] shrink-0 border-l bg-background" data-testid="desktop-insights-panel">
+            <ClientInsightsPanel
+              clientId={selectedSmsConversation.clientId}
+              clientPhone={selectedSmsConversation.clientPhone}
+              conversationId={selectedSmsConversation.id}
+              onClose={() => setShowClientInsights(false)}
+              onNavigateToJob={(jobId) => { setShowClientInsights(false); setLocation(`/jobs/${jobId}`); }}
+              onNavigateToInvoice={(invoiceId) => { setShowClientInsights(false); setLocation(`/invoices/${invoiceId}`); }}
+              onCreateJob={() => { setShowClientInsights(false); setLocation('/jobs/new?clientId=' + selectedSmsConversation.clientId); }}
+              onCreateQuote={() => { setShowClientInsights(false); setLocation('/quotes/new?clientId=' + selectedSmsConversation.clientId); }}
+            />
+          </div>
+        )}
+
+        {/* Mobile: Sheet slides in from the right */}
+        <Sheet open={showClientInsights} onOpenChange={setShowClientInsights}>
+          <SheetContent side="right" className="w-[85vw] sm:w-[400px] p-0 md:hidden" hideClose>
+            <ClientInsightsPanel
+              clientId={selectedSmsConversation.clientId}
+              clientPhone={selectedSmsConversation.clientPhone}
+              conversationId={selectedSmsConversation.id}
+              onClose={() => setShowClientInsights(false)}
+              onNavigateToJob={(jobId) => { setShowClientInsights(false); setLocation(`/jobs/${jobId}`); }}
+              onNavigateToInvoice={(invoiceId) => { setShowClientInsights(false); setLocation(`/invoices/${invoiceId}`); }}
+              onCreateJob={() => { setShowClientInsights(false); setLocation('/jobs/new?clientId=' + selectedSmsConversation.clientId); }}
+              onCreateQuote={() => { setShowClientInsights(false); setLocation('/quotes/new?clientId=' + selectedSmsConversation.clientId); }}
+            />
+          </SheetContent>
+        </Sheet>
       </div>
     );
   }
