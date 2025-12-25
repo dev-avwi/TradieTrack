@@ -276,8 +276,11 @@ export default function LoginScreen() {
                     setPassword(text);
                     clearError();
                   }}
-                  secureTextEntry
+                  secureTextEntry={true}
+                  textContentType="password"
                   autoComplete="password"
+                  autoCorrect={false}
+                  autoCapitalize="none"
                   testID="input-password"
                 />
               </View>
