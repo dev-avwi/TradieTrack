@@ -7,18 +7,22 @@ type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface ThemeColors {
   background: string;
+  backgroundGlass: string;
   card: string;
+  cardGlass: string;
   cardBorder: string;
   cardHover: string;
   muted: string;
   primary: string;
   primaryDark: string;
   primaryLight: string;
+  primaryLightGlass: string;
   primaryForeground: string;
   foreground: string;
   mutedForeground: string;
   secondaryText: string;
   border: string;
+  borderGlass: string;
   borderLight: string;
   secondary: string;
   secondaryForeground: string;
@@ -290,18 +294,22 @@ function generateBrandPalette(brandColor: string, isDark: boolean): Partial<Them
 
 const lightColors: ThemeColors = {
   background: '#fafafa',
+  backgroundGlass: 'rgba(250, 250, 250, 0.75)',
   card: '#f5f5f5',
+  cardGlass: 'rgba(245, 245, 245, 0.8)',
   cardBorder: '#dde1e8',
   cardHover: '#f0f0f0',
   muted: '#ededed',
   primary: '#1f2733',
   primaryDark: '#171a1d',
   primaryLight: '#e8eaed',
+  primaryLightGlass: 'rgba(232, 234, 237, 0.6)',
   primaryForeground: '#f8fbfe',
   foreground: '#1f2733',
   mutedForeground: '#6b7280',
   secondaryText: '#4a5159',
   border: '#e5e7eb',
+  borderGlass: 'rgba(0, 0, 0, 0.08)',
   borderLight: '#dde1e8',
   secondary: '#e3e3e3',
   secondaryForeground: '#1f2733',
@@ -348,18 +356,22 @@ const lightColors: ThemeColors = {
 
 const darkColors: ThemeColors = {
   background: '#121417',
+  backgroundGlass: 'rgba(18, 20, 23, 0.75)',
   card: '#181b20',
+  cardGlass: 'rgba(24, 27, 32, 0.8)',
   cardBorder: '#232730',
   cardHover: '#1e2228',
   muted: '#1e2228',
   primary: '#eef2f5',
   primaryDark: '#d4dce3',
   primaryLight: '#262a32',
+  primaryLightGlass: 'rgba(38, 42, 50, 0.6)',
   primaryForeground: '#111418',
   foreground: '#eef2f5',
   mutedForeground: '#9aa0a8',
   secondaryText: '#c8ced6',
   border: '#22262e',
+  borderGlass: 'rgba(255, 255, 255, 0.12)',
   borderLight: '#282d36',
   secondary: '#252a32',
   secondaryForeground: '#eef2f5',
