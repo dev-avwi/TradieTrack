@@ -53,6 +53,73 @@ function getCustomizedTemplate(templateId: TemplateId, customization?: TemplateC
 // This must match DOCUMENT_ACCENT_COLOR in client/src/lib/document-templates.ts
 const DOCUMENT_ACCENT_COLOR = '#1e3a5f';
 
+// Interface for custom template settings stored in businessSettings.documentTemplateSettings
+interface CustomTemplateSettings {
+  brandColors?: {
+    primary?: string;
+    secondary?: string;
+    accent?: string;
+  };
+  typography?: {
+    style?: 'modern' | 'professional' | 'minimal';
+  };
+  layout?: {
+    header?: { includes_company_name?: boolean; includes_abn?: boolean; includes_contact_info?: boolean; };
+    totals?: { position?: string; shows_subtotal?: boolean; shows_gst?: boolean; shows_total?: boolean; };
+    footer?: { has_terms?: boolean; has_payment_details?: boolean; has_signature_block?: boolean; };
+  };
+  logo?: {
+    position?: 'top-left' | 'top-center' | 'top-right' | 'none';
+    approximate_size?: 'small' | 'medium' | 'large' | 'none';
+  };
+}
+
+// Get template and accent color from business settings (including custom uploaded templates)
+// This function merges both legacy TemplateCustomization fields AND new AI-analyzed CustomTemplateSettings
+function getTemplateFromBusinessSettings(business: BusinessSettings): { template: DocumentTemplate; accentColor: string } {
+  const settings = business.documentTemplateSettings as (TemplateCustomization & CustomTemplateSettings) | null;
+  
+  // Determine base template ID
+  let baseTemplateId: TemplateId = 'professional';
+  
+  // Check AI-analyzed typography style first, then fall back to documentTemplate setting
+  if (settings?.typography?.style) {
+    const style = settings.typography.style;
+    if (style === 'modern' || style === 'professional' || style === 'minimal') {
+      baseTemplateId = style;
+    }
+  } else if (business.documentTemplate) {
+    const storedTemplate = business.documentTemplate as string;
+    if (storedTemplate === 'modern' || storedTemplate === 'professional' || storedTemplate === 'minimal') {
+      baseTemplateId = storedTemplate;
+    }
+  }
+  
+  // Build TemplateCustomization from both legacy fields and new AI-analyzed settings
+  const customization: TemplateCustomization = {};
+  
+  // Preserve legacy customization fields if they exist
+  if (settings?.tableStyle) customization.tableStyle = settings.tableStyle;
+  if (settings?.noteStyle) customization.noteStyle = settings.noteStyle;
+  if (settings?.headerBorderWidth) customization.headerBorderWidth = settings.headerBorderWidth;
+  if (settings?.showHeaderDivider !== undefined) customization.showHeaderDivider = settings.showHeaderDivider;
+  if (settings?.bodyWeight) customization.bodyWeight = settings.bodyWeight;
+  if (settings?.headingWeight) customization.headingWeight = settings.headingWeight;
+  
+  // Determine accent color with proper fallback chain:
+  // 1. AI-analyzed brandColors.primary
+  // 2. Legacy accentColor field
+  // 3. Default navy color
+  if (settings?.brandColors?.primary) {
+    customization.accentColor = settings.brandColors.primary;
+  } else if (settings?.accentColor) {
+    customization.accentColor = settings.accentColor;
+  }
+  
+  // Use the existing getCustomizedTemplate to apply all customizations properly
+  return getCustomizedTemplate(baseTemplateId, Object.keys(customization).length > 0 ? customization : undefined);
+}
+
 // All templates use Inter font for consistent modern appearance
 const INTER_FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
@@ -608,9 +675,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
 
 export const generateQuotePDF = (data: QuoteWithDetails): string => {
   const { quote, lineItems, client, business, job, acceptanceUrl } = data;
-  const templateId = ((business as any).documentTemplate || 'minimal') as TemplateId;
-  const templateCustomization = (business as any).documentTemplateSettings as TemplateCustomization | undefined;
-  const { template, accentColor } = getCustomizedTemplate(templateId, templateCustomization);
+  // Use new unified template extraction that supports both predefined and custom AI-analyzed templates
+  const { template, accentColor } = getTemplateFromBusinessSettings(business);
   
   const subtotal = parseFloat(quote.subtotal as unknown as string);
   const gstAmount = parseFloat(quote.gstAmount as unknown as string);
@@ -883,9 +949,8 @@ ${(quote as any).acceptanceIp ? `IP Address: ${(quote as any).acceptanceIp}` : '
 
 export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
   const { invoice, lineItems, client, business, job, timeEntries, paymentUrl } = data;
-  const templateId = ((business as any).documentTemplate || 'minimal') as TemplateId;
-  const templateCustomization = (business as any).documentTemplateSettings as TemplateCustomization | undefined;
-  const { template, accentColor } = getCustomizedTemplate(templateId, templateCustomization);
+  // Use new unified template extraction that supports both predefined and custom AI-analyzed templates
+  const { template, accentColor } = getTemplateFromBusinessSettings(business);
   
   // Calculate time tracking totals if present
   const totalMinutes = timeEntries?.reduce((sum, entry) => sum + (entry.duration || 0), 0) || 0;
