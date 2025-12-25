@@ -41,13 +41,7 @@ Key architectural decisions and features include:
 -   **Team Management Hub**: Comprehensive interface for owners/managers to manage team members, including location sharing toggles, job assignment, and permissions editing.
 -   **Workflow-Integrated Smart Actions**: Contextual automation suggestions with user approval.
 -   **Mobile App (React Native/Expo)**: Full API integration, Zustand for state management, SQLite-based offline mode with background sync, and permission-aware navigation. Supports native email integration and AI Photo Analysis with streaming. Team Management and Integrations screens mirror web functionality.
-    - **iOS 26 Spatial Design System** (Dec 2024): Comprehensive ServiceM8-quality design language with:
-      - **Design Tokens** (`design-tokens.ts`): Standardized radii (xs:8, sm:8, md:12, lg:16, xl:20), spacing (xs:4, sm:8, md:12, lg:16, xl:20, 2xl:24, 3xl:32, 4xl:40), motion configs (spring animations: damping:20, stiffness:280), elevation tiers
-      - **Glass Navigation**: BlurView-based Header and BottomNav with iOS Liquid Glass effect (intensity 80), sliding pill indicator for active tab
-      - **Updated UI Primitives**: Card, Button, Badge, Input, DatePicker, ColorPicker, LogoPicker, StatusBadge, PressableCard, AnimatedPressable all using design tokens
-      - **SwipeableRow Component**: iOS-style swipe-to-reveal actions with pan gestures, spring animations, haptic feedback, applied to Jobs, Invoices, Quotes, Clients lists
-      - **PageTransition Component**: Fluid iOS 26-style screen transitions for navigation
-      - **Applied to 40+ screens**: Dashboard, Jobs, Quotes, Invoices, Schedule, Clients, Chat, Settings, Team Management, AI Assistant, Reports, Integrations, and more
+    - **iOS Liquid Glass UI**: Native Apple-style translucent navigation using expo-blur BlurView (intensity 80) for both header and bottom tab bar. Content scrolls underneath for authentic iOS frosted glass effect. Android maintains solid Material Design backgrounds for platform consistency. HEADER_HEIGHT (56px) centralized in design-tokens.ts with platform-aware pageShell padding.
 -   **Comprehensive Offline Mode**: Full offline-first support for all major workflows:
     - **Job Management**: Create, edit, status updates (pending→scheduled→in_progress→done→invoiced), notes editing, geofence settings (enabled, radius, auto clock in/out)
     - **Time Tracking**: Start/stop timer entries offline with local timestamps

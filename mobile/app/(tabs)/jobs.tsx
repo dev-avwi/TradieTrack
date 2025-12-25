@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -8,9 +8,7 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Dimensions,
-  Alert,
-  Linking
+  Dimensions
 } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -19,8 +17,6 @@ import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
-import { SwipeableRow, actionColors, useSwipeableScrollRef } from '../../src/components/ui';
-import Animated from 'react-native-reanimated';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
@@ -159,12 +155,12 @@ function JobCard({
 export default function JobsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const swipeableScrollRef = useSwipeableScrollRef();
+  const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
   
   useEffect(() => {
     if (scrollToTopTrigger > 0) {
-      swipeableScrollRef.current?.scrollTo({ y: 0, animated: true });
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
     }
   }, [scrollToTopTrigger]);
   
@@ -279,63 +275,10 @@ export default function JobsScreen() {
   // Upcoming/today jobs first, then past jobs at the bottom
   const sortedJobs = [...upcomingJobs, ...pastJobs];
 
-  const handleCallClient = useCallback((job: any) => {
-    const client = clients.find(c => c.id === job.clientId);
-    if (client?.phone) {
-      Linking.openURL(`tel:${client.phone}`);
-    } else {
-      Alert.alert('No Phone Number', 'This client does not have a phone number on file.');
-    }
-  }, [clients]);
-
-  const handleEditJob = useCallback((jobId: string) => {
-    router.push(`/more/create-job?editId=${jobId}`);
-  }, []);
-
-  const handleArchiveJob = useCallback((job: any) => {
-    Alert.alert(
-      'Archive Job',
-      `Are you sure you want to archive "${job.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Archive', 
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Archived', 'Job has been archived successfully.');
-          }
-        }
-      ]
-    );
-  }, []);
-
-  const getSwipeActions = useCallback((job: any) => {
-    return [
-      {
-        key: 'call',
-        icon: <Feather name="phone" size={22} color="#fff" />,
-        color: actionColors.call,
-        onPress: () => handleCallClient(job),
-      },
-      {
-        key: 'edit',
-        icon: <Feather name="edit-2" size={22} color="#fff" />,
-        color: actionColors.edit,
-        onPress: () => handleEditJob(job.id),
-      },
-      {
-        key: 'archive',
-        icon: <Feather name="archive" size={22} color="#fff" />,
-        color: actionColors.archive,
-        onPress: () => handleArchiveJob(job),
-      },
-    ];
-  }, [handleCallClient, handleEditJob, handleArchiveJob]);
-
   return (
     <View style={styles.container}>
-      <Animated.ScrollView 
-        ref={swipeableScrollRef}
+      <ScrollView 
+        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -444,21 +387,16 @@ export default function JobsScreen() {
           ) : (
             <View style={styles.jobsGrid}>
               {sortedJobs.map((job) => (
-                <SwipeableRow
+                <JobCard
                   key={job.id}
-                  id={`job-${job.id}`}
-                  rightActions={getSwipeActions(job)}
-                >
-                  <JobCard
-                    job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
-                    onPress={() => router.push(`/job/${job.id}`)}
-                  />
-                </SwipeableRow>
+                  job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
+                  onPress={() => router.push(`/job/${job.id}`)}
+                />
               ))}
             </View>
           )}
         </View>
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }

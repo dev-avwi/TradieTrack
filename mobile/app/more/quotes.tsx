@@ -8,7 +8,6 @@ import {
   StyleSheet,
   TextInput,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -17,8 +16,6 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
-import { SwipeableRow, actionColors, useSwipeableScrollRef } from '../../src/components/ui';
-import Animated from 'react-native-reanimated';
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected';
 
@@ -140,7 +137,6 @@ function QuoteCard({
 export default function QuotesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const swipeableScrollRef = useSwipeableScrollRef();
   
   const { quotes, fetchQuotes, isLoading } = useQuotesStore();
   const { clients, fetchClients } = useClientsStore();
@@ -195,8 +191,7 @@ export default function QuotesScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
-        <Animated.ScrollView
-          ref={swipeableScrollRef}
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
@@ -300,84 +295,18 @@ export default function QuotesScreen() {
               </View>
             ) : (
               <View style={styles.quotesList}>
-                {sortedQuotes.map((quote) => {
-                    const clientName = getClientName(quote.clientId);
-                    
-                    const handleSendQuote = () => {
-                      Alert.alert(
-                        'Send Quote',
-                        `Send quote ${quote.quoteNumber || 'Draft'} to ${clientName}?`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { 
-                            text: 'Send', 
-                            onPress: () => {
-                              Alert.alert('Success', 'Quote sent to client email');
-                            }
-                          },
-                        ]
-                      );
-                    };
-
-                    const handleEditQuote = () => {
-                      router.push(`/more/quote/${quote.id}`);
-                    };
-
-                    const handleConvertToInvoice = () => {
-                      Alert.alert(
-                        'Convert to Invoice',
-                        `Convert quote ${quote.quoteNumber || 'Draft'} to an invoice?`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { 
-                            text: 'Convert', 
-                            onPress: () => {
-                              Alert.alert('Success', 'Quote converted to invoice');
-                            }
-                          },
-                        ]
-                      );
-                    };
-
-                    const rightActions = [
-                      {
-                        key: 'send',
-                        icon: <Feather name="send" size={22} color="#FFFFFF" />,
-                        color: actionColors.archive,
-                        onPress: handleSendQuote,
-                      },
-                      {
-                        key: 'edit',
-                        icon: <Feather name="edit" size={22} color="#FFFFFF" />,
-                        color: actionColors.edit,
-                        onPress: handleEditQuote,
-                      },
-                      {
-                        key: 'convert',
-                        icon: <Feather name="check-circle" size={22} color="#FFFFFF" />,
-                        color: actionColors.call,
-                        onPress: handleConvertToInvoice,
-                      },
-                    ];
-
-                    return (
-                      <SwipeableRow
-                        key={quote.id}
-                        id={quote.id}
-                        rightActions={rightActions}
-                      >
-                        <QuoteCard
-                          quote={quote}
-                          clientName={clientName}
-                          onPress={() => router.push(`/more/quote/${quote.id}`)}
-                        />
-                      </SwipeableRow>
-                  );
-                })}
+                {sortedQuotes.map((quote) => (
+                  <QuoteCard
+                    key={quote.id}
+                    quote={quote}
+                    clientName={getClientName(quote.clientId)}
+                    onPress={() => router.push(`/more/quote/${quote.id}`)}
+                  />
+                ))}
               </View>
             )}
           </View>
-        </Animated.ScrollView>
+        </ScrollView>
       </View>
     </>
   );
@@ -555,11 +484,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
-  },
-  quoteCardAccent: {
-    width: 4,
-    borderTopLeftRadius: radius.lg,
-    borderBottomLeftRadius: radius.lg,
   },
   quoteCardContent: {
     flex: 1,

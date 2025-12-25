@@ -102,7 +102,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   statIcon: {
     width: 40,
     height: 40,
-    borderRadius: radius.xl,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,

@@ -43,7 +43,10 @@ function getVariantStyle(
       return {
         backgroundColor: colors.card,
         borderWidth: 0,
-        ...shadows.md,
+        ...Platform.select({
+          ios: shadows.md,
+          android: { elevation: shadows.md.elevation },
+        }),
       };
     case 'outlined':
       return {
@@ -61,7 +64,10 @@ function getVariantStyle(
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.cardBorder,
-        ...shadows.sm,
+        ...Platform.select({
+          ios: shadows.sm,
+          android: { elevation: shadows.sm.elevation },
+        }),
       };
   }
 }
@@ -125,32 +131,32 @@ export function CardFooter({ children, style }: CardFooterProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   cardHeader: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 8,
     gap: 4,
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '600',
-    letterSpacing: -0.4,
-    lineHeight: 26,
+    letterSpacing: -0.3,
+    lineHeight: 28,
   },
   cardDescription: {
     fontSize: 14,
     lineHeight: 20,
   },
   cardContent: {
-    padding: 16,
+    padding: 20,
     paddingTop: 0,
   },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
     paddingTop: 0,
     gap: 8,
   },

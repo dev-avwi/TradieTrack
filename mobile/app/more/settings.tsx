@@ -20,7 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { API_URL, api } from '../../src/lib/api';
+import { API_URL } from '../../src/lib/api';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import AppTour from '../../src/components/AppTour';
 import { Slider } from '../../src/components/ui/Slider';
@@ -883,7 +883,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { businessSettings } = useAuthStore();
+  const { businessSettings, token } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('account');
   const [showTour, setShowTour] = useState(false);
@@ -1081,14 +1081,13 @@ export default function SettingsScreen() {
   const loadTemplates = useCallback(async () => {
     setTemplatesLoading(true);
     try {
-      const token = await api.getToken();
       const params = new URLSearchParams();
       if (typeFilter !== 'all') params.append('type', typeFilter);
       
       const url = `${API_URL}/api/templates${params.toString() ? `?${params.toString()}` : ''}`;
       const response = await fetch(url, {
         headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${token}`,
         },
       });
       if (response.ok) {
@@ -1099,7 +1098,7 @@ export default function SettingsScreen() {
       console.error('Failed to fetch templates:', error);
     }
     setTemplatesLoading(false);
-  }, [typeFilter]);
+  }, [token, typeFilter]);
 
   const resetTemplateForm = () => {
     setNewTemplate({
@@ -1126,7 +1125,6 @@ export default function SettingsScreen() {
 
     setIsCreatingTemplate(true);
     try {
-      const token = await api.getToken();
       const method = editingTemplate ? 'PATCH' : 'POST';
       const url = editingTemplate 
         ? `${API_URL}/api/templates/${editingTemplate.id}`
@@ -1136,7 +1134,7 @@ export default function SettingsScreen() {
         method,
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: newTemplate.name,
@@ -1191,12 +1189,11 @@ export default function SettingsScreen() {
 
   const handleDuplicateTemplate = async (template: DocumentTemplate) => {
     try {
-      const token = await api.getToken();
       const response = await fetch(`${API_URL}/api/templates`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: `${template.name} (Copy)`,
@@ -1232,11 +1229,10 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await api.getToken();
               const response = await fetch(`${API_URL}/api/templates/${template.id}`, {
                 method: 'DELETE',
                 headers: {
-                  ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                  'Authorization': `Bearer ${token}`,
                 },
               });
               if (response.ok) {

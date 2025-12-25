@@ -16,7 +16,6 @@ import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
-import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 
 interface StripeConnectStatus {
   connected: boolean;
@@ -86,12 +85,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: spacing.lg,
+    padding: 16,
     paddingBottom: 100,
   },
   header: {
-    marginBottom: spacing.xl,
-    paddingTop: spacing.sm,
+    marginBottom: 20,
+    paddingTop: 8,
   },
   pageTitle: {
     fontSize: 28,
@@ -101,22 +100,22 @@ const createStyles = (colors: any) => StyleSheet.create({
   pageSubtitle: {
     fontSize: 14,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 4,
     lineHeight: 20,
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
-    marginTop: spacing.sm,
+    marginBottom: 12,
+    marginTop: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   statusCard: {
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
   },
   statusCardSuccess: {
@@ -131,7 +130,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: 12,
   },
   statusCardTitle: {
     fontSize: 16,
@@ -141,10 +140,10 @@ const createStyles = (colors: any) => StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.md,
-    gap: spacing.xs,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
   },
   statusBadgeSuccess: {
     backgroundColor: colors.successLight,
@@ -159,7 +158,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   statusCardContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing.md,
+    gap: 12,
   },
   statusCardText: {
     flex: 1,
@@ -169,24 +168,24 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   integrationCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
   },
   integrationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: 12,
   },
   integrationIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: radius.md,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
+    marginRight: 12,
   },
   integrationIconText: {
     fontSize: 20,
@@ -206,9 +205,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 2,
   },
   integrationBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   integrationBadgeSuccess: {
     backgroundColor: colors.successLight,
@@ -225,9 +224,9 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   integrationBadgeBuiltIn: {
     backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   integrationBadgeBuiltInText: {
     fontSize: 12,
@@ -235,10 +234,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.primary,
   },
   integrationDetails: {
-    paddingTop: spacing.md,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    gap: spacing.md,
+    gap: 12,
   },
   detailRow: {
     flexDirection: 'row',
@@ -247,11 +246,11 @@ const createStyles = (colors: any) => StyleSheet.create({
   detailIconContainer: {
     width: 28,
     height: 28,
-    borderRadius: radius.sm,
+    borderRadius: 8,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
+    marginRight: 10,
   },
   detailText: {
     fontSize: 14,
@@ -267,10 +266,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.md,
-    gap: spacing.sm,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 8,
   },
   actionButtonPrimary: {
     backgroundColor: colors.primary,
@@ -293,8 +292,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   builtInInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+    gap: 8,
+    marginTop: 4,
   },
   builtInText: {
     fontSize: 13,
@@ -302,9 +301,9 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   comingSoonCard: {
     backgroundColor: colors.muted,
-    borderRadius: radius.lg,
-    padding: spacing.xl,
-    marginTop: spacing.sm,
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 8,
     alignItems: 'center',
     opacity: 0.8,
   },
@@ -312,7 +311,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.foreground,
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   comingSoonText: {
     fontSize: 13,
@@ -320,17 +319,17 @@ const createStyles = (colors: any) => StyleSheet.create({
     textAlign: 'center',
   },
   loadingContainer: {
-    padding: spacing.xl,
+    padding: 20,
     alignItems: 'center',
   },
   featureList: {
-    marginTop: spacing.sm,
-    gap: spacing.sm,
+    marginTop: 8,
+    gap: 6,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 8,
   },
   featureText: {
     fontSize: 13,
@@ -340,10 +339,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.warningLight,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    gap: spacing.md,
-    marginBottom: spacing.sm,
+    padding: 12,
+    borderRadius: 10,
+    gap: 10,
+    marginBottom: 8,
   },
   warningText: {
     flex: 1,
@@ -706,7 +705,7 @@ export default function IntegrationsScreen() {
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.detailSubtext, { marginTop: spacing.md }]}>Checking integration status...</Text>
+              <Text style={[styles.detailSubtext, { marginTop: 12 }]}>Checking integration status...</Text>
             </View>
           ) : (
             <>
@@ -975,8 +974,8 @@ export default function IntegrationsScreen() {
                       <Text style={styles.detailSubtext}>
                         Invoices are automatically synced to Xero when sent. Contacts can be imported from Xero.
                       </Text>
-                      <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
-                        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                      <View style={{ gap: 8, marginTop: 8 }}>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
                           <TouchableOpacity 
                             style={[styles.actionButton, styles.actionButtonPrimary, { flex: 1 }]}
                             onPress={handleSyncXeroContacts}
@@ -1172,7 +1171,7 @@ export default function IntegrationsScreen() {
                         Jobs with scheduled dates will automatically sync to your Google Calendar.
                       </Text>
                       <TouchableOpacity 
-                        style={[styles.actionButton, styles.actionButtonPrimary, { marginBottom: spacing.sm }]}
+                        style={[styles.actionButton, styles.actionButtonPrimary, { marginBottom: 8 }]}
                         onPress={handleSyncAllJobs}
                         disabled={isSyncingAllJobs}
                         data-testid="button-sync-all-jobs"
@@ -1237,7 +1236,7 @@ export default function IntegrationsScreen() {
               </View>
 
               <View style={styles.comingSoonCard}>
-                <Feather name="zap" size={24} color={colors.mutedForeground} style={{ marginBottom: spacing.sm }} />
+                <Feather name="zap" size={24} color={colors.mutedForeground} style={{ marginBottom: 8 }} />
                 <Text style={styles.comingSoonTitle}>More Integrations Coming</Text>
                 <Text style={styles.comingSoonText}>
                   We're working on integrations with more tools to help you run your business. Got a request? Let us know!

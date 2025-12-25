@@ -24,7 +24,7 @@ import { Card, CardContent } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
+import { spacing, radius } from '../../src/lib/design-tokens';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -183,7 +183,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   paymentMethodDescription: {
     color: colors.mutedForeground,
     fontSize: 14,
-    marginTop: spacing.xs,
+    marginTop: 4,
   },
   pendingSection: {
     marginTop: spacing.xl,
@@ -253,7 +253,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: radius.md,
-    gap: spacing.xs,
+    gap: 4,
   },
   collectButtonText: {
     fontSize: 12,
@@ -288,7 +288,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   warningTitle: {
     color: colors.warning,
     fontWeight: '600',
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   warningText: {
     color: colors.mutedForeground,
@@ -315,7 +315,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing['3xl'],
+    paddingHorizontal: 32,
   },
   modalStepTitle: {
     color: colors.foreground,
@@ -331,7 +331,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   readyIcon: {
     width: 128,
     height: 128,
-    borderRadius: radius.full,
+    borderRadius: 64,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -343,7 +343,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: 'bold',
   },
   acceptedMethodsCard: {
-    marginTop: spacing['3xl'],
+    marginTop: 32,
     padding: spacing.lg,
     backgroundColor: colors.card,
     borderRadius: radius.xl,
@@ -358,7 +358,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   successIcon: {
     width: 96,
     height: 96,
-    borderRadius: radius.full,
+    borderRadius: 48,
     backgroundColor: colors.successLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -377,7 +377,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   errorIcon: {
     width: 96,
     height: 96,
-    borderRadius: radius.full,
+    borderRadius: 48,
     backgroundColor: colors.destructiveLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -568,7 +568,7 @@ function PaymentMethodCard({
         <View style={styles.paymentMethodHeader}>
           <Text style={styles.paymentMethodTitle}>{title}</Text>
           {badge && (
-            <Badge variant={badgeVariant} style={{ marginLeft: spacing.sm }}>
+            <Badge variant={badgeVariant} style={{ marginLeft: 8 }}>
               {badge}
             </Badge>
           )}

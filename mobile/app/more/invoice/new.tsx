@@ -19,7 +19,6 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore, useClientsStore, useInvoicesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors, getVisibleButtonColors } from '../../../src/lib/theme';
-import { spacing, radius } from '../../../src/lib/design-tokens';
 import api from '../../../src/lib/api';
 import offlineStorage, { useOfflineStore } from '../../../src/lib/offline-storage';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
@@ -35,19 +34,19 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.card,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
-      paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.sm,
+      paddingHorizontal: 16,
+      paddingBottom: 8,
     },
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: spacing.md,
+      paddingVertical: 12,
     },
     backButton: {
       width: 36,
       height: 36,
-      borderRadius: radius.md,
+      borderRadius: 10,
       backgroundColor: colors.muted,
       alignItems: 'center',
       justifyContent: 'center',
@@ -60,13 +59,13 @@ function createStyles(colors: ThemeColors) {
       fontWeight: '600',
       color: colors.foreground,
       flex: 1,
-      marginLeft: spacing.md,
+      marginLeft: 12,
     },
     totalBadge: {
       backgroundColor: colors.primaryLight,
-      paddingHorizontal: spacing.md,
+      paddingHorizontal: 12,
       paddingVertical: 6,
-      borderRadius: radius.md,
+      borderRadius: 12,
     },
     totalBadgeText: {
       fontSize: 13,
@@ -76,8 +75,8 @@ function createStyles(colors: ThemeColors) {
     tabContainer: {
       flexDirection: 'row',
       backgroundColor: colors.muted,
-      borderRadius: radius.lg,
-      padding: spacing.xs,
+      borderRadius: 14,
+      padding: 5,
       width: '100%',
       alignSelf: 'stretch',
     },
@@ -86,16 +85,16 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: spacing.lg,
-      paddingHorizontal: spacing.xl,
-      borderRadius: radius.md,
-      gap: spacing.sm,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      borderRadius: 10,
+      gap: 10,
     },
     tabContent: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing.sm,
+      gap: 10,
     },
     tabActive: {
       backgroundColor: colors.primary,
@@ -125,28 +124,28 @@ function createStyles(colors: ThemeColors) {
       flex: 1,
     },
     content: {
-      paddingTop: spacing.sm,
-      paddingHorizontal: spacing.lg,
+      paddingTop: 8,
+      paddingHorizontal: 16,
     },
     card: {
       backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      padding: spacing.lg,
-      marginBottom: spacing.lg,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: colors.border,
     },
     cardHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.sm,
-      marginBottom: spacing.lg,
+      gap: 8,
+      marginBottom: 16,
     },
     cardHeaderRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: spacing.lg,
+      marginBottom: 16,
     },
     cardHeaderText: {
       fontSize: 14,
@@ -156,8 +155,8 @@ function createStyles(colors: ThemeColors) {
     itemCountBadge: {
       backgroundColor: colors.muted,
       paddingHorizontal: 10,
-      paddingVertical: spacing.xs,
-      borderRadius: radius.sm,
+      paddingVertical: 4,
+      borderRadius: 8,
     },
     itemCountText: {
       fontSize: 12,
@@ -168,8 +167,8 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: colors.background,
-      borderRadius: radius.md,
-      padding: spacing.md,
+      borderRadius: 12,
+      padding: 12,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -180,12 +179,12 @@ function createStyles(colors: ThemeColors) {
     selectedClient: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.sm,
+      gap: 10,
     },
     clientAvatar: {
       width: 32,
       height: 32,
-      borderRadius: radius.lg,
+      borderRadius: 16,
       backgroundColor: colors.primaryLight,
       alignItems: 'center',
       justifyContent: 'center',
@@ -201,7 +200,7 @@ function createStyles(colors: ThemeColors) {
       color: colors.foreground,
     },
     inputGroup: {
-      marginBottom: spacing.lg,
+      marginBottom: 16,
     },
     inputLabel: {
       fontSize: 12,
@@ -210,7 +209,7 @@ function createStyles(colors: ThemeColors) {
     },
     input: {
       backgroundColor: colors.background,
-      borderRadius: radius.md,
+      borderRadius: 12,
       padding: 14,
       fontSize: 15,
       color: colors.foreground,
@@ -240,9 +239,9 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.muted,
-      borderRadius: radius.md,
-      padding: spacing.md,
-      marginBottom: spacing.sm,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 8,
     },
     lineItemInfo: {
       flex: 1,
@@ -261,31 +260,31 @@ function createStyles(colors: ThemeColors) {
       fontSize: 14,
       fontWeight: '600',
       color: colors.foreground,
-      marginRight: spacing.sm,
+      marginRight: 8,
     },
     lineItemActions: {
       flexDirection: 'row',
-      gap: spacing.xs,
+      gap: 4,
     },
     iconButton: {
       width: 32,
       height: 32,
-      borderRadius: radius.sm,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
     },
     addButtonsRow: {
       flexDirection: 'row',
-      gap: spacing.sm,
+      gap: 8,
     },
     addItemButton: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing.sm,
+      gap: 8,
       backgroundColor: colors.background,
-      borderRadius: radius.md,
+      borderRadius: 12,
       paddingVertical: 14,
       borderWidth: 1,
       borderColor: colors.border,
@@ -298,7 +297,7 @@ function createStyles(colors: ThemeColors) {
     catalogButton: {
       width: 48,
       height: 48,
-      borderRadius: radius.md,
+      borderRadius: 12,
       backgroundColor: colors.background,
       alignItems: 'center',
       justifyContent: 'center',
@@ -307,9 +306,9 @@ function createStyles(colors: ThemeColors) {
     },
     totalsCard: {
       backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      padding: spacing.lg,
-      marginBottom: spacing.lg,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -331,8 +330,8 @@ function createStyles(colors: ThemeColors) {
     grandTotalRow: {
       borderTopWidth: 1,
       borderTopColor: colors.border,
-      marginTop: spacing.sm,
-      paddingTop: spacing.md,
+      marginTop: 8,
+      paddingTop: 12,
     },
     grandTotalLabel: {
       fontSize: 15,
@@ -348,9 +347,9 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing.sm,
-      borderRadius: radius.md,
-      paddingVertical: spacing.lg,
+      gap: 8,
+      borderRadius: 12,
+      paddingVertical: 16,
       borderWidth: 1,
       shadowColor: '#000000',
       shadowOffset: { width: 0, height: 2 },
@@ -374,7 +373,7 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: spacing.lg,
+      padding: 16,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -385,7 +384,7 @@ function createStyles(colors: ThemeColors) {
     },
     modalContent: {
       flex: 1,
-      padding: spacing.lg,
+      padding: 16,
     },
     emptyState: {
       alignItems: 'center',
@@ -394,16 +393,16 @@ function createStyles(colors: ThemeColors) {
     emptyStateText: {
       fontSize: 14,
       color: colors.mutedForeground,
-      marginTop: spacing.md,
-      marginBottom: spacing.lg,
+      marginTop: 12,
+      marginBottom: 16,
     },
     createClientButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.xs,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
+      gap: 6,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 10,
       backgroundColor: colors.primaryLight,
     },
     createClientButtonText: {
@@ -414,18 +413,18 @@ function createStyles(colors: ThemeColors) {
     clientOption: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: spacing.lg,
+      padding: 16,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     clientOptionAvatar: {
       width: 40,
       height: 40,
-      borderRadius: spacing.xl,
+      borderRadius: 20,
       backgroundColor: colors.primaryLight,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: spacing.md,
+      marginRight: 12,
     },
     clientOptionAvatarText: {
       fontSize: 16,
@@ -450,10 +449,10 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'space-between',
       alignItems: 'center',
       backgroundColor: colors.muted,
-      borderRadius: radius.md,
-      padding: spacing.lg,
-      marginTop: spacing.sm,
-      marginBottom: spacing.lg,
+      borderRadius: 12,
+      padding: 16,
+      marginTop: 8,
+      marginBottom: 16,
     },
     lineTotalLabel: {
       fontSize: 14,
@@ -466,8 +465,8 @@ function createStyles(colors: ThemeColors) {
     },
     saveItemButton: {
       backgroundColor: colors.primary,
-      borderRadius: radius.md,
-      paddingVertical: spacing.lg,
+      borderRadius: 12,
+      paddingVertical: 16,
       alignItems: 'center',
     },
     saveItemButtonText: {
@@ -479,8 +478,8 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: spacing.lg,
-      paddingHorizontal: spacing.lg,
+      marginBottom: 16,
+      paddingHorizontal: 16,
     },
     previewHeadingTitle: {
       fontSize: 12,
@@ -490,10 +489,10 @@ function createStyles(colors: ThemeColors) {
       letterSpacing: 0.5,
     },
     previewHeadingBadge: {
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
       backgroundColor: colors.muted,
-      borderRadius: radius.xs,
+      borderRadius: 4,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -505,11 +504,11 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: spacing.xs,
+      paddingVertical: 4,
     },
     toggleInfo: {
       flex: 1,
-      marginRight: spacing.lg,
+      marginRight: 16,
     },
     toggleTitle: {
       fontSize: 15,
@@ -525,7 +524,7 @@ function createStyles(colors: ThemeColors) {
     toggleSwitch: {
       width: 50,
       height: 30,
-      borderRadius: radius.lg,
+      borderRadius: 15,
       backgroundColor: colors.muted,
       padding: 2,
       justifyContent: 'center',
@@ -533,15 +532,15 @@ function createStyles(colors: ThemeColors) {
     toggleThumb: {
       width: 26,
       height: 26,
-      borderRadius: radius.md,
+      borderRadius: 13,
       backgroundColor: colors.card,
     },
     toggleThumbActive: {
       alignSelf: 'flex-end',
     },
     recurringOptions: {
-      marginTop: spacing.lg,
-      paddingTop: spacing.lg,
+      marginTop: 16,
+      paddingTop: 16,
       borderTopWidth: 1,
       borderTopColor: colors.border,
     },
@@ -554,11 +553,11 @@ function createStyles(colors: ThemeColors) {
     recurringPreview: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.sm,
-      padding: spacing.md,
+      gap: 8,
+      padding: 12,
       backgroundColor: colors.infoLight || colors.muted,
-      borderRadius: radius.md,
-      marginTop: spacing.sm,
+      borderRadius: 10,
+      marginTop: 8,
     },
     recurringPreviewText: {
       flex: 1,
@@ -573,10 +572,10 @@ function createStyles(colors: ThemeColors) {
     },
     frequencyModalContent: {
       backgroundColor: colors.card,
-      borderTopLeftRadius: radius.xl,
-      borderTopRightRadius: radius.xl,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
       paddingBottom: 34,
-      paddingTop: spacing.md,
+      paddingTop: 12,
     },
     frequencyModalHandle: {
       width: 36,
@@ -584,22 +583,22 @@ function createStyles(colors: ThemeColors) {
       borderRadius: 3,
       backgroundColor: colors.muted,
       alignSelf: 'center',
-      marginBottom: spacing.md,
+      marginBottom: 12,
     },
     frequencyModalTitle: {
       fontSize: 18,
       fontWeight: '600',
       color: colors.foreground,
       textAlign: 'center',
-      marginBottom: spacing.lg,
-      paddingHorizontal: spacing.lg,
+      marginBottom: 16,
+      paddingHorizontal: 16,
     },
     frequencyOption: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingVertical: 14,
-      paddingHorizontal: spacing.xl,
+      paddingHorizontal: 20,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -609,14 +608,14 @@ function createStyles(colors: ThemeColors) {
     frequencyOptionContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.md,
+      gap: 12,
     },
     frequencyOptionText: {
       fontSize: 16,
       color: colors.foreground,
     },
     frequencyModalCancel: {
-      marginTop: spacing.sm,
+      marginTop: 8,
       paddingVertical: 14,
       alignItems: 'center',
     },
@@ -1055,8 +1054,8 @@ export default function NewInvoiceScreen() {
           <View style={{
             flexDirection: 'row',
             backgroundColor: colors.muted,
-            borderRadius: radius.md,
-            padding: spacing.xs,
+            borderRadius: 10,
+            padding: 4,
             width: '100%',
           }}>
             <Pressable
@@ -1067,8 +1066,8 @@ export default function NewInvoiceScreen() {
                 justifyContent: 'center',
                 paddingVertical: 10,
                 paddingHorizontal: 14,
-                borderRadius: radius.sm,
-                gap: spacing.sm,
+                borderRadius: 8,
+                gap: 8,
                 backgroundColor: activeTab === 'edit' ? colors.primary : 'transparent',
               }}
               onPress={() => setActiveTab('edit')}
@@ -1094,8 +1093,8 @@ export default function NewInvoiceScreen() {
                 justifyContent: 'center',
                 paddingVertical: 10,
                 paddingHorizontal: 14,
-                borderRadius: radius.sm,
-                gap: spacing.sm,
+                borderRadius: 8,
+                gap: 8,
                 backgroundColor: activeTab === 'preview' ? colors.primary : 'transparent',
               }}
               onPress={() => setActiveTab('preview')}
@@ -1123,9 +1122,9 @@ export default function NewInvoiceScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
-              paddingHorizontal: spacing.lg,
-              paddingTop: spacing.md,
-              paddingBottom: spacing.sm,
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: 8,
             }}>
               <Text style={{
                 fontSize: 12,
@@ -1138,9 +1137,9 @@ export default function NewInvoiceScreen() {
               </Text>
               <View style={{
                 backgroundColor: colors.muted,
-                paddingHorizontal: spacing.sm,
-                paddingVertical: spacing.xs,
-                borderRadius: radius.xs,
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 6,
                 borderWidth: 1,
                 borderColor: colors.border,
               }}>
@@ -1458,12 +1457,12 @@ export default function NewInvoiceScreen() {
                 style={{
                   backgroundColor: colors.primary,
                   paddingVertical: 14,
-                  paddingHorizontal: spacing.xl,
-                  borderRadius: radius.md,
+                  paddingHorizontal: 20,
+                  borderRadius: 10,
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: spacing.sm,
+                  gap: 8,
                   opacity: isLoading ? 0.6 : 1,
                 }}
                 onPress={handleSave}
@@ -1568,17 +1567,17 @@ export default function NewInvoiceScreen() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   backgroundColor: colors.primaryLight,
-                  padding: spacing.md,
-                  borderRadius: radius.md,
-                  marginBottom: spacing.lg,
-                  gap: spacing.sm,
+                  padding: 14,
+                  borderRadius: 10,
+                  marginBottom: 16,
+                  gap: 10,
                 }}
                 onPress={() => setShowQuickAddClient(true)}
               >
                 <View style={{
                   width: 36,
                   height: 36,
-                  borderRadius: radius.xl,
+                  borderRadius: 18,
                   backgroundColor: colors.primary,
                   alignItems: 'center',
                   justifyContent: 'center',

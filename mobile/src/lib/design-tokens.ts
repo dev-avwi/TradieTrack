@@ -36,16 +36,15 @@ export const pageShell = {
 // Bottom tab bar clearance - use this ONLY on screens that have bottom tabs visible
 export const bottomTabClearance = 90; // 64px nav + 26px safe area
 
-// === BORDER RADIUS (iOS 26 Spatial Design) ===
-// Simplified to consistent values across the app
+// === BORDER RADIUS (matches web's tailwind radius) ===
 export const radius = {
-  xs: 4,      // Tiny elements
-  sm: 8,      // Badges, small elements
-  md: 12,     // Buttons, inputs, interactive elements
-  lg: 16,     // Cards, containers
-  xl: 20,     // Modals, sheets
-  '2xl': 24,  // Large modals
-  pill: 9999, // Fully rounded pills
+  xs: 4,      // rounded
+  sm: 6,      // rounded-md
+  md: 8,      // --radius in web (0.5rem)
+  lg: 10,     // rounded-lg
+  xl: 14,     // rounded-xl - main card radius (matches web)
+  '2xl': 16,  // rounded-2xl - feed cards, modals
+  pill: 9999, // fully rounded pills
   full: 9999,
 } as const;
 
@@ -226,9 +225,9 @@ export const typography = {
     letterSpacing: 0.5,
     textTransform: 'uppercase' as const,
   },
-  // Button text - 15px (SF Pro body size)
+  // Button text - 14px
   button: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600' as const,
     lineHeight: 20,
   },
@@ -263,26 +262,11 @@ export const iconSizes = {
 // The static colors export is deprecated - use the theme context instead.
 // See theme.tsx for useTheme() and useThemedStyles() helpers.
 
-// === MOTION (ServiceM8-style spring configs) ===
-export const motion = {
-  // Spring configs
-  springDefault: { damping: 20, stiffness: 280 },
-  springSnappy: { damping: 25, stiffness: 400 },
-  springGentle: { damping: 15, stiffness: 200 },
-  // Durations
-  instant: 50,
+// === ANIMATION DURATIONS ===
+export const durations = {
   fast: 100,
   normal: 200,
   slow: 300,
-} as const;
-
-// === ELEVATION TIERS (for layered surfaces) ===
-export const elevation = {
-  base: 0,      // Content level
-  chrome: 1,    // Navigation chrome
-  sheet: 2,     // Bottom sheets
-  modal: 3,     // Modals/dialogs
-  toast: 4,     // Toast notifications
 } as const;
 
 // === PRESS SCALE (for hover-elevate equivalent) ===

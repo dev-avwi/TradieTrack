@@ -1,6 +1,15 @@
 import { TextInput, View, Text, StyleSheet, TextInputProps, ViewStyle } from 'react-native';
-import { ReactNode, useMemo } from 'react';
-import { useTheme, ThemeColors } from '../../lib/theme';
+import { ReactNode } from 'react';
+
+const colors = {
+  card: '#1c2129',
+  foreground: '#f0f3f5',
+  border: '#262b36',
+  input: '#3d4555',
+  mutedForeground: '#9ca3af',
+  destructive: '#ef4444',
+  ring: '#f97316',
+};
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -19,9 +28,6 @@ export function Input({
   style,
   ...props
 }: InputProps) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
-
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -30,8 +36,8 @@ export function Input({
         <TextInput
           style={[
             styles.input,
-            leftIcon ? styles.inputWithLeftIcon : undefined,
-            rightIcon ? styles.inputWithRightIcon : undefined,
+            leftIcon && styles.inputWithLeftIcon,
+            rightIcon && styles.inputWithRightIcon,
             style,
           ]}
           placeholderTextColor={colors.mutedForeground}
@@ -44,15 +50,15 @@ export function Input({
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
-    gap: 6,
+    gap: 8,
   },
   label: {
     fontSize: 14,
     fontWeight: '500',
     color: colors.foreground,
-    letterSpacing: -0.2,
+    fontFamily: 'Inter',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -60,7 +66,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 8,
     minHeight: 48,
   },
   inputError: {
@@ -69,10 +75,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   input: {
     flex: 1,
     height: 48,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     fontSize: 16,
     color: colors.foreground,
-    letterSpacing: -0.2,
+    fontFamily: 'Inter',
   },
   inputWithLeftIcon: {
     paddingLeft: 8,
@@ -81,14 +87,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingRight: 8,
   },
   leftIcon: {
-    paddingLeft: 14,
+    paddingLeft: 16,
   },
   rightIcon: {
-    paddingRight: 14,
+    paddingRight: 16,
   },
   errorText: {
     fontSize: 12,
     color: colors.destructive,
+    fontFamily: 'Inter',
   },
 });
 

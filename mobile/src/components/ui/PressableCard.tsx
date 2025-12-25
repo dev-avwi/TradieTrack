@@ -1,7 +1,6 @@
 import { Pressable, View, Animated, StyleSheet, ViewStyle } from 'react-native';
 import { ReactNode, useRef } from 'react';
 import { useTheme } from '../../lib/theme';
-import { radius } from '../../lib/design-tokens';
 
 interface PressableCardProps {
   children: ReactNode;
@@ -42,7 +41,7 @@ export function PressableCard({ children, onPress, style, disabled }: PressableC
         style={({ pressed }) => [
           {
             backgroundColor: pressed ? colors.cardHover : colors.card,
-            borderRadius: radius.lg,
+            borderRadius: 12,
             borderWidth: 1,
             borderColor: colors.cardBorder,
             shadowColor: colors.shadow,

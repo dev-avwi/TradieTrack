@@ -8,7 +8,6 @@ import {
   StyleSheet,
   TextInput,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -17,8 +16,6 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
-import { SwipeableRow, actionColors, useSwipeableScrollRef } from '../../src/components/ui';
-import Animated from 'react-native-reanimated';
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'paid' | 'overdue' | 'recurring';
 
@@ -161,7 +158,6 @@ function InvoiceCard({
 export default function InvoicesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const swipeableScrollRef = useSwipeableScrollRef();
   const { invoices, fetchInvoices, isLoading } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -231,8 +227,7 @@ export default function InvoicesScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
-        <Animated.ScrollView
-          ref={swipeableScrollRef}
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
@@ -348,84 +343,18 @@ export default function InvoicesScreen() {
               </View>
             ) : (
               <View style={styles.invoicesList}>
-                {sortedInvoices.map((invoice) => {
-                    const clientName = getClientName(invoice.clientId);
-                    
-                    const handleSendInvoice = () => {
-                      Alert.alert(
-                        'Send Invoice',
-                        `Send invoice ${invoice.invoiceNumber || 'Draft'} to ${clientName}?`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { 
-                            text: 'Send', 
-                            onPress: () => {
-                              Alert.alert('Success', 'Invoice sent to client email');
-                            }
-                          },
-                        ]
-                      );
-                    };
-
-                    const handleEditInvoice = () => {
-                      router.push(`/more/invoice/${invoice.id}/edit`);
-                    };
-
-                    const handleCollectPayment = () => {
-                      Alert.alert(
-                        'Collect Payment',
-                        `Mark invoice ${invoice.invoiceNumber || 'Draft'} as paid?`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { 
-                            text: 'Mark Paid', 
-                            onPress: () => {
-                              Alert.alert('Success', 'Invoice marked as paid');
-                            }
-                          },
-                        ]
-                      );
-                    };
-
-                    const rightActions = [
-                      {
-                        key: 'send',
-                        icon: <Feather name="send" size={20} color="#FFFFFF" />,
-                        color: actionColors.archive,
-                        onPress: handleSendInvoice,
-                      },
-                      {
-                        key: 'edit',
-                        icon: <Feather name="edit" size={20} color="#FFFFFF" />,
-                        color: actionColors.edit,
-                        onPress: handleEditInvoice,
-                      },
-                      {
-                        key: 'collect',
-                        icon: <Feather name="dollar-sign" size={20} color="#FFFFFF" />,
-                        color: actionColors.call,
-                        onPress: handleCollectPayment,
-                      },
-                    ];
-
-                    return (
-                      <SwipeableRow
-                        key={invoice.id}
-                        id={invoice.id}
-                        rightActions={rightActions}
-                      >
-                        <InvoiceCard
-                          invoice={invoice}
-                          clientName={clientName}
-                          onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-                        />
-                      </SwipeableRow>
-                  );
-                })}
+                {sortedInvoices.map((invoice) => (
+                  <InvoiceCard
+                    key={invoice.id}
+                    invoice={invoice}
+                    clientName={getClientName(invoice.clientId)}
+                    onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+                  />
+                ))}
               </View>
             )}
           </View>
-        </Animated.ScrollView>
+        </ScrollView>
       </View>
     </>
   );

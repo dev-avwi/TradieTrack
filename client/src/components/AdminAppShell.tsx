@@ -165,7 +165,7 @@ export default function AdminAppShell({
         <AdminSidebar onLogout={onLogout} onNavigate={onNavigate} />
 
         <div className="flex flex-col flex-1 min-w-0">
-          <header className="flex items-center justify-between h-14 px-4 bg-background/80 backdrop-blur-xl sticky top-0 z-20" style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.03)' }}>
+          <header className="flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20">
             <div className="flex items-center gap-3">
               <SidebarTrigger data-testid="button-admin-sidebar-toggle" />
               <div className="hidden sm:flex items-center gap-2">

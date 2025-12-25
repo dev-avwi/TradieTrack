@@ -17,7 +17,6 @@ import api from '../../src/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, radius } from '../../src/lib/design-tokens';
 
 export default function ResetPasswordScreen() {
   const params = useLocalSearchParams();
@@ -279,22 +278,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: spacing['2xl'],
+    paddingHorizontal: 24,
     paddingTop: 60,
     paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing['3xl'],
+    marginBottom: 32,
   },
   logoContainer: {
     width: 80,
     height: 80,
-    borderRadius: radius.xl,
+    borderRadius: 20,
     backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: 16,
   },
   logo: {
     width: 60,
@@ -304,20 +303,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: colors.foreground,
-    marginBottom: spacing.sm,
+    marginBottom: 8,
   },
   tagline: {
     fontSize: 16,
     color: colors.mutedForeground,
   },
   inputGroup: {
-    marginBottom: spacing.lg,
+    marginBottom: 16,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
     color: colors.foreground,
-    marginBottom: spacing.sm,
+    marginBottom: 8,
   },
   passwordContainer: {
     flexDirection: 'row',
@@ -325,27 +324,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: 10,
   },
   passwordInput: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
     color: colors.foreground,
   },
   eyeButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   requirementsContainer: {
-    marginBottom: spacing.lg,
-    gap: spacing.xs,
+    marginBottom: 16,
+    gap: 6,
   },
   requirementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 8,
   },
   requirementText: {
     fontSize: 13,
@@ -357,8 +356,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   matchIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: 8,
+    marginBottom: 16,
   },
   matchText: {
     fontSize: 13,
@@ -372,12 +371,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   primaryButton: {
     backgroundColor: '#1e3a5f',
     paddingVertical: 14,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radius.md,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    marginTop: spacing.sm,
+    marginTop: 8,
   },
   primaryButtonDisabled: {
     opacity: 0.6,
@@ -389,7 +388,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   successContainer: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: 16,
   },
   successIcon: {
     width: 80,
@@ -398,16 +397,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: '#22c55e20',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: 20,
   },
   backContainer: {
     alignItems: 'center',
-    marginTop: spacing['2xl'],
+    marginTop: 24,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 8,
   },
   backText: {
     fontSize: 14,

@@ -167,7 +167,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.sm,
-    gap: spacing.xs,
+    gap: 4,
   },
   badgeText: {
     fontSize: 12,

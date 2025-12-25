@@ -93,8 +93,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.sm,
   },
   viewModeButton: {
-    width: spacing['3xl'] + spacing.xs,
-    height: spacing['3xl'] + spacing.xs,
+    width: 36,
+    height: 36,
     borderRadius: radius.md,
     backgroundColor: colors.muted,
     alignItems: 'center',
@@ -140,7 +140,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   jobCountText: {
     fontSize: 12,
     color: colors.mutedForeground,
-    marginTop: spacing.xs / 2,
+    marginTop: 2,
   },
   todayButton: {
     paddingHorizontal: spacing.md,
@@ -177,14 +177,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   summaryLabel: {
     fontSize: 11,
     color: colors.mutedForeground,
-    marginTop: spacing.xs / 2,
+    marginTop: 2,
   },
   scrollView: {
     flex: 1,
   },
   contentContainer: {
     padding: spacing.lg,
-    paddingBottom: spacing['4xl'] * 2.5,
+    paddingBottom: 100,
   },
   section: {
     marginBottom: spacing.xl,
@@ -204,7 +204,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginLeft: spacing.sm,
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
+    paddingVertical: 2,
     borderRadius: radius.full,
   },
   badgeText: {
@@ -256,7 +256,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   statusBadge: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
+    paddingVertical: 2,
     borderRadius: radius.full,
     backgroundColor: colors.muted,
   },
@@ -298,7 +298,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: 4,
     borderRadius: radius.md,
     gap: spacing.xs,
     alignSelf: 'flex-start',
@@ -323,10 +323,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: spacing['2xl'],
   },
   sheetHandle: {
-    width: spacing['4xl'],
-    height: spacing.xs,
+    width: 40,
+    height: 4,
     backgroundColor: colors.muted,
-    borderRadius: radius.xs / 2,
+    borderRadius: 2,
     alignSelf: 'center',
     marginTop: spacing.md,
     marginBottom: spacing.md,
@@ -345,7 +345,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   sheetSubtitle: {
     fontSize: 13,
     color: colors.mutedForeground,
-    marginTop: spacing.xs / 2,
+    marginTop: 2,
   },
   sheetContent: {
     padding: spacing.lg,
@@ -472,7 +472,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   suggestionDetailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 4,
   },
   suggestionDetailText: {
     fontSize: 12,
@@ -500,10 +500,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   appliedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 4,
     backgroundColor: colors.success,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: 4,
     borderRadius: radius.md,
     marginTop: spacing.sm,
     alignSelf: 'flex-start',
@@ -1158,9 +1158,9 @@ export default function DispatchBoardScreen() {
               
               <ScrollView style={styles.aiModalContent}>
                 {aiLoading ? (
-                  <View style={{ paddingVertical: spacing['4xl'], alignItems: 'center' }}>
+                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={{ marginTop: spacing.lg, color: colors.mutedForeground }}>
+                    <Text style={{ marginTop: 16, color: colors.mutedForeground }}>
                       Analyzing jobs and availability...
                     </Text>
                   </View>

@@ -100,41 +100,41 @@ export function Button({
           minHeight: 32, 
           paddingHorizontal: 12, 
           paddingVertical: 0, 
-          fontSize: 13, 
-          borderRadius: 10 
+          fontSize: 12, 
+          borderRadius: 6 
         };
       case 'lg':
         return { 
-          minHeight: 44, 
-          paddingHorizontal: 24, 
+          minHeight: 40, 
+          paddingHorizontal: 32, 
           paddingVertical: 0, 
-          fontSize: 15, 
-          borderRadius: 12 
+          fontSize: 14, 
+          borderRadius: 6 
         };
       case 'xl':
         return { 
-          minHeight: 52, 
+          minHeight: 56, 
           paddingHorizontal: 24, 
           paddingVertical: 14, 
           fontSize: 17, 
-          borderRadius: 14 
+          borderRadius: 12 
         };
       case 'icon':
         return { 
-          height: 40, 
-          width: 40, 
+          height: 36, 
+          width: 36, 
           paddingHorizontal: 0, 
           paddingVertical: 0, 
           fontSize: 14, 
-          borderRadius: 12 
+          borderRadius: 6 
         };
       default:
         return { 
-          minHeight: 40, 
+          minHeight: 36, 
           paddingHorizontal: 16, 
           paddingVertical: 8, 
-          fontSize: 15, 
-          borderRadius: 12 
+          fontSize: 14, 
+          borderRadius: 6 
         };
     }
   };
@@ -157,6 +157,15 @@ export function Button({
           borderRadius: sizeStyles.borderRadius,
           opacity: disabled ? 0.5 : 1,
         };
+        
+        // Apply shadow properties if they exist (for brand variant)
+        if (variantStyles.shadowColor) {
+          baseStyles.shadowColor = variantStyles.shadowColor;
+          baseStyles.shadowOffset = variantStyles.shadowOffset;
+          baseStyles.shadowOpacity = variantStyles.shadowOpacity;
+          baseStyles.shadowRadius = variantStyles.shadowRadius;
+          baseStyles.elevation = variantStyles.elevation;
+        }
         
         return [
           styles.button,

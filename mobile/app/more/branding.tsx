@@ -234,7 +234,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
   },
   previewBadge: {
-    paddingVertical: spacing.xs,
+    paddingVertical: 4,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.sm,
     alignSelf: 'flex-start',
@@ -294,7 +294,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: colors.primaryForeground,
-    marginTop: spacing.md,
+    marginTop: 12,
   },
   advancedButton: {
     flexDirection: 'row',

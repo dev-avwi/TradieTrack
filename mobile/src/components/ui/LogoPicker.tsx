@@ -12,8 +12,8 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../lib/theme';
+import { useAuthStore } from '../../lib/store';
 import { spacing, radius, shadows } from '../../lib/design-tokens';
-import { api } from '../../lib/api';
 
 interface LogoPickerProps {
   value?: string | null;
@@ -27,7 +27,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
@@ -40,13 +40,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   logoPreview: {
     width: 44,
     height: 44,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     backgroundColor: colors.muted,
   },
   logoPlaceholder: {
     width: 44,
     height: 44,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
@@ -96,13 +96,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   previewImage: {
     width: 160,
     height: 160,
-    borderRadius: radius.lg,
+    borderRadius: radius.xxl,
     backgroundColor: colors.muted,
   },
   previewPlaceholder: {
     width: 160,
     height: 160,
-    borderRadius: radius.lg,
+    borderRadius: radius.xxl,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
@@ -118,7 +118,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   uploadOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: radius.lg,
+    borderRadius: radius.xxl,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -151,7 +151,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.md,
     backgroundColor: colors.card,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     paddingVertical: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
@@ -170,7 +170,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   infoSection: {
     backgroundColor: colors.muted,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.lg,
   },
   infoText: {
@@ -184,6 +184,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 export function LogoPicker({ value, onChange, label }: LogoPickerProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { token } = useAuthStore();
   const [showModal, setShowModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -232,8 +233,7 @@ export function LogoPicker({ value, onChange, label }: LogoPickerProps) {
     setUploadProgress(0);
 
     try {
-      const API_BASE = api.getBaseUrl();
-      const token = await api.getToken();
+      const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://ff735932-1a5e-42dc-89e5-b025f7feea5d-00-3hwzylsjthmgp.worf.replit.dev';
       
       const filename = `logo-${Date.now()}.${asset.uri.split('.').pop() || 'jpg'}`;
       const mimeType = asset.mimeType || 'image/jpeg';

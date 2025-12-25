@@ -12,7 +12,6 @@ import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
-import { spacing, radius, sizes } from '../../src/lib/design-tokens';
 import api from '../../src/lib/api';
 
 interface AdminStats {
@@ -69,12 +68,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: spacing.lg,
+    padding: 16,
     paddingBottom: 100,
   },
   header: {
-    marginBottom: spacing.xl,
-    paddingTop: spacing.sm,
+    marginBottom: 20,
+    paddingTop: 8,
   },
   pageTitle: {
     fontSize: 28,
@@ -84,27 +83,27 @@ const createStyles = (colors: any) => StyleSheet.create({
   pageSubtitle: {
     fontSize: 14,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
-    marginTop: spacing.lg,
+    marginBottom: 12,
+    marginTop: 16,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   kpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
+    gap: 12,
+    marginBottom: 16,
   },
   kpiCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.lg,
+    borderRadius: 12,
+    padding: 16,
     width: '48%',
     borderWidth: 1,
     borderColor: colors.border,
@@ -117,17 +116,17 @@ const createStyles = (colors: any) => StyleSheet.create({
   kpiLabel: {
     fontSize: 12,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 4,
   },
   kpiIcon: {
     position: 'absolute',
-    top: spacing.lg,
-    right: spacing.lg,
+    top: 16,
+    right: 16,
   },
   menuCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.md,
-    marginBottom: spacing.sm,
+    borderRadius: 12,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
@@ -135,15 +134,15 @@ const createStyles = (colors: any) => StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: 16,
   },
   menuIcon: {
-    width: sizes.avatarMd,
-    height: sizes.avatarMd,
-    borderRadius: sizes.avatarMd / 2,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
+    marginRight: 12,
   },
   menuContent: {
     flex: 1,
@@ -156,13 +155,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   menuSubtitle: {
     fontSize: 13,
     color: colors.mutedForeground,
-    marginTop: spacing.xs / 2,
+    marginTop: 2,
   },
   healthCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
     flexDirection: 'row',
@@ -174,16 +173,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginLeft: 'auto',
   },
   healthDot: {
-    width: sizes.dotSm,
-    height: sizes.dotSm,
-    borderRadius: sizes.dotSm / 2,
-    marginRight: spacing.xs + 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
   },
   userCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    marginBottom: spacing.sm,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -200,12 +199,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   userEmail: {
     fontSize: 13,
     color: colors.mutedForeground,
-    marginTop: spacing.xs / 2,
+    marginTop: 2,
   },
   badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   badgeFree: {
     backgroundColor: colors.muted,
@@ -230,17 +229,17 @@ const createStyles = (colors: any) => StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.xs,
-    marginBottom: spacing.lg,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
   },
   tab: {
     flex: 1,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: radius.sm,
+    borderRadius: 8,
   },
   tabActive: {
     backgroundColor: colors.primary,
@@ -257,19 +256,19 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    padding: 40,
   },
   accessDeniedText: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.foreground,
-    marginTop: spacing.lg,
+    marginTop: 16,
     textAlign: 'center',
   },
   accessDeniedSubtext: {
     fontSize: 14,
     color: colors.mutedForeground,
-    marginTop: spacing.sm,
+    marginTop: 8,
     textAlign: 'center',
   },
 });
@@ -333,7 +332,7 @@ export default function AdminDashboard() {
             This area is restricted to platform administrators.
           </Text>
           <TouchableOpacity 
-            style={{ marginTop: spacing['2xl'] }}
+            style={{ marginTop: 24 }}
             onPress={() => router.back()}
           >
             <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '600' }}>Go Back</Text>
@@ -442,19 +441,19 @@ export default function AdminDashboard() {
               <Text style={styles.userName}>{user.name || 'Unnamed User'}</Text>
               <Text style={styles.userEmail}>{user.email || 'No email'}</Text>
               {user.businessName && (
-                <Text style={[styles.userEmail, { marginTop: spacing.xs }]}>{user.businessName}</Text>
+                <Text style={[styles.userEmail, { marginTop: 4 }]}>{user.businessName}</Text>
               )}
             </View>
             {getTierBadge(user.subscriptionTier)}
           </View>
-          <View style={{ flexDirection: 'row', marginTop: spacing.md, gap: spacing.lg }}>
+          <View style={{ flexDirection: 'row', marginTop: 12, gap: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Feather 
                 name={user.emailVerified ? 'check-circle' : 'x-circle'} 
                 size={14} 
                 color={user.emailVerified ? '#22c55e' : colors.mutedForeground} 
               />
-              <Text style={[styles.userEmail, { marginLeft: spacing.xs, marginTop: 0 }]}>
+              <Text style={[styles.userEmail, { marginLeft: 4, marginTop: 0 }]}>
                 {user.emailVerified ? 'Verified' : 'Unverified'}
               </Text>
             </View>
@@ -464,7 +463,7 @@ export default function AdminDashboard() {
                 size={14} 
                 color={user.hasCompletedOnboarding ? '#22c55e' : colors.mutedForeground} 
               />
-              <Text style={[styles.userEmail, { marginLeft: spacing.xs, marginTop: 0 }]}>
+              <Text style={[styles.userEmail, { marginLeft: 4, marginTop: 0 }]}>
                 {user.hasCompletedOnboarding ? 'Onboarded' : 'Pending'}
               </Text>
             </View>
@@ -480,7 +479,7 @@ export default function AdminDashboard() {
       
       <View style={styles.healthCard}>
         <Feather name="server" size={24} color={colors.foreground} />
-        <View style={{ marginLeft: spacing.md, flex: 1 }}>
+        <View style={{ marginLeft: 12, flex: 1 }}>
           <Text style={styles.userName}>API Server</Text>
           <Text style={styles.userEmail}>Latency: {health?.api.latency || 0}ms</Text>
         </View>
@@ -494,7 +493,7 @@ export default function AdminDashboard() {
 
       <View style={styles.healthCard}>
         <Feather name="database" size={24} color={colors.foreground} />
-        <View style={{ marginLeft: spacing.md, flex: 1 }}>
+        <View style={{ marginLeft: 12, flex: 1 }}>
           <Text style={styles.userName}>Database</Text>
           <Text style={styles.userEmail}>Latency: {health?.database.latency || 0}ms</Text>
         </View>
@@ -508,7 +507,7 @@ export default function AdminDashboard() {
 
       <View style={styles.healthCard}>
         <Feather name="zap" size={24} color={colors.foreground} />
-        <View style={{ marginLeft: spacing.md, flex: 1 }}>
+        <View style={{ marginLeft: 12, flex: 1 }}>
           <Text style={styles.userName}>Background Jobs</Text>
           <Text style={styles.userEmail}>Pending: {health?.backgroundJobs.pending || 0}</Text>
         </View>
@@ -522,7 +521,7 @@ export default function AdminDashboard() {
 
       <View style={styles.healthCard}>
         <Feather name="hard-drive" size={24} color={colors.foreground} />
-        <View style={{ marginLeft: spacing.md, flex: 1 }}>
+        <View style={{ marginLeft: 12, flex: 1 }}>
           <Text style={styles.userName}>Storage</Text>
           <Text style={styles.userEmail}>Used: {health?.storage.used || 'N/A'}</Text>
         </View>

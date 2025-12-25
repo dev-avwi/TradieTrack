@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
+import { useMemo, useRef } from 'react';
+import { View, Text, Pressable, StyleSheet, Image, Animated, Easing, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../lib/store';
@@ -18,19 +18,119 @@ interface HeaderProps {
   onBackPress?: () => void;
 }
 
+// Re-export for backward compatibility
 export { HEADER_HEIGHT };
+
+function HeaderIconButton({ 
+  icon, 
+  onPress, 
+  color, 
+  badge,
+  colors,
+}: { 
+  icon: keyof typeof Feather.glyphMap; 
+  onPress: () => void; 
+  color: string;
+  badge?: number;
+  colors: ThemeColors;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.parallel([
+      Animated.timing(scale, {
+        toValue: 0.9,
+        duration: 100,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0.7,
+        duration: 100,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 5,
+        tension: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 150,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View 
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: [{ scale }],
+          opacity,
+        }}
+      >
+        <View style={{ position: 'relative' }}>
+          <Feather name={icon} size={20} color={color} />
+          {badge !== undefined && badge > 0 && (
+            <View style={{
+              position: 'absolute',
+              top: -6,
+              right: -6,
+              minWidth: 16,
+              height: 16,
+              borderRadius: 8,
+              backgroundColor: colors.destructive,
+              borderWidth: 2,
+              borderColor: colors.background,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>
+                {badge > 9 ? '9+' : badge}
+              </Text>
+            </View>
+          )}
+        </View>
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export function Header({ 
   title,
-  showSearch: _showSearch = true, 
+  showSearch = true, 
   showBackButton = false,
   onBackPress,
 }: HeaderProps) {
-  const { user } = useAuthStore();
-  const { colors, isDark } = useTheme();
+  const { user, isOwner, roleInfo } = useAuthStore();
+  const { colors, isDark, setThemeMode, themeMode } = useTheme();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const styles = useMemo(() => createStyles(colors, isDark, insets.top), [colors, isDark, insets.top]);
   const { unreadCount } = useNotificationsStore();
+  const pathname = usePathname();
+  const isManager = roleInfo?.roleName === 'MANAGER' || roleInfo?.roleName === 'manager';
+  const canViewMap = isOwner() || isManager;
+  
+  const avatarScale = useRef(new Animated.Value(1)).current;
   
   const getUserInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -50,158 +150,193 @@ export function Header({
     }
   };
 
-  const headerContent = (
-    <View style={[styles.headerContent, { paddingTop: insets.top }]}>
-      <View style={styles.leftSection}>
-        {showBackButton && (
-          <Pressable
-            onPress={handleBack}
-            style={({ pressed }) => [
-              styles.backButton,
-              pressed && styles.pressed,
-            ]}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Feather name="chevron-left" size={24} color={colors.foreground} />
-          </Pressable>
-        )}
-        
-        {title && (
-          <Text style={styles.title} numberOfLines={1}>{title}</Text>
-        )}
-      </View>
+  const toggleTheme = () => {
+    if (themeMode === 'light') {
+      setThemeMode('dark');
+    } else if (themeMode === 'dark') {
+      setThemeMode('system');
+    } else {
+      setThemeMode('light');
+    }
+  };
 
-      <View style={styles.rightSection}>
-        <Pressable 
-          onPress={() => router.push('/more/notifications-inbox')}
-          style={({ pressed }) => [
-            styles.iconButton,
-            pressed && styles.pressed,
-          ]}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <View style={styles.bellContainer}>
-            <Feather name="bell" size={22} color={colors.foreground} />
-            {unreadCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </Text>
+  const handleAvatarPressIn = () => {
+    Animated.timing(avatarScale, {
+      toValue: 0.9,
+      duration: 100,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleAvatarPressOut = () => {
+    Animated.spring(avatarScale, {
+      toValue: 1,
+      friction: 5,
+      tension: 400,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const headerContent = (
+    <>
+      <View style={styles.headerContent}>
+        <View style={styles.leftSection}>
+          {showBackButton ? (
+            <HeaderIconButton
+              icon="arrow-left"
+              onPress={handleBack}
+              color={colors.foreground}
+              colors={colors}
+            />
+          ) : (
+            <View style={styles.brandContainer}>
+              <Image 
+                source={require('../../assets/tradietrack-logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <Text style={styles.brandName} numberOfLines={1}>TradieTrack</Text>
+            </View>
+          )}
+          
+          {title && showBackButton && (
+            <Text style={styles.pageTitleWithBack} numberOfLines={1}>{title}</Text>
+          )}
+        </View>
+
+        <View style={styles.rightSection}>
+          {showSearch && (
+            <HeaderIconButton
+              icon="search"
+              onPress={() => router.push('/more/search')}
+              color={colors.mutedForeground}
+              colors={colors}
+            />
+          )}
+          
+          {canViewMap && (
+            <HeaderIconButton
+              icon="map"
+              onPress={() => router.push('/(tabs)/map')}
+              color={pathname === '/map' || pathname === '/(tabs)/map' ? colors.primary : colors.mutedForeground}
+              colors={colors}
+            />
+          )}
+          
+          <HeaderIconButton
+            icon={isDark ? 'sun' : 'moon'}
+            onPress={toggleTheme}
+            color={colors.mutedForeground}
+            colors={colors}
+          />
+          
+          <HeaderIconButton
+            icon="bell"
+            onPress={() => router.push('/more/notifications-inbox')}
+            color={colors.mutedForeground}
+            badge={unreadCount}
+            colors={colors}
+          />
+          
+          <Pressable 
+            onPress={() => router.push('/(tabs)/profile')}
+            onPressIn={handleAvatarPressIn}
+            onPressOut={handleAvatarPressOut}
+          >
+            <Animated.View 
+              style={[
+                styles.avatarButton,
+                { transform: [{ scale: avatarScale }] }
+              ]}
+            >
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{getUserInitials()}</Text>
               </View>
-            )}
-          </View>
-        </Pressable>
-        
-        <Pressable 
-          onPress={() => router.push('/(tabs)/profile')}
-          style={({ pressed }) => [
-            styles.avatarButton,
-            pressed && styles.pressed,
-          ]}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getUserInitials()}</Text>
-          </View>
-        </Pressable>
+            </Animated.View>
+          </Pressable>
+        </View>
       </View>
-    </View>
+      
+      <View style={styles.headerBorder} />
+    </>
   );
 
+  // iOS: Use BlurView for Liquid Glass effect
   if (isIOS) {
     return (
-      <View style={styles.header}>
-        <BlurView 
-          intensity={45} 
-          tint={isDark ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
+      <BlurView 
+        intensity={80} 
+        tint={isDark ? 'dark' : 'light'}
+        style={styles.header}
+      >
         {headerContent}
-        <View style={styles.borderBottom} />
-      </View>
+      </BlurView>
     );
   }
 
+  // Android: Solid background
   return (
-    <View style={[styles.header, styles.androidBackground]}>
+    <View style={styles.header}>
       {headerContent}
-      <View style={styles.borderBottom} />
     </View>
   );
 }
 
-const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean, topInset: number) => StyleSheet.create({
   header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-  },
-  androidBackground: {
-    backgroundColor: isDark 
-      ? 'rgba(15, 15, 15, 0.85)' 
-      : 'rgba(255, 255, 255, 0.85)',
+    // iOS: transparent background for blur effect, Android: solid background
+    backgroundColor: isIOS ? 'transparent' : colors.background,
+    paddingTop: isIOS ? topInset : 0,
+    overflow: 'hidden',
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     height: HEADER_HEIGHT,
-    minHeight: HEADER_HEIGHT,
   },
-  borderBottom: {
+  headerBorder: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: isDark 
-      ? 'rgba(255, 255, 255, 0.1)' 
-      : 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: isIOS 
+      ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
+      : colors.border,
   },
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
     gap: 8,
+    minWidth: 0,
   },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 2,
+    marginLeft: 8,
   },
-  backButton: {
-    width: 36,
-    height: 36,
+  brandContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -8,
+    gap: 8,
+    flex: 1,
+    minWidth: 0,
   },
-  iconButton: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logo: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
   },
-  bellContainer: {
-    position: 'relative',
+  brandName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: -0.3,
+    flexShrink: 1,
   },
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -6,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.destructive,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  title: {
+  pageTitleWithBack: {
     fontSize: 17,
     fontWeight: '600',
     color: colors.foreground,
@@ -221,10 +356,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
   },
   avatarText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.primary,
-  },
-  pressed: {
-    opacity: 0.6,
   },
 });

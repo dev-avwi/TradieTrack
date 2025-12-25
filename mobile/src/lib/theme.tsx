@@ -61,15 +61,6 @@ export interface ThemeColors {
   promoBorder: string;
   white: string;
   isDark: boolean;
-  // iOS 26 Spatial Design tokens
-  glass: string;
-  glassStrong: string;
-  glassBorder: string;
-  chromeBackground: string;
-  chromeBorder: string;
-  surfaceElevated: string;
-  tabBarActive: string;
-  tabBarInactive: string;
 }
 
 export interface ThemeShadows {
@@ -353,15 +344,6 @@ const lightColors: ThemeColors = {
   promoBorder: '#c7d2fe',
   white: '#ffffff',
   isDark: false,
-  // iOS 26 Spatial Design tokens
-  glass: 'rgba(255, 255, 255, 0.72)',
-  glassStrong: 'rgba(255, 255, 255, 0.88)',
-  glassBorder: 'rgba(0, 0, 0, 0.08)',
-  chromeBackground: 'rgba(249, 249, 249, 0.94)',
-  chromeBorder: 'rgba(0, 0, 0, 0.12)',
-  surfaceElevated: '#ffffff',
-  tabBarActive: 'rgba(0, 0, 0, 0.06)',
-  tabBarInactive: 'transparent',
 };
 
 const darkColors: ThemeColors = {
@@ -420,15 +402,6 @@ const darkColors: ThemeColors = {
   promoBorder: '#3d4260',
   white: '#ffffff',
   isDark: true,
-  // iOS 26 Spatial Design tokens
-  glass: 'rgba(30, 30, 30, 0.72)',
-  glassStrong: 'rgba(40, 40, 40, 0.88)',
-  glassBorder: 'rgba(255, 255, 255, 0.08)',
-  chromeBackground: 'rgba(28, 28, 30, 0.94)',
-  chromeBorder: 'rgba(255, 255, 255, 0.12)',
-  surfaceElevated: '#1c1c1e',
-  tabBarActive: 'rgba(255, 255, 255, 0.1)',
-  tabBarInactive: 'transparent',
 };
 
 function getShadows(isDark: boolean): ThemeShadows {

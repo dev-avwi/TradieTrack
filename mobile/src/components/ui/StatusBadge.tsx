@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme, ThemeColors } from '../../lib/theme';
-import { radius } from '../../lib/design-tokens';
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced' | 'draft' | 'sent' | 'accepted' | 'rejected' | 'paid' | 'overdue';
 
@@ -130,7 +129,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: radius.sm,
+    borderRadius: 9999,
     gap: 6,
     alignSelf: 'flex-start',
   },

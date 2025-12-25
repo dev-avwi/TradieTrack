@@ -614,33 +614,6 @@ class OfflineStorageService {
         console.log('[OfflineStorage] Clients table "notes" column added successfully');
       }
       
-      // Check if clients table is missing the "pending_sync" column (added in a later version)
-      const clientsPendingSyncCol = (clientsInfo as any[]).find((c: any) => c.name === 'pending_sync');
-      
-      if (!clientsPendingSyncCol) {
-        console.log('[OfflineStorage] Adding missing "pending_sync" column to clients table...');
-        await this.db.execAsync(`ALTER TABLE clients ADD COLUMN pending_sync INTEGER DEFAULT 0`);
-        console.log('[OfflineStorage] Clients table "pending_sync" column added successfully');
-      }
-      
-      // Check if clients table is missing the "sync_action" column (added in a later version)
-      const clientsSyncActionCol = (clientsInfo as any[]).find((c: any) => c.name === 'sync_action');
-      
-      if (!clientsSyncActionCol) {
-        console.log('[OfflineStorage] Adding missing "sync_action" column to clients table...');
-        await this.db.execAsync(`ALTER TABLE clients ADD COLUMN sync_action TEXT`);
-        console.log('[OfflineStorage] Clients table "sync_action" column added successfully');
-      }
-      
-      // Check if clients table is missing the "local_id" column (added in a later version)
-      const clientsLocalIdCol = (clientsInfo as any[]).find((c: any) => c.name === 'local_id');
-      
-      if (!clientsLocalIdCol) {
-        console.log('[OfflineStorage] Adding missing "local_id" column to clients table...');
-        await this.db.execAsync(`ALTER TABLE clients ADD COLUMN local_id TEXT`);
-        console.log('[OfflineStorage] Clients table "local_id" column added successfully');
-      }
-      
       // Check if jobs table is missing the "client_name" column (added in a later version)
       const jobsInfo = await this.db.getAllAsync("PRAGMA table_info(jobs)");
       const jobsClientNameCol = (jobsInfo as any[]).find((c: any) => c.name === 'client_name');
@@ -2677,14 +2650,6 @@ class OfflineStorageService {
    */
   async registerBackgroundSync(): Promise<boolean> {
     try {
-      // Check if BackgroundFetch is available (not available in Expo Go)
-      const status = await BackgroundFetch.getStatusAsync();
-      if (status === BackgroundFetch.BackgroundFetchStatus.Restricted || 
-          status === BackgroundFetch.BackgroundFetchStatus.Denied) {
-        console.log('[OfflineStorage] Background fetch not available (requires native build)');
-        return false;
-      }
-      
       await BackgroundFetch.registerTaskAsync(BACKGROUND_SYNC_TASK, {
         minimumInterval: 15 * 60, // 15 minutes
         stopOnTerminate: false,
@@ -2694,15 +2659,8 @@ class OfflineStorageService {
       useOfflineStore.getState().setBackgroundSyncEnabled(true);
       console.log('[OfflineStorage] Background sync registered');
       return true;
-    } catch (error: any) {
-      // This is expected in Expo Go - just log a warning, not an error
-      const message = error?.message || String(error);
-      if (message.includes('Background Fetch has not been configured') || 
-          message.includes('UIBackgroundModes')) {
-        console.log('[OfflineStorage] Background sync not available (requires native build with fetch UIBackgroundMode)');
-      } else {
-        console.warn('[OfflineStorage] Background sync registration failed:', message);
-      }
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to register background sync:', error);
       return false;
     }
   }

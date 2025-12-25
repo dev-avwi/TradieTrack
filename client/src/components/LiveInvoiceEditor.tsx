@@ -501,16 +501,10 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
 
   return (
     <div className="h-full flex flex-col">
-      {/* Mobile Tab Switcher - Glassy style */}
-      <div 
-        className="lg:hidden bg-background/80 backdrop-blur-xl sticky top-0 z-10"
-        style={{ 
-          borderBottom: '1px solid hsl(var(--border) / 0.5)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.03)'
-        }}
-      >
+      {/* Mobile Tab Switcher - Made more noticeable */}
+      <div className="lg:hidden border-b-2 bg-card sticky top-0 z-10 shadow-sm">
         <Tabs value={mobileView} onValueChange={(v) => setMobileView(v as 'edit' | 'preview')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 gap-1 p-1.5 bg-muted/40">
+          <TabsList className="grid w-full grid-cols-2 gap-1 p-1.5 bg-muted/60">
             <TabsTrigger 
               value="edit" 
               className="gap-2 font-semibold rounded-lg data-[state=active]:shadow-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -540,16 +534,12 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
                 <Button
                   type="button"
                   variant="ghost"
+                  size="icon"
                   onClick={onCancel}
-                  className="rounded-full bg-background/80 backdrop-blur-xl px-4 py-2 gap-1"
-                  style={{ 
-                    border: '1px solid hsl(var(--border) / 0.5)',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
-                  }}
+                  className="rounded-xl"
                   data-testid="button-back"
                 >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="font-medium">Back</span>
+                  <ChevronLeft className="h-5 w-5" />
                 </Button>
                 <h1 className="ios-title">New Invoice</h1>
               </div>

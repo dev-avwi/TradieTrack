@@ -15,7 +15,7 @@ import {
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, sizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 
 interface AutomationRule {
@@ -204,7 +204,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   iconCircle: {
     width: 36,
     height: 36,
-    borderRadius: radius.xl,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -218,7 +218,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   automationDescription: {
     ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: spacing.xs / 2,
+    marginTop: 2,
   },
   automationDetails: {
     marginBottom: spacing.md,
@@ -232,7 +232,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   triggerBadge: {
     backgroundColor: colors.muted,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
+    paddingVertical: 2,
     borderRadius: radius.md,
   },
   triggerBadgeText: {
@@ -256,9 +256,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     gap: spacing.xs,
   },
   actionIconCircle: {
-    width: sizes.iconMd,
-    height: sizes.iconMd,
-    borderRadius: sizes.iconMd / 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
@@ -312,7 +312,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.lg,
   },
   modalTitle: {
-    ...typography.headline,
+    ...typography.h3,
     color: colors.foreground,
   },
   modalLabel: {
@@ -381,7 +381,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   presetDescription: {
     ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: spacing.xs / 2,
+    marginTop: 2,
   },
   addPresetButton: {
     flexDirection: 'row',
@@ -449,9 +449,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     gap: spacing.md,
   },
   historyIconCircle: {
-    width: sizes.avatarSm,
-    height: sizes.avatarSm,
-    borderRadius: sizes.avatarSm / 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -474,7 +474,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   historyError: {
     ...typography.captionSmall,
     color: colors.destructive,
-    marginTop: spacing.xs / 2,
+    marginTop: 2,
   },
 });
 

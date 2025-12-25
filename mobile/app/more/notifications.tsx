@@ -4,7 +4,6 @@ import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { useNotificationsStore } from '../../src/lib/notifications-store';
-import { spacing, radius } from '../../src/lib/design-tokens';
 import * as Notifications from 'expo-notifications';
 
 const createStyles = (colors: any) => StyleSheet.create({
@@ -13,7 +12,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: spacing.lg,
+    padding: 16,
     paddingBottom: 100,
   },
   sectionTitle: {
@@ -22,28 +21,28 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: spacing.sm,
-    marginTop: spacing.sm,
-    marginLeft: spacing.xs,
+    marginBottom: 8,
+    marginTop: 8,
+    marginLeft: 4,
   },
   card: {
     backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.xs,
-    marginBottom: spacing.lg,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
-    gap: spacing.md,
+    padding: 12,
+    gap: 12,
   },
   settingIcon: {
     width: 36,
     height: 36,
-    borderRadius: radius.sm,
+    borderRadius: 8,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -64,24 +63,24 @@ const createStyles = (colors: any) => StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: colors.border,
-    marginHorizontal: spacing.md,
+    marginHorizontal: 12,
   },
   infoText: {
     fontSize: 13,
     color: colors.mutedForeground,
     textAlign: 'center',
-    marginTop: spacing.sm,
+    marginTop: 8,
     lineHeight: 20,
   },
   inboxButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    gap: 8,
     backgroundColor: colors.primary,
     paddingVertical: 14,
-    borderRadius: radius.md,
-    marginBottom: spacing.xl,
+    borderRadius: 10,
+    marginBottom: 20,
   },
   inboxButtonText: {
     color: colors.primaryForeground,
@@ -90,14 +89,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   statusCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: 12,
   },
   statusIcon: {
     width: 44,
@@ -120,9 +119,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   fixButton: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: radius.xs,
+    borderRadius: 6,
     backgroundColor: colors.primaryLight,
   },
   fixButtonText: {

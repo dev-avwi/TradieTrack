@@ -17,7 +17,7 @@ import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { API_URL } from '../../src/lib/api';
-import { spacing, radius, shadows, sizes, typography } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows } from '../../src/lib/design-tokens';
 import LiveDocumentPreview from '../../src/components/LiveDocumentPreview';
 import { TemplateId, DOCUMENT_TEMPLATES } from '../../src/lib/document-templates';
 
@@ -100,7 +100,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   pageSubtitle: {
     fontSize: 14,
     color: colors.mutedForeground,
-    marginTop: spacing.xs / 2,
+    marginTop: 2,
   },
   createButton: {
     flexDirection: 'row',
@@ -133,12 +133,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.foreground,
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   statLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 4,
   },
   statLabel: {
     fontSize: 11,
@@ -245,7 +245,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.xs,
+    marginTop: 4,
   },
   templateType: {
     fontSize: 12,
@@ -254,7 +254,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textTransform: 'capitalize',
     backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
+    paddingVertical: 2,
     borderRadius: radius.sm,
   },
   templateTrade: {
@@ -277,7 +277,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   templateTitle: {
     fontSize: 14,
     color: colors.foreground,
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   templateItemsCount: {
     fontSize: 13,
@@ -286,7 +286,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   templateTerms: {
     fontSize: 13,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 4,
     fontStyle: 'italic',
   },
   badgeRow: {
@@ -300,7 +300,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     backgroundColor: colors.muted,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
+    paddingVertical: 2,
     borderRadius: radius.sm,
   },
   modalContainer: {
@@ -325,7 +325,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: colors.muted,
     borderRadius: radius.lg,
-    padding: spacing.xs,
+    padding: 4,
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,
   },
@@ -473,7 +473,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   styleDescription: {
     fontSize: 12,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 4,
   },
   colorPickerRow: {
     flexDirection: 'row',
@@ -503,9 +503,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.sm,
   },
   colorPreset: {
-    width: sizes.avatarSm,
-    height: sizes.avatarSm,
-    borderRadius: sizes.avatarSm / 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: 'transparent',
   },
@@ -529,21 +529,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   switchTrack: {
     width: 48,
     height: 28,
-    borderRadius: radius.lg,
+    borderRadius: 14,
     backgroundColor: colors.muted,
-    padding: spacing.xs / 2,
+    padding: 2,
   },
   switchTrackActive: {
     backgroundColor: colors.primary,
   },
   switchThumb: {
-    width: sizes.iconMd,
-    height: sizes.iconMd,
-    borderRadius: sizes.iconMd / 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: colors.card,
   },
   switchThumbActive: {
-    marginLeft: spacing.xl,
+    marginLeft: 20,
   },
   lineItemRow: {
     flexDirection: 'row',

@@ -23,7 +23,6 @@ import { ConflictResolutionPanel } from '../src/components/ConflictResolutionPan
 import { useOfflineStore } from '../src/lib/offline-storage';
 import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
-import { SwipeableRowProvider } from '../src/components/ui';
 import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
 import { HEADER_HEIGHT } from '../src/lib/design-tokens';
@@ -73,7 +72,7 @@ function DeepLinkHandler() {
         if (token) {
           try {
             const response = await api.get(`/api/verify-email?token=${token}`);
-            if ((response.data as any)?.success) {
+            if (response.data?.success) {
               Alert.alert('Email Verified', 'Your email has been verified successfully!');
               checkAuth();
             } else {
@@ -319,9 +318,8 @@ function RootLayoutContent() {
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="job" options={{ headerShown: false }} />
+          <Stack.Screen name="job/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="more" options={{ headerShown: false }} />
         </Stack>
       </AuthenticatedLayout>
@@ -335,11 +333,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <ScrollProvider>
-            <SwipeableRowProvider>
-              <TerminalProvider>
-                <RootLayoutContent />
-              </TerminalProvider>
-            </SwipeableRowProvider>
+            <TerminalProvider>
+              <RootLayoutContent />
+            </TerminalProvider>
           </ScrollProvider>
         </ThemeProvider>
       </SafeAreaProvider>
