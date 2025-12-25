@@ -102,6 +102,40 @@ export function JobChat({ jobId, currentUserId, className }: JobChatProps) {
     },
   });
 
+  const uploadFileMutation = useMutation({
+    mutationFn: async ({ file, message }: { file: File; message?: string }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (message) {
+        formData.append('message', message);
+      }
+      const response = await fetch(`/api/jobs/${jobId}/chat/upload`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'chat'] });
+      toast({
+        title: "Attachment sent",
+        description: "Your file has been uploaded successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to upload file",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
   useEffect(() => {
     if (messages.length > 0 && scrollRef.current) {
       const latestMessageId = messages[messages.length - 1]?.id;
@@ -114,6 +148,10 @@ export function JobChat({ jobId, currentUserId, className }: JobChatProps) {
 
   const handleSend = (message: string) => {
     sendMessageMutation.mutate(message);
+  };
+
+  const handleSendFile = (file: File, message?: string) => {
+    uploadFileMutation.mutate({ file, message });
   };
 
   const handleDelete = (messageId: string) => {
@@ -197,8 +235,10 @@ export function JobChat({ jobId, currentUserId, className }: JobChatProps) {
           
           <ChatComposer
             onSend={handleSend}
+            onSendFile={handleSendFile}
             placeholder="Message about this job..."
-            isSending={sendMessageMutation.isPending}
+            isSending={sendMessageMutation.isPending || uploadFileMutation.isPending}
+            supportAttachments={true}
           />
         </div>
       </CardContent>

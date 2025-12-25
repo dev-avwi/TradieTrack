@@ -13509,6 +13509,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Upload attachment for job chat (photos, videos, files)
+  const chatUpload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit for chat attachments
+  });
+  
+  app.post("/api/jobs/:jobId/chat/upload", requireAuth, chatUpload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.params.jobId;
+      const file = req.file;
+      const { message } = req.body;
+      
+      // Verify user has access to this job
+      const job = await getJobWithChatAccess(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found or access denied' });
+      }
+      
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+      
+      // Determine message type based on mime type
+      let messageType = 'file';
+      if (file.mimetype.startsWith('image/')) {
+        messageType = 'image';
+      } else if (file.mimetype.startsWith('video/')) {
+        messageType = 'video';
+      }
+      
+      // Upload file to object storage
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      
+      const timestamp = Date.now();
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `/.private/chat-attachments/${userId}/${jobId}/${timestamp}_${safeName}`;
+      
+      const attachmentUrl = await objectStorageService.uploadFile(fileName, file.buffer, file.mimetype);
+      
+      if (!attachmentUrl) {
+        return res.status(500).json({ error: 'Failed to upload attachment' });
+      }
+      
+      // Create chat message with attachment
+      const validatedData = insertJobChatSchema.parse({
+        jobId,
+        userId,
+        message: message || file.originalname,
+        messageType,
+        attachmentUrl,
+        attachmentName: file.originalname,
+      });
+      
+      const chatMessage = await storage.createJobChatMessage(validatedData);
+      
+      // Enrich with user info
+      const user = await storage.getUser(userId);
+      const enrichedMessage = {
+        ...chatMessage,
+        senderName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown',
+        senderAvatar: user?.profileImageUrl,
+      };
+      
+      res.json(enrichedMessage);
+    } catch (error: any) {
+      console.error('Error uploading chat attachment:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // Get job chat participants - who can see messages in this job chat
   app.get("/api/jobs/:jobId/chat/participants", requireAuth, async (req: any, res) => {
     try {
