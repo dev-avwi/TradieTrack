@@ -7455,6 +7455,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userContext = await getUserContext(req.userId);
       const { lineItems, ...invoiceData } = req.body;
+      
+      // Get business settings to check GST
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
+      const gstEnabled = business?.gstEnabled ?? true;
+      
+      // Always calculate totals from line items when provided (server is source of truth)
+      let calculatedSubtotal = 0;
+      let calculatedGst = 0;
+      let calculatedTotal = 0;
+      
+      if (lineItems && Array.isArray(lineItems) && lineItems.length > 0) {
+        // Calculate subtotal from line items - server always recalculates
+        calculatedSubtotal = lineItems.reduce((sum: number, item: any) => {
+          const qty = parseFloat(item.quantity || '1');
+          const price = parseFloat(item.unitPrice || '0');
+          return sum + (qty * price);
+        }, 0);
+        
+        // Calculate GST if enabled
+        if (gstEnabled) {
+          calculatedGst = calculatedSubtotal * 0.1;
+        }
+        
+        // Calculate total
+        calculatedTotal = calculatedSubtotal + calculatedGst;
+      } else {
+        // No line items - use provided values or defaults
+        calculatedSubtotal = parseFloat(invoiceData.subtotal || '0');
+        calculatedGst = parseFloat(invoiceData.gstAmount || '0');
+        calculatedTotal = parseFloat(invoiceData.total || '0');
+      }
+      
+      // Update invoice data with calculated totals
+      invoiceData.subtotal = calculatedSubtotal.toFixed(2);
+      invoiceData.gstAmount = calculatedGst.toFixed(2);
+      invoiceData.total = calculatedTotal.toFixed(2);
+      
       const data = insertInvoiceSchema.parse(invoiceData);
       
       // Generate invoice number if not provided
@@ -7462,12 +7499,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data.number = await storage.generateInvoiceNumber(userContext.effectiveUserId);
       }
       
+      // Generate payment token if allowOnlinePayment is true
+      if (data.allowOnlinePayment && !data.paymentToken) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        const bytes = randomBytes(12);
+        let paymentToken = '';
+        for (let i = 0; i < 12; i++) {
+          paymentToken += chars[bytes[i] % chars.length];
+        }
+        data.paymentToken = paymentToken;
+      }
+      
       const invoice = await storage.createInvoice({ ...data, userId: userContext.effectiveUserId });
       
       // Add line items if provided
       if (lineItems && Array.isArray(lineItems)) {
         for (const item of lineItems) {
-          const lineItemData = insertInvoiceLineItemSchema.parse({ ...item, invoiceId: invoice.id });
+          // Calculate line item total if not provided
+          const itemQty = parseFloat(item.quantity || '1');
+          const itemPrice = parseFloat(item.unitPrice || '0');
+          const itemTotal = item.total || (itemQty * itemPrice).toFixed(2);
+          
+          const lineItemData = insertInvoiceLineItemSchema.parse({ 
+            ...item, 
+            invoiceId: invoice.id,
+            total: itemTotal 
+          });
           await storage.createInvoiceLineItem(lineItemData, userContext.effectiveUserId);
         }
       }
