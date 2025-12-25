@@ -597,16 +597,17 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     
     .accepted-stamp {
       position: absolute;
-      top: 100px;
-      right: 60px;
-      padding: 10px 20px;
+      top: 180px;
+      right: 80px;
+      padding: 8px 16px;
       border: 3px solid #22c55e;
       color: #22c55e;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: ${template.headingWeight};
       text-transform: uppercase;
-      transform: rotate(-15deg);
-      opacity: 0.8;
+      transform: rotate(-12deg);
+      opacity: 0.7;
+      z-index: 10;
     }
     
     .footer {
@@ -973,9 +974,8 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
     (invoice.dueDate && new Date(invoice.dueDate) < new Date() && invoice.status !== 'paid');
   
   // Determine document title - must say "TAX INVOICE" for GST-registered businesses (ATO requirement)
-  const documentTitle = isGstRegistered 
-    ? (isPaid ? 'TAX INVOICE / RECEIPT' : 'TAX INVOICE')
-    : (isPaid ? 'Invoice / Receipt' : 'Invoice');
+  // Keep title clean - the PAID stamp shows payment status separately
+  const documentTitle = isGstRegistered ? 'TAX INVOICE' : 'Invoice';
   
   return `
 <!DOCTYPE html>
