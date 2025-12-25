@@ -67,8 +67,10 @@ import { db } from "./storage";
 import { eq, sql, desc } from "drizzle-orm";
 import { 
   ObjectStorageService, 
-  ObjectNotFoundError 
+  ObjectNotFoundError,
+  objectStorageClient,
 } from "./objectStorage";
+import { parseObjectPath } from "./objectStorage";
 import { 
   tradieQuoteTemplates, 
   tradieLineItems, 
@@ -12835,6 +12837,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.send(Buffer.from(arrayBuffer));
     } catch (error: any) {
       console.error('Error streaming voice note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== JOB DOCUMENTS ROUTES (uploaded PDFs, external quotes/invoices) =====
+  
+  // Get documents for a job (team-aware: shows all documents for the job)
+  app.get("/api/jobs/:jobId/documents", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found or access denied' });
+      }
+      
+      const documents = await storage.getJobDocuments(jobId, userContext.effectiveUserId);
+      
+      const objectStorage = new ObjectStorageService();
+      const documentsWithUrls = await Promise.all(documents.map(async (doc) => {
+        try {
+          const { bucketName, objectName } = parseObjectPath(doc.objectStorageKey);
+          const bucket = objectStorageClient.bucket(bucketName);
+          const file = bucket.file(objectName);
+          const [signedUrl] = await file.getSignedUrl({
+            action: 'read',
+            expires: Date.now() + 3600 * 1000,
+          });
+          return { ...doc, fileUrl: signedUrl };
+        } catch (error) {
+          console.error('Error getting signed URL for document:', error);
+          return { ...doc, fileUrl: null };
+        }
+      }));
+      
+      res.json(documentsWithUrls);
+    } catch (error: any) {
+      console.error('Error getting job documents:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Upload document to a job (multipart form)
+  app.post("/api/jobs/:jobId/documents", requireAuth, upload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      const file = req.file;
+      
+      const userContext = await getUserContext(userId);
+      
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found or access denied' });
+      }
+      
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+      
+      const { title, documentType } = req.body;
+      if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+      }
+      
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.mimetype)) {
+        return res.status(400).json({ error: 'Invalid file type. Only PDF and images are allowed.' });
+      }
+      
+      const objectStorage = new ObjectStorageService();
+      const privateDir = objectStorage.getPrivateObjectDir();
+      const fileExtension = file.originalname.split('.').pop() || 'pdf';
+      const objectKey = `${privateDir}/job-documents/${userContext.effectiveUserId}/${jobId}/${Date.now()}-${randomBytes(4).toString('hex')}.${fileExtension}`;
+      
+      const { bucketName, objectName } = parseObjectPath(objectKey);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const gcsFile = bucket.file(objectName);
+      
+      await gcsFile.save(file.buffer, {
+        metadata: {
+          contentType: file.mimetype,
+        },
+      });
+      
+      const document = await storage.createJobDocument({
+        userId: userContext.effectiveUserId,
+        jobId,
+        title,
+        documentType: documentType || 'other',
+        fileName: file.originalname,
+        objectStorageKey: objectKey,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        uploadedBy: userId,
+      });
+      
+      const [signedUrl] = await gcsFile.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 3600 * 1000,
+      });
+      
+      res.json({ ...document, fileUrl: signedUrl, success: true });
+    } catch (error: any) {
+      console.error('Error uploading job document:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Delete a document
+  app.delete("/api/jobs/:jobId/documents/:docId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, docId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      
+      const document = await storage.getJobDocument(docId, userContext.effectiveUserId);
+      if (!document) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      
+      try {
+        const { bucketName, objectName } = parseObjectPath(document.objectStorageKey);
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectName);
+        await file.delete();
+      } catch (deleteError) {
+        console.error('Error deleting file from object storage:', deleteError);
+      }
+      
+      const deleted = await storage.deleteJobDocument(docId, userContext.effectiveUserId);
+      
+      if (!deleted) {
+        return res.status(500).json({ error: 'Failed to delete document' });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting job document:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // View/download a document
+  app.get("/api/jobs/:jobId/documents/:docId/view", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { docId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      
+      const document = await storage.getJobDocument(docId, userContext.effectiveUserId);
+      if (!document) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      
+      const { bucketName, objectName } = parseObjectPath(document.objectStorageKey);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      
+      const [signedUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 3600 * 1000,
+      });
+      
+      res.redirect(signedUrl);
+    } catch (error: any) {
+      console.error('Error viewing document:', error);
       res.status(500).json({ error: error.message });
     }
   });

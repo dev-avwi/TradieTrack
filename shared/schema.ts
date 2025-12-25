@@ -1767,6 +1767,28 @@ export const insertVoiceNoteSchema = createInsertSchema(voiceNotes).omit({
 export type InsertVoiceNote = z.infer<typeof insertVoiceNoteSchema>;
 export type VoiceNote = typeof voiceNotes.$inferSelect;
 
+// Job Documents - External PDF files (quotes/invoices from other sources)
+export const jobDocuments = pgTable("job_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  title: text("title").notNull(),
+  documentType: text("document_type").notNull().default('other'), // 'quote', 'invoice', 'other'
+  fileName: text("file_name").notNull(),
+  objectStorageKey: text("object_storage_key").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: text("mime_type"),
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertJobDocumentSchema = createInsertSchema(jobDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertJobDocument = z.infer<typeof insertJobDocumentSchema>;
+export type JobDocument = typeof jobDocuments.$inferSelect;
+
 // Invoice Reminder Logs - Track sent reminders to avoid duplicates
 export const invoiceReminderLogs = pgTable("invoice_reminder_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

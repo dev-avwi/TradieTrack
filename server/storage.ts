@@ -77,6 +77,8 @@ import {
   type InsertDigitalSignature,
   type JobCheckin,
   type InsertJobCheckin,
+  type JobDocument,
+  type InsertJobDocument,
   users,
   digitalSignatures,
   businessSettings,
@@ -112,6 +114,7 @@ import {
   routes,
   jobPhotos,
   voiceNotes,
+  jobDocuments,
   invoiceReminderLogs,
   jobChat,
   teamChat,
@@ -537,6 +540,12 @@ export interface IStorage {
   createMyobConnection(data: InsertMyobConnection): Promise<MyobConnection>;
   updateMyobConnection(id: string, data: Partial<MyobConnection>): Promise<MyobConnection | undefined>;
   deleteMyobConnection(userId: string): Promise<boolean>;
+
+  // Job Documents (uploaded PDFs, external quotes/invoices)
+  getJobDocuments(jobId: string, userId: string): Promise<JobDocument[]>;
+  getJobDocument(id: string, userId: string): Promise<JobDocument | undefined>;
+  createJobDocument(document: InsertJobDocument): Promise<JobDocument>;
+  deleteJobDocument(id: string, userId: string): Promise<boolean>;
 }
 
 // Initialize database connection
@@ -2475,6 +2484,31 @@ export class PostgresStorage implements IStorage {
   async deleteVoiceNote(id: string, userId: string): Promise<boolean> {
     const result = await db.delete(voiceNotes)
       .where(and(eq(voiceNotes.id, id), eq(voiceNotes.userId, userId)));
+    return result.rowCount > 0;
+  }
+
+  // Job Documents (uploaded PDFs, external quotes/invoices)
+  async getJobDocuments(jobId: string, userId: string): Promise<JobDocument[]> {
+    return await db.select().from(jobDocuments)
+      .where(and(eq(jobDocuments.jobId, jobId), eq(jobDocuments.userId, userId)))
+      .orderBy(desc(jobDocuments.createdAt));
+  }
+
+  async getJobDocument(id: string, userId: string): Promise<JobDocument | undefined> {
+    const result = await db.select().from(jobDocuments)
+      .where(and(eq(jobDocuments.id, id), eq(jobDocuments.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createJobDocument(document: InsertJobDocument): Promise<JobDocument> {
+    const result = await db.insert(jobDocuments).values(document).returning();
+    return result[0];
+  }
+
+  async deleteJobDocument(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(jobDocuments)
+      .where(and(eq(jobDocuments.id, id), eq(jobDocuments.userId, userId)));
     return result.rowCount > 0;
   }
 

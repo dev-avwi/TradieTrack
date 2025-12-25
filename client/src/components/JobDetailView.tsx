@@ -5,6 +5,7 @@ import { TimerWidget } from "./TimeTracking";
 import { useLocation } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { JobVoiceNotes } from "./JobVoiceNotes";
+import { JobDocuments } from "./JobDocuments";
 import { JobSignature } from "./JobSignature";
 import { AIPhotoAnalysis } from "./AIPhotoAnalysis";
 import { JobForms } from "./CustomFormRenderer";
@@ -903,6 +904,9 @@ export default function JobDetailView({
 
         {/* Voice Notes - show for ALL job statuses so team sync works */}
         <JobVoiceNotes jobId={jobId} canUpload={job.status !== 'invoiced'} />
+
+        {/* Uploaded Documents - external quotes, invoices, PDFs */}
+        <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
         {/* Custom Forms - available for in_progress, done, invoiced jobs */}
         {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (
