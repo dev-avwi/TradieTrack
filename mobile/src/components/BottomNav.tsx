@@ -183,26 +183,22 @@ export function BottomNav() {
     </View>
   );
 
-  // iOS: Use BlurView for Liquid Glass effect - more transparent and glassy
+  // iOS: Use BlurView for Liquid Glass effect
   if (isIOS) {
     return (
       <BlurView 
-        intensity={100} 
+        intensity={80} 
         tint={isDark ? 'dark' : 'light'}
-        style={[containerStyle, { backgroundColor: 'transparent' }]}
+        style={containerStyle}
       >
         {navContent}
       </BlurView>
     );
   }
 
-  // Android: Semi-transparent glassy background
+  // Android: Solid background
   return (
-    <View style={[containerStyle, { 
-      backgroundColor: isDark 
-        ? 'rgba(18, 20, 23, 0.88)' 
-        : 'rgba(255, 255, 255, 0.88)',
-    }]}>
+    <View style={containerStyle}>
       {navContent}
     </View>
   );
@@ -218,10 +214,20 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     bottom: 0,
     left: 0,
     right: 0,
-    // Glassy background - transparent for blur on iOS, translucent on Android
-    backgroundColor: 'transparent',
+    // iOS: transparent background for blur effect, Android: solid background
+    backgroundColor: isIOS ? 'transparent' : colors.card,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+    borderTopColor: isIOS 
+      ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
+      : colors.cardBorder,
+    // Subtle shadow on Android only
+    ...(isIOS ? {} : {
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 1,
+      shadowRadius: 8,
+      elevation: 8,
+    }),
     overflow: 'hidden',
   },
   navBar: {
@@ -240,7 +246,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     gap: 2,
   },
   navButtonActive: {
-    backgroundColor: colors.primaryLightGlass,
+    backgroundColor: colors.primaryLight,
   },
   navLabel: {
     fontSize: 11,

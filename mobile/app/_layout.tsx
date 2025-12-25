@@ -250,11 +250,11 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // iOS Liquid Glass: Use transparent/glassy backgrounds so blur effects show through
+  // iOS Liquid Glass: Header is positioned absolutely with blur, content starts below it
   // Content can scroll underneath for the translucent effect
   // The layout provides the safe area + header height padding, screens add their own internal padding
   return (
-    <View style={[styles.container, { backgroundColor: colors.backgroundGlass }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Main content area - starts below header, scrolls under both header and nav */}
       <View style={[
         styles.content, 
@@ -306,7 +306,7 @@ function RootLayoutContent() {
           screenOptions={{
             headerShown: false,
             contentStyle: {
-              backgroundColor: 'transparent',
+              backgroundColor: colors.background,
             },
             animation: 'ios_from_right',
             animationDuration: 200,
