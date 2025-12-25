@@ -390,22 +390,6 @@ export default function LoginScreen() {
             </Link>
           </View>
 
-          <View style={styles.demoAccountCard}>
-            <Text style={styles.demoAccountLabel}>Demo Account</Text>
-            <Text style={styles.demoAccountText}>demo@tradietrack.com.au</Text>
-            <Text style={styles.demoAccountText}>demo123456</Text>
-            <TouchableOpacity 
-              style={styles.demoLoginButton}
-              onPress={() => {
-                setEmail('demo@tradietrack.com.au');
-                setPassword('demo123456');
-              }}
-              testID="button-fill-demo"
-            >
-              <Text style={styles.demoLoginButtonText}>Use Demo Account</Text>
-            </TouchableOpacity>
-          </View>
-
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -643,42 +627,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     fontSize: 15,
-  },
-  demoAccountCard: {
-    marginTop: 24,
-    padding: 16,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    alignItems: 'center',
-  },
-  demoAccountLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.mutedForeground,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  demoAccountText: {
-    fontSize: 14,
-    color: colors.foreground,
-    fontFamily: 'monospace',
-    marginBottom: 4,
-  },
-  demoLoginButton: {
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    backgroundColor: colors.primary + '15',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  demoLoginButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
   },
 });
