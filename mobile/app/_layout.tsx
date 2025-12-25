@@ -23,6 +23,7 @@ import { ConflictResolutionPanel } from '../src/components/ConflictResolutionPan
 import { useOfflineStore } from '../src/lib/offline-storage';
 import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
+import { SwipeableRowProvider } from '../src/components/ui';
 import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
 import { HEADER_HEIGHT } from '../src/lib/design-tokens';
@@ -334,9 +335,11 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <ScrollProvider>
-            <TerminalProvider>
-              <RootLayoutContent />
-            </TerminalProvider>
+            <SwipeableRowProvider>
+              <TerminalProvider>
+                <RootLayoutContent />
+              </TerminalProvider>
+            </SwipeableRowProvider>
           </ScrollProvider>
         </ThemeProvider>
       </SafeAreaProvider>

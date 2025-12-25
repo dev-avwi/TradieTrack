@@ -1,9 +1,9 @@
 import { ReactNode, useRef } from 'react';
-import { Pressable, Animated, Easing, ViewStyle, PressableProps } from 'react-native';
+import { Pressable, Animated, Easing, ViewStyle, PressableProps, StyleProp } from 'react-native';
 
 interface AnimatedPressableProps extends Omit<PressableProps, 'style'> {
   children: ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   scaleValue?: number;
   opacityValue?: number;
   duration?: number;

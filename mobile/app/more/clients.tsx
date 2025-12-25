@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -16,6 +17,8 @@ import { useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
+import { SwipeableRow, actionColors, useSwipeableScrollRef, type SwipeAction } from '../../src/components/ui';
+import Animated from 'react-native-reanimated';
 
 type FilterKey = 'all' | 'with_email' | 'with_phone' | 'with_address';
 
@@ -56,27 +59,79 @@ function ClientCard({
 
   const primaryContact = client.email || client.phone || null;
 
+  const handleCall = useCallback(() => {
+    if (client.phone) {
+      Linking.openURL(`tel:${client.phone}`);
+    }
+  }, [client.phone]);
+
+  const handleEmail = useCallback(() => {
+    if (client.email) {
+      Linking.openURL(`mailto:${client.email}`);
+    }
+  }, [client.email]);
+
+  const handleEdit = useCallback(() => {
+    router.push(`/more/client/${client.id}/edit`);
+  }, [client.id]);
+
+  const rightActions: SwipeAction[] = useMemo(() => {
+    const actions: SwipeAction[] = [];
+    
+    if (client.phone) {
+      actions.push({
+        key: 'call',
+        icon: <Feather name="phone" size={22} color="#FFFFFF" />,
+        color: actionColors.call,
+        onPress: handleCall,
+      });
+    }
+    
+    if (client.email) {
+      actions.push({
+        key: 'email',
+        icon: <Feather name="mail" size={22} color="#FFFFFF" />,
+        color: actionColors.archive,
+        onPress: handleEmail,
+      });
+    }
+    
+    actions.push({
+      key: 'edit',
+      icon: <Feather name="edit" size={22} color="#FFFFFF" />,
+      color: actionColors.edit,
+      onPress: handleEdit,
+    });
+    
+    return actions;
+  }, [client.phone, client.email, handleCall, handleEmail, handleEdit]);
+
   return (
-    <AnimatedCardPressable
-      onPress={onPress}
-      style={[styles.clientCard, { width: CARD_WIDTH }]}
+    <SwipeableRow
+      rightActions={rightActions}
+      id={`client-${client.id}`}
     >
-      <View style={styles.clientCardContent}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
+      <AnimatedCardPressable
+        onPress={onPress}
+        style={[styles.clientCard, { width: CARD_WIDTH }]}
+      >
+        <View style={styles.clientCardContent}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
+          </View>
+          
+          <Text style={styles.clientName} numberOfLines={2}>{client.name}</Text>
+          
+          {primaryContact && (
+            <Text style={styles.contactText} numberOfLines={1}>{primaryContact}</Text>
+          )}
+          
+          {client.jobsCount !== undefined && client.jobsCount > 0 && (
+            <Text style={styles.jobsText}>{client.jobsCount} {client.jobsCount === 1 ? 'job' : 'jobs'}</Text>
+          )}
         </View>
-        
-        <Text style={styles.clientName} numberOfLines={2}>{client.name}</Text>
-        
-        {primaryContact && (
-          <Text style={styles.contactText} numberOfLines={1}>{primaryContact}</Text>
-        )}
-        
-        {client.jobsCount !== undefined && client.jobsCount > 0 && (
-          <Text style={styles.jobsText}>{client.jobsCount} {client.jobsCount === 1 ? 'job' : 'jobs'}</Text>
-        )}
-      </View>
-    </AnimatedCardPressable>
+      </AnimatedCardPressable>
+    </SwipeableRow>
   );
 }
 
@@ -86,6 +141,7 @@ export default function ClientsScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const swipeableScrollRef = useSwipeableScrollRef();
 
   const refreshData = useCallback(async () => {
     await fetchClients();
@@ -95,7 +151,6 @@ export default function ClientsScreen() {
     refreshData();
   }, []);
 
-  // Refresh data when screen gains focus (syncs with web app)
   useFocusEffect(
     useCallback(() => {
       refreshData();
@@ -153,7 +208,8 @@ export default function ClientsScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
-        <ScrollView
+        <Animated.ScrollView
+          ref={swipeableScrollRef}
           style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
@@ -165,101 +221,101 @@ export default function ClientsScreen() {
             />
           }
         >
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.pageTitle}>Clients</Text>
-              <Text style={styles.pageSubtitle}>{clients.length} total</Text>
+            <View style={styles.header}>
+              <View style={styles.headerLeft}>
+                <Text style={styles.pageTitle}>Clients</Text>
+                <Text style={styles.pageSubtitle}>{clients.length} total</Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.newButton}
+                onPress={handleCreateClient}
+              >
+                <Feather name="plus" size={iconSizes.lg} color={colors.white} />
+                <Text style={styles.newButtonText}>New Client</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.newButton}
-              onPress={handleCreateClient}
+
+            <View style={styles.searchBar}>
+              <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search clients..."
+                placeholderTextColor={colors.mutedForeground}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.filtersScroll}
+              contentContainerStyle={styles.filtersContent}
             >
-              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
-              <Text style={styles.newButtonText}>New Client</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.searchBar}>
-            <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search clients..."
-              placeholderTextColor={colors.mutedForeground}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.filtersScroll}
-            contentContainerStyle={styles.filtersContent}
-          >
-            {FILTERS.map((filter) => {
-              const count = filterCounts[filter.key];
-              const isActive = activeFilter === filter.key;
-              
-              return (
-                <TouchableOpacity
-                  key={filter.key}
-                  onPress={() => setActiveFilter(filter.key)}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.filterPill,
-                    isActive && styles.filterPillActive
-                  ]}
-                >
-                  <Text style={[
-                    styles.filterPillText,
-                    isActive && styles.filterPillTextActive
-                  ]}>
-                    {filter.label}
-                  </Text>
-                  <View style={[
-                    styles.filterCount,
-                    isActive && styles.filterCountActive
-                  ]}>
+              {FILTERS.map((filter) => {
+                const count = filterCounts[filter.key];
+                const isActive = activeFilter === filter.key;
+                
+                return (
+                  <TouchableOpacity
+                    key={filter.key}
+                    onPress={() => setActiveFilter(filter.key)}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.filterPill,
+                      isActive && styles.filterPillActive
+                    ]}
+                  >
                     <Text style={[
-                      styles.filterCountText,
-                      isActive && styles.filterCountTextActive
+                      styles.filterPillText,
+                      isActive && styles.filterPillTextActive
                     ]}>
-                      {count}
+                      {filter.label}
                     </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+                    <View style={[
+                      styles.filterCount,
+                      isActive && styles.filterCountActive
+                    ]}>
+                      <Text style={[
+                        styles.filterCountText,
+                        isActive && styles.filterCountTextActive
+                      ]}>
+                        {count}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
 
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Feather name="users" size={iconSizes.md} color={colors.primary} />
-              <Text style={styles.sectionTitle}>ALL CLIENTS</Text>
-            </View>
-            
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Feather name="users" size={iconSizes.md} color={colors.primary} />
+                <Text style={styles.sectionTitle}>ALL CLIENTS</Text>
               </View>
-            ) : filteredClients.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyStateIcon}>
-                  <Feather name="users" size={iconSizes['4xl']} color={colors.mutedForeground} />
+              
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
                 </View>
-                <Text style={styles.emptyStateTitle}>No clients found</Text>
-                <Text style={styles.emptyStateSubtitle}>
-                  {searchQuery || activeFilter !== 'all'
-                    ? 'Try adjusting your search or filters'
-                    : 'Add your first client to get started'}
-                </Text>
-              </View>
-            ) : (
-              renderClientGrid()
-            )}
-          </View>
-        </ScrollView>
+              ) : filteredClients.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyStateIcon}>
+                    <Feather name="users" size={iconSizes['4xl']} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={styles.emptyStateTitle}>No clients found</Text>
+                  <Text style={styles.emptyStateSubtitle}>
+                    {searchQuery || activeFilter !== 'all'
+                      ? 'Try adjusting your search or filters'
+                      : 'Add your first client to get started'}
+                  </Text>
+                </View>
+              ) : (
+                renderClientGrid()
+              )}
+            </View>
+        </Animated.ScrollView>
       </View>
     </>
   );
