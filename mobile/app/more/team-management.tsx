@@ -1768,6 +1768,7 @@ export default function TeamManagementScreen() {
     return (
       <TouchableOpacity 
         key={member.id} 
+        testID={`card-member-${member.id}`}
         style={styles.memberCard}
         onPress={() => openDetailModal(member)}
         activeOpacity={0.7}
@@ -1817,6 +1818,7 @@ export default function TeamManagementScreen() {
               </Text>
             </View>
             <TouchableOpacity
+              testID={`toggle-location-${member.id}`}
               style={{
                 width: 44,
                 height: 24,
@@ -1842,6 +1844,7 @@ export default function TeamManagementScreen() {
         {member.role !== 'owner' && currentUserIsOwner && (
           <View style={styles.memberActions}>
             <TouchableOpacity 
+              testID={`button-view-${member.id}`}
               style={[styles.actionButton, styles.viewButton]}
               onPress={() => openDetailModal(member)}
             >
@@ -1850,6 +1853,7 @@ export default function TeamManagementScreen() {
             </TouchableOpacity>
             
             <TouchableOpacity 
+              testID={`button-edit-${member.id}`}
               style={styles.actionButton}
               onPress={() => openEditModal(member)}
             >
@@ -1860,6 +1864,7 @@ export default function TeamManagementScreen() {
             {member.inviteStatus === 'accepted' && (
               <>
                 <TouchableOpacity 
+                  testID={`button-role-${member.id}`}
                   style={styles.actionButton}
                   onPress={() => {
                     Alert.alert(
@@ -1879,6 +1884,7 @@ export default function TeamManagementScreen() {
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
+                  testID={`button-permissions-${member.id}`}
                   style={styles.permissionsButton}
                   onPress={() => openPermissionsModal(member)}
                 >
@@ -1887,6 +1893,7 @@ export default function TeamManagementScreen() {
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
+                  testID={`button-assign-${member.id}`}
                   style={styles.actionButton}
                   onPress={() => openAssignJobModal(member)}
                 >
@@ -1898,6 +1905,7 @@ export default function TeamManagementScreen() {
             
             {member.inviteStatus === 'pending' && (
               <TouchableOpacity 
+                testID={`button-resend-${member.id}`}
                 style={[styles.actionButton, { borderColor: colors.warning }]}
                 onPress={() => handleResendInvite(member)}
                 disabled={isResendingInvite === member.id}
@@ -1914,6 +1922,7 @@ export default function TeamManagementScreen() {
             )}
             
             <TouchableOpacity 
+              testID={`button-remove-${member.id}`}
               style={[styles.actionButton, styles.removeButton]}
               onPress={() => handleRemove(member)}
             >
@@ -1933,6 +1942,7 @@ export default function TeamManagementScreen() {
     return (
       <TouchableOpacity
         key={roleKey}
+        testID={`option-role-${roleKey}`}
         style={[
           styles.roleOption,
           isSelected && styles.roleOptionSelected,
@@ -2112,15 +2122,16 @@ export default function TeamManagementScreen() {
             )}
             
             <View style={styles.header}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <TouchableOpacity testID="button-back" onPress={() => router.back()} style={styles.backButton}>
                 <Feather name="arrow-left" size={24} color={colors.foreground} />
               </TouchableOpacity>
               <View style={styles.headerContent}>
                 <Text style={styles.headerTitle}>Team Management</Text>
-                <Text style={styles.headerSubtitle}>{teamMembers.length} team members</Text>
+                <Text testID="text-member-count" style={styles.headerSubtitle}>{teamMembers.length} team members</Text>
               </View>
               {currentUserIsOwner && (
                 <TouchableOpacity 
+                  testID="button-invite-member"
                   style={styles.inviteButton}
                   onPress={() => setShowInviteModal(true)}
                 >
@@ -2183,6 +2194,7 @@ export default function TeamManagementScreen() {
                 </Text>
                 {currentUserIsOwner && (
                   <TouchableOpacity 
+                    testID="button-invite-member-empty"
                     style={styles.emptyStateButton}
                     onPress={() => setShowInviteModal(true)}
                   >
@@ -2199,10 +2211,10 @@ export default function TeamManagementScreen() {
         {/* Invite Modal */}
         <Modal visible={showInviteModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <View testID="modal-invite" style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Invite Team Member</Text>
-                <TouchableOpacity onPress={() => setShowInviteModal(false)}>
+                <TouchableOpacity testID="button-close-invite-modal" onPress={() => setShowInviteModal(false)}>
                   <Feather name="x" size={24} color={colors.foreground} />
                 </TouchableOpacity>
               </View>
@@ -2212,6 +2224,7 @@ export default function TeamManagementScreen() {
                   <View style={styles.inputHalf}>
                     <Text style={[styles.inputLabel, styles.inputLabelFirst]}>First Name *</Text>
                     <TextInput
+                      testID="input-invite-first-name"
                       style={styles.input}
                       value={inviteFirstName}
                       onChangeText={setInviteFirstName}
@@ -2222,6 +2235,7 @@ export default function TeamManagementScreen() {
                   <View style={styles.inputHalf}>
                     <Text style={[styles.inputLabel, styles.inputLabelFirst]}>Last Name *</Text>
                     <TextInput
+                      testID="input-invite-last-name"
                       style={styles.input}
                       value={inviteLastName}
                       onChangeText={setInviteLastName}
@@ -2233,6 +2247,7 @@ export default function TeamManagementScreen() {
 
                 <Text style={styles.inputLabel}>Email Address *</Text>
                 <TextInput
+                  testID="input-invite-email"
                   style={styles.input}
                   value={inviteEmail}
                   onChangeText={setInviteEmail}
@@ -2244,6 +2259,7 @@ export default function TeamManagementScreen() {
 
                 <Text style={styles.inputLabel}>Hourly Rate (Optional)</Text>
                 <TextInput
+                  testID="input-invite-hourly-rate"
                   style={styles.input}
                   value={inviteHourlyRate}
                   onChangeText={setInviteHourlyRate}
@@ -2260,12 +2276,14 @@ export default function TeamManagementScreen() {
 
               <View style={styles.modalFooter}>
                 <TouchableOpacity 
+                  testID="button-cancel-invite"
                   style={styles.cancelButton}
                   onPress={() => setShowInviteModal(false)}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
+                  testID="button-send-invite"
                   style={styles.saveButton}
                   onPress={handleInvite}
                   disabled={isSending}
@@ -2514,10 +2532,10 @@ export default function TeamManagementScreen() {
         {/* Edit Member Modal */}
         <Modal visible={showEditModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <View testID="modal-edit" style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Edit Team Member</Text>
-                <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                <TouchableOpacity testID="button-close-edit-modal" onPress={() => setShowEditModal(false)}>
                   <Feather name="x" size={24} color={colors.foreground} />
                 </TouchableOpacity>
               </View>
@@ -2527,6 +2545,7 @@ export default function TeamManagementScreen() {
                   <View style={styles.inputHalf}>
                     <Text style={[styles.inputLabel, styles.inputLabelFirst]}>First Name</Text>
                     <TextInput
+                      testID="input-edit-first-name"
                       style={styles.input}
                       value={editFirstName}
                       onChangeText={setEditFirstName}
@@ -2537,6 +2556,7 @@ export default function TeamManagementScreen() {
                   <View style={styles.inputHalf}>
                     <Text style={[styles.inputLabel, styles.inputLabelFirst]}>Last Name</Text>
                     <TextInput
+                      testID="input-edit-last-name"
                       style={styles.input}
                       value={editLastName}
                       onChangeText={setEditLastName}
@@ -2548,6 +2568,7 @@ export default function TeamManagementScreen() {
 
                 <Text style={styles.inputLabel}>Phone Number</Text>
                 <TextInput
+                  testID="input-edit-phone"
                   style={styles.input}
                   value={editPhone}
                   onChangeText={setEditPhone}
@@ -2558,6 +2579,7 @@ export default function TeamManagementScreen() {
 
                 <Text style={styles.inputLabel}>Hourly Rate</Text>
                 <TextInput
+                  testID="input-edit-hourly-rate"
                   style={styles.input}
                   value={editHourlyRate}
                   onChangeText={setEditHourlyRate}
@@ -2569,12 +2591,14 @@ export default function TeamManagementScreen() {
 
               <View style={styles.modalFooter}>
                 <TouchableOpacity 
+                  testID="button-cancel-edit"
                   style={styles.cancelButton}
                   onPress={() => setShowEditModal(false)}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
+                  testID="button-save-edit"
                   style={styles.saveButton}
                   onPress={handleSaveEdit}
                   disabled={isSavingEdit}
@@ -2596,12 +2620,12 @@ export default function TeamManagementScreen() {
         {/* Permissions Modal */}
         <Modal visible={showPermissionsModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <View testID="modal-permissions" style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle} numberOfLines={1}>
                   Permissions: {getMemberName(selectedMember)}
                 </Text>
-                <TouchableOpacity onPress={() => setShowPermissionsModal(false)}>
+                <TouchableOpacity testID="button-close-permissions-modal" onPress={() => setShowPermissionsModal(false)}>
                   <Feather name="x" size={24} color={colors.foreground} />
                 </TouchableOpacity>
               </View>
@@ -2798,12 +2822,14 @@ export default function TeamManagementScreen() {
 
               <View style={styles.modalFooter}>
                 <TouchableOpacity 
+                  testID="button-cancel-permissions"
                   style={styles.cancelButton}
                   onPress={() => setShowPermissionsModal(false)}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
+                  testID="button-save-permissions"
                   style={styles.saveButton}
                   onPress={savePermissions}
                   disabled={isSavingPermissions}
@@ -2825,12 +2851,12 @@ export default function TeamManagementScreen() {
         {/* Assign Job Modal */}
         <Modal visible={showAssignJobModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <View testID="modal-assign-job" style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle} numberOfLines={1}>
                   Assign Job to {getMemberName(selectedMember)}
                 </Text>
-                <TouchableOpacity onPress={() => setShowAssignJobModal(false)}>
+                <TouchableOpacity testID="button-close-assign-job-modal" onPress={() => setShowAssignJobModal(false)}>
                   <Feather name="x" size={24} color={colors.foreground} />
                 </TouchableOpacity>
               </View>
@@ -2857,6 +2883,7 @@ export default function TeamManagementScreen() {
                       return (
                         <TouchableOpacity
                           key={job.id}
+                          testID={`option-job-${job.id}`}
                           style={[
                             styles.roleOption,
                             isSelected && styles.roleOptionSelected,
@@ -2906,12 +2933,14 @@ export default function TeamManagementScreen() {
 
               <View style={styles.modalFooter}>
                 <TouchableOpacity 
+                  testID="button-cancel-assign-job"
                   style={styles.cancelButton}
                   onPress={() => setShowAssignJobModal(false)}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
+                  testID="button-submit-assign-job"
                   style={[styles.saveButton, !selectedJobId && { opacity: 0.5 }]}
                   onPress={handleAssignJob}
                   disabled={isAssigningJob || !selectedJobId}

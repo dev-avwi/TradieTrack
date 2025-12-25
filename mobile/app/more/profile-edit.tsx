@@ -13,7 +13,7 @@ import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
-import { API_URL } from '../../src/lib/api';
+import { api } from '../../src/lib/api';
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
@@ -116,7 +116,7 @@ export default function ProfileEditScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
-  const { user, token, refreshUser } = useAuthStore();
+  const { user, checkAuth } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState({
     firstName: user?.firstName || '',
@@ -134,30 +134,20 @@ export default function ProfileEditScreen() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/auth/profile`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
-          phone: form.phone.trim() || undefined,
-          tradeType: form.tradeType.trim() || undefined,
-        }),
+      const response = await api.patch('/api/auth/profile', {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        phone: form.phone.trim() || undefined,
+        tradeType: form.tradeType.trim() || undefined,
       });
 
-      if (response.ok) {
-        if (refreshUser) {
-          await refreshUser();
-        }
+      if (!response.error) {
+        await checkAuth();
         Alert.alert('Success', 'Profile updated successfully', [
           { text: 'OK', onPress: () => router.back() }
         ]);
       } else {
-        const data = await response.json().catch(() => ({}));
-        Alert.alert('Error', data.error || 'Failed to update profile. Please try again.');
+        Alert.alert('Error', response.error || 'Failed to update profile. Please try again.');
       }
     } catch (error) {
       Alert.alert('Error', 'Network error. Please check your connection and try again.');

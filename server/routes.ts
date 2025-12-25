@@ -10066,18 +10066,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Remove a team member
-  app.delete("/api/team/members/:id", requireAuth, async (req: any, res) => {
+  // Update a team member (role, details, etc.) - owner only
+  app.patch("/api/team/members/:id", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId!;
+      const effectiveUserId = req.effectiveUserId || req.userId!;
       const memberId = req.params.id;
+      const { firstName, lastName, phone, hourlyRate, role, roleId } = req.body;
       
-      const member = await storage.getTeamMember(memberId, userId);
+      // getTeamMember already scopes by owner, returning null if not found or not owned
+      const member = await storage.getTeamMember(memberId, effectiveUserId);
       if (!member) {
         return res.status(404).json({ error: 'Team member not found' });
       }
       
-      await storage.deleteTeamMember(memberId, userId);
+      // Build update object with only provided fields
+      const updateData: any = {};
+      if (firstName !== undefined) updateData.firstName = firstName;
+      if (lastName !== undefined) updateData.lastName = lastName;
+      if (phone !== undefined) updateData.phone = phone;
+      if (hourlyRate !== undefined) updateData.hourlyRate = hourlyRate?.toString();
+      if (roleId !== undefined) updateData.roleId = roleId;
+      
+      const updated = await storage.updateTeamMember(memberId, effectiveUserId, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating team member:', error);
+      res.status(500).json({ error: 'Failed to update team member' });
+    }
+  });
+
+  // Remove a team member - owner only
+  app.delete("/api/team/members/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId!;
+      const memberId = req.params.id;
+      
+      // getTeamMember already scopes by owner, returning null if not found or not owned
+      const member = await storage.getTeamMember(memberId, effectiveUserId);
+      if (!member) {
+        return res.status(404).json({ error: 'Team member not found' });
+      }
+      
+      await storage.deleteTeamMember(memberId, effectiveUserId);
       res.json({ success: true });
     } catch (error) {
       console.error('Error removing team member:', error);
