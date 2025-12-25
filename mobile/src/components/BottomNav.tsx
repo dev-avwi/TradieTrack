@@ -10,6 +10,7 @@ import Animated, {
   withSpring,
   interpolate,
   Extrapolation,
+  SharedValue,
 } from 'react-native-reanimated';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useScrollToTop } from '../contexts/ScrollContext';
@@ -52,12 +53,55 @@ const navItems: NavItem[] = [
 ];
 
 export const BOTTOM_NAV_HEIGHT = 56;
+const TAB_COUNT = navItems.length;
+const NAV_HORIZONTAL_PADDING = 16;
+const PILL_WIDTH = 64;
+const PILL_HEIGHT = 36;
 
 const springConfig = {
   damping: 20,
-  stiffness: 300,
-  mass: 0.8,
+  stiffness: 280,
 };
+
+function SlidingPill({ 
+  activeIndex, 
+  tabWidth,
+  colors,
+}: { 
+  activeIndex: SharedValue<number>;
+  tabWidth: number;
+  colors: ThemeColors;
+}) {
+  const animatedStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      activeIndex.value,
+      [0, 1, 2, 3],
+      [0, tabWidth, tabWidth * 2, tabWidth * 3],
+      Extrapolation.CLAMP
+    );
+    
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  return (
+    <Animated.View 
+      style={[
+        {
+          position: 'absolute',
+          left: NAV_HORIZONTAL_PADDING / 2 + (tabWidth - PILL_WIDTH) / 2,
+          top: (BOTTOM_NAV_HEIGHT - PILL_HEIGHT) / 2,
+          width: PILL_WIDTH,
+          height: PILL_HEIGHT,
+          borderRadius: PILL_HEIGHT / 2,
+          backgroundColor: colors.tabBarActive,
+        },
+        animatedStyle,
+      ]} 
+    />
+  );
+}
 
 function NavButton({ 
   item, 
@@ -71,7 +115,7 @@ function NavButton({
   item: NavItem; 
   active: boolean;
   index: number;
-  activeIndex: { value: number };
+  activeIndex: SharedValue<number>;
   onPress: () => void;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
@@ -80,29 +124,17 @@ function NavButton({
     const scale = interpolate(
       activeIndex.value,
       [index - 1, index, index + 1],
-      [1, 1.08, 1],
+      [1, 1.05, 1],
       Extrapolation.CLAMP
     );
     const translateY = interpolate(
       activeIndex.value,
       [index - 1, index, index + 1],
-      [0, -2, 0],
+      [0, -1, 0],
       Extrapolation.CLAMP
     );
     return {
       transform: [{ scale }, { translateY }],
-    };
-  });
-
-  const animatedBgStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      activeIndex.value,
-      [index - 0.5, index, index + 0.5],
-      [0, 1, 0],
-      Extrapolation.CLAMP
-    );
-    return {
-      opacity,
     };
   });
 
@@ -111,7 +143,6 @@ function NavButton({
       onPress={onPress}
       style={styles.navButtonContainer}
     >
-      <Animated.View style={[styles.navButtonBg, animatedBgStyle]} />
       <Animated.View style={[styles.navButton, animatedIconStyle]}>
         <Feather 
           name={item.icon} 
@@ -136,6 +167,10 @@ export function BottomNav() {
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { triggerScrollToTop } = useScrollToTop();
 
+  const tabWidth = useMemo(() => {
+    return (SCREEN_WIDTH - NAV_HORIZONTAL_PADDING) / TAB_COUNT;
+  }, []);
+
   const getActiveIndex = useCallback(() => {
     const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];
     const isChatRoute = chatRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
@@ -158,7 +193,7 @@ export function BottomNav() {
     activeIndex.value = withSpring(currentIndex, springConfig);
   }, [currentIndex]);
 
-  const isActive = (item: NavItem) => {
+  const isActive = useCallback((item: NavItem) => {
     const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];
     const isChatRoute = chatRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
     
@@ -170,16 +205,14 @@ export function BottomNav() {
       return item.matchPaths.some(p => pathname === p || pathname.startsWith(p + '/'));
     }
     return pathname === item.path;
-  };
+  }, [pathname]);
 
-  const isOnMainPage = (item: NavItem) => {
+  const isOnMainPage = useCallback((item: NavItem) => {
     return pathname === item.path || 
            (item.path === '/' && (pathname === '/' || pathname === '/index'));
-  };
+  }, [pathname]);
 
-  const handlePress = (item: NavItem, index: number) => {
-    activeIndex.value = withSpring(index, springConfig);
-    
+  const handlePress = useCallback((item: NavItem, index: number) => {
     if (isActive(item)) {
       if (isOnMainPage(item)) {
         triggerScrollToTop();
@@ -189,12 +222,17 @@ export function BottomNav() {
     } else {
       router.push(item.path as any);
     }
-  };
+  }, [isActive, isOnMainPage, triggerScrollToTop]);
 
   const containerStyle = [styles.container, { paddingBottom: Math.max(insets.bottom, 6) }];
   
   const navContent = (
     <View style={styles.navBar}>
+      <SlidingPill 
+        activeIndex={activeIndex} 
+        tabWidth={tabWidth}
+        colors={colors}
+      />
       {navItems.map((item, index) => (
         <NavButton
           key={item.title}
@@ -213,7 +251,7 @@ export function BottomNav() {
   if (isIOS) {
     return (
       <BlurView 
-        intensity={60} 
+        intensity={80} 
         tint={isDark ? 'dark' : 'light'}
         style={containerStyle}
       >
@@ -243,7 +281,6 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     backgroundColor: isIOS ? 'transparent' : colors.chromeBackground,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.chromeBorder,
-    overflow: 'hidden',
   },
   glassOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -254,21 +291,13 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     alignItems: 'center',
     justifyContent: 'space-around',
     height: BOTTOM_NAV_HEIGHT,
-    paddingHorizontal: 8,
+    paddingHorizontal: NAV_HORIZONTAL_PADDING / 2,
   },
   navButtonContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     height: '100%',
-    position: 'relative',
-  },
-  navButtonBg: {
-    position: 'absolute',
-    width: 64,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.tabBarActive,
   },
   navButton: {
     alignItems: 'center',
