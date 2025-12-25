@@ -6634,14 +6634,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if Twilio is configured
       if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
-        // Log activity even without SMS (demo mode)
-        await storage.createActivityLog({
-          userId: userContext.effectiveUserId,
-          action: 'on_my_way_sent',
-          entityType: 'job',
-          entityId: job.id,
-          details: `On My Way notification logged (SMS not configured) for ${client.firstName || client.email || 'client'}`,
-        });
+        // Log activity even without SMS (demo mode) using helper function
+        await logActivity(
+          userContext.effectiveUserId,
+          'job_started',
+          `On My Way - ${job.title || 'Job'}`,
+          `On My Way notification logged (SMS not configured) for ${client.firstName || client.email || 'client'}`,
+          'job',
+          job.id,
+          { clientName: client.firstName, demoMode: true }
+        );
         return res.json({ success: true, message: 'On My Way logged (SMS not configured)', demoMode: true });
       }
 
@@ -6659,14 +6661,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: `Failed to send SMS: ${smsError.message || 'Unknown error'}` });
       }
 
-      // Log activity after successful SMS
-      await storage.createActivityLog({
-        userId: userContext.effectiveUserId,
-        action: 'on_my_way_sent',
-        entityType: 'job',
-        entityId: job.id,
-        details: `On My Way SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone}`,
-      });
+      // Log activity after successful SMS using helper function
+      await logActivity(
+        userContext.effectiveUserId,
+        'job_started',
+        `On My Way - ${job.title || 'Job'}`,
+        `On My Way SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone}`,
+        'job',
+        job.id,
+        { clientName: client.firstName, clientPhone: client.phone }
+      );
 
       res.json({ success: true, message: 'On My Way notification sent' });
     } catch (error: any) {
@@ -7083,19 +7087,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Quote not found" });
       }
       
-      // Log activity for quote acceptance
-      await storage.createActivityLog({
-        userId: userContext.effectiveUserId,
-        entityType: 'quote',
-        entityId: quote.id,
-        action: 'status_change',
-        details: { 
-          previousStatus, 
-          newStatus: 'accepted',
-          linkedJobId: quote.jobId || null,
-          quoteNumber: quote.number
-        }
-      });
+      // Log activity for quote acceptance using helper function
+      await logActivity(
+        userContext.effectiveUserId,
+        'quote_accepted',
+        `Quote ${quote.number || quote.id} accepted`,
+        `Quote accepted${quote.jobId ? ' and job scheduled' : ''}`,
+        'quote',
+        quote.id,
+        { previousStatus, quoteNumber: quote.number, linkedJobId: quote.jobId }
+      );
       
       // If quote is linked to a job, update the job status and log activity
       if (quote.jobId) {
@@ -7107,19 +7108,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           // Log activity for job status change
-          await storage.createActivityLog({
-            userId: userContext.effectiveUserId,
-            entityType: 'job',
-            entityId: quote.jobId,
-            action: 'status_change',
-            details: { 
-              previousStatus: job.status, 
-              newStatus: 'scheduled',
-              trigger: 'quote_accepted',
-              quoteId: quote.id,
-              quoteNumber: quote.number
-            }
-          });
+          await logActivity(
+            userContext.effectiveUserId,
+            'job_scheduled',
+            `Job ${job.title || job.id} scheduled`,
+            `Job automatically scheduled after quote acceptance`,
+            'job',
+            quote.jobId,
+            { previousStatus: job.status, trigger: 'quote_accepted', quoteId: quote.id, quoteNumber: quote.number }
+          );
           
           console.log(`[Quote Accept] Job ${quote.jobId} moved to scheduled after quote ${quote.id} accepted`);
         }
@@ -7132,6 +7129,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(quote);
     } catch (error) {
       console.error("Error accepting quote:", error);
+      res.status(500).json({ error: "Failed to accept quote" });
+    }
+  });
+  
+  // Accept quote via PATCH (team-aware) - duplicate of POST for RESTful compatibility
+  app.patch("/api/quotes/:id/accept", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      // Get existing quote for status comparison
+      const existingQuote = await storage.getQuote(req.params.id, userContext.effectiveUserId);
+      const previousStatus = existingQuote?.status || 'draft';
+      
+      const quote = await storage.updateQuote(req.params.id, userContext.effectiveUserId, {
+        status: 'accepted',
+        acceptedAt: new Date()
+      });
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      // Log activity for quote acceptance using helper function
+      await logActivity(
+        userContext.effectiveUserId,
+        'quote_accepted',
+        `Quote ${quote.number || quote.id} accepted`,
+        `Quote accepted${quote.jobId ? ' and job scheduled' : ''}`,
+        'quote',
+        quote.id,
+        { previousStatus, quoteNumber: quote.number, linkedJobId: quote.jobId }
+      );
+      
+      // If quote is linked to a job, update the job status and log activity
+      if (quote.jobId) {
+        const job = await storage.getJob(quote.jobId, userContext.effectiveUserId);
+        if (job && (job.status === 'pending' || job.status === 'draft')) {
+          // Update job to 'scheduled' when quote is accepted
+          await storage.updateJob(quote.jobId, userContext.effectiveUserId, {
+            status: 'scheduled'
+          });
+          
+          // Log activity for job status change
+          await logActivity(
+            userContext.effectiveUserId,
+            'job_scheduled',
+            `Job ${job.title || job.id} scheduled`,
+            `Job automatically scheduled after quote acceptance`,
+            'job',
+            quote.jobId,
+            { previousStatus: job.status, trigger: 'quote_accepted', quoteId: quote.id, quoteNumber: quote.number }
+          );
+          
+          console.log(`[Quote Accept PATCH] Job ${quote.jobId} moved to scheduled after quote ${quote.id} accepted`);
+        }
+      }
+      
+      // Trigger automation rules for quote acceptance
+      processStatusChangeAutomation(userContext.effectiveUserId, 'quote', quote.id, previousStatus, 'accepted')
+        .catch(err => console.error('[Automations] Error processing quote acceptance:', err));
+      
+      res.json(quote);
+    } catch (error) {
+      console.error("Error accepting quote via PATCH:", error);
       res.status(500).json({ error: "Failed to accept quote" });
     }
   });
@@ -7508,8 +7567,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return handleInvoiceMarkPaid(req, res, storage);
   });
 
-  // Record manual payment with details (cash, bank transfer, etc.) - team-aware
-  app.post("/api/invoices/:id/record-payment", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+  // Record payment - shared handler for both endpoint aliases
+  const handleRecordPayment = async (req: any, res: any) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { amount, paymentMethod, reference, notes } = req.body;
@@ -7610,20 +7669,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paidAt: new Date(),
         });
         
-        // Log receipt creation activity
-        await storage.createActivityLog({
-          userId: userContext.effectiveUserId,
-          entityType: 'receipt',
-          entityId: receipt.id,
-          action: 'created',
-          details: { 
-            receiptNumber,
-            amount: parsedAmount.toFixed(2),
-            invoiceId: invoice.id,
-            jobId: invoice.jobId,
-            paymentMethod
-          }
-        });
+        // Log receipt creation activity using helper function
+        await logActivity(
+          userContext.effectiveUserId,
+          'payment_received',
+          `Receipt ${receiptNumber} created`,
+          `Payment of $${parsedAmount.toFixed(2)} received via ${paymentMethod}`,
+          'invoice',
+          invoice.id,
+          { receiptNumber, receiptId: receipt.id, amount: parsedAmount.toFixed(2), invoiceId: invoice.id, jobId: invoice.jobId, paymentMethod }
+        );
         
         console.log(`✅ Auto-created receipt ${receiptNumber} for invoice payment`);
       } catch (receiptError) {
@@ -7639,7 +7694,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error recording payment:", error);
       res.status(500).json({ error: "Failed to record payment" });
     }
-  });
+  };
+
+  // Record manual payment with details - RESTful alias endpoint
+  app.post("/api/invoices/:id/payments", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), handleRecordPayment);
+  
+  // Record manual payment with details (legacy endpoint)
+  app.post("/api/invoices/:id/record-payment", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), handleRecordPayment);
 
   // Toggle online payment for invoice
   app.patch("/api/invoices/:id/online-payment", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
@@ -8857,19 +8918,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const receipt = await storage.createReceipt(receiptData);
       
-      // Log activity
-      await storage.createActivityLog({
-        userId: effectiveUserId,
-        entityType: 'receipt',
-        entityId: receipt.id,
-        action: 'created',
-        details: { 
-          receiptNumber,
-          amount: receipt.amount,
-          jobId: receipt.jobId,
-          invoiceId: receipt.invoiceId
-        }
-      });
+      // Log activity using helper function
+      await logActivity(
+        effectiveUserId,
+        'payment_received',
+        `Receipt ${receiptNumber} created`,
+        `Payment of $${receipt.amount} received`,
+        'invoice',
+        receipt.invoiceId,
+        { receiptNumber, receiptId: receipt.id, amount: receipt.amount, jobId: receipt.jobId, invoiceId: receipt.invoiceId }
+      );
       
       res.status(201).json(receipt);
     } catch (error) {
@@ -9252,19 +9310,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paidAt: new Date(),
         });
         
-        // Log receipt creation activity
-        await storage.createActivityLog({
-          userId: request.userId,
-          entityType: 'receipt',
-          entityId: receipt.id,
-          action: 'created',
-          details: { 
-            receiptNumber,
-            amount: amount.toFixed(2),
-            invoiceId: request.invoiceId,
-            paymentMethod: 'online'
-          }
-        });
+        // Log receipt creation activity using helper function
+        await logActivity(
+          request.userId,
+          'payment_received',
+          `Receipt ${receiptNumber} created`,
+          `Online payment of $${amount.toFixed(2)} received`,
+          'invoice',
+          request.invoiceId,
+          { receiptNumber, receiptId: receipt.id, amount: amount.toFixed(2), invoiceId: request.invoiceId, paymentMethod: 'online' }
+        );
         
         console.log(`✅ Auto-created receipt ${receiptNumber} for online payment`);
       } catch (receiptError) {

@@ -28,6 +28,15 @@ Key architectural decisions and features include:
     - Payment link generation via `/api/payment-requests` endpoint
     - Invoice pre-selection from job detail page via "Collect Payment" smart action
     - Mobile collect screen with QR modal, Payment Link modal, and clipboard/share functionality (expo-clipboard)
+-   **Receipt System**: Auto-generated receipts when payments are recorded:
+    - Database schema: `receipts` table with GST breakdown, payment method, and reference tracking
+    - Receipt number format: REC-{year}-{sequential}-{random} (e.g., REC-2024-0001-ABC)
+    - API endpoints: `POST /api/invoices/:id/payments` (RESTful) and `POST /api/invoices/:id/record-payment` (legacy)
+    - Valid payment methods: cash, bank_transfer, cheque, card, other
+    - Auto-creates receipt on payment with activity logging
+    - PDF generation via `generatePaymentReceiptPDF()` in pdfService.ts
+    - Receipts displayed in job detail view via LinkedDocumentsCard with "Paid" badge
+-   **Quote Acceptance Flow**: Quote acceptance automatically updates linked job status from 'pending'/'draft' to 'scheduled' with proper activity logging
 -   **Subscription & Billing System**: Three-tier pricing (Free, Pro $39/month, Team $59/month + $29/seat) with 14-day free trials. Stripe checkout with upfront card collection, automated billing reminders (email/SMS 3 and 1 days before billing), cross-platform subscription sync via REST API. Subscription page with pricing cards and trial information.
 -   **Email Automation**: SendGrid integration for invoice/quote emails with PDF attachments and customisable templates with AI suggestions.
 -   **PWA Support**: Offline capabilities via web manifest and service worker.
