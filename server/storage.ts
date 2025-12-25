@@ -34,6 +34,9 @@ import {
   type InsertChecklistItem,
   type PaymentRequest,
   type InsertPaymentRequest,
+  type Receipt,
+  type InsertReceipt,
+  receipts,
   // Advanced features types
   type TimeEntry,
   type InsertTimeEntry,
@@ -326,6 +329,16 @@ export interface IStorage {
   updatePaymentRequest(id: string, userId: string, request: Partial<InsertPaymentRequest>): Promise<PaymentRequest | undefined>;
   updatePaymentRequestByToken(token: string, updates: Partial<InsertPaymentRequest>): Promise<PaymentRequest | undefined>;
   deletePaymentRequest(id: string, userId: string): Promise<boolean>;
+
+  // Receipts (professional payment receipts linked to jobs)
+  getReceipts(userId: string): Promise<Receipt[]>;
+  getReceipt(id: string, userId: string): Promise<Receipt | undefined>;
+  getReceiptsForJob(jobId: string, userId: string): Promise<Receipt[]>;
+  getReceiptByNumber(receiptNumber: string, userId: string): Promise<Receipt | undefined>;
+  createReceipt(receipt: InsertReceipt & { userId: string }): Promise<Receipt>;
+  updateReceipt(id: string, userId: string, receipt: Partial<InsertReceipt>): Promise<Receipt | undefined>;
+  deleteReceipt(id: string, userId: string): Promise<boolean>;
+  generateReceiptNumber(userId: string): Promise<string>;
 
   // Document Templates
   getDocumentTemplates(userId: string, type?: string, tradeType?: string): Promise<DocumentTemplate[]>;
@@ -1737,6 +1750,84 @@ export class PostgresStorage implements IStorage {
       and(eq(paymentRequests.id, id), eq(paymentRequests.userId, userId))
     );
     return result.rowCount > 0;
+  }
+
+  // Receipt Methods
+  async getReceipts(userId: string): Promise<Receipt[]> {
+    return await db.select().from(receipts).where(eq(receipts.userId, userId)).orderBy(desc(receipts.createdAt));
+  }
+
+  async getReceipt(id: string, userId: string): Promise<Receipt | undefined> {
+    const result = await db
+      .select()
+      .from(receipts)
+      .where(and(eq(receipts.id, id), eq(receipts.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getReceiptsForJob(jobId: string, userId: string): Promise<Receipt[]> {
+    return await db
+      .select()
+      .from(receipts)
+      .where(and(eq(receipts.jobId, jobId), eq(receipts.userId, userId)))
+      .orderBy(desc(receipts.createdAt));
+  }
+
+  async getReceiptByNumber(receiptNumber: string, userId: string): Promise<Receipt | undefined> {
+    const result = await db
+      .select()
+      .from(receipts)
+      .where(and(eq(receipts.receiptNumber, receiptNumber), eq(receipts.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createReceipt(receipt: InsertReceipt & { userId: string }): Promise<Receipt> {
+    const result = await db.insert(receipts).values(receipt).returning();
+    return result[0];
+  }
+
+  async updateReceipt(id: string, userId: string, receipt: Partial<InsertReceipt>): Promise<Receipt | undefined> {
+    const result = await db
+      .update(receipts)
+      .set(receipt)
+      .where(and(eq(receipts.id, id), eq(receipts.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async deleteReceipt(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(receipts).where(
+      and(eq(receipts.id, id), eq(receipts.userId, userId))
+    );
+    return result.rowCount > 0;
+  }
+
+  async generateReceiptNumber(userId: string): Promise<string> {
+    const year = new Date().getFullYear();
+    
+    const userReceipts = await db
+      .select({ receiptNumber: receipts.receiptNumber })
+      .from(receipts)
+      .where(eq(receipts.userId, userId))
+      .orderBy(desc(receipts.createdAt));
+    
+    let nextNumber = 1;
+    if (userReceipts.length > 0) {
+      for (const r of userReceipts) {
+        const match = r.receiptNumber?.match(/-(\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num >= nextNumber) {
+            nextNumber = num + 1;
+          }
+        }
+      }
+    }
+    
+    const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase();
+    return `REC-${year}-${nextNumber.toString().padStart(4, '0')}-${randomSuffix}`;
   }
 
   // Utility methods
