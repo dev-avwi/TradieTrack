@@ -2677,6 +2677,14 @@ class OfflineStorageService {
    */
   async registerBackgroundSync(): Promise<boolean> {
     try {
+      // Check if BackgroundFetch is available (not available in Expo Go)
+      const status = await BackgroundFetch.getStatusAsync();
+      if (status === BackgroundFetch.BackgroundFetchStatus.Restricted || 
+          status === BackgroundFetch.BackgroundFetchStatus.Denied) {
+        console.log('[OfflineStorage] Background fetch not available (requires native build)');
+        return false;
+      }
+      
       await BackgroundFetch.registerTaskAsync(BACKGROUND_SYNC_TASK, {
         minimumInterval: 15 * 60, // 15 minutes
         stopOnTerminate: false,
@@ -2686,8 +2694,15 @@ class OfflineStorageService {
       useOfflineStore.getState().setBackgroundSyncEnabled(true);
       console.log('[OfflineStorage] Background sync registered');
       return true;
-    } catch (error) {
-      console.error('[OfflineStorage] Failed to register background sync:', error);
+    } catch (error: any) {
+      // This is expected in Expo Go - just log a warning, not an error
+      const message = error?.message || String(error);
+      if (message.includes('Background Fetch has not been configured') || 
+          message.includes('UIBackgroundModes')) {
+        console.log('[OfflineStorage] Background sync not available (requires native build with fetch UIBackgroundMode)');
+      } else {
+        console.warn('[OfflineStorage] Background sync registration failed:', message);
+      }
       return false;
     }
   }
