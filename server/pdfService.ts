@@ -702,7 +702,6 @@ export const generateQuotePDF = (data: QuoteWithDetails): string => {
 </head>
 <body>
   <div class="document">
-    ${quote.status === 'accepted' ? `<div class="accepted-stamp">ACCEPTED</div>` : ''}
     
     ${warnings.length > 0 ? `
       <div class="warning-banner">
@@ -990,8 +989,6 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
 </head>
 <body>
   <div class="document">
-    ${isPaid ? `<div class="accepted-stamp" style="border-color: #22c55e; color: #22c55e;">PAID</div>` : ''}
-    ${isOverdue && !isPaid ? `<div class="accepted-stamp" style="border-color: #dc2626; color: #dc2626;">OVERDUE</div>` : ''}
     
     ${warnings.length > 0 ? `
       <div class="warning-banner">
