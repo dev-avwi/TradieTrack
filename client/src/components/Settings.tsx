@@ -65,6 +65,7 @@ import { useToast } from "@/hooks/use-toast";
 import DataSafetyBanner from "./DataSafetyBanner";
 import DocumentTemplateSelector from "./DocumentTemplateSelector";
 import { TemplateUploader } from "./TemplateUploader";
+import { SavedTemplates } from "./SavedTemplates";
 import { TemplateId, TemplateCustomization } from "@/lib/document-templates";
 import { PRICING } from "@shared/schema";
 
@@ -1460,9 +1461,11 @@ export default function Settings({
         <TabsContent value="templates" className="space-y-6">
           <TemplateUploader 
             onComplete={(templateId) => {
-              queryClient.invalidateQueries({ queryKey: ['/api/document-templates'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/templates'] });
             }}
           />
+          
+          <SavedTemplates />
           
           <DocumentTemplateSelector
             selectedTemplate={documentTemplate}
