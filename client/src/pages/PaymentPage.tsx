@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, CheckCircle, AlertCircle, CreditCard, FileText, Clock } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, CreditCard, FileText, Clock, ShieldCheck, Lock } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
@@ -170,10 +170,10 @@ function InvoicePaymentView({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading invoice...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-slate-600">Loading invoice...</p>
         </div>
       </div>
     );
@@ -185,35 +185,36 @@ function InvoicePaymentView({
 
   if (invoiceData.paid || invoiceData.status === 'paid' || paymentSuccess) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            {/* Business branding at top */}
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-green-100 overflow-hidden">
+          {/* Success header with gradient */}
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-6 px-6 text-center">
             {invoiceData.business.logo && (
               <img 
                 src={invoiceData.business.logo} 
                 alt={invoiceData.business.name} 
-                className="h-12 max-w-[150px] object-contain mx-auto mb-4"
+                className="h-10 max-w-[120px] object-contain mx-auto mb-3 brightness-0 invert"
               />
             )}
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+            <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle className="h-10 w-10 text-white" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">Payment Successful!</h2>
-            <p className="text-muted-foreground mb-4">
+            <h2 className="text-2xl font-bold">Payment Successful!</h2>
+          </div>
+          
+          <div className="p-6 text-center">
+            <p className="text-slate-600 mb-4">
               Thank you for your payment. A receipt has been sent to your email.
             </p>
-            <div className="text-sm text-muted-foreground mb-6">
-              <p>Invoice #{invoiceData.number}</p>
-              <p className="font-semibold text-lg text-foreground mt-2">
+            <div className="bg-slate-50 rounded-xl p-4 mb-6">
+              <p className="text-sm text-slate-500">Invoice #{invoiceData.number}</p>
+              <p className="font-bold text-2xl text-slate-900 mt-1">
                 ${parseFloat(invoiceData.total).toFixed(2)} AUD
               </p>
             </div>
             
-            {/* Download receipt button */}
             <Button 
-              variant="outline"
-              className="w-full"
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
               onClick={() => window.open(`/api/public/invoice/${token}/pdf`, '_blank')}
               data-testid="button-download-receipt"
             >
@@ -221,29 +222,27 @@ function InvoicePaymentView({
               Download Receipt
             </Button>
             
-            {/* Trust messaging */}
-            <div className="mt-6 pt-4 border-t text-xs text-muted-foreground">
-              <p>Payment securely processed by <strong>Stripe</strong></p>
-              <p className="mt-1">Paid to: {invoiceData.business.name}</p>
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-500">
+              <ShieldCheck className="h-4 w-4 text-green-500" />
+              <span>Securely processed by <strong className="text-slate-700">Stripe</strong></span>
             </div>
-          </CardContent>
-        </Card>
+            <p className="text-xs text-slate-400 mt-2">Paid to: {invoiceData.business.name}</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!invoiceData.allowOnlinePayment) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Online Payment Not Available</h2>
-            <p className="text-muted-foreground">
-              Online payment has not been enabled for this invoice. Please contact {invoiceData.business.name} for payment options.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
+          <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Online Payment Not Available</h2>
+          <p className="text-slate-600">
+            Online payment has not been enabled for this invoice. Please contact {invoiceData.business.name} for payment options.
+          </p>
+        </div>
       </div>
     );
   }
@@ -262,119 +261,124 @@ function InvoicePaymentView({
   const total = parseFloat(invoiceData.total);
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        {/* Branded header with logo */}
+        {/* Branded header with gradient accent */}
         <div className="text-center mb-8">
-          {invoiceData.business.logo ? (
-            <img 
-              src={invoiceData.business.logo} 
-              alt={invoiceData.business.name} 
-              className="h-16 max-w-[180px] object-contain mx-auto mb-4"
-            />
-          ) : (
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileText className="h-8 w-8 text-primary" />
-            </div>
-          )}
-          <h1 className="text-2xl font-bold mb-2">{invoiceData.business.name}</h1>
+          <div className="inline-block mb-4">
+            {invoiceData.business.logo ? (
+              <img 
+                src={invoiceData.business.logo} 
+                alt={invoiceData.business.name} 
+                className="h-16 max-w-[180px] object-contain mx-auto"
+              />
+            ) : (
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <FileText className="h-8 w-8 text-blue-600" />
+              </div>
+            )}
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-1">{invoiceData.business.name}</h1>
           {invoiceData.business.abn && (
-            <p className="text-sm text-muted-foreground">ABN: {invoiceData.business.abn}</p>
+            <p className="text-sm text-slate-500">ABN: {invoiceData.business.abn}</p>
           )}
         </div>
 
         <div className="grid gap-6">
-          <Card>
-            <CardHeader>
+          {/* Invoice Card */}
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            {/* Invoice Header with Accent */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                  <CardTitle>Invoice #{invoiceData.number}</CardTitle>
+                  <FileText className="h-5 w-5" />
+                  <span className="font-semibold text-lg">Invoice #{invoiceData.number}</span>
                 </div>
-                <Badge variant={invoiceData.status === 'sent' ? 'default' : 'secondary'}>
+                <span className="bg-white/20 backdrop-blur px-3 py-1 rounded-full text-sm font-medium">
                   {invoiceData.status.toUpperCase()}
-                </Badge>
+                </span>
               </div>
-              <CardDescription>{invoiceData.title}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              {invoiceData.title && (
+                <p className="text-blue-100 text-sm mt-1">{invoiceData.title}</p>
+              )}
+            </div>
+            
+            <div className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Bill To</p>
-                  <p className="font-medium">{invoiceData.client?.name || 'Customer'}</p>
+                  <p className="text-slate-500 text-xs uppercase tracking-wide mb-1">Bill To</p>
+                  <p className="font-medium text-slate-900">{invoiceData.client?.name || 'Customer'}</p>
                 </div>
                 <div className="text-right">
                   {invoiceData.dueDate && (
                     <>
-                      <p className="text-muted-foreground">Due Date</p>
-                      <p className="font-medium">{formatDate(invoiceData.dueDate)}</p>
+                      <p className="text-slate-500 text-xs uppercase tracking-wide mb-1">Due Date</p>
+                      <p className="font-medium text-slate-900">{formatDate(invoiceData.dueDate)}</p>
                     </>
                   )}
                 </div>
               </div>
 
-              <Separator />
-
-              {lineItems.length > 0 && (
-                <div className="space-y-2">
-                  {lineItems.map((item, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <div>
-                        <p className="font-medium">{item.description}</p>
-                        <p className="text-muted-foreground">
-                          {item.quantity} × ${parseFloat(item.unitPrice).toFixed(2)}
-                        </p>
+              <div className="border-t border-slate-100 pt-4">
+                {lineItems.length > 0 && (
+                  <div className="space-y-3">
+                    {lineItems.map((item, index) => (
+                      <div key={index} className="flex justify-between text-sm">
+                        <div>
+                          <p className="font-medium text-slate-900">{item.description}</p>
+                          <p className="text-slate-500">
+                            {item.quantity} × ${parseFloat(item.unitPrice).toFixed(2)}
+                          </p>
+                        </div>
+                        <p className="font-medium text-slate-900">${parseFloat(item.total).toFixed(2)}</p>
                       </div>
-                      <p className="font-medium">${parseFloat(item.total).toFixed(2)}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
 
-              <Separator />
-
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
+              <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                <div className="flex justify-between text-sm text-slate-600">
                   <span>Subtotal</span>
                   <span>${subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-sm text-slate-600">
                   <span>GST (10%)</span>
                   <span>${gstAmount.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-lg font-bold">
+                <div className="flex justify-between text-xl font-bold text-slate-900 pt-2 border-t border-slate-200">
                   <span>Total</span>
-                  <span>${total.toFixed(2)} AUD</span>
+                  <span className="text-blue-600">${total.toFixed(2)} AUD</span>
                 </div>
               </div>
               
-              {/* Download invoice button */}
-              <Separator />
               <Button 
                 variant="outline"
                 size="sm"
-                className="w-full"
+                className="w-full border-slate-300 text-slate-700 hover:bg-slate-50"
                 onClick={() => window.open(`/api/public/invoice/${token}/pdf`, '_blank')}
                 data-testid="button-download-invoice"
               >
                 <FileText className="h-4 w-4 mr-2" />
                 Download Invoice
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
+          {/* Payment Card */}
           {clientSecret && stripePromise && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Pay Now
-                </CardTitle>
-                <CardDescription>
-                  Secure payment powered by Stripe
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-blue-600" />
+                  <span className="font-semibold text-lg text-slate-900">Pay Now</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Lock className="h-3 w-3 text-green-600" />
+                  <span className="text-sm text-slate-500">Secure payment powered by Stripe</span>
+                </div>
+              </div>
+              <div className="p-6">
                 <Elements stripe={stripePromise} options={{ clientSecret }}>
                   <PaymentForm 
                     clientSecret={clientSecret}
@@ -382,18 +386,36 @@ function InvoicePaymentView({
                     onError={(error) => console.error('Payment error:', error)}
                   />
                 </Elements>
-              </CardContent>
-            </Card>
+              </div>
+              
+              {/* Trust badges */}
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
+                <div className="flex items-center justify-center gap-6 text-xs text-slate-500">
+                  <div className="flex items-center gap-1">
+                    <ShieldCheck className="h-4 w-4 text-green-600" />
+                    <span>256-bit SSL</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Lock className="h-4 w-4 text-blue-600" />
+                    <span>Secure Checkout</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {createPaymentIntentMutation.isPending && (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-                <p className="text-muted-foreground">Setting up secure payment...</p>
-              </CardContent>
-            </Card>
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+              <p className="text-slate-600">Setting up secure payment...</p>
+            </div>
           )}
+          
+          {/* Footer trust message */}
+          <div className="text-center text-xs text-slate-400 py-4">
+            <p>Your payment information is encrypted and secure.</p>
+            <p className="mt-1">Powered by Stripe</p>
+          </div>
         </div>
       </div>
     </div>
@@ -464,10 +486,10 @@ function PaymentRequestView({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading payment details...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-slate-600">Loading payment details...</p>
         </div>
       </div>
     );
@@ -479,70 +501,72 @@ function PaymentRequestView({
 
   if (requestData.status === 'paid' || paymentSuccess) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            {/* Business branding at top */}
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-green-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-6 px-6 text-center">
             {requestData.businessLogo && (
               <img 
                 src={requestData.businessLogo} 
                 alt={requestData.businessName} 
-                className="h-12 max-w-[150px] object-contain mx-auto mb-4"
+                className="h-10 max-w-[120px] object-contain mx-auto mb-3 brightness-0 invert"
               />
             )}
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+            <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle className="h-10 w-10 text-white" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">Payment Successful!</h2>
-            <p className="text-muted-foreground mb-4">
+            <h2 className="text-2xl font-bold">Payment Successful!</h2>
+          </div>
+          
+          <div className="p-6 text-center">
+            <p className="text-slate-600 mb-4">
               Thank you for your payment to {requestData.businessName}.
             </p>
-            <div className="text-sm text-muted-foreground">
-              <p>{requestData.description}</p>
-              <p className="font-semibold text-lg text-foreground mt-2">
+            <div className="bg-slate-50 rounded-xl p-4 mb-4">
+              <p className="text-sm text-slate-500">{requestData.description}</p>
+              <p className="font-bold text-2xl text-slate-900 mt-2">
                 ${parseFloat(requestData.amount).toFixed(2)} AUD
               </p>
             </div>
             
-            {/* Trust messaging */}
-            <div className="mt-6 pt-4 border-t text-xs text-muted-foreground">
-              <p>Payment securely processed by <strong>Stripe</strong></p>
-              <p className="mt-1">Paid to: {requestData.businessName}</p>
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-500">
+              <ShieldCheck className="h-4 w-4 text-green-500" />
+              <span>Securely processed by <strong className="text-slate-700">Stripe</strong></span>
             </div>
-          </CardContent>
-        </Card>
+            <p className="text-xs text-slate-400 mt-2">Paid to: {requestData.businessName}</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (requestData.status === 'cancelled') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Payment Cancelled</h2>
-            <p className="text-muted-foreground">
-              This payment request has been cancelled by {requestData.businessName}.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-red-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-red-100 p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="h-8 w-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Payment Cancelled</h2>
+          <p className="text-slate-600">
+            This payment request has been cancelled by {requestData.businessName}.
+          </p>
+        </div>
       </div>
     );
   }
 
   if (requestData.status === 'expired') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Payment Link Expired</h2>
-            <p className="text-muted-foreground">
-              This payment request has expired. Please contact {requestData.businessName} for a new payment link.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-amber-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-amber-100 p-8 text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Clock className="h-8 w-8 text-amber-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Payment Link Expired</h2>
+          <p className="text-slate-600">
+            This payment request has expired. Please contact {requestData.businessName} for a new payment link.
+          </p>
+        </div>
       </div>
     );
   }
@@ -551,7 +575,7 @@ function PaymentRequestView({
   const gstAmount = parseFloat(requestData.gstAmount);
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8 px-4">
       <div className="max-w-lg mx-auto">
         {/* Branded header with logo */}
         <div className="text-center mb-8">
@@ -562,68 +586,67 @@ function PaymentRequestView({
               className="h-16 max-w-[180px] object-contain mx-auto mb-4"
             />
           ) : (
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CreditCard className="h-8 w-8 text-primary" />
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CreditCard className="h-8 w-8 text-blue-600" />
             </div>
           )}
-          <h1 className="text-2xl font-bold mb-2">{requestData.businessName}</h1>
-          <p className="text-muted-foreground">Payment Request</p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-1">{requestData.businessName}</h1>
+          <p className="text-slate-500">Payment Request</p>
         </div>
 
         <div className="grid gap-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center mb-6">
-                <p className="text-sm text-muted-foreground mb-2">Amount Due</p>
-                <p className="text-4xl font-bold">${amount.toFixed(2)}</p>
-                <p className="text-sm text-muted-foreground mt-1">AUD (includes ${gstAmount.toFixed(2)} GST)</p>
+          {/* Amount Card */}
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-6 px-6 text-center">
+              <p className="text-blue-100 text-sm mb-2">Amount Due</p>
+              <p className="text-4xl font-bold">${amount.toFixed(2)}</p>
+              <p className="text-blue-100 text-sm mt-1">AUD (includes ${gstAmount.toFixed(2)} GST)</p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-slate-500 text-xs uppercase tracking-wide mb-1">For</p>
+                <p className="font-medium text-slate-900">{requestData.description}</p>
               </div>
-
-              <Separator className="my-6" />
-
-              <div className="space-y-3">
+              
+              {requestData.reference && (
                 <div>
-                  <p className="text-sm text-muted-foreground">For</p>
-                  <p className="font-medium">{requestData.description}</p>
+                  <p className="text-slate-500 text-xs uppercase tracking-wide mb-1">Reference</p>
+                  <p className="font-medium text-slate-900">{requestData.reference}</p>
                 </div>
-                
-                {requestData.reference && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Reference</p>
-                    <p className="font-medium">{requestData.reference}</p>
-                  </div>
-                )}
+              )}
 
-                {requestData.expiresAt && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span>
-                      Expires {new Date(requestData.expiresAt).toLocaleDateString('en-AU', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              {requestData.expiresAt && (
+                <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                  <Clock className="h-4 w-4" />
+                  <span>
+                    Expires {new Date(requestData.expiresAt).toLocaleDateString('en-AU', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
 
+          {/* Payment Card */}
           {clientSecret && stripePromise && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Pay Now
-                </CardTitle>
-                <CardDescription>
-                  Secure payment powered by Stripe
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-blue-600" />
+                  <span className="font-semibold text-lg text-slate-900">Pay Now</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Lock className="h-3 w-3 text-green-600" />
+                  <span className="text-sm text-slate-500">Secure payment powered by Stripe</span>
+                </div>
+              </div>
+              <div className="p-6">
                 <Elements stripe={stripePromise} options={{ clientSecret }}>
                   <PaymentForm 
                     clientSecret={clientSecret}
@@ -634,35 +657,49 @@ function PaymentRequestView({
                     onError={(error) => console.error('Payment error:', error)}
                   />
                 </Elements>
-              </CardContent>
-            </Card>
+              </div>
+              
+              {/* Trust badges */}
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
+                <div className="flex items-center justify-center gap-6 text-xs text-slate-500">
+                  <div className="flex items-center gap-1">
+                    <ShieldCheck className="h-4 w-4 text-green-600" />
+                    <span>256-bit SSL</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Lock className="h-4 w-4 text-blue-600" />
+                    <span>Secure Checkout</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {createPaymentIntentMutation.isPending && (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-                <p className="text-muted-foreground">Setting up secure payment...</p>
-              </CardContent>
-            </Card>
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+              <p className="text-slate-600">Setting up secure payment...</p>
+            </div>
           )}
 
           {createPaymentIntentMutation.isError && (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-4" />
-                <p className="font-semibold mb-2">Unable to Process Payment</p>
-                <p className="text-muted-foreground text-sm">
-                  {(createPaymentIntentMutation.error as Error)?.message || 'This payment link may have expired or been cancelled.'}
-                </p>
-              </CardContent>
-            </Card>
+            <div className="bg-white rounded-2xl shadow-lg border border-red-100 p-8 text-center">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="h-6 w-6 text-red-600" />
+              </div>
+              <p className="font-semibold text-slate-900 mb-2">Unable to Process Payment</p>
+              <p className="text-slate-600 text-sm">
+                {(createPaymentIntentMutation.error as Error)?.message || 'This payment link may have expired or been cancelled.'}
+              </p>
+            </div>
           )}
+          
+          {/* Footer trust message */}
+          <div className="text-center text-xs text-slate-400 py-4">
+            <p>Your payment information is encrypted and secure.</p>
+            <p className="mt-1">Powered by Stripe</p>
+          </div>
         </div>
-
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          Payments are processed securely by Stripe. Your card details are never stored.
-        </p>
       </div>
     </div>
   );
@@ -702,26 +739,26 @@ export default function PaymentPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Invalid Payment Link</h2>
-            <p className="text-muted-foreground">
-              This payment link appears to be invalid.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-red-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-red-100 p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="h-8 w-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Invalid Payment Link</h2>
+          <p className="text-slate-600">
+            This payment link appears to be invalid.
+          </p>
+        </div>
       </div>
     );
   }
 
   if (invoiceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading payment details...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-slate-600">Loading payment details...</p>
         </div>
       </div>
     );
@@ -740,10 +777,10 @@ export default function PaymentPage() {
 
   if (requestLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading payment details...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-slate-600">Loading payment details...</p>
         </div>
       </div>
     );
@@ -761,16 +798,16 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="max-w-md w-full">
-        <CardContent className="pt-6 text-center">
-          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Payment Not Found</h2>
-          <p className="text-muted-foreground">
-            This payment link may be invalid, expired, or has already been paid.
-          </p>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-amber-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-amber-100 p-8 text-center">
+        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertCircle className="h-8 w-8 text-amber-600" />
+        </div>
+        <h2 className="text-xl font-semibold text-slate-900 mb-2">Payment Not Found</h2>
+        <p className="text-slate-600">
+          This payment link may be invalid, expired, or has already been paid.
+        </p>
+      </div>
     </div>
   );
 }
