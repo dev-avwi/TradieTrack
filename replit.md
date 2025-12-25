@@ -14,7 +14,10 @@ Key architectural decisions and features include:
 -   **Theming & Branding**: Customizable brand colors and typography.
 -   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, and a "Today's Schedule" dashboard. Includes Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation.
 -   **Adaptive Solo/Team Mode**: Adjusts UI based on team size, enabling time tracking and GPS check-in for team mode. Onboarding wizard starts with "How many people work in your business?" question - solo users skip team invitation step.
--   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators and professional confirmation emails.
+-   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators and professional confirmation emails. Enhanced features:
+    - **Stage Timestamps**: Automatic recording of started_at, completed_at, invoiced_at when transitioning between stages
+    - **Stage Rollback**: Click on completed stages to roll back with confirmation dialog, clears future timestamps
+    - **Forward-Looking Pipeline UX**: JobFlowWizard shows completed stages as green, next action as blue (current), future as gray
 -   **Live Quote/Invoice Editor**: Real-time preview with templates, catalog items, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
 -   **Stripe Payment Links**: Auto-generated links for invoices with webhook-triggered payment status sync.
 -   **Tap to Pay Payment Collection**: Complete mobile payment system with:
@@ -28,7 +31,7 @@ Key architectural decisions and features include:
 -   **Subscription & Billing System**: Three-tier pricing (Free, Pro $39/month, Team $59/month + $29/seat) with 14-day free trials. Stripe checkout with upfront card collection, automated billing reminders (email/SMS 3 and 1 days before billing), cross-platform subscription sync via REST API. Subscription page with pricing cards and trial information.
 -   **Email Automation**: SendGrid integration for invoice/quote emails with PDF attachments and customisable templates with AI suggestions.
 -   **PWA Support**: Offline capabilities via web manifest and service worker.
--   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and role-based access. Includes two-way SMS integration via Twilio with AI analysis for job/quote requests. Enhanced SMS Hub features:
+-   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments (up to 100MB via object storage) and role-based access. Includes two-way SMS integration via Twilio with AI analysis for job/quote requests. Chat navigation supports ?tab=chat deep links with auto-scroll. Enhanced SMS Hub features:
     - Auto-creation of conversations for inbound SMS from unknown numbers (no messages lost)
     - Client phone matching with Australian number normalization (+61, 04xx formats)
     - "New SMS" dialog for initiating conversations with client search or manual phone entry
