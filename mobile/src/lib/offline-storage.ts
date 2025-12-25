@@ -614,6 +614,33 @@ class OfflineStorageService {
         console.log('[OfflineStorage] Clients table "notes" column added successfully');
       }
       
+      // Check if clients table is missing the "pending_sync" column (added in a later version)
+      const clientsPendingSyncCol = (clientsInfo as any[]).find((c: any) => c.name === 'pending_sync');
+      
+      if (!clientsPendingSyncCol) {
+        console.log('[OfflineStorage] Adding missing "pending_sync" column to clients table...');
+        await this.db.execAsync(`ALTER TABLE clients ADD COLUMN pending_sync INTEGER DEFAULT 0`);
+        console.log('[OfflineStorage] Clients table "pending_sync" column added successfully');
+      }
+      
+      // Check if clients table is missing the "sync_action" column (added in a later version)
+      const clientsSyncActionCol = (clientsInfo as any[]).find((c: any) => c.name === 'sync_action');
+      
+      if (!clientsSyncActionCol) {
+        console.log('[OfflineStorage] Adding missing "sync_action" column to clients table...');
+        await this.db.execAsync(`ALTER TABLE clients ADD COLUMN sync_action TEXT`);
+        console.log('[OfflineStorage] Clients table "sync_action" column added successfully');
+      }
+      
+      // Check if clients table is missing the "local_id" column (added in a later version)
+      const clientsLocalIdCol = (clientsInfo as any[]).find((c: any) => c.name === 'local_id');
+      
+      if (!clientsLocalIdCol) {
+        console.log('[OfflineStorage] Adding missing "local_id" column to clients table...');
+        await this.db.execAsync(`ALTER TABLE clients ADD COLUMN local_id TEXT`);
+        console.log('[OfflineStorage] Clients table "local_id" column added successfully');
+      }
+      
       // Check if jobs table is missing the "client_name" column (added in a later version)
       const jobsInfo = await this.db.getAllAsync("PRAGMA table_info(jobs)");
       const jobsClientNameCol = (jobsInfo as any[]).find((c: any) => c.name === 'client_name');

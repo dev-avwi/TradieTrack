@@ -72,7 +72,7 @@ function DeepLinkHandler() {
         if (token) {
           try {
             const response = await api.get(`/api/verify-email?token=${token}`);
-            if (response.data?.success) {
+            if ((response.data as any)?.success) {
               Alert.alert('Email Verified', 'Your email has been verified successfully!');
               checkAuth();
             } else {
@@ -318,8 +318,9 @@ function RootLayoutContent() {
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="job/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="job" options={{ headerShown: false }} />
           <Stack.Screen name="more" options={{ headerShown: false }} />
         </Stack>
       </AuthenticatedLayout>
