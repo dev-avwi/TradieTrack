@@ -73,7 +73,21 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
     } else if (mode === 'login') {
       setAuthMode('login');
     }
+    // Clear any error query params on initial load
+    if (params.has('error')) {
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
   }, []);
+
+  // Update URL when switching between login/register modes
+  const handleModeChange = (mode: 'login' | 'register') => {
+    setAuthMode(mode);
+    setError('');
+    // Update URL without page reload
+    const newUrl = mode === 'login' ? '/auth' : '/auth?mode=signup';
+    window.history.replaceState({}, '', newUrl);
+  };
 
   // Start/restart auto-rotate timer
   const startAutoRotate = useCallback(() => {
@@ -278,7 +292,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                 {/* Mode Toggle */}
                 <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg mb-6">
                   <button
-                    onClick={() => { setAuthMode('login'); setError(''); }}
+                    onClick={() => handleModeChange('login')}
                     className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
                       authMode === 'login'
                         ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
@@ -289,7 +303,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                     Sign In
                   </button>
                   <button
-                    onClick={() => { setAuthMode('register'); setError(''); }}
+                    onClick={() => handleModeChange('register')}
                     className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
                       authMode === 'register'
                         ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'

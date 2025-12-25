@@ -58,7 +58,22 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
     } else if (mode === 'login') {
       setAuthMode('login');
     }
+    // Clear any error query params on initial load
+    if (params.has('error')) {
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
   }, []);
+
+  // Update URL when switching between login/register modes
+  const handleModeChange = (mode: 'login' | 'register') => {
+    setAuthMode(mode);
+    setError('');
+    // Update URL without page reload
+    const newUrl = mode === 'login' ? '/auth' : '/auth?mode=signup';
+    window.history.replaceState({}, '', newUrl);
+  };
+
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -514,7 +529,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         </div>
       </div>
 
-      <Tabs value={authMode} onValueChange={(value) => setAuthMode(value as 'login' | 'register')} className="w-full">
+      <Tabs value={authMode} onValueChange={(value) => handleModeChange(value as 'login' | 'register')} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="login">Sign In</TabsTrigger>
           <TabsTrigger value="register">Create Account</TabsTrigger>
