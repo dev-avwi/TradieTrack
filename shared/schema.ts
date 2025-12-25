@@ -567,6 +567,40 @@ export const paymentRequests = pgTable("payment_requests", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Payment Receipts - professional receipts stored and linked to jobs
+export const receipts = pgTable("receipts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  invoiceId: varchar("invoice_id").references(() => invoices.id, { onDelete: 'set null' }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  paymentRequestId: varchar("payment_request_id").references(() => paymentRequests.id, { onDelete: 'set null' }),
+  // Receipt identification
+  receiptNumber: text("receipt_number").notNull().unique(), // Format: REC-0001
+  // Payment details
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  gstAmount: decimal("gst_amount", { precision: 10, scale: 2 }).default('0.00'),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).default('0.00'),
+  description: text("description"),
+  paymentMethod: text("payment_method"), // card, tap_to_pay, bank_transfer, cash, qr_code
+  paymentReference: text("payment_reference"), // External payment ID (Stripe, etc.)
+  // Timestamps
+  paidAt: timestamp("paid_at").notNull(),
+  // PDF and signature
+  pdfUrl: text("pdf_url"), // Stored PDF URL
+  signatureUrl: text("signature_url"), // On-site signature capture
+  // Delivery tracking
+  emailSentAt: timestamp("email_sent_at"),
+  smsSentAt: timestamp("sms_sent_at"),
+  recipientEmail: text("recipient_email"),
+  recipientPhone: text("recipient_phone"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertReceiptSchema = createInsertSchema(receipts).omit({ id: true, createdAt: true });
+export type InsertReceipt = z.infer<typeof insertReceiptSchema>;
+export type Receipt = typeof receipts.$inferSelect;
+
 // Document Templates  
 export const documentTemplates = pgTable("document_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
