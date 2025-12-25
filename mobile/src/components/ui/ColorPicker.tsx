@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors } from '../../lib/colors';
+import { radius } from '../../lib/design-tokens';
 
 const PRESET_COLORS = [
   { name: 'Blue', hex: '#3b82f6' },
@@ -179,7 +180,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
@@ -192,7 +193,7 @@ const styles = StyleSheet.create({
   colorSwatch: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 2,
     borderColor: colors.border,
   },
@@ -256,7 +257,7 @@ const styles = StyleSheet.create({
   previewSwatch: {
     width: 100,
     height: 100,
-    borderRadius: 24,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -284,7 +285,7 @@ const styles = StyleSheet.create({
   },
   hexInput: {
     backgroundColor: colors.card,
-    borderRadius: 10,
+    borderRadius: radius.md,
     padding: 14,
     fontSize: 16,
     color: colors.foreground,
@@ -303,7 +304,7 @@ const styles = StyleSheet.create({
   presetItem: {
     width: SWATCH_SIZE,
     height: SWATCH_SIZE,
-    borderRadius: 12,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -318,7 +319,7 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     backgroundColor: colors.muted,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     padding: 16,
     marginBottom: 32,
   },

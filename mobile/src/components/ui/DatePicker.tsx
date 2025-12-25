@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors } from '../../lib/colors';
+import { radius } from '../../lib/design-tokens';
 
 interface DatePickerProps {
   value: Date;
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radius.md,
     paddingHorizontal: 12,
     paddingVertical: 14,
     gap: 12,
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     backgroundColor: colors.background,
-    borderRadius: 16,
+    borderRadius: radius.xl,
     width: '100%',
     maxWidth: 360,
     padding: 16,
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
   },
   selectedDay: {
     backgroundColor: colors.primary,
-    borderRadius: 20,
+    borderRadius: radius.md,
   },
   selectedDayText: {
     color: colors.white,
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
   todayDay: {
     borderWidth: 1,
     borderColor: colors.primary,
-    borderRadius: 20,
+    borderRadius: radius.md,
   },
   todayDayText: {
     color: colors.primary,
