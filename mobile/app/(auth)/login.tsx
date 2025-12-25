@@ -27,6 +27,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
   const { login, checkAuth, isLoading, error, clearError, isAuthenticated, user } = useAuthStore();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -61,12 +63,41 @@ export default function LoginScreen() {
     }
   }, [params.auth, params.isNewUser]);
 
+  // Check if error is about email verification
+  const isVerificationError = error?.toLowerCase().includes('verify your email') || 
+                              error?.toLowerCase().includes('email verification');
+
+  const handleResendVerification = async () => {
+    if (!email.trim()) {
+      Alert.alert('Email Required', 'Please enter your email address first');
+      return;
+    }
+
+    setResendingVerification(true);
+    try {
+      const response = await api.post<{ success: boolean; message?: string }>('/api/auth/resend-verification', { email: email.trim() });
+      
+      if (response.error) {
+        Alert.alert('Error', response.error);
+      } else {
+        setVerificationSent(true);
+        Alert.alert('Email Sent', 'A verification email has been sent. Please check your inbox and spam folder.');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to resend verification email. Please try again.');
+    } finally {
+      setResendingVerification(false);
+    }
+  };
+
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Error', 'Please enter both email and password');
       return;
     }
 
+    // Reset verification sent state on new login attempt
+    setVerificationSent(false);
     const success = await login(email.trim(), password);
     
     if (success) {
@@ -255,6 +286,21 @@ export default function LoginScreen() {
                 {error ? (
                   <View style={styles.errorContainer}>
                     <Text style={styles.errorText}>{error}</Text>
+                    {isVerificationError && (
+                      <TouchableOpacity
+                        style={styles.resendButton}
+                        onPress={handleResendVerification}
+                        disabled={resendingVerification || verificationSent}
+                      >
+                        {resendingVerification ? (
+                          <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                          <Text style={styles.resendButtonText}>
+                            {verificationSent ? 'Email Sent!' : 'Resend Verification'}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ) : null}
               </View>
@@ -476,6 +522,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.destructive,
     fontSize: 14,
     fontWeight: '500',
+  },
+  resendButton: {
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: colors.primary + '15',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    alignSelf: 'flex-start',
+  },
+  resendButtonText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   successContainer: {
     padding: 12,
