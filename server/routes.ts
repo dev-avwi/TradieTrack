@@ -8751,6 +8751,259 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== RECEIPT ENDPOINTS ==========
+  
+  // Get all receipts for user
+  app.get("/api/receipts", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const allReceipts = await storage.getReceipts(effectiveUserId);
+      res.json(allReceipts);
+    } catch (error) {
+      console.error("Error fetching receipts:", error);
+      res.status(500).json({ error: "Failed to fetch receipts" });
+    }
+  });
+
+  // Get a specific receipt
+  app.get("/api/receipts/:id", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const receipt = await storage.getReceipt(req.params.id, effectiveUserId);
+      if (!receipt) {
+        return res.status(404).json({ error: "Receipt not found" });
+      }
+      res.json(receipt);
+    } catch (error) {
+      console.error("Error fetching receipt:", error);
+      res.status(500).json({ error: "Failed to fetch receipt" });
+    }
+  });
+
+  // Get receipts for a specific job
+  app.get("/api/jobs/:id/receipts", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const jobReceipts = await storage.getReceiptsForJob(req.params.id, effectiveUserId);
+      res.json(jobReceipts);
+    } catch (error) {
+      console.error("Error fetching job receipts:", error);
+      res.status(500).json({ error: "Failed to fetch job receipts" });
+    }
+  });
+
+  // Create a receipt (typically called after payment is collected)
+  app.post("/api/receipts", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      
+      // Generate receipt number
+      const receiptNumber = await storage.generateReceiptNumber(effectiveUserId);
+      
+      const receiptData = {
+        ...req.body,
+        userId: effectiveUserId,
+        receiptNumber,
+        paidAt: req.body.paidAt ? new Date(req.body.paidAt) : new Date(),
+      };
+      
+      const receipt = await storage.createReceipt(receiptData);
+      
+      // Log activity
+      await storage.createActivityLog({
+        userId: effectiveUserId,
+        entityType: 'receipt',
+        entityId: receipt.id,
+        action: 'created',
+        details: { 
+          receiptNumber,
+          amount: receipt.amount,
+          jobId: receipt.jobId,
+          invoiceId: receipt.invoiceId
+        }
+      });
+      
+      res.status(201).json(receipt);
+    } catch (error) {
+      console.error("Error creating receipt:", error);
+      res.status(500).json({ error: "Failed to create receipt" });
+    }
+  });
+
+  // Generate receipt PDF
+  app.get("/api/receipts/:id/pdf", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { generatePaymentReceiptPDF, generatePDFBuffer } = await import('./pdfService');
+      
+      const receipt = await storage.getReceipt(req.params.id, effectiveUserId);
+      if (!receipt) {
+        return res.status(404).json({ error: "Receipt not found" });
+      }
+      
+      const business = await storage.getBusinessSettings(effectiveUserId);
+      if (!business) {
+        return res.status(404).json({ error: "Business settings not found" });
+      }
+      
+      // Get client, job, and invoice data if available
+      let client = null;
+      let job = null;
+      let invoice = null;
+      
+      if (receipt.clientId) {
+        client = await storage.getClient(receipt.clientId, effectiveUserId);
+      }
+      if (receipt.jobId) {
+        job = await storage.getJob(receipt.jobId, effectiveUserId);
+      }
+      if (receipt.invoiceId) {
+        invoice = await storage.getInvoice(receipt.invoiceId, effectiveUserId);
+      }
+      
+      // Generate PDF HTML using existing receipt template
+      const pdfHtml = generatePaymentReceiptPDF({
+        payment: {
+          id: receipt.id,
+          amount: parseFloat(receipt.amount),
+          gstAmount: parseFloat(receipt.gstAmount || '0'),
+          subtotal: parseFloat(receipt.subtotal || receipt.amount),
+          paymentMethod: receipt.paymentMethod || 'card',
+          paymentReference: receipt.paymentReference,
+          paidAt: receipt.paidAt,
+          receiptNumber: receipt.receiptNumber,
+          description: receipt.description,
+        },
+        client: client ? {
+          name: client.name,
+          email: client.email,
+          phone: client.phone,
+          address: client.address,
+        } : null,
+        business: {
+          businessName: business.businessName,
+          abn: business.abn,
+          address: business.address,
+          phone: business.phone,
+          email: business.email,
+          logoUrl: business.logoUrl,
+          brandColor: business.brandColor || '#dc2626',
+        },
+        invoice: invoice ? {
+          id: invoice.id,
+          number: invoice.number,
+        } : null,
+        job: job ? {
+          id: job.id,
+          title: job.title,
+        } : null,
+      });
+      
+      // Generate PDF buffer
+      const pdfBuffer = await generatePDFBuffer(pdfHtml);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${receipt.receiptNumber}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating receipt PDF:", error);
+      res.status(500).json({ error: "Failed to generate receipt PDF" });
+    }
+  });
+
+  // Send receipt via email
+  app.post("/api/receipts/:id/send-email", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+      
+      const receipt = await storage.getReceipt(req.params.id, effectiveUserId);
+      if (!receipt) {
+        return res.status(404).json({ error: "Receipt not found" });
+      }
+      
+      const business = await storage.getBusinessSettings(effectiveUserId);
+      const businessName = business?.businessName || 'Your tradie';
+      
+      // Generate PDF for attachment
+      const { generatePaymentReceiptPDF, generatePDFBuffer } = await import('./pdfService');
+      
+      let client = null;
+      if (receipt.clientId) {
+        client = await storage.getClient(receipt.clientId, effectiveUserId);
+      }
+      
+      const pdfHtml = generatePaymentReceiptPDF({
+        payment: {
+          id: receipt.id,
+          amount: parseFloat(receipt.amount),
+          gstAmount: parseFloat(receipt.gstAmount || '0'),
+          subtotal: parseFloat(receipt.subtotal || receipt.amount),
+          paymentMethod: receipt.paymentMethod || 'card',
+          paymentReference: receipt.paymentReference,
+          paidAt: receipt.paidAt,
+          receiptNumber: receipt.receiptNumber,
+          description: receipt.description,
+        },
+        client: client ? {
+          name: client.name,
+          email: client.email,
+          phone: client.phone,
+          address: client.address,
+        } : null,
+        business: {
+          businessName: business?.businessName || 'Business',
+          abn: business?.abn,
+          address: business?.address,
+          phone: business?.phone,
+          email: business?.email,
+          logoUrl: business?.logoUrl,
+          brandColor: business?.brandColor || '#dc2626',
+        },
+        invoice: null,
+        job: null,
+      });
+      
+      const pdfBuffer = await generatePDFBuffer(pdfHtml);
+      
+      // Send email with receipt attachment
+      const { sendEmailWithAttachment } = await import('./emailService');
+      await sendEmailWithAttachment({
+        to: email,
+        subject: `Payment Receipt from ${businessName} - ${receipt.receiptNumber}`,
+        html: `
+          <h2>Thank you for your payment!</h2>
+          <p>Please find your payment receipt attached.</p>
+          <p><strong>Receipt Number:</strong> ${receipt.receiptNumber}</p>
+          <p><strong>Amount Paid:</strong> $${parseFloat(receipt.amount).toFixed(2)} AUD</p>
+          <p><strong>Payment Date:</strong> ${new Date(receipt.paidAt).toLocaleDateString('en-AU')}</p>
+          <br/>
+          <p>Best regards,<br/>${businessName}</p>
+        `,
+        attachments: [{
+          filename: `${receipt.receiptNumber}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        }],
+      });
+      
+      // Update receipt with email sent timestamp
+      await storage.updateReceipt(receipt.id, effectiveUserId, {
+        emailSentAt: new Date(),
+        recipientEmail: email,
+      });
+      
+      res.json({ success: true, message: "Receipt email sent successfully" });
+    } catch (error) {
+      console.error("Error sending receipt email:", error);
+      res.status(500).json({ error: "Failed to send receipt email" });
+    }
+  });
+
   // PUBLIC: Get payment request by token (for customer payment page)
   app.get("/api/public/payment-request/:token", async (req, res) => {
     try {

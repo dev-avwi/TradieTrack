@@ -1641,3 +1641,49 @@ export async function sendJobCompletionNotificationEmail(
     };
   }
 }
+
+// Generic email with attachment - used for receipts and other documents
+interface EmailWithAttachmentParams {
+  to: string;
+  subject: string;
+  html: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentType: string;
+  }>;
+}
+
+export async function sendEmailWithAttachment(params: EmailWithAttachmentParams): Promise<void> {
+  const sendGridInitialized = initializeSendGrid();
+  const emailService = sendGridInitialized ? sgMail : mockEmailService;
+  
+  const emailData: any = {
+    to: params.to,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: PLATFORM_FROM_NAME
+    },
+    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    subject: params.subject,
+    html: params.html,
+  };
+  
+  // Add attachments if provided
+  if (params.attachments && params.attachments.length > 0) {
+    emailData.attachments = params.attachments.map(att => ({
+      content: att.content.toString('base64'),
+      filename: att.filename,
+      type: att.contentType,
+      disposition: 'attachment'
+    }));
+  }
+  
+  try {
+    await emailService.send(emailData);
+    console.log('✅ Email with attachment sent to:', params.to);
+  } catch (error: any) {
+    console.error('❌ Failed to send email with attachment:', error);
+    throw new Error(error.message || 'Failed to send email');
+  }
+}
