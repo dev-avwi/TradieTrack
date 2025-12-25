@@ -71,7 +71,7 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
       const { token } = useAuthStore.getState();
       if (!token) return;
 
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com.au';
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com';
       const response = await fetch(`${baseUrl}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -98,7 +98,7 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
       const { token } = useAuthStore.getState();
       if (!token) return;
 
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com.au';
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com';
       await fetch(`${baseUrl}/api/notifications/${id}/read`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
@@ -117,7 +117,7 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
       const { token } = useAuthStore.getState();
       if (!token) return;
 
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com.au';
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com';
       await fetch(`${baseUrl}/api/notifications/read-all`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
@@ -134,7 +134,7 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
       const { token } = useAuthStore.getState();
       if (!token) return;
 
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com.au';
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com';
       await fetch(`${baseUrl}/api/notifications/${id}/dismiss`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
@@ -403,7 +403,7 @@ export function NotificationBell({ onPress }: NotificationBellProps) {
       const { token } = useAuthStore.getState();
       if (!token) return;
 
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com.au';
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com';
       const response = await fetch(`${baseUrl}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });

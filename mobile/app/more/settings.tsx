@@ -2083,7 +2083,7 @@ export default function SettingsScreen() {
 
               <TouchableOpacity 
                 style={styles.settingsCard}
-                onPress={() => Linking.openURL('https://tradietrack.com.au/help')}
+                onPress={() => Linking.openURL('https://tradietrack.com/help')}
                 data-testid="button-help-centre"
               >
                 <View style={styles.settingsCardHeader}>

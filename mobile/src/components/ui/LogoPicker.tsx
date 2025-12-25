@@ -233,7 +233,7 @@ export function LogoPicker({ value, onChange, label }: LogoPickerProps) {
     setUploadProgress(0);
 
     try {
-      const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com.au';
+      const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com';
       
       const filename = `logo-${Date.now()}.${asset.uri.split('.').pop() || 'jpg'}`;
       const mimeType = asset.mimeType || 'image/jpeg';

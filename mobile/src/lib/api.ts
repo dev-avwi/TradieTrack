@@ -5,7 +5,7 @@ import { useOfflineStore } from './offline-storage';
 // Production API URL - fallback to production domain for App Store builds
 const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl || 
   process.env.EXPO_PUBLIC_API_URL || 
-  'https://tradietrack.com.au';
+  'https://tradietrack.com';
 
 export const API_URL = API_BASE_URL;
 

@@ -534,7 +534,7 @@ export default function SupportScreen() {
   };
 
   const handleOpenDocs = () => {
-    Linking.openURL('https://tradietrack.com.au/docs');
+    Linking.openURL('https://tradietrack.com/docs');
   };
 
   return (

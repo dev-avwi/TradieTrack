@@ -76,15 +76,15 @@ Welcome to TradieTrack 1.0! This is our first release, packed with everything yo
 
 ## Support URL
 
-https://tradietrack.com.au/support
+https://tradietrack.com/support
 
 ## Marketing URL
 
-https://tradietrack.com.au
+https://tradietrack.com
 
 ## Privacy Policy URL
 
-https://tradietrack.com.au/privacy
+https://tradietrack.com/privacy
 
 ---
 
