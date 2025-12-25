@@ -594,7 +594,8 @@ export default function IntegrationsScreen() {
   const handleConnectGoogleCalendar = async () => {
     setIsConnectingCalendar(true);
     try {
-      const response = await api.post<{ authUrl: string }>('/api/integrations/google-calendar/connect');
+      // Pass source: 'mobile' so server prefixes state with 'mobile_' for deep link redirect
+      const response = await api.post<{ authUrl: string }>('/api/integrations/google-calendar/connect', { source: 'mobile' });
       if (response.data?.authUrl) {
         const result = await WebBrowser.openAuthSessionAsync(
           response.data.authUrl,
@@ -602,14 +603,21 @@ export default function IntegrationsScreen() {
         );
         
         if (result.type === 'success') {
-          // OAuth flow completed - check server-side status
-          const statusCheck = await api.get<GoogleCalendarStatus>('/api/integrations/google-calendar/status');
-          if (statusCheck.data?.connected) {
-            setGoogleCalendarStatus(statusCheck.data);
+          // Parse the callback URL to check success
+          const url = new URL(result.url);
+          const success = url.searchParams.get('success') === 'true';
+          const error = url.searchParams.get('error');
+          
+          if (success) {
+            // Refresh status to get the connected email
+            const statusCheck = await api.get<GoogleCalendarStatus>('/api/integrations/google-calendar/status');
+            if (statusCheck.data?.connected) {
+              setGoogleCalendarStatus(statusCheck.data);
+            }
             Alert.alert('Success', 'Google Calendar connected successfully!');
+            fetchIntegrationStatus();
           } else {
-            // OAuth redirect happened but connection not confirmed
-            Alert.alert('Connection Incomplete', 'Please try connecting again.');
+            Alert.alert('Connection Failed', error || 'Failed to connect Google Calendar');
           }
         } else if (result.type === 'dismiss' || result.type === 'cancel') {
           // User cancelled OAuth flow - no action needed

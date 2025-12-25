@@ -4458,7 +4458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Google Calendar OAuth - Start connection flow
+  // Google Calendar OAuth - Start connection flow (supports both web and mobile)
   app.post("/api/integrations/google-calendar/connect", requireAuth, async (req: any, res) => {
     try {
       const { getAuthorizationUrl, isGoogleCalendarConfigured } = await import('./googleCalendarClient');
@@ -4468,7 +4468,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const userContext = await getUserContext(req.userId);
-      const authUrl = getAuthorizationUrl(userContext.effectiveUserId);
+      // Safely read source from body (web may not send a body)
+      const source = req.body?.source;
+      
+      let state: string;
+      if (source === 'mobile') {
+        // For mobile, generate secure state with random component and store in memory
+        state = `mobile_${userContext.effectiveUserId}_${Date.now()}_${randomBytes(8).toString('hex')}`;
+        mobileOAuthStates.set(state, {
+          userId: userContext.effectiveUserId,
+          expiresAt: Date.now() + 10 * 60 * 1000, // 10 minute expiry
+        });
+      } else {
+        // For web, use userId as state (session-based validation)
+        state = userContext.effectiveUserId;
+      }
+      
+      const authUrl = getAuthorizationUrl(state);
       
       res.json({ authUrl });
     } catch (error: any) {
@@ -4477,27 +4493,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Google Calendar OAuth callback
+  // Google Calendar OAuth callback (supports both web and mobile)
   app.get("/api/integrations/google-calendar/callback", async (req: any, res) => {
     try {
       const { handleOAuthCallback } = await import('./googleCalendarClient');
       const { code, state } = req.query;
       
       if (!code || !state) {
+        const isMobile = (state as string)?.startsWith('mobile_');
+        if (isMobile) {
+          return res.redirect('tradietrack://google-calendar-callback?success=false&error=' + encodeURIComponent('Missing parameters'));
+        }
         return res.redirect('/integrations?error=missing_params');
       }
       
-      const userId = state as string;
+      const stateStr = state as string;
+      const isMobile = stateStr.startsWith('mobile_');
+      
+      let userId: string;
+      if (isMobile) {
+        // Validate mobile state from memory store
+        const mobileState = mobileOAuthStates.get(stateStr);
+        if (!mobileState || mobileState.expiresAt < Date.now()) {
+          mobileOAuthStates.delete(stateStr);
+          return res.redirect('tradietrack://google-calendar-callback?success=false&error=' + encodeURIComponent('Invalid or expired OAuth state. Please try again.'));
+        }
+        userId = mobileState.userId;
+        mobileOAuthStates.delete(stateStr); // Clean up after use
+      } else {
+        // For web, state is the userId directly
+        userId = stateStr;
+      }
+      
       const result = await handleOAuthCallback(code as string, userId);
       
       if (result.success) {
+        if (isMobile) {
+          return res.redirect('tradietrack://google-calendar-callback?success=true');
+        }
         res.redirect('/integrations?success=google_calendar_connected');
       } else {
-        res.redirect(`/integrations?error=${encodeURIComponent(result.error || 'connection_failed')}`);
+        const errorMsg = encodeURIComponent(result.error || 'connection_failed');
+        if (isMobile) {
+          return res.redirect(`tradietrack://google-calendar-callback?success=false&error=${errorMsg}`);
+        }
+        res.redirect(`/integrations?error=${errorMsg}`);
       }
     } catch (error: any) {
       console.error("Error handling Google Calendar callback:", error);
-      res.redirect(`/integrations?error=${encodeURIComponent(error.message || 'callback_failed')}`);
+      const isMobile = (req.query.state as string)?.startsWith('mobile_');
+      const errorMsg = encodeURIComponent(error.message || 'callback_failed');
+      if (isMobile) {
+        return res.redirect(`tradietrack://google-calendar-callback?success=false&error=${errorMsg}`);
+      }
+      res.redirect(`/integrations?error=${errorMsg}`);
     }
   });
 
