@@ -395,34 +395,15 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                 </div>
                 
                 <div className="text-right">
-                  <div className="flex items-start justify-end gap-4">
-                    <div>
-                      <h2 
-                        className="text-2xl sm:text-3xl uppercase tracking-wide"
-                        style={{ ...headingStyle }}
-                      >
-                        QUOTE
-                      </h2>
-                      <p className="text-gray-600 mt-1">{quote.number}</p>
-                      <div className="mt-2">
-                        <StatusBadge status={quote.status} />
-                      </div>
-                    </div>
-                    
-                    {/* ACCEPTED stamp - positioned to the side, not overlapping */}
-                    {quote.status === 'accepted' && (
-                      <div 
-                        className="px-4 py-2 text-base font-bold uppercase tracking-wide border-[3px] flex-shrink-0"
-                        style={{ 
-                          color: '#22c55e',
-                          borderColor: '#22c55e',
-                          transform: 'rotate(-8deg)',
-                          marginTop: '8px'
-                        }}
-                      >
-                        ACCEPTED
-                      </div>
-                    )}
+                  <h2 
+                    className="text-2xl sm:text-3xl uppercase tracking-wide"
+                    style={{ ...headingStyle }}
+                  >
+                    QUOTE
+                  </h2>
+                  <p className="text-gray-600 mt-1">{quote.number}</p>
+                  <div className="mt-2">
+                    <StatusBadge status={quote.status} />
                   </div>
                 </div>
               </div>
