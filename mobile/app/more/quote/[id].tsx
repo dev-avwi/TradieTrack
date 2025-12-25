@@ -17,6 +17,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useQuotesStore, useClientsStore, useAuthStore, useJobsStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
+import { spacing, radius } from '../../../src/lib/design-tokens';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { API_URL, api } from '../../../src/lib/api';
@@ -751,7 +752,7 @@ export default function QuoteDetailScreen() {
                 <Feather name="briefcase" size={20} color={colors.white} />
                 <Text style={styles.primaryButtonText}>Create Job from Quote</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.primaryButton, { marginTop: 12 }]} onPress={handleConvertToInvoice}>
+              <TouchableOpacity style={[styles.primaryButton, { marginTop: spacing.md }]} onPress={handleConvertToInvoice}>
                 <Feather name="arrow-right" size={20} color={colors.white} />
                 <Text style={styles.primaryButtonText}>Convert to Invoice</Text>
               </TouchableOpacity>
@@ -980,7 +981,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: 16,
+    padding: spacing.lg,
     paddingBottom: 100,
   },
   loadingContainer: {
@@ -1000,22 +1001,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   headerButton: {
-    padding: 8,
+    padding: spacing.sm,
   },
   headerCard: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: radius.lg,
+    padding: spacing['2xl'],
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   quoteNumber: {
     fontSize: 18,
@@ -1023,9 +1024,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   statusBadge: {
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing.md,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: radius.lg,
   },
   statusText: {
     fontSize: 13,
@@ -1039,12 +1040,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   totalLabel: {
     fontSize: 14,
     color: colors.mutedForeground,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   quickActions: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 24,
+    gap: spacing.sm,
+    marginBottom: spacing['2xl'],
   },
   quickAction: {
     flex: 1,
@@ -1052,9 +1053,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
     backgroundColor: colors.card,
-    borderRadius: 10,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -1073,22 +1074,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
   },
   card: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginBottom: spacing['2xl'],
     borderWidth: 1,
     borderColor: colors.border,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
   },
   infoContent: {
     flex: 1,
@@ -1108,7 +1109,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   lineItem: {
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
   },
   lineItemBorder: {
     borderTopWidth: 1,
@@ -1128,7 +1129,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   lineItemDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: spacing.sm,
     marginLeft: 26,
   },
   lineItemQty: {
@@ -1144,7 +1145,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
   },
   amountLabel: {
     fontSize: 15,
@@ -1157,7 +1158,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: colors.border,
-    marginVertical: 8,
+    marginVertical: spacing.sm,
   },
   totalLabel2: {
     fontSize: 16,
@@ -1173,9 +1174,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: colors.warningLight,
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 12,
+    padding: spacing.md,
+    borderRadius: radius.sm,
+    marginTop: spacing.md,
   },
   depositLabel: {
     fontSize: 14,
@@ -1196,19 +1197,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
     backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 16,
+    borderRadius: radius.md,
+    paddingVertical: spacing.lg,
   },
   successButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
     backgroundColor: colors.success,
-    borderRadius: 10,
-    paddingVertical: 16,
+    borderRadius: radius.md,
+    paddingVertical: spacing.lg,
   },
   primaryButtonText: {
     fontSize: 16,
@@ -1224,8 +1225,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -1236,16 +1237,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   modalContent: {
     flex: 1,
-    padding: 16,
+    padding: spacing.lg,
   },
   sendInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 16,
+    gap: spacing.md,
+    padding: spacing.lg,
     backgroundColor: colors.primaryLight,
-    borderRadius: 12,
-    marginBottom: 24,
+    borderRadius: radius.md,
+    marginBottom: spacing['2xl'],
   },
   sendInfoText: {
     flex: 1,
@@ -1263,32 +1264,32 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: colors.foreground,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   messageInput: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     padding: 14,
     fontSize: 15,
     color: colors.foreground,
     backgroundColor: colors.card,
     minHeight: 120,
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   previewCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: radius.md,
+    padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   previewTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.foreground,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   previewRow: {
     flexDirection: 'row',
@@ -1313,10 +1314,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
     backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: radius.md,
+    paddingVertical: spacing.lg,
   },
   sendButtonText: {
     fontSize: 16,
@@ -1334,9 +1335,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   acceptanceCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginBottom: spacing['2xl'],
     borderWidth: 2,
     borderColor: colors.border,
     borderStyle: 'dashed',
@@ -1345,13 +1346,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 13,
     color: colors.mutedForeground,
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   signaturePlaceholder: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingTop: 12,
+    gap: spacing.sm,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -1364,28 +1365,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.success,
   },
   signatureImageContainer: {
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   signatureLabel: {
     fontSize: 12,
     color: colors.successDark,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   acceptedInfo: {
     fontSize: 13,
     color: colors.successDark,
   },
   footerSection: {
-    marginTop: 8,
-    marginBottom: 24,
-    paddingTop: 16,
+    marginTop: spacing.sm,
+    marginBottom: spacing['2xl'],
+    paddingTop: spacing.lg,
     borderTopWidth: 2,
     alignItems: 'center',
   },
   thankYouText: {
     fontSize: 14,
     color: colors.mutedForeground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   abnFooter: {
     fontSize: 12,
@@ -1398,16 +1399,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   templateModalContent: {
     backgroundColor: colors.card,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.xl,
     maxHeight: '70%',
   },
   templateModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   templateModalTitle: {
     fontSize: 18,
@@ -1417,11 +1418,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   templateOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
+    padding: spacing.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   templateOptionSelected: {
     borderColor: colors.primary,
@@ -1448,24 +1449,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.card,
   },
   previewCloseButton: {
-    padding: 8,
+    padding: spacing.sm,
     width: 40,
   },
   previewActionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
   previewActionButton: {
-    padding: 8,
-    borderRadius: 8,
+    padding: spacing.sm,
+    borderRadius: radius.sm,
   },
   previewModalTitle: {
     fontSize: 17,
@@ -1474,10 +1475,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   shareSheetContent: {
     backgroundColor: colors.card,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 40,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.xl,
+    paddingBottom: spacing['4xl'],
   },
   shareSheetHandle: {
     width: 40,
@@ -1485,38 +1486,38 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.border,
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   shareSheetTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.foreground,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   shareSheetSubtitle: {
     fontSize: 14,
     color: colors.mutedForeground,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.xl,
   },
   shareOptions: {
-    gap: 8,
-    marginBottom: 16,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   shareOption: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
     backgroundColor: colors.background,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
   shareOptionIcon: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -1528,9 +1529,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   shareSheetCancel: {
-    paddingVertical: 16,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,

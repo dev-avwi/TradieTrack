@@ -485,6 +485,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
+  quoteCardAccent: {
+    width: 4,
+    borderTopLeftRadius: radius.lg,
+    borderBottomLeftRadius: radius.lg,
+  },
   quoteCardContent: {
     flex: 1,
     padding: spacing.md,

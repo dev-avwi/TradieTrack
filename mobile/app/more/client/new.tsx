@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useClientsStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import { getBottomNavHeight } from '../../../src/components/BottomNav';
+import { spacing, radius } from '../../../src/lib/design-tokens';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -25,8 +26,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -34,7 +35,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   backButton: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: radius.md,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
@@ -47,13 +48,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   saveHeaderButton: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: radius.md,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   content: {
-    padding: 16,
+    padding: spacing.lg,
   },
   sectionTitle: {
     fontSize: 13,
@@ -61,17 +62,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 16,
-    marginLeft: 4,
+    marginBottom: spacing.lg,
+    marginLeft: spacing.xs,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   inputLabel: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   inputLabelText: {
     fontSize: 15,
@@ -80,7 +81,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   input: {
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.md,
     padding: 14,
     fontSize: 16,
     color: colors.foreground,
@@ -96,11 +97,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
     backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    marginTop: 24,
+    borderRadius: radius.md,
+    paddingVertical: spacing.lg,
+    marginTop: spacing['2xl'],
   },
   saveButtonDisabled: {
     opacity: 0.7,

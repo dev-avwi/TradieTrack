@@ -21,7 +21,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserRole } from '../../src/hooks/use-user-role';
 import { api } from '../../src/lib/api';
-import { statusColors, spacing, radius, shadows } from '../../src/lib/design-tokens';
+import { statusColors, spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 const DARK_MAP_STYLE: MapStyleElement[] = [
@@ -246,7 +246,7 @@ const createStyles = (colors: ThemeColors) => {
       filterDot: {
         width: 10,
         height: 10,
-        borderRadius: 5,
+        borderRadius: radius.full,
       },
       filterOptionText: {
         flex: 1,
@@ -283,7 +283,7 @@ const createStyles = (colors: ThemeColors) => {
       legendDot: {
         width: 12,
         height: 12,
-        borderRadius: 6,
+        borderRadius: radius.full,
       },
       legendLabel: {
         fontSize: 13,
@@ -292,7 +292,7 @@ const createStyles = (colors: ThemeColors) => {
       markerContainer: {
         width: 32,
         height: 32,
-        borderRadius: 16,
+        borderRadius: radius.full,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
@@ -302,7 +302,7 @@ const createStyles = (colors: ThemeColors) => {
       teamMarker: {
         width: 44,
         height: 44,
-        borderRadius: 22,
+        borderRadius: radius.full,
         backgroundColor: colors.card,
         alignItems: 'center',
         justifyContent: 'center',
@@ -312,7 +312,7 @@ const createStyles = (colors: ThemeColors) => {
       teamMarkerOuter: {
         width: 48,
         height: 48,
-        borderRadius: 24,
+        borderRadius: radius.full,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 3,
@@ -322,7 +322,7 @@ const createStyles = (colors: ThemeColors) => {
       teamMarkerSelected: {
         width: 56,
         height: 56,
-        borderRadius: 28,
+        borderRadius: radius.full,
         borderWidth: 4,
       },
       activityDot: {
@@ -331,7 +331,7 @@ const createStyles = (colors: ThemeColors) => {
         left: -2,
         width: 14,
         height: 14,
-        borderRadius: 7,
+        borderRadius: radius.full,
         borderWidth: 2,
         borderColor: colors.white,
       },
@@ -405,7 +405,7 @@ const createStyles = (colors: ThemeColors) => {
       fabPrimary: {
         width: 56,
         height: 56,
-        borderRadius: 28,
+        borderRadius: radius.full,
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
@@ -414,7 +414,7 @@ const createStyles = (colors: ThemeColors) => {
       fabSecondary: {
         width: 44,
         height: 44,
-        borderRadius: 22,
+        borderRadius: radius.full,
         backgroundColor: colors.card,
         alignItems: 'center',
         justifyContent: 'center',
@@ -943,7 +943,7 @@ export default function MapScreen() {
           <View style={{ 
             width: 80, 
             height: 80, 
-            borderRadius: 40, 
+            borderRadius: radius.full, 
             backgroundColor: colors.muted, 
             alignItems: 'center', 
             justifyContent: 'center' 
@@ -1015,7 +1015,7 @@ export default function MapScreen() {
                     borderColor: colors.primary,
                     width: 36,
                     height: 36,
-                    borderRadius: 18,
+                    borderRadius: radius.full,
                   }
                 ]}>
                   <Feather name="file-text" size={14} color="#fff" />
@@ -1027,7 +1027,7 @@ export default function MapScreen() {
                     right: -6,
                     width: 18,
                     height: 18,
-                    borderRadius: 9,
+                    borderRadius: radius.full,
                     backgroundColor: colors.primary,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1448,7 +1448,7 @@ export default function MapScreen() {
               width: 40,
               height: 4,
               backgroundColor: colors.border,
-              borderRadius: 2,
+              borderRadius: radius.full,
               alignSelf: 'center',
               marginBottom: spacing.lg,
             }} />
@@ -1672,7 +1672,7 @@ export default function MapScreen() {
               <View style={{
                 width: 32,
                 height: 32,
-                borderRadius: 16,
+                borderRadius: radius.full,
                 backgroundColor: colors.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1727,7 +1727,7 @@ export default function MapScreen() {
                     <View style={{
                       width: 28,
                       height: 28,
-                      borderRadius: 14,
+                      borderRadius: radius.full,
                       backgroundColor: colors.primary,
                       alignItems: 'center',
                       justifyContent: 'center',

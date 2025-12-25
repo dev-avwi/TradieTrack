@@ -224,7 +224,7 @@ export default function ClientDetailScreen() {
         options={{ 
           title: 'Client Details',
           headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
               <TouchableOpacity onPress={() => router.push(`/more/client/new?clientId=${id}`)} style={styles.headerButton}>
                 <Feather name="edit-2" size={20} color={colors.primary} />
               </TouchableOpacity>
@@ -712,7 +712,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   jobIconContainer: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: radius.xl,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -809,9 +809,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderBottomColor: colors.border,
   },
   timelineIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: sizes.avatarSm,
+    height: sizes.avatarSm,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,

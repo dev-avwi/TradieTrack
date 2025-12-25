@@ -70,8 +70,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderColor: colors.border,
   },
   resultIcon: {
-    width: 40,
-    height: 40,
+    width: sizes.avatarMd,
+    height: sizes.avatarMd,
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -87,12 +87,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   resultSubtitle: {
     ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs / 2,
   },
   resultType: {
     backgroundColor: colors.muted,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
     borderRadius: radius.md,
   },
   resultTypeText: {
@@ -106,7 +106,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingVertical: spacing['4xl'],
   },
   emptyText: {
-    ...typography.title,
+    ...typography.sectionTitle,
     color: colors.foreground,
     marginTop: spacing.lg,
   },
@@ -283,13 +283,13 @@ export default function SearchScreen() {
           ))
         ) : query.length > 0 ? (
           <View style={styles.empty}>
-            <Feather name="search" size={48} color={colors.mutedForeground} />
+            <Feather name="search" size={sizes.emptyIcon} color={colors.mutedForeground} />
             <Text style={styles.emptyText}>No results found</Text>
             <Text style={styles.emptySubtext}>Try a different search term</Text>
           </View>
         ) : (
           <View style={styles.empty}>
-            <Feather name="search" size={48} color={colors.mutedForeground} />
+            <Feather name="search" size={sizes.emptyIcon} color={colors.mutedForeground} />
             <Text style={styles.emptyText}>Start typing to search</Text>
             <Text style={styles.emptySubtext}>Search for jobs, clients, quotes, or invoices</Text>
           </View>

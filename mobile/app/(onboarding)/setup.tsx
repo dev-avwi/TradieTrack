@@ -21,6 +21,7 @@ import { Card, CardContent } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { spacing, radius } from '../../src/lib/design-tokens';
 
 // Step configuration with colors
 const STEP_CONFIG = {
@@ -384,7 +385,7 @@ export default function OnboardingSetupScreen() {
       </View>
 
       <View style={styles.row}>
-        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+        <View style={[styles.inputGroup, { flex: 1, marginRight: spacing.sm }]}>
           <Text style={styles.inputLabel}>Hourly Rate</Text>
           <TextInput
             style={styles.input}
@@ -396,7 +397,7 @@ export default function OnboardingSetupScreen() {
             testID="input-hourly-rate"
           />
         </View>
-        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+        <View style={[styles.inputGroup, { flex: 1, marginLeft: spacing.sm }]}>
           <Text style={styles.inputLabel}>Callout Fee</Text>
           <TextInput
             style={styles.input}
@@ -429,8 +430,8 @@ export default function OnboardingSetupScreen() {
           style={{
             backgroundColor: '#1e3a5f',
             paddingVertical: 14,
-            paddingHorizontal: 20,
-            borderRadius: 10,
+            paddingHorizontal: spacing.xl,
+            borderRadius: radius.md,
             alignItems: 'center',
             justifyContent: 'center',
             width: '100%',
@@ -465,7 +466,7 @@ export default function OnboardingSetupScreen() {
       </View>
 
       <Card style={styles.integrationCard}>
-        <CardContent style={{ paddingTop: 20 }}>
+        <CardContent style={{ paddingTop: spacing.xl }}>
           <View style={styles.integrationHeader}>
             <View style={[styles.integrationIcon, { backgroundColor: '#6366f1' + '20' }]}>
               <Ionicons name="logo-usd" size={24} color="#6366f1" />
@@ -497,8 +498,8 @@ export default function OnboardingSetupScreen() {
             style={{
               backgroundColor: '#6366f1',
               paddingVertical: 14,
-              paddingHorizontal: 20,
-              borderRadius: 10,
+              paddingHorizontal: spacing.xl,
+              borderRadius: radius.md,
               alignItems: 'center',
               justifyContent: 'center',
               width: '100%',
@@ -538,8 +539,8 @@ export default function OnboardingSetupScreen() {
         style={{
           backgroundColor: '#1e3a5f',
           paddingVertical: 14,
-          paddingHorizontal: 20,
-          borderRadius: 10,
+          paddingHorizontal: spacing.xl,
+          borderRadius: radius.md,
           alignItems: 'center',
           justifyContent: 'center',
           width: '100%',
@@ -647,8 +648,8 @@ export default function OnboardingSetupScreen() {
         style={{
           backgroundColor: '#1e3a5f',
           paddingVertical: 14,
-          paddingHorizontal: 20,
-          borderRadius: 10,
+          paddingHorizontal: spacing.xl,
+          borderRadius: radius.md,
           alignItems: 'center',
           justifyContent: 'center',
           width: '100%',
@@ -662,9 +663,7 @@ export default function OnboardingSetupScreen() {
           <ActivityIndicator color="#FFFFFF" />
         ) : (
           <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
-            {teamInvites.length > 0 
-              ? `Send ${teamInvites.length} Invite${teamInvites.length > 1 ? 's' : ''}`
-              : 'Continue'}
+            {teamInvites.length > 0 ? `Send ${teamInvites.length} Invite${teamInvites.length > 1 ? 's' : ''}` : 'Continue'}
           </Text>
         )}
       </TouchableOpacity>
@@ -672,25 +671,32 @@ export default function OnboardingSetupScreen() {
   );
 
   const renderCompleteStep = () => (
-    <View style={[styles.stepContainer, styles.completeContainer]}>
+    <View style={styles.completeContainer}>
       <View style={styles.completeContent}>
-        <View style={[styles.iconCircle, styles.successCircle]}>
-          <Ionicons name="checkmark" size={48} color={colors.card} />
-        </View>
+        <LinearGradient
+          colors={['#22c55e', '#16a34a']}
+          style={styles.successCircle}
+        >
+          <Ionicons name="checkmark" size={48} color="#fff" />
+        </LinearGradient>
         
-        <Text style={styles.completeTitle}>Welcome to TradieTrack!</Text>
-        <Text style={styles.completeSubtitle}>Your account is ready. Let's get you some jobs!</Text>
+        <Text style={styles.completeTitle}>You're All Set!</Text>
+        <Text style={styles.completeSubtitle}>
+          Your business is ready to use TradieTrack. Start managing your jobs, quotes, and invoices.
+        </Text>
 
         <View style={styles.checkList}>
           <View style={styles.checkItem}>
             <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-            <Text style={styles.checkText}>Business details configured</Text>
+            <Text style={styles.checkText}>Business profile created</Text>
           </View>
-          <View style={styles.checkItem}>
-            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-            <Text style={styles.checkText}>Ready to create jobs, quotes & invoices</Text>
-          </View>
-          {isTeamMode && teamInvites.length > 0 && (
+          {businessSettings?.stripeConnected && (
+            <View style={styles.checkItem}>
+              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+              <Text style={styles.checkText}>Stripe payments connected</Text>
+            </View>
+          )}
+          {teamInvites.length > 0 && (
             <View style={styles.checkItem}>
               <Ionicons name="checkmark-circle" size={20} color={colors.success} />
               <Text style={styles.checkText}>{teamInvites.length} team invite{teamInvites.length > 1 ? 's' : ''} sent</Text>
@@ -703,8 +709,8 @@ export default function OnboardingSetupScreen() {
         style={{
           backgroundColor: '#1e3a5f',
           paddingVertical: 14,
-          paddingHorizontal: 20,
-          borderRadius: 10,
+          paddingHorizontal: spacing.xl,
+          borderRadius: radius.md,
           alignItems: 'center',
           justifyContent: 'center',
           width: '100%',
@@ -712,303 +718,178 @@ export default function OnboardingSetupScreen() {
         onPress={handleComplete}
         activeOpacity={0.8}
       >
-        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Start Using TradieTrack</Text>
+        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Go to Dashboard</Text>
       </TouchableOpacity>
     </View>
   );
 
-  const allSteps: OnboardingStep[] = isTeamMode 
-    ? ['business', 'integrations', 'team', 'complete']
-    : ['business', 'integrations', 'complete'];
-
-  const currentStepConfig = STEP_CONFIG[currentStep];
+  const renderProgressBar = () => {
+    const steps = isTeamMode 
+      ? ['business', 'integrations', 'team', 'complete'] as OnboardingStep[]
+      : ['business', 'integrations', 'complete'] as OnboardingStep[];
+    
+    return (
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: `${getProgress()}%` }]} />
+        </View>
+        <View style={styles.stepsRow}>
+          {steps.map((step, index) => {
+            const config = STEP_CONFIG[step];
+            const isActive = steps.indexOf(currentStep) >= index;
+            const isCurrent = currentStep === step;
+            
+            return (
+              <View key={step} style={styles.stepIndicator}>
+                <View style={[
+                  styles.stepDot,
+                  isActive && { backgroundColor: config.color },
+                  isCurrent && styles.stepDotCurrent
+                ]}>
+                  <Ionicons 
+                    name={config.icon} 
+                    size={14} 
+                    color={isActive ? '#fff' : colors.mutedForeground} 
+                  />
+                </View>
+                <Text style={[
+                  styles.stepLabel,
+                  isActive && { color: config.color }
+                ]}>{config.title}</Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
 
   if (isCheckingSettings) {
     return (
-      <LinearGradient
-        colors={['#2563eb', '#3b82f6', '#f97316']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientContainer}
-      >
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-          <View style={styles.loadingContainer}>
-            <View style={styles.loadingCircle}>
-              <ActivityIndicator size="large" color="#2563eb" />
-            </View>
-            <Text style={styles.loadingTextWhite}>Setting up your account...</Text>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </SafeAreaView>
     );
   }
 
   return (
-    <LinearGradient
-      colors={['#2563eb', '#3b82f6', '#f97316']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradientContainer}
-    >
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        {/* Header with logo and step indicators */}
-        <View style={styles.header}>
-          <View style={styles.logoRow}>
-            <Text style={styles.logoText}>
-              <Text style={{ color: '#FFFFFF' }}>Tradie</Text>
-              <Text style={{ color: '#fed7aa' }}>Track</Text>
-            </Text>
-          </View>
-          
-          {/* Step indicators */}
-          <View style={styles.stepIndicators}>
-            {allSteps.map((step, index) => {
-              const stepConfig = STEP_CONFIG[step];
-              const currentIndex = allSteps.indexOf(currentStep);
-              const isActive = step === currentStep;
-              const isCompleted = index < currentIndex;
-              
-              return (
-                <View key={step} style={styles.stepIndicatorWrapper}>
-                  <View style={[
-                    styles.stepDot,
-                    isActive && { backgroundColor: '#FFFFFF', transform: [{ scale: 1.2 }] },
-                    isCompleted && { backgroundColor: '#22c55e' },
-                    !isActive && !isCompleted && { backgroundColor: 'rgba(255,255,255,0.3)' }
-                  ]}>
-                    {isCompleted && (
-                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                    )}
-                    {isActive && (
-                      <Ionicons name={stepConfig.icon} size={12} color={stepConfig.color} />
-                    )}
-                  </View>
-                  <Text style={[
-                    styles.stepLabel,
-                    isActive && { color: '#FFFFFF', fontWeight: '600' },
-                    !isActive && { color: 'rgba(255,255,255,0.6)' }
-                  ]}>
-                    {stepConfig.title}
-                  </Text>
-                  {index < allSteps.length - 1 && (
-                    <View style={[
-                      styles.stepConnector,
-                      isCompleted && { backgroundColor: '#22c55e' }
-                    ]} />
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Progress bar */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBarWhite}>
-            <View style={[styles.progressFillOrange, { width: `${getProgress()}%` }]} />
-          </View>
-          <Text style={styles.progressTextWhite}>{Math.round(getProgress())}%</Text>
-        </View>
-
-        {/* Content card */}
-        <View style={styles.contentCard}>
-          {/* Step header with color */}
-          <View style={[styles.stepHeaderBar, { backgroundColor: currentStepConfig.lightColor }]}>
-            <View style={[styles.stepHeaderIcon, { backgroundColor: currentStepConfig.color }]}>
-              <Ionicons name={currentStepConfig.icon} size={20} color="#FFFFFF" />
-            </View>
-            <Text style={[styles.stepHeaderTitle, { color: currentStepConfig.color }]}>
-              {currentStepConfig.title}
-            </Text>
-          </View>
-
-          {currentStep === 'business' && renderBusinessStep()}
-          {currentStep === 'integrations' && renderIntegrationsStep()}
-          {currentStep === 'team' && renderTeamStep()}
-          {currentStep === 'complete' && renderCompleteStep()}
-        </View>
-      </SafeAreaView>
-    </LinearGradient>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {renderProgressBar()}
+      {currentStep === 'business' && renderBusinessStep()}
+      {currentStep === 'integrations' && renderIntegrationsStep()}
+      {currentStep === 'team' && renderTeamStep()}
+      {currentStep === 'complete' && renderCompleteStep()}
+    </SafeAreaView>
   );
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  gradientContainer: {
-    flex: 1,
-  },
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  logoRow: {
-    flexDirection: 'row',
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  logoText: {
-    fontSize: 22,
-    fontWeight: 'bold',
+  progressContainer: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
   },
-  stepIndicators: {
+  progressBar: {
+    height: spacing.xs,
+    backgroundColor: colors.cardBorder,
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 2,
+  },
+  stepsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
   },
-  stepIndicatorWrapper: {
-    flex: 1,
+  stepIndicator: {
     alignItems: 'center',
-    position: 'relative',
+    flex: 1,
   },
   stepDot: {
     width: 28,
     height: 28,
     borderRadius: 14,
+    backgroundColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: spacing.xs,
+  },
+  stepDotCurrent: {
+    transform: [{ scale: 1.1 }],
   },
   stepLabel: {
-    fontSize: 10,
-    textAlign: 'center',
-  },
-  stepConnector: {
-    position: 'absolute',
-    top: 14,
-    left: '60%',
-    right: '-40%',
-    height: 2,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    zIndex: -1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-  },
-  loadingCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingTextWhite: {
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: 11,
+    color: colors.mutedForeground,
     fontWeight: '500',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    gap: 12,
-  },
-  progressBarWhite: {
-    flex: 1,
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFillOrange: {
-    height: '100%',
-    backgroundColor: '#f97316',
-    borderRadius: 3,
-  },
-  progressTextWhite: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    minWidth: 35,
-    textAlign: 'right',
-  },
-  contentCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: 8,
-    overflow: 'hidden',
-  },
-  stepHeaderBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  stepHeaderIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepHeaderTitle: {
-    fontSize: 16,
-    fontWeight: '600',
   },
   stepContainer: {
     flex: 1,
   },
   stepContent: {
-    padding: 20,
+    padding: spacing.xl,
     paddingBottom: 40,
   },
   stepHeader: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: radius['3xl'],
     backgroundColor: colors.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   stepTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   stepSubtitle: {
     fontSize: 14,
     color: colors.mutedForeground,
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.xl,
   },
   sectionLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.foreground,
-    marginBottom: 12,
-    marginTop: 8,
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
   },
   optionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   optionCard: {
     width: (Dimensions.get('window').width - 52) / 2,
-    padding: 16,
+    padding: spacing.lg,
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 2,
     borderColor: colors.cardBorder,
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   optionCardSelected: {
     borderColor: colors.primary,
@@ -1029,19 +910,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   tradeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 20,
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
   },
   tradeOption: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: spacing.md,
     backgroundColor: colors.card,
-    borderRadius: 20,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    gap: 6,
+    gap: spacing.xs,
   },
   tradeOptionSelected: {
     borderColor: colors.primary,
@@ -1056,13 +937,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
     color: colors.foreground,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   input: {
     height: 48,
@@ -1070,7 +951,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    borderRadius: 10,
+    borderRadius: radius.md,
     color: colors.foreground,
     fontSize: 15,
   },
@@ -1082,9 +963,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.card,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
+    padding: spacing.lg,
+    borderRadius: radius.md,
+    marginBottom: spacing['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
   },
@@ -1097,21 +978,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 2,
   },
   buttonRow: {
-    marginTop: 8,
-    marginBottom: 16,
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
   },
   integrationCard: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   integrationHeader: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   integrationIcon: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1122,7 +1003,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   integrationDescription: {
     fontSize: 13,
@@ -1130,13 +1011,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     lineHeight: 18,
   },
   featureList: {
-    marginBottom: 16,
-    gap: 8,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   featureText: {
     fontSize: 13,
@@ -1146,10 +1027,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: colors.primary + '10',
-    padding: 12,
-    borderRadius: 10,
-    gap: 10,
-    marginBottom: 16,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   infoText: {
     flex: 1,
@@ -1161,8 +1042,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
   },
   skipText: {
     fontSize: 14,
@@ -1170,19 +1051,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   inviteInputRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
     alignItems: 'center',
   },
   roleSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing.md,
     height: 48,
     backgroundColor: colors.background,
-    borderRadius: 10,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    gap: 4,
+    gap: spacing.xs,
   },
   roleText: {
     fontSize: 13,
@@ -1192,33 +1073,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   addButton: {
     width: 48,
     height: 48,
-    borderRadius: 10,
+    borderRadius: radius.md,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   inviteList: {
-    marginTop: 16,
-    gap: 8,
+    marginTop: spacing.lg,
+    gap: spacing.sm,
   },
   inviteListLabel: {
     fontSize: 12,
     fontWeight: '500',
     color: colors.mutedForeground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   inviteItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.background,
-    padding: 12,
-    borderRadius: 8,
+    padding: spacing.md,
+    borderRadius: radius.sm,
   },
   inviteItemInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
     flex: 1,
   },
   inviteEmail: {
@@ -1228,9 +1109,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   roleBadge: {
     backgroundColor: colors.primary + '20',
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: radius.xs,
   },
   roleBadgeText: {
     fontSize: 11,
@@ -1239,7 +1120,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
   },
   completeContainer: {
-    padding: 20,
+    padding: spacing.xl,
     justifyContent: 'center',
   },
   completeContent: {
@@ -1252,29 +1133,31 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     height: 96,
     borderRadius: 48,
     backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   completeTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: colors.success,
-    marginBottom: 8,
-    marginTop: 24,
+    marginBottom: spacing.sm,
+    marginTop: spacing['2xl'],
   },
   completeSubtitle: {
     fontSize: 15,
     color: colors.mutedForeground,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: spacing['3xl'],
   },
   checkList: {
-    gap: 12,
+    gap: spacing.md,
     alignSelf: 'stretch',
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing['2xl'],
   },
   checkItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.md,
   },
   checkText: {
     fontSize: 15,

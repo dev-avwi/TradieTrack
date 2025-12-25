@@ -1764,7 +1764,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // Activity Feed - compact
   activityList: {
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -1803,7 +1803,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   activityEmpty: {
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     padding: spacing.xl,
@@ -1829,7 +1829,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   sectionTitleRow: {
     flexDirection: 'row',
@@ -2055,7 +2055,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   teamMemberAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.xl,
     backgroundColor: `${colors.primary}15`,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2121,7 +2121,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.md,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -2208,7 +2208,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   pulseDot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: radius.xs,
     backgroundColor: colors.warning,
   },
   jobCardTitle: {
@@ -2291,7 +2291,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   optimizedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     marginLeft: spacing.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
@@ -2318,7 +2318,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   startRouteIcon: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2332,7 +2332,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   orderBadge: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.xl,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2403,7 +2403,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing['3xl'],
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -2462,7 +2462,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   timerIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: radius['2xl'],
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',

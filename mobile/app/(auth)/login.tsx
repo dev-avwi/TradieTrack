@@ -21,6 +21,7 @@ import { Button } from '../../src/components/ui/Button';
 import { GoogleLogo } from '../../src/components/ui/GoogleLogo';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import api, { API_URL } from '../../src/lib/api';
+import { spacing, radius } from '../../src/lib/design-tokens';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -263,8 +264,8 @@ export default function LoginScreen() {
                 style={{
                   backgroundColor: '#1e3a5f',
                   paddingVertical: 14,
-                  paddingHorizontal: 20,
-                  borderRadius: 10,
+                  paddingHorizontal: spacing.xl,
+                  borderRadius: radius.md,
                   alignItems: 'center',
                   justifyContent: 'center',
                   width: '100%',
@@ -323,7 +324,7 @@ export default function LoginScreen() {
                     <AppleAuthentication.AppleAuthenticationButton
                       buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
                       buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                      cornerRadius={8}
+                      cornerRadius={radius.sm}
                       style={styles.appleButton}
                       onPress={handleAppleSignIn}
                     />
@@ -377,34 +378,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing['2xl'],
     paddingTop: 60,
     paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: spacing['3xl'],
   },
   logoGradientContainer: {
     width: 72,
     height: 72,
-    borderRadius: 18,
+    borderRadius: radius.xl,
     padding: 2,
-    marginBottom: 16,
+    marginBottom: spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
-    shadowRadius: 12,
+    shadowRadius: radius.md,
     elevation: 8,
-    // Simulate gradient border with dual color border
-    backgroundColor: '#f97316', // orange base
+    backgroundColor: '#f97316',
     borderWidth: 2,
-    borderColor: '#2563eb', // blue accent
+    borderColor: '#2563eb',
   },
   logoInner: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -415,7 +415,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   appNameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   appNameBlue: {
     fontSize: 32,
@@ -431,7 +431,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 22,
     fontWeight: '600',
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   taglineSubtext: {
     fontSize: 15,
@@ -439,37 +439,37 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
     color: colors.foreground,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   input: {
     height: 52,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    borderRadius: 12,
+    borderRadius: radius.md,
     color: colors.foreground,
     fontSize: 16,
   },
   messageContainer: {
     minHeight: 52,
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   errorContainer: {
-    padding: 12,
+    padding: spacing.md,
     backgroundColor: colors.destructiveLight,
-    borderRadius: 10,
-    borderLeftWidth: 4,
+    borderRadius: radius.md,
+    borderLeftWidth: spacing.xs,
     borderLeftColor: colors.destructive,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.md,
   },
   errorText: {
     flex: 1,
@@ -478,14 +478,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
   },
   successContainer: {
-    padding: 12,
+    padding: spacing.md,
     backgroundColor: colors.successLight,
-    borderRadius: 10,
-    borderLeftWidth: 4,
+    borderRadius: radius.md,
+    borderLeftWidth: spacing.xs,
     borderLeftColor: colors.success,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.md,
   },
   successText: {
     flex: 1,
@@ -495,8 +495,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   forgotPassword: {
     alignItems: 'center',
-    marginTop: 16,
-    paddingVertical: 8,
+    marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
   },
   forgotPasswordText: {
     color: colors.primary,
@@ -505,8 +505,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xl,
   },
   dividerLine: {
     flex: 1,
@@ -514,7 +514,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.cardBorder,
   },
   dividerText: {
-    marginHorizontal: 16,
+    marginHorizontal: spacing.lg,
     color: colors.mutedForeground,
     fontSize: 14,
   },
@@ -525,18 +525,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    borderRadius: 12,
+    borderRadius: radius.md,
     height: 56,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing['2xl'],
   },
   googleIconContainer: {
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
     borderWidth: 1,
     borderColor: '#ddd',
   },
@@ -551,7 +551,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
   },
   appleButtonContainer: {
-    marginTop: 12,
+    marginTop: spacing.md,
     width: '100%',
   },
   appleButton: {
@@ -562,17 +562,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: '100%',
     height: 48,
     backgroundColor: '#000000',
-    borderRadius: 8,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   spacer: {
-    height: 16,
+    height: spacing.lg,
   },
   signUpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: spacing['2xl'],
   },
   signUpText: {
     color: colors.mutedForeground,
@@ -584,10 +584,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 15,
   },
   demoAccountCard: {
-    marginTop: 24,
-    padding: 16,
+    marginTop: spacing['2xl'],
+    padding: spacing.lg,
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     alignItems: 'center',
@@ -598,20 +598,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   demoAccountText: {
     fontSize: 14,
     color: colors.foreground,
     fontFamily: 'monospace',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   demoLoginButton: {
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    marginTop: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
     backgroundColor: colors.primary + '15',
-    borderRadius: 8,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.primary,
   },

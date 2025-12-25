@@ -4,6 +4,7 @@ import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { useNotificationsStore } from '../../src/lib/notifications-store';
+import { spacing, radius } from '../../src/lib/design-tokens';
 import { formatDistanceToNow } from 'date-fns';
 
 const createStyles = (colors: any) => StyleSheet.create({
@@ -12,14 +13,14 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: 16,
+    padding: spacing.lg,
     paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   headerTitle: {
     fontSize: 20,
@@ -27,9 +28,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.foreground,
   },
   markAllButton: {
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing.md,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: radius.xs,
     backgroundColor: colors.primaryLight,
   },
   markAllText: {
@@ -49,13 +50,13 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.foreground,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   emptySubtitle: {
     fontSize: 14,
@@ -65,8 +66,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   notificationCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    marginBottom: 12,
+    borderRadius: radius.md,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
@@ -78,12 +79,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   notificationContent: {
     padding: 14,
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
   },
   notificationIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -94,7 +95,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   notificationMessage: {
     fontSize: 14,
@@ -141,9 +142,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    marginTop: 8,
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    marginTop: spacing.sm,
   },
   settingsText: {
     fontSize: 14,

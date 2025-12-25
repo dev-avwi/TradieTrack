@@ -15,6 +15,7 @@ import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import api from '../../src/lib/api';
 
 const DISMISSED_NOTIFICATIONS_KEY = 'tradietrack_dismissed_notifications';
@@ -464,27 +465,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 24,
+    padding: spacing.lg,
+    paddingBottom: spacing['2xl'],
   },
   headerCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
     borderWidth: 1,
     borderColor: colors.border,
   },
   headerIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   headerTextContainer: {
     flex: 1,
@@ -500,15 +501,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   sectionIconContainer: {
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   sectionTitle: {
     fontSize: 13,
@@ -516,11 +517,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   suggestionsGrid: {
-    gap: 8,
+    gap: spacing.sm,
   },
   suggestionCard: {
     backgroundColor: colors.muted,
-    borderRadius: 12,
+    borderRadius: radius.md,
     padding: 14,
   },
   aiSuggestionCard: {
@@ -537,14 +538,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    padding: 12,
+    padding: spacing.md,
   },
   loadingText: {
     fontSize: 14,
     color: colors.mutedForeground,
   },
   emptyState: {
-    padding: 16,
+    padding: spacing.lg,
     alignItems: 'center',
   },
   emptyStateText: {
@@ -555,11 +556,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   chatContainer: {
-    gap: 12,
+    gap: spacing.md,
   },
   chatBubble: {
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: radius.md,
+    padding: spacing.md,
     maxWidth: '85%',
   },
   userBubble: {
@@ -578,7 +579,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     color: colors.mutedForeground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   chatBubbleText: {
     fontSize: 14,
@@ -598,8 +599,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 12,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+    padding: spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? 28 : spacing.md,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
@@ -608,9 +609,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   input: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     fontSize: 15,
     color: colors.foreground,
     maxHeight: 100,
@@ -620,7 +621,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   sendButton: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -629,16 +630,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.muted,
   },
   headerButton: {
-    padding: 8,
-    marginRight: -8,
+    padding: spacing.sm,
+    marginRight: -spacing.sm,
   },
   notificationsContainer: {
     gap: 10,
   },
   notificationCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: radius.md,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
     borderLeftWidth: 4,
@@ -651,7 +652,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   notificationIconContainer: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -670,10 +671,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     lineHeight: 18,
   },
   dismissButton: {
-    padding: 4,
+    padding: spacing.xs,
   },
   notificationBadge: {
-    marginLeft: 8,
+    marginLeft: spacing.sm,
     backgroundColor: colors.destructive,
     paddingHorizontal: 6,
     paddingVertical: 2,

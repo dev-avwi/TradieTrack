@@ -34,7 +34,7 @@ import { Button } from '../../src/components/ui/Button';
 import { AIPhotoAnalysisModal } from '../../src/components/AIPhotoAnalysis';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
@@ -284,7 +284,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   clientAvatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -379,7 +379,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   timerButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -659,7 +659,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary + '50',
     marginRight: spacing.sm,
-    gap: 4,
+    gap: spacing.xs,
   },
   viewAllPhotosButton: {
     width: 72,
@@ -670,7 +670,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    gap: 4,
+    gap: spacing.xs,
   },
   emptyPhotosContainer: {
     flexDirection: 'row',
@@ -776,9 +776,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   documentStatusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
   },
   documentStatusText: {
     fontSize: 12,
@@ -851,7 +851,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   costingLabel: {
     fontSize: 12,
     color: colors.mutedForeground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   costingValue: {
     fontSize: 18,
@@ -891,15 +891,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
     color: colors.mutedForeground,
     backgroundColor: colors.muted,
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: radius.md,
     overflow: 'hidden',
   },
   activityList: {
     borderLeftWidth: 2,
     borderLeftColor: colors.border,
-    marginLeft: 8,
+    marginLeft: spacing.sm,
     paddingLeft: spacing.md,
   },
   activityItem: {
@@ -910,7 +910,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   activityDot: {
     width: 10,
     height: 10,
-    borderRadius: 5,
+    borderRadius: radius.full,
     backgroundColor: colors.inProgress,
     marginRight: spacing.sm,
     marginTop: 5,
@@ -950,10 +950,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: radius['2xl'],
+    borderTopRightRadius: radius['2xl'],
     maxHeight: '80%',
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : spacing.xl,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1068,10 +1068,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   closePhotoButton: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 60 : 40,
-    right: 20,
+    right: spacing.xl,
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1141,13 +1141,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   photoCountBadge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
+    top: -spacing.xs,
+    right: -spacing.xs,
     backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingHorizontal: 6,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 2,
-    minWidth: 20,
+    minWidth: spacing.xl,
     alignItems: 'center',
   },
   photoCountText: {
@@ -1361,7 +1361,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   videoPlayIcon: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1399,10 +1399,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   closeVideoButton: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 60 : 40,
-    right: 20,
+    right: spacing.xl,
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2950,7 +2950,7 @@ export default function JobDetailScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
               <Text style={styles.cardLabel}>Safety & Compliance</Text>
               {pendingSafetyForms.length > 0 && (
-                <View style={{ backgroundColor: colors.warning, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <View style={{ backgroundColor: colors.warning, paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.xs }}>
                   <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>REQUIRED</Text>
                 </View>
               )}
@@ -3472,7 +3472,7 @@ export default function JobDetailScreen() {
                         flex: 1,
                         paddingVertical: spacing.sm,
                         paddingHorizontal: spacing.md,
-                        borderRadius: 8,
+                        borderRadius: radius.sm,
                         backgroundColor: signerRole === role ? colors.primary : colors.muted,
                         borderWidth: 1,
                         borderColor: signerRole === role ? colors.primary : colors.border,
@@ -3507,7 +3507,7 @@ export default function JobDetailScreen() {
                     gap: spacing.sm,
                     backgroundColor: colors.success + '15',
                     paddingVertical: spacing.md,
-                    borderRadius: 8,
+                    borderRadius: radius.sm,
                     borderWidth: 1,
                     borderColor: colors.success + '30',
                     minHeight: 44,
@@ -3534,7 +3534,7 @@ export default function JobDetailScreen() {
               <TextInput
                 style={{
                   backgroundColor: colors.background,
-                  borderRadius: 8,
+                  borderRadius: radius.sm,
                   padding: spacing.md,
                   fontSize: 16,
                   color: colors.foreground,
@@ -3581,7 +3581,7 @@ export default function JobDetailScreen() {
                   <View style={{
                     width: 22,
                     height: 22,
-                    borderRadius: 4,
+                    borderRadius: radius.xs,
                     borderWidth: 2,
                     borderColor: saveToClient ? colors.primary : colors.border,
                     backgroundColor: saveToClient ? colors.primary : 'transparent',
@@ -3619,7 +3619,7 @@ export default function JobDetailScreen() {
               {signatures.filter(s => s.documentType === 'job_completion').map((sig) => (
                 <View key={sig.id} style={{ 
                   backgroundColor: colors.background, 
-                  borderRadius: 8, 
+                  borderRadius: radius.sm, 
                   padding: spacing.md,
                   borderWidth: 1,
                   borderColor: colors.border,
@@ -3634,7 +3634,7 @@ export default function JobDetailScreen() {
                         <View style={{
                           paddingHorizontal: spacing.sm,
                           paddingVertical: 2,
-                          borderRadius: 4,
+                          borderRadius: radius.xs,
                           backgroundColor: sig.signerRole === 'client' 
                             ? colors.primary + '20' 
                             : sig.signerRole === 'worker' 
@@ -3703,7 +3703,7 @@ export default function JobDetailScreen() {
                   <View style={{ 
                     marginTop: spacing.sm, 
                     backgroundColor: colors.card, 
-                    borderRadius: 8, 
+                    borderRadius: radius.sm, 
                     padding: spacing.sm,
                     alignItems: 'center',
                   }}>
@@ -3713,14 +3713,14 @@ export default function JobDetailScreen() {
                         style={{
                           width: '100%',
                           height: 120,
-                          borderRadius: 4,
+                          borderRadius: radius.xs,
                         }}
                         resizeMode="contain"
                       />
                     ) : (
                       <>
                         <Feather name="check-circle" size={24} color={colors.success} />
-                        <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 4 }}>
+                        <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: spacing.xs }}>
                           Signature captured
                         </Text>
                       </>
