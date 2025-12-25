@@ -5986,7 +5986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get linked documents (quote and invoice) for a specific job
+  // Get linked documents (quote, invoice, receipts) for a specific job
   // This is a dedicated efficient endpoint for job detail views
   app.get("/api/jobs/:id/linked-documents", requireAuth, async (req: any, res) => {
     try {
@@ -5999,10 +5999,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Job not found" });
       }
       
-      // Fetch all quotes and invoices, then filter for this job
-      const [quotes, invoices] = await Promise.all([
+      // Fetch all quotes, invoices, and receipts, then filter for this job
+      const [quotes, invoices, receiptsForJob] = await Promise.all([
         storage.getQuotes(effectiveUserId),
-        storage.getInvoices(effectiveUserId)
+        storage.getInvoices(effectiveUserId),
+        storage.getReceiptsForJob(jobId, effectiveUserId)
       ]);
       
       // Find linked quote (most recent if multiple)
@@ -6034,9 +6035,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paidAt: linkedInvoice.paidAt,
           createdAt: linkedInvoice.createdAt,
         } : null,
+        // Include receipts array (all receipts for this job)
+        linkedReceipts: receiptsForJob.map((r: any) => ({
+          id: r.id,
+          receiptNumber: r.receiptNumber,
+          amount: r.amount,
+          gstAmount: r.gstAmount,
+          paymentMethod: r.paymentMethod,
+          paidAt: r.paidAt,
+          pdfUrl: r.pdfUrl,
+          createdAt: r.createdAt,
+        })),
         // Include counts for UI
         quoteCount: linkedQuotes.length,
         invoiceCount: linkedInvoices.length,
+        receiptCount: receiptsForJob.length,
       });
     } catch (error) {
       console.error("Error fetching linked documents:", error);
@@ -7054,7 +7067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return handleQuoteEmailWithPDF(req, res, storage);
   });
 
-  // Accept quote (team-aware)
+  // Accept quote (team-aware) - Enhanced to update linked job and log activity
   app.post("/api/quotes/:id/accept", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
@@ -7068,6 +7081,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      // Log activity for quote acceptance
+      await storage.createActivityLog({
+        userId: userContext.effectiveUserId,
+        entityType: 'quote',
+        entityId: quote.id,
+        action: 'status_change',
+        details: { 
+          previousStatus, 
+          newStatus: 'accepted',
+          linkedJobId: quote.jobId || null,
+          quoteNumber: quote.number
+        }
+      });
+      
+      // If quote is linked to a job, update the job status and log activity
+      if (quote.jobId) {
+        const job = await storage.getJob(quote.jobId, userContext.effectiveUserId);
+        if (job && (job.status === 'pending' || job.status === 'draft')) {
+          // Update job to 'scheduled' when quote is accepted
+          await storage.updateJob(quote.jobId, userContext.effectiveUserId, {
+            status: 'scheduled'
+          });
+          
+          // Log activity for job status change
+          await storage.createActivityLog({
+            userId: userContext.effectiveUserId,
+            entityType: 'job',
+            entityId: quote.jobId,
+            action: 'status_change',
+            details: { 
+              previousStatus: job.status, 
+              newStatus: 'scheduled',
+              trigger: 'quote_accepted',
+              quoteId: quote.id,
+              quoteNumber: quote.number
+            }
+          });
+          
+          console.log(`[Quote Accept] Job ${quote.jobId} moved to scheduled after quote ${quote.id} accepted`);
+        }
       }
       
       // Trigger automation rules for quote acceptance
