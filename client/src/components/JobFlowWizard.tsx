@@ -97,25 +97,25 @@ export default function JobFlowWizard({
         id: 'scheduled',
         label: 'Scheduled',
         icon: Calendar,
-        status: currentIndex > 0 ? 'completed' : (status === 'pending' ? 'upcoming' : 'current'),
+        status: currentIndex >= 1 ? 'completed' : (status === 'pending' && hasQuote ? 'current' : 'upcoming'),
         timestamp: parseTimestamp(timestamps.scheduledAt),
-        clickable: currentIndex > 0 && onStatusChange !== undefined
+        clickable: currentIndex >= 1 && onStatusChange !== undefined
       },
       {
         id: 'in_progress',
         label: 'In Progress',
         icon: Play,
-        status: currentIndex > 1 ? 'completed' : (status === 'in_progress' ? 'current' : 'upcoming'),
+        status: currentIndex >= 2 ? 'completed' : (currentIndex === 1 ? 'current' : 'upcoming'),
         timestamp: parseTimestamp(timestamps.startedAt),
-        clickable: currentIndex > 1 && onStatusChange !== undefined
+        clickable: currentIndex >= 2 && onStatusChange !== undefined
       },
       {
         id: 'done',
         label: 'Done',
         icon: CheckCircle,
-        status: currentIndex > 2 ? 'completed' : (status === 'done' ? 'current' : 'upcoming'),
+        status: currentIndex >= 3 ? 'completed' : (currentIndex === 2 ? 'current' : 'upcoming'),
         timestamp: parseTimestamp(timestamps.completedAt),
-        clickable: currentIndex > 2 && onStatusChange !== undefined
+        clickable: currentIndex >= 3 && onStatusChange !== undefined
       },
       {
         id: 'invoiced',
@@ -221,15 +221,10 @@ export default function JobFlowWizard({
                     className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center transition-all",
                       step.status === 'completed' && "bg-green-500 text-white",
-                      step.status === 'current' && "ring-2 ring-offset-2",
+                      step.status === 'current' && "ring-2 ring-offset-2 ring-blue-500 bg-blue-500 text-white",
                       step.status === 'upcoming' && "bg-muted text-muted-foreground",
                       step.clickable && step.status === 'completed' && "group-hover:ring-2 group-hover:ring-offset-2 group-hover:ring-amber-500"
                     )}
-                    style={step.status === 'current' ? { 
-                      backgroundColor: 'hsl(var(--trade))', 
-                      color: 'white',
-                      ringColor: 'hsl(var(--trade))'
-                    } : {}}
                     data-testid={`flow-step-${step.id}`}
                   >
                     <step.icon className="h-4 w-4" />
@@ -238,10 +233,9 @@ export default function JobFlowWizard({
                     className={cn(
                       "text-[10px] mt-1 text-center whitespace-nowrap",
                       step.status === 'completed' && "text-green-600 font-medium",
-                      step.status === 'current' && "font-semibold",
+                      step.status === 'current' && "font-semibold text-blue-600",
                       step.status === 'upcoming' && "text-muted-foreground"
                     )}
-                    style={step.status === 'current' ? { color: 'hsl(var(--trade))' } : {}}
                   >
                     {step.label}
                   </span>
