@@ -188,6 +188,14 @@ function InvoicePaymentView({
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
+            {/* Business branding at top */}
+            {invoiceData.business.logo && (
+              <img 
+                src={invoiceData.business.logo} 
+                alt={invoiceData.business.name} 
+                className="h-12 max-w-[150px] object-contain mx-auto mb-4"
+              />
+            )}
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
@@ -195,11 +203,28 @@ function InvoicePaymentView({
             <p className="text-muted-foreground mb-4">
               Thank you for your payment. A receipt has been sent to your email.
             </p>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground mb-6">
               <p>Invoice #{invoiceData.number}</p>
               <p className="font-semibold text-lg text-foreground mt-2">
                 ${parseFloat(invoiceData.total).toFixed(2)} AUD
               </p>
+            </div>
+            
+            {/* Download receipt button */}
+            <Button 
+              variant="outline"
+              className="w-full"
+              onClick={() => window.open(`/api/public/invoice/${token}/pdf`, '_blank')}
+              data-testid="button-download-receipt"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Download Receipt
+            </Button>
+            
+            {/* Trust messaging */}
+            <div className="mt-6 pt-4 border-t text-xs text-muted-foreground">
+              <p>Payment securely processed by <strong>Stripe</strong></p>
+              <p className="mt-1">Paid to: {invoiceData.business.name}</p>
             </div>
           </CardContent>
         </Card>
@@ -239,7 +264,19 @@ function InvoicePaymentView({
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-2xl mx-auto">
+        {/* Branded header with logo */}
         <div className="text-center mb-8">
+          {invoiceData.business.logo ? (
+            <img 
+              src={invoiceData.business.logo} 
+              alt={invoiceData.business.name} 
+              className="h-16 max-w-[180px] object-contain mx-auto mb-4"
+            />
+          ) : (
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="h-8 w-8 text-primary" />
+            </div>
+          )}
           <h1 className="text-2xl font-bold mb-2">{invoiceData.business.name}</h1>
           {invoiceData.business.abn && (
             <p className="text-sm text-muted-foreground">ABN: {invoiceData.business.abn}</p>
@@ -310,6 +347,19 @@ function InvoicePaymentView({
                   <span>${total.toFixed(2)} AUD</span>
                 </div>
               </div>
+              
+              {/* Download invoice button */}
+              <Separator />
+              <Button 
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => window.open(`/api/public/invoice/${token}/pdf`, '_blank')}
+                data-testid="button-download-invoice"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Download Invoice
+              </Button>
             </CardContent>
           </Card>
 
@@ -432,6 +482,14 @@ function PaymentRequestView({
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
+            {/* Business branding at top */}
+            {requestData.businessLogo && (
+              <img 
+                src={requestData.businessLogo} 
+                alt={requestData.businessName} 
+                className="h-12 max-w-[150px] object-contain mx-auto mb-4"
+              />
+            )}
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
@@ -444,6 +502,12 @@ function PaymentRequestView({
               <p className="font-semibold text-lg text-foreground mt-2">
                 ${parseFloat(requestData.amount).toFixed(2)} AUD
               </p>
+            </div>
+            
+            {/* Trust messaging */}
+            <div className="mt-6 pt-4 border-t text-xs text-muted-foreground">
+              <p>Payment securely processed by <strong>Stripe</strong></p>
+              <p className="mt-1">Paid to: {requestData.businessName}</p>
             </div>
           </CardContent>
         </Card>
@@ -489,7 +553,19 @@ function PaymentRequestView({
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-lg mx-auto">
+        {/* Branded header with logo */}
         <div className="text-center mb-8">
+          {requestData.businessLogo ? (
+            <img 
+              src={requestData.businessLogo} 
+              alt={requestData.businessName} 
+              className="h-16 max-w-[180px] object-contain mx-auto mb-4"
+            />
+          ) : (
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CreditCard className="h-8 w-8 text-primary" />
+            </div>
+          )}
           <h1 className="text-2xl font-bold mb-2">{requestData.businessName}</h1>
           <p className="text-muted-foreground">Payment Request</p>
         </div>

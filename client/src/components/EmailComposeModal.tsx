@@ -359,92 +359,96 @@ export default function EmailComposeModal({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="compose" className="flex-1 overflow-auto mt-4 space-y-4">
-              {/* Recipient Info */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-5 w-5 text-primary" />
+            <TabsContent value="compose" className="flex-1 mt-4 min-h-0">
+              <ScrollArea className="h-[400px] pr-4">
+                <div className="space-y-4">
+                  {/* Recipient Info */}
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{clientName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{clientEmail}</p>
+                    </div>
+                    <Badge variant="secondary" className="flex-shrink-0">
+                      {type === 'quote' ? 'Quote' : 'Invoice'} #{documentNumber}
+                    </Badge>
+                  </div>
+
+                  {/* AI Suggestion Button */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={generateAISuggestion}
+                      disabled={isGeneratingAI}
+                      className="flex items-center gap-2"
+                      data-testid="button-ai-suggestion"
+                    >
+                      {isGeneratingAI ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Wand2 className="h-4 w-4" />
+                      )}
+                      AI Suggestion
+                    </Button>
+                    <span className="text-xs text-muted-foreground">or choose a tone:</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => adjustTone('friendly')}
+                      className="text-xs"
+                    >
+                      Friendly
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => adjustTone('formal')}
+                      className="text-xs"
+                    >
+                      Formal
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => adjustTone('brief')}
+                      className="text-xs"
+                    >
+                      Brief
+                    </Button>
+                  </div>
+
+                  {/* Subject Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="email-subject">Subject</Label>
+                    <Input
+                      id="email-subject"
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                      placeholder="Email subject line..."
+                      data-testid="input-email-subject"
+                    />
+                  </div>
+
+                  {/* Message Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="email-message">Your Message</Label>
+                    <Textarea
+                      id="email-message"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Write your message here..."
+                      className="min-h-[200px] resize-none"
+                      data-testid="input-email-message"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      The {type} details, payment link, and your business info will be added automatically.
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{clientName}</p>
-                  <p className="text-xs text-muted-foreground truncate">{clientEmail}</p>
-                </div>
-                <Badge variant="secondary" className="flex-shrink-0">
-                  {type === 'quote' ? 'Quote' : 'Invoice'} #{documentNumber}
-                </Badge>
-              </div>
-
-              {/* AI Suggestion Button */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={generateAISuggestion}
-                  disabled={isGeneratingAI}
-                  className="flex items-center gap-2"
-                  data-testid="button-ai-suggestion"
-                >
-                  {isGeneratingAI ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Wand2 className="h-4 w-4" />
-                  )}
-                  AI Suggestion
-                </Button>
-                <span className="text-xs text-muted-foreground">or choose a tone:</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => adjustTone('friendly')}
-                  className="text-xs"
-                >
-                  Friendly
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => adjustTone('formal')}
-                  className="text-xs"
-                >
-                  Formal
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => adjustTone('brief')}
-                  className="text-xs"
-                >
-                  Brief
-                </Button>
-              </div>
-
-              {/* Subject Field */}
-              <div className="space-y-2">
-                <Label htmlFor="email-subject">Subject</Label>
-                <Input
-                  id="email-subject"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder="Email subject line..."
-                  data-testid="input-email-subject"
-                />
-              </div>
-
-              {/* Message Field */}
-              <div className="space-y-2">
-                <Label htmlFor="email-message">Your Message</Label>
-                <Textarea
-                  id="email-message"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Write your message here..."
-                  className="min-h-[200px] resize-none"
-                  data-testid="input-email-message"
-                />
-                <p className="text-xs text-muted-foreground">
-                  The {type} details, payment link, and your business info will be added automatically.
-                </p>
-              </div>
+              </ScrollArea>
             </TabsContent>
 
             <TabsContent value="preview" className="flex-1 overflow-auto mt-4">

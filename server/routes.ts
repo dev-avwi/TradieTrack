@@ -12178,6 +12178,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Public endpoint: Download invoice/receipt PDF (no auth required)
+  app.get("/api/public/invoice/:token/pdf", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const invoice = await storage.getInvoiceByPaymentToken(token);
+      if (!invoice) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+      
+      const client = await storage.getClientById(invoice.clientId);
+      const settings = await storage.getBusinessSettingsByUserId(invoice.userId);
+      
+      // Generate PDF
+      const { generateInvoicePDF, generatePDFBuffer } = await import('./pdfService');
+      
+      const pdfHtml = generateInvoicePDF({
+        id: invoice.id,
+        number: invoice.number,
+        title: invoice.title,
+        status: invoice.status,
+        subtotal: invoice.subtotal || '0',
+        gstAmount: invoice.gstAmount || '0',
+        total: invoice.total,
+        dueDate: invoice.dueDate,
+        createdAt: invoice.createdAt,
+        lineItems: invoice.lineItems || [],
+        notes: invoice.notes,
+        client: client || { name: 'Customer' },
+        business: settings || { businessName: 'TradieTrack' },
+      });
+      
+      const pdfBuffer = await generatePDFBuffer(pdfHtml);
+      
+      // Determine filename based on status (invoice vs receipt)
+      const documentType = invoice.status === 'paid' ? 'Receipt' : 'Invoice';
+      const filename = `${documentType}_${invoice.number || invoice.id.slice(0, 8)}.pdf`;
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error('Error generating public invoice PDF:', error);
+      res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+  });
+  
   // Public endpoint: Create payment intent for client (no auth required)
   app.post("/api/public/invoice/:token/pay", async (req, res) => {
     try {

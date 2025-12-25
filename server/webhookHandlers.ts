@@ -360,6 +360,20 @@ async function handleStripeEvent(event: any, storage: any) {
               });
               
               console.log(`✅ Invoice ${invoice.number} marked as paid via Stripe Connect`);
+              
+              // Auto-send receipt email to customer
+              try {
+                const client = await storage.getClientById(invoice.clientId);
+                const settings = await storage.getBusinessSettingsByUserId(tradieUserId);
+                
+                if (client?.email && settings) {
+                  await sendReceiptEmail(invoice, client, settings);
+                  console.log(`📧 Receipt email sent to ${client.email} for Invoice #${invoice.number}`);
+                }
+              } catch (emailError) {
+                // Don't fail the webhook if email fails
+                console.error('Failed to send receipt email:', emailError);
+              }
             }
           } catch (error) {
             console.error('Error processing Connect payment:', error);
