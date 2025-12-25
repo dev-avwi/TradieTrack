@@ -365,6 +365,17 @@ export const accountMenuItems: NavItem[] = [
     category: "account",
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
+  {
+    title: "Delete Account",
+    url: "/more/delete-account",
+    icon: "trash-2",
+    description: "Permanently delete your account",
+    color: "destructive",
+    bgColor: "destructive",
+    showInMore: true,
+    category: "account",
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+  },
 ];
 
 export const adminMenuItems: NavItem[] = [

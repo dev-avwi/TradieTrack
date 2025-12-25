@@ -17004,6 +17004,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
+  // ACCOUNT DELETION (Apple App Store Compliance)
+  // ============================================
+  
+  // Delete user account - Apple requires this to be accessible within 2 taps
+  app.delete("/api/account", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      // Prevent demo account deletion
+      if (user.email === 'demo@tradietrack.com.au') {
+        return res.status(403).json({ 
+          error: 'Demo account cannot be deleted. Create your own account to test this feature.' 
+        });
+      }
+      
+      console.log(`[Account Deletion] Starting deletion for user ${userId} (${user.email})`);
+      
+      // Delete all user data and soft-delete the account
+      const result = await storage.deleteUserAccount(userId);
+      
+      if (!result.success) {
+        console.error(`[Account Deletion] Failed for user ${userId}`);
+        return res.status(500).json({ error: 'Failed to delete account. Please try again or contact support.' });
+      }
+      
+      console.log(`[Account Deletion] Successfully deleted user ${userId}. Counts:`, result.deletedCounts);
+      
+      // Destroy the session
+      if (req.session) {
+        req.session.destroy((err: any) => {
+          if (err) console.error('Error destroying session:', err);
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Your account and all associated data have been permanently deleted.',
+        deletedCounts: result.deletedCounts
+      });
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete account' });
+    }
+  });
+
+  // ============================================
   // MOCK DATA SEEDING (Development/Testing)
   // ============================================
   

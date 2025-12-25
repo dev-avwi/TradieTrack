@@ -7,6 +7,7 @@ import { useAuthStore } from '../lib/store';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useNotificationsStore } from '../lib/notifications-store';
 import { HEADER_HEIGHT } from '../lib/design-tokens';
+import { BackgroundLocationIndicator } from './BackgroundLocationIndicator';
 
 const isIOS = Platform.OS === 'ios';
 
@@ -205,6 +206,8 @@ export function Header({
         </View>
 
         <View style={styles.rightSection}>
+          <BackgroundLocationIndicator compact showLabel={false} />
+          
           {showSearch && (
             <HeaderIconButton
               icon="search"

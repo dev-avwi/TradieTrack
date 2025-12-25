@@ -554,6 +554,9 @@ export interface IStorage {
   getJobDocument(id: string, userId: string): Promise<JobDocument | undefined>;
   createJobDocument(document: InsertJobDocument): Promise<JobDocument>;
   deleteJobDocument(id: string, userId: string): Promise<boolean>;
+
+  // Account Deletion (Apple App Store Compliance)
+  deleteUserAccount(userId: string): Promise<{ success: boolean; deletedCounts: Record<string, number> }>;
 }
 
 // Initialize database connection
@@ -3514,6 +3517,233 @@ export class PostgresStorage implements IStorage {
       .where(eq(myobConnections.userId, userId))
       .returning();
     return result.length > 0;
+  }
+
+  // Account Deletion (Apple App Store Compliance)
+  // Cascades deletion through all user's data
+  async deleteUserAccount(userId: string): Promise<{ success: boolean; deletedCounts: Record<string, number> }> {
+    const deletedCounts: Record<string, number> = {};
+    
+    try {
+      // Get all client IDs for this user (needed for cascading quote/invoice line items)
+      const userClients = await db.select({ id: clients.id }).from(clients).where(eq(clients.userId, userId));
+      const clientIds = userClients.map(c => c.id);
+      
+      // Get all job IDs for this user
+      const userJobs = await db.select({ id: jobs.id }).from(jobs).where(eq(jobs.userId, userId));
+      const jobIds = userJobs.map(j => j.id);
+      
+      // Get all quote IDs for this user
+      const userQuotes = await db.select({ id: quotes.id }).from(quotes).where(eq(quotes.userId, userId));
+      const quoteIds = userQuotes.map(q => q.id);
+      
+      // Get all invoice IDs for this user
+      const userInvoices = await db.select({ id: invoices.id }).from(invoices).where(eq(invoices.userId, userId));
+      const invoiceIds = userInvoices.map(i => i.id);
+      
+      // Delete quote line items
+      if (quoteIds.length > 0) {
+        const qliResult = await db.delete(quoteLineItems).where(inArray(quoteLineItems.quoteId, quoteIds)).returning();
+        deletedCounts.quoteLineItems = qliResult.length;
+      }
+      
+      // Delete invoice line items
+      if (invoiceIds.length > 0) {
+        const iliResult = await db.delete(invoiceLineItems).where(inArray(invoiceLineItems.invoiceId, invoiceIds)).returning();
+        deletedCounts.invoiceLineItems = iliResult.length;
+      }
+      
+      // Delete checklist items for jobs
+      if (jobIds.length > 0) {
+        const checklistResult = await db.delete(checklistItems).where(inArray(checklistItems.jobId, jobIds)).returning();
+        deletedCounts.checklistItems = checklistResult.length;
+      }
+      
+      // Delete job photos
+      if (jobIds.length > 0) {
+        const photosResult = await db.delete(jobPhotos).where(inArray(jobPhotos.jobId, jobIds)).returning();
+        deletedCounts.jobPhotos = photosResult.length;
+      }
+      
+      // Delete voice notes
+      if (jobIds.length > 0) {
+        const voiceResult = await db.delete(voiceNotes).where(inArray(voiceNotes.jobId, jobIds)).returning();
+        deletedCounts.voiceNotes = voiceResult.length;
+      }
+      
+      // Delete job documents
+      if (jobIds.length > 0) {
+        const docsResult = await db.delete(jobDocuments).where(inArray(jobDocuments.jobId, jobIds)).returning();
+        deletedCounts.jobDocuments = docsResult.length;
+      }
+      
+      // Delete job checkins
+      if (jobIds.length > 0) {
+        const checkinsResult = await db.delete(jobCheckins).where(inArray(jobCheckins.jobId, jobIds)).returning();
+        deletedCounts.jobCheckins = checkinsResult.length;
+      }
+      
+      // Delete job chat messages
+      if (jobIds.length > 0) {
+        const chatResult = await db.delete(jobChat).where(inArray(jobChat.jobId, jobIds)).returning();
+        deletedCounts.jobChatMessages = chatResult.length;
+      }
+      
+      // Delete digital signatures for jobs
+      if (jobIds.length > 0) {
+        const sigResult = await db.delete(digitalSignatures).where(inArray(digitalSignatures.jobId, jobIds)).returning();
+        deletedCounts.digitalSignatures = sigResult.length;
+      }
+      
+      // Delete form submissions for jobs
+      if (jobIds.length > 0) {
+        const formSubResult = await db.delete(formSubmissions).where(inArray(formSubmissions.jobId, jobIds)).returning();
+        deletedCounts.formSubmissions = formSubResult.length;
+      }
+      
+      // Delete time entries
+      const timeResult = await db.delete(timeEntries).where(eq(timeEntries.userId, userId)).returning();
+      deletedCounts.timeEntries = timeResult.length;
+      
+      // Delete timesheets
+      const timesheetResult = await db.delete(timesheets).where(eq(timesheets.userId, userId)).returning();
+      deletedCounts.timesheets = timesheetResult.length;
+      
+      // Delete expenses
+      const expenseResult = await db.delete(expenses).where(eq(expenses.userId, userId)).returning();
+      deletedCounts.expenses = expenseResult.length;
+      
+      // Delete expense categories
+      const expCatResult = await db.delete(expenseCategories).where(eq(expenseCategories.userId, userId)).returning();
+      deletedCounts.expenseCategories = expCatResult.length;
+      
+      // Delete invoice reminder logs
+      if (invoiceIds.length > 0) {
+        const reminderResult = await db.delete(invoiceReminderLogs).where(inArray(invoiceReminderLogs.invoiceId, invoiceIds)).returning();
+        deletedCounts.invoiceReminderLogs = reminderResult.length;
+      }
+      
+      // Delete invoices
+      const invoicesResult = await db.delete(invoices).where(eq(invoices.userId, userId)).returning();
+      deletedCounts.invoices = invoicesResult.length;
+      
+      // Delete quotes
+      const quotesResult = await db.delete(quotes).where(eq(quotes.userId, userId)).returning();
+      deletedCounts.quotes = quotesResult.length;
+      
+      // Delete jobs
+      const jobsResult = await db.delete(jobs).where(eq(jobs.userId, userId)).returning();
+      deletedCounts.jobs = jobsResult.length;
+      
+      // Delete clients
+      const clientsResult = await db.delete(clients).where(eq(clients.userId, userId)).returning();
+      deletedCounts.clients = clientsResult.length;
+      
+      // Delete payment requests
+      const paymentResult = await db.delete(paymentRequests).where(eq(paymentRequests.userId, userId)).returning();
+      deletedCounts.paymentRequests = paymentResult.length;
+      
+      // Delete custom forms
+      const formsResult = await db.delete(customForms).where(eq(customForms.userId, userId)).returning();
+      deletedCounts.customForms = formsResult.length;
+      
+      // Delete document templates
+      const templatesResult = await db.delete(documentTemplates).where(eq(documentTemplates.userId, userId)).returning();
+      deletedCounts.documentTemplates = templatesResult.length;
+      
+      // Delete line item catalog
+      const catalogResult = await db.delete(lineItemCatalog).where(eq(lineItemCatalog.userId, userId)).returning();
+      deletedCounts.lineItemCatalog = catalogResult.length;
+      
+      // Delete rate cards
+      const rateResult = await db.delete(rateCards).where(eq(rateCards.userId, userId)).returning();
+      deletedCounts.rateCards = rateResult.length;
+      
+      // Delete notifications
+      const notifResult = await db.delete(notifications).where(eq(notifications.userId, userId)).returning();
+      deletedCounts.notifications = notifResult.length;
+      
+      // Delete push tokens
+      const pushResult = await db.delete(pushTokens).where(eq(pushTokens.userId, userId)).returning();
+      deletedCounts.pushTokens = pushResult.length;
+      
+      // Delete location tracking
+      const locResult = await db.delete(locationTracking).where(eq(locationTracking.userId, userId)).returning();
+      deletedCounts.locationTracking = locResult.length;
+      
+      // Delete tradie status
+      const statusResult = await db.delete(tradieStatus).where(eq(tradieStatus.userId, userId)).returning();
+      deletedCounts.tradieStatus = statusResult.length;
+      
+      // Delete geofence alerts
+      const geoResult = await db.delete(geofenceAlerts).where(eq(geofenceAlerts.userId, userId)).returning();
+      deletedCounts.geofenceAlerts = geoResult.length;
+      
+      // Delete routes
+      const routeResult = await db.delete(routes).where(eq(routes.userId, userId)).returning();
+      deletedCounts.routes = routeResult.length;
+      
+      // Delete automations
+      const autoResult = await db.delete(automations).where(eq(automations.userId, userId)).returning();
+      deletedCounts.automations = autoResult.length;
+      
+      // Delete activity logs
+      const activityResult = await db.delete(activityLogs).where(eq(activityLogs.userId, userId)).returning();
+      deletedCounts.activityLogs = activityResult.length;
+      
+      // Delete team members where user is owner
+      const teamResult = await db.delete(teamMembers).where(eq(teamMembers.ownerId, userId)).returning();
+      deletedCounts.teamMembers = teamResult.length;
+      
+      // Delete staff schedules
+      const schedResult = await db.delete(staffSchedules).where(eq(staffSchedules.userId, userId)).returning();
+      deletedCounts.staffSchedules = schedResult.length;
+      
+      // Delete SMS conversations
+      const smsConvResult = await db.delete(smsConversations).where(eq(smsConversations.businessOwnerId, userId)).returning();
+      deletedCounts.smsConversations = smsConvResult.length;
+      
+      // Delete SMS templates
+      const smsTempResult = await db.delete(smsTemplates).where(eq(smsTemplates.userId, userId)).returning();
+      deletedCounts.smsTemplates = smsTempResult.length;
+      
+      // Delete SMS automation rules
+      const smsAutoResult = await db.delete(smsAutomationRules).where(eq(smsAutomationRules.userId, userId)).returning();
+      deletedCounts.smsAutomationRules = smsAutoResult.length;
+      
+      // Delete Xero connection
+      const xeroResult = await db.delete(xeroConnections).where(eq(xeroConnections.userId, userId)).returning();
+      deletedCounts.xeroConnections = xeroResult.length;
+      
+      // Delete MYOB connection
+      const myobResult = await db.delete(myobConnections).where(eq(myobConnections.userId, userId)).returning();
+      deletedCounts.myobConnections = myobResult.length;
+      
+      // Delete business settings
+      const bizResult = await db.delete(businessSettings).where(eq(businessSettings.userId, userId)).returning();
+      deletedCounts.businessSettings = bizResult.length;
+      
+      // Delete integration settings
+      const intResult = await db.delete(integrationSettings).where(eq(integrationSettings.userId, userId)).returning();
+      deletedCounts.integrationSettings = intResult.length;
+      
+      // Soft delete the user account (set isActive = false, mark deletion time)
+      const userResult = await db.update(users)
+        .set({ 
+          isActive: false, 
+          email: `deleted_${userId}@deleted.tradietrack.com.au`,
+          password: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      deletedCounts.users = userResult.length;
+      
+      return { success: true, deletedCounts };
+    } catch (error) {
+      console.error('Error deleting user account:', error);
+      return { success: false, deletedCounts };
+    }
   }
 }
 
