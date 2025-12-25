@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import StatusBadge from "./StatusBadge";
+import EmailComposeModal from "./EmailComposeModal";
 import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
 
 interface QuoteDetailViewProps {
@@ -17,6 +19,7 @@ interface QuoteDetailViewProps {
 export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetailViewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showEmailCompose, setShowEmailCompose] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
 
@@ -219,6 +222,43 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
     });
   };
 
+  // Generate the public quote URL for email
+  const getPublicQuoteUrl = () => {
+    return quote?.acceptanceToken 
+      ? `${window.location.origin}/q/${quote.acceptanceToken}`
+      : undefined;
+  };
+
+  // Handler for sending quote email
+  const handleSendQuoteEmail = async (customSubject: string, customMessage: string) => {
+    if (!quote) return;
+    
+    const skipEmail = !customSubject && !customMessage;
+    
+    const response = await fetch(`/api/quotes/${quoteId}/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ customSubject, customMessage, skipEmail })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to send quote');
+    }
+    
+    // Invalidate quote cache to refresh status
+    queryClient.invalidateQueries({ queryKey: ['/api/quotes', quoteId] });
+    
+    toast({
+      title: skipEmail ? "Quote Ready" : "Quote Sent",
+      description: skipEmail 
+        ? `Quote ${quote.number} status updated. Send it via Gmail!`
+        : `Quote ${quote.number} has been sent to ${client?.name || 'the client'}.`,
+    });
+    setShowEmailCompose(false);
+  };
+
   if (isLoading || !quote) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -288,7 +328,15 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            {quote.status === 'draft' && onSend && (
+            {/* Primary action - Send Quote via Email with PDF */}
+            {(quote.status === 'draft' || quote.status === 'sent') && client?.email && (
+              <Button onClick={() => setShowEmailCompose(true)} className="w-full sm:w-auto" data-testid="button-send-email">
+                <Mail className="h-4 w-4 mr-2" />
+                {quote.status === 'draft' ? 'Send Quote' : 'Resend'}
+              </Button>
+            )}
+            {/* Legacy onSend prop support */}
+            {quote.status === 'draft' && onSend && !client?.email && (
               <Button onClick={() => onSend(quote.id)} className="w-full sm:w-auto" data-testid={`button-send-${quote.id}`}>
                 <Send className="h-4 w-4 mr-2" />
                 Send Quote
@@ -557,6 +605,24 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
           </Card>
         </div>
       </div>
+
+      {/* Email Compose Modal with PDF attachment */}
+      {quote && client && (
+        <EmailComposeModal
+          isOpen={showEmailCompose}
+          onClose={() => setShowEmailCompose(false)}
+          type="quote"
+          documentId={quoteId}
+          clientName={client.name || ''}
+          clientEmail={client.email || ''}
+          documentNumber={quote.number || quote.id.slice(0, 8)}
+          documentTitle={quote.title || 'Quote'}
+          total={quote.total || '0'}
+          businessName={businessSettings?.businessName}
+          publicUrl={getPublicQuoteUrl()}
+          onSend={handleSendQuoteEmail}
+        />
+      )}
     </>
   );
 }

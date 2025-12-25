@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
+import EmailComposeModal from "./EmailComposeModal";
 import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
 import DemoPaymentSimulator from "./DemoPaymentSimulator";
 
@@ -29,6 +30,7 @@ export default function InvoiceDetailView({
 }: InvoiceDetailViewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const [showDemoPayment, setShowDemoPayment] = useState(false);
+  const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [copied, setCopied] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
@@ -342,6 +344,43 @@ export default function InvoiceDetailView({
     });
   };
 
+  // Generate the public invoice payment URL
+  const getPublicPaymentUrl = () => {
+    return invoice?.paymentToken 
+      ? `${window.location.origin}/pay/${invoice.paymentToken}`
+      : undefined;
+  };
+
+  // Handler for sending invoice email with PDF
+  const handleSendInvoiceEmail = async (customSubject: string, customMessage: string) => {
+    if (!invoice) return;
+    
+    const skipEmail = !customSubject && !customMessage;
+    
+    const response = await fetch(`/api/invoices/${invoiceId}/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ customSubject, customMessage, skipEmail })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to send invoice');
+    }
+    
+    // Invalidate invoice cache to refresh status
+    queryClient.invalidateQueries({ queryKey: ['/api/invoices', invoiceId] });
+    
+    toast({
+      title: skipEmail ? "Invoice Ready" : "Invoice Sent",
+      description: skipEmail 
+        ? `Invoice ${invoice.number} status updated. Send it via Gmail!`
+        : `Invoice ${invoice.number} has been sent to ${client?.name || 'the client'}.`,
+    });
+    setShowEmailCompose(false);
+  };
+
   if (isLoading || !invoice) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -413,7 +452,15 @@ export default function InvoiceDetailView({
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            {invoice.status === 'draft' && onSend && (
+            {/* Primary action - Send Invoice via Email with PDF */}
+            {(invoice.status === 'draft' || invoice.status === 'sent') && client?.email && (
+              <Button onClick={() => setShowEmailCompose(true)} className="w-full sm:w-auto" data-testid="button-send-email">
+                <Mail className="h-4 w-4 mr-2" />
+                {invoice.status === 'draft' ? 'Send Invoice' : 'Resend'}
+              </Button>
+            )}
+            {/* Legacy onSend prop support */}
+            {invoice.status === 'draft' && onSend && !client?.email && (
               <Button onClick={() => onSend(invoice.id)} className="w-full sm:w-auto" data-testid={`button-send-${invoice.id}`}>
                 <Send className="h-4 w-4 mr-2" />
                 Send Invoice
@@ -835,6 +882,24 @@ export default function InvoiceDetailView({
           </Card>
         </div>
       </div>
+
+      {/* Email Compose Modal with PDF attachment */}
+      {invoice && client && (
+        <EmailComposeModal
+          isOpen={showEmailCompose}
+          onClose={() => setShowEmailCompose(false)}
+          type="invoice"
+          documentId={invoiceId}
+          clientName={client.name || ''}
+          clientEmail={client.email || ''}
+          documentNumber={invoice.number || invoice.id.slice(0, 8)}
+          documentTitle={invoice.title || 'Invoice'}
+          total={invoice.total || '0'}
+          businessName={businessSettings?.businessName}
+          publicUrl={getPublicPaymentUrl()}
+          onSend={handleSendInvoiceEmail}
+        />
+      )}
     </>
   );
 }
