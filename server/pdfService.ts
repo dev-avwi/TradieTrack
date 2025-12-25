@@ -360,11 +360,13 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     }
     
     .document-title {
-      font-size: 32px;
+      font-size: 28px;
       font-weight: ${template.headingWeight};
       color: ${brandColor};
       text-transform: uppercase;
-      letter-spacing: 2px;
+      letter-spacing: 1px;
+      line-height: 1.2;
+      white-space: nowrap;
     }
     
     .document-number {
@@ -1011,7 +1013,7 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
         </div>
       </div>
       <div class="document-type">
-        <div class="document-title" style="color: ${isPaid ? '#22c55e' : accentColor}; font-size: ${isGstRegistered ? '28px' : '32px'};">
+        <div class="document-title" style="color: ${isPaid ? '#22c55e' : accentColor}; font-size: ${documentTitle.length > 15 ? '22px' : '28px'};">
           ${documentTitle}
         </div>
         <div class="document-number">${invoice.number}</div>
@@ -2366,11 +2368,12 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     }
     
     .document-title {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: ${template.headingWeight};
       color: ${accentColor};
       text-transform: uppercase;
-      letter-spacing: 2px;
+      letter-spacing: 1px;
+      line-height: 1.2;
     }
     
     .receipt-number {
