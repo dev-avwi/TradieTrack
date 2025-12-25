@@ -191,11 +191,24 @@ export default function JobDetailView({
   });
 
   // Fetch linked quote/invoice for this job using dedicated endpoint
+  interface LinkedReceipt {
+    id: string;
+    receiptNumber: string;
+    amount: string;
+    gstAmount: string | null;
+    paymentMethod: string | null;
+    paidAt: string | null;
+    pdfUrl: string | null;
+    createdAt: string;
+  }
+  
   interface LinkedDocumentsResponse {
     linkedQuote: LinkedDocument | null;
     linkedInvoice: LinkedDocument | null;
+    linkedReceipts: LinkedReceipt[];
     quoteCount: number;
     invoiceCount: number;
+    receiptCount: number;
   }
   
   const { data: linkedDocuments } = useQuery<LinkedDocumentsResponse>({
@@ -203,7 +216,7 @@ export default function JobDetailView({
     queryFn: async () => {
       const res = await fetch(`/api/jobs/${jobId}/linked-documents`, { credentials: 'include' });
       if (!res.ok) {
-        if (res.status === 401) return { linkedQuote: null, linkedInvoice: null, quoteCount: 0, invoiceCount: 0 };
+        if (res.status === 401) return { linkedQuote: null, linkedInvoice: null, linkedReceipts: [], quoteCount: 0, invoiceCount: 0, receiptCount: 0 };
         throw new Error('Failed to fetch linked documents');
       }
       return res.json();
@@ -214,6 +227,7 @@ export default function JobDetailView({
 
   const linkedQuote = linkedDocuments?.linkedQuote;
   const linkedInvoice = linkedDocuments?.linkedInvoice;
+  const linkedReceipts = linkedDocuments?.linkedReceipts || [];
 
   // Fetch team members for assignment (only for owners/managers)
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
@@ -636,9 +650,13 @@ export default function JobDetailView({
           <LinkedDocumentsCard
             linkedQuote={linkedQuote}
             linkedInvoice={linkedInvoice}
+            linkedReceipts={linkedReceipts}
             jobStatus={job.status}
             onViewQuote={(id) => navigate(`/quotes/${id}`)}
             onViewInvoice={(id) => navigate(`/invoices/${id}`)}
+            onViewReceipt={(id) => {
+              window.open(`/api/receipts/${id}/pdf`, '_blank');
+            }}
             onCreateQuote={() => onCreateQuote?.(jobId)}
             onCreateInvoice={() => onCreateInvoice?.(jobId)}
           />

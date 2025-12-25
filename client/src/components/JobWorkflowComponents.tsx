@@ -93,12 +93,25 @@ export function JobProgressBar({ status, hasQuote, hasInvoice, className }: JobP
   );
 }
 
+interface LinkedReceipt {
+  id: string;
+  receiptNumber: string;
+  amount: string;
+  gstAmount: string | null;
+  paymentMethod: string | null;
+  paidAt: string | null;
+  pdfUrl: string | null;
+  createdAt: string;
+}
+
 interface LinkedDocumentsCardProps {
   linkedQuote?: LinkedDocument | null;
   linkedInvoice?: LinkedDocument | null;
+  linkedReceipts?: LinkedReceipt[];
   jobStatus: JobStatus;
   onViewQuote?: (id: string) => void;
   onViewInvoice?: (id: string) => void;
+  onViewReceipt?: (id: string) => void;
   onCreateQuote?: () => void;
   onCreateInvoice?: () => void;
   onSendQuote?: (id: string) => void;
@@ -109,9 +122,11 @@ interface LinkedDocumentsCardProps {
 export function LinkedDocumentsCard({
   linkedQuote,
   linkedInvoice,
+  linkedReceipts = [],
   jobStatus,
   onViewQuote,
   onViewInvoice,
+  onViewReceipt,
   onCreateQuote,
   onCreateInvoice,
   onSendQuote,
@@ -274,6 +289,37 @@ export function LinkedDocumentsCard({
             )}
           </div>
         </div>
+
+        {linkedReceipts.length > 0 && (
+          <div className="space-y-2">
+            {linkedReceipts.map((receipt) => (
+              <div 
+                key={receipt.id}
+                className="flex items-center justify-between p-3 rounded-lg border hover-elevate cursor-pointer"
+                onClick={() => onViewReceipt?.(receipt.id)}
+                data-testid={`receipt-link-${receipt.id}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-green-500/10">
+                    <Receipt className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{receipt.receiptNumber}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">${parseFloat(receipt.amount).toFixed(2)}</span>
+                      <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
+                        Paid
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
