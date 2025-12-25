@@ -171,19 +171,6 @@ export default function LiveDocumentPreview({
         color: '#1a1a1a',
       }}
     >
-      {/* Status Stamp */}
-      {(isAccepted || isPaid || isOverdue) && (
-        <div 
-          className="absolute top-[100px] right-[60px] px-5 py-2.5 border-[3px] text-lg font-bold uppercase transform -rotate-[15deg] opacity-80 pointer-events-none hidden print:block"
-          style={{ 
-            borderColor: isPaid ? '#22c55e' : isOverdue ? '#dc2626' : '#22c55e',
-            color: isPaid ? '#22c55e' : isOverdue ? '#dc2626' : '#22c55e',
-          }}
-        >
-          {isPaid ? 'PAID' : isOverdue ? 'OVERDUE' : 'ACCEPTED'}
-        </div>
-      )}
-
       {/* Document Container */}
       <div className="p-6 sm:p-10">
         {/* Header - matches PDF .header */}
@@ -197,16 +184,12 @@ export default function LiveDocumentPreview({
         >
           {/* Company Info - Left Side */}
           <div className="flex-1">
-            {business.logoUrl ? (
+            {business.logoUrl && (
               <img 
                 src={business.logoUrl} 
                 alt={business.businessName || 'Business Logo'} 
                 className="max-w-[150px] max-h-[60px] object-contain mb-3"
               />
-            ) : (
-              <div className="w-[60px] h-[60px] rounded-lg bg-slate-100 flex items-center justify-center mb-3">
-                <Building2 className="w-8 h-8 text-slate-400" />
-              </div>
             )}
             <div 
               className="text-2xl mb-2"
@@ -252,9 +235,11 @@ export default function LiveDocumentPreview({
             >
               {documentTitle}
             </div>
-            <div className="text-sm text-[#666] mt-1">
-              {documentNumber || 'AUTO'}
-            </div>
+            {documentNumber && (
+              <div className="text-sm text-[#666] mt-1">
+                {documentNumber}
+              </div>
+            )}
             {status && (
               <div className="mt-2">
                 <span 
