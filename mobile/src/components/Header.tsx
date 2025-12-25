@@ -177,7 +177,8 @@ function GlassyBackButton({
               borderRadius: 20,
               overflow: 'hidden',
               borderWidth: StyleSheet.hairlineWidth,
-              borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+              borderColor: colors.glassBorder,
+              backgroundColor: colors.glass,
             }}
           >
             {buttonContent}
@@ -195,10 +196,10 @@ function GlassyBackButton({
     >
       <Animated.View style={{
         transform: [{ scale }],
-        backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+        backgroundColor: colors.glass,
         borderRadius: 20,
         borderWidth: StyleSheet.hairlineWidth,
-        borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
+        borderColor: colors.glassBorder,
       }}>
         {buttonContent}
       </Animated.View>
@@ -347,42 +348,49 @@ export function Header({
           </Pressable>
         </View>
       </View>
-      
-      <View style={styles.headerBorder} />
     </>
   );
 
   // iOS: Use BlurView for Liquid Glass effect - more transparent and glassy
   if (isIOS) {
     return (
-      <BlurView 
-        intensity={100} 
-        tint={isDark ? 'dark' : 'light'}
-        style={[styles.header, { backgroundColor: 'transparent' }]}
-      >
-        {headerContent}
-      </BlurView>
+      <View style={styles.header}>
+        <BlurView 
+          intensity={60} 
+          tint={isDark ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.glassOverlay} />
+        <View style={[styles.headerContentWrapper, { paddingTop: insets.top }]}>
+          {headerContent}
+        </View>
+        <View style={styles.headerBorder} />
+      </View>
     );
   }
 
-  // Android: Semi-transparent background with slight tint for glassy effect
+  // Android: Chrome background
   return (
-    <View style={[styles.header, { 
-      backgroundColor: isDark 
-        ? 'rgba(20, 20, 25, 0.85)' 
-        : 'rgba(255, 255, 255, 0.85)',
-    }]}>
-      {headerContent}
+    <View style={[styles.header, { backgroundColor: colors.chromeBackground }]}>
+      <View style={[styles.headerContentWrapper, { paddingTop: isIOS ? insets.top : 0 }]}>
+        {headerContent}
+      </View>
+      <View style={styles.headerBorder} />
     </View>
   );
 }
 
 const createStyles = (colors: ThemeColors, isDark: boolean, topInset: number) => StyleSheet.create({
   header: {
-    // iOS: transparent background for blur effect, Android: solid background
-    backgroundColor: isIOS ? 'transparent' : colors.background,
-    paddingTop: isIOS ? topInset : 0,
+    position: 'relative',
     overflow: 'hidden',
+  },
+  glassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.6)',
+  },
+  headerContentWrapper: {
+    width: '100%',
   },
   headerContent: {
     flexDirection: 'row',
@@ -394,9 +402,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean, topInset: number) =>
   },
   headerBorder: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: isIOS 
-      ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
-      : colors.border,
+    backgroundColor: colors.chromeBorder,
   },
   leftSection: {
     flexDirection: 'row',

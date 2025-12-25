@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, Dimensions } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
@@ -154,7 +154,9 @@ export function BottomNav() {
   const currentIndex = getActiveIndex();
   const activeIndex = useSharedValue(currentIndex);
 
-  activeIndex.value = withSpring(currentIndex, springConfig);
+  useEffect(() => {
+    activeIndex.value = withSpring(currentIndex, springConfig);
+  }, [currentIndex]);
 
   const isActive = (item: NavItem) => {
     const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];
