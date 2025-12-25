@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2 } from "lucide-react";
 import { TimerWidget } from "./TimeTracking";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { JobVoiceNotes } from "./JobVoiceNotes";
 import { JobDocuments } from "./JobDocuments";
@@ -145,6 +145,8 @@ export default function JobDetailView({
 }: JobDetailViewProps) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const searchString = useSearch();
+  const chatSectionRef = useRef<HTMLDivElement>(null);
   const [showSmartActions, setShowSmartActions] = useState(false);
   const [smartActions, setSmartActions] = useState<SmartAction[]>([]);
   const [isExecutingActions, setIsExecutingActions] = useState(false);
@@ -158,6 +160,19 @@ export default function JobDetailView({
   const [showSafetyCheck, setShowSafetyCheck] = useState(false);
   const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
   const [rollbackTargetStatus, setRollbackTargetStatus] = useState<JobStatus | null>(null);
+  
+  // Check for tab=chat in URL to scroll to chat section
+  const shouldScrollToChat = searchString?.includes('tab=chat');
+  
+  // Scroll to chat section when navigating from Chat Hub with tab=chat
+  useEffect(() => {
+    if (shouldScrollToChat && chatSectionRef.current) {
+      // Small delay to ensure the section is rendered
+      setTimeout(() => {
+        chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  }, [shouldScrollToChat]);
   
   const { userRole, isTradie, isSolo, actionPermissions } = useAppMode();
   const { data: businessSettings } = useBusinessSettings();
@@ -950,10 +965,12 @@ export default function JobDetailView({
 
         {/* Job Discussion - only show for team mode (not solo owners) */}
         {currentUser && !isSolo && (
-          <JobChat 
-            jobId={jobId} 
-            currentUserId={currentUser.id}
-          />
+          <div ref={chatSectionRef} data-testid="section-job-chat">
+            <JobChat 
+              jobId={jobId} 
+              currentUserId={currentUser.id}
+            />
+          </div>
         )}
 
         {/* Action Buttons - follows 5-stage workflow: pending → scheduled → in_progress → done → invoiced */}
