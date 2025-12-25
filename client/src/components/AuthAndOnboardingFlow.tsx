@@ -297,7 +297,11 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         setError(result.error || 'Login failed');
       }
     } catch (error: any) {
-      setError(error.message || 'Login failed');
+      // Don't show "session_expired" error on login page - user is already trying to log in
+      const errorMsg = error.message || 'Login failed';
+      if (!errorMsg.includes('session_expired')) {
+        setError(errorMsg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -336,7 +340,11 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         setError(result.error || 'Registration failed');
       }
     } catch (error: any) {
-      setError(error.message || 'Registration failed');
+      // Don't show "session_expired" error on registration page
+      const errorMsg = error.message || 'Registration failed';
+      if (!errorMsg.includes('session_expired')) {
+        setError(errorMsg);
+      }
     } finally {
       setIsLoading(false);
     }
