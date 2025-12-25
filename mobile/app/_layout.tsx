@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, StyleSheet, Alert, InteractionManager, Platform } from 'react-native';
+import { View, StyleSheet, Alert, InteractionManager } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -7,9 +7,6 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import * as Linking from 'expo-linking';
 import { useAuthStore } from '../src/lib/store';
 import "../global.css";
-
-const isIOS = Platform.OS === 'ios';
-
 import { useNotifications, useOfflineStorage, useLocationTracking } from '../src/hooks/useServices';
 import notificationService from '../src/lib/notifications';
 import { router } from 'expo-router';
@@ -25,7 +22,6 @@ import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
 import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
-import { HEADER_HEIGHT } from '../src/lib/design-tokens';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -208,15 +204,9 @@ function ServicesInitializer() {
   return null;
 }
 
-// Calculate total header height including safe area on iOS (for Liquid Glass effect)
-function getHeaderHeight(topInset: number): number {
-  return isIOS ? HEADER_HEIGHT + topInset : HEADER_HEIGHT;
-}
-
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
-  const headerHeight = getHeaderHeight(insets.top);
   const { fetchNotifications } = useNotificationsStore();
   const { isAuthenticated, isOwner, isStaff, hasActiveTeam } = useAuthStore();
   const { colors } = useTheme();
@@ -250,18 +240,16 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // iOS Liquid Glass: Header is positioned absolutely with blur, content starts below it
-  // Content can scroll underneath for the translucent effect
-  // The layout provides the safe area + header height padding, screens add their own internal padding
+  // Header in normal flow, content fills remaining space, bottom nav absolute
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Main content area - starts below header, scrolls under both header and nav */}
+      {/* Header at top in normal flow */}
+      <Header />
+      
+      {/* Main content area - fills remaining space */}
       <View style={[
         styles.content, 
         { 
-          // Both platforms: add safe area + header height as top padding
-          // This ensures content starts below the header (translucent on iOS, solid on Android)
-          paddingTop: insets.top + HEADER_HEIGHT,
           paddingBottom: bottomNavHeight,
         }
       ]}>
@@ -276,12 +264,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       {/* FAB positioned above bottom nav */}
       {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} />}
       
-      {/* Header positioned at top with blur effect on iOS */}
-      <View style={styles.headerContainer}>
-        <Header />
-      </View>
-      
-      {/* Bottom navigation with blur effect on iOS */}
+      {/* Bottom navigation */}
       <BottomNav />
     </View>
   );
@@ -349,12 +332,5 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-  },
-  headerContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
   },
 });
