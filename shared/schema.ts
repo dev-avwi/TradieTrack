@@ -796,6 +796,30 @@ export type LineItemCatalog = typeof lineItemCatalog.$inferSelect;
 export type InsertRateCard = z.infer<typeof insertRateCardSchema>;
 export type RateCard = typeof rateCards.$inferSelect;
 
+// Template Analysis Jobs - for AI-powered template extraction from PDFs
+export const templateAnalysisJobs = pgTable("template_analysis_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  templateType: text("template_type").notNull(), // 'quote' | 'invoice'
+  originalFileName: text("original_file_name").notNull(),
+  originalFileKey: text("original_file_key").notNull(), // Object storage key
+  status: text("status").notNull().default('pending'), // 'pending' | 'processing' | 'completed' | 'failed'
+  analysisResult: jsonb("analysis_result"), // GPT analysis output
+  error: text("error"),
+  createdTemplateId: varchar("created_template_id").references(() => documentTemplates.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTemplateAnalysisJobSchema = createInsertSchema(templateAnalysisJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTemplateAnalysisJob = z.infer<typeof insertTemplateAnalysisJobSchema>;
+export type TemplateAnalysisJob = typeof templateAnalysisJobs.$inferSelect;
+
 export const insertIntegrationSettingsSchema = createInsertSchema(integrationSettings).omit({
   id: true,
   userId: true,

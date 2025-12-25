@@ -172,6 +172,9 @@ import {
   activityLogs,
   type ActivityLog,
   type InsertActivityLog,
+  templateAnalysisJobs,
+  type TemplateAnalysisJob,
+  type InsertTemplateAnalysisJob,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -344,6 +347,11 @@ export interface IStorage {
   createRateCard(data: InsertRateCard & { userId: string }): Promise<RateCard>;
   updateRateCard(id: string, data: Partial<InsertRateCard>): Promise<RateCard>;
   deleteRateCard(id: string): Promise<void>;
+
+  // Template Analysis Jobs
+  createTemplateAnalysisJob(data: InsertTemplateAnalysisJob): Promise<TemplateAnalysisJob>;
+  getTemplateAnalysisJob(id: string, userId: string): Promise<TemplateAnalysisJob | undefined>;
+  updateTemplateAnalysisJob(id: string, updates: Partial<TemplateAnalysisJob>): Promise<TemplateAnalysisJob | undefined>;
 
   // Utility methods
   generateQuoteNumber(userId: string): Promise<string>;
@@ -1916,6 +1924,26 @@ export class PostgresStorage implements IStorage {
     await db.delete(rateCards).where(eq(rateCards.id, id));
   }
 
+  // Template Analysis Jobs
+  async createTemplateAnalysisJob(data: InsertTemplateAnalysisJob): Promise<TemplateAnalysisJob> {
+    const result = await db.insert(templateAnalysisJobs).values(data).returning();
+    return result[0];
+  }
+
+  async getTemplateAnalysisJob(id: string, userId: string): Promise<TemplateAnalysisJob | undefined> {
+    const result = await db.select().from(templateAnalysisJobs)
+      .where(and(eq(templateAnalysisJobs.id, id), eq(templateAnalysisJobs.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateTemplateAnalysisJob(id: string, updates: Partial<TemplateAnalysisJob>): Promise<TemplateAnalysisJob | undefined> {
+    const result = await db.update(templateAnalysisJobs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(templateAnalysisJobs.id, id))
+      .returning();
+    return result[0];
+  }
 
   // ===== ADVANCED FEATURES IMPLEMENTATIONS =====
 

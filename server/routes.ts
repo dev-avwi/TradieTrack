@@ -8818,6 +8818,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Template Analysis Routes - AI-powered PDF template analysis
+  const templateUpload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for PDFs
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype === 'application/pdf') {
+        cb(null, true);
+      } else {
+        cb(new Error('Only PDF files are allowed'));
+      }
+    }
+  });
+
+  // POST /api/templates/analyze - Upload and analyze a PDF template
+  app.post("/api/templates/analyze", requireAuth, templateUpload.single('file'), async (req: any, res) => {
+    try {
+      const { analyzeTemplate } = await import('./aiTemplateAnalysis');
+      const { convertPdfToImage } = await import('./pdfService');
+      
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const templateType = req.body.templateType;
+      if (!templateType || !['quote', 'invoice'].includes(templateType)) {
+        return res.status(400).json({ error: "templateType must be 'quote' or 'invoice'" });
+      }
+
+      const templateName = req.body.name || `Analyzed ${templateType} template`;
+      const pdfBuffer = req.file.buffer;
+      const originalFileName = req.file.originalname;
+
+      // Create the analysis job first
+      const jobId = crypto.randomUUID();
+      const fileKey = `/.private/template-uploads/${req.userId}/${jobId}.pdf`;
+
+      // Store PDF in object storage
+      try {
+        const objectStorage = await ObjectStorageService.getInstance();
+        await objectStorage.storeObject(fileKey, pdfBuffer, 'application/pdf');
+      } catch (storageError) {
+        console.error("Failed to store PDF:", storageError);
+        return res.status(500).json({ error: "Failed to store uploaded file" });
+      }
+
+      // Create job record
+      const job = await storage.createTemplateAnalysisJob({
+        userId: req.userId,
+        templateType,
+        originalFileName,
+        originalFileKey: fileKey,
+        status: 'processing',
+      });
+
+      // Return immediately with job ID - processing happens async
+      res.status(202).json({ 
+        jobId: job.id, 
+        status: 'processing',
+        message: 'Template analysis started'
+      });
+
+      // Process asynchronously (non-blocking)
+      (async () => {
+        try {
+          console.log(`[Template Analysis] Starting analysis for job ${job.id}`);
+          
+          // Convert PDF to image
+          const imageBuffer = await convertPdfToImage(pdfBuffer);
+          console.log(`[Template Analysis] PDF converted to image for job ${job.id}`);
+          
+          // Analyze with GPT-4o Vision
+          const analysisResult = await analyzeTemplate(imageBuffer, templateType);
+          console.log(`[Template Analysis] Analysis complete for job ${job.id}`);
+          
+          // Create document template from analysis
+          const templateSettings = {
+            tableStyle: analysisResult.typography.style === 'minimal' ? 'minimal' : 
+                        analysisResult.typography.style === 'modern' ? 'striped' : 'bordered',
+            headerBorderWidth: '2px',
+            showHeaderDivider: true,
+            noteStyle: analysisResult.layout.footer.has_terms ? 'bordered' : 'simple',
+            accentColor: analysisResult.brandColors.primary,
+          };
+
+          const template = await storage.createDocumentTemplate({
+            userId: req.userId,
+            name: templateName || analysisResult.suggestedTemplateName,
+            type: templateType,
+            tradeType: 'general',
+            settings: templateSettings,
+            isDefault: false,
+          });
+
+          // Update job with success
+          await storage.updateTemplateAnalysisJob(job.id, {
+            status: 'completed',
+            analysisResult: analysisResult as any,
+            createdTemplateId: template.id,
+          });
+
+          console.log(`[Template Analysis] Job ${job.id} completed, template ${template.id} created`);
+        } catch (error) {
+          console.error(`[Template Analysis] Job ${job.id} failed:`, error);
+          await storage.updateTemplateAnalysisJob(job.id, {
+            status: 'failed',
+            error: error instanceof Error ? error.message : 'Unknown error during analysis',
+          });
+        }
+      })();
+
+    } catch (error) {
+      console.error("Error starting template analysis:", error);
+      res.status(500).json({ error: "Failed to start template analysis" });
+    }
+  });
+
+  // GET /api/templates/analyze/:jobId - Check status of template analysis job
+  app.get("/api/templates/analyze/:jobId", requireAuth, async (req: any, res) => {
+    try {
+      const job = await storage.getTemplateAnalysisJob(req.params.jobId, req.userId);
+      
+      if (!job) {
+        return res.status(404).json({ error: "Analysis job not found" });
+      }
+
+      res.json({
+        id: job.id,
+        status: job.status,
+        templateType: job.templateType,
+        originalFileName: job.originalFileName,
+        analysisResult: job.analysisResult,
+        createdTemplateId: job.createdTemplateId,
+        error: job.error,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+      });
+    } catch (error) {
+      console.error("Error fetching analysis job:", error);
+      res.status(500).json({ error: "Failed to fetch analysis job" });
+    }
+  });
+
+  // PATCH /api/templates/:id/set-default - Set a template as the default
+  app.patch("/api/templates/:id/set-default", requireAuth, async (req: any, res) => {
+    try {
+      const template = await storage.getDocumentTemplate(req.params.id);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      // Update business settings to use this template
+      await storage.updateBusinessSettings(req.userId, {
+        documentTemplate: template.name,
+        documentTemplateSettings: template.settings as any,
+      });
+
+      // Mark this template as default and unmark others
+      await storage.updateDocumentTemplate(req.params.id, { isDefault: true });
+
+      res.json({ success: true, templateId: req.params.id });
+    } catch (error) {
+      console.error("Error setting default template:", error);
+      res.status(500).json({ error: "Failed to set default template" });
+    }
+  });
+
   // Line Item Catalog Routes
   app.get("/api/catalog", requireAuth, async (req: any, res) => {
     try {
