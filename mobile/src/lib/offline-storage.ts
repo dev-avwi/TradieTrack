@@ -2659,8 +2659,14 @@ class OfflineStorageService {
       useOfflineStore.getState().setBackgroundSyncEnabled(true);
       console.log('[OfflineStorage] Background sync registered');
       return true;
-    } catch (error) {
-      console.error('[OfflineStorage] Failed to register background sync:', error);
+    } catch (error: any) {
+      // Background fetch requires native configuration (UIBackgroundModes in Info.plist)
+      // This is expected to fail in Expo Go/development - only works in standalone builds
+      if (error?.message?.includes('Background Fetch has not been configured')) {
+        console.log('[OfflineStorage] Background sync not available (requires standalone build)');
+      } else {
+        console.log('[OfflineStorage] Background sync registration skipped:', error?.message || error);
+      }
       return false;
     }
   }
