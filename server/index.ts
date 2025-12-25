@@ -140,13 +140,9 @@ if (process.env.DATABASE_URL) {
     next();
   });
 
-  // Demo data seeding (only creates demo@tradietrack.com.au for testing, not admin)
-  if (process.env.NODE_ENV === 'development') {
-    await createDemoUserAndData();
-    // Test user passwords disabled - use demo account only
-    // await fixTestUserPasswords();
-    // await seedSmsDataForTestUsers();
-  }
+  // Demo data seeding - ALWAYS run to ensure demo account works for Apple review
+  // This creates/updates demo@tradietrack.com.au with password demo123456
+  await createDemoUserAndData();
   
   const server = await registerRoutes(app);
 
