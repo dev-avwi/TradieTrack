@@ -141,11 +141,12 @@ export default function LiveDocumentPreview({
   const templateStyles = getTemplateStyles(templateId, brandColor, templateCustomization);
   const { template, primaryColor, headingStyle, tableHeaderStyle, getTableRowStyle, getNoteStyle } = templateStyles;
 
+  // Keep title clean - the status badge shows "Paid" separately
   const documentTitle = type === 'quote' 
     ? 'Quote' 
     : gstEnabled 
-      ? (isPaid ? 'TAX INVOICE / RECEIPT' : 'TAX INVOICE')
-      : (isPaid ? 'Invoice / Receipt' : 'Invoice');
+      ? 'TAX INVOICE'
+      : 'Invoice';
 
   const getStatusBadgeStyle = (s: string) => {
     switch (s) {
@@ -239,12 +240,14 @@ export default function LiveDocumentPreview({
           {/* Document Type - Right Side */}
           <div className="text-right">
             <div 
-              className="text-3xl uppercase tracking-[2px] mb-1"
+              className="uppercase mb-1"
               style={{ 
                 color: isPaid ? '#22c55e' : primaryColor,
-                fontSize: gstEnabled && type === 'invoice' ? '28px' : '32px',
+                fontSize: '28px',
                 fontFamily: template.headingFont,
                 fontWeight: template.headingWeight,
+                letterSpacing: '1px',
+                lineHeight: '1.2',
               }}
             >
               {documentTitle}
