@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sparkles, Send, Loader2, X, Lightbulb, Check, Mail, Navigation, ArrowRight, Briefcase, FileText, Receipt, User, MapPin } from "lucide-react";
@@ -121,6 +122,10 @@ export default function FloatingAIChat({ onNavigate }: FloatingAIChatProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { sheetHeight, isKeyboardOpen } = useBottomSheetHeight();
+  const [location] = useLocation();
+  
+  // Hide FAB when on chat page to avoid overlapping with chat composer
+  const isChatPage = location.startsWith('/chat');
 
   useEffect(() => {
     const handleOpenAIChat = () => setIsOpen(true);
@@ -293,9 +298,14 @@ export default function FloatingAIChat({ onNavigate }: FloatingAIChatProps) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   useBodyScrollLock(isOpen && isMobile);
 
+  // Don't render anything when on chat page to avoid overlapping with chat composer
+  if (isChatPage && !isOpen) {
+    return null;
+  }
+
   return (
     <>
-      {!isOpen && (
+      {!isOpen && !isChatPage && (
         <button
           type="button"
           onClick={() => setIsOpen(true)}

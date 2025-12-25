@@ -51,6 +51,14 @@ function buildHeaders(hasData: boolean): HeadersInit {
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
+    
+    // Handle session expiry (403) with a clearer message
+    if (res.status === 403 || res.status === 401) {
+      // Clear the invalid session token
+      clearSessionToken();
+      throw new Error(`session_expired: Your session has expired. Please log in again.`);
+    }
+    
     throw new Error(`${res.status}: ${text}`);
   }
 }
@@ -172,7 +180,18 @@ export const queryClient = new QueryClient({
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: Infinity,
-      retry: false,
+      // Retry once on 403/network errors to handle server restarts gracefully
+      retry: (failureCount, error) => {
+        // Don't retry if we've already tried once
+        if (failureCount >= 1) return false;
+        // Retry on network errors or 5xx server errors
+        const errorMsg = error?.message || '';
+        if (errorMsg.includes('session_expired')) return false; // Don't retry auth errors
+        if (errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503')) return true;
+        if (errorMsg.includes('Failed to fetch') || errorMsg.includes('Network')) return true;
+        return false;
+      },
+      retryDelay: 1000, // 1 second delay before retry
       // Make queries load instantly without showing loading states
       placeholderData: (previousData: any) => previousData,
       // Cache data aggressively 

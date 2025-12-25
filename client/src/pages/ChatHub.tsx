@@ -1102,12 +1102,20 @@ export default function ChatHub() {
               {teamMessages.map((msg) => (
                 <ChatMessage
                   key={msg.id}
-                  message={msg}
-                  currentUserId={currentUser?.id || ''}
-                  onPin={isOwner || isManager ? () => pinMessageMutation.mutate({ messageId: msg.id, pinned: !msg.isPinned }) : undefined}
-                  onDelete={msg.senderId === currentUser?.id || isOwner ? () => deleteMessageMutation.mutate(msg.id) : undefined}
-                  showPinned={msg.isPinned}
-                  showAnnouncement={msg.isAnnouncement}
+                  id={msg.id}
+                  message={msg.message}
+                  messageType={msg.messageType}
+                  senderName={msg.senderName}
+                  senderAvatar={msg.senderAvatar}
+                  isCurrentUser={msg.senderId === currentUser?.id}
+                  isAnnouncement={msg.isAnnouncement}
+                  isPinned={msg.isPinned}
+                  attachmentUrl={msg.attachmentUrl}
+                  attachmentName={msg.attachmentName}
+                  createdAt={msg.createdAt}
+                  onPin={(isOwner || isManager) ? (id, pinned) => pinMessageMutation.mutate({ messageId: id, pinned }) : undefined}
+                  onDelete={msg.senderId === currentUser?.id || isOwner ? (id) => deleteMessageMutation.mutate(id) : undefined}
+                  canPin={isOwner || isManager}
                 />
               ))}
             </div>
