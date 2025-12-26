@@ -22,20 +22,15 @@ import {
 import { SiApple, SiGoogleplay } from "react-icons/si";
 
 import tradietrackLogo from "/tradietrack-logo.png";
-import dashboardScreenshot from "@assets/appstore_screenshots/01_dashboard.png";
-import jobsListScreenshot from "@assets/appstore_screenshots/02_jobs_list.png";
-import scheduleScreenshot from "@assets/appstore_screenshots/04_schedule.png";
-import jobMapScreenshot from "@assets/appstore_screenshots/05_job_map.png";
-import quotePreviewScreenshot from "@assets/appstore_screenshots/07_quote_preview.png";
 
-// iPad screenshots for web app view
-import ipadDashboard from "@assets/ipad_screenshots/01_dashboard_ipad.png";
+// Construction-themed environmental mockups
+import macbookMockup from "@assets/mockuuups-construction-themed-macbook-pro-mockup_1766762122913.jpeg";
+import iphoneMockup from "@assets/mockuuups-construction-project-with-an-iphone-15-pro-mockup_1766762122914.jpeg";
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showAppPopup, setShowAppPopup] = useState(false);
-  const [mockupMode, setMockupMode] = useState<'mobile' | 'web'>('mobile');
 
   // Show mobile app popup after a short delay on first visit
   useEffect(() => {
@@ -315,33 +310,14 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Right: Phone Mockup */}
+            {/* Right: Environmental iPhone Mockup */}
             <div className="relative flex justify-center lg:justify-end animate-fade-in-up">
-              <div className="relative w-[280px] sm:w-[300px]">
-                {/* Mobile App Label */}
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md border border-gray-200 z-30">
-                  <Smartphone className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-semibold text-gray-700">Mobile App Preview</span>
-                </div>
-                
-                {/* Phone Frame */}
-                <div 
-                  className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-2xl shadow-gray-400/30 hover:shadow-gray-400/40 transition-shadow duration-500 will-change-auto"
-                  style={{ transform: 'translateZ(0)' }}
-                >
-                  {/* Dynamic Island */}
-                  <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
-                  
-                  {/* Screen */}
-                  <div className="relative bg-white rounded-[2.25rem] overflow-hidden">
-                    <img 
-                      src={dashboardScreenshot} 
-                      alt="TradieTrack Dashboard"
-                      className="w-full h-auto"
-                    />
-                  </div>
-                </div>
-
+              <div className="relative w-full max-w-[400px] lg:max-w-[450px]">
+                <img 
+                  src={iphoneMockup} 
+                  alt="TradieTrack on iPhone at construction site"
+                  className="w-full h-auto rounded-2xl shadow-2xl shadow-gray-400/30"
+                />
                 {/* Decorative gradient blob */}
                 <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-gradient-to-br from-blue-100 via-orange-50 to-transparent rounded-full blur-3xl opacity-60"></div>
               </div>
@@ -368,7 +344,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Work From Anywhere - Mockup Showcase */}
+      {/* Work From Anywhere - Environmental Mockups */}
       <section className="py-20 lg:py-28 bg-gradient-to-b from-white to-gray-50/50">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
           <div className="text-center mb-12 lg:mb-16">
@@ -376,122 +352,64 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Your business, in your pocket
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
-              Whether you're on-site with your phone or at your desk with a browser – TradieTrack works wherever you do.
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Whether you're on-site with your phone or at your desk with a laptop – TradieTrack works wherever you do.
             </p>
-            
-            {/* Toggle Buttons */}
-            <div className="inline-flex items-center bg-gray-900 rounded-full p-1.5" data-testid="mockup-toggle-container">
-              <button
-                onClick={() => setMockupMode('mobile')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
-                  mockupMode === 'mobile' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-400 hover:text-white'
-                }`}
-                data-testid="button-toggle-mobile"
-              >
-                <Smartphone className="w-4 h-4" />
-                Mobile App
-              </button>
-              <button
-                onClick={() => setMockupMode('web')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
-                  mockupMode === 'web' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-400 hover:text-white'
-                }`}
-                data-testid="button-toggle-web"
-              >
-                <Monitor className="w-4 h-4" />
-                Web App
-              </button>
+          </div>
+
+          {/* Side-by-side Environmental Mockups */}
+          <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
+            {/* MacBook Mockup - Web App */}
+            <div className="relative group">
+              <div className="absolute -inset-4 bg-gradient-to-r from-blue-100 to-orange-100 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
+              <img 
+                src={macbookMockup} 
+                alt="TradieTrack on MacBook at construction site"
+                className="relative w-full h-auto rounded-2xl shadow-xl group-hover:shadow-2xl transition-shadow duration-300"
+              />
+              <div className="mt-4 text-center">
+                <div className="inline-flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                  <Monitor className="w-4 h-4 text-blue-600" />
+                  Web App
+                </div>
+              </div>
+            </div>
+
+            {/* iPhone Mockup - Mobile App */}
+            <div className="relative group">
+              <div className="absolute -inset-4 bg-gradient-to-r from-orange-100 to-blue-100 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
+              <img 
+                src={iphoneMockup} 
+                alt="TradieTrack on iPhone at construction site"
+                className="relative w-full h-auto rounded-2xl shadow-xl group-hover:shadow-2xl transition-shadow duration-300"
+              />
+              <div className="mt-4 text-center">
+                <div className="inline-flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                  <Smartphone className="w-4 h-4 text-orange-600" />
+                  Mobile App
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Mockup Display */}
-          <div className="relative">
-            {/* Mobile App View - iPhone Device Frame */}
-            <div 
-              className={`transition-all duration-500 ease-out ${
-                mockupMode === 'mobile' 
-                  ? 'opacity-100 translate-y-0' 
-                  : 'opacity-0 translate-y-4 absolute inset-0 pointer-events-none'
-              }`}
-            >
-              <div className="relative max-w-sm mx-auto">
-                {/* iPhone Device Frame */}
-                <div className="relative bg-gray-900 rounded-[3rem] p-3 shadow-2xl">
-                  {/* Dynamic Island / Notch */}
-                  <div className="absolute top-6 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-10"></div>
-                  {/* Screen */}
-                  <div className="relative bg-white rounded-[2.5rem] overflow-hidden">
-                    <img 
-                      src={dashboardScreenshot} 
-                      alt="TradieTrack mobile app dashboard" 
-                      className="w-full h-auto"
-                    />
-                  </div>
-                  {/* Home Indicator */}
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-gray-700 rounded-full"></div>
-                </div>
-              </div>
-              {/* Feature badges */}
-              <div className="flex flex-wrap justify-center gap-2 mt-8">
-                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
-                  <Check className="w-4 h-4 text-green-600" />
-                  Works offline
-                </span>
-                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
-                  <Check className="w-4 h-4 text-green-600" />
-                  iOS & Android
-                </span>
-                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
-                  <Check className="w-4 h-4 text-green-600" />
-                  Instant sync
-                </span>
-              </div>
-            </div>
-
-            {/* Web App View - iPad Device Frame */}
-            <div 
-              className={`transition-all duration-500 ease-out ${
-                mockupMode === 'web' 
-                  ? 'opacity-100 translate-y-0' 
-                  : 'opacity-0 translate-y-4 absolute inset-0 pointer-events-none'
-              }`}
-            >
-              <div className="relative max-w-4xl mx-auto">
-                {/* iPad Device Frame - Landscape */}
-                <div className="relative bg-gray-900 rounded-[2rem] p-3 shadow-2xl">
-                  {/* Front Camera */}
-                  <div className="absolute top-1/2 right-2 -translate-y-1/2 w-2.5 h-2.5 bg-gray-800 rounded-full border border-gray-700"></div>
-                  {/* Screen */}
-                  <div className="relative bg-white rounded-[1.5rem] overflow-hidden">
-                    <img 
-                      src={ipadDashboard} 
-                      alt="TradieTrack web dashboard on iPad" 
-                      className="w-full h-auto"
-                    />
-                  </div>
-                </div>
-              </div>
-              {/* Feature badges */}
-              <div className="flex flex-wrap justify-center gap-2 mt-8">
-                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
-                  <Check className="w-4 h-4 text-green-600" />
-                  Full dashboard
-                </span>
-                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
-                  <Check className="w-4 h-4 text-green-600" />
-                  Team management
-                </span>
-                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
-                  <Check className="w-4 h-4 text-green-600" />
-                  Advanced reports
-                </span>
-              </div>
-            </div>
+          {/* Feature badges */}
+          <div className="flex flex-wrap justify-center gap-3 mt-12">
+            <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
+              <Check className="w-4 h-4 text-green-600" />
+              Works offline
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
+              <Check className="w-4 h-4 text-green-600" />
+              iOS & Android
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
+              <Check className="w-4 h-4 text-green-600" />
+              Instant sync
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
+              <Check className="w-4 h-4 text-green-600" />
+              Full dashboard
+            </span>
           </div>
         </div>
       </section>
@@ -510,94 +428,74 @@ export default function LandingPage() {
             </p>
           </div>
 
-          {/* Feature 1: Scheduling */}
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24 lg:mb-32">
-            <div className="order-2 lg:order-1">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-6">
+          {/* Feature Grid */}
+          <div className="grid sm:grid-cols-2 gap-8 lg:gap-10">
+            {/* Feature 1: Scheduling */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-300">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-5">
                 <Calendar className="w-6 h-6 text-blue-600" />
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
-                Smart scheduling that saves hours
+              <h3 className="text-xl font-bold tracking-tight mb-3">
+                Smart scheduling
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                See your whole week at a glance. Drag and drop jobs, check team availability, and send automatic reminders to clients.
+              <p className="text-gray-600 leading-relaxed mb-5">
+                See your whole week at a glance. Drag and drop jobs, check team availability, and send automatic reminders.
               </p>
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 <FeatureItem text="Drag & drop job scheduling" />
                 <FeatureItem text="Team calendar & availability" />
                 <FeatureItem text="Automatic client reminders" />
               </ul>
             </div>
-            <div className="order-1 lg:order-2 flex justify-center">
-              <PhoneMockup screenshot={scheduleScreenshot} />
-            </div>
-          </div>
 
-          {/* Feature 2: Job Map */}
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24 lg:mb-32">
-            <div className="flex justify-center">
-              <PhoneMockup screenshot={jobMapScreenshot} />
-            </div>
-            <div>
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-100 rounded-xl mb-6">
+            {/* Feature 2: Job Map */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-300">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-100 rounded-xl mb-5">
                 <MapPin className="w-6 h-6 text-orange-600" />
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
-                See all your jobs on a map
+              <h3 className="text-xl font-bold tracking-tight mb-3">
+                Live job map
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              <p className="text-gray-600 leading-relaxed mb-5">
                 Plan your day visually. Track your team's locations in real-time and optimise routes to save time and fuel.
               </p>
-              <a 
-                href="#how-it-works" 
-                onClick={(e) => scrollToSection(e, "how-it-works")}
-                className="inline-flex items-center text-blue-600 font-semibold hover:text-blue-700 transition-colors group" 
-                data-testid="link-explore-maps"
-              >
-                Learn more <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </a>
+              <ul className="space-y-2">
+                <FeatureItem text="Visual job locations" />
+                <FeatureItem text="Real-time team tracking" />
+                <FeatureItem text="Route optimisation" />
+              </ul>
             </div>
-          </div>
 
-          {/* Feature 3: Quotes & Invoices */}
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24 lg:mb-32">
-            <div className="order-2 lg:order-1">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-xl mb-6">
+            {/* Feature 3: Quotes & Invoices */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-300">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-xl mb-5">
                 <FileText className="w-6 h-6 text-green-600" />
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
-                Quote on-site. Get paid faster.
+              <h3 className="text-xl font-bold tracking-tight mb-3">
+                Quotes & invoices
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                Create professional quotes in seconds. Convert to invoice with one tap. Get paid instantly with built-in payment links.
+              <p className="text-gray-600 leading-relaxed mb-5">
+                Create professional quotes in seconds. Convert to invoice with one tap. Get paid instantly with payment links.
               </p>
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 <FeatureItem text="Professional PDF templates" />
                 <FeatureItem text="One-tap quote to invoice" />
                 <FeatureItem text="Stripe payment integration" />
               </ul>
             </div>
-            <div className="order-1 lg:order-2 flex justify-center">
-              <PhoneMockup screenshot={quotePreviewScreenshot} />
-            </div>
-          </div>
 
-          {/* Feature 4: Job Management */}
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            <div className="flex justify-center">
-              <PhoneMockup screenshot={jobsListScreenshot} />
-            </div>
-            <div>
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl mb-6">
+            {/* Feature 4: Job Management */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-300">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl mb-5">
                 <Users className="w-6 h-6 text-purple-600" />
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
-                Never lose track of a job again
+              <h3 className="text-xl font-bold tracking-tight mb-3">
+                Job tracking
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                Every job from quote to completion in one place. Add photos, notes, and track progress. Know exactly where every project stands.
+              <p className="text-gray-600 leading-relaxed mb-5">
+                Every job from quote to completion in one place. Add photos, notes, and track progress effortlessly.
               </p>
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 <FeatureItem text="Visual job status tracking" />
                 <FeatureItem text="Photos & notes on every job" />
                 <FeatureItem text="Client communication history" />
@@ -1049,38 +947,6 @@ export default function LandingPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function PhoneMockup({ screenshot }: { screenshot: string }) {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  
-  return (
-    <div className="relative w-[260px] sm:w-[280px] group">
-      {/* Phone Frame - added will-change for smoother transitions */}
-      <div 
-        className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-xl group-hover:shadow-2xl transition-shadow duration-500 will-change-auto"
-        style={{ transform: 'translateZ(0)' }} // Force GPU layer
-      >
-        {/* Dynamic Island */}
-        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
-        
-        {/* Screen */}
-        <div className="relative bg-white rounded-[2.25rem] overflow-hidden">
-          {/* Placeholder to prevent layout shift */}
-          <div 
-            className={`w-full aspect-[9/19.5] bg-gray-100 transition-opacity duration-300 ${imageLoaded ? 'opacity-0 absolute inset-0' : 'opacity-100'}`}
-          />
-          <img 
-            src={screenshot} 
-            alt="TradieTrack App"
-            className={`w-full h-auto transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-            onLoad={() => setImageLoaded(true)}
-            loading="lazy"
-          />
-        </div>
-      </div>
     </div>
   );
 }
