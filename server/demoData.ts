@@ -169,18 +169,54 @@ export async function createDemoUserAndData() {
       }
       console.log('✅ Demo clients created:', createdClients.length);
 
-      // Create demo jobs
+      // Create demo jobs with varied statuses and dates to show urgency badges
+      const now = new Date();
       const demoJobs = [
+        // OVERDUE - scheduled job that's past its time (shows red pulsing badge)
         {
           userId: demoUser.id,
           clientId: createdClients[0].id,
+          title: "Urgent Drain Blockage",
+          description: "Clear blocked drain in laundry - customer waiting",
+          address: createdClients[0].address || "",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago (OVERDUE)
+          notes: "Customer called twice - high priority"
+        },
+        // STARTING SOON - within 45 minutes (shows orange pulsing badge)
+        {
+          userId: demoUser.id,
+          clientId: createdClients[1].id,
+          title: "Gas Line Inspection",
+          description: "Annual gas safety check and compliance certificate",
+          address: createdClients[1].address || "",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 45 * 60 * 1000), // 45 minutes from now
+          notes: "Need gas certificate for landlord"
+        },
+        // TODAY - later today (shows blue badge)
+        {
+          userId: demoUser.id,
+          clientId: createdClients[2].id,
           title: "Kitchen Tap Replacement",
           description: "Replace old kitchen tap with new mixer tap",
-          address: createdClients[0].address || "",
-          status: "pending" as const,
-          scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-          notes: "Customer prefers morning appointment"
+          address: createdClients[2].address || "",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours from now
+          notes: "Customer prefers afternoon appointment"
         },
+        // TOMORROW (shows purple badge)
+        {
+          userId: demoUser.id,
+          clientId: createdClients[0].id,
+          title: "Bathroom Renovation Plumbing",
+          description: "Rough-in plumbing for new bathroom fixtures",
+          address: createdClients[0].address || "",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+          notes: "Full day job - bring extra supplies"
+        },
+        // IN PROGRESS - active job to test timer banner
         {
           userId: demoUser.id,
           clientId: createdClients[1].id,
@@ -189,8 +225,10 @@ export async function createDemoUserAndData() {
           address: createdClients[1].address || "",
           status: "in_progress" as const,
           scheduledAt: new Date(), // Today
+          startedAt: new Date(Date.now() - 30 * 60 * 1000), // Started 30 mins ago
           notes: "Emergency job - water damage prevention"
         },
+        // DONE - completed job
         {
           userId: demoUser.id,
           clientId: createdClients[2].id,
@@ -199,7 +237,19 @@ export async function createDemoUserAndData() {
           address: createdClients[2].address || "",
           status: "done" as const,
           scheduledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last week
+          completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hours after start
           notes: "System in good condition - no issues found"
+        },
+        // PENDING - waiting for quote acceptance
+        {
+          userId: demoUser.id,
+          clientId: createdClients[2].id,
+          title: "Pool Pump Installation",
+          description: "Install new pool pump and filter system",
+          address: createdClients[2].address || "",
+          status: "pending" as const,
+          scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+          notes: "Awaiting quote approval"
         }
       ];
 
@@ -210,12 +260,12 @@ export async function createDemoUserAndData() {
       }
       console.log('✅ Demo jobs created:', createdJobs.length);
 
-      // Create demo quote
+      // Create demo quote (linked to Kitchen Tap Replacement - index 2)
       const quoteNumber = await storage.generateQuoteNumber(demoUser.id);
       const demoQuote = await storage.createQuote({
         userId: demoUser.id,
-        clientId: createdClients[0].id,
-        jobId: createdJobs[0].id,
+        clientId: createdClients[2].id,
+        jobId: createdJobs[2].id,
         number: quoteNumber,
         title: "Kitchen Tap Replacement Quote",
         description: "Supply and install new kitchen mixer tap",
@@ -248,12 +298,12 @@ export async function createDemoUserAndData() {
 
       console.log('✅ Demo quote created');
 
-      // Create demo invoice
+      // Create demo invoice (linked to Hot Water System Service - index 5)
       const invoiceNumber = await storage.generateInvoiceNumber(demoUser.id);
       const demoInvoice = await storage.createInvoice({
         userId: demoUser.id,
         clientId: createdClients[2].id,
-        jobId: createdJobs[2].id,
+        jobId: createdJobs[5].id,
         number: invoiceNumber,
         title: "Hot Water System Service",
         description: "Annual service and maintenance completed",
