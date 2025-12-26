@@ -157,7 +157,7 @@ export default function FooterSection() {
               © 2025 TradieTrack. All rights reserved.
             </p>
             <p className="text-gray-500 text-sm" data-testid="text-footer-made-in">
-              Made with love in Australia 🇦🇺
+              Made with love in Australia
             </p>
           </div>
         </div>

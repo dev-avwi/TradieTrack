@@ -27,9 +27,8 @@ export default function StickyNavbar() {
 
   const navLinks = [
     { label: "Features", id: "features" },
-    { label: "How It Works", id: "how-it-works" },
+    { label: "Testimonials", id: "testimonials" },
     { label: "Pricing", id: "pricing" },
-    { label: "Contact", id: "contact" },
   ];
 
   return (
