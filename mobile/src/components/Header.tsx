@@ -15,6 +15,8 @@ interface HeaderProps {
   title?: string;
   showSearch?: boolean;
   showBackButton?: boolean;
+  showMenuButton?: boolean;
+  showAvatar?: boolean;
   onBackPress?: () => void;
 }
 
@@ -115,10 +117,47 @@ function HeaderIconButton({
   );
 }
 
+const getPageTitleFromPath = (pathname: string): string => {
+  const path = pathname.replace(/^\/(tabs)\//, '/').replace(/^\(tabs\)\//, '/');
+  
+  if (path === '/' || path === '/index' || pathname.includes('(tabs)/index') || pathname === '/(tabs)') return 'Dashboard';
+  if (path.startsWith('/jobs') || pathname.includes('(tabs)/jobs')) return 'Jobs';
+  if (path.startsWith('/job/')) return 'Job Details';
+  if (path.startsWith('/map') || pathname.includes('(tabs)/map')) return 'Map';
+  if (path.startsWith('/money') || pathname.includes('(tabs)/money')) return 'Money';
+  if (path.startsWith('/collect') || pathname.includes('(tabs)/collect')) return 'Collect Payment';
+  if (path.startsWith('/profile') || pathname.includes('(tabs)/profile')) return 'Profile';
+  if (pathname.includes('/more/chat-hub')) return 'Chat';
+  if (pathname.includes('/more/team-chat')) return 'Team Chat';
+  if (pathname.includes('/more/direct-messages')) return 'Messages';
+  if (pathname.includes('/more/clients')) return 'Clients';
+  if (pathname.includes('/more/client')) return 'Client';
+  if (pathname.includes('/more/calendar')) return 'Schedule';
+  if (pathname.includes('/more/reports')) return 'Reports';
+  if (pathname.includes('/more/team-management')) return 'Team';
+  if (pathname.includes('/more/team')) return 'Team';
+  if (pathname.includes('/more/integrations')) return 'Integrations';
+  if (pathname.includes('/more/business-settings') || pathname.includes('/more/app-settings')) return 'Settings';
+  if (pathname.includes('/more/settings')) return 'Settings';
+  if (pathname.includes('/more/invoices') || pathname.includes('/more/invoice')) return 'Invoices';
+  if (pathname.includes('/more/quotes') || pathname.includes('/more/quote')) return 'Quotes';
+  if (pathname.includes('/more/notifications')) return 'Notifications';
+  if (pathname.includes('/more/search')) return 'Search';
+  if (pathname.includes('/more/ai-assistant')) return 'AI Assistant';
+  if (pathname.includes('/more/branding')) return 'Branding';
+  if (pathname.includes('/more/money-hub')) return 'Money Hub';
+  if (pathname.includes('/more/time-tracking')) return 'Time Tracking';
+  if (pathname.includes('/more/automations')) return 'Automations';
+  if (pathname.includes('/more/subscription')) return 'Subscription';
+  return '';
+};
+
 export function Header({ 
   title,
   showSearch = true, 
   showBackButton = false,
+  showMenuButton = true,
+  showAvatar = true,
   onBackPress,
 }: HeaderProps) {
   const { user, isOwner, roleInfo } = useAuthStore();
@@ -129,6 +168,8 @@ export function Header({
   const pathname = usePathname();
   const isManager = roleInfo?.roleName === 'MANAGER' || roleInfo?.roleName === 'manager';
   const canViewMap = isOwner() || isManager;
+  
+  const displayTitle = title || (!showMenuButton ? getPageTitleFromPath(pathname) : '');
   
   const avatarScale = useRef(new Animated.Value(1)).current;
   
@@ -189,7 +230,7 @@ export function Header({
               color={colors.foreground}
               colors={colors}
             />
-          ) : (
+          ) : showMenuButton ? (
             <View style={styles.brandContainer}>
               <Image 
                 source={require('../../assets/tradietrack-logo.png')}
@@ -198,10 +239,10 @@ export function Header({
               />
               <Text style={styles.brandName} numberOfLines={1}>TradieTrack</Text>
             </View>
-          )}
+          ) : null}
           
-          {title && showBackButton && (
-            <Text style={styles.pageTitleWithBack} numberOfLines={1}>{title}</Text>
+          {displayTitle && (showBackButton || !showMenuButton) && (
+            <Text style={styles.pageTitleWithBack} numberOfLines={1}>{displayTitle}</Text>
           )}
         </View>
 
@@ -241,22 +282,24 @@ export function Header({
             colors={colors}
           />
           
-          <Pressable 
-            onPress={() => router.push('/(tabs)/profile')}
-            onPressIn={handleAvatarPressIn}
-            onPressOut={handleAvatarPressOut}
-          >
-            <Animated.View 
-              style={[
-                styles.avatarButton,
-                { transform: [{ scale: avatarScale }] }
-              ]}
+          {showAvatar && (
+            <Pressable 
+              onPress={() => router.push('/(tabs)/profile')}
+              onPressIn={handleAvatarPressIn}
+              onPressOut={handleAvatarPressOut}
             >
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{getUserInitials()}</Text>
-              </View>
-            </Animated.View>
-          </Pressable>
+              <Animated.View 
+                style={[
+                  styles.avatarButton,
+                  { transform: [{ scale: avatarScale }] }
+                ]}
+              >
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{getUserInitials()}</Text>
+                </View>
+              </Animated.View>
+            </Pressable>
+          )}
         </View>
       </View>
       

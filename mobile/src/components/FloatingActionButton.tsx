@@ -130,13 +130,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 interface FloatingActionButtonProps {
   isTeamOwner?: boolean;
   onAssignPress?: () => void;
+  fabStyle?: 'phone' | 'tablet';
 }
 
-export function FloatingActionButton({ isTeamOwner = false, onAssignPress }: FloatingActionButtonProps) {
+export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabStyle = 'phone' }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  
+  const fabPositionStyle = fabStyle === 'tablet' ? { bottom: 24, right: 24 } : {};
 
   const handlePressIn = () => {
     Animated.timing(scaleAnim, {
@@ -206,6 +209,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress }: Flo
           style={[
             styles.fabButton, 
             isOpen && styles.fabButtonActive,
+            fabPositionStyle,
             { transform: [{ scale: scaleAnim }] }
           ]}
         >

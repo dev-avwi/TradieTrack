@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { View, StyleSheet, Alert, InteractionManager } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, StyleSheet, Alert, InteractionManager, Dimensions } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import notificationService from '../src/lib/notifications';
 import { router } from 'expo-router';
 import { ThemeProvider, useTheme } from '../src/lib/theme';
 import { BottomNav, getBottomNavHeight } from '../src/components/BottomNav';
+import { SidebarNav, getSidebarWidth } from '../src/components/SidebarNav';
 import { Header } from '../src/components/Header';
 import { useNotificationsStore } from '../src/lib/notifications-store';
 import { TerminalProvider } from '../src/providers/StripeTerminalProvider';
@@ -22,6 +23,7 @@ import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
 import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
+import { isTablet } from '../src/lib/device';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -204,6 +206,19 @@ function ServicesInitializer() {
   return null;
 }
 
+function useIsTablet() {
+  const [tablet, setTablet] = useState(() => isTablet());
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setTablet(isTablet());
+    });
+    return () => subscription.remove();
+  }, []);
+  
+  return tablet;
+}
+
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
@@ -211,6 +226,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isOwner, isStaff, hasActiveTeam } = useAuthStore();
   const { colors } = useTheme();
   const { isOnline, isInitialized: offlineInitialized } = useOfflineStore();
+  const isTabletDevice = useIsTablet();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -240,7 +256,38 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Header in normal flow, content fills remaining space, bottom nav absolute
+  // iPad: Sidebar layout with header in content area
+  if (isTabletDevice) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.tabletLayout}>
+          {/* Sidebar on the left */}
+          <SidebarNav />
+          
+          {/* Main content area on the right */}
+          <View style={styles.tabletContent}>
+            {/* Header at top of content area - hide branding and avatar (both in sidebar) */}
+            <Header showMenuButton={false} showAvatar={false} />
+            
+            {/* Content fills remaining space */}
+            <View style={styles.content}>
+              {children}
+            </View>
+            
+            {/* FAB positioned in content area */}
+            {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} fabStyle="tablet" />}
+          </View>
+        </View>
+        
+        {/* Overlays */}
+        <OfflineBanner />
+        <ConflictResolutionPanel />
+        <OfflineIndicator />
+      </View>
+    );
+  }
+
+  // iPhone: Bottom nav layout (default)
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header at top in normal flow */}
@@ -331,6 +378,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    flex: 1,
+  },
+  tabletLayout: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  tabletContent: {
     flex: 1,
   },
 });
