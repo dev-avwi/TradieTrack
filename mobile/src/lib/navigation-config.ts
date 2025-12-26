@@ -510,3 +510,123 @@ export const categoryOrder = [
   'account',
   'admin',
 ];
+
+export interface SidebarNavItem {
+  id: string;
+  title: string;
+  icon: keyof typeof Feather.glyphMap;
+  path: string;
+  matchPaths?: string[];
+  section: 'main' | 'settings';
+}
+
+export const sidebarMainItems: SidebarNavItem[] = [
+  { 
+    id: 'dashboard',
+    title: 'Dashboard', 
+    icon: 'home', 
+    path: '/',
+    matchPaths: ['/', '/index'],
+    section: 'main',
+  },
+  { 
+    id: 'work',
+    title: 'Jobs', 
+    icon: 'briefcase', 
+    path: '/jobs',
+    matchPaths: ['/jobs', '/job'],
+    section: 'main',
+  },
+  { 
+    id: 'chat',
+    title: 'Chat', 
+    icon: 'message-circle', 
+    path: '/more/chat-hub',
+    matchPaths: ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'],
+    section: 'main',
+  },
+  { 
+    id: 'map',
+    title: 'Map', 
+    icon: 'map-pin', 
+    path: '/map',
+    matchPaths: ['/map'],
+    section: 'main',
+  },
+  { 
+    id: 'money',
+    title: 'Money', 
+    icon: 'dollar-sign', 
+    path: '/money',
+    matchPaths: ['/money', '/more/invoices', '/more/quotes', '/more/money-hub'],
+    section: 'main',
+  },
+  { 
+    id: 'clients',
+    title: 'Clients', 
+    icon: 'users', 
+    path: '/more/clients',
+    matchPaths: ['/more/clients', '/more/client'],
+    section: 'main',
+  },
+  { 
+    id: 'calendar',
+    title: 'Schedule', 
+    icon: 'calendar', 
+    path: '/more/calendar',
+    matchPaths: ['/more/calendar'],
+    section: 'main',
+  },
+  { 
+    id: 'reports',
+    title: 'Reports', 
+    icon: 'bar-chart-2', 
+    path: '/more/reports',
+    matchPaths: ['/more/reports'],
+    section: 'main',
+  },
+];
+
+export const sidebarSettingsItems: SidebarNavItem[] = [
+  { 
+    id: 'team',
+    title: 'Team', 
+    icon: 'user-plus', 
+    path: '/more/team-management',
+    matchPaths: ['/more/team-management', '/more/team'],
+    section: 'settings',
+  },
+  { 
+    id: 'integrations',
+    title: 'Integrations', 
+    icon: 'link', 
+    path: '/more/integrations',
+    matchPaths: ['/more/integrations'],
+    section: 'settings',
+  },
+  { 
+    id: 'settings',
+    title: 'Settings', 
+    icon: 'settings', 
+    path: '/more/business-settings',
+    matchPaths: ['/more/settings', '/more/business-settings', '/more/app-settings', '/more/branding'],
+    section: 'settings',
+  },
+];
+
+export function isSidebarPathActive(pathname: string, item: SidebarNavItem): boolean {
+  const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];
+  const isChatRoute = chatRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
+  
+  if (isChatRoute && item.id === 'chat') {
+    return true;
+  }
+  if (isChatRoute && item.id !== 'chat') {
+    return false;
+  }
+  
+  if (item.matchPaths) {
+    return item.matchPaths.some(p => pathname === p || pathname.startsWith(p + '/'));
+  }
+  return pathname === item.path;
+}
