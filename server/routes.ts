@@ -12195,20 +12195,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { generateInvoicePDF, generatePDFBuffer } = await import('./pdfService');
       
       const pdfHtml = generateInvoicePDF({
-        id: invoice.id,
-        number: invoice.number,
-        title: invoice.title,
-        status: invoice.status,
-        subtotal: invoice.subtotal || '0',
-        gstAmount: invoice.gstAmount || '0',
-        total: invoice.total,
-        dueDate: invoice.dueDate,
-        createdAt: invoice.createdAt,
+        invoice: {
+          id: invoice.id,
+          number: invoice.number,
+          title: invoice.title,
+          status: invoice.status,
+          subtotal: invoice.subtotal || '0',
+          gstAmount: invoice.gstAmount || '0',
+          total: invoice.total,
+          dueDate: invoice.dueDate,
+          createdAt: invoice.createdAt,
+          notes: invoice.notes,
+        },
         lineItems: invoice.lineItems || [],
-        notes: invoice.notes,
         client: client || { name: 'Customer' },
         business: settings || { businessName: 'TradieTrack' },
-      });
+      } as any);
       
       const pdfBuffer = await generatePDFBuffer(pdfHtml);
       
