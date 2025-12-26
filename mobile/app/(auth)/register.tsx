@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -14,13 +14,20 @@ import {
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import api, { API_URL } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { Card, CardContent } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { GoogleLogo } from '../../src/components/ui/GoogleLogo';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+
+// Conditionally import Apple Authentication - only available in dev/production builds, not Expo Go
+let AppleAuthentication: any = null;
+try {
+  AppleAuthentication = require('expo-apple-authentication');
+} catch (e) {
+  // Module not available in Expo Go - that's fine, we'll hide the button
+}
 
 export default function RegisterScreen() {
   const [firstName, setFirstName] = useState('');
@@ -32,11 +39,27 @@ export default function RegisterScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
   
   const login = useAuthStore((state) => state.login);
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const { colors } = useTheme();
   const styles = createStyles(colors);
+
+  // Check if Apple Authentication is available
+  useEffect(() => {
+    const checkAppleAuth = async () => {
+      if (Platform.OS === 'ios' && AppleAuthentication) {
+        try {
+          const isAvailable = await AppleAuthentication.isAvailableAsync();
+          setAppleAuthAvailable(isAvailable);
+        } catch (e) {
+          setAppleAuthAvailable(false);
+        }
+      }
+    };
+    checkAppleAuth();
+  }, []);
 
   const handleRegister = async () => {
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim() || !businessName.trim()) {
@@ -223,7 +246,7 @@ export default function RegisterScreen() {
                 )}
               </TouchableOpacity>
 
-              {Platform.OS === 'ios' && (
+              {appleAuthAvailable && AppleAuthentication && (
                 <View style={styles.appleButtonContainer}>
                   {appleLoading ? (
                     <View style={styles.appleLoadingContainer}>

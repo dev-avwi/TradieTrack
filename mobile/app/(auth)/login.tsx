@@ -14,13 +14,20 @@ import {
 } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuthStore } from '../../src/lib/store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { GoogleLogo } from '../../src/components/ui/GoogleLogo';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import api, { API_URL } from '../../src/lib/api';
+
+// Conditionally import Apple Authentication - only available in dev/production builds, not Expo Go
+let AppleAuthentication: any = null;
+try {
+  AppleAuthentication = require('expo-apple-authentication');
+} catch (e) {
+  // Module not available in Expo Go - that's fine, we'll hide the button
+}
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -29,10 +36,26 @@ export default function LoginScreen() {
   const [appleLoading, setAppleLoading] = useState(false);
   const [resendingVerification, setResendingVerification] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
   const { login, checkAuth, isLoading, error, clearError, isAuthenticated, user } = useAuthStore();
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const params = useLocalSearchParams();
+
+  // Check if Apple Authentication is available
+  useEffect(() => {
+    const checkAppleAuth = async () => {
+      if (Platform.OS === 'ios' && AppleAuthentication) {
+        try {
+          const isAvailable = await AppleAuthentication.isAvailableAsync();
+          setAppleAuthAvailable(isAvailable);
+        } catch (e) {
+          setAppleAuthAvailable(false);
+        }
+      }
+    };
+    checkAppleAuth();
+  }, []);
 
   // Helper function to determine redirect path based on user type
   const getRedirectPath = (isNewUser: boolean, isPlatformAdmin: boolean): string => {
@@ -371,7 +394,7 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
-              {Platform.OS === 'ios' && (
+              {appleAuthAvailable && AppleAuthentication && (
                 <View style={styles.appleButtonContainer}>
                   {appleLoading ? (
                     <View style={styles.appleLoadingContainer}>
