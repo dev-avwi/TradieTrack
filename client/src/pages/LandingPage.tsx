@@ -2,40 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 
-// Hook to preload images and track loading state
-function useImagePreloader(imageSources: string[]) {
-  const [loaded, setLoaded] = useState(false);
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    let loadedCount = 0;
-    const totalImages = imageSources.length;
-    
-    const preloadImage = (src: string) => {
-      return new Promise<void>((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          loadedCount++;
-          setProgress(Math.round((loadedCount / totalImages) * 100));
-          resolve();
-        };
-        img.onerror = () => {
-          loadedCount++;
-          setProgress(Math.round((loadedCount / totalImages) * 100));
-          resolve();
-        };
-        img.src = src;
-      });
-    };
-
-    Promise.all(imageSources.map(preloadImage)).then(() => {
-      setLoaded(true);
-    });
-  }, [imageSources]);
-
-  return { loaded, progress };
-}
-
 // Custom hook for scroll-triggered animations
 function useScrollAnimation(options?: IntersectionObserverInit) {
   const ref = useRef<HTMLDivElement>(null);
@@ -127,43 +93,11 @@ import quotePreviewScreenshot from "@assets/appstore_screenshots/07_quote_previe
 import macbookMockup from "@assets/mockuuups-construction-themed-macbook-pro-mockup_1766762122913.jpeg";
 import iphoneMockup from "@assets/mockuuups-construction-project-with-an-iphone-15-pro-mockup_1766762122914.jpeg";
 
-// Critical images to preload (above-the-fold content)
-const CRITICAL_IMAGES = [
-  dashboardScreenshot,
-  iphoneMockup,
-  macbookMockup
-];
-
-// All images for full preload
-const ALL_IMAGES = [
-  dashboardScreenshot,
-  jobsListScreenshot,
-  scheduleScreenshot,
-  jobMapScreenshot,
-  quotePreviewScreenshot,
-  iphoneMockup,
-  macbookMockup
-];
-
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showAppPopup, setShowAppPopup] = useState(false);
   const [mockupMode, setMockupMode] = useState<'mobile' | 'web'>('mobile');
-  const [pageReady, setPageReady] = useState(false);
-  
-  // Preload critical images first
-  const { loaded: criticalLoaded } = useImagePreloader(CRITICAL_IMAGES);
-  
-  // Mark page as ready once critical images are loaded (or after quick timeout)
-  useEffect(() => {
-    if (criticalLoaded) {
-      setPageReady(true);
-    }
-    // Fallback: show page after 800ms even if images haven't loaded (don't block too long)
-    const timeout = setTimeout(() => setPageReady(true), 800);
-    return () => clearTimeout(timeout);
-  }, [criticalLoaded]);
 
   // Show mobile app popup after a short delay on first visit
   useEffect(() => {
@@ -233,36 +167,7 @@ export default function LandingPage() {
   };
 
   return (
-    <>
-      {/* Loading Screen */}
-      <div 
-        className={`fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center transition-opacity duration-500 ${
-          pageReady ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <img 
-            src={tradietrackLogo} 
-            alt="TradieTrack" 
-            className="h-12 w-auto"
-          />
-          <span className="text-2xl font-bold tracking-tight">
-            <span className="text-blue-600">Tradie</span>
-            <span className="text-orange-500">Track</span>
-          </span>
-        </div>
-        <div className="w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-blue-600 to-orange-500 transition-all duration-300 ease-out"
-            style={{ width: pageReady ? '100%' : '60%' }}
-          />
-        </div>
-        <p className="text-sm text-gray-500 mt-4">Loading...</p>
-      </div>
-
-      <div className={`min-h-screen bg-white text-gray-900 antialiased overflow-x-hidden scroll-smooth transition-opacity duration-500 ${
-        pageReady ? 'opacity-100' : 'opacity-0'
-      }`}>
+    <div className="min-h-screen bg-white text-gray-900 antialiased overflow-x-hidden">
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled 
@@ -1190,9 +1095,6 @@ export default function LandingPage() {
         .animate-float {
           animation: float 4s ease-in-out infinite;
         }
-        html {
-          scroll-behavior: smooth;
-        }
         /* Prevent layout shift during image load */
         img {
           content-visibility: auto;
@@ -1293,8 +1195,7 @@ export default function LandingPage() {
           </div>
         </div>
       )}
-      </div>
-    </>
+    </div>
   );
 }
 
