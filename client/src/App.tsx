@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
-import { queryClient, clearSessionToken } from "./lib/queryClient";
+import { queryClient, clearSessionToken, getSessionToken } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { WifiOff } from "lucide-react";
 import AuthFlow from "@/components/AuthFlow";
@@ -559,7 +559,12 @@ function AppLayout() {
   const { data: userCheck, isLoading, error } = useQuery({
     queryKey: ["/api/auth/me", authKey],
     queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      const headers: HeadersInit = {};
+      const token = getSessionToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch('/api/auth/me', { credentials: 'include', headers });
       if (!res.ok) throw new Error('Not authenticated');
       return res.json();
     },
@@ -578,7 +583,12 @@ function AppLayout() {
     enabled: !!userCheck && !isLoading && !error,
     retry: false,
     queryFn: async () => {
-      const res = await fetch('/api/business-settings', { credentials: 'include' });
+      const headers: HeadersInit = {};
+      const token = getSessionToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch('/api/business-settings', { credentials: 'include', headers });
       if (res.status === 404) {
         // No business settings found - return null to trigger onboarding
         return null;
@@ -599,7 +609,12 @@ function AppLayout() {
     enabled: !!userCheck && !isLoading && !error,
     retry: false,
     queryFn: async () => {
-      const res = await fetch('/api/team/my-role', { credentials: 'include' });
+      const headers: HeadersInit = {};
+      const token = getSessionToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch('/api/team/my-role', { credentials: 'include', headers });
       if (res.status === 404) {
         // Not a team member - this is expected for business owners
         return null;
