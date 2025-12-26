@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2 } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square } from "lucide-react";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
+import { getJobUrgency, getInProgressDuration } from "@/lib/jobUrgency";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { JobVoiceNotes } from "./JobVoiceNotes";
 import { JobDocuments } from "./JobDocuments";
@@ -160,6 +161,15 @@ export default function JobDetailView({
   const [showSafetyCheck, setShowSafetyCheck] = useState(false);
   const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
   const [rollbackTargetStatus, setRollbackTargetStatus] = useState<JobStatus | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Update current time every second for live timer display
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
   
   // Check for tab=chat in URL to scroll to chat section
   const shouldScrollToChat = searchString?.includes('tab=chat');
@@ -263,6 +273,63 @@ export default function JobDetailView({
     queryKey: ['/api/jobs', jobId, 'signatures'],
     enabled: !!jobId,
   });
+
+  // Fetch active timer to check if timer is running for this job
+  const { data: globalActiveTimer } = useQuery<{ id: string; jobId?: string; startTime: string; description?: string } | null>({
+    queryKey: ['/api/time-entries/active/current'],
+    refetchInterval: 1000,
+  });
+
+  const activeTimerForThisJob = globalActiveTimer && globalActiveTimer.jobId === jobId ? globalActiveTimer : null;
+
+  // Auto-start timer mutation
+  const startTimerMutation = useMutation({
+    mutationFn: async (data: { description: string; jobId: string; hourlyRate?: string }) => {
+      return apiRequest('POST', '/api/time-entries', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
+      toast({
+        title: "Timer Started",
+        description: "Time tracking has begun automatically",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Auto-start timer error:', error);
+    },
+  });
+
+  // Stop timer mutation
+  const stopTimerMutation = useMutation({
+    mutationFn: async (timerId: string) => {
+      return apiRequest('POST', `/api/time-entries/${timerId}/stop`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
+      toast({
+        title: "Time Saved",
+        description: "Your time has been recorded",
+      });
+    },
+  });
+
+  // Helper to get elapsed time string
+  const getElapsedTime = (startTime: string) => {
+    const start = new Date(startTime);
+    const diffMs = currentTime.getTime() - start.getTime();
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Calculate job urgency for scheduled jobs
+  const jobUrgency = job ? getJobUrgency(job.scheduledAt, job.status) : null;
 
   // Fetch safety form submissions to check if safety forms have been completed
   interface FormSubmissionWithForm {
@@ -620,6 +687,129 @@ export default function JobDetailView({
       </div>
 
       <div className="space-y-4">
+        {/* Urgency Banner for scheduled jobs */}
+        {job.status === 'scheduled' && jobUrgency && (
+          <div 
+            className={`rounded-xl p-4 border ${jobUrgency.bgColor} ${jobUrgency.animate ? 'animate-pulse' : ''}`}
+            data-testid="banner-job-urgency"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${jobUrgency.level === 'overdue' ? 'bg-red-200 dark:bg-red-800' : jobUrgency.level === 'starting_soon' ? 'bg-orange-200 dark:bg-orange-800' : 'bg-blue-200 dark:bg-blue-800'}`}>
+                  <Clock className={`h-5 w-5 ${jobUrgency.color}`} />
+                </div>
+                <div>
+                  <p className={`font-semibold ${jobUrgency.color}`}>{jobUrgency.label}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {jobUrgency.level === 'overdue' ? 'This job is past its scheduled time' : 'Ready to start?'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => setShowSafetyCheck(true)}
+                disabled={updateJobMutation.isPending}
+                className="text-white shrink-0"
+                style={{ backgroundColor: 'hsl(var(--trade))' }}
+                data-testid="button-quick-start"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Start Now
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Prominent Active Timer Banner for in_progress jobs */}
+        {job.status === 'in_progress' && activeTimerForThisJob && (
+          <div 
+            className="rounded-xl overflow-hidden relative"
+            style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}
+            data-testid="banner-active-timer"
+          >
+            <div 
+              className="absolute inset-0 rounded-xl"
+              style={{ 
+                border: '2px solid hsl(var(--trade))',
+                animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+              }}
+            />
+            <div className="relative p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 flex-1">
+                  <div 
+                    className="p-3 rounded-full animate-pulse"
+                    style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}
+                  >
+                    <Timer className="h-6 w-6" style={{ color: 'hsl(var(--trade))' }} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div 
+                        className="w-2 h-2 rounded-full animate-pulse" 
+                        style={{ backgroundColor: 'hsl(var(--trade))' }}
+                      />
+                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--trade))' }}>
+                        Timer Running
+                      </span>
+                    </div>
+                    <div 
+                      className="text-3xl font-mono font-bold tracking-wider" 
+                      style={{ color: 'hsl(var(--trade))' }}
+                      data-testid="text-live-timer"
+                    >
+                      {getElapsedTime(activeTimerForThisJob.startTime)}
+                    </div>
+                  </div>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => stopTimerMutation.mutate(activeTimerForThisJob.id)}
+                  disabled={stopTimerMutation.isPending}
+                  className="h-12 px-6"
+                  data-testid="button-stop-timer-banner"
+                >
+                  <Square className="h-4 w-4 mr-2" />
+                  {stopTimerMutation.isPending ? 'Saving...' : 'Clock Out'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* In Progress without active timer - prompt to start */}
+        {job.status === 'in_progress' && !activeTimerForThisJob && !globalActiveTimer && (
+          <div 
+            className="rounded-xl p-4 border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30"
+            data-testid="banner-no-timer"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-amber-200 dark:bg-amber-800">
+                  <Timer className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-amber-700 dark:text-amber-300">Timer not running</p>
+                  <p className="text-sm text-muted-foreground">Start tracking time for this job</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => startTimerMutation.mutate({
+                  description: `Working on ${job.title}`,
+                  jobId: jobId,
+                  hourlyRate: '85.00',
+                })}
+                disabled={startTimerMutation.isPending}
+                className="text-white shrink-0"
+                style={{ backgroundColor: 'hsl(var(--trade))' }}
+                data-testid="button-start-timer-banner"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                {startTimerMutation.isPending ? 'Starting...' : 'Start Timer'}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <JobFlowWizard
           status={job.status}
           hasQuote={!!linkedQuote}
@@ -631,6 +821,8 @@ export default function JobDetailView({
             completedAt: job.completedAt,
             invoicedAt: job.invoicedAt,
           }}
+          jobId={jobId}
+          timerRunning={!!activeTimerForThisJob}
           onCreateQuote={() => onCreateQuote?.(jobId)}
           onViewQuote={() => linkedQuote && navigate(`/quotes/${linkedQuote.id}`)}
           onSchedule={() => onEditJob?.(jobId)}
@@ -1277,6 +1469,16 @@ export default function JobDetailView({
         onContinue={() => {
           setShowSafetyCheck(false);
           updateJobMutation.mutate({ status: 'in_progress' });
+          // Auto-start timer when starting job (only if no timer is already running)
+          if (!globalActiveTimer && job?.title) {
+            setTimeout(() => {
+              startTimerMutation.mutate({
+                description: `Working on ${job.title}`,
+                jobId: jobId,
+                hourlyRate: '85.00',
+              });
+            }, 500);
+          }
         }}
         onAddSafetyForm={() => {
           setShowSafetyCheck(false);

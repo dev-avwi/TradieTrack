@@ -10,7 +10,8 @@ import {
   Receipt, 
   DollarSign,
   ChevronRight,
-  ArrowRight
+  ArrowRight,
+  Timer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -30,6 +31,8 @@ interface JobFlowWizardProps {
   hasInvoice?: boolean;
   invoicePaid?: boolean;
   timestamps?: StageTimestamps;
+  jobId?: number;
+  timerRunning?: boolean;
   onCreateQuote?: () => void;
   onViewQuote?: () => void;
   onSchedule?: () => void;
@@ -68,6 +71,8 @@ export default function JobFlowWizard({
   hasInvoice = false,
   invoicePaid = false,
   timestamps = {},
+  jobId,
+  timerRunning = false,
   onCreateQuote,
   onViewQuote,
   onSchedule,
@@ -103,8 +108,8 @@ export default function JobFlowWizard({
       },
       {
         id: 'in_progress',
-        label: 'In Progress',
-        icon: Play,
+        label: timerRunning && status === 'in_progress' ? 'Timer Running' : 'In Progress',
+        icon: timerRunning && status === 'in_progress' ? Timer : Play,
         status: currentIndex >= 2 ? 'completed' : (currentIndex === 1 ? 'current' : 'upcoming'),
         timestamp: parseTimestamp(timestamps.startedAt),
         clickable: currentIndex >= 2 && onStatusChange !== undefined
@@ -133,7 +138,7 @@ export default function JobFlowWizard({
         clickable: false
       }
     ];
-  }, [status, hasQuote, hasInvoice, invoicePaid, timestamps, onStatusChange]);
+  }, [status, hasQuote, hasInvoice, invoicePaid, timestamps, onStatusChange, timerRunning]);
 
   // Determine the next action
   const nextAction = useMemo(() => {
@@ -223,8 +228,10 @@ export default function JobFlowWizard({
                       step.status === 'completed' && "bg-green-500 text-white",
                       step.status === 'current' && "ring-2 ring-offset-2 ring-blue-500 bg-blue-500 text-white",
                       step.status === 'upcoming' && "bg-muted text-muted-foreground",
-                      step.clickable && step.status === 'completed' && "group-hover:ring-2 group-hover:ring-offset-2 group-hover:ring-amber-500"
+                      step.clickable && step.status === 'completed' && "group-hover:ring-2 group-hover:ring-offset-2 group-hover:ring-amber-500",
+                      step.id === 'in_progress' && timerRunning && status === 'in_progress' && "animate-pulse"
                     )}
+                    style={step.id === 'in_progress' && timerRunning && status === 'in_progress' ? { backgroundColor: 'hsl(var(--trade))' } : {}}
                     data-testid={`flow-step-${step.id}`}
                   >
                     <step.icon className="h-4 w-4" />

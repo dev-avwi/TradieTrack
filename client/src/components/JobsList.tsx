@@ -9,7 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Briefcase, User, Clock, MapPin, MoreVertical, Edit, FileText, CheckCircle, AlertCircle, LayoutGrid, List, ChevronRight, Play, ArrowRight, Clipboard, Lightbulb, Columns3, Calendar, Receipt } from "lucide-react";
+import { Plus, Briefcase, User, Clock, MapPin, MoreVertical, Edit, FileText, CheckCircle, AlertCircle, LayoutGrid, List, ChevronRight, Play, ArrowRight, Clipboard, Lightbulb, Columns3, Calendar, Receipt, Timer, AlertTriangle } from "lucide-react";
+import { getJobUrgency } from "@/lib/jobUrgency";
 import PasteJobModal from "./PasteJobModal";
 import XeroRibbon from "./XeroRibbon";
 import { PageShell, PageHeader, SectionTitle } from "@/components/ui/page-shell";
@@ -648,12 +649,35 @@ export default function JobsList({
                                 </p>
                               )}
                               <div className="flex items-center gap-2 flex-wrap">
-                                {job.scheduledAt && (
-                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <Clock className="h-3 w-3" />
-                                    <span>{new Date(job.scheduledAt).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })}</span>
-                                  </div>
-                                )}
+                                {(() => {
+                                  const urgency = getJobUrgency(job.scheduledAt, job.status);
+                                  if (urgency) {
+                                    return (
+                                      <Badge 
+                                        variant="outline" 
+                                        className={cn(
+                                          "text-[10px] px-1.5 py-0",
+                                          urgency.color,
+                                          urgency.animate && "animate-pulse"
+                                        )}
+                                      >
+                                        {urgency.level === 'overdue' && <AlertTriangle className="h-2.5 w-2.5 mr-1" />}
+                                        {urgency.level === 'starting_soon' && <Timer className="h-2.5 w-2.5 mr-1" />}
+                                        {urgency.level === 'today' && <Clock className="h-2.5 w-2.5 mr-1" />}
+                                        {urgency.shortLabel}
+                                      </Badge>
+                                    );
+                                  }
+                                  if (job.scheduledAt) {
+                                    return (
+                                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <Clock className="h-3 w-3" />
+                                        <span>{new Date(job.scheduledAt).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })}</span>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                                 {nextActions[job.id] && (
                                   <Badge 
                                     variant="outline" 
@@ -715,12 +739,33 @@ export default function JobsList({
                           </div>
                         )}
                         <div className="flex items-center gap-4 flex-wrap">
-                          {job.scheduledAt && (
-                            <div className="flex items-center gap-1.5 ios-caption">
-                              <Clock className="h-3.5 w-3.5" />
-                              <span>{new Date(job.scheduledAt).toLocaleDateString('en-AU')}</span>
-                            </div>
-                          )}
+                          {(() => {
+                            const urgency = getJobUrgency(job.scheduledAt, job.status);
+                            if (urgency) {
+                              return (
+                                <div className={cn(
+                                  "flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium",
+                                  urgency.bgColor,
+                                  urgency.color,
+                                  urgency.animate && "animate-pulse"
+                                )}>
+                                  {urgency.level === 'overdue' && <AlertTriangle className="h-3 w-3" />}
+                                  {urgency.level === 'starting_soon' && <Timer className="h-3 w-3" />}
+                                  {(urgency.level === 'today' || urgency.level === 'tomorrow') && <Clock className="h-3 w-3" />}
+                                  <span>{urgency.label}</span>
+                                </div>
+                              );
+                            }
+                            if (job.scheduledAt) {
+                              return (
+                                <div className="flex items-center gap-1.5 ios-caption">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  <span>{new Date(job.scheduledAt).toLocaleDateString('en-AU')}</span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                           {job.address && (
                             <div className="flex items-center gap-1.5 ios-caption">
                               <MapPin className="h-3.5 w-3.5" />
