@@ -31,10 +31,6 @@ import quotePreviewScreenshot from "@assets/appstore_screenshots/07_quote_previe
 // iPad screenshots for web app view
 import ipadDashboard from "@assets/ipad_screenshots/01_dashboard_ipad.png";
 
-// Lifestyle background images
-import phoneLifestyle from "@assets/stock_images/person_hand_holding__6ef30ebc.jpg";
-import tabletLifestyle from "@assets/stock_images/ipad_tablet_blank_sc_a5e27c50.jpg";
-
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -415,7 +411,7 @@ export default function LandingPage() {
 
           {/* Mockup Display */}
           <div className="relative">
-            {/* Mobile App View - Device with lifestyle background */}
+            {/* Mobile App View - iPhone Device Frame */}
             <div 
               className={`transition-all duration-500 ease-out ${
                 mockupMode === 'mobile' 
@@ -423,35 +419,21 @@ export default function LandingPage() {
                   : 'opacity-0 translate-y-4 absolute inset-0 pointer-events-none'
               }`}
             >
-              <div className="relative max-w-4xl mx-auto">
-                {/* Lifestyle background - blurred */}
-                <div className="relative rounded-3xl overflow-hidden">
-                  <img 
-                    src={phoneLifestyle} 
-                    alt="Workspace background" 
-                    className="w-full h-auto blur-sm scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/30"></div>
-                </div>
-                {/* Device mockup floating on top */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-56 sm:w-64 md:w-72 transform hover:scale-105 transition-transform duration-300">
-                    {/* iPhone Frame */}
-                    <div className="relative bg-gray-900 rounded-[2.5rem] p-2 shadow-2xl">
-                      {/* Dynamic Island */}
-                      <div className="absolute top-4 left-1/2 -translate-x-1/2 w-20 h-5 bg-black rounded-full z-10"></div>
-                      {/* Screen */}
-                      <div className="relative bg-white rounded-[2rem] overflow-hidden">
-                        <img 
-                          src={dashboardScreenshot} 
-                          alt="TradieTrack mobile dashboard" 
-                          className="w-full h-auto"
-                        />
-                      </div>
-                      {/* Home Indicator */}
-                      <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-24 h-1 bg-gray-600 rounded-full"></div>
-                    </div>
+              <div className="relative max-w-sm mx-auto">
+                {/* iPhone Device Frame */}
+                <div className="relative bg-gray-900 rounded-[3rem] p-3 shadow-2xl">
+                  {/* Dynamic Island / Notch */}
+                  <div className="absolute top-6 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-10"></div>
+                  {/* Screen */}
+                  <div className="relative bg-white rounded-[2.5rem] overflow-hidden">
+                    <img 
+                      src={dashboardScreenshot} 
+                      alt="TradieTrack mobile app dashboard" 
+                      className="w-full h-auto"
+                    />
                   </div>
+                  {/* Home Indicator */}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-gray-700 rounded-full"></div>
                 </div>
               </div>
               {/* Feature badges */}
@@ -471,7 +453,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Web App View - iPad with lifestyle background */}
+            {/* Web App View - iPad Device Frame */}
             <div 
               className={`transition-all duration-500 ease-out ${
                 mockupMode === 'web' 
@@ -480,31 +462,17 @@ export default function LandingPage() {
               }`}
             >
               <div className="relative max-w-4xl mx-auto">
-                {/* Lifestyle background - blurred */}
-                <div className="relative rounded-3xl overflow-hidden">
-                  <img 
-                    src={tabletLifestyle} 
-                    alt="Office workspace background" 
-                    className="w-full h-auto blur-sm scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/30"></div>
-                </div>
-                {/* iPad mockup floating on top */}
-                <div className="absolute inset-0 flex items-center justify-center p-8">
-                  <div className="w-full max-w-2xl transform hover:scale-[1.02] transition-transform duration-300">
-                    {/* iPad Frame - Landscape */}
-                    <div className="relative bg-gray-900 rounded-[1.5rem] p-2 shadow-2xl">
-                      {/* Front Camera */}
-                      <div className="absolute top-1/2 right-1.5 -translate-y-1/2 w-2 h-2 bg-gray-800 rounded-full"></div>
-                      {/* Screen */}
-                      <div className="relative bg-white rounded-[1rem] overflow-hidden">
-                        <img 
-                          src={ipadDashboard} 
-                          alt="TradieTrack web dashboard" 
-                          className="w-full h-auto"
-                        />
-                      </div>
-                    </div>
+                {/* iPad Device Frame - Landscape */}
+                <div className="relative bg-gray-900 rounded-[2rem] p-3 shadow-2xl">
+                  {/* Front Camera */}
+                  <div className="absolute top-1/2 right-2 -translate-y-1/2 w-2.5 h-2.5 bg-gray-800 rounded-full border border-gray-700"></div>
+                  {/* Screen */}
+                  <div className="relative bg-white rounded-[1.5rem] overflow-hidden">
+                    <img 
+                      src={ipadDashboard} 
+                      alt="TradieTrack web dashboard on iPad" 
+                      className="w-full h-auto"
+                    />
                   </div>
                 </div>
               </div>
