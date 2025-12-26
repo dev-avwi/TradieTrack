@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, setSessionToken } from "@/lib/queryClient";
 import { 
   Loader2, 
   Eye, 
@@ -176,6 +176,10 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
       const result = await response.json();
 
       if (result.success) {
+        // Save session token for Bearer auth (iOS/Safari fallback)
+        if (result.sessionToken) {
+          setSessionToken(result.sessionToken);
+        }
         toast({
           title: "Welcome back!",
           description: `Signed in as ${result.user.firstName || result.user.username}`
@@ -226,6 +230,10 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
       const result = await response.json();
 
       if (result.success) {
+        // Save session token for Bearer auth (iOS/Safari fallback)
+        if (result.sessionToken) {
+          setSessionToken(result.sessionToken);
+        }
         toast({
           title: "Account created!",
           description: "Let's set up your business profile"
