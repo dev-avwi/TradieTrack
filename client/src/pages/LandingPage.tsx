@@ -155,13 +155,13 @@ export default function LandingPage() {
   // Preload critical images first
   const { loaded: criticalLoaded } = useImagePreloader(CRITICAL_IMAGES);
   
-  // Mark page as ready once critical images are loaded (or after timeout)
+  // Mark page as ready once critical images are loaded (or after quick timeout)
   useEffect(() => {
     if (criticalLoaded) {
       setPageReady(true);
     }
-    // Fallback: show page after 2 seconds even if images haven't loaded
-    const timeout = setTimeout(() => setPageReady(true), 2000);
+    // Fallback: show page after 800ms even if images haven't loaded (don't block too long)
+    const timeout = setTimeout(() => setPageReady(true), 800);
     return () => clearTimeout(timeout);
   }, [criticalLoaded]);
 
@@ -189,8 +189,36 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Custom smooth scroll with easing for better UX
+  const smoothScrollTo = useCallback((targetY: number, duration: number = 800) => {
+    const startY = window.pageYOffset;
+    const difference = targetY - startY;
+    const startTime = performance.now();
+    
+    // Easing function: easeInOutCubic for smooth acceleration/deceleration
+    const easeInOutCubic = (t: number): number => {
+      return t < 0.5 
+        ? 4 * t * t * t 
+        : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    };
+    
+    const animateScroll = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easedProgress = easeInOutCubic(progress);
+      
+      window.scrollTo(0, startY + difference * easedProgress);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animateScroll);
+      }
+    };
+    
+    requestAnimationFrame(animateScroll);
+  }, []);
+
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    smoothScrollTo(0, 600);
   };
 
   const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
@@ -199,10 +227,7 @@ export default function LandingPage() {
     if (element) {
       const offset = 80; // Account for fixed header
       const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-      window.scrollTo({
-        top: elementPosition - offset,
-        behavior: "smooth"
-      });
+      smoothScrollTo(elementPosition - offset, 800);
     }
     setMobileMenuOpen(false);
   };
