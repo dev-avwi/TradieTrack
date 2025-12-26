@@ -497,6 +497,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Send push notification
             await notifyQuoteAccepted(quote.userId, quote.number, quote.id, accepted_by.trim());
+
+            // Update linked job status to scheduled if quote is accepted
+            if (quote.jobId) {
+              try {
+                const job = await storage.getJob(quote.jobId, quote.userId);
+                if (job && (job.status === 'pending' || job.status === 'draft')) {
+                  await storage.updateJob(quote.jobId, quote.userId, { 
+                    status: 'scheduled',
+                    scheduledAt: job.scheduledAt || new Date() // Set scheduledAt if not already set
+                  });
+                  console.log(`[Quote Acceptance] Job ${quote.jobId} status updated to scheduled`);
+                  
+                  await logActivity(
+                    quote.userId,
+                    'job_status_change' as any,
+                    'Job Scheduled',
+                    `Job moved to scheduled after quote ${quote.number} was accepted`,
+                    'job',
+                    quote.jobId,
+                    { previousStatus: job.status, newStatus: 'scheduled', triggeredBy: 'quote_acceptance' }
+                  );
+                }
+              } catch (e) {
+                console.error('Failed to update linked job status:', e);
+              }
+            }
           } catch (e) {
             console.error('Failed to create notification:', e);
           }
