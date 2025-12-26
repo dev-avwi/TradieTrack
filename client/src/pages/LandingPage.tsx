@@ -28,10 +28,17 @@ import scheduleScreenshot from "@assets/appstore_screenshots/04_schedule.png";
 import jobMapScreenshot from "@assets/appstore_screenshots/05_job_map.png";
 import quotePreviewScreenshot from "@assets/appstore_screenshots/07_quote_preview.png";
 
+// Lifestyle mockup images
+import mobileLifestyle1 from "@assets/stock_images/person_holding_iphon_0b18d876.jpg";
+import mobileLifestyle2 from "@assets/stock_images/person_holding_iphon_c132b1fb.jpg";
+import tabletLifestyle1 from "@assets/stock_images/ipad_tablet_on_woode_8fccc123.jpg";
+import tabletLifestyle2 from "@assets/stock_images/ipad_tablet_on_woode_2a1bb8cd.jpg";
+
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showAppPopup, setShowAppPopup] = useState(false);
+  const [mockupMode, setMockupMode] = useState<'mobile' | 'web'>('mobile');
 
   // Show mobile app popup after a short delay on first visit
   useEffect(() => {
@@ -360,6 +367,124 @@ export default function LandingPage() {
                 {trade}
               </span>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Work From Anywhere - Mockup Showcase */}
+      <section className="py-20 lg:py-28 bg-gradient-to-b from-white to-gray-50/50">
+        <div className="max-w-6xl mx-auto px-5 lg:px-8">
+          <div className="text-center mb-12 lg:mb-16">
+            <span className="inline-block text-sm font-semibold text-blue-600 uppercase tracking-wider mb-4">Work From Anywhere</span>
+            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
+              Your business, in your pocket
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+              Whether you're on-site with your phone or at your desk with a browser – TradieTrack works wherever you do.
+            </p>
+            
+            {/* Toggle Buttons */}
+            <div className="inline-flex items-center bg-gray-900 rounded-full p-1.5" data-testid="mockup-toggle-container">
+              <button
+                onClick={() => setMockupMode('mobile')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
+                  mockupMode === 'mobile' 
+                    ? 'bg-white text-gray-900 shadow-sm' 
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                data-testid="button-toggle-mobile"
+              >
+                <Smartphone className="w-4 h-4" />
+                Mobile App
+              </button>
+              <button
+                onClick={() => setMockupMode('web')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
+                  mockupMode === 'web' 
+                    ? 'bg-white text-gray-900 shadow-sm' 
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                data-testid="button-toggle-web"
+              >
+                <Monitor className="w-4 h-4" />
+                Web App
+              </button>
+            </div>
+          </div>
+
+          {/* Mockup Display */}
+          <div className="relative">
+            {/* Mobile App View */}
+            <div 
+              className={`transition-all duration-500 ease-out ${
+                mockupMode === 'mobile' 
+                  ? 'opacity-100 translate-y-0' 
+                  : 'opacity-0 translate-y-4 absolute inset-0 pointer-events-none'
+              }`}
+            >
+              <div className="relative max-w-4xl mx-auto">
+                <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+                  <img 
+                    src={mobileLifestyle1} 
+                    alt="TradieTrack mobile app in use" 
+                    className="w-full h-auto"
+                  />
+                  {/* Overlay gradient for better text visibility */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
+                </div>
+                {/* Feature badges */}
+                <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
+                    <Check className="w-3.5 h-3.5 text-green-600" />
+                    Works offline
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
+                    <Check className="w-3.5 h-3.5 text-green-600" />
+                    iOS & Android
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
+                    <Check className="w-3.5 h-3.5 text-green-600" />
+                    Instant sync
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Web App View */}
+            <div 
+              className={`transition-all duration-500 ease-out ${
+                mockupMode === 'web' 
+                  ? 'opacity-100 translate-y-0' 
+                  : 'opacity-0 translate-y-4 absolute inset-0 pointer-events-none'
+              }`}
+            >
+              <div className="relative max-w-4xl mx-auto">
+                <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+                  <img 
+                    src={tabletLifestyle1} 
+                    alt="TradieTrack web app on tablet" 
+                    className="w-full h-auto"
+                  />
+                  {/* Overlay gradient for better text visibility */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
+                </div>
+                {/* Feature badges */}
+                <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
+                    <Check className="w-3.5 h-3.5 text-green-600" />
+                    Full dashboard
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
+                    <Check className="w-3.5 h-3.5 text-green-600" />
+                    Team management
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
+                    <Check className="w-3.5 h-3.5 text-green-600" />
+                    Advanced reports
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

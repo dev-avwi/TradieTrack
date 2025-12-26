@@ -25,6 +25,7 @@ import QuotesList from "@/components/QuotesList";
 import QuoteForm from "@/components/QuoteForm";
 import QuoteDetailView from "@/components/QuoteDetailView";
 import JobForm from "@/components/JobForm";
+import JobEditForm from "@/components/JobEditForm";
 import InvoiceForm from "@/components/InvoiceForm";
 import DocumentEditor from "@/components/DocumentEditor";
 import LiveQuoteEditor from "@/components/LiveQuoteEditor";
@@ -249,6 +250,24 @@ function Router({
           onComplete={(jobId) => {
             console.log('Job completed:', jobId);
             // After completion, go back to the job details
+            onNavigate(`/jobs/${jobId}`);
+          }}
+          onCancel={() => {
+            // Smart back: use browser history if available
+            if (window.history.length > 2) {
+              window.history.back();
+            } else {
+              onNavigate(`/jobs/${params.id}`);
+            }
+          }}
+        />
+      )} />
+      
+      <Route path="/jobs/:id/edit" component={({ params }: any) => (
+        <JobEditForm
+          jobId={params.id}
+          onSave={(jobId) => {
+            // After saving, go back to the job details
             onNavigate(`/jobs/${jobId}`);
           }}
           onCancel={() => {
