@@ -261,6 +261,10 @@ export default function LoginScreen() {
                   autoCapitalize="none"
                   keyboardType="email-address"
                   autoComplete="email"
+                  textContentType="emailAddress"
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  enablesReturnKeyAutomatically={false}
                   testID="input-email"
                 />
               </View>
@@ -283,6 +287,8 @@ export default function LoginScreen() {
                   autoCapitalize="none"
                   spellCheck={false}
                   returnKeyType="done"
+                  blurOnSubmit={true}
+                  enablesReturnKeyAutomatically={false}
                   onSubmitEditing={handleLogin}
                   testID="input-password"
                 />

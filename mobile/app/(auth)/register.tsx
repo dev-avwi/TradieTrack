@@ -260,6 +260,10 @@ export default function RegisterScreen() {
                       setError(null);
                     }}
                     autoCapitalize="words"
+                    textContentType="givenName"
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    enablesReturnKeyAutomatically={false}
                     testID="input-firstname"
                   />
                 </View>
@@ -275,6 +279,10 @@ export default function RegisterScreen() {
                       setError(null);
                     }}
                     autoCapitalize="words"
+                    textContentType="familyName"
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    enablesReturnKeyAutomatically={false}
                     testID="input-lastname"
                   />
                 </View>
@@ -292,6 +300,10 @@ export default function RegisterScreen() {
                     setError(null);
                   }}
                   autoCapitalize="words"
+                  textContentType="organizationName"
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  enablesReturnKeyAutomatically={false}
                   testID="input-business"
                 />
               </View>
@@ -310,6 +322,10 @@ export default function RegisterScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
+                  textContentType="emailAddress"
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  enablesReturnKeyAutomatically={false}
                   testID="input-email"
                 />
               </View>
@@ -332,6 +348,8 @@ export default function RegisterScreen() {
                   autoCapitalize="none"
                   spellCheck={false}
                   returnKeyType="done"
+                  blurOnSubmit={true}
+                  enablesReturnKeyAutomatically={false}
                   onSubmitEditing={handleRegister}
                   testID="input-password"
                 />

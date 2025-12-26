@@ -132,7 +132,7 @@ export function CardFooter({ children, style }: CardFooterProps) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
-    overflow: 'hidden',
+    // Removed overflow: 'hidden' - can cause touch event issues on iOS
   },
   cardHeader: {
     padding: 20,
