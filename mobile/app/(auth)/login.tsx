@@ -277,10 +277,13 @@ export default function LoginScreen() {
                     clearError();
                   }}
                   secureTextEntry={true}
-                  textContentType="password"
-                  autoComplete="password"
+                  textContentType="oneTimeCode"
+                  autoComplete="off"
                   autoCorrect={false}
                   autoCapitalize="none"
+                  spellCheck={false}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
                   testID="input-password"
                 />
               </View>

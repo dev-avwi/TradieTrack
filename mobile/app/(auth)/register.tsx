@@ -325,8 +325,14 @@ export default function RegisterScreen() {
                     setPassword(text);
                     setError(null);
                   }}
-                  secureTextEntry
-                  autoComplete="password-new"
+                  secureTextEntry={true}
+                  textContentType="oneTimeCode"
+                  autoComplete="off"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  returnKeyType="done"
+                  onSubmitEditing={handleRegister}
                   testID="input-password"
                 />
               </View>
