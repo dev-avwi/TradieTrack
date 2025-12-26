@@ -28,11 +28,9 @@ import scheduleScreenshot from "@assets/appstore_screenshots/04_schedule.png";
 import jobMapScreenshot from "@assets/appstore_screenshots/05_job_map.png";
 import quotePreviewScreenshot from "@assets/appstore_screenshots/07_quote_preview.png";
 
-// Lifestyle mockup images
-import mobileLifestyle1 from "@assets/stock_images/person_holding_iphon_0b18d876.jpg";
-import mobileLifestyle2 from "@assets/stock_images/person_holding_iphon_c132b1fb.jpg";
-import tabletLifestyle1 from "@assets/stock_images/ipad_tablet_on_woode_8fccc123.jpg";
-import tabletLifestyle2 from "@assets/stock_images/ipad_tablet_on_woode_2a1bb8cd.jpg";
+// Custom app mockup images showing TradieTrack interface
+import mobileMockup from "@assets/generated_images/iphone_showing_tradie_app_dashboard.png";
+import webMockup from "@assets/generated_images/ipad_showing_web_dashboard_app.png";
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -423,17 +421,15 @@ export default function LandingPage() {
               }`}
             >
               <div className="relative max-w-4xl mx-auto">
-                <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+                <div className="relative rounded-3xl overflow-hidden shadow-2xl">
                   <img 
-                    src={mobileLifestyle1} 
-                    alt="TradieTrack mobile app in use" 
+                    src={mobileMockup} 
+                    alt="TradieTrack mobile app showing job management dashboard" 
                     className="w-full h-auto"
                   />
-                  {/* Overlay gradient for better text visibility */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
                 </div>
                 {/* Feature badges */}
-                <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-2">
+                <div className="absolute bottom-6 left-6 right-6 flex flex-wrap justify-center gap-2">
                   <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
                     <Check className="w-3.5 h-3.5 text-green-600" />
                     Works offline
@@ -459,17 +455,15 @@ export default function LandingPage() {
               }`}
             >
               <div className="relative max-w-4xl mx-auto">
-                <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+                <div className="relative rounded-3xl overflow-hidden shadow-2xl">
                   <img 
-                    src={tabletLifestyle1} 
-                    alt="TradieTrack web app on tablet" 
+                    src={webMockup} 
+                    alt="TradieTrack web dashboard showing analytics and team management" 
                     className="w-full h-auto"
                   />
-                  {/* Overlay gradient for better text visibility */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
                 </div>
                 {/* Feature badges */}
-                <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-2">
+                <div className="absolute bottom-6 left-6 right-6 flex flex-wrap justify-center gap-2">
                   <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
                     <Check className="w-3.5 h-3.5 text-green-600" />
                     Full dashboard
