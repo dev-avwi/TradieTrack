@@ -1,6 +1,65 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+
+// Custom hook for scroll-triggered animations
+function useScrollAnimation(options?: IntersectionObserverInit) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px', ...options }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, isVisible };
+}
+
+// Animated section wrapper component
+function AnimatedSection({ 
+  children, 
+  className = "", 
+  animation = "fade-up",
+  delay = 0 
+}: { 
+  children: React.ReactNode; 
+  className?: string; 
+  animation?: "fade-up" | "fade-left" | "fade-right" | "scale";
+  delay?: number;
+}) {
+  const { ref, isVisible } = useScrollAnimation();
+  
+  const animationClass = {
+    "fade-up": "scroll-fade-up",
+    "fade-left": "scroll-fade-left", 
+    "fade-right": "scroll-fade-right",
+    "scale": "scroll-scale"
+  }[animation];
+
+  return (
+    <div 
+      ref={ref}
+      className={`${animationClass} ${isVisible ? 'visible' : ''} ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
 import { 
   Menu, 
   X,
@@ -320,7 +379,7 @@ export default function LandingPage() {
 
             {/* Right: Phone Mockup */}
             <div className="relative flex justify-center lg:justify-end animate-fade-in-up">
-              <div className="relative w-[280px] sm:w-[300px]">
+              <div className="relative w-[280px] sm:w-[300px] animate-float">
                 {/* Mobile App Label */}
                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md border border-gray-200 z-30">
                   <Smartphone className="w-4 h-4 text-blue-600" />
@@ -356,25 +415,27 @@ export default function LandingPage() {
       {/* Social Proof Bar */}
       <section className="py-10 border-y border-gray-100 bg-gray-50/50">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
-          <p className="text-center text-sm text-gray-500 mb-6">Built for trade businesses across Australia</p>
-          <div className="flex flex-wrap justify-center items-center gap-6 lg:gap-12">
-            {["Electricians", "Plumbers", "Builders", "HVAC Techs", "Property Maintenance"].map((trade, i) => (
-              <span 
-                key={trade} 
-                className="text-gray-400 font-medium text-sm uppercase tracking-wider hover:text-gray-600 transition-colors cursor-default"
-                style={{ animationDelay: `${i * 100}ms` }}
-              >
-                {trade}
-              </span>
-            ))}
-          </div>
+          <AnimatedSection>
+            <p className="text-center text-sm text-gray-500 mb-6">Built for trade businesses across Australia</p>
+            <div className="flex flex-wrap justify-center items-center gap-6 lg:gap-12">
+              {["Electricians", "Plumbers", "Builders", "HVAC Techs", "Property Maintenance"].map((trade, i) => (
+                <span 
+                  key={trade} 
+                  className="text-gray-400 font-medium text-sm uppercase tracking-wider hover:text-gray-600 transition-colors cursor-default"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  {trade}
+                </span>
+              ))}
+            </div>
+          </AnimatedSection>
         </div>
       </section>
 
       {/* Work From Anywhere - Mockup Showcase with Toggle */}
       <section className="py-20 lg:py-28 bg-gradient-to-b from-white to-gray-50/50">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
-          <div className="text-center mb-12 lg:mb-16">
+          <AnimatedSection className="text-center mb-12 lg:mb-16">
             <span className="inline-block text-sm font-semibold text-blue-600 uppercase tracking-wider mb-4">Work From Anywhere</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Your business, in your pocket
@@ -410,10 +471,10 @@ export default function LandingPage() {
                 Web App
               </button>
             </div>
-          </div>
+          </AnimatedSection>
 
           {/* Mockup Display */}
-          <div className="relative">
+          <AnimatedSection animation="scale" delay={100} className="relative">
             {/* Mobile App View - Environmental iPhone Mockup */}
             <div 
               className={`transition-all duration-500 ease-out ${
@@ -477,7 +538,7 @@ export default function LandingPage() {
                 </span>
               </div>
             </div>
-          </div>
+          </AnimatedSection>
         </div>
       </section>
 
@@ -485,7 +546,7 @@ export default function LandingPage() {
       <section id="features" className="py-20 lg:py-28 scroll-mt-20">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
           {/* Section Header */}
-          <div className="text-center mb-16 lg:mb-20">
+          <AnimatedSection className="text-center mb-16 lg:mb-20">
             <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Features</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Everything you need to run your business
@@ -493,11 +554,11 @@ export default function LandingPage() {
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               From the first call to the final invoice. One app, no paperwork.
             </p>
-          </div>
+          </AnimatedSection>
 
           {/* Feature 1: Scheduling */}
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24 lg:mb-32">
-            <div className="order-2 lg:order-1">
+            <AnimatedSection animation="fade-right" className="order-2 lg:order-1">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-6">
                 <Calendar className="w-6 h-6 text-blue-600" />
               </div>
@@ -512,18 +573,18 @@ export default function LandingPage() {
                 <FeatureItem text="Team calendar & availability" />
                 <FeatureItem text="Automatic client reminders" />
               </ul>
-            </div>
-            <div className="order-1 lg:order-2 flex justify-center">
+            </AnimatedSection>
+            <AnimatedSection animation="fade-left" delay={100} className="order-1 lg:order-2 flex justify-center">
               <PhoneMockup screenshot={scheduleScreenshot} />
-            </div>
+            </AnimatedSection>
           </div>
 
           {/* Feature 2: Job Map */}
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24 lg:mb-32">
-            <div className="flex justify-center">
+            <AnimatedSection animation="fade-right" className="flex justify-center">
               <PhoneMockup screenshot={jobMapScreenshot} />
-            </div>
-            <div>
+            </AnimatedSection>
+            <AnimatedSection animation="fade-left" delay={100}>
               <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-100 rounded-xl mb-6">
                 <MapPin className="w-6 h-6 text-orange-600" />
               </div>
@@ -541,12 +602,12 @@ export default function LandingPage() {
               >
                 Learn more <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </a>
-            </div>
+            </AnimatedSection>
           </div>
 
           {/* Feature 3: Quotes & Invoices */}
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24 lg:mb-32">
-            <div className="order-2 lg:order-1">
+            <AnimatedSection animation="fade-right" className="order-2 lg:order-1">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-xl mb-6">
                 <FileText className="w-6 h-6 text-green-600" />
               </div>
@@ -561,18 +622,18 @@ export default function LandingPage() {
                 <FeatureItem text="One-tap quote to invoice" />
                 <FeatureItem text="Stripe payment integration" />
               </ul>
-            </div>
-            <div className="order-1 lg:order-2 flex justify-center">
+            </AnimatedSection>
+            <AnimatedSection animation="fade-left" delay={100} className="order-1 lg:order-2 flex justify-center">
               <PhoneMockup screenshot={quotePreviewScreenshot} />
-            </div>
+            </AnimatedSection>
           </div>
 
           {/* Feature 4: Job Management */}
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            <div className="flex justify-center">
+            <AnimatedSection animation="fade-right" className="flex justify-center">
               <PhoneMockup screenshot={jobsListScreenshot} />
-            </div>
-            <div>
+            </AnimatedSection>
+            <AnimatedSection animation="fade-left" delay={100}>
               <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl mb-6">
                 <Users className="w-6 h-6 text-purple-600" />
               </div>
@@ -587,7 +648,7 @@ export default function LandingPage() {
                 <FeatureItem text="Photos & notes on every job" />
                 <FeatureItem text="Client communication history" />
               </ul>
-            </div>
+            </AnimatedSection>
           </div>
         </div>
       </section>
@@ -595,7 +656,7 @@ export default function LandingPage() {
       {/* How It Works */}
       <section id="how-it-works" className="py-20 lg:py-28 bg-gray-50 scroll-mt-20">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
-          <div className="text-center mb-16">
+          <AnimatedSection className="text-center mb-16">
             <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">How It Works</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Get up and running in minutes
@@ -603,27 +664,33 @@ export default function LandingPage() {
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               No complicated setup. No training needed. Just sign up and start managing your business.
             </p>
-          </div>
+          </AnimatedSection>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            <StepCard 
-              number={1}
-              icon={Smartphone}
-              title="Create your account"
-              description="Sign up in under 2 minutes. Available on iOS, Android, and web."
-            />
-            <StepCard 
-              number={2}
-              icon={Calendar}
-              title="Add your first job"
-              description="Enter client details, schedule the job, and start tracking your work."
-            />
-            <StepCard 
-              number={3}
-              icon={CreditCard}
-              title="Send quotes & get paid"
-              description="Create professional quotes, convert to invoices, and accept payments."
-            />
+            <AnimatedSection delay={0}>
+              <StepCard 
+                number={1}
+                icon={Smartphone}
+                title="Create your account"
+                description="Sign up in under 2 minutes. Available on iOS, Android, and web."
+              />
+            </AnimatedSection>
+            <AnimatedSection delay={150}>
+              <StepCard 
+                number={2}
+                icon={Calendar}
+                title="Add your first job"
+                description="Enter client details, schedule the job, and start tracking your work."
+              />
+            </AnimatedSection>
+            <AnimatedSection delay={300}>
+              <StepCard 
+                number={3}
+                icon={CreditCard}
+                title="Send quotes & get paid"
+                description="Create professional quotes, convert to invoices, and accept payments."
+              />
+            </AnimatedSection>
           </div>
         </div>
       </section>
@@ -631,7 +698,7 @@ export default function LandingPage() {
       {/* Pricing Section */}
       <section id="pricing" className="py-20 lg:py-28 scroll-mt-20">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
-          <div className="text-center mb-16">
+          <AnimatedSection className="text-center mb-16">
             <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Pricing</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Simple, transparent pricing
@@ -639,82 +706,88 @@ export default function LandingPage() {
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Start free, upgrade when you're ready. All prices in AUD including GST.
             </p>
-          </div>
+          </AnimatedSection>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Free Plan */}
-            <PricingCard
-              name="Free"
-              price="$0"
-              period="forever"
-              description="Perfect for trying out TradieTrack"
-              features={[
-                "5 jobs per month",
-                "5 invoices per month",
-                "10 quotes per month",
-                "Up to 10 clients",
-                "50MB photo storage",
-                "3 document templates"
-              ]}
-              buttonText="Get Started"
-              buttonVariant="outline"
-            />
+            <AnimatedSection delay={0}>
+              <PricingCard
+                name="Free"
+                price="$0"
+                period="forever"
+                description="Perfect for trying out TradieTrack"
+                features={[
+                  "5 jobs per month",
+                  "5 invoices per month",
+                  "10 quotes per month",
+                  "Up to 10 clients",
+                  "50MB photo storage",
+                  "3 document templates"
+                ]}
+                buttonText="Get Started"
+                buttonVariant="outline"
+              />
+            </AnimatedSection>
 
             {/* Pro Plan - Most Popular */}
-            <PricingCard
-              name="Pro"
-              price="$39"
-              period="/month"
-              description="Unlimited everything for solo tradies"
-              features={[
-                "Unlimited jobs",
-                "Unlimited quotes & invoices",
-                "Unlimited clients",
-                "Unlimited photo storage",
-                "All templates",
-                "Automatic reminders",
-                "AI Assistant",
-                "Custom branding",
-                "Recurring invoices",
-                "Priority support"
-              ]}
-              buttonText="Start 14-Day Trial"
-              buttonVariant="default"
-              popular={true}
-            />
+            <AnimatedSection delay={150}>
+              <PricingCard
+                name="Pro"
+                price="$39"
+                period="/month"
+                description="Unlimited everything for solo tradies"
+                features={[
+                  "Unlimited jobs",
+                  "Unlimited quotes & invoices",
+                  "Unlimited clients",
+                  "Unlimited photo storage",
+                  "All templates",
+                  "Automatic reminders",
+                  "AI Assistant",
+                  "Custom branding",
+                  "Recurring invoices",
+                  "Priority support"
+                ]}
+                buttonText="Start 14-Day Trial"
+                buttonVariant="default"
+                popular={true}
+              />
+            </AnimatedSection>
 
             {/* Team Plan */}
-            <PricingCard
-              name="Team"
-              price="$59"
-              period="/month + $29/seat"
-              description="Full power for growing businesses"
-              features={[
-                "Everything in Pro",
-                "Unlimited team members",
-                "Live team tracking",
-                "Team chat & messaging",
-                "Role-based access",
-                "Dispatch board",
-                "Geofence clock in/out",
-                "Job assignments",
-                "Advanced reporting"
-              ]}
-              buttonText="Contact Sales"
-              buttonVariant="outline"
-            />
+            <AnimatedSection delay={300}>
+              <PricingCard
+                name="Team"
+                price="$59"
+                period="/month + $29/seat"
+                description="Full power for growing businesses"
+                features={[
+                  "Everything in Pro",
+                  "Unlimited team members",
+                  "Live team tracking",
+                  "Team chat & messaging",
+                  "Role-based access",
+                  "Dispatch board",
+                  "Geofence clock in/out",
+                  "Job assignments",
+                  "Advanced reporting"
+                ]}
+                buttonText="Contact Sales"
+                buttonVariant="outline"
+              />
+            </AnimatedSection>
           </div>
 
-          <p className="text-center text-sm text-gray-500 mt-10">
-            All plans include a 14-day free trial of Pro features. No credit card required to start.
-          </p>
+          <AnimatedSection delay={400} className="text-center text-sm text-gray-500 mt-10">
+            <p>All plans include a 14-day free trial of Pro features. No credit card required to start.</p>
+          </AnimatedSection>
         </div>
       </section>
 
       {/* Download Section - Web & Mobile Apps */}
       <section id="download" className="scroll-mt-20 py-20 lg:py-28 bg-gray-50">
         <div className="max-w-5xl mx-auto px-5 lg:px-8">
-          <div className="text-center mb-14">
+          <AnimatedSection className="text-center mb-14">
             <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Get TradieTrack</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Use it anywhere — web or mobile
@@ -722,33 +795,36 @@ export default function LandingPage() {
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               TradieTrack works on any device. Use the web app on your computer or download the mobile app to manage your business on the go.
             </p>
-          </div>
+          </AnimatedSection>
           
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {/* Web App Card */}
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300">
-              <div className="flex items-center gap-4 mb-5">
-                <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Monitor className="w-7 h-7 text-blue-600" />
+            <AnimatedSection animation="fade-right">
+              <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 h-full">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <Monitor className="w-7 h-7 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900">Web App</h3>
+                    <p className="text-sm text-gray-500">Works in any browser</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">Web App</h3>
-                  <p className="text-sm text-gray-500">Works in any browser</p>
-                </div>
+                <p className="text-gray-600 mb-6">
+                  Access TradieTrack from your computer, laptop, or tablet. Perfect for office work, detailed quotes, and managing your business from your desk.
+                </p>
+                <Link href="/auth?mode=signup">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-12 rounded-lg" data-testid="download-web-app">
+                    <Globe className="w-5 h-5 mr-2" />
+                    Open Web App
+                  </Button>
+                </Link>
               </div>
-              <p className="text-gray-600 mb-6">
-                Access TradieTrack from your computer, laptop, or tablet. Perfect for office work, detailed quotes, and managing your business from your desk.
-              </p>
-              <Link href="/auth?mode=signup">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-12 rounded-lg" data-testid="download-web-app">
-                  <Globe className="w-5 h-5 mr-2" />
-                  Open Web App
-                </Button>
-              </Link>
-            </div>
+            </AnimatedSection>
 
             {/* Mobile App Card */}
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300">
+            <AnimatedSection animation="fade-left" delay={100}>
+              <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 h-full">
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center">
                   <Smartphone className="w-7 h-7 text-orange-600" />
@@ -791,18 +867,19 @@ export default function LandingPage() {
                   </div>
                 </a>
               </div>
-            </div>
+              </div>
+            </AnimatedSection>
           </div>
           
-          <p className="text-center text-sm text-gray-500 mt-8">
-            Your data syncs seamlessly between web and mobile — work from anywhere!
-          </p>
+          <AnimatedSection delay={200} className="text-center text-sm text-gray-500 mt-8">
+            <p>Your data syncs seamlessly between web and mobile — work from anywhere!</p>
+          </AnimatedSection>
         </div>
       </section>
 
       {/* Final CTA */}
       <section className="py-20 lg:py-28 bg-gradient-to-b from-blue-600 to-blue-700">
-        <div className="max-w-3xl mx-auto px-5 lg:px-8 text-center">
+        <AnimatedSection className="max-w-3xl mx-auto px-5 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white tracking-tight mb-6">
             Ready to simplify your business?
           </h2>
@@ -818,7 +895,7 @@ export default function LandingPage() {
           <p className="text-sm text-blue-200 mt-5">
             No credit card required. No commitment.
           </p>
-        </div>
+        </AnimatedSection>
       </section>
 
       {/* Footer */}
@@ -919,17 +996,79 @@ export default function LandingPage() {
           to { opacity: 1; transform: translateY(0); }
         }
         @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(30px); }
+          from { opacity: 0; transform: translateY(40px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fade-in-left {
+          from { opacity: 0; transform: translateX(-40px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fade-in-right {
+          from { opacity: 0; transform: translateX(40px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes scale-in {
+          from { opacity: 0; transform: scale(0.9); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
         }
         .animate-fade-in {
           animation: fade-in 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
           will-change: opacity, transform;
         }
         .animate-fade-in-up {
-          animation: fade-in-up 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.15s forwards;
+          animation: fade-in-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
           opacity: 0;
           will-change: opacity, transform;
+        }
+        /* Scroll-triggered animation classes */
+        .scroll-fade-up {
+          opacity: 0;
+          transform: translateY(40px);
+          transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .scroll-fade-up.visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        .scroll-fade-left {
+          opacity: 0;
+          transform: translateX(-40px);
+          transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .scroll-fade-left.visible {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        .scroll-fade-right {
+          opacity: 0;
+          transform: translateX(40px);
+          transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .scroll-fade-right.visible {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        .scroll-scale {
+          opacity: 0;
+          transform: scale(0.9);
+          transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .scroll-scale.visible {
+          opacity: 1;
+          transform: scale(1);
+        }
+        /* Staggered animations */
+        .stagger-1 { transition-delay: 0.1s; }
+        .stagger-2 { transition-delay: 0.2s; }
+        .stagger-3 { transition-delay: 0.3s; }
+        .stagger-4 { transition-delay: 0.4s; }
+        /* Float animation for hero */
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
         }
         html {
           scroll-behavior: smooth;
