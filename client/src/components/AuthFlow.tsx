@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,7 @@ const features = [
 ];
 
 export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowProps) {
+  const [, setLocation] = useLocation();
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [currentScreenshot, setCurrentScreenshot] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -185,6 +187,8 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
           description: `Signed in as ${result.user.firstName || result.user.username}`
         });
         onLoginSuccess();
+        // Navigate to dashboard
+        setLocation('/');
       } else {
         setError(result.error || 'Login failed');
       }
@@ -239,6 +243,8 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
           description: "Let's set up your business profile"
         });
         onLoginSuccess();
+        // Navigate to dashboard (will show onboarding if needed)
+        setLocation('/');
       } else {
         setError(result.error || 'Registration failed');
       }
