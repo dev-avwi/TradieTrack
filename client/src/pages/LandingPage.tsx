@@ -28,9 +28,8 @@ import scheduleScreenshot from "@assets/appstore_screenshots/04_schedule.png";
 import jobMapScreenshot from "@assets/appstore_screenshots/05_job_map.png";
 import quotePreviewScreenshot from "@assets/appstore_screenshots/07_quote_preview.png";
 
-// Custom app mockup images showing TradieTrack interface
-import mobileMockup from "@assets/generated_images/iphone_showing_tradie_app_dashboard.png";
-import webMockup from "@assets/generated_images/ipad_showing_web_dashboard_app.png";
+// iPad screenshots for web app view
+import ipadDashboard from "@assets/ipad_screenshots/01_dashboard_ipad.png";
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -412,7 +411,7 @@ export default function LandingPage() {
 
           {/* Mockup Display */}
           <div className="relative">
-            {/* Mobile App View */}
+            {/* Mobile App View - iPhone Device Frame */}
             <div 
               className={`transition-all duration-500 ease-out ${
                 mockupMode === 'mobile' 
@@ -420,33 +419,41 @@ export default function LandingPage() {
                   : 'opacity-0 translate-y-4 absolute inset-0 pointer-events-none'
               }`}
             >
-              <div className="relative max-w-4xl mx-auto">
-                <div className="relative rounded-3xl overflow-hidden shadow-2xl">
-                  <img 
-                    src={mobileMockup} 
-                    alt="TradieTrack mobile app showing job management dashboard" 
-                    className="w-full h-auto"
-                  />
+              <div className="relative max-w-sm mx-auto">
+                {/* iPhone Device Frame */}
+                <div className="relative bg-gray-900 rounded-[3rem] p-3 shadow-2xl">
+                  {/* Dynamic Island / Notch */}
+                  <div className="absolute top-6 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-10"></div>
+                  {/* Screen */}
+                  <div className="relative bg-white rounded-[2.5rem] overflow-hidden">
+                    <img 
+                      src={dashboardScreenshot} 
+                      alt="TradieTrack mobile app dashboard" 
+                      className="w-full h-auto"
+                    />
+                  </div>
+                  {/* Home Indicator */}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-gray-700 rounded-full"></div>
                 </div>
-                {/* Feature badges */}
-                <div className="absolute bottom-6 left-6 right-6 flex flex-wrap justify-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
-                    <Check className="w-3.5 h-3.5 text-green-600" />
-                    Works offline
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
-                    <Check className="w-3.5 h-3.5 text-green-600" />
-                    iOS & Android
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
-                    <Check className="w-3.5 h-3.5 text-green-600" />
-                    Instant sync
-                  </span>
-                </div>
+              </div>
+              {/* Feature badges */}
+              <div className="flex flex-wrap justify-center gap-2 mt-8">
+                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
+                  <Check className="w-4 h-4 text-green-600" />
+                  Works offline
+                </span>
+                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
+                  <Check className="w-4 h-4 text-green-600" />
+                  iOS & Android
+                </span>
+                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
+                  <Check className="w-4 h-4 text-green-600" />
+                  Instant sync
+                </span>
               </div>
             </div>
 
-            {/* Web App View */}
+            {/* Web App View - iPad Device Frame */}
             <div 
               className={`transition-all duration-500 ease-out ${
                 mockupMode === 'web' 
@@ -455,28 +462,34 @@ export default function LandingPage() {
               }`}
             >
               <div className="relative max-w-4xl mx-auto">
-                <div className="relative rounded-3xl overflow-hidden shadow-2xl">
-                  <img 
-                    src={webMockup} 
-                    alt="TradieTrack web dashboard showing analytics and team management" 
-                    className="w-full h-auto"
-                  />
+                {/* iPad Device Frame - Landscape */}
+                <div className="relative bg-gray-900 rounded-[2rem] p-3 shadow-2xl">
+                  {/* Front Camera */}
+                  <div className="absolute top-1/2 right-2 -translate-y-1/2 w-2.5 h-2.5 bg-gray-800 rounded-full border border-gray-700"></div>
+                  {/* Screen */}
+                  <div className="relative bg-white rounded-[1.5rem] overflow-hidden">
+                    <img 
+                      src={ipadDashboard} 
+                      alt="TradieTrack web dashboard on iPad" 
+                      className="w-full h-auto"
+                    />
+                  </div>
                 </div>
-                {/* Feature badges */}
-                <div className="absolute bottom-6 left-6 right-6 flex flex-wrap justify-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
-                    <Check className="w-3.5 h-3.5 text-green-600" />
-                    Full dashboard
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
-                    <Check className="w-3.5 h-3.5 text-green-600" />
-                    Team management
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-gray-800 shadow-lg">
-                    <Check className="w-3.5 h-3.5 text-green-600" />
-                    Advanced reports
-                  </span>
-                </div>
+              </div>
+              {/* Feature badges */}
+              <div className="flex flex-wrap justify-center gap-2 mt-8">
+                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
+                  <Check className="w-4 h-4 text-green-600" />
+                  Full dashboard
+                </span>
+                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
+                  <Check className="w-4 h-4 text-green-600" />
+                  Team management
+                </span>
+                <span className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-sm">
+                  <Check className="w-4 h-4 text-green-600" />
+                  Advanced reports
+                </span>
               </div>
             </div>
           </div>
