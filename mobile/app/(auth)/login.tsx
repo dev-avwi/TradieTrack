@@ -317,28 +317,26 @@ export default function LoginScreen() {
                 />
               </View>
 
-              <View style={styles.messageContainer}>
-                {error ? (
-                  <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{error}</Text>
-                    {isVerificationError && (
-                      <TouchableOpacity
-                        style={styles.resendButton}
-                        onPress={handleResendVerification}
-                        disabled={resendingVerification || verificationSent}
-                      >
-                        {resendingVerification ? (
-                          <ActivityIndicator size="small" color={colors.primary} />
-                        ) : (
-                          <Text style={styles.resendButtonText}>
-                            {verificationSent ? 'Email Sent!' : 'Resend Verification'}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                ) : null}
-              </View>
+              {error ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{error}</Text>
+                  {isVerificationError && (
+                    <TouchableOpacity
+                      style={styles.resendButton}
+                      onPress={handleResendVerification}
+                      disabled={resendingVerification || verificationSent}
+                    >
+                      {resendingVerification ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Text style={styles.resendButtonText}>
+                          {verificationSent ? 'Email Sent!' : 'Resend Verification'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : null}
 
               <TouchableOpacity
                 style={{
@@ -522,12 +520,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     fontSize: 16,
   },
-  messageContainer: {
-    minHeight: 52,
-    marginBottom: 16,
-  },
   errorContainer: {
     padding: 12,
+    marginBottom: 16,
     backgroundColor: colors.destructiveLight,
     borderRadius: 10,
     borderLeftWidth: 4,
