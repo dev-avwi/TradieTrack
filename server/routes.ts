@@ -359,6 +359,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PUBLIC ROUTES (no authentication required)
   // ============================================
 
+  // Public health check endpoint for deployment monitoring and Apple review
+  app.get("/api/health", (req: any, res) => {
+    res.json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      version: "1.0.0",
+      service: "tradietrack-api"
+    });
+  });
+
   // Short URL redirect for quotes: /q/:token -> /public/quote/:token
   app.get("/q/:token", (req: any, res) => {
     res.redirect(301, `/public/quote/${req.params.token}`);
