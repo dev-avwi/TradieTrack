@@ -211,12 +211,12 @@ export default function NotificationsInboxScreen() {
   }, []);
 
   const activeNotifications = useMemo(() => 
-    notifications.filter(n => !n.isDismissed).slice(0, 50),
+    notifications.filter(n => !n.dismissed).slice(0, 50),
     [notifications]
   );
 
   const handleNotificationPress = useCallback((notification: any) => {
-    if (!notification.isRead) {
+    if (!notification.read) {
       markAsRead(notification.id);
     }
     
@@ -299,7 +299,7 @@ export default function NotificationsInboxScreen() {
                   key={notification.id}
                   style={[
                     styles.notificationCard,
-                    !notification.isRead && styles.notificationUnread
+                    !notification.read && styles.notificationUnread
                   ]}
                   onPress={() => handleNotificationPress(notification)}
                   data-testid={`notification-item-${notification.id}`}

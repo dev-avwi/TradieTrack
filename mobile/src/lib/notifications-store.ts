@@ -12,8 +12,8 @@ interface Notification {
   actionUrl?: string;
   actionLabel?: string;
   metadata?: Record<string, any>;
-  isRead: boolean;
-  isDismissed: boolean;
+  read: boolean;
+  dismissed: boolean;
   createdAt: string;
 }
 
@@ -48,7 +48,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     try {
       const response = await apiClient.get('/api/notifications');
       const notifications = response.data as Notification[];
-      const unreadCount = notifications.filter(n => !n.isRead && !n.isDismissed).length;
+      const unreadCount = notifications.filter(n => !n.read && !n.dismissed).length;
       set({ 
         notifications, 
         unreadCount,
@@ -68,9 +68,9 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     try {
       await apiClient.patch(`/api/notifications/${id}/read`);
       const notifications = get().notifications.map(n => 
-        n.id === id ? { ...n, isRead: true } : n
+        n.id === id ? { ...n, read: true } : n
       );
-      const unreadCount = notifications.filter(n => !n.isRead && !n.isDismissed).length;
+      const unreadCount = notifications.filter(n => !n.read && !n.dismissed).length;
       set({ notifications, unreadCount });
       get().updateBadgeCount();
     } catch (error: any) {
@@ -82,17 +82,17 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     try {
       // Use batch endpoint to mark all as read in one request
       await apiClient.post('/api/notifications/mark-all-read');
-      const notifications = get().notifications.map(n => ({ ...n, isRead: true }));
+      const notifications = get().notifications.map(n => ({ ...n, read: true }));
       set({ notifications, unreadCount: 0 });
       get().updateBadgeCount();
     } catch (error: any) {
       // Fallback to individual requests if batch endpoint not available
       console.error('Failed to mark all notifications as read:', error);
-      const unreadNotifications = get().notifications.filter(n => !n.isRead && !n.isDismissed);
+      const unreadNotifications = get().notifications.filter(n => !n.read && !n.dismissed);
       await Promise.allSettled(
         unreadNotifications.map(n => apiClient.patch(`/api/notifications/${n.id}/read`))
       );
-      const notifications = get().notifications.map(n => ({ ...n, isRead: true }));
+      const notifications = get().notifications.map(n => ({ ...n, read: true }));
       set({ notifications, unreadCount: 0 });
       get().updateBadgeCount();
     }
@@ -102,9 +102,9 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     try {
       await apiClient.patch(`/api/notifications/${id}/dismiss`);
       const notifications = get().notifications.map(n => 
-        n.id === id ? { ...n, isDismissed: true } : n
+        n.id === id ? { ...n, dismissed: true } : n
       );
-      const unreadCount = notifications.filter(n => !n.isRead && !n.isDismissed).length;
+      const unreadCount = notifications.filter(n => !n.read && !n.dismissed).length;
       set({ notifications, unreadCount });
       get().updateBadgeCount();
     } catch (error: any) {

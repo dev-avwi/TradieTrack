@@ -6212,13 +6212,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { jobTitle: job.title, clientName: client?.name, status: job.status }
       );
       
-      // Auto-sync to Google Calendar if connected and job is scheduled
+      // Auto-sync to Google Calendar if user is connected and job is scheduled
       if (job.scheduledAt) {
         try {
           const { syncJobToCalendar, isGoogleCalendarConnected } = await import('./googleCalendarClient');
-          const connected = await isGoogleCalendarConnected();
+          const connected = await isGoogleCalendarConnected(effectiveUserId);
           if (connected) {
-            const result = await syncJobToCalendar({
+            const result = await syncJobToCalendar(effectiveUserId, {
               id: job.id,
               title: job.title,
               description: job.description,
@@ -6234,7 +6234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             // Update job with calendar event ID
             await storage.updateJob(job.id, effectiveUserId, { calendarEventId: result.eventId });
-            console.log(`[GoogleCalendar] Auto-synced new job ${job.id} to calendar`);
+            console.log(`[GoogleCalendar] Auto-synced new job ${job.id} to calendar for user ${effectiveUserId}`);
           }
         } catch (calendarError) {
           console.error('[GoogleCalendar] Auto-sync failed for new job:', calendarError);
@@ -6369,15 +6369,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Auto-sync to Google Calendar if connected and job has schedule changes
+      // Auto-sync to Google Calendar if user is connected and job has schedule changes
       const scheduleChanged = data.scheduledAt || data.title || data.address || data.description || data.notes || data.status;
       if (scheduleChanged && job.scheduledAt) {
         try {
           const { syncJobToCalendar, isGoogleCalendarConnected } = await import('./googleCalendarClient');
-          const connected = await isGoogleCalendarConnected();
+          const connected = await isGoogleCalendarConnected(effectiveUserId);
           if (connected) {
             const client = job.clientId ? await storage.getClient(job.clientId, effectiveUserId) : null;
-            const result = await syncJobToCalendar({
+            const result = await syncJobToCalendar(effectiveUserId, {
               id: job.id,
               title: job.title,
               description: job.description,
@@ -6395,7 +6395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (result.eventId !== job.calendarEventId) {
               await storage.updateJob(job.id, effectiveUserId, { calendarEventId: result.eventId });
             }
-            console.log(`[GoogleCalendar] Auto-synced updated job ${job.id} to calendar`);
+            console.log(`[GoogleCalendar] Auto-synced updated job ${job.id} to calendar for user ${effectiveUserId}`);
           }
         } catch (calendarError) {
           console.error('[GoogleCalendar] Auto-sync failed for job update:', calendarError);
