@@ -6057,6 +6057,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get activity history for a specific job
+  // Returns all activity logs related to this job (job events + linked quote/invoice events)
+  app.get("/api/jobs/:id/activity", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const jobId = req.params.id;
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+      
+      // Verify job exists and user has access
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      // Get all activity logs for this user, then filter for job-related ones
+      const allActivityLogs = await storage.getActivityLogs(effectiveUserId, 100);
+      
+      // Filter for activities related to this job
+      const jobActivities = allActivityLogs.filter((log: any) => {
+        // Direct job activities
+        if (log.entityType === 'job' && log.entityId === jobId) {
+          return true;
+        }
+        // Activities with jobId in metadata (quote/invoice linked to this job)
+        if (log.metadata && (log.metadata as any).jobId === jobId) {
+          return true;
+        }
+        return false;
+      }).slice(0, limit);
+      
+      // Map to activity items with proper structure
+      const activities = jobActivities.map((log: any) => ({
+        id: log.id,
+        type: log.type,
+        title: log.title,
+        description: log.description || '',
+        timestamp: log.createdAt,
+        status: log.metadata?.status || 'success',
+        entityType: log.entityType,
+        entityId: log.entityId,
+        metadata: log.metadata,
+      }));
+      
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching job activity:", error);
+      res.status(500).json({ error: "Failed to fetch job activity" });
+    }
+  });
+
   app.post("/api/jobs", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       // Use effectiveUserId (business owner's ID) for multi-tenant data scoping

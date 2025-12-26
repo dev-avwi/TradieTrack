@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2 } from "lucide-react";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
 import { getJobUrgency, getInProgressDuration } from "@/lib/jobUrgency";
@@ -50,6 +50,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { formatHistoryDate } from "@shared/dateUtils";
 import { useAppMode } from "@/hooks/use-app-mode";
 
 interface Photo {
@@ -272,6 +273,67 @@ export default function JobDetailView({
   const { data: signatures = [] } = useQuery<{ id: string }[]>({
     queryKey: ['/api/jobs', jobId, 'signatures'],
     enabled: !!jobId,
+  });
+
+  // Activity feed types and styling
+  interface JobActivityItem {
+    id: string;
+    type: string;
+    title: string;
+    description: string;
+    timestamp: string;
+    status: 'success' | 'pending' | 'failed';
+    entityType?: 'job' | 'quote' | 'invoice' | null;
+    entityId?: string | null;
+    metadata?: Record<string, any>;
+  }
+
+  const activityIcons: Record<string, typeof Mail> = {
+    email_sent: Mail,
+    sms_sent: MessageSquare,
+    payment_received: CreditCard,
+    quote_sent: FileText,
+    invoice_sent: Send,
+    reminder_sent: Bell,
+    quote_accepted: CheckCircle2,
+    job_scheduled: Clock,
+    job_started: Clock,
+    job_completed: CheckCircle2,
+    job_created: Briefcase,
+    job_status_changed: Briefcase,
+    quote_created: Plus,
+    invoice_created: Plus,
+    invoice_paid: CreditCard,
+  };
+
+  const activityColors: Record<string, { bg: string; icon: string }> = {
+    email_sent: { bg: 'hsl(210 80% 52% / 0.1)', icon: 'hsl(210 80% 52%)' },
+    sms_sent: { bg: 'hsl(280 65% 60% / 0.1)', icon: 'hsl(280 65% 60%)' },
+    payment_received: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
+    quote_sent: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
+    invoice_sent: { bg: 'hsl(5 85% 55% / 0.1)', icon: 'hsl(5 85% 55%)' },
+    reminder_sent: { bg: 'hsl(25 90% 55% / 0.1)', icon: 'hsl(25 90% 55%)' },
+    quote_accepted: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
+    job_scheduled: { bg: 'hsl(210 80% 52% / 0.1)', icon: 'hsl(210 80% 52%)' },
+    job_started: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
+    job_completed: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
+    job_created: { bg: 'hsl(210 80% 52% / 0.1)', icon: 'hsl(210 80% 52%)' },
+    job_status_changed: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
+    quote_created: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
+    invoice_created: { bg: 'hsl(5 85% 55% / 0.1)', icon: 'hsl(5 85% 55%)' },
+    invoice_paid: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
+  };
+
+  // Fetch job-specific activity history
+  const { data: jobActivities = [], isLoading: activitiesLoading } = useQuery<JobActivityItem[]>({
+    queryKey: ['/api/jobs', jobId, 'activity'],
+    queryFn: async () => {
+      const res = await fetch(`/api/jobs/${jobId}/activity?limit=10`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!currentUser && !!jobId,
+    staleTime: 30000,
   });
 
   // Fetch active timer to check if timer is running for this job
@@ -505,6 +567,25 @@ export default function JobDetailView({
     setShowDeleteConfirm(false);
     deleteJobMutation.mutate();
   };
+
+  // On My Way mutation - sends SMS to client
+  const onMyWayMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/jobs/${jobId}/on-my-way`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "On My Way notification sent to client",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send notification",
+        variant: "destructive",
+      });
+    },
+  });
 
   const isLoading = jobLoading || clientLoading;
 
@@ -805,6 +886,45 @@ export default function JobDetailView({
               >
                 <Play className="h-4 w-4 mr-2" />
                 {startTimerMutation.isPending ? 'Starting...' : 'Start Timer'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* On My Way Quick Action - only for scheduled/in_progress jobs with a client */}
+        {(job.status === 'scheduled' || job.status === 'in_progress') && job.clientId && (
+          <div 
+            className="rounded-xl p-4 border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30"
+            data-testid="banner-on-my-way"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-blue-200 dark:bg-blue-800">
+                  <Navigation className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-blue-700 dark:text-blue-300">Heading to the job?</p>
+                  <p className="text-sm text-muted-foreground">Let the client know you're on your way</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => onMyWayMutation.mutate()}
+                disabled={onMyWayMutation.isPending}
+                className="shrink-0"
+                variant="outline"
+                data-testid="button-on-my-way"
+              >
+                {onMyWayMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Navigation className="h-4 w-4 mr-2" />
+                    On My Way
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -1182,6 +1302,80 @@ export default function JobDetailView({
             />
           </div>
         )}
+
+        {/* Job Activity Feed - shows history of events for this job */}
+        <Card data-testid="job-activity-feed">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Activity History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activitiesLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : jobActivities.length === 0 ? (
+              <div className="text-center py-6">
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+                  style={{ backgroundColor: 'hsl(var(--muted) / 0.5)' }}
+                >
+                  <History className="h-6 w-6 text-muted-foreground/40" />
+                </div>
+                <p className="text-sm text-muted-foreground mb-1">No activity yet</p>
+                <p className="text-xs text-muted-foreground/70">
+                  Status changes, emails sent, and other events will appear here
+                </p>
+              </div>
+            ) : (
+              <div className="relative">
+                {jobActivities.length > 1 && (
+                  <div className="absolute left-[14px] top-6 bottom-4 w-px bg-gradient-to-b from-border to-transparent" />
+                )}
+                <div className="space-y-1">
+                  {jobActivities.map((activity, index) => {
+                    const Icon = activityIcons[activity.type] || Briefcase;
+                    const colors = activityColors[activity.type] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
+                    
+                    return (
+                      <div 
+                        key={activity.id}
+                        className="relative flex items-start gap-3 p-2 rounded-lg"
+                        data-testid={`activity-item-${activity.id}`}
+                      >
+                        <div className="relative z-10">
+                          <div 
+                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: colors.bg }}
+                          >
+                            <Icon className="h-3.5 w-3.5" style={{ color: colors.icon }} />
+                          </div>
+                          {activity.status === 'success' && (
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
+                              <CheckCircle2 className="h-1.5 w-1.5 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <p className="text-sm font-medium truncate">{activity.title}</p>
+                          {activity.description && (
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">{activity.description}</p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground/70 mt-1">
+                            {formatHistoryDate(activity.timestamp)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Action Buttons - follows 5-stage workflow: pending → scheduled → in_progress → done → invoiced */}
         <div className="flex flex-col gap-2 pt-2">
