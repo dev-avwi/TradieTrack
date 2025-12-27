@@ -674,8 +674,8 @@ export default function TemplatesHub() {
         setEditDialogOpen(open);
         if (!open) resetForm();
       }}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>
               {isCreating ? "Create Template" : "Edit Template"}
             </DialogTitle>
@@ -686,7 +686,7 @@ export default function TemplatesHub() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 flex-1 overflow-y-auto min-h-0">
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Template Name</Label>
@@ -780,7 +780,7 @@ export default function TemplatesHub() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 border-t pt-4 mt-4">
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
             </Button>
