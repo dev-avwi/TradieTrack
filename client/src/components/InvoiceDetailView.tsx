@@ -187,6 +187,44 @@ export default function InvoiceDetailView({
     }
   };
 
+  const handleEmailPaymentLink = () => {
+    if (!invoice || !client || !businessSettings) return;
+    
+    const paymentUrl = `${window.location.origin}/pay/${invoice.paymentToken}`;
+    const businessName = businessSettings.businessName || 'Your Tradie';
+    const invoiceNumber = invoice.number || invoice.id?.substring(0, 8).toUpperCase();
+    const formattedTotal = new Intl.NumberFormat('en-AU', { 
+      style: 'currency', 
+      currency: 'AUD' 
+    }).format(parseFloat(invoice.total || '0'));
+    
+    const subject = encodeURIComponent(`Payment Link for Invoice #${invoiceNumber} from ${businessName}`);
+    const body = encodeURIComponent(
+`G'day ${client.name},
+
+Here's a quick link to pay your invoice online. It only takes a minute!
+
+Invoice #${invoiceNumber}
+Amount: ${formattedTotal}
+
+Pay Online: ${paymentUrl}
+
+Secure payment powered by Stripe.
+
+Cheers,
+${businessName}
+${businessSettings.phone ? `Phone: ${businessSettings.phone}` : ''}
+${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
+    );
+    
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(client.email)}&su=${subject}&body=${body}`, '_blank');
+    
+    toast({
+      title: "Gmail opened",
+      description: "Review the email and click Send in Gmail",
+    });
+  };
+
   const handlePrint = () => {
     setIsPrinting(true);
     setTimeout(() => {
@@ -589,15 +627,11 @@ export default function InvoiceDetailView({
                       </p>
                       <Button
                         size="sm"
-                        onClick={() => sendPaymentLinkMutation.mutate()}
-                        disabled={sendPaymentLinkMutation.isPending}
+                        onClick={handleEmailPaymentLink}
+                        disabled={!client?.email}
                         data-testid="button-send-payment-link"
                       >
-                        {sendPaymentLinkMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <Send className="h-4 w-4 mr-2" />
-                        )}
+                        <Mail className="h-4 w-4 mr-2" />
                         Email to Customer
                       </Button>
                     </div>

@@ -806,6 +806,9 @@ export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => 
   const { to, subject, text, html, replyTo } = options;
   const sendGridEnabled = initializeSendGrid();
   
+  // Generate plain text from HTML if not provided
+  const plainText = text || (html ? html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : 'Please view this email in an HTML-capable email client.');
+  
   const emailData = {
     to,
     from: {
@@ -813,8 +816,8 @@ export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => 
       name: PLATFORM_FROM_NAME
     },
     subject,
-    text: text || '',
-    html: html || text || '',
+    text: plainText,
+    html: html || text || plainText,
     replyTo: replyTo || undefined
   };
 
