@@ -367,7 +367,161 @@ export default function TemplatesHub() {
         {Object.entries(CATEGORIES).map(([categoryKey, category]) => (
           <TabsContent key={categoryKey} value={categoryKey} className="space-y-4">
             {categoryKey === "jobs_safety" ? (
-              <CustomFormsPage />
+              <>
+                {/* Default Templates Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Default Templates</h3>
+                  {category.families.map((family) => {
+                    const config = FAMILY_CONFIG[family];
+                    const meta = getFamilyMeta(family);
+                    const familyTemplates = getFamilyTemplates(family);
+                    const Icon = config.icon;
+                    const isExpanded = expandedFamily === family;
+
+                    return (
+                      <Card key={family} className="hover-elevate" data-testid={`card-family-${family}`}>
+                        <CardHeader
+                          className="cursor-pointer"
+                          onClick={() => setExpandedFamily(isExpanded ? null : family)}
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                                style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}
+                              >
+                                <Icon className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                              </div>
+                              <div>
+                                <CardTitle className="text-lg">{config.name}</CardTitle>
+                                <CardDescription>{config.description}</CardDescription>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Badge variant="secondary" data-testid={`badge-count-${family}`}>
+                                {meta?.count || 0} template{(meta?.count || 0) !== 1 ? "s" : ""}
+                              </Badge>
+                              {meta?.activeTemplateName && (
+                                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Active
+                                </Badge>
+                              )}
+                              {isExpanded ? (
+                                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+
+                        {isExpanded && (
+                          <CardContent className="pt-0">
+                            <div className="border-t pt-4 space-y-3">
+                              <div className="flex justify-between items-center mb-4">
+                                <p className="text-sm text-muted-foreground">
+                                  {familyTemplates.length === 0
+                                    ? "No templates yet"
+                                    : `${familyTemplates.length} template${familyTemplates.length !== 1 ? "s" : ""}`}
+                                </p>
+                                <Button
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openCreateDialog(family);
+                                  }}
+                                  data-testid={`button-create-${family}`}
+                                >
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Create New
+                                </Button>
+                              </div>
+
+                              {familyTemplates.map((template) => (
+                                <div
+                                  key={template.id}
+                                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                                  data-testid={`template-item-${template.id}`}
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium truncate">{template.name}</p>
+                                      {template.isActive && (
+                                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0" size="sm">
+                                          Active
+                                        </Badge>
+                                      )}
+                                      {template.isDefault && (
+                                        <Badge variant="outline" size="sm">
+                                          System Default
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {template.description && (
+                                      <p className="text-sm text-muted-foreground truncate">
+                                        {template.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 ml-3">
+                                    {!template.isActive && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          activateMutation.mutate(template.id);
+                                        }}
+                                        disabled={activateMutation.isPending}
+                                        data-testid={`button-activate-${template.id}`}
+                                      >
+                                        Set Active
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openEditDialog(template);
+                                      }}
+                                      data-testid={`button-edit-${template.id}`}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    {!template.isDefault && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedTemplate(template);
+                                          setDeleteDialogOpen(true);
+                                        }}
+                                        className="text-destructive hover:text-destructive"
+                                        data-testid={`button-delete-${template.id}`}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Forms Builder Section */}
+                <div className="border-t pt-6 mt-6">
+                  <h3 className="text-lg font-semibold mb-4">Custom Forms Builder</h3>
+                  <CustomFormsPage />
+                </div>
+              </>
             ) : (
               category.families.map((family) => {
                 const config = FAMILY_CONFIG[family];
