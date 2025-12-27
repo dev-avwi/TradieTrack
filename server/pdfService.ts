@@ -876,25 +876,22 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
     ` : ''}
     
     ${quote.status === 'accepted' && quote.acceptedBy ? `
-      <div class="quote-acceptance-block">
-        <div class="notes-section" style="background: #dcfce7; border-left-color: #22c55e; margin-bottom: 0; padding-bottom: 12px;">
-          <div class="notes-title" style="color: #166534;">Quote Accepted</div>
-          <div class="notes-content" style="color: #166534;">
-Accepted by: ${quote.acceptedBy}
-Date: ${formatDate(quote.acceptedAt)}
-${(quote as any).acceptanceIp ? `IP Address: ${(quote as any).acceptanceIp}` : ''}
+      <div class="quote-acceptance-block" style="page-break-inside: avoid; display: block; margin-top: 20px; border: 1px solid #22c55e; border-radius: 8px; overflow: hidden;">
+        <div style="background: #dcfce7; padding: 12px 16px;">
+          <div style="font-weight: 600; color: #166534; font-size: 12px; margin-bottom: 6px;">Quote Accepted</div>
+          <div style="font-size: 10px; color: #166534; line-height: 1.5;">
+            Accepted by: ${quote.acceptedBy}<br/>
+            Date: ${formatDate(quote.acceptedAt)}${(quote as any).acceptanceIp ? `<br/>IP Address: ${(quote as any).acceptanceIp}` : ''}
           </div>
         </div>
         ${data.signature?.signatureData ? `
-          <div style="padding: 16px; border: 1px solid #22c55e; border-top: none; border-radius: 0 0 8px 8px; background: #f0fdf4;">
-            <div style="display: flex; align-items: center; gap: 16px;">
-              <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px;">
-                <img src="${data.signature.signatureData.startsWith('data:') ? data.signature.signatureData : 'data:image/png;base64,' + data.signature.signatureData}" alt="${data.signature.signerName || 'Client'} signature" style="max-height: 40px; max-width: 120px; width: auto;" />
-              </div>
-              <div>
-                <div style="font-size: 11px; font-weight: 500; color: #166534;">${data.signature.signerName || quote.acceptedBy || 'Client'}</div>
-                <div style="font-size: 9px; color: #6b7280;">Signed ${formatDate(data.signature.signedAt || quote.acceptedAt)}</div>
-              </div>
+          <div style="background: #f0fdf4; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
+            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px; display: inline-block;">
+              <img src="${data.signature.signatureData.startsWith('data:') ? data.signature.signatureData : 'data:image/png;base64,' + data.signature.signatureData}" alt="${data.signature.signerName || 'Client'} signature" style="max-height: 36px; max-width: 100px; width: auto; display: block;" />
+            </div>
+            <div style="display: inline-block;">
+              <div style="font-size: 10px; font-weight: 500; color: #166534;">${data.signature.signerName || quote.acceptedBy || 'Client'}</div>
+              <div style="font-size: 9px; color: #6b7280;">Signed ${formatDate(data.signature.signedAt || quote.acceptedAt)}</div>
             </div>
           </div>
         ` : ''}
