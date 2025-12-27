@@ -966,9 +966,7 @@ export default function JobDetailView({
             jobStatus={job.status}
             onViewQuote={(id) => navigate(`/quotes/${id}`)}
             onViewInvoice={(id) => navigate(`/invoices/${id}`)}
-            onViewReceipt={(id) => {
-              window.open(`/api/receipts/${id}/pdf`, '_blank');
-            }}
+            onViewReceipt={(id) => navigate(`/receipts/${id}`)}
             onCreateQuote={() => onCreateQuote?.(jobId)}
             onCreateInvoice={() => onCreateInvoice?.(jobId)}
           />

@@ -32,6 +32,7 @@ import LiveQuoteEditor from "@/components/LiveQuoteEditor";
 import LiveInvoiceEditor from "@/components/LiveInvoiceEditor";
 import ClientForm from "@/components/ClientForm";
 import InvoiceDetailView from "@/components/InvoiceDetailView";
+import ReceiptDetailView from "@/components/ReceiptDetailView";
 import ClientDetailView from "@/components/ClientDetailView";
 import JobDetailView from "@/components/JobDetailView";
 import JobCompletion from "@/components/JobCompletion";
@@ -382,6 +383,10 @@ function Router({
       
       <Route path="/invoices/:id" component={({ params }: { params: { id: string } }) => (
         <InvoiceDetailView invoiceId={params.id} />
+      )} />
+      
+      <Route path="/receipts/:id" component={({ params }: { params: { id: string } }) => (
+        <ReceiptDetailView receiptId={params.id} onBack={() => window.history.back()} />
       )} />
       
       <Route path="/schedule" component={() => (

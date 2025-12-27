@@ -2302,21 +2302,21 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     .document {
       max-width: 600px;
       margin: 0 auto;
-      padding: 40px;
+      padding: 24px 32px;
       position: relative;
     }
     
     .paid-watermark {
       position: absolute;
-      top: 120px;
-      right: 40px;
-      padding: 10px 24px;
-      border: 4px solid #22c55e;
+      top: 90px;
+      right: 32px;
+      padding: 8px 20px;
+      border: 3px solid #22c55e;
       color: #22c55e;
-      font-size: 24px;
+      font-size: 20px;
       font-weight: ${template.headingWeight};
       text-transform: uppercase;
-      transform: rotate(-15deg);
+      transform: rotate(-5deg);
       opacity: 0.85;
       letter-spacing: 2px;
     }
@@ -2325,8 +2325,8 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 40px;
-      padding-bottom: 20px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
       border-bottom: 1px solid #e5e7eb;
     }
     
@@ -2386,8 +2386,8 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     .info-section {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 30px;
-      gap: 30px;
+      margin-bottom: 20px;
+      gap: 24px;
     }
     
     .info-block {
@@ -2413,18 +2413,18 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     }
     
     .payment-summary {
-      margin: 30px 0;
-      padding: 24px;
+      margin: 16px 0;
+      padding: 16px 20px;
       background: linear-gradient(135deg, #dcfce720, #bbf7d010);
       border: 2px solid #22c55e;
-      border-radius: 12px;
+      border-radius: 10px;
     }
     
     .payment-summary-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
     
     .payment-summary-title {
@@ -2482,27 +2482,28 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     }
     
     .details-section {
-      margin: 24px 0;
+      margin: 16px 0;
     }
     
     .details-title {
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: #888;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       font-weight: 600;
     }
     
     .details-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 12px;
     }
     
     .detail-item {
-      padding: 12px;
-      background: #f9fafb;
+      padding: 10px 12px;
+      background: transparent;
+      border: 1px solid #e5e7eb;
       border-radius: 6px;
     }
     
@@ -2521,10 +2522,12 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     }
     
     .linked-info {
-      margin: 24px 0;
-      padding: 16px;
-      background: #f9fafb;
-      border-radius: 8px;
+      margin: 12px 0;
+      padding: 12px 16px;
+      background: transparent;
+      border-radius: 6px;
+      border-left: 3px solid ${accentColor};
+      border: 1px solid #e5e7eb;
       border-left: 3px solid ${accentColor};
     }
     
@@ -2549,40 +2552,40 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     
     .thank-you {
       text-align: center;
-      margin: 40px 0;
-      padding: 24px;
+      margin: 20px 0 16px 0;
+      padding: 16px;
       background: linear-gradient(135deg, ${accentColor}08, ${accentColor}03);
-      border-radius: 12px;
+      border-radius: 10px;
     }
     
     .thank-you-text {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: ${template.headingWeight};
       color: ${accentColor};
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
     
     .thank-you-subtext {
-      font-size: 11px;
+      font-size: 10px;
       color: #666;
     }
     
     .footer {
-      margin-top: 40px;
-      padding-top: 20px;
+      margin-top: 20px;
+      padding-top: 12px;
       border-top: 1px solid #e5e7eb;
       text-align: center;
-      font-size: 9px;
+      font-size: 8px;
       color: #888;
     }
     
     .footer p {
-      margin: 4px 0;
+      margin: 2px 0;
     }
     
     .footer-contact {
-      margin-top: 8px;
-      padding-top: 8px;
+      margin-top: 6px;
+      padding-top: 6px;
       border-top: 1px dashed #e5e7eb;
     }
     
