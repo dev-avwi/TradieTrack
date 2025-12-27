@@ -1801,17 +1801,76 @@ export default function Settings({
                   <Badge variant="outline" className="text-xs">Included</Badge>
                 </div>
                 
-                <div className="flex items-center justify-between p-3 rounded-lg border">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                      <Mail className="h-4 w-4 text-white" />
+                <div className="p-3 rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                        <Mail className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Email Delivery</p>
+                        <p className="text-xs text-muted-foreground">Professional email for quotes & invoices</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">Email Delivery</p>
-                      <p className="text-xs text-muted-foreground">Professional email for quotes & invoices</p>
+                    <Badge variant="outline" className="text-xs">Included</Badge>
+                  </div>
+                  
+                  {/* Email Sending Mode - placed with email delivery where it logically belongs */}
+                  <div className="mt-4 pt-4 border-t space-y-3">
+                    <p className="text-sm font-medium">When you email a quote or invoice:</p>
+                    <div 
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        businessData.emailSendingMode === 'manual' 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-muted hover-elevate'
+                      }`}
+                      onClick={() => {
+                        setBusinessData(prev => ({ ...prev, emailSendingMode: 'manual' }));
+                        handleBusinessSave({ emailSendingMode: 'manual' });
+                      }}
+                      data-testid="option-email-manual"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                          businessData.emailSendingMode === 'manual' ? 'border-primary' : 'border-muted-foreground'
+                        }`}>
+                          {businessData.emailSendingMode === 'manual' && (
+                            <div className="h-2 w-2 rounded-full bg-primary" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Review in Gmail first</p>
+                          <p className="text-xs text-muted-foreground">Opens Gmail so you can check and personalise before sending</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div 
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        businessData.emailSendingMode === 'automatic' 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-muted hover-elevate'
+                      }`}
+                      onClick={() => {
+                        setBusinessData(prev => ({ ...prev, emailSendingMode: 'automatic' }));
+                        handleBusinessSave({ emailSendingMode: 'automatic' });
+                      }}
+                      data-testid="option-email-automatic"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                          businessData.emailSendingMode === 'automatic' ? 'border-primary' : 'border-muted-foreground'
+                        }`}>
+                          {businessData.emailSendingMode === 'automatic' && (
+                            <div className="h-2 w-2 rounded-full bg-primary" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Send instantly</p>
+                          <p className="text-xs text-muted-foreground">Emails go out immediately - faster for busy tradies</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-xs">Included</Badge>
                 </div>
                 
                 <div className="flex items-center justify-between p-3 rounded-lg border">
@@ -1852,82 +1911,12 @@ export default function Settings({
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
-          {/* Email Sending Preference */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Email Sending Mode
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              <CardTitle>Notifications You Receive</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Choose how emails are sent when you click "Email Quote", "Email Invoice", or send payment links.
+                Control which email notifications TradieTrack sends to you
               </p>
-              <div className="space-y-3">
-                <div 
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    businessData.emailSendingMode === 'manual' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-muted hover-elevate'
-                  }`}
-                  onClick={() => {
-                    setBusinessData(prev => ({ ...prev, emailSendingMode: 'manual' }));
-                    handleBusinessSave({ emailSendingMode: 'manual' });
-                  }}
-                  data-testid="option-email-manual"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                      businessData.emailSendingMode === 'manual' ? 'border-primary' : 'border-muted-foreground'
-                    }`}>
-                      {businessData.emailSendingMode === 'manual' && (
-                        <div className="h-2 w-2 rounded-full bg-primary" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium">Review before sending</p>
-                      <p className="text-sm text-muted-foreground">
-                        Opens Gmail so you can review and edit the email before sending. Great for personalised messages.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div 
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    businessData.emailSendingMode === 'automatic' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-muted hover-elevate'
-                  }`}
-                  onClick={() => {
-                    setBusinessData(prev => ({ ...prev, emailSendingMode: 'automatic' }));
-                    handleBusinessSave({ emailSendingMode: 'automatic' });
-                  }}
-                  data-testid="option-email-automatic"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                      businessData.emailSendingMode === 'automatic' ? 'border-primary' : 'border-muted-foreground'
-                    }`}>
-                      {businessData.emailSendingMode === 'automatic' && (
-                        <div className="h-2 w-2 rounded-full bg-primary" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium">Send automatically</p>
-                      <p className="text-sm text-muted-foreground">
-                        Emails are sent instantly without opening Gmail. Faster for high-volume work.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Email Notifications</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-4">
