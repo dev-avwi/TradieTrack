@@ -47,6 +47,7 @@ import { useSmsSocket } from "@/hooks/use-sms-socket";
 import { useIntegrationHealth, isTwilioReady } from "@/hooks/use-integration-health";
 import { TwilioWarning } from "@/components/IntegrationWarning";
 import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
+import type { MessageTemplate } from "@shared/schema";
 
 interface TeamChatMessage {
   id: string;
@@ -384,6 +385,15 @@ export default function ChatHub() {
     refetchInterval: 30000,
   });
 
+  const { data: userSmsTemplates = [] } = useQuery<MessageTemplate[]>({
+    queryKey: ['/api/message-templates', 'sms'],
+    queryFn: async () => {
+      const res = await fetch('/api/message-templates?channel=sms', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch templates');
+      return res.json();
+    },
+  });
+
   const { data: allClients = [] } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
     enabled: newSmsDialogOpen,
@@ -624,6 +634,16 @@ export default function ChatHub() {
   const isUnknownClient = selectedSmsConversation && 
     (!selectedSmsConversation.clientId || 
      (selectedSmsConversation.clientName?.toLowerCase().includes('unknown')));
+
+  const applySmsTemplateFields = (text: string, conversation: SmsConversation) => {
+    if (!text) return text;
+    const clientName = conversation?.clientName || 'Customer';
+    const clientFirstName = clientName.split(' ')[0];
+    return text
+      .replace(/\{client_name\}/g, clientName)
+      .replace(/\{client_first_name\}/g, clientFirstName)
+      .replace(/\{business_name\}/g, 'Our business'); // Could be fetched from settings if available
+  };
 
   // Handle deep-link navigation
   useEffect(() => {
@@ -1475,6 +1495,23 @@ export default function ChatHub() {
                 {template.label}
               </Button>
             ))}
+            {userSmsTemplates.length > 0 && (
+              <>
+                <span className="text-xs text-muted-foreground shrink-0 ml-2 border-l pl-2">Custom:</span>
+                {userSmsTemplates.map((template) => (
+                  <Button
+                    key={template.id}
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 text-xs"
+                    onClick={() => setSmsNewMessage(applySmsTemplateFields(template.body, selectedSmsConversation!))}
+                    data-testid={`user-template-${template.id}`}
+                  >
+                    {template.name}
+                  </Button>
+                ))}
+              </>
+            )}
           </div>
 
           {/* Quick Actions Bar */}
