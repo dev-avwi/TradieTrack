@@ -44,7 +44,9 @@ import {
   Loader2,
   ChevronRight,
   ChevronDown,
+  Eye,
 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { BusinessTemplate, BusinessTemplateFamily } from "@shared/schema";
 import { type LucideIcon } from "lucide-react";
 
@@ -112,6 +114,33 @@ const CATEGORIES = {
   financial: { name: "Financial", families: ["terms_conditions", "warranty", "payment_notice"] as BusinessTemplateFamily[] },
   jobs_safety: { name: "Jobs & Safety", families: ["safety_form", "checklist"] as BusinessTemplateFamily[] },
 };
+
+const SAMPLE_DATA: Record<string, string> = {
+  client_name: "John Smith",
+  business_name: "My Trade Business",
+  quote_number: "Q-0001",
+  invoice_number: "INV-0001",
+  quote_total: "$1,250.00",
+  invoice_total: "$1,250.00",
+  job_title: "Kitchen Renovation",
+  job_address: "123 Main St, Sydney NSW 2000",
+  due_date: "15 Jan 2025",
+  completion_date: "10 Jan 2025",
+  warranty_months: "12",
+  deposit_percent: "50",
+  bank_details: "BSB: 123-456, Account: 12345678",
+  days_overdue: "7",
+  worker_name: "Mike Johnson",
+  date: "27 Dec 2024",
+};
+
+function renderPreview(content: string): string {
+  let preview = content;
+  for (const [key, value] of Object.entries(SAMPLE_DATA)) {
+    preview = preview.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+  }
+  return preview;
+}
 
 export default function TemplatesHub() {
   const { toast } = useToast();
@@ -473,7 +502,7 @@ export default function TemplatesHub() {
         setEditDialogOpen(open);
         if (!open) resetForm();
       }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               {isCreating ? "Create Template" : "Edit Template"}
@@ -485,56 +514,97 @@ export default function TemplatesHub() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Template Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter template name"
-                data-testid="input-template-name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (Optional)</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Brief description of this template"
-                data-testid="input-template-description"
-              />
-            </div>
-
-            {(selectedTemplate?.family === "email" || selectedTemplate?.family === "sms") && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="subject">Subject Line</Label>
+                <Label htmlFor="name">Template Name</Label>
                 <Input
-                  id="subject"
-                  value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  placeholder="Email subject or SMS opening"
-                  data-testid="input-template-subject"
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter template name"
+                  data-testid="input-template-name"
                 />
               </div>
-            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="content">Content</Label>
-              <Textarea
-                id="content"
-                value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="Enter template content..."
-                rows={8}
-                className="resize-none"
-                data-testid="input-template-content"
-              />
-              <p className="text-xs text-muted-foreground">
-                Use variables like {"{clientName}"}, {"{jobTitle}"}, {"{amount}"} for dynamic content
-              </p>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description (Optional)</Label>
+                <Input
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Brief description of this template"
+                  data-testid="input-template-description"
+                />
+              </div>
+
+              {(selectedTemplate?.family === "email" || selectedTemplate?.family === "sms") && (
+                <div className="space-y-2">
+                  <Label htmlFor="subject">Subject Line</Label>
+                  <Input
+                    id="subject"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    placeholder="Email subject or SMS opening"
+                    data-testid="input-template-subject"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="content">Content</Label>
+                <Textarea
+                  id="content"
+                  value={formData.content}
+                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                  placeholder="Enter template content..."
+                  rows={10}
+                  className="resize-none"
+                  data-testid="input-template-content"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use variables like {"{client_name}"}, {"{job_title}"}, {"{quote_total}"} for dynamic content
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col rounded-lg border bg-muted/50 overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted">
+                <Eye className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium text-sm">Live Preview</span>
+              </div>
+              <ScrollArea className="flex-1 p-4" data-testid="preview-panel">
+                <div className="space-y-4">
+                  {(selectedTemplate?.family === "email" || selectedTemplate?.family === "sms") && formData.subject && (
+                    <div className="rounded-md border bg-background p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Subject</p>
+                      <p className="font-medium">{renderPreview(formData.subject)}</p>
+                    </div>
+                  )}
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    {formData.content ? (
+                      <div className="whitespace-pre-wrap">
+                        {renderPreview(formData.content).split('\n').map((line, i) => {
+                          if ((selectedTemplate?.family === "terms_conditions" || selectedTemplate?.family === "safety_form") && line.trim().endsWith(':')) {
+                            return <p key={i} className="font-semibold mt-4 mb-2">{line}</p>;
+                          }
+                          if (line.trim().startsWith('- ') || line.trim().startsWith('• ')) {
+                            return <p key={i} className="ml-4">{line}</p>;
+                          }
+                          if (line.trim().match(/^\d+\./)) {
+                            return <p key={i} className="ml-4">{line}</p>;
+                          }
+                          return <p key={i} className="mb-2">{line || '\u00A0'}</p>;
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground italic">
+                        Start typing to see a live preview of your template...
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </ScrollArea>
             </div>
           </div>
 
