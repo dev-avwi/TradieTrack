@@ -406,7 +406,11 @@ export default function CollectPayment() {
               <Banknote className="h-4 w-4 mr-2" />
               Record Payment
             </Button>
-            <Button onClick={() => setShowCreateDialog(true)} data-testid="button-new-payment">
+            <Button 
+              onClick={() => setShowCreateDialog(true)} 
+              disabled={!stripeConnected}
+              data-testid="button-new-payment"
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Request
             </Button>
