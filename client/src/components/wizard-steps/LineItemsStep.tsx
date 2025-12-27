@@ -33,6 +33,13 @@ export default function LineItemsStep({ tradeType }: LineItemsStepProps) {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const { fields, append, remove, update } = useFieldArray({
+    control: form.control,
+    name: "lineItems"
+  });
+
+  const watchedLineItems = form.watch("lineItems") || [];
   
   const fetchQuoteSuggestions = useCallback(async (description: string) => {
     if (description.length < 3) {
@@ -89,15 +96,22 @@ export default function LineItemsStep({ tradeType }: LineItemsStepProps) {
   };
   
   const applySuggestion = (suggestion: QuoteSuggestion) => {
-    setEditForm({
+    const updatedForm = {
       ...editForm,
       description: suggestion.description,
       unitPrice: suggestion.lastUsedPrice.toFixed(2),
-    });
+    };
+    setEditForm(updatedForm);
     setShowSuggestions(false);
+    
+    // If editing existing item, persist immediately but keep sheet open for further edits
+    if (editingIndex !== null && editingIndex >= 0) {
+      update(editingIndex, updatedForm);
+    }
+    
     toast({
       title: "Price applied",
-      description: `Used your last price of $${suggestion.lastUsedPrice.toFixed(2)}`,
+      description: `Using $${suggestion.lastUsedPrice.toFixed(2)} from past quotes`,
     });
   };
   
@@ -108,13 +122,6 @@ export default function LineItemsStep({ tradeType }: LineItemsStepProps) {
       }
     };
   }, []);
-
-  const { fields, append, remove, update } = useFieldArray({
-    control: form.control,
-    name: "lineItems"
-  });
-
-  const watchedLineItems = form.watch("lineItems") || [];
 
   const calculateTotal = (quantity: string, unitPrice: string) => {
     return (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0);
