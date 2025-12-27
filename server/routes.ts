@@ -9887,6 +9887,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Message Templates (Email/SMS)
+  app.get("/api/message-templates", requireAuth, async (req: any, res) => {
+    try {
+      const channel = req.query.channel as string | undefined;
+      // Ensure user has default templates
+      await storage.ensureDefaultTemplates(req.userId);
+      const templates = await storage.getMessageTemplates(req.userId, channel);
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching message templates:', error);
+      res.status(500).json({ error: 'Failed to fetch message templates' });
+    }
+  });
+
+  app.get("/api/message-templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const template = await storage.getMessageTemplate(req.params.id, req.userId);
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error('Error fetching message template:', error);
+      res.status(500).json({ error: 'Failed to fetch template' });
+    }
+  });
+
+  app.post("/api/message-templates", requireAuth, async (req: any, res) => {
+    try {
+      const { insertMessageTemplateSchema } = await import('@shared/schema');
+      const validated = insertMessageTemplateSchema.parse({
+        ...req.body,
+        userId: req.userId,
+      });
+      const template = await storage.createMessageTemplate(validated);
+      res.status(201).json(template);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid template data', details: error.errors });
+      }
+      console.error('Error creating message template:', error);
+      res.status(500).json({ error: 'Failed to create template' });
+    }
+  });
+
+  app.patch("/api/message-templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { updateMessageTemplateSchema } = await import('@shared/schema');
+      const validated = updateMessageTemplateSchema.parse(req.body);
+      const template = await storage.updateMessageTemplate(req.params.id, req.userId, validated);
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found or cannot modify default template' });
+      }
+      res.json(template);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid template data', details: error.errors });
+      }
+      console.error('Error updating message template:', error);
+      res.status(500).json({ error: 'Failed to update template' });
+    }
+  });
+
+  app.delete("/api/message-templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const success = await storage.deleteMessageTemplate(req.params.id, req.userId);
+      if (!success) {
+        return res.status(404).json({ error: 'Template not found or cannot delete default template' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting message template:', error);
+      res.status(500).json({ error: 'Failed to delete template' });
+    }
+  });
+
   // Template Analysis Routes - AI-powered PDF template analysis
   const templateUpload = multer({ 
     storage: multer.memoryStorage(),
