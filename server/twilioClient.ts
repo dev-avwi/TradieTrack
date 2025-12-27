@@ -15,6 +15,9 @@ import twilio from 'twilio';
 let twilioClient: ReturnType<typeof twilio> | null = null;
 let twilioPhoneNumber: string | null = null;
 let isInitialized = false;
+let cachedAvailability: { configured: boolean; connected: boolean; hasPhoneNumber: boolean } | null = null;
+let availabilityCacheTime: number = 0;
+const AVAILABILITY_CACHE_TTL = 60000; // Cache for 1 minute
 
 interface TwilioCredentials {
   accountSid: string;
@@ -81,11 +84,15 @@ async function getCredentials(): Promise<TwilioCredentials> {
   }
 
   console.log('✅ Using Replit managed Twilio connector');
+  // Handle both phone_number and twilio_phone_number field names
+  const phoneNum = connectionSettings.settings.phone_number || 
+                   connectionSettings.settings.twilio_phone_number || 
+                   connectionSettings.settings.phoneNumber || '';
   return {
     accountSid: connectionSettings.settings.account_sid,
     apiKey: connectionSettings.settings.api_key,
     apiKeySecret: connectionSettings.settings.api_key_secret,
-    phoneNumber: connectionSettings.settings.phone_number || ''
+    phoneNumber: phoneNum
   };
 }
 
@@ -119,6 +126,44 @@ export async function initializeTwilio(): Promise<boolean> {
 
 export function isTwilioInitialized(): boolean {
   return isInitialized && twilioClient !== null;
+}
+
+// Check if Twilio is available (async - checks connector or env vars, with caching)
+export async function checkTwilioAvailability(): Promise<{ configured: boolean; connected: boolean; hasPhoneNumber: boolean }> {
+  // Return cached result if still valid
+  const now = Date.now();
+  if (cachedAvailability && (now - availabilityCacheTime) < AVAILABILITY_CACHE_TTL) {
+    return cachedAvailability;
+  }
+  
+  // Also return cached result if already initialized successfully
+  if (isInitialized && twilioClient && twilioPhoneNumber) {
+    const result = { configured: true, connected: true, hasPhoneNumber: true };
+    cachedAvailability = result;
+    availabilityCacheTime = now;
+    return result;
+  }
+  
+  try {
+    const credentials = await getCredentials();
+    const result = {
+      configured: true,
+      connected: !!(credentials.accountSid && (credentials.authToken || (credentials.apiKey && credentials.apiKeySecret))),
+      hasPhoneNumber: !!credentials.phoneNumber
+    };
+    cachedAvailability = result;
+    availabilityCacheTime = now;
+    return result;
+  } catch (error) {
+    const result = {
+      configured: false,
+      connected: false,
+      hasPhoneNumber: false
+    };
+    cachedAvailability = result;
+    availabilityCacheTime = now;
+    return result;
+  }
 }
 
 export async function getTwilioClient() {
@@ -158,6 +203,9 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
   const validMediaUrls = mediaUrls?.slice(0, 10) || [];
   const isMMS = validMediaUrls.length > 0;
 
+  // Ensure Twilio is initialized before checking status
+  await getTwilioClient();
+  
   if (!isTwilioInitialized() || !twilioClient || !twilioPhoneNumber) {
     // Demo mode - log the SMS/MMS
     console.log(`📱 [DEMO ${isMMS ? 'MMS' : 'SMS'}]`);

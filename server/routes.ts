@@ -82,6 +82,7 @@ import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobSchedul
 import { notifyJobAssigned, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected } from "./pushNotifications";
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
+import { checkTwilioAvailability, sendSMS } from "./twilioClient";
 import { geocodeAddress } from "./geocoding";
 import { processStatusChangeAutomation, processPaymentReceivedAutomation, processTimeBasedAutomations } from "./automationService";
 import * as xeroService from "./xeroService";
@@ -318,8 +319,9 @@ async function gatherAIContext(userId: string, storage: any): Promise<BusinessCo
     .map((j: any) => j.title)
     .filter(Boolean) as string[];
 
-  // Check if SMS is set up (Twilio environment variables)
-  const hasSmsSetup = !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN);
+  // Check if SMS is set up (Twilio via connector or environment variables)
+  const twilioStatus = await checkTwilioAvailability();
+  const hasSmsSetup = twilioStatus.connected;
 
   return {
     businessName: businessSettings?.businessName || 'Your Business',
@@ -2861,6 +2863,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? '••••••' + settings.twilioAuthToken.slice(-4) 
         : null;
       
+      // Check platform Twilio availability (connector or env vars)
+      const platformTwilioStatus = await checkTwilioAvailability();
+      
       // Return SMS branding fields (mask ALL sensitive data)
       const smsBranding = {
         twilioPhoneNumber: settings?.twilioPhoneNumber || null,
@@ -2868,9 +2873,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         twilioAccountSid: settings?.twilioAccountSid ? '***' + settings.twilioAccountSid.slice(-4) : null,
         twilioAuthToken: maskedAuthToken,
         twilioAuthTokenConfigured: !!settings?.twilioAuthToken,
-        // Include platform defaults info
-        platformTwilioConfigured: !!process.env.TWILIO_ACCOUNT_SID && !!process.env.TWILIO_AUTH_TOKEN,
-        platformTwilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER ? process.env.TWILIO_PHONE_NUMBER.slice(-4) : null,
+        // Include platform defaults info (connector or env vars)
+        platformTwilioConfigured: platformTwilioStatus.connected,
+        platformTwilioPhoneNumber: platformTwilioStatus.hasPhoneNumber ? '(configured)' : null,
       };
       
       res.json(smsBranding);
@@ -3894,8 +3899,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const servicesReady = (stripeConnectStatus.connected && stripeConnectStatus.chargesEnabled) || emailVerified;
       
-      // Check Twilio SMS status
-      const twilioConfigured = !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN);
+      // Check Twilio SMS status via connector or env vars
+      const twilioAvail = await checkTwilioAvailability();
+      const twilioConfigured = twilioAvail.connected;
       
       const services = {
         payments: {
@@ -4910,10 +4916,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connected: !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY)
       };
       
-      // Twilio status
+      // Twilio status - check connector and env vars
+      const twilioAvailability = await checkTwilioAvailability();
       const twilioStatus = {
-        configured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
-        connected: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER)
+        configured: twilioAvailability.configured,
+        connected: twilioAvailability.connected && twilioAvailability.hasPhoneNumber
       };
       
       res.json({
@@ -6772,47 +6779,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const message = `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ETA approximately 15-20 minutes.`;
       
-      // Check if Twilio is configured
-      if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
-        // Log activity even without SMS (demo mode) using helper function
-        await logActivity(
-          userContext.effectiveUserId,
-          'job_started',
-          `On My Way - ${job.title || 'Job'}`,
-          `On My Way notification logged (SMS not configured) for ${client.firstName || client.email || 'client'}`,
-          'job',
-          job.id,
-          { clientName: client.firstName, demoMode: true }
-        );
-        return res.json({ success: true, message: 'On My Way logged (SMS not configured)', demoMode: true });
-      }
+      // Send SMS via shared Twilio client (supports connector and env vars)
+      const smsResult = await sendSMS({
+        to: client.phone,
+        message: message
+      });
 
-      // Send SMS via Twilio
-      try {
-        const twilio = require('twilio');
-        const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-        await twilioClient.messages.create({
-          body: message,
-          from: process.env.TWILIO_PHONE_NUMBER,
-          to: client.phone
-        });
-      } catch (smsError: any) {
-        console.error('Failed to send on-my-way SMS:', smsError);
-        return res.status(500).json({ error: `Failed to send SMS: ${smsError.message || 'Unknown error'}` });
-      }
-
-      // Log activity after successful SMS using helper function
+      // Log activity - handles both real SMS and demo mode
       await logActivity(
         userContext.effectiveUserId,
         'job_started',
         `On My Way - ${job.title || 'Job'}`,
-        `On My Way SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone}`,
+        smsResult.simulated 
+          ? `On My Way notification logged (SMS not configured) for ${client.firstName || client.email || 'client'}`
+          : `On My Way SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone}`,
         'job',
         job.id,
-        { clientName: client.firstName, clientPhone: client.phone }
+        { 
+          clientName: client.firstName, 
+          clientPhone: client.phone,
+          demoMode: smsResult.simulated || false
+        }
       );
 
-      res.json({ success: true, message: 'On My Way notification sent' });
+      if (!smsResult.success && !smsResult.simulated) {
+        return res.status(500).json({ error: `Failed to send SMS: ${smsResult.error || 'Unknown error'}` });
+      }
+
+      res.json({ 
+        success: true, 
+        message: smsResult.simulated ? 'On My Way logged (SMS not configured)' : 'On My Way notification sent',
+        demoMode: smsResult.simulated || false
+      });
     } catch (error: any) {
       console.error("Error sending on-my-way notification:", error);
       res.status(500).json({ error: error.message || "Failed to send notification" });
@@ -13025,22 +13023,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Format SMS message with receipt details
         const smsMessage = `Payment Receipt from ${businessName}: ${formattedAmount} received. ${invoiceNumber ? `Invoice: ${invoiceNumber}. ` : ''}Thank you for your payment!`;
         
-        // Try to send via Twilio
-        const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-        const twilioToken = process.env.TWILIO_AUTH_TOKEN;
-        const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+        // Send via shared Twilio client (supports connector and env vars)
+        const smsResult = await sendSMS({
+          to: phone,
+          message: smsMessage
+        });
         
-        if (twilioSid && twilioToken && twilioPhone) {
-          const twilio = require('twilio')(twilioSid, twilioToken);
-          await twilio.messages.create({
-            body: smsMessage,
-            from: twilioPhone,
-            to: phone,
+        if (smsResult.success) {
+          return res.json({ 
+            success: true, 
+            method: 'sms', 
+            recipient: phone,
+            simulated: smsResult.simulated || false
           });
-          return res.json({ success: true, method: 'sms', recipient: phone });
+        } else if (smsResult.simulated) {
+          return res.json({ 
+            success: true, 
+            method: 'sms', 
+            recipient: phone,
+            simulated: true,
+            message: 'SMS simulated (Twilio not configured)'
+          });
         } else {
           return res.status(400).json({ 
-            error: 'SMS service not configured. Please use email instead.',
+            error: smsResult.error || 'SMS service not configured. Please use email instead.',
             disabled: true
           });
         }
