@@ -907,26 +907,48 @@ export default function Integrations() {
           </CardContent>
         </Card>
 
-        {/* Email - Built-in Gmail Integration */}
+        {/* Email - Dynamic based on sending mode */}
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-red-100 dark:bg-red-900/50">
-                  <SiGmail className="w-5 h-5 text-red-500" />
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  emailSendingMode === 'automatic' 
+                    ? 'bg-green-100 dark:bg-green-900/50' 
+                    : 'bg-red-100 dark:bg-red-900/50'
+                }`}>
+                  {emailSendingMode === 'automatic' ? (
+                    <Sparkles className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <SiGmail className="w-5 h-5 text-red-500" />
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <CardTitle className="text-base">Email - Ready to Go!</CardTitle>
-                    <Badge className="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0 text-xs">
+                    <CardTitle className="text-base">
+                      {emailSendingMode === 'automatic' ? 'Email - Instant Sending' : 'Email - Gmail Review'}
+                    </CardTitle>
+                    <Badge className={`border-0 text-xs ${
+                      emailSendingMode === 'automatic'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                    }`}>
                       <Shield className="w-3 h-3 mr-1" />
                       Verified
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">Send quotes and invoices from your Gmail</p>
+                  <p className="text-xs text-muted-foreground">
+                    {emailSendingMode === 'automatic' 
+                      ? 'Quotes and invoices sent instantly via our servers'
+                      : 'Review and send from your Gmail account'}
+                  </p>
                 </div>
               </div>
-              <Badge className="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0">
+              <Badge className={`border-0 ${
+                emailSendingMode === 'automatic'
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                  : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+              }`}>
                 <CheckCircle className="w-3 h-3 mr-1" />
                 Working
               </Badge>
