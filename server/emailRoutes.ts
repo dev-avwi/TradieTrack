@@ -503,7 +503,7 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
           let jobSignatures: any[] = [];
           const { digitalSignatures } = await import("@shared/schema");
           const { db } = await import("./db");
-          const { eq, or } = await import("drizzle-orm");
+          const { eq } = await import("drizzle-orm");
           
           // Get job completion signatures if job is linked
           if (invoiceWithItems.jobId) {
