@@ -9,6 +9,7 @@ import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmailIntegration } from "@/components/EmailIntegration";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useBusinessSettings, useUpdateBusinessSettings } from "@/hooks/use-business-settings";
 import StripeSetupGuide from "@/components/StripeSetupGuide";
 import XeroSetupGuide from "@/components/XeroSetupGuide";
 // MYOB integration removed per user request - focusing on Xero
@@ -184,6 +185,11 @@ export default function Integrations() {
   const [twilioPhoneNumber, setTwilioPhoneNumber] = useState('');
   const [showAuthToken, setShowAuthToken] = useState(false);
   const { toast } = useToast();
+  
+  // Business settings for email sending mode
+  const { data: businessSettings } = useBusinessSettings();
+  const updateBusinessSettings = useUpdateBusinessSettings();
+  const emailSendingMode = businessSettings?.emailSendingMode || 'manual';
 
   // Track if we've already handled the URL params (to avoid duplicate toasts)
   const [urlParamsHandled, setUrlParamsHandled] = useState(false);
@@ -987,27 +993,61 @@ export default function Integrations() {
               <span className="text-xs text-muted-foreground">Opens Gmail with a test message</span>
             </div>
             
-            {/* How it works */}
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-foreground">How it works:</p>
-              <ol className="text-xs text-muted-foreground space-y-1.5">
-                <li className="flex items-start gap-2">
-                  <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-[10px] font-medium">1</span>
-                  Click "Send" on any quote or invoice
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-[10px] font-medium">2</span>
-                  Gmail opens with a professional email + PDF attached
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-[10px] font-medium">3</span>
-                  Review and hit "Send" in Gmail
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-[10px] font-medium">4</span>
-                  Done! The email appears in your Sent folder
-                </li>
-              </ol>
+            {/* Email Sending Preference */}
+            <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
+              <p className="text-sm font-medium">When you email a quote or invoice:</p>
+              <div className="space-y-2">
+                <div 
+                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                    emailSendingMode === 'manual' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-muted hover-elevate'
+                  }`}
+                  onClick={() => {
+                    updateBusinessSettings.mutate({ emailSendingMode: 'manual' });
+                  }}
+                  data-testid="option-email-manual"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                      emailSendingMode === 'manual' ? 'border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {emailSendingMode === 'manual' && (
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Review in Gmail first</p>
+                      <p className="text-xs text-muted-foreground">Opens Gmail so you can check and personalise before sending</p>
+                    </div>
+                  </div>
+                </div>
+                <div 
+                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                    emailSendingMode === 'automatic' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-muted hover-elevate'
+                  }`}
+                  onClick={() => {
+                    updateBusinessSettings.mutate({ emailSendingMode: 'automatic' });
+                  }}
+                  data-testid="option-email-automatic"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                      emailSendingMode === 'automatic' ? 'border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {emailSendingMode === 'automatic' && (
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Send instantly</p>
+                      <p className="text-xs text-muted-foreground">Emails go out immediately - faster for busy tradies</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Australian Compliance Tips - Expandable */}
