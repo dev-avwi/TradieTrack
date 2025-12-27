@@ -249,6 +249,8 @@ export const businessSettings = pgTable("business_settings", {
   aiEnabled: boolean("ai_enabled").default(true), // Enable/disable all AI features
   aiPhotoAnalysisEnabled: boolean("ai_photo_analysis_enabled").default(true), // Enable AI photo analysis
   aiSuggestionsEnabled: boolean("ai_suggestions_enabled").default(true), // Enable AI suggestions
+  // Email Sending Preference
+  emailSendingMode: text("email_sending_mode").default('manual'), // 'manual' (Gmail draft) or 'automatic' (SendGrid)
   // Google Calendar Integration (per-user OAuth)
   googleCalendarConnected: boolean("google_calendar_connected").default(false),
   googleCalendarAccessToken: text("google_calendar_access_token"),
