@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useFormContext, useFieldArray } from "react-hook-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
-import { Plus, Trash2, Edit2, Package, DollarSign, Hash, BookOpen } from "lucide-react";
+import { Plus, Trash2, Edit2, Package, DollarSign, Hash, BookOpen, Sparkles, TrendingUp, History, Loader2 } from "lucide-react";
 import CatalogModal from "@/components/CatalogModal";
 import { useToast } from "@/hooks/use-toast";
+
+interface QuoteSuggestion {
+  description: string;
+  lastUsedPrice: number;
+  lastUsedDate: string;
+  frequency: number;
+  averagePrice: number;
+}
 
 interface LineItemsStepProps {
   tradeType?: string;
@@ -20,6 +28,86 @@ export default function LineItemsStep({ tradeType }: LineItemsStepProps) {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ description: "", quantity: "1", unitPrice: "" });
+  
+  const [suggestions, setSuggestions] = useState<QuoteSuggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const fetchQuoteSuggestions = useCallback(async (description: string) => {
+    if (description.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    
+    setLoadingSuggestions(true);
+    try {
+      const response = await fetch('/api/ai/quote-suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ description }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestions(data.suggestions || []);
+        setShowSuggestions(data.suggestions?.length > 0);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Error fetching quote suggestions:', error);
+      setSuggestions([]);
+      setShowSuggestions(false);
+      toast({
+        title: "Could not load suggestions",
+        description: "Past quote pricing suggestions unavailable",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, [toast]);
+  
+  const handleSuggestionsBlur = useCallback(() => {
+    setTimeout(() => setShowSuggestions(false), 200);
+  }, []);
+  
+  const handleDescriptionChange = (value: string) => {
+    setEditForm({ ...editForm, description: value });
+    
+    if (suggestionsTimeoutRef.current) {
+      clearTimeout(suggestionsTimeoutRef.current);
+    }
+    
+    suggestionsTimeoutRef.current = setTimeout(() => {
+      fetchQuoteSuggestions(value);
+    }, 400);
+  };
+  
+  const applySuggestion = (suggestion: QuoteSuggestion) => {
+    setEditForm({
+      ...editForm,
+      description: suggestion.description,
+      unitPrice: suggestion.lastUsedPrice.toFixed(2),
+    });
+    setShowSuggestions(false);
+    toast({
+      title: "Price applied",
+      description: `Used your last price of $${suggestion.lastUsedPrice.toFixed(2)}`,
+    });
+  };
+  
+  useEffect(() => {
+    return () => {
+      if (suggestionsTimeoutRef.current) {
+        clearTimeout(suggestionsTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const { fields, append, remove, update } = useFieldArray({
     control: form.control,
@@ -252,16 +340,71 @@ export default function LineItemsStep({ tradeType }: LineItemsStepProps) {
           </SheetHeader>
           
           <div className="space-y-4">
-            <div>
+            <div className="relative">
               <Label className="text-sm font-medium mb-2 block">Description</Label>
-              <Input
-                placeholder="What's this item for?"
-                className="min-h-[48px]"
-                style={{ borderRadius: '10px' }}
-                value={editForm.description}
-                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                data-testid="input-item-description"
-              />
+              <div className="relative">
+                <Input
+                  placeholder="What's this item for?"
+                  className="min-h-[48px]"
+                  style={{ borderRadius: '10px' }}
+                  value={editForm.description}
+                  onChange={(e) => handleDescriptionChange(e.target.value)}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  onBlur={handleSuggestionsBlur}
+                  data-testid="input-item-description"
+                />
+                {loadingSuggestions && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              
+              {showSuggestions && suggestions.length > 0 && (
+                <Card 
+                  className="absolute left-0 right-0 top-full mt-1 z-50 overflow-hidden shadow-lg"
+                  style={{ borderRadius: '10px' }}
+                >
+                  <CardContent className="p-0">
+                    <div className="p-2 border-b bg-muted/30">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Sparkles className="h-3 w-3" />
+                        <span>Suggestions from your past quotes</span>
+                      </div>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {suggestions.map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          className="w-full px-3 py-2.5 text-left hover:bg-muted/50 transition-colors border-b last:border-b-0"
+                          onClick={() => applySuggestion(suggestion)}
+                          data-testid={`suggestion-item-${idx}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">{suggestion.description}</p>
+                              <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <History className="h-3 w-3" />
+                                  Used {suggestion.frequency}x
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <TrendingUp className="h-3 w-3" />
+                                  Avg ${suggestion.averagePrice.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                            <Badge variant="secondary" className="font-semibold whitespace-nowrap">
+                              ${suggestion.lastUsedPrice.toFixed(2)}
+                            </Badge>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
             
             <div className="grid grid-cols-2 gap-4">

@@ -21,7 +21,9 @@ import {
   Timer,
   AlertCircle,
   Users,
-  LayoutGrid
+  LayoutGrid,
+  Route,
+  Loader2
 } from "lucide-react";
 import {
   format,
@@ -342,6 +344,52 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
     },
   });
 
+  const optimizeRouteMutation = useMutation({
+    mutationFn: async (jobIds: string[]) => {
+      return apiRequest('POST', '/api/routes/optimize', { jobIds });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      toast({
+        title: "Route Optimized",
+        description: `Saved ${Math.round(data.totalDistance || 0)} km - ${data.stops?.length || 0} stops reordered`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Could not optimize",
+        description: error.message || "Failed to optimize route",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOptimizeRoute = () => {
+    const jobsToOptimize = scheduledJobsForDate.filter(job => 
+      (job as any).latitude && (job as any).longitude
+    );
+    
+    if (scheduledJobsForDate.length < 2) {
+      toast({
+        title: "Not enough jobs",
+        description: "Add at least 2 scheduled jobs to optimize the route",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (jobsToOptimize.length < 2) {
+      toast({
+        title: "Missing addresses",
+        description: "At least 2 jobs need valid addresses to optimize",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    optimizeRouteMutation.mutate(jobsToOptimize.map(j => j.id));
+  };
+
   const jobsWithClients = useMemo(() => 
     jobs.map(job => ({
       ...job,
@@ -607,6 +655,25 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                 <CalendarIcon className="h-4 w-4 mr-1" />
                 Today
               </Button>
+              
+              {view === 'dispatch' && scheduledJobsForDate.length >= 2 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOptimizeRoute}
+                  disabled={optimizeRouteMutation.isPending}
+                  data-testid="button-optimize-route-schedule"
+                  className="px-3"
+                  title="Optimize route order for today's jobs"
+                >
+                  {optimizeRouteMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Route className="h-4 w-4 mr-1" />
+                  )}
+                  Optimize
+                </Button>
+              )}
             </div>
           </div>
 
