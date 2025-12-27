@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
+import { useIntegrationHealth, isEmailReady } from "@/hooks/use-integration-health";
 import { 
   Mail, 
   Send, 
@@ -25,6 +27,7 @@ import {
   Loader2,
   Check,
   AlertCircle,
+  AlertTriangle,
   Wand2,
   ExternalLink,
   Copy,
@@ -70,6 +73,9 @@ export default function EmailComposeModal({
   onSend
 }: EmailComposeModalProps) {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const { data: integrationHealth } = useIntegrationHealth();
+  const emailConnected = isEmailReady(integrationHealth);
   const [activeTab, setActiveTab] = useState<string>("compose");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");

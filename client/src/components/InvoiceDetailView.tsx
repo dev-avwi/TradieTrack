@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
+import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
@@ -33,6 +35,9 @@ export default function InvoiceDetailView({
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [copied, setCopied] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
+  const { data: integrationHealth } = useIntegrationHealth();
+  const stripeConnected = isStripeReady(integrationHealth);
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   
   const { data: user } = useQuery({
@@ -520,7 +525,7 @@ export default function InvoiceDetailView({
                   <Switch
                     checked={invoice.allowOnlinePayment || false}
                     onCheckedChange={(checked) => toggleOnlinePaymentMutation.mutate(checked)}
-                    disabled={toggleOnlinePaymentMutation.isPending}
+                    disabled={toggleOnlinePaymentMutation.isPending || !stripeConnected}
                     data-testid="switch-online-payment"
                   />
                   {toggleOnlinePaymentMutation.isPending && (
@@ -529,7 +534,29 @@ export default function InvoiceDetailView({
                 </div>
               </div>
 
-              {invoice.allowOnlinePayment && invoice.paymentToken && (
+              {!stripeConnected && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-md mt-4" data-testid="warning-stripe-not-connected">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        Stripe is not connected. You need to set up payments to collect money online.
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-white hover:bg-amber-50 border-amber-200 text-amber-800 h-8"
+                        onClick={() => navigate("/integrations")}
+                        data-testid="button-setup-payments"
+                      >
+                        Set Up Payments
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {stripeConnected && invoice.allowOnlinePayment && invoice.paymentToken && (
                 <div className="mt-4 p-3 bg-muted rounded-lg">
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2">

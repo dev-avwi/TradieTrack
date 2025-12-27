@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { useLocation } from "wouter";
+import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
 import { 
   QrCode, 
   Link2, 
@@ -40,7 +41,8 @@ import {
   ExternalLink,
   Receipt,
   ArrowRight,
-  Building2
+  Building2,
+  AlertTriangle
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -91,6 +93,8 @@ interface Job {
 export default function CollectPayment() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const { data: integrationHealth } = useIntegrationHealth();
+  const stripeConnected = isStripeReady(integrationHealth);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
@@ -409,6 +413,34 @@ export default function CollectPayment() {
           </div>
         }
       />
+
+      {/* Stripe Integration Warning */}
+      {!stripeConnected && (
+        <div 
+          className="rounded-xl p-4 border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 mb-6"
+          data-testid="banner-stripe-warning"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-amber-200 dark:bg-amber-800">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-amber-700 dark:text-amber-300">Payments Not Connected</p>
+                <p className="text-sm text-muted-foreground">Connect Stripe to accept online card payments</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => navigate('/integrations')}
+              className="shrink-0"
+              variant="outline"
+              data-testid="button-setup-stripe"
+            >
+              Set Up Payments
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Quick Links */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

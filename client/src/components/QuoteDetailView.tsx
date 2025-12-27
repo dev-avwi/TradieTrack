@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { useLocation } from "wouter";
+import { useIntegrationHealth, isEmailReady } from "@/hooks/use-integration-health";
 import StatusBadge from "./StatusBadge";
 import EmailComposeModal from "./EmailComposeModal";
 import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
@@ -20,9 +22,12 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const [isPrinting, setIsPrinting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [, setLocation] = useLocation();
   const { data: businessSettings } = useBusinessSettings();
+  const { data: integrationHealth } = useIntegrationHealth();
   const { toast } = useToast();
 
+  const emailConnected = isEmailReady(integrationHealth);
   const brandColor = businessSettings?.brandColor || '#2563eb';
   const templateId = (businessSettings?.documentTemplate as TemplateId) || DEFAULT_TEMPLATE;
   const templateStyles = getTemplateStyles(templateId, brandColor);
@@ -330,10 +335,29 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
           <div className="flex flex-col sm:flex-row gap-2">
             {/* Primary action - Send Quote via Email with PDF */}
             {(quote.status === 'draft' || quote.status === 'sent') && client?.email && (
-              <Button onClick={() => setShowEmailCompose(true)} className="w-full sm:w-auto" data-testid="button-send-email">
-                <Mail className="h-4 w-4 mr-2" />
-                {quote.status === 'draft' ? 'Send Quote' : 'Resend'}
-              </Button>
+              emailConnected ? (
+                <Button onClick={() => setShowEmailCompose(true)} className="w-full sm:w-auto" data-testid="button-send-email">
+                  <Mail className="h-4 w-4 mr-2" />
+                  {quote.status === 'draft' ? 'Send Quote' : 'Resend'}
+                </Button>
+              ) : (
+                <div 
+                  className="flex items-center gap-2 p-1.5 px-3 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800"
+                  data-testid="warning-email-not-configured"
+                >
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <span className="text-xs font-medium text-amber-800 dark:text-amber-400">Email not set up</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-7 px-2 text-xs text-amber-900 hover:bg-amber-200 dark:text-amber-300 dark:hover:bg-amber-900"
+                    onClick={() => setLocation('/integrations')}
+                    data-testid="button-setup-email"
+                  >
+                    Set Up
+                  </Button>
+                </div>
+              )
             )}
             {/* Legacy onSend prop support */}
             {quote.status === 'draft' && onSend && !client?.email && (
