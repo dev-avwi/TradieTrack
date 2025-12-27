@@ -37,6 +37,7 @@ Key architectural decisions and features include:
 -   **Platform Admin Dashboard**: Dedicated interface for platform administrators.
 -   **Integrations**: Xero, MYOB AccountRight, and Google Calendar integrations with OAuth 2.0 for contacts sync, invoice push, and calendar event management. A unified API provides integration status across platforms.
 -   **Safety Form Templates**: Australian-standard WHS compliance templates with digital signature support.
+-   **Templates Hub**: Central management for all customizable content including Terms & Conditions, Warranty, Email/SMS templates, Safety Forms, Checklists, and Payment Notices. Features two-column live preview editor with merge field replacement, category-based navigation (Communications, Financial, Jobs & Safety), and automatic display on quotes/invoices. API at `/api/business-templates` with template families: terms_conditions, warranty, email, sms, safety_form, checklist, payment_notice.
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)
