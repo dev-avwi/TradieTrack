@@ -8,32 +8,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useLocation } from "wouter";
-import { useIntegrationHealth, isEmailReady } from "@/hooks/use-integration-health";
 import { 
   Mail, 
   Send, 
-  Sparkles, 
-  RefreshCw, 
   Eye, 
   Edit3,
   User,
   Building,
-  FileText,
   Loader2,
   Check,
-  AlertCircle,
-  AlertTriangle,
   Wand2,
-  ExternalLink,
   Copy,
   CheckCheck
 } from "lucide-react";
-import { SiGmail } from "react-icons/si";
 
 interface EmailComposeModalProps {
   isOpen: boolean;
@@ -73,16 +61,12 @@ export default function EmailComposeModal({
   onSend
 }: EmailComposeModalProps) {
   const { toast } = useToast();
-  const [, navigate] = useLocation();
-  const { data: integrationHealth } = useIntegrationHealth();
-  const emailConnected = isEmailReady(integrationHealth);
   const [activeTab, setActiveTab] = useState<string>("compose");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-  const [isSending, setIsSending] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [isCreatingGmailDraft, setIsCreatingGmailDraft] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   // Get the first name from client name
   const clientFirstName = clientName?.split(' ')[0] || 'there';
@@ -152,97 +136,9 @@ export default function EmailComposeModal({
     }
   };
 
-  const handleSend = async () => {
-    if (!subject.trim() || !message.trim()) {
-      toast({
-        title: "Missing details",
-        description: "Please fill in both the subject and message.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  // Send email via backend (respects user's email preference in Settings)
+  const handleSendEmail = async () => {
     setIsSending(true);
-    try {
-      await onSend(subject, message);
-      onClose();
-    } catch (error: any) {
-      toast({
-        title: "Failed to send",
-        description: error.message || "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  // Build the full email body with the document link
-  const getFullEmailBody = () => {
-    const docType = type === 'quote' ? 'quote' : 'invoice';
-    const actionText = type === 'quote' 
-      ? 'View and accept your quote here' 
-      : 'View and pay your invoice here';
-    
-    let body = message;
-    
-    // Add the document link if available
-    if (publicUrl) {
-      body += `\n\n---\n${actionText}:\n${publicUrl}`;
-    }
-    
-    // Add business signature
-    if (businessName) {
-      body += `\n\n${businessName}`;
-    }
-    
-    return body;
-  };
-
-  // Generate Gmail mailto URL
-  const getGmailUrl = () => {
-    const fullBody = getFullEmailBody();
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(clientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(fullBody)}`;
-    return gmailUrl;
-  };
-
-  // Generate standard mailto URL (for other email clients)
-  const getMailtoUrl = () => {
-    const fullBody = getFullEmailBody();
-    return `mailto:${encodeURIComponent(clientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(fullBody)}`;
-  };
-
-  const handleOpenInGmail = async () => {
-    // Open Gmail with pre-filled email
-    window.open(getGmailUrl(), '_blank');
-    
-    // Mark the quote/invoice as sent in the backend (skipEmail mode)
-    try {
-      await onSend('', ''); // This triggers the backend to mark as sent
-    } catch (e) {
-      // Ignore errors - the Gmail was opened successfully
-      console.log('Gmail opened, status update pending');
-    }
-    
-    toast({
-      title: "Gmail opened",
-      description: "Your email is ready to send from Gmail. Just hit Send!",
-    });
-    onClose();
-  };
-
-  const handleOpenInEmailClient = () => {
-    window.location.href = getMailtoUrl();
-    toast({
-      title: "Email client opened",
-      description: "Your email is ready. Just hit Send!",
-    });
-    onClose();
-  };
-
-  // Create Gmail draft with PDF attached via backend API
-  const handleOpenGmailWithPDF = async () => {
-    setIsCreatingGmailDraft(true);
     try {
       const endpoint = type === 'quote' 
         ? `/api/quotes/${documentId}/email-with-pdf`
@@ -325,7 +221,7 @@ export default function EmailComposeModal({
         variant: "destructive"
       });
     } finally {
-      setIsCreatingGmailDraft(false);
+      setIsSending(false);
     }
   };
 
@@ -554,104 +450,56 @@ export default function EmailComposeModal({
           </Tabs>
         </div>
 
-        {/* Footer with Gmail Button Prominently Featured */}
-        <div className="space-y-4 pt-4 border-t flex-shrink-0">
-          {/* Primary Action - Gmail with PDF Auto-Attached */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Mail className="h-4 w-4" />
-              <span>Choose how to send this {type}:</span>
-            </div>
-            
-            {/* Primary: Gmail with PDF Attached */}
-            <Button 
-              onClick={handleOpenGmailWithPDF}
-              disabled={!subject.trim() || !message.trim() || isCreatingGmailDraft}
-              className="w-full bg-red-500 hover:bg-red-600 text-white h-12"
-              data-testid="button-gmail-with-pdf"
-            >
-              {isCreatingGmailDraft ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating email with PDF...
-                </>
-              ) : (
-                <>
-                  <SiGmail className="h-5 w-5 mr-2" />
-                  Gmail with PDF Attached
-                  <Badge variant="secondary" className="ml-2 bg-white/20 text-white text-xs">
-                    Recommended
-                  </Badge>
-                </>
-              )}
-            </Button>
-            
-            <p className="text-xs text-muted-foreground text-center">
-              PDF is generated and attached automatically - just review and click Send!
-            </p>
-            
-            {/* Alternative Options */}
-            <div className="grid grid-cols-2 gap-2">
-              <Button 
-                variant="outline"
-                size="sm"
-                onClick={handleOpenInGmail}
-                disabled={!subject.trim() || !message.trim()}
-                data-testid="button-open-gmail"
-              >
-                <SiGmail className="h-3 w-3 mr-1.5" />
-                Gmail (no PDF)
-              </Button>
-
-              <Button 
-                variant="outline"
-                size="sm"
-                onClick={handleOpenInEmailClient}
-                disabled={!subject.trim() || !message.trim()}
-                data-testid="button-open-email-client"
-              >
-                <Mail className="h-3 w-3 mr-1.5" />
-                Other App
-              </Button>
-            </div>
-
-            {/* Copy Link Option */}
-            {publicUrl && (
-              <div className="flex items-center justify-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={handleCopyLink}
-                  className="text-xs"
-                  data-testid="button-copy-link"
-                >
-                  {copiedLink ? (
-                    <>
-                      <CheckCheck className="h-3 w-3 mr-1 text-green-500" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3 w-3 mr-1" />
-                      Copy {type} link
-                    </>
-                  )}
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  or share the link directly
-                </span>
-              </div>
+        {/* Footer - Single Send Button */}
+        <div className="space-y-3 pt-4 border-t flex-shrink-0">
+          {/* Primary Action - Send Email */}
+          <Button 
+            onClick={handleSendEmail}
+            disabled={!subject.trim() || !message.trim() || isSending}
+            className="w-full h-11"
+            data-testid="button-send-email"
+          >
+            {isSending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Send {type === 'quote' ? 'Quote' : 'Invoice'}
+              </>
             )}
-          </div>
+          </Button>
+          
+          <p className="text-xs text-muted-foreground text-center">
+            PDF is attached automatically. Change how emails are sent in Settings → Integrations.
+          </p>
 
-          {/* Explanation */}
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800">
-            <Check className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-green-700 dark:text-green-300">
-              <strong>Your email, your way:</strong> The email opens in YOUR Gmail with the PDF already attached. 
-              Review, edit if needed, and hit Send. It'll appear in your Sent folder and replies come straight to you.
+          {/* Copy Link Option for sharing */}
+          {publicUrl && (
+            <div className="flex items-center justify-center gap-2 pt-2 border-t">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleCopyLink}
+                className="text-xs"
+                data-testid="button-copy-link"
+              >
+                {copiedLink ? (
+                  <>
+                    <CheckCheck className="h-3 w-3 mr-1 text-green-500" />
+                    Link Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy link to share
+                  </>
+                )}
+              </Button>
             </div>
-          </div>
+          )}
 
           {/* Cancel */}
           <div className="flex justify-end">
