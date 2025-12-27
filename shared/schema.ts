@@ -2156,6 +2156,35 @@ export const insertSmsTemplateSchema = createInsertSchema(smsTemplates).omit({
 export type InsertSmsTemplate = z.infer<typeof insertSmsTemplateSchema>;
 export type SmsTemplate = typeof smsTemplates.$inferSelect;
 
+// Message Templates - Unified email/SMS templates with merge fields
+export const messageTemplates = pgTable("message_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  channel: varchar("channel", { length: 10 }).notNull(), // 'email' or 'sms'
+  category: varchar("category", { length: 50 }).notNull(), // 'quote_follow_up', 'payment_reminder', 'job_booking', etc.
+  name: varchar("name", { length: 100 }).notNull(),
+  subject: text("subject"), // Only for email templates
+  body: text("body").notNull(), // Template with merge fields like {client_name}, {job_title}
+  isDefault: boolean("is_default").default(false), // System default templates
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertMessageTemplateSchema = createInsertSchema(messageTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateMessageTemplateSchema = insertMessageTemplateSchema.partial().omit({
+  userId: true,
+  isDefault: true,
+});
+
+export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
+export type MessageTemplate = typeof messageTemplates.$inferSelect;
+
 // SMS Booking Links - Unique links for clients to confirm/reschedule bookings
 export const smsBookingLinks = pgTable("sms_booking_links", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

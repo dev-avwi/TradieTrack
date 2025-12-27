@@ -178,6 +178,9 @@ import {
   templateAnalysisJobs,
   type TemplateAnalysisJob,
   type InsertTemplateAnalysisJob,
+  messageTemplates,
+  type MessageTemplate,
+  type InsertMessageTemplate,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -567,6 +570,14 @@ export interface IStorage {
   getJobDocument(id: string, userId: string): Promise<JobDocument | undefined>;
   createJobDocument(document: InsertJobDocument): Promise<JobDocument>;
   deleteJobDocument(id: string, userId: string): Promise<boolean>;
+
+  // Message Templates (unified email/SMS templates)
+  getMessageTemplates(userId: string, channel?: string): Promise<MessageTemplate[]>;
+  getMessageTemplate(id: string, userId: string): Promise<MessageTemplate | null>;
+  createMessageTemplate(template: InsertMessageTemplate): Promise<MessageTemplate>;
+  updateMessageTemplate(id: string, userId: string, updates: Partial<InsertMessageTemplate>): Promise<MessageTemplate | null>;
+  deleteMessageTemplate(id: string, userId: string): Promise<boolean>;
+  ensureDefaultTemplates(userId: string): Promise<void>;
 
   // Account Deletion (Apple App Store Compliance)
   deleteUserAccount(userId: string): Promise<{ success: boolean; deletedCounts: Record<string, number> }>;
@@ -3608,6 +3619,141 @@ export class PostgresStorage implements IStorage {
       .where(eq(myobConnections.userId, userId))
       .returning();
     return result.length > 0;
+  }
+
+  // Message Templates (unified email/SMS templates)
+  async getMessageTemplates(userId: string, channel?: string): Promise<MessageTemplate[]> {
+    if (channel) {
+      return db.select().from(messageTemplates)
+        .where(and(
+          eq(messageTemplates.userId, userId),
+          eq(messageTemplates.channel, channel)
+        ))
+        .orderBy(asc(messageTemplates.name));
+    }
+    return db.select().from(messageTemplates)
+      .where(eq(messageTemplates.userId, userId))
+      .orderBy(asc(messageTemplates.name));
+  }
+
+  async getMessageTemplate(id: string, userId: string): Promise<MessageTemplate | null> {
+    const result = await db.select().from(messageTemplates)
+      .where(and(
+        eq(messageTemplates.id, id),
+        eq(messageTemplates.userId, userId)
+      ))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async createMessageTemplate(template: InsertMessageTemplate): Promise<MessageTemplate> {
+    const [result] = await db.insert(messageTemplates).values(template).returning();
+    return result;
+  }
+
+  async updateMessageTemplate(id: string, userId: string, updates: Partial<InsertMessageTemplate>): Promise<MessageTemplate | null> {
+    const result = await db.update(messageTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(
+        eq(messageTemplates.id, id),
+        eq(messageTemplates.userId, userId)
+      ))
+      .returning();
+    return result[0] || null;
+  }
+
+  async deleteMessageTemplate(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(messageTemplates)
+      .where(and(
+        eq(messageTemplates.id, id),
+        eq(messageTemplates.userId, userId),
+        eq(messageTemplates.isDefault, false)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  async ensureDefaultTemplates(userId: string): Promise<void> {
+    const existing = await db.select().from(messageTemplates)
+      .where(eq(messageTemplates.userId, userId))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      return;
+    }
+
+    const defaultTemplates: InsertMessageTemplate[] = [
+      // Email templates
+      {
+        userId,
+        channel: 'email',
+        category: 'quote_follow_up',
+        name: 'Quote Follow-up',
+        subject: 'Following up on your quote',
+        body: "G'day {client_name},\n\nJust checking in to see if you had any questions about the quote I sent through for {job_title}.\n\nThe quote total was ${amount} and is valid for the next 30 days.\n\nGive us a bell if you'd like to go ahead or need any changes.\n\nCheers,\n{business_name}",
+        isDefault: true,
+        isActive: true,
+      },
+      {
+        userId,
+        channel: 'email',
+        category: 'payment_reminder',
+        name: 'Payment Reminder',
+        subject: 'Friendly reminder - Invoice #{invoice_number}',
+        body: "G'day {client_name},\n\nJust a friendly reminder that Invoice #{invoice_number} for ${amount} is due on {due_date}.\n\nIf you've already paid, please disregard this message.\n\nCheers,\n{business_name}",
+        isDefault: true,
+        isActive: true,
+      },
+      {
+        userId,
+        channel: 'email',
+        category: 'job_completed',
+        name: 'Job Completed',
+        subject: 'Job completed - {job_title}',
+        body: "G'day {client_name},\n\nJust letting you know we've completed the work on {job_title} at {site_address}.\n\nThanks for choosing {business_name}! If you're happy with the work, we'd really appreciate a review.\n\nCheers,\n{business_name}",
+        isDefault: true,
+        isActive: true,
+      },
+      // SMS templates
+      {
+        userId,
+        channel: 'sms',
+        category: 'on_my_way',
+        name: 'On My Way',
+        body: "G'day {client_name}, this is {business_name}. Just letting you know I'm on my way to {site_address}. Should be there in about 15 minutes.",
+        isDefault: true,
+        isActive: true,
+      },
+      {
+        userId,
+        channel: 'sms',
+        category: 'running_late',
+        name: 'Running Late',
+        body: "G'day {client_name}, this is {business_name}. Running a bit behind today, sorry about that. Will be there as soon as I can.",
+        isDefault: true,
+        isActive: true,
+      },
+      {
+        userId,
+        channel: 'sms',
+        category: 'quote_ready',
+        name: 'Quote Ready',
+        body: "G'day {client_name}, your quote for {job_title} is ready. Total: ${amount}. Check your email for full details. - {business_name}",
+        isDefault: true,
+        isActive: true,
+      },
+      {
+        userId,
+        channel: 'sms',
+        category: 'invoice_reminder',
+        name: 'Invoice Reminder',
+        body: "G'day {client_name}, friendly reminder that Invoice #{invoice_number} for ${amount} is due {due_date}. - {business_name}",
+        isDefault: true,
+        isActive: true,
+      },
+    ];
+
+    await db.insert(messageTemplates).values(defaultTemplates);
   }
 
   // Account Deletion (Apple App Store Compliance)

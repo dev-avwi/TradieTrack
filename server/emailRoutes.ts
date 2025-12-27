@@ -220,7 +220,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
           // Get job signatures if quote is linked to a job
           let jobSignatures: any[] = [];
           if (quoteWithItems.jobId) {
-            const { db } = await import('./db');
+            const { db } = await import('./storage');
             const { digitalSignatures } = await import('@shared/schema');
             const { eq } = await import('drizzle-orm');
             const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, quoteWithItems.jobId));
@@ -502,7 +502,7 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
           const job = invoiceWithItems.jobId ? await storage.getJob(invoiceWithItems.jobId, req.userId) : undefined;
           let jobSignatures: any[] = [];
           const { digitalSignatures } = await import("@shared/schema");
-          const { db } = await import("./db");
+          const { db } = await import("./storage");
           const { eq } = await import("drizzle-orm");
           
           // Get job completion signatures if job is linked
@@ -899,7 +899,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       linkedJob = await storage.getJob(quoteWithItems.jobId, req.userId);
       
       // Get job signatures for consistency with invoices
-      const { db } = await import('./db');
+      const { db } = await import('./storage');
       const { digitalSignatures } = await import('@shared/schema');
       const { eq } = await import('drizzle-orm');
       const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, quoteWithItems.jobId));
@@ -1114,7 +1114,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     let timeEntries: any[] = [];
     let jobSignatures: any[] = [];
     const { digitalSignatures } = await import("@shared/schema");
-    const { db } = await import("./db");
+    const { db } = await import("./storage");
     const { eq } = await import("drizzle-orm");
     
     if (invoiceWithItems.jobId) {
