@@ -44,6 +44,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useSmsSocket } from "@/hooks/use-sms-socket";
+import { useIntegrationHealth, isTwilioReady } from "@/hooks/use-integration-health";
+import { TwilioWarning } from "@/components/IntegrationWarning";
 import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
 
 interface TeamChatMessage {
@@ -349,6 +351,9 @@ export default function ChatHub() {
     enabled: !!currentUser?.id,
     onSmsNotification: handleSmsNotification,
   });
+
+  const { data: integrationHealth } = useIntegrationHealth();
+  const twilioConnected = isTwilioReady(integrationHealth);
 
   const { data: unreadCounts = { teamChat: 0, directMessages: 0, jobChats: 0, sms: 0 } } = useQuery<UnreadCounts>({
     queryKey: ['/api/chat/unread-counts'],
@@ -1271,6 +1276,9 @@ export default function ChatHub() {
           {/* Offline Banner */}
           <OfflineBanner isConnected={smsSocketConnected} />
 
+          {/* Twilio Warning - SMS won't work without it */}
+          {!twilioConnected && <TwilioWarning />}
+
           {/* Job Context Card for linked jobs */}
           {selectedSmsConversation.jobId && (() => {
             const linkedJob = jobs.find(j => j.id === selectedSmsConversation.jobId);
@@ -1701,6 +1709,9 @@ export default function ChatHub() {
 
       {/* Offline Banner */}
       <OfflineBanner isConnected={smsSocketConnected} />
+
+      {/* Twilio Warning - Show when SMS tab is active and Twilio not connected */}
+      {filter === 'sms' && !twilioConnected && <TwilioWarning />}
 
       {/* Conversation List */}
       <div className="flex-1 overflow-y-auto">
