@@ -52,6 +52,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { formatHistoryDate } from "@shared/dateUtils";
 import { useAppMode } from "@/hooks/use-app-mode";
+import { useIntegrationHealth, isTwilioReady } from "@/hooks/use-integration-health";
 
 interface Photo {
   url: string;
@@ -187,6 +188,8 @@ export default function JobDetailView({
   
   const { userRole, isTradie, isSolo, actionPermissions } = useAppMode();
   const { data: businessSettings } = useBusinessSettings();
+  const { data: integrationHealth } = useIntegrationHealth();
+  const twilioConnected = isTwilioReady(integrationHealth);
 
   const { data: job, isLoading: jobLoading, error: jobError } = useQuery<Job>({
     queryKey: ['/api/jobs', jobId],
@@ -894,38 +897,62 @@ export default function JobDetailView({
         {/* On My Way Quick Action - only for scheduled/in_progress jobs with a client */}
         {(job.status === 'scheduled' || job.status === 'in_progress') && job.clientId && (
           <div 
-            className="rounded-xl p-4 border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30"
+            className={`rounded-xl p-4 border ${twilioConnected ? 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30' : 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30'}`}
             data-testid="banner-on-my-way"
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-blue-200 dark:bg-blue-800">
-                  <Navigation className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className={`p-2 rounded-full ${twilioConnected ? 'bg-blue-200 dark:bg-blue-800' : 'bg-amber-200 dark:bg-amber-800'}`}>
+                  {twilioConnected ? (
+                    <Navigation className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  ) : (
+                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  )}
                 </div>
                 <div>
-                  <p className="font-semibold text-blue-700 dark:text-blue-300">Heading to the job?</p>
-                  <p className="text-sm text-muted-foreground">Let the client know you're on your way</p>
+                  {twilioConnected ? (
+                    <>
+                      <p className="font-semibold text-blue-700 dark:text-blue-300">Heading to the job?</p>
+                      <p className="text-sm text-muted-foreground">Let the client know you're on your way</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold text-amber-700 dark:text-amber-300">SMS Not Connected</p>
+                      <p className="text-sm text-muted-foreground">Connect Twilio in Settings to text clients</p>
+                    </>
+                  )}
                 </div>
               </div>
-              <Button
-                onClick={() => onMyWayMutation.mutate()}
-                disabled={onMyWayMutation.isPending}
-                className="shrink-0"
-                variant="outline"
-                data-testid="button-on-my-way"
-              >
-                {onMyWayMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Navigation className="h-4 w-4 mr-2" />
-                    On My Way
-                  </>
-                )}
-              </Button>
+              {twilioConnected ? (
+                <Button
+                  onClick={() => onMyWayMutation.mutate()}
+                  disabled={onMyWayMutation.isPending}
+                  className="shrink-0"
+                  variant="outline"
+                  data-testid="button-on-my-way"
+                >
+                  {onMyWayMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Navigation className="h-4 w-4 mr-2" />
+                      On My Way
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => navigate('/integrations')}
+                  className="shrink-0"
+                  variant="outline"
+                  data-testid="button-setup-twilio"
+                >
+                  Set Up SMS
+                </Button>
+              )}
             </div>
           </div>
         )}
