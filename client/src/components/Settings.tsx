@@ -190,7 +190,8 @@ export default function Settings({
     currency: "AUD",
     aiEnabled: true,
     aiPhotoAnalysisEnabled: true,
-    aiSuggestionsEnabled: true
+    aiSuggestionsEnabled: true,
+    emailSendingMode: "manual" as "manual" | "automatic"
   });
 
   // Default color matches ThemeProvider's default (#3B5998 navy)
@@ -342,7 +343,8 @@ export default function Settings({
         currency: "AUD",
         aiEnabled: (businessSettings as any).aiEnabled !== false,
         aiPhotoAnalysisEnabled: (businessSettings as any).aiPhotoAnalysisEnabled !== false,
-        aiSuggestionsEnabled: (businessSettings as any).aiSuggestionsEnabled !== false
+        aiSuggestionsEnabled: (businessSettings as any).aiSuggestionsEnabled !== false,
+        emailSendingMode: (businessSettings as any).emailSendingMode || "manual"
       });
       
       // Always update payment data
@@ -1850,6 +1852,79 @@ export default function Settings({
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
+          {/* Email Sending Preference */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Email Sending Mode
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Choose how emails are sent when you click "Email Quote", "Email Invoice", or send payment links.
+              </p>
+              <div className="space-y-3">
+                <div 
+                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                    businessData.emailSendingMode === 'manual' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-muted hover-elevate'
+                  }`}
+                  onClick={() => {
+                    setBusinessData(prev => ({ ...prev, emailSendingMode: 'manual' }));
+                    handleBusinessSave({ emailSendingMode: 'manual' });
+                  }}
+                  data-testid="option-email-manual"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                      businessData.emailSendingMode === 'manual' ? 'border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {businessData.emailSendingMode === 'manual' && (
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium">Review before sending</p>
+                      <p className="text-sm text-muted-foreground">
+                        Opens Gmail so you can review and edit the email before sending. Great for personalised messages.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div 
+                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                    businessData.emailSendingMode === 'automatic' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-muted hover-elevate'
+                  }`}
+                  onClick={() => {
+                    setBusinessData(prev => ({ ...prev, emailSendingMode: 'automatic' }));
+                    handleBusinessSave({ emailSendingMode: 'automatic' });
+                  }}
+                  data-testid="option-email-automatic"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                      businessData.emailSendingMode === 'automatic' ? 'border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {businessData.emailSendingMode === 'automatic' && (
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium">Send automatically</p>
+                      <p className="text-sm text-muted-foreground">
+                        Emails are sent instantly without opening Gmail. Faster for high-volume work.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Email Notifications</CardTitle>

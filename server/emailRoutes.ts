@@ -821,19 +821,33 @@ async function uploadPDFToStorage(
   }
 }
 
-// Create Gmail draft with quote PDF attached - opens in Gmail for tradie to review and send
+// Create Gmail draft OR send directly via SendGrid based on user preference
 export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) => {
   try {
     const { customSubject, customMessage } = req.body || {};
     
-    // 1. Check Gmail connection
-    const gmailConnected = await isGmailConnected();
-    if (!gmailConnected) {
-      return res.status(400).json({
-        title: "Gmail Not Connected",
-        message: "Gmail needs to be connected to use this feature.",
-        fix: "Go to Settings → Email Integration and connect your Gmail account."
+    // 1. Get business settings to check email sending preference
+    const businessSettings = await storage.getBusinessSettings(req.userId);
+    if (!businessSettings) {
+      return res.status(404).json({
+        title: "Business Setup Incomplete",
+        message: "Your business details haven't been set up yet.",
+        fix: "Go to Settings and complete your business profile."
       });
+    }
+    
+    const emailSendingMode = businessSettings.emailSendingMode || 'manual';
+    
+    // 2. For manual mode, check Gmail connection
+    if (emailSendingMode === 'manual') {
+      const gmailConnected = await isGmailConnected();
+      if (!gmailConnected) {
+        return res.status(400).json({
+          title: "Gmail Not Connected",
+          message: "Gmail needs to be connected to use this feature.",
+          fix: "Go to Settings → Email Integration and connect your Gmail account."
+        });
+      }
     }
     
     // 2. Get quote with line items
@@ -864,17 +878,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       });
     }
     
-    // 4. Get business settings
-    const businessSettings = await storage.getBusinessSettings(req.userId);
-    if (!businessSettings) {
-      return res.status(404).json({
-        title: "Business Setup Incomplete",
-        message: "Your business details haven't been set up yet.",
-        fix: "Go to Settings and complete your business profile."
-      });
-    }
-    
-    // 5. Generate acceptance token if needed
+    // 4. Generate acceptance token if needed
     let acceptanceToken = quoteWithItems.acceptanceToken;
     if (!acceptanceToken) {
       acceptanceToken = await storage.generateQuoteAcceptanceToken(req.params.id, req.userId);
@@ -970,32 +974,59 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       </html>
     ` : createQuoteEmailHtml(quoteWithItems, client, businessSettings, quoteAcceptanceUrl).html;
     
-    // 10. Create Gmail draft with PDF attached
-    const draftResult = await createGmailDraftWithAttachment({
-      to: client.email,
-      subject,
-      html: emailHtml,
-      fromName: businessSettings.businessName,
-      attachments: [{
-        filename: pdfFilename,
-        content: pdfBuffer,
-        contentType: 'application/pdf'
-      }]
-    });
-    
-    if (!draftResult.success) {
-      throw new Error(draftResult.error || 'Failed to create Gmail draft');
+    // 10. Send email based on user preference (manual=Gmail draft, automatic=SendGrid)
+    if (emailSendingMode === 'automatic') {
+      // Send directly via SendGrid
+      const { sendEmailWithAttachment } = await import('./emailService');
+      
+      await sendEmailWithAttachment({
+        to: client.email,
+        subject,
+        html: emailHtml,
+        attachments: [{
+          filename: pdfFilename,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }]
+      });
+      
+      // Update quote status to sent
+      await storage.updateQuote(req.params.id, req.userId, { status: 'sent' });
+      
+      res.json({
+        success: true,
+        sent: true,
+        recipientEmail: client.email,
+        message: `Quote emailed to ${client.email} with PDF attached.`
+      });
+    } else {
+      // Create Gmail draft for manual review
+      const draftResult = await createGmailDraftWithAttachment({
+        to: client.email,
+        subject,
+        html: emailHtml,
+        fromName: businessSettings.businessName,
+        attachments: [{
+          filename: pdfFilename,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }]
+      });
+      
+      if (!draftResult.success) {
+        throw new Error(draftResult.error || 'Failed to create Gmail draft');
+      }
+      
+      // Return success with draft URL for user to open Gmail
+      res.json({
+        success: true,
+        draftId: draftResult.draftId,
+        draftUrl: draftResult.draftUrl,
+        pdfAttached: true,
+        recipientEmail: client.email,
+        message: `Gmail draft created with ${pdfFilename} attached. Click to open Gmail and send.`
+      });
     }
-    
-    // 11. Return success with draft URL
-    res.json({
-      success: true,
-      draftId: draftResult.draftId,
-      draftUrl: draftResult.draftUrl,
-      pdfAttached: true,
-      recipientEmail: client.email,
-      message: `Gmail draft created with ${pdfFilename} attached. Click to open Gmail and send.`
-    });
     
   } catch (error: any) {
     console.error("Error creating quote email with PDF:", error);
@@ -1004,22 +1035,36 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
   }
 };
 
-// Create Gmail draft with invoice PDF attached
+// Create Gmail draft OR send directly via SendGrid based on user preference
 export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any) => {
   try {
     const { customSubject, customMessage } = req.body || {};
     
-    // 1. Check Gmail connection
-    const gmailConnected = await isGmailConnected();
-    if (!gmailConnected) {
-      return res.status(400).json({
-        title: "Gmail Not Connected",
-        message: "Gmail needs to be connected to use this feature.",
-        fix: "Go to Settings → Email Integration and connect your Gmail account."
+    // 1. Get business settings to check email sending preference
+    const businessSettings = await storage.getBusinessSettings(req.userId);
+    if (!businessSettings) {
+      return res.status(404).json({
+        title: "Business Setup Incomplete",
+        message: "Your business details haven't been set up yet.",
+        fix: "Go to Settings and complete your business profile."
       });
     }
     
-    // 2. Get invoice with line items
+    const emailSendingMode = businessSettings.emailSendingMode || 'manual';
+    
+    // 2. For manual mode, check Gmail connection
+    if (emailSendingMode === 'manual') {
+      const gmailConnected = await isGmailConnected();
+      if (!gmailConnected) {
+        return res.status(400).json({
+          title: "Gmail Not Connected",
+          message: "Gmail needs to be connected to use this feature.",
+          fix: "Go to Settings → Email Integration and connect your Gmail account."
+        });
+      }
+    }
+    
+    // 3. Get invoice with line items
     let invoiceWithItems = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
     if (!invoiceWithItems) {
       return res.status(404).json({
@@ -1029,7 +1074,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       });
     }
     
-    // 3. Get client
+    // 4. Get client
     const client = await storage.getClient(invoiceWithItems.clientId, req.userId);
     if (!client) {
       return res.status(404).json({
@@ -1044,16 +1089,6 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
         title: "Client Email Missing",
         message: `${client.name} doesn't have an email address.`,
         fix: `Go to Clients → ${client.name} → Edit and add their email.`
-      });
-    }
-    
-    // 4. Get business settings
-    const businessSettings = await storage.getBusinessSettings(req.userId);
-    if (!businessSettings) {
-      return res.status(404).json({
-        title: "Business Setup Incomplete",
-        message: "Your business details haven't been set up yet.",
-        fix: "Go to Settings and complete your business profile."
       });
     }
     
@@ -1164,32 +1199,59 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       </html>
     ` : createInvoiceEmailHtml(invoiceWithItems, client, businessSettings, paymentUrl).html;
     
-    // 10. Create Gmail draft with PDF attached
-    const draftResult = await createGmailDraftWithAttachment({
-      to: client.email,
-      subject,
-      html: emailHtml,
-      fromName: businessSettings.businessName,
-      attachments: [{
-        filename: pdfFilename,
-        content: pdfBuffer,
-        contentType: 'application/pdf'
-      }]
-    });
-    
-    if (!draftResult.success) {
-      throw new Error(draftResult.error || 'Failed to create Gmail draft');
+    // 10. Send email based on user preference (manual=Gmail draft, automatic=SendGrid)
+    if (emailSendingMode === 'automatic') {
+      // Send directly via SendGrid
+      const { sendEmailWithAttachment } = await import('./emailService');
+      
+      await sendEmailWithAttachment({
+        to: client.email,
+        subject,
+        html: emailHtml,
+        attachments: [{
+          filename: pdfFilename,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }]
+      });
+      
+      // Update invoice status to sent
+      await storage.updateInvoice(req.params.id, req.userId, { status: 'sent' });
+      
+      res.json({
+        success: true,
+        sent: true,
+        recipientEmail: client.email,
+        message: `Invoice emailed to ${client.email} with PDF attached.`
+      });
+    } else {
+      // Create Gmail draft for manual review
+      const draftResult = await createGmailDraftWithAttachment({
+        to: client.email,
+        subject,
+        html: emailHtml,
+        fromName: businessSettings.businessName,
+        attachments: [{
+          filename: pdfFilename,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }]
+      });
+      
+      if (!draftResult.success) {
+        throw new Error(draftResult.error || 'Failed to create Gmail draft');
+      }
+      
+      // Return success with draft URL for user to open Gmail
+      res.json({
+        success: true,
+        draftId: draftResult.draftId,
+        draftUrl: draftResult.draftUrl,
+        pdfAttached: true,
+        recipientEmail: client.email,
+        message: `Gmail draft created with ${pdfFilename} attached. Click to open Gmail and send.`
+      });
     }
-    
-    // 11. Return success with draft URL
-    res.json({
-      success: true,
-      draftId: draftResult.draftId,
-      draftUrl: draftResult.draftUrl,
-      pdfAttached: true,
-      recipientEmail: client.email,
-      message: `Gmail draft created with ${pdfFilename} attached. Click to open Gmail and send.`
-    });
     
   } catch (error: any) {
     console.error("Error creating invoice email with PDF:", error);

@@ -276,7 +276,17 @@ export default function EmailComposeModal({
         return;
       }
 
-      // Open the Gmail draft URL
+      // Handle automatic mode (SendGrid) - email already sent
+      if (result.sent) {
+        toast({
+          title: `${type === 'quote' ? 'Quote' : 'Invoice'} sent!`,
+          description: `Email sent to ${result.recipientEmail} with PDF attached.`,
+        });
+        onClose();
+        return;
+      }
+
+      // Handle manual mode (Gmail draft) - open the draft URL
       if (result.draftUrl) {
         window.open(result.draftUrl, '_blank');
         toast({
