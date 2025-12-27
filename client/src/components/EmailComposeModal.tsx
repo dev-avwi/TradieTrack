@@ -178,9 +178,10 @@ export default function EmailComposeModal({
           description: `Email sent to ${result.recipientEmail} with PDF attached.`,
         });
         
-        // Invalidate cache to refresh status (backend already updated status)
+        // Invalidate both detail and list caches to refresh status everywhere
         const cacheKey = type === 'quote' ? '/api/quotes' : '/api/invoices';
         queryClient.invalidateQueries({ queryKey: [cacheKey, documentId] });
+        queryClient.invalidateQueries({ queryKey: [cacheKey] });
         
         onClose();
         return;
@@ -194,9 +195,10 @@ export default function EmailComposeModal({
           description: `PDF attached automatically. Review and click Send in Gmail.`,
         });
         
-        // Invalidate cache to refresh status (backend already updated status)
+        // Invalidate both detail and list caches to refresh status everywhere
         const cacheKey = type === 'quote' ? '/api/quotes' : '/api/invoices';
         queryClient.invalidateQueries({ queryKey: [cacheKey, documentId] });
+        queryClient.invalidateQueries({ queryKey: [cacheKey] });
         
         onClose();
       } else {
