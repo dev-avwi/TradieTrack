@@ -1017,6 +1017,9 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
         throw new Error(draftResult.error || 'Failed to create Gmail draft');
       }
       
+      // Update quote status to sent (user created the draft, we assume they'll send it)
+      await storage.updateQuote(req.params.id, req.userId, { status: 'sent' });
+      
       // Return success with draft URL for user to open Gmail
       res.json({
         success: true,
@@ -1241,6 +1244,9 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       if (!draftResult.success) {
         throw new Error(draftResult.error || 'Failed to create Gmail draft');
       }
+      
+      // Update invoice status to sent (user created the draft, we assume they'll send it)
+      await storage.updateInvoice(req.params.id, req.userId, { status: 'sent' });
       
       // Return success with draft URL for user to open Gmail
       res.json({

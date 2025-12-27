@@ -234,36 +234,6 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
       : undefined;
   };
 
-  // Handler for sending quote email
-  const handleSendQuoteEmail = async (customSubject: string, customMessage: string) => {
-    if (!quote) return;
-    
-    const skipEmail = !customSubject && !customMessage;
-    
-    const response = await fetch(`/api/quotes/${quoteId}/send`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ customSubject, customMessage, skipEmail })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to send quote');
-    }
-    
-    // Invalidate quote cache to refresh status
-    queryClient.invalidateQueries({ queryKey: ['/api/quotes', quoteId] });
-    
-    toast({
-      title: skipEmail ? "Quote Ready" : "Quote Sent",
-      description: skipEmail 
-        ? `Quote ${quote.number} status updated. Send it via Gmail!`
-        : `Quote ${quote.number} has been sent to ${client?.name || 'the client'}.`,
-    });
-    setShowEmailCompose(false);
-  };
-
   if (isLoading || !quote) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -631,7 +601,6 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
           total={quote.total || '0'}
           businessName={businessSettings?.businessName}
           publicUrl={getPublicQuoteUrl()}
-          onSend={handleSendQuoteEmail}
         />
       )}
     </>

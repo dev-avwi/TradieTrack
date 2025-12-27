@@ -394,36 +394,6 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
       : undefined;
   };
 
-  // Handler for sending invoice email with PDF
-  const handleSendInvoiceEmail = async (customSubject: string, customMessage: string) => {
-    if (!invoice) return;
-    
-    const skipEmail = !customSubject && !customMessage;
-    
-    const response = await fetch(`/api/invoices/${invoiceId}/send`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ customSubject, customMessage, skipEmail })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to send invoice');
-    }
-    
-    // Invalidate invoice cache to refresh status
-    queryClient.invalidateQueries({ queryKey: ['/api/invoices', invoiceId] });
-    
-    toast({
-      title: skipEmail ? "Invoice Ready" : "Invoice Sent",
-      description: skipEmail 
-        ? `Invoice ${invoice.number} status updated. Send it via Gmail!`
-        : `Invoice ${invoice.number} has been sent to ${client?.name || 'the client'}.`,
-    });
-    setShowEmailCompose(false);
-  };
-
   if (isLoading || !invoice) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -958,7 +928,6 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           total={invoice.total || '0'}
           businessName={businessSettings?.businessName}
           publicUrl={getPublicPaymentUrl()}
-          onSend={handleSendInvoiceEmail}
         />
       )}
     </>

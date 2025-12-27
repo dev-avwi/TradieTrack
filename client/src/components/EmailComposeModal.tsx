@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import { 
   Mail, 
   Send, 
@@ -35,7 +36,6 @@ interface EmailComposeModalProps {
   total: string;
   businessName?: string;
   publicUrl?: string;
-  onSend: (customSubject: string, customMessage: string) => Promise<void>;
 }
 
 interface AIEmailSuggestion {
@@ -57,8 +57,7 @@ export default function EmailComposeModal({
   documentTitle,
   total,
   businessName,
-  publicUrl,
-  onSend
+  publicUrl
 }: EmailComposeModalProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>("compose");
@@ -179,12 +178,9 @@ export default function EmailComposeModal({
           description: `Email sent to ${result.recipientEmail} with PDF attached.`,
         });
         
-        // Trigger cache invalidation/status update
-        try {
-          await onSend('', '');
-        } catch (e) {
-          console.log('Status update pending');
-        }
+        // Invalidate cache to refresh status (backend already updated status)
+        const cacheKey = type === 'quote' ? '/api/quotes' : '/api/invoices';
+        queryClient.invalidateQueries({ queryKey: [cacheKey, documentId] });
         
         onClose();
         return;
@@ -198,12 +194,9 @@ export default function EmailComposeModal({
           description: `PDF attached automatically. Review and click Send in Gmail.`,
         });
         
-        // Mark as sent after successful draft creation
-        try {
-          await onSend('', ''); // Mark as sent
-        } catch (e) {
-          console.log('Status update pending');
-        }
+        // Invalidate cache to refresh status (backend already updated status)
+        const cacheKey = type === 'quote' ? '/api/quotes' : '/api/invoices';
+        queryClient.invalidateQueries({ queryKey: [cacheKey, documentId] });
         
         onClose();
       } else {
