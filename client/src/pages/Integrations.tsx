@@ -71,17 +71,16 @@ interface GoogleCalendarStatus {
   message?: string;
 }
 
-// MYOB interface - kept for future use
-// interface MyobStatus {
-//   configured: boolean;
-//   connected: boolean;
-//   companyName?: string;
-//   businessId?: string;
-//   lastSyncAt?: string;
-//   status?: string;
-//   message?: string;
-//   cfCredentialsSet?: boolean;
-// }
+interface MyobStatus {
+  configured: boolean;
+  connected: boolean;
+  companyName?: string;
+  businessId?: string;
+  lastSyncAt?: string;
+  status?: string;
+  message?: string;
+  cfCredentialsSet?: boolean;
+}
 
 interface ServiceHealth {
   name: string;
@@ -337,8 +336,100 @@ export default function Integrations() {
     },
   });
 
-  // MYOB integration - Removed from UI per user request (focusing on Xero)
-  // Backend routes remain available for future use
+  // MYOB integration queries and mutations
+  const { data: myobStatus, refetch: refetchMyob } = useQuery<MyobStatus>({
+    queryKey: ['/api/integrations/myob/status'],
+  });
+
+  const connectMyobMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/myob/connect');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to start MYOB connection",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disconnectMyobMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/myob/disconnect');
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Disconnected",
+        description: "MYOB has been disconnected successfully",
+      });
+      refetchMyob();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to disconnect MYOB",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const syncMyobContactsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/myob/sync', { type: 'contacts' });
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      const syncedCount = data?.synced || 0;
+      const errorCount = data?.errors?.length || 0;
+      toast({
+        title: "Contacts Synced",
+        description: syncedCount > 0 
+          ? `Imported ${syncedCount} contact${syncedCount !== 1 ? 's' : ''} from MYOB${errorCount > 0 ? ` (${errorCount} error${errorCount !== 1 ? 's' : ''})` : ''}`
+          : "No new contacts to import",
+      });
+      refetchMyob();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Contact Sync Failed",
+        description: error.message || "Failed to sync contacts with MYOB",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const syncMyobInvoicesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/myob/sync', { type: 'invoices' });
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      const syncedCount = data?.synced || 0;
+      const errorCount = data?.errors?.length || 0;
+      toast({
+        title: "Invoices Pushed",
+        description: syncedCount > 0 
+          ? `Pushed ${syncedCount} invoice${syncedCount !== 1 ? 's' : ''} to MYOB${errorCount > 0 ? ` (${errorCount} error${errorCount !== 1 ? 's' : ''})` : ''}`
+          : "No invoices to push",
+      });
+      refetchMyob();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Invoice Push Failed",
+        description: error.message || "Failed to push invoices to MYOB",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Google Calendar integration queries and mutations
   const { data: googleCalendarStatus, refetch: refetchGoogleCalendar } = useQuery<GoogleCalendarStatus>({
@@ -1242,7 +1333,159 @@ export default function Integrations() {
           </CardContent>
         </Card>
 
-        {/* MYOB Accounting Integration - Removed per user request, focusing on Xero */}
+        {/* MYOB Accounting Integration */}
+        <Card data-testid="card-myob-integration">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  myobStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
+                  myobStatus?.configured ? 'bg-gray-100 dark:bg-gray-800/50' :
+                  'bg-gray-100 dark:bg-gray-800/50'
+                }`}>
+                  <Building2 className={`w-5 h-5 ${
+                    myobStatus?.connected ? 'text-green-600 dark:text-green-400' :
+                    'text-gray-500 dark:text-gray-400'
+                  }`} />
+                </div>
+                <div>
+                  <CardTitle className="text-base">MYOB AccountRight</CardTitle>
+                  <p className="text-xs text-muted-foreground">Sync invoices and contacts with MYOB</p>
+                </div>
+              </div>
+              {myobStatus?.connected ? (
+                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Connected
+                </Badge>
+              ) : myobStatus?.configured === false ? (
+                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                  Not Configured
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                  Not Connected
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-4">
+            {myobStatus?.connected ? (
+              <>
+                <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                      {myobStatus.companyName || 'MYOB Company File'}
+                    </span>
+                  </div>
+                  {myobStatus.lastSyncAt && (
+                    <p className="text-xs text-green-700 dark:text-green-300">
+                      Last synced: {new Date(myobStatus.lastSyncAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-foreground">Sync Actions</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncMyobContactsMutation.mutate()}
+                      disabled={syncMyobContactsMutation.isPending || syncMyobInvoicesMutation.isPending}
+                      data-testid="button-sync-myob-contacts"
+                    >
+                      {syncMyobContactsMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Users className="w-4 h-4 mr-2" />
+                      )}
+                      Sync Contacts
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncMyobInvoicesMutation.mutate()}
+                      disabled={syncMyobInvoicesMutation.isPending || syncMyobContactsMutation.isPending}
+                      data-testid="button-sync-myob-invoices"
+                    >
+                      {syncMyobInvoicesMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <FileText className="w-4 h-4 mr-2" />
+                      )}
+                      Push Invoices
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Contacts are imported from MYOB. Sent invoices are pushed to MYOB.
+                  </p>
+                </div>
+
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => disconnectMyobMutation.mutate()}
+                  disabled={disconnectMyobMutation.isPending}
+                  className="w-full"
+                  data-testid="button-disconnect-myob"
+                >
+                  {disconnectMyobMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Link2Off className="w-4 h-4 mr-2" />
+                  )}
+                  Disconnect MYOB
+                </Button>
+              </>
+            ) : myobStatus?.configured === false ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  MYOB integration is not configured. Please contact support to enable this feature.
+                </p>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                    <div className="text-xs text-muted-foreground">
+                      <p>MYOB_CLIENT_ID and MYOB_CLIENT_SECRET must be configured.</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Connect your MYOB AccountRight account to automatically sync invoices and contacts.
+                </p>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p><strong>Two-way sync:</strong> Contacts and invoices stay in sync</p>
+                      <p><strong>Automatic updates:</strong> Changes sync between platforms</p>
+                      <p><strong>Australian business:</strong> Works with MYOB AU</p>
+                    </div>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => connectMyobMutation.mutate()}
+                  disabled={connectMyobMutation.isPending}
+                  className="w-full"
+                  data-testid="button-connect-myob"
+                >
+                  {connectMyobMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Building2 className="w-4 h-4 mr-2" />
+                  )}
+                  Connect to MYOB
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Communication Services Section */}
