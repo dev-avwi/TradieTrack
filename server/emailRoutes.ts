@@ -1315,9 +1315,9 @@ export const handleSendPaymentLink = async (req: any, res: any, storage: any) =>
       to: client.email,
       subject,
       html: emailHtml,
-      from: businessSettings.email || 'noreply@tradietrack.com.au',
-      fromName: businessSettings.businessName,
-      type: 'payment_link'
+      userId,
+      type: 'payment_link',
+      relatedId: invoice.id
     });
     
     if (!emailResult.success) {
