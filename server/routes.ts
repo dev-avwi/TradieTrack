@@ -320,8 +320,9 @@ async function gatherAIContext(userId: string, storage: any): Promise<BusinessCo
     .filter(Boolean) as string[];
 
   // Check if SMS is set up (Twilio via connector or environment variables)
+  // Only consider SMS set up if credentials are verified (not placeholders)
   const twilioStatus = await checkTwilioAvailability();
-  const hasSmsSetup = twilioStatus.connected;
+  const hasSmsSetup = twilioStatus.verified === true;
 
   return {
     businessName: businessSettings?.businessName || 'Your Business',
@@ -2864,6 +2865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : null;
       
       // Check platform Twilio availability (connector or env vars)
+      // Use verified flag to ensure credentials are not placeholders
       const platformTwilioStatus = await checkTwilioAvailability();
       
       // Return SMS branding fields (mask ALL sensitive data)
@@ -2874,7 +2876,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         twilioAuthToken: maskedAuthToken,
         twilioAuthTokenConfigured: !!settings?.twilioAuthToken,
         // Include platform defaults info (connector or env vars)
-        platformTwilioConfigured: platformTwilioStatus.connected,
+        // Only show as configured if verified (not placeholder credentials)
+        platformTwilioConfigured: platformTwilioStatus.verified === true,
         platformTwilioPhoneNumber: platformTwilioStatus.hasPhoneNumber ? '(configured)' : null,
       };
       
@@ -3900,8 +3903,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const servicesReady = (stripeConnectStatus.connected && stripeConnectStatus.chargesEnabled) || emailVerified;
       
       // Check Twilio SMS status via connector or env vars
+      // Only treat as connected if credentials are verified (not placeholders)
       const twilioAvail = await checkTwilioAvailability();
-      const twilioConfigured = twilioAvail.connected;
+      const twilioConfigured = twilioAvail.verified === true;
       
       const services = {
         payments: {
