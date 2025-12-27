@@ -44,8 +44,21 @@ import {
   HelpCircle,
   Calendar,
   ChevronDown,
-  Shield
+  Shield,
+  Plus,
+  Pencil,
+  Trash2
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { MessageTemplate } from "@shared/schema";
 import {
   Collapsible,
   CollapsibleContent,
@@ -185,6 +198,15 @@ export default function Integrations() {
   const [showAuthToken, setShowAuthToken] = useState(false);
   const { toast } = useToast();
   
+  // Message Templates state
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null);
+  const [templateChannel, setTemplateChannel] = useState<'email' | 'sms'>('email');
+  const [templateName, setTemplateName] = useState('');
+  const [templateCategory, setTemplateCategory] = useState('general');
+  const [templateSubject, setTemplateSubject] = useState('');
+  const [templateBody, setTemplateBody] = useState('');
+  
   // Business settings for email sending mode
   const { data: businessSettings } = useBusinessSettings();
   const updateBusinessSettings = useUpdateBusinessSettings();
@@ -196,6 +218,85 @@ export default function Integrations() {
   const { data: health, isLoading, isError, refetch } = useQuery<HealthStatus>({
     queryKey: ['/api/integrations/health'],
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Message Templates queries and mutations
+  const { data: messageTemplates = [], refetch: refetchTemplates } = useQuery<MessageTemplate[]>({
+    queryKey: ['/api/message-templates'],
+  });
+
+  const createTemplateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch('/api/message-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to create template');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Template created", description: "Your new template is ready to use" });
+      refetchTemplates();
+      setTemplateDialogOpen(false);
+      resetTemplateForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create template",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateTemplateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await fetch(`/api/message-templates/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to update template');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Template updated", description: "Your changes have been saved" });
+      refetchTemplates();
+      setTemplateDialogOpen(false);
+      resetTemplateForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update template",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/message-templates/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to delete template');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Template deleted", description: "The template has been removed" });
+      refetchTemplates();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete template",
+        variant: "destructive",
+      });
+    },
   });
 
   // Mutation to start Stripe Connect onboarding
@@ -663,6 +764,50 @@ export default function Integrations() {
   const handleOpenDashboard = () => {
     openDashboardMutation.mutate();
   };
+
+  // Message Templates helper functions
+  const resetTemplateForm = () => {
+    setEditingTemplate(null);
+    setTemplateName('');
+    setTemplateCategory('general');
+    setTemplateSubject('');
+    setTemplateBody('');
+  };
+
+  const openCreateTemplate = (channel: 'email' | 'sms') => {
+    resetTemplateForm();
+    setTemplateChannel(channel);
+    setTemplateDialogOpen(true);
+  };
+
+  const openEditTemplate = (template: MessageTemplate) => {
+    setEditingTemplate(template);
+    setTemplateChannel(template.channel as 'email' | 'sms');
+    setTemplateName(template.name);
+    setTemplateCategory(template.category);
+    setTemplateSubject(template.subject || '');
+    setTemplateBody(template.body);
+    setTemplateDialogOpen(true);
+  };
+
+  const handleSaveTemplate = () => {
+    const data = {
+      channel: templateChannel,
+      name: templateName,
+      category: templateCategory,
+      subject: templateChannel === 'email' ? templateSubject : null,
+      body: templateBody,
+    };
+    
+    if (editingTemplate) {
+      updateTemplateMutation.mutate({ id: editingTemplate.id, data });
+    } else {
+      createTemplateMutation.mutate(data);
+    }
+  };
+
+  const emailTemplates = messageTemplates.filter(t => t.channel === 'email');
+  const smsTemplates = messageTemplates.filter(t => t.channel === 'sms');
 
   return (
     <PageShell>
@@ -1770,6 +1915,160 @@ export default function Integrations() {
             </CardContent>
           </Card>
 
+          {/* Message Templates Card */}
+          <Card data-testid="card-message-templates">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-100 dark:bg-blue-900/50">
+                    <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Message Templates</CardTitle>
+                    <p className="text-xs text-muted-foreground">Create reusable email and SMS templates</p>
+                  </div>
+                </div>
+                <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0">
+                  {messageTemplates.length} template{messageTemplates.length !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Save time by creating templates for common messages. Use merge fields to personalize each message.
+              </p>
+              
+              <Tabs defaultValue="email" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="email" data-testid="tab-email-templates">
+                    <Mail className="w-4 h-4 mr-2" />
+                    Email ({emailTemplates.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="sms" data-testid="tab-sms-templates">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    SMS ({smsTemplates.length})
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="email" className="mt-4 space-y-3">
+                  {emailTemplates.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <Mail className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No email templates yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {emailTemplates.map((template) => (
+                        <div
+                          key={template.id}
+                          className="flex items-center justify-between p-3 rounded-lg border bg-card hover-elevate"
+                          data-testid={`template-item-${template.id}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{template.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{template.subject}</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => openEditTemplate(template)}
+                              data-testid={`button-edit-template-${template.id}`}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => deleteTemplateMutation.mutate(template.id)}
+                              disabled={deleteTemplateMutation.isPending}
+                              data-testid={`button-delete-template-${template.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => openCreateTemplate('email')}
+                    data-testid="button-create-email-template"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Email Template
+                  </Button>
+                </TabsContent>
+                
+                <TabsContent value="sms" className="mt-4 space-y-3">
+                  {smsTemplates.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No SMS templates yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {smsTemplates.map((template) => (
+                        <div
+                          key={template.id}
+                          className="flex items-center justify-between p-3 rounded-lg border bg-card hover-elevate"
+                          data-testid={`template-item-${template.id}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{template.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {template.body.substring(0, 50)}{template.body.length > 50 ? '...' : ''}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => openEditTemplate(template)}
+                              data-testid={`button-edit-template-${template.id}`}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => deleteTemplateMutation.mutate(template.id)}
+                              disabled={deleteTemplateMutation.isPending}
+                              data-testid={`button-delete-template-${template.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => openCreateTemplate('sms')}
+                    data-testid="button-create-sms-template"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create SMS Template
+                  </Button>
+                </TabsContent>
+              </Tabs>
+
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                  <div className="text-xs text-muted-foreground">
+                    <p className="font-medium mb-1">Available merge fields:</p>
+                    <p>{"{{client_name}}, {{job_address}}, {{job_date}}, {{amount}}, {{business_name}}"}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
         </div>
       </div>
 
@@ -1903,6 +2202,120 @@ export default function Integrations() {
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 ) : null}
                 Save Settings
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Message Template Dialog */}
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              {editingTemplate ? 'Edit Template' : 'Create Template'}
+            </DialogTitle>
+            <DialogDescription>
+              {templateChannel === 'email' ? 'Create a reusable email template' : 'Create a reusable SMS template'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="template-name">Template Name</Label>
+              <Input
+                id="template-name"
+                placeholder="e.g., Quote Follow-up"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                data-testid="input-template-name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="template-category">Category</Label>
+              <Select value={templateCategory} onValueChange={setTemplateCategory}>
+                <SelectTrigger id="template-category" data-testid="select-template-category">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="quote_follow_up">Quote Follow-up</SelectItem>
+                  <SelectItem value="payment_reminder">Payment Reminder</SelectItem>
+                  <SelectItem value="job_booking">Job Booking</SelectItem>
+                  <SelectItem value="on_my_way">On My Way</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {templateChannel === 'email' && (
+              <div className="space-y-2">
+                <Label htmlFor="template-subject">Subject Line</Label>
+                <Input
+                  id="template-subject"
+                  placeholder="e.g., Your quote from {{business_name}}"
+                  value={templateSubject}
+                  onChange={(e) => setTemplateSubject(e.target.value)}
+                  data-testid="input-template-subject"
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="template-body">Message Body</Label>
+              <Textarea
+                id="template-body"
+                placeholder={templateChannel === 'email' 
+                  ? "Hi {{client_name}},\n\nThank you for your interest in our services..."
+                  : "Hi {{client_name}}, this is {{business_name}}..."
+                }
+                value={templateBody}
+                onChange={(e) => setTemplateBody(e.target.value)}
+                rows={templateChannel === 'email' ? 8 : 4}
+                className="resize-none"
+                data-testid="textarea-template-body"
+              />
+            </div>
+
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <HelpCircle className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400" />
+                <div className="text-xs text-blue-800 dark:text-blue-200">
+                  <p className="font-medium mb-1">Available merge fields:</p>
+                  <div className="flex flex-wrap gap-1">
+                    <Badge variant="outline" className="text-xs">{"{{client_name}}"}</Badge>
+                    <Badge variant="outline" className="text-xs">{"{{job_address}}"}</Badge>
+                    <Badge variant="outline" className="text-xs">{"{{job_date}}"}</Badge>
+                    <Badge variant="outline" className="text-xs">{"{{amount}}"}</Badge>
+                    <Badge variant="outline" className="text-xs">{"{{business_name}}"}</Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTemplateDialogOpen(false);
+                  resetTemplateForm();
+                }}
+                className="flex-1"
+                data-testid="button-cancel-template"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveTemplate}
+                disabled={!templateName || !templateBody || createTemplateMutation.isPending || updateTemplateMutation.isPending}
+                className="flex-1"
+                data-testid="button-save-template"
+              >
+                {(createTemplateMutation.isPending || updateTemplateMutation.isPending) ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
+                {editingTemplate ? 'Save Changes' : 'Create Template'}
               </Button>
             </div>
           </div>
