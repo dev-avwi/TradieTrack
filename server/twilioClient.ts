@@ -15,7 +15,7 @@ import twilio from 'twilio';
 let twilioClient: ReturnType<typeof twilio> | null = null;
 let twilioPhoneNumber: string | null = null;
 let isInitialized = false;
-let cachedAvailability: { configured: boolean; connected: boolean; hasPhoneNumber: boolean } | null = null;
+let cachedAvailability: { configured: boolean; connected: boolean; hasPhoneNumber: boolean; verified?: boolean } | null = null;
 let availabilityCacheTime: number = 0;
 const AVAILABILITY_CACHE_TTL = 60000; // Cache for 1 minute
 
@@ -25,6 +25,40 @@ interface TwilioCredentials {
   apiKeySecret?: string;
   authToken?: string;
   phoneNumber: string;
+}
+
+/**
+ * Check if a value looks like a placeholder rather than a real credential
+ */
+function isPlaceholderValue(value: string | undefined | null): boolean {
+  if (!value) return true;
+  const trimmed = value.trim();
+  if (trimmed.length < 10) return true; // Too short to be real
+  
+  // Common placeholder patterns
+  const placeholderPatterns = [
+    /^AC[Xx]+$/i,           // ACxxxx... or ACXXXX...
+    /^SK[Xx]+$/i,           // SKxxxx...
+    /^your[_\s]/i,          // "your_account_sid", "Your Auth Token"
+    /^placeholder/i,        // "placeholder..."
+    /^test[_\s]/i,          // "test_..." but not real test keys
+    /^example/i,            // "example..."
+    /^enter[_\s]/i,         // "enter your..."
+    /^\*+$/,                // Just asterisks
+    /^\.+$/,                // Just dots
+  ];
+  
+  return placeholderPatterns.some(pattern => pattern.test(trimmed));
+}
+
+/**
+ * Check if a phone number looks valid (E.164 format)
+ */
+function isValidPhoneNumber(phone: string | undefined | null): boolean {
+  if (!phone) return false;
+  const trimmed = phone.trim();
+  // E.164 format: + followed by 10-15 digits
+  return /^\+[1-9]\d{9,14}$/.test(trimmed);
 }
 
 /**
@@ -129,16 +163,17 @@ export function isTwilioInitialized(): boolean {
 }
 
 // Check if Twilio is available (async - checks connector or env vars, with caching)
-export async function checkTwilioAvailability(): Promise<{ configured: boolean; connected: boolean; hasPhoneNumber: boolean }> {
+// Returns connected: true only if credentials appear valid (not placeholders) and phone number is present
+export async function checkTwilioAvailability(): Promise<{ configured: boolean; connected: boolean; hasPhoneNumber: boolean; verified: boolean }> {
   // Return cached result if still valid
   const now = Date.now();
   if (cachedAvailability && (now - availabilityCacheTime) < AVAILABILITY_CACHE_TTL) {
-    return cachedAvailability;
+    return { ...cachedAvailability, verified: cachedAvailability.connected };
   }
   
-  // Also return cached result if already initialized successfully
-  if (isInitialized && twilioClient && twilioPhoneNumber) {
-    const result = { configured: true, connected: true, hasPhoneNumber: true };
+  // If already initialized and verified, return cached positive result
+  if (isInitialized && twilioClient && twilioPhoneNumber && isValidPhoneNumber(twilioPhoneNumber)) {
+    const result = { configured: true, connected: true, hasPhoneNumber: true, verified: true };
     cachedAvailability = result;
     availabilityCacheTime = now;
     return result;
@@ -146,11 +181,36 @@ export async function checkTwilioAvailability(): Promise<{ configured: boolean; 
   
   try {
     const credentials = await getCredentials();
+    
+    // Check if credentials look like placeholders
+    const hasRealAccountSid = !isPlaceholderValue(credentials.accountSid) && 
+                               credentials.accountSid.startsWith('AC') && 
+                               credentials.accountSid.length >= 34;
+    
+    const hasRealAuthToken = credentials.authToken ? 
+                              (!isPlaceholderValue(credentials.authToken) && credentials.authToken.length >= 32) : 
+                              false;
+    
+    const hasRealApiKey = credentials.apiKey ? 
+                          (!isPlaceholderValue(credentials.apiKey) && credentials.apiKey.startsWith('SK')) : 
+                          false;
+    
+    const hasRealApiSecret = credentials.apiKeySecret ? 
+                              (!isPlaceholderValue(credentials.apiKeySecret) && credentials.apiKeySecret.length >= 32) : 
+                              false;
+    
+    const hasValidAuth = hasRealAccountSid && (hasRealAuthToken || (hasRealApiKey && hasRealApiSecret));
+    const hasValidPhone = isValidPhoneNumber(credentials.phoneNumber);
+    
+    // configured = credentials exist (even if placeholder)
+    // connected = credentials appear valid (not placeholders) AND phone number is valid
     const result = {
-      configured: true,
-      connected: !!(credentials.accountSid && (credentials.authToken || (credentials.apiKey && credentials.apiKeySecret))),
-      hasPhoneNumber: !!credentials.phoneNumber
+      configured: !!(credentials.accountSid && (credentials.authToken || (credentials.apiKey && credentials.apiKeySecret))),
+      connected: hasValidAuth && hasValidPhone,
+      hasPhoneNumber: hasValidPhone,
+      verified: hasValidAuth && hasValidPhone
     };
+    
     cachedAvailability = result;
     availabilityCacheTime = now;
     return result;
@@ -158,7 +218,8 @@ export async function checkTwilioAvailability(): Promise<{ configured: boolean; 
     const result = {
       configured: false,
       connected: false,
-      hasPhoneNumber: false
+      hasPhoneNumber: false,
+      verified: false
     };
     cachedAvailability = result;
     availabilityCacheTime = now;
