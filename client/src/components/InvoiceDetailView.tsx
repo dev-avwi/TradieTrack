@@ -16,6 +16,7 @@ import StatusBadge from "./StatusBadge";
 import EmailComposeModal from "./EmailComposeModal";
 import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
 import DemoPaymentSimulator from "./DemoPaymentSimulator";
+import type { BusinessTemplate } from "@shared/schema";
 
 interface InvoiceDetailViewProps {
   invoiceId: string;
@@ -107,6 +108,16 @@ export default function InvoiceDetailView({
       return signatures.length > 0 ? signatures[0] : null;
     },
     enabled: !!invoice?.quoteId && businessSettings?.includeSignatureOnInvoices === true
+  });
+
+  const { data: termsTemplate } = useQuery<BusinessTemplate>({
+    queryKey: ["/api/business-templates/active/terms_conditions"],
+    enabled: !!invoice,
+  });
+
+  const { data: warrantyTemplate } = useQuery<BusinessTemplate>({
+    queryKey: ["/api/business-templates/active/warranty"],
+    enabled: !!invoice,
   });
 
   const toggleOnlinePaymentMutation = useMutation({
@@ -899,6 +910,28 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                         <p><strong>Quote:</strong> {linkedQuote.number}</p>
                       )}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {termsTemplate?.content && (
+                <div 
+                  className="mb-8 p-4"
+                  style={getNoteStyle()}
+                >
+                  <h3 className="font-semibold mb-2 text-gray-800">Terms & Conditions</h3>
+                  <div className="text-gray-600 text-sm whitespace-pre-wrap">{termsTemplate.content}</div>
+                </div>
+              )}
+
+              {(warrantyTemplate?.content || businessSettings?.warrantyPeriod) && (
+                <div 
+                  className="mb-8 p-4"
+                  style={getNoteStyle()}
+                >
+                  <h3 className="font-semibold mb-2 text-gray-800">Warranty</h3>
+                  <div className="text-gray-600 text-sm whitespace-pre-wrap">
+                    {warrantyTemplate?.content || `All work is guaranteed for ${businessSettings?.warrantyPeriod} from completion date.`}
                   </div>
                 </div>
               )}
