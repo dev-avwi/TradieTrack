@@ -10089,6 +10089,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/business-templates/seed - Seed default templates for user
+  app.post("/api/business-templates/seed", requireAuth, async (req: any, res) => {
+    try {
+      const templates = await storage.seedDefaultBusinessTemplates(req.userId);
+      res.json({ success: true, templatesCreated: templates.length });
+    } catch (error) {
+      console.error('Error seeding default templates:', error);
+      res.status(500).json({ error: 'Failed to seed default templates' });
+    }
+  });
+
+  // GET /api/business-templates/families - Get all template families with metadata
+  app.get("/api/business-templates/families", requireAuth, async (req: any, res) => {
+    try {
+      const families = await storage.getBusinessTemplateFamilies(req.userId);
+      res.json(families);
+    } catch (error) {
+      console.error('Error fetching template families:', error);
+      res.status(500).json({ error: 'Failed to fetch template families' });
+    }
+  });
+
   // Template Analysis Routes - AI-powered PDF template analysis
   const templateUpload = multer({ 
     storage: multer.memoryStorage(),

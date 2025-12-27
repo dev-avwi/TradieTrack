@@ -590,6 +590,8 @@ export interface IStorage {
   updateBusinessTemplate(id: string, userId: string, data: Partial<InsertBusinessTemplate>): Promise<BusinessTemplate | undefined>;
   deleteBusinessTemplate(id: string, userId: string): Promise<boolean>;
   setActiveBusinessTemplate(id: string, userId: string): Promise<void>;
+  seedDefaultBusinessTemplates(userId: string): Promise<BusinessTemplate[]>;
+  getBusinessTemplateFamilies(userId: string): Promise<{ family: string; name: string; description: string; count: number; hasActive: boolean }[]>;
 
   // Account Deletion (Apple App Store Compliance)
   deleteUserAccount(userId: string): Promise<{ success: boolean; deletedCounts: Record<string, number> }>;
@@ -3853,6 +3855,257 @@ export class PostgresStorage implements IStorage {
         eq(businessTemplates.id, id),
         eq(businessTemplates.userId, userId)
       ));
+  }
+
+  async seedDefaultBusinessTemplates(userId: string): Promise<BusinessTemplate[]> {
+    // Check if user already has templates
+    const existing = await this.getBusinessTemplates(userId);
+    if (existing.length > 0) {
+      return existing;
+    }
+
+    const defaultTemplates: InsertBusinessTemplate[] = [
+      // Terms & Conditions - Australian standard
+      {
+        userId,
+        family: 'terms_conditions',
+        name: 'Standard Terms & Conditions',
+        description: 'Australian-standard terms and conditions for quotes and invoices',
+        isDefault: true,
+        isActive: true,
+        content: `1. ACCEPTANCE: This quote is valid for 30 days from the date of issue. Acceptance of this quote constitutes a binding agreement.
+
+2. PAYMENT: A deposit of 50% may be required before work commences. Balance due on completion unless otherwise agreed.
+
+3. VARIATIONS: Any variations to the quoted work must be agreed in writing and may result in additional charges.
+
+4. MATERIALS: All materials remain the property of the contractor until full payment is received.
+
+5. WARRANTY: All workmanship is guaranteed for 12 months from completion, unless otherwise specified.
+
+6. ACCESS: The client must provide safe and reasonable access to the work site.
+
+7. CANCELLATION: Cancellation after acceptance may incur costs for materials ordered or work commenced.`,
+        mergeFields: ['business_name', 'quote_number', 'quote_date', 'validity_days', 'deposit_percent', 'warranty_months'],
+        metadata: { validityDays: 30, depositPercent: 50, warrantyMonths: 12 },
+      },
+      // Warranty Template
+      {
+        userId,
+        family: 'warranty',
+        name: 'Standard Warranty',
+        description: '12-month workmanship warranty statement',
+        isDefault: true,
+        isActive: true,
+        content: `All work is guaranteed for 12 months from completion date.
+
+This warranty covers defects in workmanship and materials supplied by us. Normal wear and tear, damage caused by misuse, or work carried out by others is not covered.
+
+To make a warranty claim, please contact us with your original invoice number and a description of the issue.`,
+        mergeFields: ['business_name', 'warranty_months', 'completion_date', 'invoice_number'],
+        metadata: { warrantyMonths: 12 },
+      },
+      // Email Templates
+      {
+        userId,
+        family: 'email',
+        name: 'Quote Sent',
+        description: 'Email sent when a quote is delivered to client',
+        isDefault: true,
+        isActive: true,
+        subject: 'Quote #{quote_number} from {business_name}',
+        content: `Hi {client_name},
+
+Thank you for the opportunity to provide a quote for your project.
+
+Please find attached your quote #{quote_number} for the requested work. The quote is valid for 30 days.
+
+If you have any questions or would like to proceed, please reply to this email or call us.
+
+Kind regards,
+{business_name}`,
+        mergeFields: ['client_name', 'business_name', 'quote_number', 'quote_total', 'job_title'],
+        metadata: { category: 'quote' },
+      },
+      {
+        userId,
+        family: 'email',
+        name: 'Invoice Sent',
+        description: 'Email sent when an invoice is delivered to client',
+        isDefault: false,
+        isActive: false,
+        subject: 'Invoice #{invoice_number} from {business_name}',
+        content: `Hi {client_name},
+
+Please find attached your invoice #{invoice_number} for the completed work.
+
+Total Amount: ${'{invoice_total}'}
+Due Date: {due_date}
+
+Payment can be made via bank transfer or card. Details are included on the invoice.
+
+Thank you for your business!
+
+Kind regards,
+{business_name}`,
+        mergeFields: ['client_name', 'business_name', 'invoice_number', 'invoice_total', 'due_date', 'job_title'],
+        metadata: { category: 'invoice' },
+      },
+      {
+        userId,
+        family: 'email',
+        name: 'Payment Reminder',
+        description: 'Friendly reminder for overdue invoices',
+        isDefault: false,
+        isActive: false,
+        subject: 'Payment Reminder - Invoice #{invoice_number}',
+        content: `Hi {client_name},
+
+This is a friendly reminder that invoice #{invoice_number} for ${'{invoice_total}'} is now overdue.
+
+If you've already made payment, please disregard this message. Otherwise, we'd appreciate payment at your earliest convenience.
+
+If you have any questions about the invoice, please don't hesitate to contact us.
+
+Kind regards,
+{business_name}`,
+        mergeFields: ['client_name', 'business_name', 'invoice_number', 'invoice_total', 'due_date', 'days_overdue'],
+        metadata: { category: 'payment' },
+      },
+      // SMS Templates
+      {
+        userId,
+        family: 'sms',
+        name: 'On My Way',
+        description: 'Quick notification when heading to job site',
+        isDefault: true,
+        isActive: true,
+        content: `Hi {client_name}, I'm on my way to your place now. Should be there in about 15-20 mins. - {business_name}`,
+        mergeFields: ['client_name', 'business_name', 'job_address'],
+        metadata: { category: 'job_update' },
+      },
+      {
+        userId,
+        family: 'sms',
+        name: 'Running Late',
+        description: 'Notify client of delay',
+        isDefault: false,
+        isActive: false,
+        content: `Hi {client_name}, just a heads up I'm running about 15 mins late. Sorry for any inconvenience. - {business_name}`,
+        mergeFields: ['client_name', 'business_name'],
+        metadata: { category: 'job_update' },
+      },
+      {
+        userId,
+        family: 'sms',
+        name: 'Job Complete',
+        description: 'Notification when work is finished',
+        isDefault: false,
+        isActive: false,
+        content: `Hi {client_name}, all done at your place! Invoice will be sent shortly. Thanks for choosing {business_name}!`,
+        mergeFields: ['client_name', 'business_name', 'job_title'],
+        metadata: { category: 'job_update' },
+      },
+      // Payment Notice Template
+      {
+        userId,
+        family: 'payment_notice',
+        name: 'Payment Due Notice',
+        description: 'Notice for upcoming or overdue payments',
+        isDefault: true,
+        isActive: true,
+        content: `PAYMENT NOTICE
+
+Invoice: #{invoice_number}
+Amount Due: {invoice_total}
+Due Date: {due_date}
+
+Please arrange payment at your earliest convenience. If you have any questions about this invoice, please contact us.
+
+Bank Details:
+{bank_details}
+
+Thank you for your prompt attention to this matter.`,
+        mergeFields: ['invoice_number', 'invoice_total', 'due_date', 'client_name', 'business_name', 'bank_details'],
+        metadata: { category: 'payment' },
+      },
+      // Safety Form Template
+      {
+        userId,
+        family: 'safety_form',
+        name: 'Job Safety Analysis (JSA)',
+        description: 'Standard workplace hazard assessment form',
+        isDefault: true,
+        isActive: true,
+        content: 'Job Safety Analysis Form',
+        sections: [
+          { id: 'site_info', title: 'Site Information', type: 'text', fields: ['site_address', 'job_description', 'date', 'assessor'] },
+          { id: 'hazards', title: 'Hazard Identification', type: 'checklist', items: ['Working at heights', 'Electrical hazards', 'Manual handling', 'Confined spaces', 'Hot work', 'Asbestos', 'Chemical exposure', 'Moving machinery'] },
+          { id: 'controls', title: 'Control Measures', type: 'textarea', placeholder: 'Describe the control measures to be implemented...' },
+          { id: 'ppe', title: 'PPE Required', type: 'checklist', items: ['Hard hat', 'Safety glasses', 'Hi-vis vest', 'Steel cap boots', 'Gloves', 'Hearing protection', 'Dust mask', 'Harness'] },
+          { id: 'signature', title: 'Sign-off', type: 'signature', fields: ['worker_signature', 'supervisor_signature', 'date'] }
+        ],
+        mergeFields: ['job_title', 'job_address', 'client_name', 'worker_name', 'date'],
+        metadata: { formType: 'jsa', requiresSignature: true },
+      },
+      // Checklist Template
+      {
+        userId,
+        family: 'checklist',
+        name: 'Pre-Start Checklist',
+        description: 'Daily equipment and site safety checklist',
+        isDefault: true,
+        isActive: true,
+        content: 'Pre-Start Safety Checklist',
+        sections: [
+          { id: 'vehicle', title: 'Vehicle Check', items: ['Fuel level adequate', 'Tyres in good condition', 'Lights working', 'First aid kit present', 'Fire extinguisher checked'] },
+          { id: 'tools', title: 'Tools & Equipment', items: ['Tools in good condition', 'Electrical leads tested', 'PPE available', 'Safety gear inspected'] },
+          { id: 'site', title: 'Site Assessment', items: ['Access confirmed', 'Hazards identified', 'Client contacted', 'Work area safe'] }
+        ],
+        mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
+        metadata: { formType: 'checklist' },
+      },
+    ];
+
+    const created: BusinessTemplate[] = [];
+    for (const template of defaultTemplates) {
+      const result = await this.createBusinessTemplate(template);
+      created.push(result);
+    }
+    return created;
+  }
+
+  async getBusinessTemplateFamilies(userId: string): Promise<{ family: string; name: string; description: string; count: number; hasActive: boolean }[]> {
+    const familyMeta: Record<string, { name: string; description: string; category: string }> = {
+      terms_conditions: { name: 'Terms & Conditions', description: 'Quote and invoice terms', category: 'Financial' },
+      warranty: { name: 'Warranty', description: 'Warranty statements', category: 'Financial' },
+      email: { name: 'Email Templates', description: 'Email communication templates', category: 'Communications' },
+      sms: { name: 'SMS Templates', description: 'Text message templates', category: 'Communications' },
+      safety_form: { name: 'Safety Forms', description: 'WHS compliance forms', category: 'Jobs & Safety' },
+      checklist: { name: 'Checklists', description: 'Job and safety checklists', category: 'Jobs & Safety' },
+      payment_notice: { name: 'Payment Notices', description: 'Payment reminder templates', category: 'Financial' },
+    };
+
+    const templates = await this.getBusinessTemplates(userId);
+    
+    const familyCounts: Record<string, { count: number; hasActive: boolean }> = {};
+    for (const t of templates) {
+      if (!familyCounts[t.family]) {
+        familyCounts[t.family] = { count: 0, hasActive: false };
+      }
+      familyCounts[t.family].count++;
+      if (t.isActive) {
+        familyCounts[t.family].hasActive = true;
+      }
+    }
+
+    return Object.entries(familyMeta).map(([family, meta]) => ({
+      family,
+      name: meta.name,
+      description: meta.description,
+      count: familyCounts[family]?.count || 0,
+      hasActive: familyCounts[family]?.hasActive || false,
+    }));
   }
 
   // Account Deletion (Apple App Store Compliance)
