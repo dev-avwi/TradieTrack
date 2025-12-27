@@ -202,18 +202,6 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
-    title: "Forms",
-    url: "/custom-forms",
-    icon: ClipboardList,
-    description: "Create and manage custom forms and checklists",
-    color: "text-primary",
-    bgColor: "bg-primary/10",
-    hideForStaff: true,
-    showInSidebar: true,
-    showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
-  },
-  {
     title: "Templates",
     url: "/templates",
     icon: Files,

@@ -63,7 +63,6 @@ import DirectMessagesPage from "@/pages/DirectMessages";
 import DispatchBoard from "@/pages/DispatchBoard";
 import SchedulePage from "@/pages/SchedulePage";
 import Automations from "@/pages/Automations";
-import CustomForms from "@/pages/CustomForms";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
 import AdminDashboard from "@/pages/AdminDashboard";
@@ -467,9 +466,9 @@ function Router({
         <Automations />
       )} />
       
-      <Route path="/custom-forms" component={() => (
-        <CustomForms />
-      )} />
+      <Route path="/custom-forms">
+        <Redirect to="/templates?tab=jobs_safety" />
+      </Route>
       
       <Route path="/templates" component={() => (
         <TemplatesHub />
