@@ -23,7 +23,7 @@ interface SendEmailOptions {
     contentType?: string;
   }>;
   userId: string;
-  type: 'quote' | 'invoice' | 'receipt' | 'reminder';
+  type: 'quote' | 'invoice' | 'receipt' | 'reminder' | 'payment_link';
   relatedId?: string;
 }
 

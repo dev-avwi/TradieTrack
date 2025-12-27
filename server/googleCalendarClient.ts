@@ -9,15 +9,29 @@ import { storage } from './storage';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CALENDAR_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CALENDAR_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
 
-// Get the redirect URI for OAuth - consistent with Xero approach
+// Get the redirect URI for OAuth
+// Priority: VITE_APP_URL (production domain) > REPLIT_DEV_DOMAIN > REPLIT_DOMAINS > localhost
 function getRedirectUri(): string {
-  const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-    : process.env.REPLIT_DOMAINS
-      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-      : 'http://localhost:5000';
+  let baseUrl: string;
+  
+  // Check for production custom domain first (e.g., tradietrack.com)
+  const appUrl = process.env.VITE_APP_URL || process.env.APP_URL;
+  if (appUrl) {
+    // Ensure it has https:// prefix
+    baseUrl = appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
+  } else if (process.env.REPLIT_DEV_DOMAIN) {
+    baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  } else if (process.env.REPLIT_DOMAINS) {
+    baseUrl = `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`;
+  } else {
+    baseUrl = 'http://localhost:5000';
+  }
+  
+  // Remove trailing slash if present
+  baseUrl = baseUrl.replace(/\/$/, '');
+  
   const redirectUri = `${baseUrl}/api/integrations/google-calendar/callback`;
-  console.log('[GoogleCalendar] Using redirect URI:', redirectUri);
+  console.log('[GoogleCalendar] Using redirect URI:', redirectUri, '(from:', appUrl ? 'VITE_APP_URL' : process.env.REPLIT_DEV_DOMAIN ? 'REPLIT_DEV_DOMAIN' : 'REPLIT_DOMAINS', ')');
   return redirectUri;
 }
 
@@ -59,15 +73,41 @@ export async function handleOAuthCallback(code: string, userId: string): Promise
   error?: string;
 }> {
   try {
+    console.log(`[GoogleCalendar] Processing OAuth callback for user ${userId}`);
     const oauth2Client = getOAuth2Client();
+    
     const { tokens } = await oauth2Client.getToken(code);
+    console.log(`[GoogleCalendar] Got tokens - access: ${!!tokens.access_token}, refresh: ${!!tokens.refresh_token}, expiry: ${tokens.expiry_date}`);
+    
+    // Important: We need a refresh token for long-term access
+    // Google only sends refresh_token on first authorization or when using prompt=consent
+    if (!tokens.refresh_token) {
+      // Check if we already have a refresh token stored
+      const existingSettings = await storage.getBusinessSettings(userId);
+      if (existingSettings?.googleCalendarRefreshToken) {
+        console.log(`[GoogleCalendar] No new refresh token received, using existing one`);
+        tokens.refresh_token = existingSettings.googleCalendarRefreshToken;
+      } else {
+        console.warn(`[GoogleCalendar] No refresh token received and none stored - user may need to revoke and re-authorize`);
+        return { 
+          success: false, 
+          error: 'No refresh token received. Please revoke TradieTrack access in your Google Account settings and try again.' 
+        };
+      }
+    }
     
     oauth2Client.setCredentials(tokens);
     
     // Get user's email from Google
-    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
-    const userInfo = await oauth2.userinfo.get();
-    const email = userInfo.data.email || undefined;
+    let email: string | undefined;
+    try {
+      const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+      const userInfo = await oauth2.userinfo.get();
+      email = userInfo.data.email || undefined;
+      console.log(`[GoogleCalendar] Got user email: ${email}`);
+    } catch (emailError: any) {
+      console.warn(`[GoogleCalendar] Could not fetch user email: ${emailError.message}`);
+    }
     
     // Store tokens in businessSettings
     console.log(`[GoogleCalendar] Saving tokens for user ${userId}, email: ${email}, hasRefreshToken: ${!!tokens.refresh_token}`);
@@ -78,13 +118,27 @@ export async function handleOAuthCallback(code: string, userId: string): Promise
       googleCalendarTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
       googleCalendarEmail: email || null,
     });
-    console.log(`[GoogleCalendar] Update result:`, updateResult ? 'success' : 'failed', updateResult?.googleCalendarConnected);
     
-    console.log(`[GoogleCalendar] Connected for user ${userId}: ${email}`);
+    if (!updateResult) {
+      console.error(`[GoogleCalendar] Failed to save tokens for user ${userId}`);
+      return { success: false, error: 'Failed to save calendar connection settings' };
+    }
+    
+    console.log(`[GoogleCalendar] Successfully connected for user ${userId}: ${email}`);
     return { success: true, email };
   } catch (error: any) {
-    console.error('[GoogleCalendar] OAuth callback error:', error);
-    return { success: false, error: error.message };
+    console.error('[GoogleCalendar] OAuth callback error:', error.message || error);
+    
+    // Provide more helpful error messages
+    let errorMessage = error.message || 'Unknown error during authorization';
+    if (errorMessage.includes('invalid_grant')) {
+      errorMessage = 'Authorization code expired. Please try connecting again.';
+    } else if (errorMessage.includes('redirect_uri_mismatch')) {
+      errorMessage = 'OAuth configuration error. Please contact support.';
+      console.error('[GoogleCalendar] Redirect URI mismatch - check Google Console configuration');
+    }
+    
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -104,8 +158,16 @@ export async function disconnectCalendar(userId: string): Promise<void> {
 async function getUserAccessToken(userId: string): Promise<string> {
   const settings = await storage.getBusinessSettings(userId);
   
-  if (!settings?.googleCalendarConnected || !settings.googleCalendarRefreshToken) {
-    throw new Error('Google Calendar not connected for this user');
+  if (!settings?.googleCalendarConnected) {
+    throw new Error('Google Calendar not connected. Please connect your Google Calendar in Settings.');
+  }
+  
+  if (!settings.googleCalendarRefreshToken) {
+    console.warn(`[GoogleCalendar] No refresh token found for user ${userId}, marking as disconnected`);
+    await storage.updateBusinessSettings(userId, {
+      googleCalendarConnected: false,
+    });
+    throw new Error('Google Calendar authorization incomplete. Please reconnect your calendar.');
   }
   
   // Check if token is expired or about to expire (within 5 minutes)
@@ -115,10 +177,12 @@ async function getUserAccessToken(userId: string): Promise<string> {
   const isExpired = tokenExpiry < Date.now() + 5 * 60 * 1000;
   
   if (!isExpired && settings.googleCalendarAccessToken) {
+    console.log(`[GoogleCalendar] Using cached token for user ${userId}, expires in ${Math.round((tokenExpiry - Date.now()) / 1000 / 60)} minutes`);
     return settings.googleCalendarAccessToken;
   }
   
   // Refresh the token
+  console.log(`[GoogleCalendar] Token expired or missing for user ${userId}, refreshing...`);
   try {
     const oauth2Client = getOAuth2Client();
     oauth2Client.setCredentials({
@@ -127,23 +191,39 @@ async function getUserAccessToken(userId: string): Promise<string> {
     
     const { credentials } = await oauth2Client.refreshAccessToken();
     
-    // Update stored tokens
+    if (!credentials.access_token) {
+      throw new Error('No access token returned from refresh');
+    }
+    
+    // Update stored tokens (keep the existing refresh token if not provided)
     await storage.updateBusinessSettings(userId, {
-      googleCalendarAccessToken: credentials.access_token || null,
+      googleCalendarAccessToken: credentials.access_token,
+      googleCalendarRefreshToken: credentials.refresh_token || settings.googleCalendarRefreshToken,
       googleCalendarTokenExpiry: credentials.expiry_date ? new Date(credentials.expiry_date) : null,
     });
     
-    console.log(`[GoogleCalendar] Refreshed token for user ${userId}`);
-    return credentials.access_token!;
+    console.log(`[GoogleCalendar] Successfully refreshed token for user ${userId}`);
+    return credentials.access_token;
   } catch (error: any) {
-    console.error('[GoogleCalendar] Token refresh failed:', error);
+    console.error('[GoogleCalendar] Token refresh failed:', error.message || error);
     
-    // If refresh fails, mark as disconnected
-    await storage.updateBusinessSettings(userId, {
-      googleCalendarConnected: false,
-    });
+    // Check if this is an invalid_grant error (token revoked or expired)
+    const errorMessage = error.message || '';
+    const isTokenRevoked = errorMessage.includes('invalid_grant') || 
+                           errorMessage.includes('Token has been revoked') ||
+                           errorMessage.includes('Token has been expired');
     
-    throw new Error('Google Calendar token expired - please reconnect');
+    if (isTokenRevoked) {
+      // Mark as disconnected so user can reconnect
+      await storage.updateBusinessSettings(userId, {
+        googleCalendarConnected: false,
+        googleCalendarAccessToken: null,
+      });
+      throw new Error('Google Calendar access was revoked. Please reconnect your calendar in Settings.');
+    }
+    
+    // For other errors, don't disconnect - might be a temporary issue
+    throw new Error(`Failed to refresh Google Calendar token: ${error.message}`);
   }
 }
 

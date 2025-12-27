@@ -4054,7 +4054,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect('/integrations?xero=error&message=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
       }
       
-      const fullUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+      // Construct the callback URL using the same logic as getRedirectUri() for consistency
+      // Priority: VITE_APP_URL > REPLIT_DEV_DOMAIN > REPLIT_DOMAINS > req.host
+      let baseUrl: string;
+      const appUrl = process.env.VITE_APP_URL;
+      if (appUrl) {
+        baseUrl = appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
+      } else if (process.env.REPLIT_DEV_DOMAIN) {
+        baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      } else if (process.env.REPLIT_DOMAINS) {
+        baseUrl = `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`;
+      } else {
+        baseUrl = `${req.protocol}://${req.get('host')}`;
+      }
+      const fullUrl = `${baseUrl}${req.originalUrl}`;
+      console.log('[Xero] Callback full URL:', fullUrl);
       const connection = await xeroService.handleCallback(fullUrl, userId);
       
       // Redirect to mobile deep link if request originated from mobile
@@ -4097,6 +4111,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error getting Xero status:", error);
       res.status(500).json({ error: error.message || "Failed to get Xero status" });
+    }
+  });
+
+  // Get available Xero tenants (organizations) for the connected user
+  app.get("/api/integrations/xero/tenants", requireAuth, async (req: any, res) => {
+    try {
+      const tenants = await xeroService.getTenants(req.userId);
+      res.json({ tenants });
+    } catch (error: any) {
+      console.error("Error getting Xero tenants:", error);
+      res.status(500).json({ error: error.message || "Failed to get Xero tenants" });
+    }
+  });
+
+  // Switch to a different Xero tenant (organization)
+  app.post("/api/integrations/xero/switch-tenant", requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.body;
+      if (!tenantId) {
+        return res.status(400).json({ error: "tenantId is required" });
+      }
+      const result = await xeroService.switchTenant(req.userId, tenantId);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("Error switching Xero tenant:", error);
+      res.status(500).json({ error: error.message || "Failed to switch Xero tenant" });
     }
   });
 

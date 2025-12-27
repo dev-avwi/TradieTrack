@@ -6,13 +6,23 @@ import { encrypt, decrypt } from "./encryption";
 const XERO_SCOPES = "openid profile email accounting.transactions accounting.contacts offline_access";
 
 function getRedirectUri(): string {
-  const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-    : process.env.REPLIT_DOMAINS
-      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-      : "http://localhost:5000";
+  // Priority: VITE_APP_URL (production domain) > REPLIT_DEV_DOMAIN > REPLIT_DOMAINS > localhost
+  const appUrl = process.env.VITE_APP_URL;
+  let baseUrl: string;
+  
+  if (appUrl) {
+    // Use configured app URL (e.g., https://tradietrack.com)
+    baseUrl = appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
+  } else if (process.env.REPLIT_DEV_DOMAIN) {
+    baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  } else if (process.env.REPLIT_DOMAINS) {
+    baseUrl = `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`;
+  } else {
+    baseUrl = "http://localhost:5000";
+  }
+  
   const redirectUri = `${baseUrl}/api/integrations/xero/callback`;
-  console.log('[Xero] Using redirect URI:', redirectUri);
+  console.log('[Xero] Using redirect URI:', redirectUri, '(from:', appUrl ? 'VITE_APP_URL' : process.env.REPLIT_DEV_DOMAIN ? 'REPLIT_DEV_DOMAIN' : 'REPLIT_DOMAINS/localhost', ')');
   return redirectUri;
 }
 
@@ -458,4 +468,59 @@ export async function disconnect(userId: string): Promise<boolean> {
 
 export function isXeroConfigured(): boolean {
   return !!(process.env.XERO_CLIENT_ID && process.env.XERO_CLIENT_SECRET);
+}
+
+// Check if user has an active Xero connection
+export async function isXeroConnected(userId: string): Promise<boolean> {
+  const connection = await storage.getXeroConnection(userId);
+  return connection?.status === "active";
+}
+
+// Get the connected Xero organisation details
+export async function getXeroOrganisation(userId: string): Promise<{ name: string | null; tenantId: string } | null> {
+  const connection = await storage.getXeroConnection(userId);
+  if (!connection || connection.status !== "active") {
+    return null;
+  }
+  
+  return {
+    name: connection.tenantName,
+    tenantId: connection.tenantId,
+  };
+}
+
+// Get all available tenants for a user (wrapper that takes userId)
+export async function getTenants(userId: string): Promise<Array<{ tenantId: string; tenantName: string | null }>> {
+  const connection = await storage.getXeroConnection(userId);
+  if (!connection || connection.status !== "active") {
+    throw new Error("No active Xero connection found");
+  }
+  return await getConnectedTenants(connection);
+}
+
+// Switch to a different Xero tenant (organization)
+export async function switchTenant(userId: string, tenantId: string): Promise<{ tenantId: string; tenantName: string | null }> {
+  const connection = await storage.getXeroConnection(userId);
+  if (!connection || connection.status !== "active") {
+    throw new Error("No active Xero connection found");
+  }
+
+  // Get all available tenants
+  const tenants = await getConnectedTenants(connection);
+  const targetTenant = tenants.find(t => t.tenantId === tenantId);
+  
+  if (!targetTenant) {
+    throw new Error("Tenant not found or you don't have access to it");
+  }
+
+  // Update the connection with the new tenant
+  await storage.updateXeroConnection(connection.id, {
+    tenantId: targetTenant.tenantId,
+    tenantName: targetTenant.tenantName,
+  });
+
+  return {
+    tenantId: targetTenant.tenantId,
+    tenantName: targetTenant.tenantName,
+  };
 }
