@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export function useBusinessSettings() {
   return useQuery({
@@ -12,12 +13,25 @@ export function useBusinessSettings() {
             businessName: 'TradieTrack Business',
             email: null,
             phone: null,
-            gstEnabled: false
+            gstEnabled: false,
+            emailSendingMode: 'manual'
           };
         }
         throw new Error('Failed to fetch business settings');
       }
       return response.json();
+    }
+  });
+}
+
+export function useUpdateBusinessSettings() {
+  return useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      const response = await apiRequest('PATCH', '/api/business-settings', data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
     }
   });
 }

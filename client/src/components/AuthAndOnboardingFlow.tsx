@@ -1030,7 +1030,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
           <div>
             <p className="text-sm font-medium text-blue-900 dark:text-blue-100">You can always do this later</p>
             <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-              Go to Settings → Integrations anytime to connect payment services.
+              Go to the Integrations page anytime to connect payment services.
             </p>
           </div>
         </div>

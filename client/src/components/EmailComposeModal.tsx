@@ -468,7 +468,7 @@ export default function EmailComposeModal({
           </Button>
           
           <p className="text-xs text-muted-foreground text-center">
-            PDF is attached automatically. Change how emails are sent in Settings → Integrations.
+            PDF is attached automatically. Change how emails are sent on the Integrations page.
           </p>
 
           {/* Copy Link Option for sharing */}

@@ -713,13 +713,6 @@ export default function Settings({
               </TabsTrigger>
             )}
             {canAccessBusinessSettings && (
-              <TabsTrigger value="integrations" data-testid="tab-integrations" className="flex-shrink-0">
-                <Shield className="h-4 w-4 mr-1.5" />
-                <span className="hidden sm:inline">Integrations</span>
-                <span className="sm:hidden">Apps</span>
-              </TabsTrigger>
-            )}
-            {canAccessBusinessSettings && (
               <TabsTrigger value="notifications" data-testid="tab-notifications" className="flex-shrink-0">
                 <Mail className="h-4 w-4 mr-1.5" />
                 <span className="hidden sm:inline">Notifications</span>
@@ -1759,157 +1752,6 @@ export default function Settings({
           </Card>
         </TabsContent>
 
-        <TabsContent value="integrations" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Platform Services</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                These services are included with TradieTrack - no setup required from you
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              
-              {/* Explanation */}
-              <div 
-                className="p-4 rounded-lg border"
-                style={{ 
-                  backgroundColor: 'hsl(var(--trade) / 0.05)',
-                  borderColor: 'hsl(var(--trade) / 0.2)'
-                }}
-              >
-                <p className="text-sm" style={{ color: 'hsl(var(--trade) / 0.9)' }}>
-                  TradieTrack handles all the technical integrations for you. These services work automatically 
-                  when you send quotes, invoices, and receive payments.
-                </p>
-              </div>
-              
-              {/* Services Overview */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg border">
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: 'hsl(var(--trade))' }}
-                    >
-                      <CreditCard className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Payment Processing</p>
-                      <p className="text-xs text-muted-foreground">Accept card payments on invoices</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="text-xs">Included</Badge>
-                </div>
-                
-                <div className="p-3 rounded-lg border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                        <Mail className="h-4 w-4 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">Email Delivery</p>
-                        <p className="text-xs text-muted-foreground">Professional email for quotes & invoices</p>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-xs">Included</Badge>
-                  </div>
-                  
-                  {/* Email Sending Mode - placed with email delivery where it logically belongs */}
-                  <div className="mt-4 pt-4 border-t space-y-3">
-                    <p className="text-sm font-medium">When you email a quote or invoice:</p>
-                    <div 
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        businessData.emailSendingMode === 'manual' 
-                          ? 'border-primary bg-primary/5' 
-                          : 'border-muted hover-elevate'
-                      }`}
-                      onClick={() => {
-                        setBusinessData(prev => ({ ...prev, emailSendingMode: 'manual' }));
-                        handleBusinessSave({ emailSendingMode: 'manual' });
-                      }}
-                      data-testid="option-email-manual"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                          businessData.emailSendingMode === 'manual' ? 'border-primary' : 'border-muted-foreground'
-                        }`}>
-                          {businessData.emailSendingMode === 'manual' && (
-                            <div className="h-2 w-2 rounded-full bg-primary" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">Review in Gmail first</p>
-                          <p className="text-xs text-muted-foreground">Opens Gmail so you can check and personalise before sending</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div 
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        businessData.emailSendingMode === 'automatic' 
-                          ? 'border-primary bg-primary/5' 
-                          : 'border-muted hover-elevate'
-                      }`}
-                      onClick={() => {
-                        setBusinessData(prev => ({ ...prev, emailSendingMode: 'automatic' }));
-                        handleBusinessSave({ emailSendingMode: 'automatic' });
-                      }}
-                      data-testid="option-email-automatic"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                          businessData.emailSendingMode === 'automatic' ? 'border-primary' : 'border-muted-foreground'
-                        }`}>
-                          {businessData.emailSendingMode === 'automatic' && (
-                            <div className="h-2 w-2 rounded-full bg-primary" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">Send instantly</p>
-                          <p className="text-xs text-muted-foreground">Emails go out immediately - faster for busy tradies</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 rounded-lg border">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                      <Shield className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">SMS Alerts</p>
-                      <p className="text-xs text-muted-foreground">Text notifications for your clients</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="text-xs">Included</Badge>
-                </div>
-              </div>
-
-              {/* Link to full Integrations page */}
-              <div className="pt-4 border-t">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-medium">Advanced Settings</p>
-                    <p className="text-sm text-muted-foreground">
-                      Test connections and configure automation options
-                    </p>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => window.location.href = '/integrations'}
-                    data-testid="button-manage-integrations"
-                  >
-                    Open Integrations
-                  </Button>
-                </div>
-              </div>
-
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="notifications" className="space-y-6">
           <Card>
             <CardHeader>
@@ -2652,7 +2494,7 @@ function SupportTab() {
                     <p className="font-medium text-sm">How do I send a quote to a customer?</p>
                     <p className="text-sm text-muted-foreground mt-1">
                       Open the quote and tap "Email Quote". A professional PDF will be generated 
-                      and sent to your customer. Make sure your email is connected in Settings → Integrations.
+                      and sent to your customer. Make sure your email is connected on the Integrations page.
                     </p>
                   </div>
                   <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-quote-to-invoice">
@@ -2698,7 +2540,7 @@ function SupportTab() {
                   <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-stripe-setup">
                     <p className="font-medium text-sm">How do I accept card payments?</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Go to Settings → Integrations and connect Stripe. Once verified, customers 
+                      Go to the Integrations page and connect Stripe. Once verified, customers 
                       can pay invoices online via credit card. Funds go directly to your bank account.
                     </p>
                   </div>
@@ -2764,14 +2606,14 @@ function SupportTab() {
                   <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-email-issues">
                     <p className="font-medium text-sm">Emails not sending?</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Check Settings → Integrations to make sure your email (Gmail or SendGrid) is connected. 
+                      Check the Integrations page to make sure your email (Gmail or SendGrid) is connected. 
                       If using Gmail, you may need to re-authorize. Contact us if you're still having trouble.
                     </p>
                   </div>
                   <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-stripe-issues">
                     <p className="font-medium text-sm">Stripe payments not working?</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Make sure you've completed Stripe Connect setup in Settings → Integrations. 
+                      Make sure you've completed Stripe Connect setup on the Integrations page. 
                       If the status shows "Pending", you need to finish verification with Stripe.
                     </p>
                   </div>
