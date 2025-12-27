@@ -472,6 +472,35 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                           </>
                         )}
                       </Button>
+                      
+                      {/* Demo Login for testing */}
+                      {import.meta.env.DEV && (
+                        <Button 
+                          type="button"
+                          variant="outline"
+                          onClick={async () => {
+                            setIsLoading(true);
+                            try {
+                              const response = await apiRequest("POST", "/api/auth/demo-login");
+                              const data = await response.json();
+                              if (data.sessionToken) {
+                                setSessionToken(data.sessionToken);
+                              }
+                              onLoginSuccess();
+                            } catch (err) {
+                              toast({ title: "Demo login failed", variant: "destructive" });
+                            } finally {
+                              setIsLoading(false);
+                            }
+                          }}
+                          disabled={isLoading}
+                          className="w-full h-10 text-sm border-dashed border-orange-300 text-orange-600 hover:bg-orange-50"
+                          data-testid="button-demo-login"
+                        >
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Demo Login (Development Only)
+                        </Button>
+                      )}
                     </motion.form>
                   ) : (
                     <motion.form
