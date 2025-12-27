@@ -282,6 +282,14 @@ export default function EmailComposeModal({
           title: `${type === 'quote' ? 'Quote' : 'Invoice'} sent!`,
           description: `Email sent to ${result.recipientEmail} with PDF attached.`,
         });
+        
+        // Trigger cache invalidation/status update
+        try {
+          await onSend('', '');
+        } catch (e) {
+          console.log('Status update pending');
+        }
+        
         onClose();
         return;
       }
