@@ -8,8 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import type { MessageTemplate } from "@shared/schema";
 import { 
   Mail, 
   Send, 
@@ -21,7 +24,8 @@ import {
   Check,
   Wand2,
   Copy,
-  CheckCheck
+  CheckCheck,
+  FileText
 } from "lucide-react";
 
 interface EmailComposeModalProps {
@@ -66,6 +70,18 @@ export default function EmailComposeModal({
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+
+  // Fetch email templates
+  const { data: templates = [] } = useQuery<MessageTemplate[]>({
+    queryKey: ['/api/message-templates', 'email'],
+    queryFn: async () => {
+      const res = await fetch('/api/message-templates?channel=email', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch templates');
+      return res.json();
+    },
+    enabled: isOpen,
+  });
 
   // Get the first name from client name
   const clientFirstName = clientName?.split(' ')[0] || 'there';
@@ -90,6 +106,36 @@ export default function EmailComposeModal({
       style: 'currency',
       currency: 'AUD',
     }).format(value || 0);
+  };
+
+  // Apply merge fields to template text
+  const applyMergeFields = (text: string) => {
+    if (!text) return text;
+    return text
+      .replace(/\{client_name\}/g, clientName || '')
+      .replace(/\{client_first_name\}/g, clientFirstName || '')
+      .replace(/\{business_name\}/g, businessName || '')
+      .replace(/\{job_title\}/g, documentTitle || '')
+      .replace(/\{amount\}/g, formatCurrency(total))
+      .replace(/\{quote_number\}/g, type === 'quote' ? documentNumber : '')
+      .replace(/\{invoice_number\}/g, type === 'invoice' ? documentNumber : '')
+      .replace(/\{document_number\}/g, documentNumber || '');
+  };
+
+  // Handle template selection
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    const template = templates.find((t: MessageTemplate) => t.id === templateId);
+    if (template) {
+      if (template.subject) {
+        setSubject(applyMergeFields(template.subject));
+      }
+      setMessage(applyMergeFields(template.body));
+      toast({
+        title: "Template applied",
+        description: `"${template.name}" template loaded. Feel free to customise!`,
+      });
+    }
   };
 
   // AI email suggestion mutation
@@ -291,7 +337,7 @@ export default function EmailComposeModal({
                     </Badge>
                   </div>
 
-                  {/* AI Suggestion Button */}
+                  {/* AI Suggestion Button and Template Selector */}
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       variant="outline"
@@ -308,6 +354,26 @@ export default function EmailComposeModal({
                       )}
                       AI Suggestion
                     </Button>
+                    {/* Template Selector */}
+                    {templates.length > 0 && (
+                      <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
+                        <SelectTrigger className="w-[180px]" data-testid="select-email-template">
+                          <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <SelectValue placeholder="Use template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {templates.map((template: MessageTemplate) => (
+                            <SelectItem 
+                              key={template.id} 
+                              value={template.id}
+                              data-testid={`template-${template.id}`}
+                            >
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <span className="text-xs text-muted-foreground">or choose a tone:</span>
                     <Button
                       variant="ghost"
