@@ -498,15 +498,31 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
           // Get line items for PDF generation
           const lineItems = await storage.getInvoiceLineItems(req.params.id, req.userId);
           
-          // Get job and job signatures if linked
+          // Get job and signatures (from job completion AND linked quote acceptance)
           const job = invoiceWithItems.jobId ? await storage.getJob(invoiceWithItems.jobId, req.userId) : undefined;
           let jobSignatures: any[] = [];
+          const { digitalSignatures } = await import("@shared/schema");
+          const { db } = await import("./db");
+          const { eq, or } = await import("drizzle-orm");
+          
+          // Get job completion signatures if job is linked
           if (invoiceWithItems.jobId) {
-            const { digitalSignatures } = await import("@shared/schema");
-            const { db } = await import("./db");
-            const { eq } = await import("drizzle-orm");
-            const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, invoiceWithItems.jobId));
-            jobSignatures = signatures.filter(s => s.documentType === 'job_completion');
+            const jobSigs = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, invoiceWithItems.jobId));
+            jobSignatures = jobSigs.filter((s: any) => s.documentType === 'job_completion');
+          }
+          
+          // Also get quote acceptance signatures if invoice is linked to a quote
+          if (invoiceWithItems.quoteId) {
+            const quoteSigs = await db.select().from(digitalSignatures).where(eq(digitalSignatures.quoteId, invoiceWithItems.quoteId));
+            const quoteSignatures = quoteSigs.map((sig: any) => ({
+              id: sig.id,
+              quoteId: sig.quoteId,
+              signerName: sig.signerName,
+              signatureData: sig.signatureData,
+              signedAt: sig.signedAt,
+              documentType: 'quote_acceptance',
+            }));
+            jobSignatures = [...jobSignatures, ...quoteSignatures];
           }
           
           const pdfHtml = generateInvoicePDF({
@@ -1059,16 +1075,31 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     let linkedJob = null;
     let timeEntries: any[] = [];
     let jobSignatures: any[] = [];
+    const { digitalSignatures } = await import("@shared/schema");
+    const { db } = await import("./db");
+    const { eq } = await import("drizzle-orm");
+    
     if (invoiceWithItems.jobId) {
       linkedJob = await storage.getJob(invoiceWithItems.jobId, req.userId);
       timeEntries = await storage.getTimeEntriesForJob(invoiceWithItems.jobId, req.userId);
       
-      // Get job signatures
-      const { digitalSignatures } = await import("@shared/schema");
-      const { db } = await import("./db");
-      const { eq } = await import("drizzle-orm");
-      const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, invoiceWithItems.jobId));
-      jobSignatures = signatures.filter(s => s.documentType === 'job_completion');
+      // Get job completion signatures
+      const jobSigs = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, invoiceWithItems.jobId));
+      jobSignatures = jobSigs.filter((s: any) => s.documentType === 'job_completion');
+    }
+    
+    // Also get quote acceptance signatures if invoice is linked to a quote
+    if (invoiceWithItems.quoteId) {
+      const quoteSigs = await db.select().from(digitalSignatures).where(eq(digitalSignatures.quoteId, invoiceWithItems.quoteId));
+      const quoteSignatures = quoteSigs.map((sig: any) => ({
+        id: sig.id,
+        quoteId: sig.quoteId,
+        signerName: sig.signerName,
+        signatureData: sig.signatureData,
+        signedAt: sig.signedAt,
+        documentType: 'quote_acceptance',
+      }));
+      jobSignatures = [...jobSignatures, ...quoteSignatures];
     }
     
     // 7. Generate PDF buffer
