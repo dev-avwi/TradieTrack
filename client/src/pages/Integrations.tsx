@@ -528,7 +528,12 @@ export default function Integrations() {
     saveTwilioMutation.mutate({ twilioAccountSid, twilioAuthToken, twilioPhoneNumber });
   };
 
-  const twilioConnected = twilioSettings?.twilioAuthTokenConfigured && twilioSettings?.twilioPhoneNumber;
+  // Twilio is only considered connected when either:
+  // 1. Platform connector is properly configured with verified credentials (from health check)
+  // 2. User has entered and saved valid credentials (not just placeholders)
+  const twilioFromHealth = health?.services?.twilio?.status === 'ready';
+  const twilioFromSettings = twilioSettings?.platformTwilioConfigured === true;
+  const twilioConnected = twilioFromHealth || twilioFromSettings;
 
   if (isLoading) {
     return (
