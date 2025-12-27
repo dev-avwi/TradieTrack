@@ -663,11 +663,14 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     .line-items-table thead { display: table-header-group; }
     .totals-section { page-break-inside: avoid; }
     .notes-section { page-break-inside: avoid; }
-    .terms-section { page-break-inside: avoid; }
+    .terms-section { page-break-inside: avoid; page-break-after: auto; }
     .payment-section { page-break-inside: avoid; }
     .acceptance-section { page-break-inside: avoid; page-break-before: auto; }
-    .footer { page-break-inside: avoid; }
+    .footer { page-break-inside: avoid; margin-top: 20px; }
     .signature-section { page-break-inside: avoid; }
+    
+    /* Keep acceptance info and signature together as one block */
+    .quote-acceptance-block { page-break-inside: avoid; page-break-before: auto; }
     
     @page {
       size: A4;
@@ -873,31 +876,28 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
     ` : ''}
     
     ${quote.status === 'accepted' && quote.acceptedBy ? `
-      <div class="notes-section" style="background: #dcfce7; border-left-color: #22c55e;">
-        <div class="notes-title" style="color: #166534;">Quote Accepted</div>
-        <div class="notes-content" style="color: #166534;">
+      <div class="quote-acceptance-block">
+        <div class="notes-section" style="background: #dcfce7; border-left-color: #22c55e; margin-bottom: 0; padding-bottom: 12px;">
+          <div class="notes-title" style="color: #166534;">Quote Accepted</div>
+          <div class="notes-content" style="color: #166534;">
 Accepted by: ${quote.acceptedBy}
 Date: ${formatDate(quote.acceptedAt)}
 ${(quote as any).acceptanceIp ? `IP Address: ${(quote as any).acceptanceIp}` : ''}
-        </div>
-      </div>
-    ` : ''}
-    
-    ${quote.status === 'accepted' && data.signature?.signatureData ? `
-      <div style="margin-top: 24px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; page-break-inside: avoid;">
-        <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
-          Client Acceptance Signature
-        </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;">
-          <div style="text-align: center; min-width: 150px;">
-            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
-              <img src="${data.signature.signatureData.startsWith('data:') ? data.signature.signatureData : 'data:image/png;base64,' + data.signature.signatureData}" alt="${data.signature.signerName || 'Client'} signature" style="max-height: 50px; max-width: 140px; width: auto;" />
-            </div>
-            <div style="font-size: 11px; font-weight: 500; color: #1f2937;">${data.signature.signerName || quote.acceptedBy || 'Client'}</div>
-            <div style="font-size: 10px; color: #6b7280;">Client Signature</div>
-            <div style="font-size: 9px; color: #9ca3af;">${formatDate(data.signature.signedAt || quote.acceptedAt)}</div>
           </div>
         </div>
+        ${data.signature?.signatureData ? `
+          <div style="padding: 16px; border: 1px solid #22c55e; border-top: none; border-radius: 0 0 8px 8px; background: #f0fdf4;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px;">
+                <img src="${data.signature.signatureData.startsWith('data:') ? data.signature.signatureData : 'data:image/png;base64,' + data.signature.signatureData}" alt="${data.signature.signerName || 'Client'} signature" style="max-height: 40px; max-width: 120px; width: auto;" />
+              </div>
+              <div>
+                <div style="font-size: 11px; font-weight: 500; color: #166534;">${data.signature.signerName || quote.acceptedBy || 'Client'}</div>
+                <div style="font-size: 9px; color: #6b7280;">Signed ${formatDate(data.signature.signedAt || quote.acceptedAt)}</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
       </div>
     ` : ''}
     
