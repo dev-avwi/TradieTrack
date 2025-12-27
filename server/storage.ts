@@ -181,6 +181,9 @@ import {
   messageTemplates,
   type MessageTemplate,
   type InsertMessageTemplate,
+  businessTemplates,
+  type BusinessTemplate,
+  type InsertBusinessTemplate,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -578,6 +581,15 @@ export interface IStorage {
   updateMessageTemplate(id: string, userId: string, updates: Partial<InsertMessageTemplate>): Promise<MessageTemplate | null>;
   deleteMessageTemplate(id: string, userId: string): Promise<boolean>;
   ensureDefaultTemplates(userId: string): Promise<void>;
+
+  // Business Templates (unified Templates Hub)
+  getBusinessTemplates(userId: string, family?: string): Promise<BusinessTemplate[]>;
+  getBusinessTemplate(id: string, userId: string): Promise<BusinessTemplate | undefined>;
+  getActiveBusinessTemplate(userId: string, family: string): Promise<BusinessTemplate | undefined>;
+  createBusinessTemplate(data: InsertBusinessTemplate): Promise<BusinessTemplate>;
+  updateBusinessTemplate(id: string, userId: string, data: Partial<InsertBusinessTemplate>): Promise<BusinessTemplate | undefined>;
+  deleteBusinessTemplate(id: string, userId: string): Promise<boolean>;
+  setActiveBusinessTemplate(id: string, userId: string): Promise<void>;
 
   // Account Deletion (Apple App Store Compliance)
   deleteUserAccount(userId: string): Promise<{ success: boolean; deletedCounts: Record<string, number> }>;
@@ -3754,6 +3766,93 @@ export class PostgresStorage implements IStorage {
     ];
 
     await db.insert(messageTemplates).values(defaultTemplates);
+  }
+
+  // Business Templates (unified Templates Hub)
+  async getBusinessTemplates(userId: string, family?: string): Promise<BusinessTemplate[]> {
+    if (family) {
+      return await db.select().from(businessTemplates)
+        .where(and(
+          eq(businessTemplates.userId, userId),
+          eq(businessTemplates.family, family)
+        ))
+        .orderBy(desc(businessTemplates.isActive), asc(businessTemplates.name));
+    }
+    return await db.select().from(businessTemplates)
+      .where(eq(businessTemplates.userId, userId))
+      .orderBy(businessTemplates.family, desc(businessTemplates.isActive), asc(businessTemplates.name));
+  }
+
+  async getBusinessTemplate(id: string, userId: string): Promise<BusinessTemplate | undefined> {
+    const result = await db.select().from(businessTemplates)
+      .where(and(
+        eq(businessTemplates.id, id),
+        eq(businessTemplates.userId, userId)
+      ))
+      .limit(1);
+    return result[0];
+  }
+
+  async getActiveBusinessTemplate(userId: string, family: string): Promise<BusinessTemplate | undefined> {
+    const result = await db.select().from(businessTemplates)
+      .where(and(
+        eq(businessTemplates.userId, userId),
+        eq(businessTemplates.family, family),
+        eq(businessTemplates.isActive, true)
+      ))
+      .limit(1);
+    return result[0];
+  }
+
+  async createBusinessTemplate(data: InsertBusinessTemplate): Promise<BusinessTemplate> {
+    const [result] = await db.insert(businessTemplates).values(data).returning();
+    return result;
+  }
+
+  async updateBusinessTemplate(id: string, userId: string, data: Partial<InsertBusinessTemplate>): Promise<BusinessTemplate | undefined> {
+    const result = await db.update(businessTemplates)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(
+        eq(businessTemplates.id, id),
+        eq(businessTemplates.userId, userId)
+      ))
+      .returning();
+    return result[0];
+  }
+
+  async deleteBusinessTemplate(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(businessTemplates)
+      .where(and(
+        eq(businessTemplates.id, id),
+        eq(businessTemplates.userId, userId),
+        eq(businessTemplates.isDefault, false) // Can't delete system defaults
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  async setActiveBusinessTemplate(id: string, userId: string): Promise<void> {
+    // First, get the template to find its family
+    const template = await this.getBusinessTemplate(id, userId);
+    if (!template) {
+      throw new Error('Template not found');
+    }
+
+    // Deactivate all templates in the same family for this user
+    await db.update(businessTemplates)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(and(
+        eq(businessTemplates.userId, userId),
+        eq(businessTemplates.family, template.family)
+      ));
+
+    // Activate the selected template
+    await db.update(businessTemplates)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(and(
+        eq(businessTemplates.id, id),
+        eq(businessTemplates.userId, userId)
+      ));
   }
 
   // Account Deletion (Apple App Store Compliance)

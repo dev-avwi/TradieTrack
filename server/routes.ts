@@ -48,6 +48,10 @@ import {
   insertTeamChatSchema,
   // SMS Template schema
   insertSmsTemplateSchema,
+  // Business Templates schema
+  insertBusinessTemplateSchema,
+  updateBusinessTemplateSchema,
+  BUSINESS_TEMPLATE_FAMILIES,
   // Types
   type InsertTimeEntry,
   // Location tracking tables
@@ -9960,6 +9964,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting message template:', error);
       res.status(500).json({ error: 'Failed to delete template' });
+    }
+  });
+
+  // Business Templates API (unified Templates Hub)
+  // GET /api/business-templates - List all templates (optionally filter by family)
+  app.get("/api/business-templates", requireAuth, async (req: any, res) => {
+    try {
+      const family = req.query.family as string | undefined;
+      // Validate family if provided
+      if (family && !BUSINESS_TEMPLATE_FAMILIES.includes(family as any)) {
+        return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
+      }
+      const templates = await storage.getBusinessTemplates(req.userId, family);
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching business templates:', error);
+      res.status(500).json({ error: 'Failed to fetch business templates' });
+    }
+  });
+
+  // GET /api/business-templates/active/:family - Get active template for a family
+  app.get("/api/business-templates/active/:family", requireAuth, async (req: any, res) => {
+    try {
+      const { family } = req.params;
+      // Validate family
+      if (!BUSINESS_TEMPLATE_FAMILIES.includes(family as any)) {
+        return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
+      }
+      const template = await storage.getActiveBusinessTemplate(req.userId, family);
+      if (!template) {
+        return res.status(404).json({ error: 'No active template found for this family' });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error('Error fetching active business template:', error);
+      res.status(500).json({ error: 'Failed to fetch active template' });
+    }
+  });
+
+  // GET /api/business-templates/:id - Get single template
+  app.get("/api/business-templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const template = await storage.getBusinessTemplate(req.params.id, req.userId);
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error('Error fetching business template:', error);
+      res.status(500).json({ error: 'Failed to fetch template' });
+    }
+  });
+
+  // POST /api/business-templates - Create new template
+  app.post("/api/business-templates", requireAuth, async (req: any, res) => {
+    try {
+      const validated = insertBusinessTemplateSchema.parse({
+        ...req.body,
+        userId: req.userId,
+      });
+      // Validate family
+      if (!BUSINESS_TEMPLATE_FAMILIES.includes(validated.family as any)) {
+        return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
+      }
+      const template = await storage.createBusinessTemplate(validated);
+      res.status(201).json(template);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid template data', details: error.errors });
+      }
+      console.error('Error creating business template:', error);
+      res.status(500).json({ error: 'Failed to create template' });
+    }
+  });
+
+  // PATCH /api/business-templates/:id - Update template
+  app.patch("/api/business-templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const validated = updateBusinessTemplateSchema.parse(req.body);
+      // Validate family if being updated
+      if (validated.family && !BUSINESS_TEMPLATE_FAMILIES.includes(validated.family as any)) {
+        return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
+      }
+      const template = await storage.updateBusinessTemplate(req.params.id, req.userId, validated);
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      res.json(template);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid template data', details: error.errors });
+      }
+      console.error('Error updating business template:', error);
+      res.status(500).json({ error: 'Failed to update template' });
+    }
+  });
+
+  // DELETE /api/business-templates/:id - Delete template
+  app.delete("/api/business-templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const success = await storage.deleteBusinessTemplate(req.params.id, req.userId);
+      if (!success) {
+        return res.status(404).json({ error: 'Template not found or cannot delete default template' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting business template:', error);
+      res.status(500).json({ error: 'Failed to delete template' });
+    }
+  });
+
+  // POST /api/business-templates/:id/activate - Set as active template for its family
+  app.post("/api/business-templates/:id/activate", requireAuth, async (req: any, res) => {
+    try {
+      await storage.setActiveBusinessTemplate(req.params.id, req.userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      if (error.message === 'Template not found') {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      console.error('Error activating business template:', error);
+      res.status(500).json({ error: 'Failed to activate template' });
     }
   });
 

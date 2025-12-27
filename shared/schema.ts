@@ -2185,6 +2185,51 @@ export const updateMessageTemplateSchema = insertMessageTemplateSchema.partial()
 export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 
+// Business Templates - Unified template system for Templates Hub
+// Supports multiple template families: terms_conditions, warranty, email, sms, safety_form, checklist, payment_notice
+export const businessTemplates = pgTable("business_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  family: text("family").notNull(), // 'terms_conditions', 'warranty', 'email', 'sms', 'safety_form', 'checklist', 'payment_notice'
+  name: text("name").notNull(),
+  description: text("description"),
+  isDefault: boolean("is_default").default(false), // System-provided default template
+  isActive: boolean("is_active").default(true), // Currently selected for use
+  subject: text("subject"), // For email templates
+  content: text("content").notNull(), // Main template content (plain text or structured)
+  contentHtml: text("content_html"), // HTML version for rich templates
+  sections: jsonb("sections").default([]), // For multi-section templates (safety forms, checklists)
+  mergeFields: text("merge_fields").array().default([]), // Available merge fields
+  metadata: jsonb("metadata").default({}), // { validityDays, depositPercent, warrantyMonths, etc. }
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertBusinessTemplateSchema = createInsertSchema(businessTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateBusinessTemplateSchema = insertBusinessTemplateSchema.partial().omit({
+  userId: true,
+});
+
+export type InsertBusinessTemplate = z.infer<typeof insertBusinessTemplateSchema>;
+export type BusinessTemplate = typeof businessTemplates.$inferSelect;
+
+// Template family type for validation
+export const BUSINESS_TEMPLATE_FAMILIES = [
+  'terms_conditions',
+  'warranty',
+  'email',
+  'sms',
+  'safety_form',
+  'checklist',
+  'payment_notice',
+] as const;
+export type BusinessTemplateFamily = typeof BUSINESS_TEMPLATE_FAMILIES[number];
+
 // SMS Booking Links - Unique links for clients to confirm/reschedule bookings
 export const smsBookingLinks = pgTable("sms_booking_links", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
