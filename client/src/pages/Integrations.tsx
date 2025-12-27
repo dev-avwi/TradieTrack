@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
-import { EmailIntegration } from "@/components/EmailIntegration";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useBusinessSettings, useUpdateBusinessSettings } from "@/hooks/use-business-settings";
@@ -934,66 +933,7 @@ export default function Integrations() {
             </div>
           </CardHeader>
           <CardContent className="pt-0 space-y-4">
-            {/* Delivery Confidence Message */}
-            <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
-              <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-1">
-                    No setup needed - it just works!
-                  </p>
-                  <p className="text-sm text-red-700 dark:text-red-300">
-                    Emails from your Gmail will land in your client's inbox, not spam. When you click "Send" on a quote or invoice, Gmail opens with everything ready.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Email Setup Checklist */}
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-foreground flex items-center gap-1">
-                <CheckCircle className="w-3 h-3 text-red-600" />
-                Setup Checklist
-              </p>
-              <div className="grid gap-1.5">
-                <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
-                  <span className="text-foreground">Email delivery connected</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
-                  <span className="text-foreground">Quote templates ready</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
-                  <span className="text-foreground">Invoice templates ready</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
-                  <span className="text-foreground">Professional PDF generation</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Test Email Button */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  const subject = encodeURIComponent("Test Email from TradieTrack");
-                  const body = encodeURIComponent("G'day!\n\nThis is a test email from TradieTrack to confirm your email is working correctly.\n\nCheers!");
-                  window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
-                }}
-                data-testid="button-test-email"
-              >
-                <Send className="w-4 h-4 mr-2" />
-                Send Test Email
-              </Button>
-              <span className="text-xs text-muted-foreground">Opens Gmail with a test message</span>
-            </div>
-            
-            {/* Email Sending Preference */}
+            {/* Email Sending Preference - moved to top for better UX */}
             <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
               <p className="text-sm font-medium">When you email a quote or invoice:</p>
               <div className="space-y-2">
@@ -1043,13 +983,160 @@ export default function Integrations() {
                     </div>
                     <div>
                       <p className="font-medium text-sm">Send instantly</p>
-                      <p className="text-xs text-muted-foreground">Emails go out immediately - faster for busy tradies</p>
+                      <p className="text-xs text-muted-foreground">Emails go out immediately via our servers - faster for busy tradies</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
+            {/* Mode-specific content */}
+            {emailSendingMode === 'manual' ? (
+              <>
+                {/* Manual Mode - Gmail Info */}
+                <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <SiGmail className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-1">
+                        Gmail review mode active
+                      </p>
+                      <p className="text-sm text-red-700 dark:text-red-300">
+                        When you send a quote or invoice, Gmail opens with everything ready. You can review, personalise the message, then hit send.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Test Email Button - Gmail */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const subject = encodeURIComponent("Test Email from TradieTrack");
+                      const body = encodeURIComponent("G'day!\n\nThis is a test email from TradieTrack to confirm your email is working correctly.\n\nCheers!");
+                      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
+                    }}
+                    data-testid="button-test-email"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Test Email
+                  </Button>
+                  <span className="text-xs text-muted-foreground">Opens Gmail with a test message</span>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Automatic Mode - Backend sending info */}
+                <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                        Instant sending active
+                      </p>
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        Quotes and invoices are sent instantly when you click "Send" - no extra steps. Professional emails with your business name are delivered directly to your client's inbox.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Features for automatic mode */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-foreground">What's included:</p>
+                  <div className="grid gap-1.5">
+                    <div className="flex items-center gap-2 text-xs">
+                      <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                      <span className="text-foreground">One-click sending (no Gmail popup)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                      <span className="text-foreground">Professional email templates</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                      <span className="text-foreground">PDF attachments included</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                      <span className="text-foreground">Emails sent from your business name</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action buttons for automatic mode */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      toast({
+                        title: "Email Templates",
+                        description: "Templates are automatically customised with your business details when sending quotes and invoices.",
+                      });
+                    }}
+                    data-testid="button-edit-templates"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    About Templates
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const response = await apiRequest('POST', '/api/integrations/test-email');
+                        const data = await response.json();
+                        toast({
+                          title: data.success ? "Test Email Sent" : "Email Issue",
+                          description: data.message || data.error || "A test email has been sent to your registered email address.",
+                          variant: data.success ? "default" : "destructive",
+                        });
+                      } catch (error: any) {
+                        toast({
+                          title: "Test Email",
+                          description: error.message || "Could not send test email. Check your email configuration.",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    data-testid="button-test-email-auto"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Test Email
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Email Setup Checklist - always shown */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-foreground flex items-center gap-1">
+                <CheckCircle className="w-3 h-3 text-green-600" />
+                Setup Checklist
+              </p>
+              <div className="grid gap-1.5">
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <span className="text-foreground">Email delivery connected</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <span className="text-foreground">Quote templates ready</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <span className="text-foreground">Invoice templates ready</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <span className="text-foreground">Professional PDF generation</span>
+                </div>
+              </div>
+            </div>
+            
             {/* Australian Compliance Tips - Expandable */}
             <Collapsible className="border rounded-lg">
               <CollapsibleTrigger className="flex items-center justify-between w-full p-3 text-left hover-elevate rounded-lg">
@@ -1661,107 +1748,7 @@ export default function Integrations() {
             </CardContent>
           </Card>
 
-          {/* SendGrid Email Automation Card */}
-          <Card data-testid="card-sendgrid-integration">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    health?.services?.sendgrid?.status === 'ready' 
-                      ? 'bg-green-100 dark:bg-green-900/50' 
-                      : 'bg-gray-100 dark:bg-gray-800/50'
-                  }`}>
-                    <Mail className={`w-5 h-5 ${
-                      health?.services?.sendgrid?.status === 'ready' 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : 'text-gray-500 dark:text-gray-400'
-                    }`} />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Email Automation</CardTitle>
-                    <p className="text-xs text-muted-foreground">Automatic email sending for quotes & invoices</p>
-                  </div>
-                </div>
-                <ServiceBadge status={health?.services?.sendgrid?.status} fetchFailed={fetchFailed} />
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-4">
-              {health?.services?.sendgrid?.status === 'ready' ? (
-                <>
-                  <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-                    <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
-                      Email automation is active
-                    </p>
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      Quotes and invoices are sent automatically without opening Gmail.
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-foreground">What happens when connected:</p>
-                    <ul className="text-xs text-muted-foreground space-y-1.5">
-                      <li className="flex items-center gap-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        Emails send instantly (no Gmail popup)
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        Professional templates
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        Delivery tracking
-                      </li>
-                    </ul>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    Connect SendGrid to send emails automatically without opening Gmail.
-                  </p>
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <p><strong>Requires:</strong> SENDGRID_API_KEY</p>
-                        <p><strong>Features:</strong> Instant sending, templates, tracking</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-foreground">What happens when connected:</p>
-                    <ul className="text-xs text-muted-foreground space-y-1.5">
-                      <li className="flex items-center gap-2">
-                        <Send className="w-3 h-3" />
-                        Emails send instantly (no Gmail popup)
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <FileText className="w-3 h-3" />
-                        Professional templates
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <BarChart3 className="w-3 h-3" />
-                        Delivery tracking
-                      </li>
-                    </ul>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
         </div>
-      </div>
-
-      {/* Optional Email Provider Integration */}
-      <div className="pt-4">
-        <h3 className="text-sm font-medium mb-3">Optional: Send Emails Automatically</h3>
-        <p className="text-xs text-muted-foreground mb-3">
-          Want emails to send instantly without opening Gmail? Connect your email account below. 
-          This is optional - the Gmail method above works great for most tradies.
-        </p>
-        <EmailIntegration />
       </div>
 
       {/* Stripe Setup Guide - shows when not fully connected */}
