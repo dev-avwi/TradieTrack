@@ -1206,6 +1206,59 @@ export const equipmentMaintenance = pgTable("equipment_maintenance", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Client Assets - Equipment/systems installed at customer locations (Mrs Smith's AC unit)
+export const clientAssets = pgTable("client_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  name: text("name").notNull(), // e.g., "Split System AC - Living Room"
+  assetType: text("asset_type").notNull(), // 'hvac', 'hot_water', 'electrical', 'plumbing', 'solar', 'appliance', 'other'
+  manufacturer: text("manufacturer"),
+  model: text("model"),
+  serialNumber: text("serial_number"),
+  installDate: timestamp("install_date"),
+  installedBy: text("installed_by"), // Could be this tradie or another
+  purchasePrice: decimal("purchase_price", { precision: 10, scale: 2 }),
+  warrantyExpiresAt: timestamp("warranty_expires_at"),
+  warrantyProvider: text("warranty_provider"),
+  warrantyNotes: text("warranty_notes"),
+  location: text("location"), // Where in the property: "Kitchen", "Garage", "Unit 2"
+  notes: text("notes"),
+  specifications: json("specifications").default({}), // Flexible specs: capacity, kW rating, etc.
+  photos: json("photos").default([]),
+  documents: json("documents").default([]), // Manuals, warranty docs
+  lastServiceDate: timestamp("last_service_date"),
+  nextServiceDue: timestamp("next_service_due"),
+  serviceIntervalMonths: integer("service_interval_months"), // e.g., 12 for annual service
+  status: text("status").default('active'), // active, decommissioned, replaced
+  replacedByAssetId: varchar("replaced_by_asset_id"), // Links to new asset if replaced
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Client Asset Service History - Track all work done on a client's asset
+export const clientAssetServices = pgTable("client_asset_services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  assetId: varchar("asset_id").notNull().references(() => clientAssets.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }), // Link to job if applicable
+  serviceType: text("service_type").notNull(), // 'installation', 'maintenance', 'repair', 'inspection', 'replacement'
+  title: text("title").notNull(),
+  description: text("description"),
+  serviceDate: timestamp("service_date").notNull(),
+  performedBy: varchar("performed_by").references(() => users.id),
+  cost: decimal("cost", { precision: 10, scale: 2 }),
+  laborHours: decimal("labor_hours", { precision: 5, scale: 2 }),
+  partsUsed: json("parts_used").default([]), // [{ name, partNumber, quantity, cost }]
+  findings: text("findings"), // What was found during inspection
+  recommendations: text("recommendations"), // Suggested future work
+  photos: json("photos").default([]),
+  documents: json("documents").default([]),
+  nextServiceDue: timestamp("next_service_due"), // Updates asset's next service date
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Recurring Jobs & Contracts
 export const recurringContracts = pgTable("recurring_contracts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1541,6 +1594,20 @@ export const insertEquipmentMaintenanceSchema = createInsertSchema(equipmentMain
   updatedAt: true,
 });
 
+// Client Assets Schemas
+export const insertClientAssetSchema = createInsertSchema(clientAssets).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertClientAssetServiceSchema = createInsertSchema(clientAssetServices).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+});
+
 // Recurring Jobs Schemas
 export const insertRecurringContractSchema = createInsertSchema(recurringContracts).omit({
   id: true,
@@ -1678,6 +1745,13 @@ export type Equipment = typeof equipment.$inferSelect;
 
 export type InsertEquipmentMaintenance = z.infer<typeof insertEquipmentMaintenanceSchema>;
 export type EquipmentMaintenance = typeof equipmentMaintenance.$inferSelect;
+
+// Client Assets Types
+export type InsertClientAsset = z.infer<typeof insertClientAssetSchema>;
+export type ClientAsset = typeof clientAssets.$inferSelect;
+
+export type InsertClientAssetService = z.infer<typeof insertClientAssetServiceSchema>;
+export type ClientAssetService = typeof clientAssetServices.$inferSelect;
 
 // Recurring Jobs Types
 export type InsertRecurringContract = z.infer<typeof insertRecurringContractSchema>;

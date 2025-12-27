@@ -83,7 +83,7 @@ import { notifyJobAssigned, notifyPaymentReceived, notifyQuoteAccepted, notifyQu
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
 import { checkTwilioAvailability, sendSMS } from "./twilioClient";
-import { geocodeAddress } from "./geocoding";
+import { geocodeAddress, haversineDistance } from "./geocoding";
 import { processStatusChangeAutomation, processPaymentReceivedAutomation, processTimeBasedAutomations } from "./automationService";
 import * as xeroService from "./xeroService";
 import * as myobService from "./myobService";
@@ -1519,6 +1519,221 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route optimization endpoint - Uses Google Maps Directions API with waypoint optimization
+  app.post("/api/routes/optimize", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { date, startLocation } = req.body;
+
+      if (!date) {
+        return res.status(400).json({ error: "Date is required (YYYY-MM-DD format)" });
+      }
+
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+      
+      // Fetch scheduled or in_progress jobs for this user on the given date
+      const allJobs = await storage.getJobs(userContext.effectiveUserId);
+      const targetDate = new Date(date).toISOString().split('T')[0];
+      
+      const jobsToOptimize = allJobs.filter(job => {
+        if (!job.scheduledAt) return false;
+        const jobDate = new Date(job.scheduledAt).toISOString().split('T')[0];
+        const status = job.status.toLowerCase();
+        return jobDate === targetDate && (status === 'scheduled' || status === 'in_progress');
+      });
+
+      if (jobsToOptimize.length === 0) {
+        return res.json({
+          optimizedOrder: [],
+          totalDistance: "0 km",
+          totalDuration: "0 mins",
+          savedDistance: "0 km",
+          message: "No jobs found to optimize for this date."
+        });
+      }
+
+      // Ensure all jobs have coordinates, geocode if necessary
+      const jobsWithCoords = await Promise.all(jobsToOptimize.map(async (job) => {
+        let lat = job.latitude ? parseFloat(job.latitude as string) : null;
+        let lng = job.longitude ? parseFloat(job.longitude as string) : null;
+        
+        if ((lat === null || lng === null) && job.address) {
+          try {
+            const coords = await geocodeAddress(job.address);
+            if (coords) {
+              lat = coords.lat;
+              lng = coords.lng;
+              // Update job with coordinates for future use
+              await storage.updateJob(job.id, userContext.effectiveUserId, {
+                latitude: lat.toString(),
+                longitude: lng.toString()
+              });
+            }
+          } catch (e) {
+            console.error(`Failed to geocode address for job ${job.id}:`, e);
+          }
+        }
+        
+        return { ...job, lat, lng };
+      }));
+
+      // Filter out jobs that still don't have coordinates
+      const validJobs = jobsWithCoords.filter(j => j.lat !== null && j.lng !== null);
+      
+      if (validJobs.length === 0) {
+        return res.status(400).json({ error: "Could not determine coordinates for any jobs." });
+      }
+
+      // Optimization Logic
+      let result;
+      let usedGoogleMaps = false;
+
+      if (apiKey) {
+        try {
+          const origin = startLocation 
+            ? `${startLocation.lat},${startLocation.lng}` 
+            : `${validJobs[0].lat},${validJobs[0].lng}`;
+          
+          // If startLocation is not provided, the first job is the origin and should not be a waypoint
+          const waypointsJobs = startLocation ? validJobs : validJobs.slice(1);
+          
+          if (waypointsJobs.length > 0) {
+            const waypoints = `optimize:true|${waypointsJobs.map(j => `${j.lat},${j.lng}`).join('|')}`;
+            const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${origin}&waypoints=${waypoints}&key=${apiKey}`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.status === 'OK') {
+              const route = data.routes[0];
+              const waypointOrder = route.waypoint_order; // Array of indices into waypoints
+              
+              const optimizedJobs = waypointOrder.map((index: number) => waypointsJobs[index]);
+              
+              // If we didn't use startLocation, the first job was the origin
+              const finalOrder = startLocation ? optimizedJobs : [validJobs[0], ...optimizedJobs];
+              
+              let totalDistanceMeters = 0;
+              let totalDurationSeconds = 0;
+              
+              route.legs.forEach((leg: any) => {
+                totalDistanceMeters += leg.distance.value;
+                totalDurationSeconds += leg.duration.value;
+              });
+
+              // Calculate arrival times starting from 9:00 AM or a reasonable start time
+              let currentTime = new Date(`${date}T09:00:00`);
+              const optimizedOrder = finalOrder.map((job, idx) => {
+                const arrivalTime = currentTime.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false });
+                // Add travel time to next job (this is simplified, normally we'd add job duration too)
+                if (route.legs[idx]) {
+                  currentTime = new Date(currentTime.getTime() + (route.legs[idx].duration.value * 1000) + ((job.estimatedDuration || 60) * 60 * 1000));
+                }
+                
+                return {
+                  jobId: job.id,
+                  order: idx + 1,
+                  arrivalTime,
+                  address: job.address
+                };
+              });
+
+              result = {
+                optimizedOrder,
+                totalDistance: `${(totalDistanceMeters / 1000).toFixed(1)} km`,
+                totalDuration: `${Math.floor(totalDurationSeconds / 3600)}h ${Math.round((totalDurationSeconds % 3600) / 60)}m`,
+                savedDistance: "Calculated via Google Maps" // Placeholder as "original order" isn't strictly defined
+              };
+              usedGoogleMaps = true;
+            } else {
+              console.warn("Google Maps Directions API returned status:", data.status);
+            }
+          } else {
+            // Only one job, no optimization needed
+            result = {
+              optimizedOrder: [{ jobId: validJobs[0].id, order: 1, arrivalTime: "09:00", address: validJobs[0].address }],
+              totalDistance: "0 km",
+              totalDuration: "0 mins",
+              savedDistance: "0 km"
+            };
+            usedGoogleMaps = true;
+          }
+        } catch (e) {
+          console.error("Google Maps Route Optimization failed, falling back to Haversine:", e);
+        }
+      }
+
+      // Fallback to Haversine nearest-neighbor if Google Maps failed or no API key
+      if (!usedGoogleMaps) {
+        const optimizedOrder: any[] = [];
+        let currentPos = startLocation || { lat: validJobs[0].lat, lng: validJobs[0].lng };
+        const remainingJobs = startLocation ? [...validJobs] : validJobs.slice(1);
+        
+        if (!startLocation) {
+          optimizedOrder.push({
+            jobId: validJobs[0].id,
+            order: 1,
+            arrivalTime: "09:00",
+            address: validJobs[0].address
+          });
+        }
+
+        let currentTime = new Date(`${date}T09:00:00`);
+        let totalDist = 0;
+
+        while (remainingJobs.length > 0) {
+          let nearestIdx = 0;
+          let minDist = haversineDistance(
+            currentPos.lat, currentPos.lng,
+            remainingJobs[0].lat!, remainingJobs[0].lng!
+          );
+
+          for (let i = 1; i < remainingJobs.length; i++) {
+            const dist = haversineDistance(
+              currentPos.lat, currentPos.lng,
+              remainingJobs[i].lat!, remainingJobs[i].lng!
+            );
+            if (dist < minDist) {
+              minDist = dist;
+              nearestIdx = i;
+            }
+          }
+
+          const nextJob = remainingJobs.splice(nearestIdx, 1)[0];
+          totalDist += minDist;
+          
+          // Estimate 30km/h average speed for duration
+          const travelTimeMins = (minDist / 30) * 60;
+          currentTime = new Date(currentTime.getTime() + (travelTimeMins * 60 * 1000));
+          
+          optimizedOrder.push({
+            jobId: nextJob.id,
+            order: optimizedOrder.length + 1,
+            arrivalTime: currentTime.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }),
+            address: nextJob.address
+          });
+          
+          // Add job duration
+          currentTime = new Date(currentTime.getTime() + ((nextJob.estimatedDuration || 60) * 60 * 1000));
+          currentPos = { lat: nextJob.lat!, lng: nextJob.lng! };
+        }
+
+        result = {
+          optimizedOrder,
+          totalDistance: `${totalDist.toFixed(1)} km`,
+          totalDuration: "Estimated via Haversine",
+          savedDistance: "N/A (Fallback used)",
+          warning: apiKey ? "Google Maps API failed, used fallback" : "No Google Maps API key, used fallback"
+        };
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Route optimization error:", error);
+      res.status(500).json({ error: "Failed to optimize route" });
+    }
+  });
+
   // Comprehensive profile endpoint - returns user info, team membership, role, and permissions
   app.get("/api/profile/me", requireAuth, async (req: any, res) => {
     try {
@@ -2433,6 +2648,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating schedule suggestions:", error);
       res.status(500).json({ error: "Failed to generate schedule suggestions" });
+    }
+  });
+
+  // AI Quote Learning endpoint - suggests pricing based on similar past quotes
+  app.post("/api/ai/quote-suggestions", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { description, jobType } = req.body;
+
+      if (!description) {
+        return res.status(400).json({ error: "Description is required" });
+      }
+
+      // Query past quote line items for this user with similar descriptions
+      // Join quote_line_items with quotes to filter by userId and get quote dates
+      const similarItems = await db
+        .select({
+          description: quoteLineItems.description,
+          unitPrice: quoteLineItems.unitPrice,
+          createdAt: quotes.createdAt,
+        })
+        .from(quoteLineItems)
+        .innerJoin(quotes, eq(quoteLineItems.quoteId, quotes.id))
+        .where(
+          and(
+            eq(quotes.userId, userContext.effectiveUserId),
+            sql`${quoteLineItems.description} ILIKE ${'%' + description + '%'}`
+          )
+        )
+        .orderBy(desc(quotes.createdAt));
+
+      if (similarItems.length === 0) {
+        return res.json({
+          suggestions: [],
+          message: "No similar past quotes found for this description."
+        });
+      }
+
+      // Group by description and calculate stats
+      const statsMap = new Map<string, {
+        description: string;
+        prices: number[];
+        lastUsedPrice: number;
+        lastUsedDate: string;
+        frequency: number;
+      }>();
+
+      for (const item of similarItems) {
+        const desc = item.description;
+        const price = parseFloat(item.unitPrice);
+        const date = item.createdAt ? item.createdAt.toISOString().split('T')[0] : '';
+
+        if (!statsMap.has(desc)) {
+          statsMap.set(desc, {
+            description: desc,
+            prices: [price],
+            lastUsedPrice: price,
+            lastUsedDate: date,
+            frequency: 1
+          });
+        } else {
+          const stats = statsMap.get(desc)!;
+          stats.prices.push(price);
+          stats.frequency += 1;
+        }
+      }
+
+      const suggestions = Array.from(statsMap.values())
+        .map(stats => ({
+          description: stats.description,
+          lastUsedPrice: stats.lastUsedPrice,
+          lastUsedDate: stats.lastUsedDate,
+          frequency: stats.frequency,
+          averagePrice: stats.prices.reduce((a, b) => a + b, 0) / stats.prices.length
+        }))
+        .sort((a, b) => b.frequency - a.frequency)
+        .slice(0, 5);
+
+      // Format a friendly message based on the most recent match
+      const mostRecent = similarItems[0];
+      const message = `Last time you quoted '${mostRecent.description}' for $${parseFloat(mostRecent.unitPrice).toFixed(2)}`;
+
+      res.json({
+        suggestions,
+        message
+      });
+    } catch (error) {
+      console.error("Error generating quote suggestions:", error);
+      res.status(500).json({ error: "Failed to generate quote suggestions" });
     }
   });
 
