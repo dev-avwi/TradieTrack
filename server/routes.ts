@@ -4988,17 +4988,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if Gmail is available at platform level (for info display)
       const gmailStatus = await getGmailConnectionStatus(req.userId);
       
+      // Gmail connector counts as an integration even without DB record
+      const hasAnyIntegration = !!activeIntegration || gmailStatus.connected;
+      
+      // If no DB integration but Gmail is connected, create virtual integration object
+      const integrationInfo = activeIntegration ? {
+        id: activeIntegration.id,
+        provider: activeIntegration.provider,
+        emailAddress: activeIntegration.emailAddress,
+        displayName: activeIntegration.displayName,
+        status: activeIntegration.status,
+        lastUsedAt: activeIntegration.lastUsedAt,
+        lastError: activeIntegration.lastError,
+      } : gmailStatus.connected ? {
+        id: 'gmail-connector',
+        provider: 'gmail',
+        emailAddress: gmailStatus.email || 'Gmail Account',
+        displayName: gmailStatus.displayName || 'Gmail Connector',
+        status: 'connected',
+        lastUsedAt: null,
+        lastError: null,
+      } : null;
+      
       res.json({
-        hasIntegration: !!activeIntegration,
-        integration: activeIntegration ? {
-          id: activeIntegration.id,
-          provider: activeIntegration.provider,
-          emailAddress: activeIntegration.emailAddress,
-          displayName: activeIntegration.displayName,
-          status: activeIntegration.status,
-          lastUsedAt: activeIntegration.lastUsedAt,
-          lastError: activeIntegration.lastError,
-        } : null,
+        hasIntegration: hasAnyIntegration,
+        integration: integrationInfo,
         // Platform Gmail info - shows if Gmail is available for the owner
         gmailConnected: gmailStatus.connected,
         gmailEmail: gmailStatus.email,
