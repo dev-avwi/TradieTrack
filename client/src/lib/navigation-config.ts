@@ -19,6 +19,7 @@ import {
   UserCircle,
   Wallet,
   ClipboardList,
+  Files,
   type LucideIcon
 } from "lucide-react";
 
@@ -205,6 +206,18 @@ export const mainMenuItems: NavItem[] = [
     url: "/custom-forms",
     icon: ClipboardList,
     description: "Create and manage custom forms and checklists",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
+    hideForStaff: true,
+    showInSidebar: true,
+    showInMore: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
+    title: "Templates",
+    url: "/templates",
+    icon: Files,
+    description: "Manage email, SMS, and document templates",
     color: "text-primary",
     bgColor: "bg-primary/10",
     hideForStaff: true,

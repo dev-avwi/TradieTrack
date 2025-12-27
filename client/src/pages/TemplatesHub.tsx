@@ -1,0 +1,582 @@
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { PageShell, PageHeader } from "@/components/ui/page-shell";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  Mail,
+  MessageSquare,
+  ScrollText,
+  Shield,
+  Receipt,
+  ClipboardList,
+  CheckSquare,
+  FileText,
+  Plus,
+  Pencil,
+  Trash2,
+  CheckCircle,
+  Loader2,
+  ChevronRight,
+  ChevronDown,
+} from "lucide-react";
+import type { BusinessTemplate, BusinessTemplateFamily } from "@shared/schema";
+import { type LucideIcon } from "lucide-react";
+
+interface TemplateFamilyMeta {
+  family: BusinessTemplateFamily;
+  count: number;
+  activeTemplateId: string | null;
+  activeTemplateName: string | null;
+}
+
+interface FamilyConfig {
+  name: string;
+  description: string;
+  icon: LucideIcon;
+  category: "communications" | "financial" | "jobs_safety";
+}
+
+const FAMILY_CONFIG: Record<BusinessTemplateFamily, FamilyConfig> = {
+  email: {
+    name: "Email Templates",
+    description: "Customizable email templates for client communications",
+    icon: Mail,
+    category: "communications",
+  },
+  sms: {
+    name: "SMS Templates",
+    description: "Text message templates for quick updates",
+    icon: MessageSquare,
+    category: "communications",
+  },
+  terms_conditions: {
+    name: "Terms & Conditions",
+    description: "Standard terms included in quotes and invoices",
+    icon: ScrollText,
+    category: "financial",
+  },
+  warranty: {
+    name: "Warranty Terms",
+    description: "Warranty information for your work",
+    icon: Shield,
+    category: "financial",
+  },
+  payment_notice: {
+    name: "Payment Notices",
+    description: "Templates for payment reminders and overdue notices",
+    icon: Receipt,
+    category: "financial",
+  },
+  safety_form: {
+    name: "Safety Forms",
+    description: "Job site safety checklists and documentation",
+    icon: ClipboardList,
+    category: "jobs_safety",
+  },
+  checklist: {
+    name: "Job Checklists",
+    description: "Standard checklists for job completion",
+    icon: CheckSquare,
+    category: "jobs_safety",
+  },
+};
+
+const CATEGORIES = {
+  communications: { name: "Communications", families: ["email", "sms"] as BusinessTemplateFamily[] },
+  financial: { name: "Financial", families: ["terms_conditions", "warranty", "payment_notice"] as BusinessTemplateFamily[] },
+  jobs_safety: { name: "Jobs & Safety", families: ["safety_form", "checklist"] as BusinessTemplateFamily[] },
+};
+
+export default function TemplatesHub() {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<string>("communications");
+  const [expandedFamily, setExpandedFamily] = useState<BusinessTemplateFamily | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<BusinessTemplate | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    content: "",
+    subject: "",
+  });
+
+  const { data: familiesMeta = [], isLoading: familiesLoading, refetch: refetchFamilies } = useQuery<TemplateFamilyMeta[]>({
+    queryKey: ["/api/business-templates/families"],
+  });
+
+  const { data: templates = [], isLoading: templatesLoading, refetch: refetchTemplates } = useQuery<BusinessTemplate[]>({
+    queryKey: ["/api/business-templates"],
+  });
+
+  const seedMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("/api/business-templates/seed", { method: "POST" });
+    },
+    onSuccess: () => {
+      refetchFamilies();
+      refetchTemplates();
+    },
+  });
+
+  useEffect(() => {
+    if (!familiesLoading && familiesMeta.length === 0) {
+      seedMutation.mutate();
+    }
+  }, [familiesLoading, familiesMeta.length]);
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { family: string; name: string; description?: string; content: string; subject?: string }) => {
+      return apiRequest("/api/business-templates", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Template created successfully" });
+      setEditDialogOpen(false);
+      resetForm();
+      queryClient.invalidateQueries({ queryKey: ["/api/business-templates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/business-templates/families"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to create template", variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { name?: string; description?: string; content?: string; subject?: string } }) => {
+      return apiRequest(`/api/business-templates/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Template updated successfully" });
+      setEditDialogOpen(false);
+      resetForm();
+      queryClient.invalidateQueries({ queryKey: ["/api/business-templates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/business-templates/families"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to update template", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/business-templates/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      toast({ title: "Template deleted successfully" });
+      setDeleteDialogOpen(false);
+      setSelectedTemplate(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/business-templates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/business-templates/families"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete template", variant: "destructive" });
+    },
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/business-templates/${id}/activate`, { method: "POST" });
+    },
+    onSuccess: () => {
+      toast({ title: "Template set as active" });
+      queryClient.invalidateQueries({ queryKey: ["/api/business-templates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/business-templates/families"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to set active template", variant: "destructive" });
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({ name: "", description: "", content: "", subject: "" });
+    setSelectedTemplate(null);
+    setIsCreating(false);
+  };
+
+  const openCreateDialog = (family: BusinessTemplateFamily) => {
+    setIsCreating(true);
+    setSelectedTemplate({ family } as BusinessTemplate);
+    setFormData({ name: "", description: "", content: "", subject: "" });
+    setEditDialogOpen(true);
+  };
+
+  const openEditDialog = (template: BusinessTemplate) => {
+    setIsCreating(false);
+    setSelectedTemplate(template);
+    setFormData({
+      name: template.name,
+      description: template.description || "",
+      content: template.content,
+      subject: template.subject || "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!selectedTemplate) return;
+    
+    if (isCreating) {
+      createMutation.mutate({
+        family: selectedTemplate.family,
+        name: formData.name,
+        description: formData.description || undefined,
+        content: formData.content,
+        subject: formData.subject || undefined,
+      });
+    } else {
+      updateMutation.mutate({
+        id: selectedTemplate.id,
+        data: {
+          name: formData.name,
+          description: formData.description || undefined,
+          content: formData.content,
+          subject: formData.subject || undefined,
+        },
+      });
+    }
+  };
+
+  const handleDelete = () => {
+    if (selectedTemplate) {
+      deleteMutation.mutate(selectedTemplate.id);
+    }
+  };
+
+  const getFamilyMeta = (family: BusinessTemplateFamily): TemplateFamilyMeta | undefined => {
+    return familiesMeta.find((m) => m.family === family);
+  };
+
+  const getFamilyTemplates = (family: BusinessTemplateFamily): BusinessTemplate[] => {
+    return templates.filter((t) => t.family === family);
+  };
+
+  const isLoading = familiesLoading || templatesLoading || seedMutation.isPending;
+
+  if (isLoading) {
+    return (
+      <PageShell>
+        <PageHeader
+          title="Templates"
+          subtitle="Manage all your business templates in one place"
+          leading={<FileText className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
+        />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </PageShell>
+    );
+  }
+
+  return (
+    <PageShell>
+      <PageHeader
+        title="Templates"
+        subtitle="Manage all your business templates in one place"
+        leading={<FileText className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
+      />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsTrigger value="communications" data-testid="tab-communications">
+            Communications
+          </TabsTrigger>
+          <TabsTrigger value="financial" data-testid="tab-financial">
+            Financial
+          </TabsTrigger>
+          <TabsTrigger value="jobs_safety" data-testid="tab-jobs-safety">
+            Jobs & Safety
+          </TabsTrigger>
+        </TabsList>
+
+        {Object.entries(CATEGORIES).map(([categoryKey, category]) => (
+          <TabsContent key={categoryKey} value={categoryKey} className="space-y-4">
+            {category.families.map((family) => {
+              const config = FAMILY_CONFIG[family];
+              const meta = getFamilyMeta(family);
+              const familyTemplates = getFamilyTemplates(family);
+              const Icon = config.icon;
+              const isExpanded = expandedFamily === family;
+
+              return (
+                <Card key={family} className="hover-elevate" data-testid={`card-family-${family}`}>
+                  <CardHeader
+                    className="cursor-pointer"
+                    onClick={() => setExpandedFamily(isExpanded ? null : family)}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-10 h-10 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}
+                        >
+                          <Icon className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{config.name}</CardTitle>
+                          <CardDescription>{config.description}</CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="secondary" data-testid={`badge-count-${family}`}>
+                          {meta?.count || 0} template{(meta?.count || 0) !== 1 ? "s" : ""}
+                        </Badge>
+                        {meta?.activeTemplateName && (
+                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Active
+                          </Badge>
+                        )}
+                        {isExpanded ? (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  {isExpanded && (
+                    <CardContent className="pt-0">
+                      <div className="border-t pt-4 space-y-3">
+                        <div className="flex justify-between items-center mb-4">
+                          <p className="text-sm text-muted-foreground">
+                            {familyTemplates.length === 0
+                              ? "No templates yet"
+                              : `${familyTemplates.length} template${familyTemplates.length !== 1 ? "s" : ""}`}
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openCreateDialog(family);
+                            }}
+                            data-testid={`button-create-${family}`}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Create New
+                          </Button>
+                        </div>
+
+                        {familyTemplates.map((template) => (
+                          <div
+                            key={template.id}
+                            className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                            data-testid={`template-item-${template.id}`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium truncate">{template.name}</p>
+                                {template.isActive && (
+                                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0" size="sm">
+                                    Active
+                                  </Badge>
+                                )}
+                                {template.isDefault && (
+                                  <Badge variant="outline" size="sm">
+                                    System Default
+                                  </Badge>
+                                )}
+                              </div>
+                              {template.description && (
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {template.description}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 ml-3">
+                              {!template.isActive && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    activateMutation.mutate(template.id);
+                                  }}
+                                  disabled={activateMutation.isPending}
+                                  data-testid={`button-activate-${template.id}`}
+                                >
+                                  Set Active
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditDialog(template);
+                                }}
+                                data-testid={`button-edit-${template.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              {!template.isDefault && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTemplate(template);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  data-testid={`button-delete-${template.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            })}
+          </TabsContent>
+        ))}
+      </Tabs>
+
+      <Dialog open={editDialogOpen} onOpenChange={(open) => {
+        setEditDialogOpen(open);
+        if (!open) resetForm();
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {isCreating ? "Create Template" : "Edit Template"}
+            </DialogTitle>
+            <DialogDescription>
+              {isCreating
+                ? `Create a new ${FAMILY_CONFIG[selectedTemplate?.family as BusinessTemplateFamily]?.name || "template"}`
+                : `Edit your ${FAMILY_CONFIG[selectedTemplate?.family as BusinessTemplateFamily]?.name || "template"}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Template Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Enter template name"
+                data-testid="input-template-name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Input
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Brief description of this template"
+                data-testid="input-template-description"
+              />
+            </div>
+
+            {(selectedTemplate?.family === "email" || selectedTemplate?.family === "sms") && (
+              <div className="space-y-2">
+                <Label htmlFor="subject">Subject Line</Label>
+                <Input
+                  id="subject"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  placeholder="Email subject or SMS opening"
+                  data-testid="input-template-subject"
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="content">Content</Label>
+              <Textarea
+                id="content"
+                value={formData.content}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                placeholder="Enter template content..."
+                rows={8}
+                className="resize-none"
+                data-testid="input-template-content"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use variables like {"{clientName}"}, {"{jobTitle}"}, {"{amount}"} for dynamic content
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!formData.name || !formData.content || createMutation.isPending || updateMutation.isPending}
+              data-testid="button-save-template"
+            >
+              {(createMutation.isPending || updateMutation.isPending) && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              {isCreating ? "Create Template" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedTemplate?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </PageShell>
+  );
+}

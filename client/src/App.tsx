@@ -71,6 +71,7 @@ import AdminAppShell from "@/components/AdminAppShell";
 import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
 import LandingPage from "@/pages/LandingPage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
+import TemplatesHub from "@/pages/TemplatesHub";
 
 // Types for job completion
 interface JobPhoto {
@@ -468,6 +469,10 @@ function Router({
       
       <Route path="/custom-forms" component={() => (
         <CustomForms />
+      )} />
+      
+      <Route path="/templates" component={() => (
+        <TemplatesHub />
       )} />
       
       <Route path="/collect-payment" component={() => (
