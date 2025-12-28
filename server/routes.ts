@@ -11601,14 +11601,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let inviteData;
       try {
-        console.log('[TeamInvite] Request body:', JSON.stringify(req.body, null, 2));
         inviteData = inviteRequestSchema.parse(req.body);
-        console.log('[TeamInvite] Parsed data:', JSON.stringify(inviteData, null, 2));
       } catch (validationError: any) {
-        console.log('[TeamInvite] Validation error:', JSON.stringify(validationError.errors || validationError.message, null, 2));
+        console.error('[TeamInvite] Validation failed for invite request');
         return res.status(400).json({ 
-          error: 'Invalid invite data',
-          details: validationError.errors || validationError.message 
+          error: 'Invalid invite data. Please check all required fields.'
         });
       }
       
