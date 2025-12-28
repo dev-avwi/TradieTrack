@@ -100,7 +100,7 @@ const tiers = [
 ];
 
 const handleContactSales = () => {
-  window.location.href = "mailto:sales@tradietrack.com.au?subject=TradieTrack%20Team%20Plan%20Enquiry&body=Hi%20TradieTrack%20Team%2C%0A%0AI'm%20interested%20in%20the%20Team%20plan%20for%20my%20business.%0A%0ABusiness%20Name%3A%20%0ANumber%20of%20Team%20Members%3A%20%0APhone%3A%20%0A%0AThanks!";
+  window.location.href = "mailto:admin@avwebinnovation.com?subject=TradieTrack%20Team%20Plan%20Enquiry&body=Hi%20TradieTrack%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20the%20TradieTrack%20Team%20plan%20for%20my%20business.%0A%0ABusiness%20Name%3A%20%0ANumber%20of%20Team%20Members%3A%20%0APhone%3A%20%0A%0AThanks!";
 };
 
 export default function SubscriptionPage() {
