@@ -47,6 +47,10 @@ import {
   ChevronRight,
   ChevronDown,
   Eye,
+  AlertTriangle,
+  ExternalLink,
+  Settings,
+  Zap,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { BusinessTemplate, BusinessTemplateFamily, BusinessTemplatePurpose } from "@shared/schema";
@@ -206,6 +210,24 @@ export default function TemplatesHub() {
 
   const { data: templates = [], isLoading: templatesLoading, refetch: refetchTemplates } = useQuery<BusinessTemplate[]>({
     queryKey: ["/api/business-templates"],
+  });
+
+  // Integration health check for email/SMS providers
+  interface IntegrationHealth {
+    allReady: boolean;
+    servicesReady: {
+      sendgrid: boolean;
+      twilio: boolean;
+      stripe: boolean;
+    };
+    warnings: string[];
+    fixes: { service: string; action: string; url?: string }[];
+  }
+  
+  const { data: integrationHealth } = useQuery<IntegrationHealth>({
+    queryKey: ["/api/integrations/health"],
+    staleTime: 60000, // Cache for 1 minute
+    refetchInterval: 300000, // Refetch every 5 minutes
   });
 
   const seedMutation = useMutation({
@@ -378,6 +400,80 @@ export default function TemplatesHub() {
         leading={<FileText className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
       />
 
+      {/* Integration Status Warning */}
+      {integrationHealth && !integrationHealth.allReady && (
+        <Card className="mt-4 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20" data-testid="card-integration-status">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0 space-y-2">
+                <p className="font-medium text-amber-800 dark:text-amber-200">Some integrations need setup</p>
+                <div className="space-y-1.5">
+                  {!integrationHealth.servicesReady.sendgrid && (
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
+                        Email (SendGrid): Not configured
+                      </span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
+                          Fallback: Open with Gmail/Outlook
+                        </Badge>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="text-amber-700 dark:text-amber-300 p-0 h-auto"
+                          onClick={() => window.location.href = '/settings?tab=integrations'}
+                          data-testid="button-setup-sendgrid"
+                        >
+                          <Settings className="h-3 w-3 mr-1" />
+                          Setup
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {!integrationHealth.servicesReady.twilio && (
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        SMS (Twilio): Not configured
+                      </span>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="text-amber-700 dark:text-amber-300 p-0 h-auto"
+                        onClick={() => window.location.href = '/settings?tab=integrations'}
+                        data-testid="button-setup-twilio"
+                      >
+                        <Settings className="h-3 w-3 mr-1" />
+                        Setup
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Your templates will still work - emails will open in your default email app instead of sending automatically.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* All integrations ready indicator */}
+      {integrationHealth?.allReady && (
+        <Card className="mt-4 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20" data-testid="card-integrations-ready">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="text-sm text-green-700 dark:text-green-300">
+                All integrations ready - emails and SMS will send automatically
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="communications" data-testid="tab-communications">
@@ -472,8 +568,13 @@ export default function TemplatesHub() {
                                   data-testid={`template-item-${template.id}`}
                                 >
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <p className="font-medium truncate">{template.name}</p>
+                                      {template.purpose && template.purpose !== 'general' && PURPOSE_CONFIG[template.purpose as BusinessTemplatePurpose] && (
+                                        <Badge variant="secondary" size="sm" className="text-xs" data-testid={`badge-trigger-${template.id}`}>
+                                          Trigger: {PURPOSE_CONFIG[template.purpose as BusinessTemplatePurpose]?.label}
+                                        </Badge>
+                                      )}
                                       {template.isActive && (
                                         <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0" size="sm">
                                           Active
@@ -626,9 +727,9 @@ export default function TemplatesHub() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <p className="font-medium truncate">{template.name}</p>
-                                  {(family === 'email' || family === 'sms') && template.purpose && template.purpose !== 'general' && (
-                                    <Badge variant="secondary" size="sm">
-                                      {PURPOSE_CONFIG[template.purpose as BusinessTemplatePurpose]?.label || template.purpose}
+                                  {(family === 'email' || family === 'sms') && template.purpose && template.purpose !== 'general' && PURPOSE_CONFIG[template.purpose as BusinessTemplatePurpose] && (
+                                    <Badge variant="secondary" size="sm" className="text-xs" data-testid={`badge-trigger-${template.id}`}>
+                                      Trigger: {PURPOSE_CONFIG[template.purpose as BusinessTemplatePurpose]?.label}
                                     </Badge>
                                   )}
                                   {template.isActive && (
