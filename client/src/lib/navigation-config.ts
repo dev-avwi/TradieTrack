@@ -306,7 +306,9 @@ export function getSidebarSettingsItems(options: FilterOptions): NavItem[] {
 export function getMorePageItems(options: FilterOptions): NavItem[] {
   const allItems = [...mainMenuItems, ...settingsMenuItems];
   const filtered = filterNavItems(allItems, options);
-  return filtered.filter(item => item.showInMore);
+  // Only show items that are marked for More AND are NOT already visible in sidebar
+  // This prevents duplication between sidebar and More page
+  return filtered.filter(item => item.showInMore && !item.showInSidebar);
 }
 
 export function getMorePagesPattern(): RegExp {
