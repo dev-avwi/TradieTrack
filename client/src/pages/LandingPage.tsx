@@ -749,8 +749,9 @@ export default function LandingPage() {
                   "100MB photo storage",
                   "5 document templates"
                 ]}
-                buttonText="Get Started"
+                buttonText="Get Started Free"
                 buttonVariant="outline"
+                href="/auth?mode=signup"
               />
             </AnimatedSection>
 
@@ -773,9 +774,10 @@ export default function LandingPage() {
                   "Recurring invoices",
                   "Priority support"
                 ]}
-                buttonText="Start 14-Day Trial"
+                buttonText="Start 14-Day Free Trial"
                 buttonVariant="default"
                 popular={true}
+                href="/auth?mode=signup&plan=pro"
               />
             </AnimatedSection>
 
@@ -799,6 +801,7 @@ export default function LandingPage() {
                 ]}
                 buttonText="Contact Sales"
                 buttonVariant="outline"
+                isContactSales={true}
               />
             </AnimatedSection>
           </div>
@@ -1275,7 +1278,9 @@ function PricingCard({
   features,
   buttonText,
   buttonVariant = "default",
-  popular = false
+  popular = false,
+  href,
+  isContactSales = false
 }: {
   name: string;
   price: string;
@@ -1285,7 +1290,13 @@ function PricingCard({
   buttonText: string;
   buttonVariant?: "default" | "outline";
   popular?: boolean;
+  href?: string;
+  isContactSales?: boolean;
 }) {
+  const handleContactSales = () => {
+    window.location.href = "mailto:sales@tradietrack.com.au?subject=TradieTrack%20Team%20Plan%20Enquiry&body=Hi%20TradieTrack%20Team%2C%0A%0AI'm%20interested%20in%20the%20Team%20plan%20for%20my%20business.%0A%0ABusiness%20Name%3A%20%0ANumber%20of%20Team%20Members%3A%20%0APhone%3A%20%0A%0AThanks!";
+  };
+
   return (
     <div className={`relative bg-white rounded-2xl p-8 shadow-sm border transition-all duration-300 hover:shadow-md ${
       popular ? "border-orange-500 ring-2 ring-orange-500/20" : "border-gray-100 hover:border-gray-200"
@@ -1318,19 +1329,30 @@ function PricingCard({
         ))}
       </ul>
 
-      <Link href="/auth?mode=signup">
+      {isContactSales ? (
         <Button 
           variant={buttonVariant as any}
-          className={`w-full h-12 font-semibold rounded-lg ${
-            buttonVariant === "default" 
-              ? "bg-orange-500 hover:bg-orange-600 text-white" 
-              : ""
-          }`}
+          onClick={handleContactSales}
+          className="w-full h-12 font-semibold rounded-lg"
           data-testid={`pricing-${name.toLowerCase()}-cta`}
         >
           {buttonText}
         </Button>
-      </Link>
+      ) : (
+        <Link href={href || "/auth?mode=signup"}>
+          <Button 
+            variant={buttonVariant as any}
+            className={`w-full h-12 font-semibold rounded-lg ${
+              buttonVariant === "default" 
+                ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                : ""
+            }`}
+            data-testid={`pricing-${name.toLowerCase()}-cta`}
+          >
+            {buttonText}
+          </Button>
+        </Link>
+      )}
     </div>
   );
 }

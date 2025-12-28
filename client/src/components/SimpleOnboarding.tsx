@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -23,7 +22,8 @@ import {
   Briefcase,
   Phone,
   Mail,
-  MapPin
+  MapPin,
+  Gift
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -330,6 +330,20 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
             50 clients
           </li>
         </ul>
+      </div>
+
+      {/* Upgrade CTA */}
+      <div className="bg-gradient-to-r from-blue-50 to-orange-50 dark:from-blue-900/20 dark:to-orange-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 max-w-sm mx-auto">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <Gift className="h-5 w-5 text-orange-500" />
+          <span className="font-semibold text-blue-900 dark:text-blue-100">Want Unlimited Access?</span>
+        </div>
+        <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+          Try Pro free for 14 days. No credit card required!
+        </p>
+        <a href="/subscription" className="text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400">
+          Start Free Trial →
+        </a>
       </div>
       
       <Button onClick={handleNext} size="lg" className="px-8" data-testid="button-start">

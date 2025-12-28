@@ -93,10 +93,15 @@ const tiers = [
       { text: 'Team chat', included: true },
       { text: 'Priority support', included: true },
     ],
-    cta: 'Start 14-Day Free Trial',
+    cta: 'Contact Sales',
+    isContactSales: true,
     popular: false,
   },
 ];
+
+const handleContactSales = () => {
+  window.location.href = "mailto:sales@tradietrack.com.au?subject=TradieTrack%20Team%20Plan%20Enquiry&body=Hi%20TradieTrack%20Team%2C%0A%0AI'm%20interested%20in%20the%20Team%20plan%20for%20my%20business.%0A%0ABusiness%20Name%3A%20%0ANumber%20of%20Team%20Members%3A%20%0APhone%3A%20%0A%0AThanks!";
+};
 
 export default function SubscriptionPage() {
   const [teamSeats, setTeamSeats] = useState(2);
@@ -352,6 +357,16 @@ export default function SubscriptionPage() {
                   >
                     {isCurrentTier('free') ? 'Current Plan' : 'Downgrade to Free'}
                   </Button>
+                ) : tier.id === 'team' ? (
+                  <Button 
+                    className="w-full"
+                    variant="outline"
+                    onClick={handleContactSales}
+                    data-testid="button-contact-sales"
+                  >
+                    {tier.cta}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
                 ) : (
                   <Button 
                     className={`w-full ${tier.popular ? 'bg-primary hover:bg-primary/90' : ''}`}
@@ -360,8 +375,7 @@ export default function SubscriptionPage() {
                     disabled={
                       createCheckoutMutation.isPending || 
                       isCurrentTier(tier.id) ||
-                      (status?.tier === 'pro' && tier.id === 'pro') ||
-                      (status?.tier === 'team' && tier.id === 'team')
+                      (status?.tier === 'pro' && tier.id === 'pro')
                     }
                     data-testid={`button-start-trial-${tier.id}`}
                   >
@@ -374,12 +388,16 @@ export default function SubscriptionPage() {
                 )}
 
                 {/* Charged after trial note */}
-                {tier.id !== 'free' && !isCurrentTier(tier.id) && (
+                {tier.id === 'pro' && !isCurrentTier(tier.id) && (
                   <p className="text-xs text-center text-muted-foreground">
-                    {tier.id === 'team' 
-                      ? `$${tier.price + (teamSeats * (tier.seatPrice || 0))} AUD charged after 14-day trial`
-                      : `$${tier.price} AUD/month after trial`
-                    }
+                    ${tier.price} AUD/month after trial
+                  </p>
+                )}
+                
+                {/* Contact sales note */}
+                {tier.id === 'team' && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    Custom pricing based on team size
                   </p>
                 )}
 
