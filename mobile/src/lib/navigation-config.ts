@@ -168,6 +168,18 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
+    title: "Business Templates",
+    url: "/more/business-templates",
+    icon: "mail",
+    description: "Email, SMS, terms & conditions",
+    color: "info",
+    bgColor: "info",
+    hideForStaff: true,
+    showInMore: true,
+    category: "communication",
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
     title: "Team Management",
     url: "/more/team-management",
     icon: "users",
