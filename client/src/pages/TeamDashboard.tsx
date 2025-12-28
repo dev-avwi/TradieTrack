@@ -803,8 +803,9 @@ function TeamMap({
         <TileLayer url={tileUrl} />
         <FitBoundsController points={mapPoints} />
 
-        {presence.map((p) => {
+        {presence.map((p, index) => {
           if (!p.lastLocationLat || !p.lastLocationLng) return null;
+          if (!p.userId) return null;
 
           const member = members.find((m) => m.userId === p.userId);
           const fullName = member
@@ -815,7 +816,7 @@ function TeamMap({
 
           return (
             <Marker
-              key={p.userId}
+              key={p.userId || `presence-${index}`}
               position={[p.lastLocationLat, p.lastLocationLng]}
               icon={createTeamMemberMarker(fullName, member?.profileImageUrl, status, isDark)}
             >
