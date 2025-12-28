@@ -3,14 +3,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatComposer } from "@/components/ChatComposer";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import ClientInsightsPanel from "@/components/ClientInsightsPanel";
@@ -38,6 +39,11 @@ import {
   Trash2,
   Info,
   FileText,
+  PanelRightClose,
+  PanelRight,
+  MapPin,
+  Calendar,
+  Circle,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -152,8 +158,7 @@ interface Client {
   email?: string | null;
 }
 
-type FilterType = 'all' | 'team' | 'direct' | 'jobs' | 'sms';
-type ViewType = 'list' | 'team-chat' | 'direct-message' | 'job-chat' | 'sms-chat';
+type FilterType = 'all' | 'team' | 'customers' | 'jobs';
 
 interface ConversationItem {
   id: string;
@@ -166,6 +171,7 @@ interface ConversationItem {
   lastMessageTime?: string;
   unreadCount: number;
   status?: string;
+  isOnline?: boolean;
   data: any;
 }
 
@@ -196,20 +202,15 @@ const QUICK_REPLY_TEMPLATES = [
 
 function ConversationSkeleton() {
   return (
-    <div className="divide-y">
+    <div className="space-y-1 p-2">
       {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="flex items-center gap-3 p-4">
-          <Skeleton className="w-12 h-12 rounded-full shrink-0" />
-          <div className="flex-1 min-w-0 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <Skeleton className="h-3 w-48" />
-              <Skeleton className="h-5 w-5 rounded-full" />
-            </div>
+        <div key={i} className="flex items-center gap-3 p-3 rounded-lg">
+          <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-48" />
           </div>
+          <Skeleton className="h-3 w-12" />
         </div>
       ))}
     </div>
@@ -232,56 +233,49 @@ function OfflineBanner({ isConnected }: { isConnected: boolean }) {
   );
 }
 
-interface JobContextCardProps {
-  job: Job;
-  onViewJob: () => void;
+function getTypeIcon(type: string) {
+  switch (type) {
+    case 'team':
+      return <Users className="h-4 w-4" />;
+    case 'sms':
+      return <Phone className="h-4 w-4" />;
+    case 'job':
+      return <Briefcase className="h-4 w-4" />;
+    case 'direct':
+      return <Mail className="h-4 w-4" />;
+    default:
+      return <MessageCircle className="h-4 w-4" />;
+  }
 }
 
-function JobContextCard({ job, onViewJob }: JobContextCardProps) {
-  const statusColor = STATUS_COLORS[job.status] || STATUS_COLORS.pending;
-  const statusLabel = STATUS_LABELS[job.status] || 'Unknown';
-  
-  return (
-    <Card className="shrink-0 mx-4 mt-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-      <CardContent className="py-3 px-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div 
-              className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-              style={{ backgroundColor: statusColor + '20' }}
-            >
-              <Briefcase className="h-5 w-5" style={{ color: statusColor }} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm truncate">{job.title}</span>
-                <Badge 
-                  variant="secondary" 
-                  className="shrink-0 text-xs px-1.5 py-0"
-                  style={{ backgroundColor: statusColor + '20', color: statusColor }}
-                >
-                  {statusLabel}
-                </Badge>
-              </div>
-              {job.address && (
-                <p className="text-xs text-muted-foreground truncate">{job.address.split(',')[0]}</p>
-              )}
-            </div>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onViewJob}
-            className="shrink-0 gap-1.5"
-            data-testid="button-view-job-context"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            View Job
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+function getTypeColor(type: string) {
+  switch (type) {
+    case 'team':
+      return 'bg-primary/10 text-primary';
+    case 'sms':
+      return 'bg-green-500/10 text-green-600';
+    case 'job':
+      return 'bg-blue-500/10 text-blue-600';
+    case 'direct':
+      return 'bg-purple-500/10 text-purple-600';
+    default:
+      return 'bg-muted text-muted-foreground';
+  }
+}
+
+function getTypeLabel(type: string) {
+  switch (type) {
+    case 'team':
+      return 'Team';
+    case 'sms':
+      return 'Customer';
+    case 'job':
+      return 'Job';
+    case 'direct':
+      return 'Direct';
+    default:
+      return '';
+  }
 }
 
 export default function ChatHub() {
@@ -291,22 +285,21 @@ export default function ChatHub() {
   const searchString = useSearch();
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const lastMessageRef = useRef<string | null>(null);
   const { isOwner, isManager } = useAppMode();
   
   const showDirectFilter = isOwner || isManager;
   
   const [filter, setFilter] = useState<FilterType>('all');
-  const [view, setView] = useState<ViewType>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedConversation, setSelectedConversation] = useState<ConversationItem | null>(null);
   const [selectedDirectUser, setSelectedDirectUser] = useState<User | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [selectedSmsConversation, setSelectedSmsConversation] = useState<SmsConversation | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [smsNewMessage, setSmsNewMessage] = useState('');
-  const [showClientInsights, setShowClientInsights] = useState(false);
+  const [showContextPanel, setShowContextPanel] = useState(false);
+  const [mobileShowChat, setMobileShowChat] = useState(false);
   
-  // New SMS dialog state
   const [newSmsDialogOpen, setNewSmsDialogOpen] = useState(false);
   const [newSmsClientSearch, setNewSmsClientSearch] = useState('');
   const [newSmsSelectedClient, setNewSmsSelectedClient] = useState<Client | null>(null);
@@ -314,10 +307,8 @@ export default function ChatHub() {
   const [newSmsInitialMessage, setNewSmsInitialMessage] = useState('');
   const [newSmsPhoneError, setNewSmsPhoneError] = useState('');
   
-  // Delete SMS conversation state
   const [smsToDelete, setSmsToDelete] = useState<SmsConversation | null>(null);
   
-  // Create client from SMS dialog state
   const [createClientDialogOpen, setCreateClientDialogOpen] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
@@ -363,7 +354,7 @@ export default function ChatHub() {
 
   const { data: teamMessages = [], isLoading: teamLoading } = useQuery<TeamChatMessage[]>({
     queryKey: ['/api/team-chat'],
-    refetchInterval: view === 'team-chat' ? 3000 : 30000,
+    refetchInterval: selectedConversation?.type === 'team' ? 3000 : 30000,
   });
 
   const { data: dmConversations = [], isLoading: dmLoading } = useQuery<Conversation[]>({
@@ -401,12 +392,12 @@ export default function ChatHub() {
 
   const { data: directMessages = [], refetch: refetchDirectMessages } = useQuery<DirectMessage[]>({
     queryKey: ['/api/direct-messages', selectedDirectUser?.id],
-    enabled: !!selectedDirectUser && view === 'direct-message',
+    enabled: !!selectedDirectUser && selectedConversation?.type === 'direct',
   });
 
   const { data: smsMessages = [], refetch: refetchSmsMessages } = useQuery<SmsMessage[]>({
     queryKey: ['/api/sms/conversations', selectedSmsConversation?.id, 'messages'],
-    enabled: !!selectedSmsConversation && view === 'sms-chat',
+    enabled: !!selectedSmsConversation && selectedConversation?.type === 'sms',
   });
 
   const sendTeamMessageMutation = useMutation({
@@ -509,10 +500,10 @@ export default function ChatHub() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
-      // Clear selected conversation if it was deleted
       if (selectedSmsConversation?.id === deletedId) {
         setSelectedSmsConversation(null);
-        setView('list');
+        setSelectedConversation(null);
+        setMobileShowChat(false);
       }
       setSmsToDelete(null);
     },
@@ -540,7 +531,6 @@ export default function ChatHub() {
       queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', selectedSmsConversation?.id, 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       
-      // Update local state with the new jobId so the header shows "View Job" immediately
       if (selectedSmsConversation) {
         setSelectedSmsConversation({
           ...selectedSmsConversation,
@@ -642,32 +632,60 @@ export default function ChatHub() {
     return text
       .replace(/\{client_name\}/g, clientName)
       .replace(/\{client_first_name\}/g, clientFirstName)
-      .replace(/\{business_name\}/g, 'Our business'); // Could be fetched from settings if available
+      .replace(/\{business_name\}/g, 'Our business');
   };
 
-  // Handle deep-link navigation
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const targetUserId = params.get('to');
     const targetType = params.get('type');
     const smsClientId = params.get('smsClientId');
     const smsPhone = params.get('phone');
+
+    if (targetUserId && targetType === 'dm') {
+      const member = teamMembers.find(m => m.userId === targetUserId);
+      if (member) {
+        const user: User = {
+          id: member.userId,
+          email: member.email,
+          firstName: member.name.split(' ')[0],
+          lastName: member.name.split(' ').slice(1).join(' '),
+          profileImageUrl: member.profileImageUrl,
+        };
+        setSelectedDirectUser(user);
+        setSelectedConversation({
+          id: `dm-${member.userId}`,
+          type: 'direct',
+          title: member.name,
+          avatar: member.profileImageUrl,
+          avatarFallback: getInitials(member.name),
+          unreadCount: 0,
+          data: user,
+        });
+        setMobileShowChat(true);
+      }
+    }
     
-    // Handle SMS deep link
     if (smsClientId || smsPhone) {
-      // Check if conversation already exists
       const existingConvo = smsConversations.find(c => 
-        (smsClientId && c.clientId === smsClientId) || 
+        (smsClientId && c.clientId === smsClientId) ||
         (smsPhone && c.clientPhone === smsPhone)
       );
       
       if (existingConvo) {
         setSelectedSmsConversation(existingConvo);
-        setView('sms-chat');
+        setSelectedConversation({
+          id: existingConvo.id,
+          type: 'sms',
+          title: existingConvo.clientName || existingConvo.clientPhone,
+          subtitle: existingConvo.clientName ? existingConvo.clientPhone : undefined,
+          avatarFallback: (existingConvo.clientName || existingConvo.clientPhone).slice(0, 2).toUpperCase(),
+          unreadCount: existingConvo.unreadCount,
+          data: existingConvo,
+        });
+        setMobileShowChat(true);
         markSmsReadMutation.mutate(existingConvo.id);
-        setLocation('/chat', { replace: true });
       } else if (smsPhone) {
-        // Create a temporary conversation object for new SMS
         const tempConvo: SmsConversation = {
           id: 'new',
           businessOwnerId: '',
@@ -680,74 +698,24 @@ export default function ChatHub() {
           deletedAt: null,
         };
         setSelectedSmsConversation(tempConvo);
-        setView('sms-chat');
-        setLocation('/chat', { replace: true });
-      }
-      return;
-    }
-    
-    if (targetUserId && targetType === 'direct') {
-      const convo = dmConversations.find(c => c.otherUser.id === targetUserId);
-      if (convo) {
-        setSelectedDirectUser(convo.otherUser);
-        setView('direct-message');
-        setLocation('/chat', { replace: true });
-      } else {
-        const member = teamMembers.find(m => m.userId === targetUserId);
-        if (member) {
-          setSelectedDirectUser({
-            id: member.userId,
-            email: member.email,
-            firstName: member.name.split(' ')[0],
-            lastName: member.name.split(' ').slice(1).join(' '),
-            profileImageUrl: member.profileImageUrl,
-          });
-          setView('direct-message');
-          setLocation('/chat', { replace: true });
-        }
+        setSelectedConversation({
+          id: 'new',
+          type: 'sms',
+          title: smsPhone,
+          avatarFallback: smsPhone.slice(0, 2).toUpperCase(),
+          unreadCount: 0,
+          data: tempConvo,
+        });
+        setMobileShowChat(true);
       }
     }
-  }, [searchString, dmConversations, teamMembers, smsConversations, setLocation]);
-
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    if (view === 'team-chat' && teamMessages.length > 0 && scrollRef.current) {
-      const latestId = teamMessages[teamMessages.length - 1]?.id;
-      if (latestId !== lastMessageRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        lastMessageRef.current = latestId;
-      }
-    }
-  }, [teamMessages, view]);
+  }, [searchString, teamMembers, smsConversations]);
 
   useEffect(() => {
-    if (view === 'direct-message') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [directMessages, view]);
-
-  // Polling for direct messages
-  useEffect(() => {
-    if (view === 'direct-message' && selectedDirectUser) {
-      const interval = setInterval(() => refetchDirectMessages(), 3000);
-      return () => clearInterval(interval);
-    }
-  }, [view, selectedDirectUser, refetchDirectMessages]);
-
-  // Polling for SMS messages
-  useEffect(() => {
-    if (view === 'sms-chat' && selectedSmsConversation && selectedSmsConversation.id !== 'new') {
-      const interval = setInterval(() => refetchSmsMessages(), 3000);
-      return () => clearInterval(interval);
-    }
-  }, [view, selectedSmsConversation, refetchSmsMessages]);
-
-  const formatTime = (date: string) => {
-    const d = new Date(date);
-    if (isToday(d)) return format(d, 'h:mm a');
-    if (isYesterday(d)) return 'Yesterday';
-    return format(d, 'd MMM');
-  };
+  }, [teamMessages, directMessages, smsMessages]);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -757,128 +725,156 @@ export default function ChatHub() {
     if (user.firstName || user.lastName) {
       return `${user.firstName || ''} ${user.lastName || ''}`.trim();
     }
-    return user.email || 'Unknown';
+    return user.email?.split('@')[0] || 'User';
   };
 
-  // Build unified conversation list
-  const buildConversationList = (): ConversationItem[] => {
-    const items: ConversationItem[] = [];
-
-    // Team chat as single conversation
-    if (filter === 'all' || filter === 'team') {
-      const lastTeamMsg = teamMessages[teamMessages.length - 1];
-      items.push({
-        id: 'team-chat',
-        type: 'team',
-        title: 'Team Chat',
-        subtitle: `${teamMembers.filter(m => m.status === 'accepted').length + 1} members`,
-        avatarFallback: 'TC',
-        lastMessage: lastTeamMsg?.message,
-        lastMessageTime: lastTeamMsg?.createdAt,
-        unreadCount: unreadCounts.teamChat,
-        data: null,
-      });
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isToday(date)) {
+      return format(date, 'h:mm a');
     }
+    if (isYesterday(date)) {
+      return 'Yesterday';
+    }
+    return format(date, 'MMM d');
+  };
 
-    // Direct message conversations
-    if ((filter === 'all' || filter === 'direct') && showDirectFilter) {
-      dmConversations.forEach(convo => {
+  const buildConversationList = useCallback((): ConversationItem[] => {
+    const items: ConversationItem[] = [];
+    
+    if (filter === 'all' || filter === 'team') {
+      if (teamMessages.length > 0) {
+        const lastTeamMsg = teamMessages[teamMessages.length - 1];
         items.push({
-          id: `dm-${convo.otherUser.id}`,
+          id: 'team-chat',
+          type: 'team',
+          title: 'Team Chat',
+          subtitle: `${teamMembers.filter(m => m.status === 'accepted').length + 1} members`,
+          avatarFallback: 'TC',
+          lastMessage: lastTeamMsg?.message,
+          lastMessageTime: lastTeamMsg?.createdAt,
+          unreadCount: unreadCounts.teamChat,
+          data: null,
+        });
+      } else {
+        items.push({
+          id: 'team-chat',
+          type: 'team',
+          title: 'Team Chat',
+          subtitle: `${teamMembers.filter(m => m.status === 'accepted').length + 1} members`,
+          avatarFallback: 'TC',
+          lastMessage: 'Start a conversation with your team',
+          unreadCount: 0,
+          data: null,
+        });
+      }
+    }
+    
+    if ((filter === 'all' || filter === 'team') && showDirectFilter) {
+      dmConversations.forEach(dm => {
+        const displayName = getUserDisplayName(dm.otherUser);
+        items.push({
+          id: `dm-${dm.otherUser.id}`,
           type: 'direct',
-          title: getUserDisplayName(convo.otherUser),
-          subtitle: convo.otherUser.email || undefined,
-          avatar: convo.otherUser.profileImageUrl,
-          avatarFallback: getInitials(getUserDisplayName(convo.otherUser)),
-          lastMessage: convo.lastMessage?.content,
-          lastMessageTime: convo.lastMessage?.createdAt,
-          unreadCount: convo.unreadCount,
-          data: convo.otherUser,
+          title: displayName,
+          avatar: dm.otherUser.profileImageUrl,
+          avatarFallback: getInitials(displayName),
+          lastMessage: dm.lastMessage?.content,
+          lastMessageTime: dm.lastMessage?.createdAt,
+          unreadCount: dm.unreadCount,
+          isOnline: true,
+          data: dm.otherUser,
         });
       });
     }
-
-    // Active jobs
+    
+    if (filter === 'all' || filter === 'customers') {
+      smsConversations.forEach(sms => {
+        items.push({
+          id: sms.id,
+          type: 'sms',
+          title: sms.clientName || sms.clientPhone,
+          subtitle: sms.clientName ? sms.clientPhone : undefined,
+          avatarFallback: (sms.clientName || sms.clientPhone).slice(0, 2).toUpperCase(),
+          lastMessageTime: sms.lastMessageAt || undefined,
+          unreadCount: sms.unreadCount,
+          data: sms,
+        });
+      });
+    }
+    
     if (filter === 'all' || filter === 'jobs') {
-      const activeJobs = jobs.filter(j => 
-        j.status !== 'done' && j.status !== 'invoiced' && j.status !== 'cancelled'
-      );
-      activeJobs.forEach(job => {
+      jobs.slice(0, 10).forEach(job => {
         items.push({
           id: `job-${job.id}`,
           type: 'job',
           title: job.title,
           subtitle: job.address?.split(',')[0],
-          avatarFallback: job.title[0]?.toUpperCase() || 'J',
+          avatarFallback: job.title.slice(0, 2).toUpperCase(),
           status: job.status,
           unreadCount: 0,
           data: job,
         });
       });
     }
-
-    // SMS conversations
-    if (filter === 'all' || filter === 'sms') {
-      smsConversations.forEach(convo => {
-        items.push({
-          id: `sms-${convo.id}`,
-          type: 'sms',
-          title: convo.clientName || convo.clientPhone,
-          subtitle: convo.clientName ? convo.clientPhone : undefined,
-          avatarFallback: (convo.clientName || convo.clientPhone)[0]?.toUpperCase() || 'S',
-          lastMessageTime: convo.lastMessageAt || undefined,
-          unreadCount: convo.unreadCount,
-          data: convo,
-        });
-      });
-    }
-
-    // Sort by last message time (most recent first), with team chat at top
+    
     items.sort((a, b) => {
-      if (a.id === 'team-chat') return -1;
-      if (b.id === 'team-chat') return 1;
-      if (!a.lastMessageTime && !b.lastMessageTime) return 0;
-      if (!a.lastMessageTime) return 1;
-      if (!b.lastMessageTime) return -1;
-      return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
+      if (a.type === 'team' && b.type !== 'team') return -1;
+      if (b.type === 'team' && a.type !== 'team') return 1;
+      
+      if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+      if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+      
+      const aTime = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+      const bTime = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+      return bTime - aTime;
     });
-
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+    
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
       return items.filter(item => 
-        item.title.toLowerCase().includes(term) ||
-        item.subtitle?.toLowerCase().includes(term)
+        item.title.toLowerCase().includes(search) ||
+        item.subtitle?.toLowerCase().includes(search) ||
+        item.lastMessage?.toLowerCase().includes(search)
       );
     }
-
+    
     return items;
-  };
+  }, [filter, teamMessages, dmConversations, smsConversations, jobs, teamMembers, unreadCounts, showDirectFilter, searchTerm]);
 
   const handleConversationClick = (item: ConversationItem) => {
+    setSelectedConversation(item);
+    setMobileShowChat(true);
+    
     if (item.type === 'team') {
-      setView('team-chat');
+      setSelectedDirectUser(null);
+      setSelectedSmsConversation(null);
+      setSelectedJob(null);
     } else if (item.type === 'direct') {
       setSelectedDirectUser(item.data);
-      setView('direct-message');
-    } else if (item.type === 'job') {
-      setLocation(`/jobs/${item.data.id}?tab=chat`);
+      setSelectedSmsConversation(null);
+      setSelectedJob(null);
     } else if (item.type === 'sms') {
       setSelectedSmsConversation(item.data);
-      setView('sms-chat');
-      if (item.data.id !== 'new' && item.unreadCount > 0) {
+      setSelectedDirectUser(null);
+      setSelectedJob(null);
+      if (item.data.id !== 'new') {
         markSmsReadMutation.mutate(item.data.id);
       }
+    } else if (item.type === 'job') {
+      setSelectedJob(item.data);
+      setSelectedDirectUser(null);
+      setSelectedSmsConversation(null);
     }
   };
 
   const handleBack = () => {
-    setView('list');
+    setSelectedConversation(null);
     setSelectedDirectUser(null);
-    setSelectedJob(null);
     setSelectedSmsConversation(null);
-    setNewMessage('');
-    setSmsNewMessage('');
+    setSelectedJob(null);
+    setMobileShowChat(false);
+    setShowContextPanel(false);
   };
 
   const handleSendTeamMessage = (message: string) => {
@@ -886,14 +882,8 @@ export default function ChatHub() {
   };
 
   const handleSendDirectMessage = () => {
-    if (!newMessage.trim()) return;
-    sendDirectMessageMutation.mutate(newMessage.trim());
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendDirectMessage();
+    if (newMessage.trim()) {
+      sendDirectMessageMutation.mutate(newMessage.trim());
     }
   };
 
@@ -906,6 +896,13 @@ export default function ChatHub() {
     });
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendDirectMessage();
+    }
+  };
+
   const handleSmsKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -913,63 +910,47 @@ export default function ChatHub() {
     }
   };
 
-  // Australian phone number formatting and validation
-  const formatAustralianPhone = (value: string): string => {
-    // Remove all non-digit characters except +
-    let cleaned = value.replace(/[^\d+]/g, '');
+  const formatAustralianPhone = (input: string): string => {
+    const cleaned = input.replace(/[^\d+]/g, '');
     
-    // Handle +61 format
-    if (cleaned.startsWith('+61')) {
+    if (cleaned.startsWith('+614')) {
       const digits = cleaned.slice(3);
       if (digits.length <= 3) return `+61 ${digits}`;
       if (digits.length <= 6) return `+61 ${digits.slice(0, 3)} ${digits.slice(3)}`;
       return `+61 ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 9)}`;
     }
     
-    // Handle 04xx format (Australian mobile)
-    if (cleaned.startsWith('04') || cleaned.startsWith('0')) {
+    if (cleaned.startsWith('04')) {
       if (cleaned.length <= 4) return cleaned;
       if (cleaned.length <= 7) return `${cleaned.slice(0, 4)} ${cleaned.slice(4)}`;
       return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7, 10)}`;
     }
     
-    // Just return cleaned value for other cases
-    return cleaned;
+    return input;
   };
 
   const normalizePhoneForApi = (phone: string): string => {
-    // Remove all non-digit characters except +
-    let cleaned = phone.replace(/[^\d+]/g, '');
-    
-    // Convert 04xx to +614xx format
-    if (cleaned.startsWith('04')) {
-      cleaned = '+61' + cleaned.slice(1);
-    } else if (cleaned.startsWith('0')) {
-      cleaned = '+61' + cleaned.slice(1);
-    } else if (!cleaned.startsWith('+')) {
-      // Assume Australian number if no country code
-      cleaned = '+61' + cleaned;
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    if (cleaned.startsWith('04') && cleaned.length === 10) {
+      return '+61' + cleaned.slice(1);
     }
-    
     return cleaned;
   };
 
   const validateAustralianPhone = (phone: string): string | null => {
-    const cleaned = phone.replace(/[^\d+]/g, '');
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
     
-    // Check for +61 format
     if (cleaned.startsWith('+61')) {
       const digits = cleaned.slice(3);
       if (digits.length !== 9) {
-        return 'Australian mobile numbers should have 9 digits after +61';
+        return 'Australian mobile numbers should have 9 digits after +61 (e.g., +61 412 345 678)';
       }
       if (!digits.startsWith('4')) {
-        return 'Australian mobile numbers should start with 04 or +614';
+        return 'Australian mobile numbers should start with 4 after +61';
       }
       return null;
     }
     
-    // Check for 04xx format
     if (cleaned.startsWith('04')) {
       if (cleaned.length !== 10) {
         return 'Australian mobile numbers should be 10 digits (e.g., 0412 345 678)';
@@ -977,7 +958,6 @@ export default function ChatHub() {
       return null;
     }
     
-    // Check for 0x format (landline)
     if (cleaned.startsWith('0') && cleaned.length === 10) {
       return null;
     }
@@ -991,7 +971,6 @@ export default function ChatHub() {
     setNewSmsPhoneError('');
   };
 
-  // Filtered clients for search
   const filteredClients = useMemo(() => {
     if (!newSmsClientSearch.trim()) return [];
     const search = newSmsClientSearch.toLowerCase();
@@ -1000,7 +979,7 @@ export default function ChatHub() {
         (c.name?.toLowerCase().includes(search) || 
          c.phone?.toLowerCase().includes(search) ||
          c.email?.toLowerCase().includes(search)) &&
-        c.phone // Only show clients with phone numbers
+        c.phone
       )
       .slice(0, 5);
   }, [allClients, newSmsClientSearch]);
@@ -1014,7 +993,6 @@ export default function ChatHub() {
   };
 
   const handleStartNewSms = () => {
-    // Validate phone if manually entered
     if (!newSmsSelectedClient && newSmsPhoneNumber) {
       const error = validateAustralianPhone(newSmsPhoneNumber);
       if (error) {
@@ -1032,19 +1010,24 @@ export default function ChatHub() {
       return;
     }
     
-    // Check if conversation already exists
     const existingConvo = smsConversations.find(c => 
       (clientId && c.clientId === clientId) || 
       c.clientPhone === phone
     );
     
     if (existingConvo) {
-      // Open existing conversation
       setSelectedSmsConversation(existingConvo);
-      setView('sms-chat');
+      setSelectedConversation({
+        id: existingConvo.id,
+        type: 'sms',
+        title: existingConvo.clientName || existingConvo.clientPhone,
+        avatarFallback: (existingConvo.clientName || existingConvo.clientPhone).slice(0, 2).toUpperCase(),
+        unreadCount: existingConvo.unreadCount,
+        data: existingConvo,
+      });
+      setMobileShowChat(true);
       markSmsReadMutation.mutate(existingConvo.id);
       
-      // If there's an initial message, send it
       if (newSmsInitialMessage.trim()) {
         sendSmsMutation.mutate({
           clientId: existingConvo.clientId || undefined,
@@ -1053,7 +1036,6 @@ export default function ChatHub() {
         });
       }
     } else {
-      // Create temporary conversation and optionally send first message
       const tempConvo: SmsConversation = {
         id: 'new',
         businessOwnerId: '',
@@ -1066,9 +1048,16 @@ export default function ChatHub() {
         deletedAt: null,
       };
       setSelectedSmsConversation(tempConvo);
-      setView('sms-chat');
+      setSelectedConversation({
+        id: 'new',
+        type: 'sms',
+        title: clientName || phone,
+        avatarFallback: (clientName || phone).slice(0, 2).toUpperCase(),
+        unreadCount: 0,
+        data: tempConvo,
+      });
+      setMobileShowChat(true);
       
-      // If there's an initial message, send it
       if (newSmsInitialMessage.trim()) {
         sendSmsMutation.mutate({
           clientId: clientId,
@@ -1082,816 +1071,719 @@ export default function ChatHub() {
     resetNewSmsDialog();
   };
 
-  // Calculate total SMS unread count
   const smsUnreadCount = smsConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
-
   const pinnedMessages = teamMessages.filter(m => m.isPinned);
   const conversationList = buildConversationList();
   const isLoading = teamLoading || (showDirectFilter && dmLoading) || jobsLoading || smsLoading;
 
-  // Team Chat View
-  if (view === 'team-chat') {
-    return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="shrink-0 p-4 border-b bg-background flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={handleBack} data-testid="button-back">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Users className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="font-semibold">Team Chat</h2>
-            <p className="text-xs text-muted-foreground">
-              {teamMembers.filter(m => m.status === 'accepted').length + 1} members
-            </p>
-          </div>
-        </div>
-
-        {pinnedMessages.length > 0 && (
-          <Card className="shrink-0 mx-4 mt-2 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
-            <CardContent className="py-2 px-3">
-              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium mb-1">
-                <Pin className="h-3.5 w-3.5" />
-                Pinned ({pinnedMessages.length})
-              </div>
-              <p className="text-sm text-muted-foreground truncate">
-                {pinnedMessages[pinnedMessages.length - 1]?.message}
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Offline Banner */}
-        <OfflineBanner isConnected={smsSocketConnected} />
-
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-2">
-          {teamMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full py-8">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Users className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="font-medium text-base mb-1">Team chat's quiet</h3>
-              <p className="text-sm text-muted-foreground text-center max-w-xs">
-                Share updates, coordinate jobs, or just check in with your crew
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {teamMessages.map((msg) => (
-                <ChatMessage
-                  key={msg.id}
-                  id={msg.id}
-                  message={msg.message}
-                  messageType={msg.messageType}
-                  senderName={msg.senderName}
-                  senderAvatar={msg.senderAvatar}
-                  isCurrentUser={msg.senderId === currentUser?.id}
-                  isAnnouncement={msg.isAnnouncement}
-                  isPinned={msg.isPinned}
-                  attachmentUrl={msg.attachmentUrl}
-                  attachmentName={msg.attachmentName}
-                  createdAt={msg.createdAt}
-                  onPin={(isOwner || isManager) ? (id, pinned) => pinMessageMutation.mutate({ messageId: id, pinned }) : undefined}
-                  onDelete={msg.senderId === currentUser?.id || isOwner ? (id) => deleteMessageMutation.mutate(id) : undefined}
-                  canPin={isOwner || isManager}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="shrink-0 p-4 border-t bg-background">
-          <ChatComposer
-            onSend={handleSendTeamMessage}
-            placeholder="Message your team..."
-            disabled={sendTeamMessageMutation.isPending}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // Direct Message View
-  if (view === 'direct-message' && selectedDirectUser) {
-    return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="shrink-0 p-4 border-b bg-background flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={handleBack} data-testid="button-back">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={selectedDirectUser.profileImageUrl || undefined} />
-            <AvatarFallback>{getInitials(getUserDisplayName(selectedDirectUser))}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <h2 className="font-semibold truncate">{getUserDisplayName(selectedDirectUser)}</h2>
-            <p className="text-xs text-muted-foreground truncate">{selectedDirectUser.email}</p>
-          </div>
-        </div>
-
-        {/* Offline Banner */}
-        <OfflineBanner isConnected={smsSocketConnected} />
-
-        <div className="flex-1 overflow-y-auto px-4 py-2">
-          {directMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full py-8">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <MessageCircle className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="font-medium text-base mb-1">Start chatting</h3>
-              <p className="text-sm text-muted-foreground text-center max-w-xs">
-                Message {getUserDisplayName(selectedDirectUser)} directly — great for quick updates or questions
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {directMessages.map((msg) => {
-                const isOwn = msg.senderId !== selectedDirectUser.id;
-                return (
-                  <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                        isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                      <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : ''}`}>
-                        <span className={`text-xs ${isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                          {formatTime(msg.createdAt)}
-                        </span>
-                        {isOwn && (
-                          msg.isRead 
-                            ? <CheckCheck className={`h-3 w-3 ${isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'}`} />
-                            : <Check className={`h-3 w-3 ${isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'}`} />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-
-        <div className="shrink-0 p-4 border-t bg-background">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Type a message..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="flex-1"
-              data-testid="input-message"
-            />
-            <Button
-              onClick={handleSendDirectMessage}
-              disabled={!newMessage.trim() || sendDirectMessageMutation.isPending}
-              size="icon"
-              data-testid="button-send"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // SMS Chat View
-  if (view === 'sms-chat' && selectedSmsConversation) {
-    return (
-      <div className="flex h-full overflow-hidden">
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          <div className="shrink-0 p-4 border-b bg-background flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={handleBack} data-testid="button-back-sms">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-              <Phone className="h-5 w-5 text-green-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold truncate">
-                {selectedSmsConversation.clientName || selectedSmsConversation.clientPhone}
-              </h2>
-              <p className="text-xs text-muted-foreground truncate">
-                {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS Conversation'}
-              </p>
-            </div>
-            <Badge variant="outline" className="shrink-0 gap-1">
-              <Phone className="h-3 w-3" />
-              SMS
-            </Badge>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setShowClientInsights(true)}
-              data-testid="button-show-client-insights"
-            >
-              <Info className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Offline Banner */}
-          <OfflineBanner isConnected={smsSocketConnected} />
-
-          {/* Twilio Warning - SMS won't work without it */}
-          {!twilioConnected && <TwilioWarning />}
-
-          {/* Job Context Card for linked jobs */}
-          {selectedSmsConversation.jobId && (() => {
-            const linkedJob = jobs.find(j => j.id === selectedSmsConversation.jobId);
-            if (linkedJob) {
-              return (
-                <JobContextCard 
-                  job={linkedJob} 
-                  onViewJob={() => setLocation(`/jobs/${selectedSmsConversation.jobId}`)} 
-                />
-              );
-            }
-            return null;
-          })()}
-
-          {/* Create Client Banner for unknown numbers */}
-          {isUnknownClient && selectedSmsConversation.id !== 'new' && (
-            <Card className="shrink-0 mx-4 mt-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-              <CardContent className="py-3 px-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                      <User className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm">Unknown contact</p>
-                      <p className="text-xs text-muted-foreground">
-                        Save this number as a new client
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={handleOpenCreateClientDialog}
-                    className="shrink-0 gap-1.5"
-                    data-testid="button-create-client-from-sms"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Create Client
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="flex-1 overflow-y-auto px-4 py-2">
-          {smsMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full py-8">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Phone className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="font-medium text-base mb-1">No messages yet</h3>
-              <p className="text-sm text-muted-foreground text-center max-w-xs">
-                Send a text to {selectedSmsConversation.clientName || 'this client'} — perfect for quick updates or appointment reminders
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {smsMessages.map((msg) => {
-                const isOwn = msg.direction === 'outbound';
-                const isJobRequest = msg.isJobRequest && msg.direction === 'inbound';
-                const jobAlreadyCreated = !!msg.jobCreatedFromSms;
-                
-                const getIntentLabel = (intentType: string | null | undefined) => {
-                  switch (intentType) {
-                    case 'quote_request': return 'Quote Request';
-                    case 'job_request': return 'Job Request';
-                    case 'enquiry': return 'Enquiry';
-                    case 'followup': return 'Follow-up';
-                    default: return 'Request';
-                  }
-                };
-                
-                const getConfidenceColor = (confidence: string | null | undefined) => {
-                  switch (confidence) {
-                    case 'high': return 'bg-green-500/15 text-green-700 dark:text-green-400';
-                    case 'medium': return 'bg-amber-500/15 text-amber-700 dark:text-amber-400';
-                    case 'low': return 'bg-gray-500/15 text-gray-600 dark:text-gray-400';
-                    default: return 'bg-gray-500/15 text-gray-600';
-                  }
-                };
-                
-                return (
-                  <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] ${isJobRequest ? 'space-y-2' : ''}`}>
-                      {isJobRequest && (
-                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                          <Badge 
-                            variant="secondary" 
-                            className="bg-blue-500/15 text-blue-700 dark:text-blue-400 text-xs"
-                            data-testid={`badge-intent-${msg.id}`}
-                          >
-                            <Briefcase className="h-3 w-3 mr-1" />
-                            {getIntentLabel(msg.intentType)}
-                          </Badge>
-                          {msg.intentConfidence && (
-                            <Badge 
-                              variant="secondary" 
-                              className={`text-xs ${getConfidenceColor(msg.intentConfidence)}`}
-                              data-testid={`badge-confidence-${msg.id}`}
-                            >
-                              {msg.intentConfidence.charAt(0).toUpperCase() + msg.intentConfidence.slice(1)} confidence
-                            </Badge>
-                          )}
-                          {jobAlreadyCreated && (
-                            <Badge 
-                              variant="secondary" 
-                              className="bg-green-500/15 text-green-700 dark:text-green-400 text-xs"
-                              data-testid={`badge-job-created-${msg.id}`}
-                            >
-                              <Check className="h-3 w-3 mr-1" />
-                              Job Created
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                      
-                      <div
-                        className={`rounded-2xl px-4 py-2 ${
-                          isOwn ? 'bg-green-600 text-white' : 'bg-muted'
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                        <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : ''}`}>
-                          <span className={`text-xs ${isOwn ? 'text-white/70' : 'text-muted-foreground'}`}>
-                            {formatTime(msg.createdAt)}
-                          </span>
-                          {isOwn && msg.status === 'delivered' && (
-                            <CheckCheck className="h-3 w-3 text-white/70" />
-                          )}
-                          {isOwn && msg.status === 'sent' && (
-                            <Check className="h-3 w-3 text-white/70" />
-                          )}
-                        </div>
-                      </div>
-                      
-                      {isJobRequest && (
-                        <div className="mt-2 space-y-2">
-                          {msg.suggestedJobTitle && (
-                            <p className="text-xs text-muted-foreground" data-testid={`suggested-title-${msg.id}`}>
-                              <span className="font-medium">Suggested job:</span> {msg.suggestedJobTitle}
-                            </p>
-                          )}
-                          {jobAlreadyCreated ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setLocation(`/jobs/${msg.jobCreatedFromSms}`)}
-                              className="gap-1.5"
-                              data-testid={`button-view-job-${msg.id}`}
-                            >
-                              <Briefcase className="h-3.5 w-3.5" />
-                              View Job
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              disabled={createJobFromSmsMutation.isPending}
-                              onClick={() => createJobFromSmsMutation.mutate(msg.id)}
-                              className="gap-1.5"
-                              data-testid={`button-create-job-${msg.id}`}
-                            >
-                              {createJobFromSmsMutation.isPending ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Briefcase className="h-3.5 w-3.5" />
-                              )}
-                              Create Job from SMS
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-
-          {/* Quick Reply Templates */}
-          <div className="shrink-0 px-4 pt-3 flex items-center gap-2 overflow-x-auto no-scrollbar border-t">
-            <span className="text-xs text-muted-foreground shrink-0">Quick:</span>
-            {QUICK_REPLY_TEMPLATES.map((template) => (
-              <Button
-                key={template.id}
-                variant="secondary"
-                size="sm"
-                className="shrink-0 text-xs"
-                onClick={() => setSmsNewMessage(template.message)}
-                data-testid={`quick-reply-${template.id}`}
-              >
-                {template.label}
-              </Button>
-            ))}
-            {userSmsTemplates.length > 0 && (
-              <>
-                <span className="text-xs text-muted-foreground shrink-0 ml-2 border-l pl-2">Custom:</span>
-                {userSmsTemplates.map((template) => (
-                  <Button
-                    key={template.id}
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 text-xs"
-                    onClick={() => setSmsNewMessage(applySmsTemplateFields(template.body, selectedSmsConversation!))}
-                    data-testid={`user-template-${template.id}`}
-                  >
-                    {template.name}
-                  </Button>
-                ))}
-              </>
-            )}
-          </div>
-
-          {/* Quick Actions Bar */}
-          <div className="shrink-0 px-4 pt-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <a href={`tel:${selectedSmsConversation.clientPhone}`}>
-              <Button variant="outline" size="sm" className="gap-1.5 shrink-0" data-testid="quick-action-call">
-                <Phone className="h-3.5 w-3.5" />
-                Call
-              </Button>
-            </a>
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-1.5 shrink-0"
-              onClick={() => {
-                const params = new URLSearchParams();
-                if (selectedSmsConversation.clientId) {
-                  params.set('clientId', selectedSmsConversation.clientId);
-                } else {
-                  params.set('phone', selectedSmsConversation.clientPhone);
-                }
-                setLocation(`/jobs/new?${params.toString()}`);
-              }}
-              data-testid="quick-action-create-job"
-            >
-              <Briefcase className="h-3.5 w-3.5" />
-              Create Job
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-1.5 shrink-0"
-              onClick={() => {
-                const params = new URLSearchParams();
-                if (selectedSmsConversation.clientId) {
-                  params.set('clientId', selectedSmsConversation.clientId);
-                } else {
-                  params.set('phone', selectedSmsConversation.clientPhone);
-                }
-                setLocation(`/quotes/new?${params.toString()}`);
-              }}
-              data-testid="quick-action-create-quote"
-            >
-              <FileText className="h-3.5 w-3.5" />
-              Create Quote
-            </Button>
-          </div>
-
-          <div className="shrink-0 p-4 border-t bg-background">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Type an SMS message..."
-                value={smsNewMessage}
-                onChange={(e) => setSmsNewMessage(e.target.value)}
-                onKeyPress={handleSmsKeyPress}
-                className="flex-1"
-                data-testid="input-sms-message"
-              />
-              <Button
-                onClick={handleSendSms}
-                disabled={!smsNewMessage.trim() || sendSmsMutation.isPending}
-                size="icon"
-                className="bg-green-600 hover:bg-green-700"
-                data-testid="button-send-sms"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Desktop: Side panel when showClientInsights is true */}
-        {showClientInsights && (
-          <div className="hidden md:flex w-[320px] shrink-0 border-l bg-background" data-testid="desktop-insights-panel">
-            <ClientInsightsPanel
-              clientId={selectedSmsConversation.clientId}
-              clientPhone={selectedSmsConversation.clientPhone}
-              conversationId={selectedSmsConversation.id}
-              onClose={() => setShowClientInsights(false)}
-              onNavigateToJob={(jobId) => { setShowClientInsights(false); setLocation(`/jobs/${jobId}`); }}
-              onNavigateToInvoice={(invoiceId) => { setShowClientInsights(false); setLocation(`/invoices/${invoiceId}`); }}
-              onCreateJob={() => { setShowClientInsights(false); setLocation('/jobs/new?clientId=' + selectedSmsConversation.clientId); }}
-              onCreateQuote={() => { setShowClientInsights(false); setLocation('/quotes/new?clientId=' + selectedSmsConversation.clientId); }}
-            />
-          </div>
-        )}
-
-        {/* Mobile: Sheet slides in from the right */}
-        <Sheet open={showClientInsights} onOpenChange={setShowClientInsights}>
-          <SheetContent side="right" className="w-[85vw] sm:w-[400px] p-0 md:hidden" hideClose>
-            <ClientInsightsPanel
-              clientId={selectedSmsConversation.clientId}
-              clientPhone={selectedSmsConversation.clientPhone}
-              conversationId={selectedSmsConversation.id}
-              onClose={() => setShowClientInsights(false)}
-              onNavigateToJob={(jobId) => { setShowClientInsights(false); setLocation(`/jobs/${jobId}`); }}
-              onNavigateToInvoice={(invoiceId) => { setShowClientInsights(false); setLocation(`/invoices/${invoiceId}`); }}
-              onCreateJob={() => { setShowClientInsights(false); setLocation('/jobs/new?clientId=' + selectedSmsConversation.clientId); }}
-              onCreateQuote={() => { setShowClientInsights(false); setLocation('/quotes/new?clientId=' + selectedSmsConversation.clientId); }}
-            />
-          </SheetContent>
-        </Sheet>
-      </div>
-    );
-  }
-
-  // Main Conversation List View
-  return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="shrink-0 p-4 pb-3 border-b bg-background">
-        <div className="flex items-center gap-3 mb-4">
-          <div 
-            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-            style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}
+  const renderConversationList = () => (
+    <div className="flex flex-col h-full border-r bg-background" data-testid="conversation-list">
+      <div className="shrink-0 p-4 pb-3 border-b">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h1 className="text-lg font-bold">Messages</h1>
+          <Button
+            onClick={() => setNewSmsDialogOpen(true)}
+            size="sm"
+            className="gap-1.5 bg-green-600 hover:bg-green-700"
+            data-testid="button-new-sms"
           >
-            <MessageCircle className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold">Messages</h1>
-            <p className="text-xs text-muted-foreground">
-              Stay connected with your team
-            </p>
-          </div>
-          {(filter === 'all' || filter === 'sms') && (
-            <Button
-              onClick={() => setNewSmsDialogOpen(true)}
-              size="sm"
-              className="shrink-0 gap-1.5 bg-green-600 hover:bg-green-700"
-              data-testid="button-new-sms"
-            >
-              <Plus className="h-4 w-4" />
-              New SMS
-            </Button>
-          )}
+            <Plus className="h-4 w-4" />
+            New
+          </Button>
         </div>
 
-        {/* Search */}
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search conversations..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-9"
             data-testid="input-search"
           />
         </div>
 
-        {/* Filter Chips */}
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <Button
-            variant={filter === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('all')}
-            className="shrink-0"
-            data-testid="filter-all"
-          >
-            All
-            {(unreadCounts.teamChat + unreadCounts.directMessages + unreadCounts.jobChats + smsUnreadCount) > 0 && (
-              <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5">
-                {unreadCounts.teamChat + unreadCounts.directMessages + unreadCounts.jobChats + smsUnreadCount}
-              </Badge>
-            )}
-          </Button>
-          <Button
-            variant={filter === 'team' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('team')}
-            className="shrink-0 gap-1.5"
-            data-testid="filter-team"
-          >
-            <Users className="h-3.5 w-3.5" />
-            Team
-            {unreadCounts.teamChat > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
-                {unreadCounts.teamChat}
-              </Badge>
-            )}
-          </Button>
-          {showDirectFilter && (
-            <Button
-              variant={filter === 'direct' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('direct')}
-              className="shrink-0 gap-1.5"
-              data-testid="filter-direct"
-            >
-              <Mail className="h-3.5 w-3.5" />
-              Direct
-              {unreadCounts.directMessages > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
-                  {unreadCounts.directMessages}
-                </Badge>
-              )}
-            </Button>
-          )}
-          <Button
-            variant={filter === 'jobs' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('jobs')}
-            className="shrink-0 gap-1.5"
-            data-testid="filter-jobs"
-          >
-            <Briefcase className="h-3.5 w-3.5" />
-            Jobs
-            {unreadCounts.jobChats > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
-                {unreadCounts.jobChats}
-              </Badge>
-            )}
-          </Button>
-          <Button
-            variant={filter === 'sms' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('sms')}
-            className="shrink-0 gap-1.5"
-            data-testid="filter-sms"
-          >
-            <Phone className="h-3.5 w-3.5" />
-            SMS
-            {smsUnreadCount > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
-                {smsUnreadCount}
-              </Badge>
-            )}
-          </Button>
+        <div className="flex gap-1.5">
+          {(['all', 'team', 'customers', 'jobs'] as FilterType[]).map((f) => {
+            const count = f === 'all' 
+              ? unreadCounts.teamChat + unreadCounts.directMessages + smsUnreadCount
+              : f === 'team' 
+              ? unreadCounts.teamChat + unreadCounts.directMessages
+              : f === 'customers'
+              ? smsUnreadCount
+              : 0;
+            
+            return (
+              <Button
+                key={f}
+                variant={filter === f ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setFilter(f)}
+                className="h-7 text-xs capitalize"
+                data-testid={`filter-${f}`}
+              >
+                {f}
+                {count > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+                    {count}
+                  </Badge>
+                )}
+              </Button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Offline Banner */}
       <OfflineBanner isConnected={smsSocketConnected} />
+      {filter === 'customers' && !twilioConnected && <TwilioWarning />}
 
-      {/* Twilio Warning - Show when SMS tab is active and Twilio not connected */}
-      {filter === 'sms' && !twilioConnected && <TwilioWarning />}
-
-      {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto">
+      <ScrollArea className="flex-1">
         {isLoading ? (
           <ConversationSkeleton />
         ) : conversationList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <MessageCircle className="h-8 w-8 text-muted-foreground" />
+            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+              <MessageCircle className="h-7 w-7 text-muted-foreground" />
             </div>
-            <h3 className="font-medium text-base mb-1">No messages yet</h3>
-            <p className="text-sm text-muted-foreground text-center max-w-xs">
-              {filter === 'direct' 
-                ? 'Message your crew directly — conversations with team members will show up here'
+            <h3 className="font-medium text-sm mb-1">No conversations</h3>
+            <p className="text-xs text-muted-foreground text-center max-w-[200px]">
+              {filter === 'customers' 
+                ? 'Customer SMS conversations will appear here'
                 : filter === 'jobs'
-                ? 'Job chat threads will appear here when you create jobs'
-                : filter === 'sms'
-                ? 'Text your clients directly — SMS conversations will appear here'
-                : 'Your team chat and messages will appear here'}
+                ? 'Job chat threads will appear here'
+                : 'Your messages will appear here'}
             </p>
           </div>
         ) : (
-          <div className="divide-y">
+          <div className="p-2 space-y-0.5">
             {conversationList.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 p-4 hover-elevate cursor-pointer group"
+                className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${
+                  selectedConversation?.id === item.id 
+                    ? 'bg-accent' 
+                    : 'hover:bg-muted/50'
+                }`}
                 onClick={() => handleConversationClick(item)}
                 data-testid={`conversation-${item.id}`}
               >
-                {/* Avatar */}
-                {item.type === 'team' ? (
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Users className="h-6 w-6 text-primary" />
-                  </div>
-                ) : item.type === 'job' ? (
-                  <div 
-                    className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: (STATUS_COLORS[item.status || 'pending'] || '#6B7280') + '20' }}
-                  >
-                    <Briefcase 
-                      className="h-6 w-6" 
-                      style={{ color: STATUS_COLORS[item.status || 'pending'] || '#6B7280' }} 
-                    />
-                  </div>
-                ) : item.type === 'sms' ? (
-                  <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
-                    <Phone className="h-6 w-6 text-green-600" />
-                  </div>
-                ) : (
-                  <Avatar className="h-12 w-12 shrink-0">
-                    <AvatarImage src={item.avatar || undefined} />
-                    <AvatarFallback>{item.avatarFallback}</AvatarFallback>
-                  </Avatar>
-                )}
+                <div className="relative shrink-0">
+                  {item.type === 'team' ? (
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                  ) : item.type === 'job' ? (
+                    <div 
+                      className="w-10 h-10 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: (STATUS_COLORS[item.status || 'pending'] || '#6B7280') + '20' }}
+                    >
+                      <Briefcase className="h-5 w-5" style={{ color: STATUS_COLORS[item.status || 'pending'] || '#6B7280' }} />
+                    </div>
+                  ) : item.type === 'sms' ? (
+                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <Phone className="h-5 w-5 text-green-600" />
+                    </div>
+                  ) : (
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={item.avatar || undefined} />
+                      <AvatarFallback className="text-xs">{item.avatarFallback}</AvatarFallback>
+                    </Avatar>
+                  )}
+                  {item.isOnline && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-background" />
+                  )}
+                </div>
 
-                {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-medium truncate">{item.title}</span>
-                      <Badge variant="outline" className="shrink-0 text-xs px-1.5 py-0">
-                        {item.type === 'team' ? 'Team' : item.type === 'direct' ? 'DM' : item.type === 'sms' ? 'SMS' : 'Job'}
-                      </Badge>
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-medium text-sm truncate">{item.title}</span>
+                      <div className={`shrink-0 w-5 h-5 rounded flex items-center justify-center ${getTypeColor(item.type)}`}>
+                        {getTypeIcon(item.type)}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {item.lastMessageTime && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>{formatDistanceToNow(new Date(item.lastMessageTime), { addSuffix: true })}</span>
-                        </div>
-                      )}
-                    </div>
+                    {item.lastMessageTime && (
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {formatTime(item.lastMessageTime)}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between gap-2 mt-0.5">
-                    <p className="text-sm text-muted-foreground truncate">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground truncate">
                       {item.lastMessage || item.subtitle || 'No messages yet'}
                     </p>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {item.unreadCount > 0 && (
-                        <Badge className="shrink-0 h-5 min-w-5 px-1.5 bg-destructive text-destructive-foreground">
-                          {item.unreadCount}
-                        </Badge>
-                      )}
-                      {item.type === 'sms' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSmsToDelete(item.data);
-                          }}
-                          data-testid={`button-delete-sms-${item.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    {item.unreadCount > 0 && (
+                      <Badge className="shrink-0 h-4 min-w-4 px-1 text-[10px] bg-primary">
+                        {item.unreadCount}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </ScrollArea>
+    </div>
+  );
 
-            {/* New conversation prompt for direct messages */}
-            {filter === 'direct' && showDirectFilter && teamMembers.filter(m => m.status === 'accepted').length > 0 && (
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground mb-3">Start a new conversation</p>
-                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                  {teamMembers
-                    .filter(m => m.status === 'accepted')
-                    .filter(m => !dmConversations.some(c => c.otherUser.id === m.userId))
-                    .map((member) => (
-                      <div
-                        key={member.id}
-                        className="flex flex-col items-center gap-1.5 cursor-pointer p-2 rounded-lg hover-elevate min-w-[72px]"
-                        onClick={() => {
-                          setSelectedDirectUser({
-                            id: member.userId,
-                            email: member.email,
-                            firstName: member.name.split(' ')[0],
-                            lastName: member.name.split(' ').slice(1).join(' '),
-                            profileImageUrl: member.profileImageUrl,
-                          });
-                          setView('direct-message');
-                        }}
-                        data-testid={`new-dm-${member.id}`}
-                      >
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={member.profileImageUrl || undefined} />
-                          <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs text-center truncate w-full">{member.name.split(' ')[0]}</span>
+  const renderChatView = () => {
+    if (!selectedConversation) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center bg-muted/30" data-testid="empty-chat-view">
+          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
+            <MessageCircle className="h-10 w-10 text-muted-foreground" />
+          </div>
+          <h3 className="font-semibold text-lg mb-1">Select a conversation</h3>
+          <p className="text-sm text-muted-foreground text-center max-w-xs">
+            Choose a conversation from the list to start messaging
+          </p>
+        </div>
+      );
+    }
+
+    if (selectedConversation.type === 'team') {
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden" data-testid="team-chat-view">
+          <div className="shrink-0 p-3 border-b bg-background flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold text-sm">Team Chat</h2>
+              <p className="text-xs text-muted-foreground">
+                {teamMembers.filter(m => m.status === 'accepted').length + 1} members
+              </p>
+            </div>
+            {pinnedMessages.length > 0 && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <Pin className="h-3 w-3" />
+                {pinnedMessages.length}
+              </Badge>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowContextPanel(!showContextPanel)}
+              data-testid="button-toggle-context"
+            >
+              {showContextPanel ? <PanelRightClose className="h-5 w-5" /> : <PanelRight className="h-5 w-5" />}
+            </Button>
+          </div>
+
+          <ScrollArea className="flex-1 px-4 py-2" ref={scrollRef}>
+            {teamMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full py-8">
+                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+                  <Users className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <h3 className="font-medium text-sm mb-1">Team chat's quiet</h3>
+                <p className="text-xs text-muted-foreground text-center max-w-xs">
+                  Share updates, coordinate jobs, or check in with your crew
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {teamMessages.map((msg) => (
+                  <ChatMessage
+                    key={msg.id}
+                    id={msg.id}
+                    message={msg.message}
+                    messageType={msg.messageType}
+                    senderName={msg.senderName}
+                    senderAvatar={msg.senderAvatar}
+                    isCurrentUser={msg.senderId === currentUser?.id}
+                    isAnnouncement={msg.isAnnouncement}
+                    isPinned={msg.isPinned}
+                    attachmentUrl={msg.attachmentUrl}
+                    attachmentName={msg.attachmentName}
+                    createdAt={msg.createdAt}
+                    onPin={(isOwner || isManager) ? (id, pinned) => pinMessageMutation.mutate({ messageId: id, pinned }) : undefined}
+                    onDelete={msg.senderId === currentUser?.id || isOwner ? (id) => deleteMessageMutation.mutate(id) : undefined}
+                    canPin={isOwner || isManager}
+                  />
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </ScrollArea>
+
+          <div className="shrink-0 p-3 border-t bg-background">
+            <ChatComposer
+              onSend={handleSendTeamMessage}
+              placeholder="Message your team..."
+              disabled={sendTeamMessageMutation.isPending}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedConversation.type === 'direct' && selectedDirectUser) {
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden" data-testid="direct-chat-view">
+          <div className="shrink-0 p-3 border-b bg-background flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="relative">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={selectedDirectUser.profileImageUrl || undefined} />
+                <AvatarFallback className="text-xs">{getInitials(getUserDisplayName(selectedDirectUser))}</AvatarFallback>
+              </Avatar>
+              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold text-sm truncate">{getUserDisplayName(selectedDirectUser)}</h2>
+              <p className="text-xs text-muted-foreground truncate">{selectedDirectUser.email}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowContextPanel(!showContextPanel)}
+              data-testid="button-toggle-context"
+            >
+              {showContextPanel ? <PanelRightClose className="h-5 w-5" /> : <PanelRight className="h-5 w-5" />}
+            </Button>
+          </div>
+
+          <ScrollArea className="flex-1 px-4 py-2">
+            {directMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full py-8">
+                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+                  <MessageCircle className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <h3 className="font-medium text-sm mb-1">Start chatting</h3>
+                <p className="text-xs text-muted-foreground text-center max-w-xs">
+                  Message {getUserDisplayName(selectedDirectUser)} directly
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {directMessages.map((msg) => {
+                  const isOwn = msg.senderId !== selectedDirectUser.id;
+                  return (
+                    <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 ${isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                        <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                        <div className={`flex items-center gap-1 mt-0.5 ${isOwn ? 'justify-end' : ''}`}>
+                          <span className={`text-[10px] ${isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                            {formatTime(msg.createdAt)}
+                          </span>
+                          {isOwn && (msg.isRead ? <CheckCheck className="h-3 w-3 text-primary-foreground/70" /> : <Check className="h-3 w-3 text-primary-foreground/70" />)}
+                        </div>
                       </div>
-                    ))}
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </ScrollArea>
+
+          <div className="shrink-0 p-3 border-t bg-background">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Type a message..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1"
+                data-testid="input-message"
+              />
+              <Button onClick={handleSendDirectMessage} disabled={!newMessage.trim() || sendDirectMessageMutation.isPending} size="icon" data-testid="button-send">
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedConversation.type === 'sms' && selectedSmsConversation) {
+      const linkedJob = selectedSmsConversation.jobId ? jobs.find(j => j.id === selectedSmsConversation.jobId) : null;
+      
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden" data-testid="sms-chat-view">
+          <div className="shrink-0 p-3 border-b bg-background flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back-sms">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center">
+              <Phone className="h-5 w-5 text-green-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold text-sm truncate">
+                {selectedSmsConversation.clientName || selectedSmsConversation.clientPhone}
+              </h2>
+              <p className="text-xs text-muted-foreground truncate">
+                {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS'}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              {linkedJob && (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7" onClick={() => setLocation(`/jobs/${linkedJob.id}`)} data-testid="button-view-linked-job">
+                  <Briefcase className="h-3 w-3" />
+                  View Job
+                </Button>
+              )}
+              <a href={`tel:${selectedSmsConversation.clientPhone}`}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-call">
+                  <Phone className="h-4 w-4" />
+                </Button>
+              </a>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowContextPanel(!showContextPanel)} data-testid="button-toggle-context">
+                {showContextPanel ? <PanelRightClose className="h-4 w-4" /> : <Info className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+
+          <OfflineBanner isConnected={smsSocketConnected} />
+          {!twilioConnected && <TwilioWarning />}
+
+          {isUnknownClient && selectedSmsConversation.id !== 'new' && (
+            <div className="shrink-0 mx-3 mt-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <User className="h-4 w-4 text-blue-600 shrink-0" />
+                  <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Unknown contact</span>
+                </div>
+                <Button size="sm" className="h-6 text-xs gap-1" onClick={handleOpenCreateClientDialog} data-testid="button-create-client-from-sms">
+                  <Plus className="h-3 w-3" />
+                  Add Client
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <ScrollArea className="flex-1 px-4 py-2">
+            {smsMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full py-8">
+                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+                  <Phone className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <h3 className="font-medium text-sm mb-1">No messages yet</h3>
+                <p className="text-xs text-muted-foreground text-center max-w-xs">
+                  Send a text to {selectedSmsConversation.clientName || 'this customer'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {smsMessages.map((msg) => {
+                  const isOwn = msg.direction === 'outbound';
+                  const isJobRequest = msg.isJobRequest && msg.direction === 'inbound';
+                  const jobAlreadyCreated = !!msg.jobCreatedFromSms;
+                  
+                  return (
+                    <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                      <div className="max-w-[75%] space-y-1.5">
+                        {isJobRequest && (
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Badge variant="secondary" className="bg-blue-500/15 text-blue-700 dark:text-blue-400 text-[10px] h-5">
+                              <Briefcase className="h-2.5 w-2.5 mr-0.5" />
+                              {msg.intentType?.replace('_', ' ') || 'Request'}
+                            </Badge>
+                            {jobAlreadyCreated && (
+                              <Badge variant="secondary" className="bg-green-500/15 text-green-700 dark:text-green-400 text-[10px] h-5">
+                                <Check className="h-2.5 w-2.5 mr-0.5" />
+                                Job Created
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        
+                        <div className={`rounded-2xl px-3.5 py-2 ${isOwn ? 'bg-green-600 text-white' : 'bg-muted'}`}>
+                          <p className="text-sm whitespace-pre-wrap break-words">{msg.body}</p>
+                          <div className={`flex items-center gap-1 mt-0.5 ${isOwn ? 'justify-end' : ''}`}>
+                            <span className={`text-[10px] ${isOwn ? 'text-white/70' : 'text-muted-foreground'}`}>
+                              {formatTime(msg.createdAt)}
+                            </span>
+                            {isOwn && msg.status === 'delivered' && <CheckCheck className="h-3 w-3 text-white/70" />}
+                            {isOwn && msg.status === 'sent' && <Check className="h-3 w-3 text-white/70" />}
+                          </div>
+                        </div>
+                        
+                        {isJobRequest && !jobAlreadyCreated && (
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            disabled={createJobFromSmsMutation.isPending}
+                            onClick={() => createJobFromSmsMutation.mutate(msg.id)}
+                            data-testid={`button-create-job-${msg.id}`}
+                          >
+                            {createJobFromSmsMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Briefcase className="h-3 w-3" />}
+                            Create Job
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </ScrollArea>
+
+          <div className="shrink-0 px-3 py-2 flex gap-1.5 overflow-x-auto no-scrollbar border-t">
+            {QUICK_REPLY_TEMPLATES.slice(0, 4).map((template) => (
+              <Button
+                key={template.id}
+                variant="secondary"
+                size="sm"
+                className="shrink-0 text-[11px] h-7"
+                onClick={() => setSmsNewMessage(template.message)}
+                data-testid={`quick-reply-${template.id}`}
+              >
+                {template.label}
+              </Button>
+            ))}
+          </div>
+
+          <div className="shrink-0 p-3 border-t bg-background">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Type an SMS..."
+                value={smsNewMessage}
+                onChange={(e) => setSmsNewMessage(e.target.value)}
+                onKeyPress={handleSmsKeyPress}
+                className="flex-1"
+                data-testid="input-sms-message"
+              />
+              <Button onClick={handleSendSms} disabled={!smsNewMessage.trim() || sendSmsMutation.isPending} size="icon" className="bg-green-600 hover:bg-green-700" data-testid="button-send-sms">
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedConversation.type === 'job' && selectedJob) {
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden" data-testid="job-chat-view">
+          <div className="shrink-0 p-3 border-b bg-background flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div 
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: (STATUS_COLORS[selectedJob.status] || '#6B7280') + '20' }}
+            >
+              <Briefcase className="h-5 w-5" style={{ color: STATUS_COLORS[selectedJob.status] || '#6B7280' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold text-sm truncate">{selectedJob.title}</h2>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-[10px] h-4 px-1.5" style={{ backgroundColor: (STATUS_COLORS[selectedJob.status] || '#6B7280') + '20', color: STATUS_COLORS[selectedJob.status] || '#6B7280' }}>
+                  {STATUS_LABELS[selectedJob.status] || 'Unknown'}
+                </Badge>
+                {selectedJob.address && (
+                  <span className="text-xs text-muted-foreground truncate">{selectedJob.address.split(',')[0]}</span>
+                )}
+              </div>
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7" onClick={() => setLocation(`/jobs/${selectedJob.id}`)} data-testid="button-view-job">
+              <ExternalLink className="h-3 w-3" />
+              Open
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowContextPanel(!showContextPanel)} data-testid="button-toggle-context">
+              {showContextPanel ? <PanelRightClose className="h-4 w-4" /> : <Info className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-center py-8">
+            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+              <Briefcase className="h-7 w-7 text-muted-foreground" />
+            </div>
+            <h3 className="font-medium text-sm mb-1">Job Room</h3>
+            <p className="text-xs text-muted-foreground text-center max-w-xs mb-4">
+              Job-specific chat is coming soon. View job details to see activity.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => setLocation(`/jobs/${selectedJob.id}`)} data-testid="button-view-job-details">
+              View Job Details
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const renderContextPanel = () => {
+    if (!selectedConversation) return null;
+
+    if (selectedConversation.type === 'team') {
+      return (
+        <div className="flex flex-col h-full">
+          <div className="p-4 border-b flex items-center justify-between">
+            <h3 className="font-semibold text-sm">Team Info</h3>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowContextPanel(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <ScrollArea className="flex-1 p-4">
+            {pinnedMessages.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <Pin className="h-3 w-3" />
+                  Pinned Messages
+                </h4>
+                <div className="space-y-2">
+                  {pinnedMessages.slice(0, 3).map((msg) => (
+                    <div key={msg.id} className="p-2 rounded-lg bg-muted/50 text-xs">
+                      <p className="font-medium mb-0.5">{msg.senderName}</p>
+                      <p className="text-muted-foreground line-clamp-2">{msg.message}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
+            
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Users className="h-3 w-3" />
+                Members ({teamMembers.filter(m => m.status === 'accepted').length + 1})
+              </h4>
+              <div className="space-y-2">
+                {teamMembers.filter(m => m.status === 'accepted').map((member) => (
+                  <div key={member.id} className="flex items-center gap-2">
+                    <div className="relative">
+                      <Avatar className="h-7 w-7">
+                        <AvatarImage src={member.profileImageUrl || undefined} />
+                        <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-background" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{member.name}</p>
+                      <p className="text-[10px] text-muted-foreground capitalize">{member.role}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ScrollArea>
+        </div>
+      );
+    }
+
+    if (selectedConversation.type === 'sms' && selectedSmsConversation) {
+      return (
+        <ClientInsightsPanel
+          clientId={selectedSmsConversation.clientId}
+          clientPhone={selectedSmsConversation.clientPhone}
+          conversationId={selectedSmsConversation.id}
+          onClose={() => setShowContextPanel(false)}
+          onNavigateToJob={(jobId) => { setShowContextPanel(false); setLocation(`/jobs/${jobId}`); }}
+          onNavigateToInvoice={(invoiceId) => { setShowContextPanel(false); setLocation(`/invoices/${invoiceId}`); }}
+          onCreateJob={() => { setShowContextPanel(false); setLocation('/jobs/new?clientId=' + selectedSmsConversation.clientId); }}
+          onCreateQuote={() => { setShowContextPanel(false); setLocation('/quotes/new?clientId=' + selectedSmsConversation.clientId); }}
+        />
+      );
+    }
+
+    if (selectedConversation.type === 'job' && selectedJob) {
+      return (
+        <div className="flex flex-col h-full">
+          <div className="p-4 border-b flex items-center justify-between">
+            <h3 className="font-semibold text-sm">Job Details</h3>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowContextPanel(false)}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-        )}
+          
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground mb-1">Status</h4>
+                <Badge style={{ backgroundColor: (STATUS_COLORS[selectedJob.status] || '#6B7280') + '20', color: STATUS_COLORS[selectedJob.status] || '#6B7280' }}>
+                  {STATUS_LABELS[selectedJob.status] || 'Unknown'}
+                </Badge>
+              </div>
+              
+              {selectedJob.address && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    Address
+                  </h4>
+                  <p className="text-sm">{selectedJob.address}</p>
+                </div>
+              )}
+              
+              {selectedJob.scheduledAt && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    Scheduled
+                  </h4>
+                  <p className="text-sm">{format(new Date(selectedJob.scheduledAt), 'PPP p')}</p>
+                </div>
+              )}
+              
+              <Button className="w-full" variant="outline" onClick={() => setLocation(`/jobs/${selectedJob.id}`)}>
+                View Full Details
+              </Button>
+            </div>
+          </ScrollArea>
+        </div>
+      );
+    }
+
+    if (selectedConversation.type === 'direct' && selectedDirectUser) {
+      return (
+        <div className="flex flex-col h-full">
+          <div className="p-4 border-b flex items-center justify-between">
+            <h3 className="font-semibold text-sm">Contact Info</h3>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowContextPanel(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <div className="p-4">
+            <div className="flex flex-col items-center mb-4">
+              <Avatar className="h-16 w-16 mb-2">
+                <AvatarImage src={selectedDirectUser.profileImageUrl || undefined} />
+                <AvatarFallback>{getInitials(getUserDisplayName(selectedDirectUser))}</AvatarFallback>
+              </Avatar>
+              <h4 className="font-medium">{getUserDisplayName(selectedDirectUser)}</h4>
+              <p className="text-sm text-muted-foreground">{selectedDirectUser.email}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className="flex h-full overflow-hidden" data-testid="chat-hub">
+      <div className={`w-full md:w-80 shrink-0 ${mobileShowChat ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}>
+        {renderConversationList()}
       </div>
 
-      {/* New SMS Dialog */}
+      <div className={`flex-1 flex flex-col min-w-0 ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+        {renderChatView()}
+      </div>
+
+      {showContextPanel && selectedConversation && (
+        <div className="hidden lg:flex w-80 shrink-0 border-l bg-background flex-col" data-testid="context-panel">
+          {renderContextPanel()}
+        </div>
+      )}
+
+      <Sheet open={showContextPanel && !!selectedConversation} onOpenChange={setShowContextPanel}>
+        <SheetContent side="right" className="w-[85vw] sm:w-[400px] p-0 lg:hidden" hideClose>
+          {renderContextPanel()}
+        </SheetContent>
+      </Sheet>
+
       <Dialog open={newSmsDialogOpen} onOpenChange={(open) => {
         setNewSmsDialogOpen(open);
         if (!open) resetNewSmsDialog();
@@ -1900,15 +1792,14 @@ export default function ChatHub() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Phone className="h-5 w-5 text-green-600" />
-              New SMS Conversation
+              New SMS
             </DialogTitle>
             <DialogDescription>
-              Search for an existing client or enter a phone number to start a new SMS conversation.
+              Search for a client or enter a phone number
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Selected Client Display */}
             {newSmsSelectedClient && (
               <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
                 <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
@@ -1918,21 +1809,12 @@ export default function ChatHub() {
                   <p className="font-medium truncate">{newSmsSelectedClient.name}</p>
                   <p className="text-sm text-muted-foreground truncate">{newSmsSelectedClient.phone}</p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setNewSmsSelectedClient(null);
-                    setNewSmsClientSearch('');
-                  }}
-                  data-testid="button-clear-selected-client"
-                >
+                <Button variant="ghost" size="icon" onClick={() => { setNewSmsSelectedClient(null); setNewSmsClientSearch(''); }} data-testid="button-clear-selected-client">
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             )}
 
-            {/* Client Search or Phone Entry */}
             {!newSmsSelectedClient && (
               <>
                 <div className="space-y-2">
@@ -1949,18 +1831,13 @@ export default function ChatHub() {
                     />
                   </div>
 
-                  {/* Client Search Results */}
                   {filteredClients.length > 0 && (
                     <div className="rounded-lg border divide-y max-h-48 overflow-y-auto">
                       {filteredClients.map((client) => (
                         <div
                           key={client.id}
-                          className="flex items-center gap-3 p-3 cursor-pointer hover-elevate"
-                          onClick={() => {
-                            setNewSmsSelectedClient(client);
-                            setNewSmsClientSearch('');
-                            setNewSmsPhoneNumber('');
-                          }}
+                          className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50"
+                          onClick={() => { setNewSmsSelectedClient(client); setNewSmsClientSearch(''); setNewSmsPhoneNumber(''); }}
                           data-testid={`client-option-${client.id}`}
                         >
                           <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -1973,12 +1850,6 @@ export default function ChatHub() {
                         </div>
                       ))}
                     </div>
-                  )}
-
-                  {newSmsClientSearch && filteredClients.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-2">
-                      No clients found with that name or phone number
-                    </p>
                   )}
                 </div>
 
@@ -1995,196 +1866,98 @@ export default function ChatHub() {
                   <Label htmlFor="phone-number">Enter phone number</Label>
                   <Input
                     id="phone-number"
-                    placeholder="0412 345 678 or +61 412 345 678"
+                    placeholder="0412 345 678"
                     value={newSmsPhoneNumber}
                     onChange={handlePhoneInputChange}
                     className={newSmsPhoneError ? 'border-destructive' : ''}
                     data-testid="input-phone-number"
                   />
-                  {newSmsPhoneError && (
-                    <p className="text-sm text-destructive flex items-center gap-1" data-testid="text-phone-error">
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                      {newSmsPhoneError}
-                    </p>
-                  )}
+                  {newSmsPhoneError && <p className="text-xs text-destructive">{newSmsPhoneError}</p>}
                 </div>
               </>
             )}
 
-            {/* Initial Message */}
             <div className="space-y-2">
-              <Label htmlFor="initial-message">Initial message (optional)</Label>
-              <Textarea
+              <Label htmlFor="initial-message">Message (optional)</Label>
+              <Input
                 id="initial-message"
                 placeholder="Type your first message..."
                 value={newSmsInitialMessage}
                 onChange={(e) => setNewSmsInitialMessage(e.target.value)}
-                rows={3}
-                data-testid="textarea-initial-message"
+                data-testid="input-initial-message"
               />
-              <p className="text-xs text-muted-foreground">
-                Leave blank to just open the conversation without sending a message.
-              </p>
             </div>
           </div>
 
-          <DialogFooter className="flex gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setNewSmsDialogOpen(false);
-                resetNewSmsDialog();
-              }}
-              data-testid="button-cancel-new-sms"
-            >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewSmsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleStartNewSms}
-              disabled={!newSmsSelectedClient && !newSmsPhoneNumber.trim()}
-              className="gap-1.5 bg-green-600 hover:bg-green-700"
-              data-testid="button-start-sms"
-            >
-              {sendSmsMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <MessageCircle className="h-4 w-4" />
-              )}
-              {newSmsInitialMessage.trim() ? 'Send & Open' : 'Open Conversation'}
+            <Button onClick={handleStartNewSms} disabled={!newSmsSelectedClient && !newSmsPhoneNumber} className="bg-green-600 hover:bg-green-700" data-testid="button-start-sms">
+              Start Conversation
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete SMS Conversation Confirmation Dialog */}
+      <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-create-client">
+          <DialogHeader>
+            <DialogTitle>Create New Client</DialogTitle>
+            <DialogDescription>
+              Add this phone number as a new client
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-client-name">Name *</Label>
+              <Input id="new-client-name" placeholder="Client name" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} data-testid="input-new-client-name" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-client-phone">Phone</Label>
+              <Input id="new-client-phone" value={newClientPhone} disabled className="bg-muted" data-testid="input-new-client-phone" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-client-email">Email</Label>
+              <Input id="new-client-email" type="email" placeholder="email@example.com" value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} data-testid="input-new-client-email" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-client-address">Address</Label>
+              <Input id="new-client-address" placeholder="123 Main St" value={newClientAddress} onChange={(e) => setNewClientAddress(e.target.value)} data-testid="input-new-client-address" />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateClientDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateClientSubmit} disabled={!newClientName.trim() || createClientFromSmsMutation.isPending} data-testid="button-create-client-submit">
+              {createClientFromSmsMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create Client'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={!!smsToDelete} onOpenChange={(open) => !open && setSmsToDelete(null)}>
-        <AlertDialogContent data-testid="dialog-delete-sms-confirm">
+        <AlertDialogContent data-testid="dialog-delete-sms">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete SMS Conversation</AlertDialogTitle>
+            <AlertDialogTitle>Delete Conversation?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the conversation with{' '}
-              <span className="font-medium">
-                {smsToDelete?.clientName || smsToDelete?.clientPhone}
-              </span>
-              ? This action cannot be undone and all messages will be permanently removed.
+              This will permanently delete this SMS conversation with {smsToDelete?.clientName || smsToDelete?.clientPhone}. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel 
-              onClick={() => setSmsToDelete(null)}
-              data-testid="button-cancel-delete-sms"
-            >
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (smsToDelete) {
-                  deleteSmsConversationMutation.mutate(smsToDelete.id);
-                }
-              }}
+              onClick={() => smsToDelete && deleteSmsConversationMutation.mutate(smsToDelete.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteSmsConversationMutation.isPending}
-              data-testid="button-confirm-delete-sms"
             >
-              {deleteSmsConversationMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Delete Conversation
+              {deleteSmsConversationMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Create Client from SMS Dialog */}
-      <Dialog open={createClientDialogOpen} onOpenChange={setCreateClientDialogOpen}>
-        <DialogContent data-testid="dialog-create-client-from-sms">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Create Client from SMS
-            </DialogTitle>
-            <DialogDescription>
-              Add this phone number as a new client. They'll be linked to this conversation.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="client-name">
-                Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="client-name"
-                placeholder="e.g., John Smith or ABC Constructions"
-                value={newClientName}
-                onChange={(e) => setNewClientName(e.target.value)}
-                data-testid="input-create-client-name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="client-phone">Phone Number</Label>
-              <Input
-                id="client-phone"
-                value={newClientPhone}
-                onChange={(e) => setNewClientPhone(e.target.value)}
-                placeholder="0412 345 678"
-                data-testid="input-create-client-phone"
-              />
-              <p className="text-xs text-muted-foreground">
-                Pre-filled from the SMS conversation
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="client-email">Email (optional)</Label>
-              <Input
-                id="client-email"
-                type="email"
-                placeholder="client@example.com"
-                value={newClientEmail}
-                onChange={(e) => setNewClientEmail(e.target.value)}
-                data-testid="input-create-client-email"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="client-address">Address (optional)</Label>
-              <Input
-                id="client-address"
-                placeholder="123 Main Street, Sydney NSW 2000"
-                value={newClientAddress}
-                onChange={(e) => setNewClientAddress(e.target.value)}
-                data-testid="input-create-client-address"
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setCreateClientDialogOpen(false)}
-              data-testid="button-cancel-create-client"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateClientSubmit}
-              disabled={!newClientName.trim() || createClientFromSmsMutation.isPending}
-              data-testid="button-submit-create-client"
-            >
-              {createClientFromSmsMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Plus className="h-4 w-4 mr-2" />
-              )}
-              Create Client
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
