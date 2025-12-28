@@ -1059,6 +1059,7 @@ export const teamMembers = pgTable("team_members", {
   email: text("email").notNull(), // Email for invites (before user account exists)
   firstName: text("first_name"), // For display before account exists
   lastName: text("last_name"), // For display before account exists
+  phone: text("phone"), // Phone number for direct calls
   inviteStatus: text("invite_status").notNull().default('pending'), // 'pending', 'accepted', 'declined'
   inviteToken: text("invite_token"), // Token for accepting invite
   inviteSentAt: timestamp("invite_sent_at"),

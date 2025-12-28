@@ -85,6 +85,7 @@ interface TeamMemberData {
   firstName?: string;
   lastName?: string;
   email?: string;
+  phone?: string;
   profileImageUrl?: string;
   role?: string;
   roleName?: string;
@@ -526,9 +527,55 @@ function MemberDetailsPanel({
 
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-6">
-            {/* Contact Info */}
+            {/* Quick Actions */}
             <div className="space-y-3">
-              <h3 className="text-sm font-medium text-muted-foreground">Contact</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Quick Actions</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {member.phone && (
+                  <a href={`tel:${member.phone}`} className="block">
+                    <Button
+                      variant="outline"
+                      className="w-full flex flex-col items-center gap-1 h-auto py-3"
+                      data-testid="button-call-member"
+                    >
+                      <Phone className="h-5 w-5 text-green-600" />
+                      <span className="text-xs">Call</span>
+                    </Button>
+                  </a>
+                )}
+                {member.email && (
+                  <a href={`mailto:${member.email}`} className="block">
+                    <Button
+                      variant="outline"
+                      className="w-full flex flex-col items-center gap-1 h-auto py-3"
+                      data-testid="button-email-member"
+                    >
+                      <Mail className="h-5 w-5 text-blue-600" />
+                      <span className="text-xs">Email</span>
+                    </Button>
+                  </a>
+                )}
+                <Button
+                  variant="outline"
+                  className="w-full flex flex-col items-center gap-1 h-auto py-3"
+                  onClick={() => onMessageClick(member.userId)}
+                  data-testid="button-message-member"
+                >
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                  <span className="text-xs">Message</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Contact Details */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground">Contact Details</h3>
+              {member.phone && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span className="truncate">{member.phone}</span>
+                </div>
+              )}
               {member.email && (
                 <div className="flex items-center gap-3 text-sm">
                   <Mail className="h-4 w-4 text-muted-foreground" />
@@ -810,16 +857,31 @@ function TeamMap({
                         {selectedMemberId === member.userId ? "Selected" : "Select for Jobs"}
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="w-full"
-                      onClick={() => onMessageClick(p.userId)}
-                      data-testid={`button-map-message-${p.userId}`}
-                    >
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Message
-                    </Button>
+                    <div className="grid grid-cols-3 gap-1">
+                      {member?.phone && (
+                        <a href={`tel:${member.phone}`}>
+                          <Button size="sm" variant="ghost" className="w-full" data-testid={`button-map-call-${p.userId}`}>
+                            <Phone className="h-4 w-4" />
+                          </Button>
+                        </a>
+                      )}
+                      {member?.email && (
+                        <a href={`mailto:${member.email}`}>
+                          <Button size="sm" variant="ghost" className="w-full" data-testid={`button-map-email-${p.userId}`}>
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                        </a>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="w-full"
+                        onClick={() => onMessageClick(p.userId)}
+                        data-testid={`button-map-message-${p.userId}`}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Popup>
