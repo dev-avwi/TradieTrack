@@ -99,31 +99,34 @@ export default function NotificationDropdown() {
     setOpen(false);
     
     if (notification.notificationType === 'sms') {
-      setLocation(`/settings?tab=sms&conversation=${notification.relatedId}`);
+      setLocation(`/chat?smsClientId=${notification.relatedId}`);
       return;
     }
     
     if (notification.notificationType === 'chat') {
-      setLocation('/settings?tab=team-chat');
+      setLocation('/chat');
       return;
     }
     
     if (notification.relatedType && notification.relatedId) {
       switch (notification.relatedType) {
         case 'job':
-          setLocation(`/jobs?selected=${notification.relatedId}`);
+          setLocation(`/jobs/${notification.relatedId}`);
           break;
         case 'quote':
-          setLocation(`/quotes?selected=${notification.relatedId}`);
+          setLocation(`/quotes/${notification.relatedId}`);
           break;
         case 'invoice':
-          setLocation(`/invoices?selected=${notification.relatedId}`);
+          setLocation(`/invoices/${notification.relatedId}`);
           break;
         case 'client':
-          setLocation(`/clients?selected=${notification.relatedId}`);
+          setLocation(`/clients/${notification.relatedId}`);
           break;
         case 'subscription':
-          setLocation('/settings?tab=payments');
+          setLocation('/subscription');
+          break;
+        case 'receipt':
+          setLocation(`/receipts/${notification.relatedId}`);
           break;
         default:
           break;

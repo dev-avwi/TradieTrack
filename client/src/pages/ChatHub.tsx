@@ -1650,21 +1650,62 @@ export default function ChatHub() {
                 Members ({teamMembers.filter(m => m.status === 'accepted').length + 1})
               </h4>
               <div className="space-y-2">
-                {teamMembers.filter(m => m.status === 'accepted').map((member) => (
-                  <div key={member.id} className="flex items-center gap-2">
-                    <div className="relative">
-                      <Avatar className="h-7 w-7">
-                        <AvatarImage src={member.profileImageUrl || undefined} />
-                        <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
-                      </Avatar>
-                      <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-background" />
+                {teamMembers.filter(m => m.status === 'accepted').map((member) => {
+                  const handleStartDM = () => {
+                    const user: User = {
+                      id: member.userId,
+                      email: member.email,
+                      firstName: member.name.split(' ')[0],
+                      lastName: member.name.split(' ').slice(1).join(' '),
+                      profileImageUrl: member.profileImageUrl,
+                    };
+                    const dmConversation: ConversationItem = {
+                      id: `dm-${member.userId}`,
+                      type: 'direct',
+                      title: member.name,
+                      avatar: member.profileImageUrl,
+                      avatarFallback: getInitials(member.name),
+                      unreadCount: 0,
+                      data: user,
+                    };
+                    setSelectedConversation(dmConversation);
+                    setSelectedDirectUser(user);
+                    setSelectedSmsConversation(null);
+                    setSelectedJob(null);
+                    setMobileShowChat(true);
+                    setShowContextPanel(false);
+                  };
+                  
+                  return (
+                    <div 
+                      key={member.id} 
+                      className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors group"
+                      onClick={handleStartDM}
+                      data-testid={`team-member-${member.userId}`}
+                    >
+                      <div className="relative">
+                        <Avatar className="h-7 w-7">
+                          <AvatarImage src={member.profileImageUrl || undefined} />
+                          <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-background" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{member.name}</p>
+                        <p className="text-[10px] text-muted-foreground capitalize">{member.role}</p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => { e.stopPropagation(); handleStartDM(); }}
+                        data-testid={`dm-button-${member.userId}`}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">{member.name}</p>
-                      <p className="text-[10px] text-muted-foreground capitalize">{member.role}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </ScrollArea>
