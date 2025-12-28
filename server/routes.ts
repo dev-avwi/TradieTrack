@@ -52,6 +52,10 @@ import {
   insertBusinessTemplateSchema,
   updateBusinessTemplateSchema,
   BUSINESS_TEMPLATE_FAMILIES,
+  isValidPurposeForFamily,
+  getValidPurposesForFamily,
+  type BusinessTemplateFamily,
+  type BusinessTemplatePurpose,
   // Types
   type InsertTimeEntry,
   // Location tracking tables
@@ -5354,6 +5358,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/email-provider/status - Get comprehensive email provider status with fallback options
+  app.get("/api/email-provider/status", requireAuth, async (req: any, res) => {
+    try {
+      const { getEmailProviderStatus, getEmailWarning } = await import("./emailProviderService");
+      const status = await getEmailProviderStatus(req.userId, storage);
+      const warning = getEmailWarning(status);
+      res.json({ ...status, warning });
+    } catch (error) {
+      console.error("Error getting email provider status:", error);
+      res.status(500).json({ 
+        error: "Failed to get email provider status",
+        fallbackRequired: true,
+        availableClients: [
+          { id: 'gmail', name: 'Gmail', available: true },
+          { id: 'outlook', name: 'Outlook', available: true },
+          { id: 'default', name: 'Default Email App', available: true },
+        ]
+      });
+    }
+  });
+
+  // GET /api/email-provider/compose-url - Generate compose URL for a specific email client
+  app.get("/api/email-provider/compose-url", requireAuth, async (req: any, res) => {
+    try {
+      const { client, to, subject, body, cc, bcc } = req.query;
+      
+      if (!client || !to) {
+        return res.status(400).json({ error: "client and to are required" });
+      }
+      
+      const { generateComposeUrl, formatPlainTextBody } = await import("./emailProviderService");
+      
+      // Convert body to plain text if it contains HTML
+      const plainBody = body ? formatPlainTextBody(body as string) : '';
+      
+      const url = generateComposeUrl(client as string, {
+        to: to as string,
+        subject: (subject as string) || '',
+        body: plainBody,
+        cc: cc as string,
+        bcc: bcc as string,
+      });
+      
+      res.json({ url, client });
+    } catch (error) {
+      console.error("Error generating compose URL:", error);
+      res.status(500).json({ error: "Failed to generate compose URL" });
+    }
+  });
+
   app.post("/api/email-integration/connect-smtp", requireAuth, async (req: any, res) => {
     try {
       const { host, port, user, password, emailAddress, displayName, secure } = req.body;
@@ -10034,6 +10088,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/business-templates/purposes/:family - Get valid purposes for a template family
+  // NOTE: This route MUST be defined BEFORE /:id to avoid route conflicts
+  app.get("/api/business-templates/purposes/:family", requireAuth, async (req: any, res) => {
+    try {
+      const { family } = req.params;
+      if (!BUSINESS_TEMPLATE_FAMILIES.includes(family as any)) {
+        return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
+      }
+      
+      const validPurposes = getValidPurposesForFamily(family as any);
+      const { PURPOSE_LABELS } = await import("@shared/schema");
+      
+      // Return purposes with human-readable labels
+      const purposesWithLabels = validPurposes.map(purpose => ({
+        id: purpose,
+        label: PURPOSE_LABELS[purpose] || purpose,
+      }));
+      
+      res.json({ family, purposes: purposesWithLabels });
+    } catch (error) {
+      console.error('Error fetching valid purposes:', error);
+      res.status(500).json({ error: 'Failed to fetch valid purposes' });
+    }
+  });
+
   // GET /api/business-templates/:id - Get single template
   app.get("/api/business-templates/:id", requireAuth, async (req: any, res) => {
     try {
@@ -10057,10 +10136,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.userId,
       });
       console.log('[Templates] Validated data:', JSON.stringify(validated, null, 2));
+      
       // Validate family
-      if (!BUSINESS_TEMPLATE_FAMILIES.includes(validated.family as any)) {
+      const family = validated.family as BusinessTemplateFamily;
+      if (!BUSINESS_TEMPLATE_FAMILIES.includes(family)) {
         return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
       }
+      
+      // Validate purpose is valid for this family (prevents misassignment)
+      const purpose = (validated.purpose || 'general') as BusinessTemplatePurpose;
+      if (!isValidPurposeForFamily(family, purpose)) {
+        const validPurposes = getValidPurposesForFamily(family);
+        return res.status(400).json({ 
+          error: `Invalid purpose "${purpose}" for ${family} templates. Valid purposes: ${validPurposes.join(', ')}`,
+          validPurposes 
+        });
+      }
+      
       const template = await storage.createBusinessTemplate(validated);
       console.log('[Templates] Template created successfully:', template.id);
       res.status(201).json(template);
@@ -10078,10 +10170,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/business-templates/:id", requireAuth, async (req: any, res) => {
     try {
       const validated = updateBusinessTemplateSchema.parse(req.body);
+      
       // Validate family if being updated
       if (validated.family && !BUSINESS_TEMPLATE_FAMILIES.includes(validated.family as any)) {
         return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
       }
+      
+      // If purpose is being updated, validate it matches the family
+      if (validated.purpose) {
+        // Get existing template to know the family
+        const existing = await storage.getBusinessTemplate(req.params.id, req.userId);
+        if (!existing) {
+          return res.status(404).json({ error: 'Template not found' });
+        }
+        const family = (validated.family || existing.family) as BusinessTemplateFamily;
+        const purpose = validated.purpose as BusinessTemplatePurpose;
+        
+        if (!isValidPurposeForFamily(family, purpose)) {
+          const validPurposes = getValidPurposesForFamily(family);
+          return res.status(400).json({ 
+            error: `Invalid purpose "${purpose}" for ${family} templates. Valid purposes: ${validPurposes.join(', ')}`,
+            validPurposes 
+          });
+        }
+      }
+      
       const template = await storage.updateBusinessTemplate(req.params.id, req.userId, validated);
       if (!template) {
         return res.status(404).json({ error: 'Template not found' });

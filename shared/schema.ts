@@ -2253,6 +2253,46 @@ export const BUSINESS_TEMPLATE_FAMILIES = [
 ] as const;
 export type BusinessTemplateFamily = typeof BUSINESS_TEMPLATE_FAMILIES[number];
 
+// Purpose-family mapping: defines which purposes are valid for each template family
+// This prevents misassignment (e.g., quote email template used for invoice)
+export const FAMILY_PURPOSE_MAP: Record<BusinessTemplateFamily, readonly BusinessTemplatePurpose[]> = {
+  email: ['quote_sent', 'invoice_sent', 'payment_reminder', 'job_confirmation', 'job_completed', 'quote_accepted', 'quote_declined'],
+  sms: ['sms_quote_sent', 'sms_invoice_sent', 'sms_payment_reminder', 'sms_job_confirmation', 'sms_job_completed'],
+  terms_conditions: ['general'],
+  warranty: ['general'],
+  safety_form: ['general'],
+  checklist: ['general'],
+  payment_notice: ['general'],
+} as const;
+
+// Helper function to validate purpose is valid for a given family
+export function isValidPurposeForFamily(family: BusinessTemplateFamily, purpose: BusinessTemplatePurpose): boolean {
+  const validPurposes = FAMILY_PURPOSE_MAP[family];
+  return validPurposes?.includes(purpose) ?? false;
+}
+
+// Get valid purposes for a family
+export function getValidPurposesForFamily(family: BusinessTemplateFamily): readonly BusinessTemplatePurpose[] {
+  return FAMILY_PURPOSE_MAP[family] ?? ['general'];
+}
+
+// Human-readable purpose labels
+export const PURPOSE_LABELS: Record<BusinessTemplatePurpose, string> = {
+  quote_sent: 'Quote Sent',
+  invoice_sent: 'Invoice Sent',
+  payment_reminder: 'Payment Reminder',
+  job_confirmation: 'Job Confirmation',
+  job_completed: 'Job Completed',
+  quote_accepted: 'Quote Accepted',
+  quote_declined: 'Quote Declined',
+  sms_quote_sent: 'Quote Sent (SMS)',
+  sms_invoice_sent: 'Invoice Sent (SMS)',
+  sms_payment_reminder: 'Payment Reminder (SMS)',
+  sms_job_confirmation: 'Job Confirmation (SMS)',
+  sms_job_completed: 'Job Completed (SMS)',
+  general: 'General',
+};
+
 // SMS Booking Links - Unique links for clients to confirm/reschedule bookings
 export const smsBookingLinks = pgTable("sms_booking_links", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
