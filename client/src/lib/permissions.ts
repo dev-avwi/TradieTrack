@@ -120,6 +120,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Templates Hub - owner/manager only
   { path: '/templates', label: 'Templates', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   
+  // Communications Hub - owner/manager only
+  { path: '/communications', label: 'Communications', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  
   // Integrations - owner only
   { path: '/integrations', label: 'Integrations', allowedRoles: ['owner', 'solo_owner'], showInNav: true },
   
