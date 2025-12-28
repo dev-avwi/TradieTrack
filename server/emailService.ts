@@ -1690,3 +1690,269 @@ export async function sendEmailWithAttachment(params: EmailWithAttachmentParams)
     throw new Error(error.message || 'Failed to send email');
   }
 }
+
+// ============================================================================
+// BUSINESS TEMPLATE EMAIL INTEGRATION
+// ============================================================================
+
+/**
+ * Replace merge fields in a template string with actual values
+ * Supports fields like {client_name}, {quote_total}, etc.
+ */
+export function replaceMergeFields(template: string, data: Record<string, string | number | null | undefined>): string {
+  if (!template) return '';
+  
+  return template.replace(/\{(\w+)\}/g, (match, fieldName) => {
+    const value = data[fieldName];
+    if (value === null || value === undefined) {
+      return ''; // Return empty string for null/undefined values
+    }
+    return String(value);
+  });
+}
+
+/**
+ * Create a professional HTML email from a business template
+ */
+export function createEmailFromTemplate(
+  template: { subject?: string | null; content: string; contentHtml?: string | null },
+  data: Record<string, string | number | null | undefined>,
+  business: any,
+  client: any
+): { to: string; from: { email: string; name: string }; replyTo: string; subject: string; html: string } {
+  const brandColor = business.brandColor || '#2563eb';
+  
+  // Apply merge field replacement to subject and content
+  const subject = replaceMergeFields(template.subject || 'Message from {business_name}', data);
+  const contentText = replaceMergeFields(template.content, data);
+  const contentHtml = template.contentHtml ? replaceMergeFields(template.contentHtml, data) : null;
+  
+  // Use HTML content if available, otherwise convert text to HTML
+  const bodyContent = contentHtml || contentText.split('\n').map(line => 
+    line.trim() ? `<p style="margin: 0 0 16px 0;">${line}</p>` : ''
+  ).join('');
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${subject}</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h1 style="color: ${brandColor}; margin: 0;">${business.businessName || 'Business'}</h1>
+        ${business.abn ? `<p style="margin: 5px 0 0 0; color: #666; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        ${bodyContent}
+      </div>
+
+      <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid ${brandColor};">
+        <p style="margin: 0; color: #333; font-weight: 500;">Questions?</p>
+        <p style="margin: 10px 0 0 0; color: #666;">Just reply to this email or give us a call.</p>
+        ${business.phone ? `<p style="margin: 10px 0 0 0;"><strong>Phone:</strong> <a href="tel:${business.phone}" style="color: ${brandColor}; text-decoration: none;">${business.phone}</a></p>` : ''}
+        ${business.email ? `<p style="margin: 5px 0 0 0;"><strong>Email:</strong> <a href="mailto:${business.email}" style="color: ${brandColor}; text-decoration: none;">${business.email}</a></p>` : ''}
+      </div>
+
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
+        <p style="margin: 0; color: #999; font-size: 12px;">
+          This email was sent by ${business.businessName || 'Business'}${business.abn ? ` (ABN: ${business.abn})` : ''}
+        </p>
+        ${business.address ? `<p style="margin: 5px 0 0 0; color: #999; font-size: 12px;">${business.address}</p>` : ''}
+      </div>
+      
+      ${UNSUBSCRIBE_FOOTER}
+    </body>
+    </html>
+  `;
+
+  return {
+    to: client.email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: business.businessName || PLATFORM_FROM_NAME
+    },
+    replyTo: business.email || PLATFORM_REPLY_TO_EMAIL,
+    subject,
+    html
+  };
+}
+
+/**
+ * Build merge field data object for quotes
+ */
+function buildQuoteMergeData(
+  quote: any,
+  client: any,
+  business: any,
+  acceptanceUrl?: string | null
+): Record<string, string | number | null> {
+  const totalAmount = Number(quote.total);
+  const depositPercent = quote.depositPercent || business.depositPercent || null;
+  
+  return {
+    client_name: client.name || '',
+    business_name: business.businessName || '',
+    quote_number: quote.number || quote.id?.substring(0, 8).toUpperCase() || '',
+    quote_total: `$${totalAmount.toFixed(2)}`,
+    job_title: quote.title || '',
+    job_address: quote.address || client.address || '',
+    due_date: quote.validUntil ? new Date(quote.validUntil).toLocaleDateString('en-AU') : '',
+    deposit_percent: depositPercent ? `${depositPercent}%` : '',
+    acceptance_url: acceptanceUrl || '',
+  };
+}
+
+/**
+ * Build merge field data object for invoices
+ */
+function buildInvoiceMergeData(
+  invoice: any,
+  client: any,
+  business: any,
+  paymentUrl?: string | null
+): Record<string, string | number | null> {
+  const totalAmount = Number(invoice.total);
+  
+  return {
+    client_name: client.name || '',
+    business_name: business.businessName || '',
+    invoice_number: invoice.number || invoice.id?.substring(0, 8).toUpperCase() || '',
+    invoice_total: `$${totalAmount.toFixed(2)}`,
+    job_title: invoice.title || '',
+    job_address: invoice.address || client.address || '',
+    due_date: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-AU') : '',
+    payment_url: paymentUrl || '',
+  };
+}
+
+/**
+ * Send quote email using a business template (if available) or fall back to default
+ */
+export async function sendQuoteEmailWithTemplate(
+  storage: { getActiveBusinessTemplateByPurpose: (userId: string, family: string, purpose: string) => Promise<any> },
+  userId: string,
+  quote: any,
+  client: any,
+  business: any,
+  acceptanceUrl?: string | null,
+  pdfBuffer?: Buffer
+): Promise<{ success: boolean; message: string; usedTemplate?: boolean }> {
+  const sendGridInitialized = initializeSendGrid();
+  const emailService = sendGridInitialized ? sgMail : mockEmailService;
+
+  if (!client.email) {
+    throw new Error('Client email address is required');
+  }
+
+  try {
+    // Try to get a custom template
+    const template = await storage.getActiveBusinessTemplateByPurpose(userId, 'email', 'quote_sent');
+    
+    let emailData: any;
+    let usedTemplate = false;
+
+    if (template && template.content) {
+      // Use custom template
+      const mergeData = buildQuoteMergeData(quote, client, business, acceptanceUrl);
+      emailData = createEmailFromTemplate(template, mergeData, business, client);
+      usedTemplate = true;
+      console.log('📧 Using custom quote email template:', template.name);
+    } else {
+      // Fall back to default hardcoded template
+      emailData = createQuoteEmail(quote, client, business, acceptanceUrl);
+      console.log('📧 Using default quote email template');
+    }
+
+    // Add PDF attachment if provided
+    if (pdfBuffer) {
+      emailData.attachments = [{
+        content: pdfBuffer.toString('base64'),
+        filename: `Quote-${quote.number || quote.id?.substring(0, 8).toUpperCase()}.pdf`,
+        type: 'application/pdf',
+        disposition: 'attachment'
+      }];
+    }
+
+    await emailService.send(emailData);
+    
+    return { 
+      success: true, 
+      message: 'Quote sent successfully',
+      usedTemplate 
+    };
+  } catch (error: any) {
+    console.error('Error sending quote email with template:', error);
+    if (error.message?.includes('SendGrid') || error.response?.body) {
+      throw new Error('Email service error. Please check your configuration.');
+    }
+    throw new Error('Email sending failed. Please try again.');
+  }
+}
+
+/**
+ * Send invoice email using a business template (if available) or fall back to default
+ */
+export async function sendInvoiceEmailWithTemplate(
+  storage: { getActiveBusinessTemplateByPurpose: (userId: string, family: string, purpose: string) => Promise<any> },
+  userId: string,
+  invoice: any,
+  client: any,
+  business: any,
+  paymentUrl?: string | null,
+  pdfBuffer?: Buffer
+): Promise<{ success: boolean; message: string; usedTemplate?: boolean }> {
+  const sendGridInitialized = initializeSendGrid();
+  const emailService = sendGridInitialized ? sgMail : mockEmailService;
+
+  if (!client.email) {
+    throw new Error('Client email address is required');
+  }
+
+  try {
+    // Try to get a custom template
+    const template = await storage.getActiveBusinessTemplateByPurpose(userId, 'email', 'invoice_sent');
+    
+    let emailData: any;
+    let usedTemplate = false;
+
+    if (template && template.content) {
+      // Use custom template
+      const mergeData = buildInvoiceMergeData(invoice, client, business, paymentUrl);
+      emailData = createEmailFromTemplate(template, mergeData, business, client);
+      usedTemplate = true;
+      console.log('📧 Using custom invoice email template:', template.name);
+    } else {
+      // Fall back to default hardcoded template
+      emailData = createInvoiceEmail(invoice, client, business, paymentUrl);
+      console.log('📧 Using default invoice email template');
+    }
+
+    // Add PDF attachment if provided
+    if (pdfBuffer) {
+      emailData.attachments = [{
+        content: pdfBuffer.toString('base64'),
+        filename: `Invoice-${invoice.number || invoice.id?.substring(0, 8).toUpperCase()}.pdf`,
+        type: 'application/pdf',
+        disposition: 'attachment'
+      }];
+    }
+
+    await emailService.send(emailData);
+    
+    return { 
+      success: true, 
+      message: 'Invoice sent successfully',
+      usedTemplate 
+    };
+  } catch (error: any) {
+    console.error('Error sending invoice email with template:', error);
+    if (error.message?.includes('SendGrid') || error.response?.body) {
+      throw new Error('Email service error. Please check your configuration.');
+    }
+    throw new Error('Email sending failed. Please try again.');
+  }
+}

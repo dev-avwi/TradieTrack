@@ -49,8 +49,10 @@ import {
   Eye,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { BusinessTemplate, BusinessTemplateFamily } from "@shared/schema";
+import type { BusinessTemplate, BusinessTemplateFamily, BusinessTemplatePurpose } from "@shared/schema";
+import { BUSINESS_TEMPLATE_PURPOSES } from "@shared/schema";
 import { type LucideIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TemplateFamilyMeta {
   family: BusinessTemplateFamily;
@@ -117,6 +119,32 @@ const CATEGORIES = {
   jobs_safety: { name: "Jobs & Safety", families: ["safety_form", "checklist"] as BusinessTemplateFamily[] },
 };
 
+const PURPOSE_CONFIG: Record<BusinessTemplatePurpose, { label: string; family: 'email' | 'sms' | 'general' }> = {
+  quote_sent: { label: "Quote Sent", family: 'email' },
+  invoice_sent: { label: "Invoice Sent", family: 'email' },
+  payment_reminder: { label: "Payment Reminder", family: 'email' },
+  job_confirmation: { label: "Job Confirmation", family: 'email' },
+  job_completed: { label: "Job Completed", family: 'email' },
+  quote_accepted: { label: "Quote Accepted", family: 'email' },
+  quote_declined: { label: "Quote Declined", family: 'email' },
+  sms_quote_sent: { label: "Quote Sent", family: 'sms' },
+  sms_invoice_sent: { label: "Invoice Sent", family: 'sms' },
+  sms_payment_reminder: { label: "Payment Reminder", family: 'sms' },
+  sms_job_confirmation: { label: "Job Confirmation", family: 'sms' },
+  sms_job_completed: { label: "Job Completed", family: 'sms' },
+  general: { label: "General", family: 'general' },
+};
+
+const getPurposesForFamily = (family: BusinessTemplateFamily): BusinessTemplatePurpose[] => {
+  if (family === 'email') {
+    return ['quote_sent', 'invoice_sent', 'payment_reminder', 'job_confirmation', 'job_completed', 'quote_accepted', 'quote_declined'];
+  }
+  if (family === 'sms') {
+    return ['sms_quote_sent', 'sms_invoice_sent', 'sms_payment_reminder', 'sms_job_confirmation', 'sms_job_completed'];
+  }
+  return ['general'];
+};
+
 const SAMPLE_DATA: Record<string, string> = {
   client_name: "John Smith",
   business_name: "My Trade Business",
@@ -169,6 +197,7 @@ export default function TemplatesHub() {
     description: "",
     content: "",
     subject: "",
+    purpose: "general" as BusinessTemplatePurpose,
   });
 
   const { data: familiesMeta = [], isLoading: familiesLoading, refetch: refetchFamilies } = useQuery<TemplateFamilyMeta[]>({
@@ -181,7 +210,7 @@ export default function TemplatesHub() {
 
   const seedMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("/api/business-templates/seed", { method: "POST" });
+      return apiRequest("POST", "/api/business-templates/seed");
     },
     onSuccess: () => {
       refetchFamilies();
@@ -196,11 +225,8 @@ export default function TemplatesHub() {
   }, [familiesLoading, familiesMeta.length]);
 
   const createMutation = useMutation({
-    mutationFn: async (data: { family: string; name: string; description?: string; content: string; subject?: string }) => {
-      return apiRequest("/api/business-templates", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+    mutationFn: async (data: { family: string; name: string; description?: string; content: string; subject?: string; purpose?: string }) => {
+      return apiRequest("POST", "/api/business-templates", data);
     },
     onSuccess: () => {
       toast({ title: "Template created successfully" });
@@ -215,11 +241,8 @@ export default function TemplatesHub() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { name?: string; description?: string; content?: string; subject?: string } }) => {
-      return apiRequest(`/api/business-templates/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+    mutationFn: async ({ id, data }: { id: string; data: { name?: string; description?: string; content?: string; subject?: string; purpose?: string } }) => {
+      return apiRequest("PATCH", `/api/business-templates/${id}`, data);
     },
     onSuccess: () => {
       toast({ title: "Template updated successfully" });
@@ -235,7 +258,7 @@ export default function TemplatesHub() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/business-templates/${id}`, { method: "DELETE" });
+      return apiRequest("DELETE", `/api/business-templates/${id}`);
     },
     onSuccess: () => {
       toast({ title: "Template deleted successfully" });
@@ -251,7 +274,7 @@ export default function TemplatesHub() {
 
   const activateMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/business-templates/${id}/activate`, { method: "POST" });
+      return apiRequest("POST", `/api/business-templates/${id}/activate`);
     },
     onSuccess: () => {
       toast({ title: "Template set as active" });
@@ -264,7 +287,7 @@ export default function TemplatesHub() {
   });
 
   const resetForm = () => {
-    setFormData({ name: "", description: "", content: "", subject: "" });
+    setFormData({ name: "", description: "", content: "", subject: "", purpose: "general" });
     setSelectedTemplate(null);
     setIsCreating(false);
   };
@@ -272,7 +295,8 @@ export default function TemplatesHub() {
   const openCreateDialog = (family: BusinessTemplateFamily) => {
     setIsCreating(true);
     setSelectedTemplate({ family } as BusinessTemplate);
-    setFormData({ name: "", description: "", content: "", subject: "" });
+    const defaultPurpose = getPurposesForFamily(family)[0] || 'general';
+    setFormData({ name: "", description: "", content: "", subject: "", purpose: defaultPurpose });
     setEditDialogOpen(true);
   };
 
@@ -284,6 +308,7 @@ export default function TemplatesHub() {
       description: template.description || "",
       content: template.content,
       subject: template.subject || "",
+      purpose: (template.purpose as BusinessTemplatePurpose) || "general",
     });
     setEditDialogOpen(true);
   };
@@ -298,6 +323,7 @@ export default function TemplatesHub() {
         description: formData.description || undefined,
         content: formData.content,
         subject: formData.subject || undefined,
+        purpose: formData.purpose,
       });
     } else {
       updateMutation.mutate({
@@ -307,6 +333,7 @@ export default function TemplatesHub() {
           description: formData.description || undefined,
           content: formData.content,
           subject: formData.subject || undefined,
+          purpose: formData.purpose,
         },
       });
     }
@@ -597,8 +624,13 @@ export default function TemplatesHub() {
                               data-testid={`template-item-${template.id}`}
                             >
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <p className="font-medium truncate">{template.name}</p>
+                                  {(family === 'email' || family === 'sms') && template.purpose && template.purpose !== 'general' && (
+                                    <Badge variant="secondary" size="sm">
+                                      {PURPOSE_CONFIG[template.purpose as BusinessTemplatePurpose]?.label || template.purpose}
+                                    </Badge>
+                                  )}
                                   {template.isActive && (
                                     <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0" size="sm">
                                       Active
@@ -709,6 +741,30 @@ export default function TemplatesHub() {
                   data-testid="input-template-description"
                 />
               </div>
+
+              {(selectedTemplate?.family === "email" || selectedTemplate?.family === "sms") && (
+                <div className="space-y-2">
+                  <Label htmlFor="purpose">Trigger / Purpose</Label>
+                  <Select
+                    value={formData.purpose}
+                    onValueChange={(value) => setFormData({ ...formData, purpose: value as BusinessTemplatePurpose })}
+                  >
+                    <SelectTrigger data-testid="select-template-purpose">
+                      <SelectValue placeholder="Select when this template is used" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getPurposesForFamily(selectedTemplate.family).map((purpose) => (
+                        <SelectItem key={purpose} value={purpose}>
+                          {PURPOSE_CONFIG[purpose]?.label || purpose}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Multiple templates can be active for different triggers
+                  </p>
+                </div>
+              )}
 
               {(selectedTemplate?.family === "email" || selectedTemplate?.family === "sms") && (
                 <div className="space-y-2">

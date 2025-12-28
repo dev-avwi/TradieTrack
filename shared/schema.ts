@@ -2185,12 +2185,35 @@ export const updateMessageTemplateSchema = insertMessageTemplateSchema.partial()
 export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 
+// Template purposes - defines when a template is triggered
+// Multiple templates can be active per family, but only one per purpose
+export const BUSINESS_TEMPLATE_PURPOSES = [
+  // Email purposes
+  'quote_sent',
+  'invoice_sent',
+  'payment_reminder',
+  'job_confirmation',
+  'job_completed',
+  'quote_accepted',
+  'quote_declined',
+  // SMS purposes
+  'sms_quote_sent',
+  'sms_invoice_sent',
+  'sms_payment_reminder',
+  'sms_job_confirmation',
+  'sms_job_completed',
+  // Document purposes (general/single use per family)
+  'general',
+] as const;
+export type BusinessTemplatePurpose = typeof BUSINESS_TEMPLATE_PURPOSES[number];
+
 // Business Templates - Unified template system for Templates Hub
 // Supports multiple template families: terms_conditions, warranty, email, sms, safety_form, checklist, payment_notice
 export const businessTemplates = pgTable("business_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   family: text("family").notNull(), // 'terms_conditions', 'warranty', 'email', 'sms', 'safety_form', 'checklist', 'payment_notice'
+  purpose: text("purpose").default('general'), // When this template is used (quote_sent, invoice_sent, etc.)
   name: text("name").notNull(),
   description: text("description"),
   isDefault: boolean("is_default").default(false), // System-provided default template

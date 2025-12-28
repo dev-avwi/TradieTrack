@@ -1,11 +1,35 @@
 // Properly ordered email handlers with validation, business settings, and idempotency
 import crypto from 'crypto';
-import { createQuoteEmailHtml, createInvoiceEmailHtml, createReceiptEmailHtml } from './emailService';
+import { createQuoteEmailHtml, createInvoiceEmailHtml, createReceiptEmailHtml, replaceMergeFields } from './emailService';
 import { sendEmailViaIntegration } from './emailIntegrationService';
 import { generateQuotePDF, generateInvoicePDF, generatePDFBuffer } from './pdfService';
 import { notifyPaymentReceived } from './pushNotifications';
 import { syncSingleInvoiceToXero, markInvoicePaidInXero } from './xeroService';
 import { processPaymentReceivedAutomation } from './automationService';
+
+// Helper function to wrap template content in professional HTML email layout
+function wrapTemplateInHtml(content: string, subject: string, business: any, client: any, brandColor: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">${business.businessName || 'Your Business'}</h1>
+        ${business.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
+      </div>
+      <div style="padding: 25px; background: #f9f9f9; border-radius: 0 0 8px 8px;">
+        <p style="margin: 0 0 15px 0;">G'day ${client.name},</p>
+        <div style="white-space: pre-line; margin-bottom: 20px;">${content}</div>
+        <p style="margin: 20px 0 0 0;">Cheers,<br>${business.businessName}</p>
+      </div>
+      <div style="text-align: center; padding: 15px; color: #666; font-size: 12px;">
+        ${business.phone ? `<p style="margin: 5px 0;">Phone: ${business.phone}</p>` : ''}
+        ${business.email ? `<p style="margin: 5px 0;">Email: ${business.email}</p>` : ''}
+      </div>
+    </body>
+    </html>
+  `;
+}
 
 // Helper to create tradie-friendly error messages with clear fixes
 function getTradieFriendlyEmailError(rawError: string): { title: string; message: string; fix: string } {
@@ -205,10 +229,36 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
             </html>
           `;
         } else {
-          // Use default email template
-          const emailContent = createQuoteEmailHtml(quoteWithItems, client, businessSettings, quoteAcceptanceUrl);
-          emailSubject = emailContent.subject;
-          emailHtml = emailContent.html;
+          // Check for custom business template first
+          const businessTemplate = await storage.getActiveBusinessTemplateByPurpose(req.userId, 'email', 'quote_sent');
+          
+          if (businessTemplate) {
+            // Use custom business template with merge field replacement
+            const mergeData = {
+              client_name: client.name,
+              business_name: businessSettings.businessName,
+              quote_number: quoteWithItems.number || quoteWithItems.id?.substring(0, 8).toUpperCase(),
+              quote_total: formattedTotal,
+              job_title: quoteWithItems.title,
+              job_address: linkedJob?.address || '',
+              due_date: quoteWithItems.validUntil ? new Date(quoteWithItems.validUntil).toLocaleDateString('en-AU') : '',
+              deposit_percent: businessSettings.depositPercent?.toString() || '50',
+              acceptance_url: quoteAcceptanceUrl || '',
+            };
+            
+            const templateContent = replaceMergeFields(businessTemplate.content, mergeData);
+            const templateSubject = businessTemplate.subject 
+              ? replaceMergeFields(businessTemplate.subject, mergeData)
+              : `Quote ${mergeData.quote_number} from ${businessSettings.businessName}`;
+            
+            emailSubject = templateSubject;
+            emailHtml = wrapTemplateInHtml(templateContent, templateSubject, businessSettings, client, brandColor);
+          } else {
+            // Use default email template
+            const emailContent = createQuoteEmailHtml(quoteWithItems, client, businessSettings, quoteAcceptanceUrl);
+            emailSubject = emailContent.subject;
+            emailHtml = emailContent.html;
+          }
         }
         
         // Generate PDF with acceptance link for attachment
@@ -486,10 +536,35 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
             </html>
           `;
         } else {
-          // Use default email template
-          const emailContent = createInvoiceEmailHtml(invoiceWithItems, client, businessSettings, paymentUrl);
-          emailSubject = emailContent.subject;
-          emailHtml = emailContent.html;
+          // Check for custom business template first
+          const businessTemplate = await storage.getActiveBusinessTemplateByPurpose(req.userId, 'email', 'invoice_sent');
+          
+          if (businessTemplate) {
+            // Use custom business template with merge field replacement
+            const mergeData = {
+              client_name: client.name,
+              business_name: businessSettings.businessName,
+              invoice_number: invoiceWithItems.number || invoiceWithItems.id?.substring(0, 8).toUpperCase(),
+              invoice_total: formattedTotal,
+              job_title: invoiceWithItems.title,
+              job_address: linkedJob?.address || '',
+              due_date: invoiceWithItems.dueDate ? new Date(invoiceWithItems.dueDate).toLocaleDateString('en-AU') : '',
+              payment_url: paymentUrl || '',
+            };
+            
+            const templateContent = replaceMergeFields(businessTemplate.content, mergeData);
+            const templateSubject = businessTemplate.subject 
+              ? replaceMergeFields(businessTemplate.subject, mergeData)
+              : `${documentType} ${mergeData.invoice_number} from ${businessSettings.businessName}`;
+            
+            emailSubject = templateSubject;
+            emailHtml = wrapTemplateInHtml(templateContent, templateSubject, businessSettings, client, brandColor);
+          } else {
+            // Use default email template
+            const emailContent = createInvoiceEmailHtml(invoiceWithItems, client, businessSettings, paymentUrl);
+            emailSubject = emailContent.subject;
+            emailHtml = emailContent.html;
+          }
         }
         
         // Generate PDF with payment link for attachment
@@ -944,35 +1019,66 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       currency: 'AUD' 
     }).format(parseFloat(quoteWithItems.total || '0'));
     
-    const subject = customSubject || `Quote ${quoteNumber} from ${businessSettings.businessName} - ${formattedTotal}`;
+    let subject = customSubject || `Quote ${quoteNumber} from ${businessSettings.businessName} - ${formattedTotal}`;
+    let emailHtml: string;
     
-    // Australian-friendly email template
-    const emailHtml = customMessage ? `
-      <!DOCTYPE html>
-      <html>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
-          ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
-        </div>
-        <div style="padding: 25px; background: #f9f9f9; border-radius: 0 0 8px 8px;">
-          <p style="margin: 0 0 15px 0;">G'day ${client.name},</p>
-          <div style="white-space: pre-line;">${customMessage}</div>
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${brandColor};">
-            <p style="margin: 0; font-weight: bold;">Quote Total: ${formattedTotal}</p>
-            ${quoteWithItems.gstIncluded ? `<p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Includes GST</p>` : ''}
+    // Check for custom message from UI, or check for business template
+    if (customMessage) {
+      // Use custom message from UI
+      emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
+            ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
           </div>
-          ${quoteAcceptanceUrl ? `
-            <div style="text-align: center; margin: 25px 0;">
-              <a href="${quoteAcceptanceUrl}" style="background: ${brandColor}; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">View & Accept Quote</a>
+          <div style="padding: 25px; background: #f9f9f9; border-radius: 0 0 8px 8px;">
+            <p style="margin: 0 0 15px 0;">G'day ${client.name},</p>
+            <div style="white-space: pre-line;">${customMessage}</div>
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${brandColor};">
+              <p style="margin: 0; font-weight: bold;">Quote Total: ${formattedTotal}</p>
+              ${quoteWithItems.gstIncluded ? `<p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Includes GST</p>` : ''}
             </div>
-          ` : ''}
-          <p style="margin: 20px 0 0 0; font-size: 13px; color: #666;">📎 Quote PDF attached for your records.</p>
-          <p style="margin: 15px 0 0 0;">Cheers,<br>${businessSettings.businessName}</p>
-        </div>
-      </body>
-      </html>
-    ` : createQuoteEmailHtml(quoteWithItems, client, businessSettings, quoteAcceptanceUrl).html;
+            ${quoteAcceptanceUrl ? `
+              <div style="text-align: center; margin: 25px 0;">
+                <a href="${quoteAcceptanceUrl}" style="background: ${brandColor}; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">View & Accept Quote</a>
+              </div>
+            ` : ''}
+            <p style="margin: 20px 0 0 0; font-size: 13px; color: #666;">📎 Quote PDF attached for your records.</p>
+            <p style="margin: 15px 0 0 0;">Cheers,<br>${businessSettings.businessName}</p>
+          </div>
+        </body>
+        </html>
+      `;
+    } else {
+      // Check for business template with quote_sent purpose
+      const businessTemplate = await storage.getActiveBusinessTemplateByPurpose(req.userId, 'email', 'quote_sent');
+      
+      if (businessTemplate) {
+        const mergeData = {
+          client_name: client.name,
+          business_name: businessSettings.businessName,
+          quote_number: quoteNumber,
+          quote_total: formattedTotal,
+          job_title: quoteWithItems.title || '',
+          job_address: linkedJob?.address || '',
+          due_date: quoteWithItems.validUntil ? new Date(quoteWithItems.validUntil).toLocaleDateString('en-AU') : '',
+          deposit_percent: businessSettings.depositPercent?.toString() || '50',
+          acceptance_url: quoteAcceptanceUrl || '',
+        };
+        
+        const templateContent = replaceMergeFields(businessTemplate.content, mergeData);
+        if (businessTemplate.subject && !customSubject) {
+          subject = replaceMergeFields(businessTemplate.subject, mergeData);
+        }
+        
+        emailHtml = wrapTemplateInHtml(templateContent, subject, businessSettings, client, brandColor);
+      } else {
+        // Fall back to default template
+        emailHtml = createQuoteEmailHtml(quoteWithItems, client, businessSettings, quoteAcceptanceUrl).html;
+      }
+    }
     
     // 10. Send email based on user preference (manual=Gmail draft, automatic=SendGrid)
     if (emailSendingMode === 'automatic') {
@@ -1172,35 +1278,65 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     const isTaxInvoice = businessSettings.gstRegistered && parseFloat(invoiceWithItems.total || '0') > 82.50;
     const invoiceLabel = isTaxInvoice ? 'Tax Invoice' : 'Invoice';
     
-    const subject = customSubject || `${invoiceLabel} ${invoiceNumber} from ${businessSettings.businessName} - ${formattedTotal}`;
+    let subject = customSubject || `${invoiceLabel} ${invoiceNumber} from ${businessSettings.businessName} - ${formattedTotal}`;
+    let emailHtml: string;
     
-    // Australian-friendly email template
-    const emailHtml = customMessage ? `
-      <!DOCTYPE html>
-      <html>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
-          ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
-        </div>
-        <div style="padding: 25px; background: #f9f9f9; border-radius: 0 0 8px 8px;">
-          <p style="margin: 0 0 15px 0;">G'day ${client.name},</p>
-          <div style="white-space: pre-line;">${customMessage}</div>
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${brandColor};">
-            <p style="margin: 0; font-weight: bold;">${invoiceLabel} Total: ${formattedTotal}</p>
-            ${invoiceWithItems.gstIncluded ? `<p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Includes GST (10%)</p>` : ''}
+    // Check for custom message from UI, or check for business template
+    if (customMessage) {
+      // Use custom message from UI
+      emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
+            ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
           </div>
-          ${paymentUrl ? `
-            <div style="text-align: center; margin: 25px 0;">
-              <a href="${paymentUrl}" style="background: ${brandColor}; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Pay Online Now</a>
+          <div style="padding: 25px; background: #f9f9f9; border-radius: 0 0 8px 8px;">
+            <p style="margin: 0 0 15px 0;">G'day ${client.name},</p>
+            <div style="white-space: pre-line;">${customMessage}</div>
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${brandColor};">
+              <p style="margin: 0; font-weight: bold;">${invoiceLabel} Total: ${formattedTotal}</p>
+              ${invoiceWithItems.gstIncluded ? `<p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Includes GST (10%)</p>` : ''}
             </div>
-          ` : ''}
-          <p style="margin: 20px 0 0 0; font-size: 13px; color: #666;">📎 ${invoiceLabel} PDF attached for your records.</p>
-          <p style="margin: 15px 0 0 0;">Cheers,<br>${businessSettings.businessName}</p>
-        </div>
-      </body>
-      </html>
-    ` : createInvoiceEmailHtml(invoiceWithItems, client, businessSettings, paymentUrl).html;
+            ${paymentUrl ? `
+              <div style="text-align: center; margin: 25px 0;">
+                <a href="${paymentUrl}" style="background: ${brandColor}; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Pay Online Now</a>
+              </div>
+            ` : ''}
+            <p style="margin: 20px 0 0 0; font-size: 13px; color: #666;">📎 ${invoiceLabel} PDF attached for your records.</p>
+            <p style="margin: 15px 0 0 0;">Cheers,<br>${businessSettings.businessName}</p>
+          </div>
+        </body>
+        </html>
+      `;
+    } else {
+      // Check for business template with invoice_sent purpose
+      const businessTemplate = await storage.getActiveBusinessTemplateByPurpose(req.userId, 'email', 'invoice_sent');
+      
+      if (businessTemplate) {
+        const mergeData = {
+          client_name: client.name,
+          business_name: businessSettings.businessName,
+          invoice_number: invoiceNumber,
+          invoice_total: formattedTotal,
+          job_title: invoiceWithItems.title || '',
+          job_address: linkedJob?.address || '',
+          due_date: invoiceWithItems.dueDate ? new Date(invoiceWithItems.dueDate).toLocaleDateString('en-AU') : '',
+          payment_url: paymentUrl || '',
+        };
+        
+        const templateContent = replaceMergeFields(businessTemplate.content, mergeData);
+        if (businessTemplate.subject && !customSubject) {
+          subject = replaceMergeFields(businessTemplate.subject, mergeData);
+        }
+        
+        emailHtml = wrapTemplateInHtml(templateContent, subject, businessSettings, client, brandColor);
+      } else {
+        // Fall back to default template
+        emailHtml = createInvoiceEmailHtml(invoiceWithItems, client, businessSettings, paymentUrl).html;
+      }
+    }
     
     // 10. Send email based on user preference (manual=Gmail draft, automatic=SendGrid)
     if (emailSendingMode === 'automatic') {

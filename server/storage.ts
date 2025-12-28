@@ -586,6 +586,7 @@ export interface IStorage {
   getBusinessTemplates(userId: string, family?: string): Promise<BusinessTemplate[]>;
   getBusinessTemplate(id: string, userId: string): Promise<BusinessTemplate | undefined>;
   getActiveBusinessTemplate(userId: string, family: string): Promise<BusinessTemplate | undefined>;
+  getActiveBusinessTemplateByPurpose(userId: string, family: string, purpose: string): Promise<BusinessTemplate | null>;
   createBusinessTemplate(data: InsertBusinessTemplate): Promise<BusinessTemplate>;
   updateBusinessTemplate(id: string, userId: string, data: Partial<InsertBusinessTemplate>): Promise<BusinessTemplate | undefined>;
   deleteBusinessTemplate(id: string, userId: string): Promise<boolean>;
@@ -3834,18 +3835,22 @@ export class PostgresStorage implements IStorage {
   }
 
   async setActiveBusinessTemplate(id: string, userId: string): Promise<void> {
-    // First, get the template to find its family
+    // First, get the template to find its family and purpose
     const template = await this.getBusinessTemplate(id, userId);
     if (!template) {
       throw new Error('Template not found');
     }
 
-    // Deactivate all templates in the same family for this user
+    const purpose = template.purpose || 'general';
+
+    // Deactivate all templates in the same family AND purpose for this user
+    // This allows multiple active templates per family, but only one per purpose
     await db.update(businessTemplates)
       .set({ isActive: false, updatedAt: new Date() })
       .where(and(
         eq(businessTemplates.userId, userId),
-        eq(businessTemplates.family, template.family)
+        eq(businessTemplates.family, template.family),
+        eq(businessTemplates.purpose, purpose)
       ));
 
     // Activate the selected template
@@ -3855,6 +3860,19 @@ export class PostgresStorage implements IStorage {
         eq(businessTemplates.id, id),
         eq(businessTemplates.userId, userId)
       ));
+  }
+
+  async getActiveBusinessTemplateByPurpose(userId: string, family: string, purpose: string): Promise<BusinessTemplate | null> {
+    const [template] = await db.select()
+      .from(businessTemplates)
+      .where(and(
+        eq(businessTemplates.userId, userId),
+        eq(businessTemplates.family, family),
+        eq(businessTemplates.purpose, purpose),
+        eq(businessTemplates.isActive, true)
+      ))
+      .limit(1);
+    return template || null;
   }
 
   async seedDefaultBusinessTemplates(userId: string): Promise<BusinessTemplate[]> {

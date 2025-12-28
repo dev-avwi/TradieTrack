@@ -10003,6 +10003,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/business-templates/by-purpose/:family/:purpose - Get active template for family+purpose
+  app.get("/api/business-templates/by-purpose/:family/:purpose", requireAuth, async (req: any, res) => {
+    try {
+      const { family, purpose } = req.params;
+      // Validate family
+      if (!BUSINESS_TEMPLATE_FAMILIES.includes(family as any)) {
+        return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
+      }
+      const template = await storage.getActiveBusinessTemplateByPurpose(req.userId, family, purpose);
+      if (!template) {
+        return res.status(404).json({ error: 'No active template found for this family and purpose' });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error('Error fetching business template by purpose:', error);
+      res.status(500).json({ error: 'Failed to fetch template' });
+    }
+  });
+
+  // GET /api/business-templates/families - Get all template families with metadata
+  // NOTE: This route MUST be defined BEFORE /:id to avoid "families" matching as an ID
+  app.get("/api/business-templates/families", requireAuth, async (req: any, res) => {
+    try {
+      const families = await storage.getBusinessTemplateFamilies(req.userId);
+      res.json(families);
+    } catch (error) {
+      console.error('Error fetching template families:', error);
+      res.status(500).json({ error: 'Failed to fetch template families' });
+    }
+  });
+
   // GET /api/business-templates/:id - Get single template
   app.get("/api/business-templates/:id", requireAuth, async (req: any, res) => {
     try {
@@ -10020,21 +10051,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/business-templates - Create new template
   app.post("/api/business-templates", requireAuth, async (req: any, res) => {
     try {
+      console.log('[Templates] Creating template with body:', JSON.stringify(req.body, null, 2));
       const validated = insertBusinessTemplateSchema.parse({
         ...req.body,
         userId: req.userId,
       });
+      console.log('[Templates] Validated data:', JSON.stringify(validated, null, 2));
       // Validate family
       if (!BUSINESS_TEMPLATE_FAMILIES.includes(validated.family as any)) {
         return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
       }
       const template = await storage.createBusinessTemplate(validated);
+      console.log('[Templates] Template created successfully:', template.id);
       res.status(201).json(template);
     } catch (error: any) {
+      console.error('[Templates] Error creating template:', error.message, error.stack);
       if (error.name === 'ZodError') {
+        console.error('[Templates] Zod validation errors:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ error: 'Invalid template data', details: error.errors });
       }
-      console.error('Error creating business template:', error);
       res.status(500).json({ error: 'Failed to create template' });
     }
   });
@@ -10097,17 +10132,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error seeding default templates:', error);
       res.status(500).json({ error: 'Failed to seed default templates' });
-    }
-  });
-
-  // GET /api/business-templates/families - Get all template families with metadata
-  app.get("/api/business-templates/families", requireAuth, async (req: any, res) => {
-    try {
-      const families = await storage.getBusinessTemplateFamilies(req.userId);
-      res.json(families);
-    } catch (error) {
-      console.error('Error fetching template families:', error);
-      res.status(500).json({ error: 'Failed to fetch template families' });
     }
   });
 
