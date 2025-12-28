@@ -71,20 +71,26 @@ async function handleStripeEvent(event: any, storage: any) {
               stripePaymentIntentId: session.payment_intent,
             });
 
-            // Create payment receipt record
+            // Create payment receipt record using Stripe-confirmed amount
             try {
-              const receiptNumber = await storage.generateReceiptNumber(userId);
-              await storage.createReceipt({
-                userId,
-                receiptNumber,
-                amount: invoice.total || invoice.amount || 0,
-                paymentMethod: 'stripe',
-                invoiceId,
-                clientId: invoice.clientId,
-                paidAt: new Date(),
-                paymentReference: session.payment_intent as string,
-              });
-              console.log(`✅ Receipt ${receiptNumber} created for invoice ${invoice.number || invoiceId.substring(0, 8).toUpperCase()}`);
+              // Use Stripe's amount_total as authoritative source, fallback to invoice total
+              const confirmedAmount = session.amount_total || invoice.total || 0;
+              if (confirmedAmount > 0) {
+                const receiptNumber = await storage.generateReceiptNumber(userId);
+                await storage.createReceipt({
+                  userId,
+                  receiptNumber,
+                  amount: confirmedAmount,
+                  paymentMethod: 'stripe',
+                  invoiceId,
+                  clientId: invoice.clientId,
+                  paidAt: new Date(),
+                  paymentReference: session.payment_intent as string,
+                });
+                console.log(`✅ Receipt ${receiptNumber} created for invoice ${invoice.number || invoiceId.substring(0, 8).toUpperCase()} - Amount: $${(confirmedAmount / 100).toFixed(2)}`);
+              } else {
+                console.warn(`⚠️ Skipping receipt creation for invoice ${invoiceId} - zero amount`);
+              }
             } catch (receiptError) {
               console.error('Failed to create receipt record:', receiptError);
             }
@@ -332,21 +338,26 @@ async function handleStripeEvent(event: any, storage: any) {
                 depositPaidAt: new Date(),
               } as any);
               
-              // Create deposit receipt record
+              // Create deposit receipt record using Stripe-confirmed amount
               try {
-                const receiptNumber = await storage.generateReceiptNumber(tradieUserId);
-                const depositAmount = paymentIntent.amount || 0; // amount in cents
-                await storage.createReceipt({
-                  userId: tradieUserId,
-                  receiptNumber,
-                  amount: depositAmount,
-                  paymentMethod: 'stripe_connect',
-                  quoteId,
-                  clientId: quote.clientId,
-                  paidAt: new Date(),
-                  paymentReference: paymentIntent.id,
-                });
-                console.log(`✅ Receipt ${receiptNumber} created for quote deposit ${quoteNumber}`);
+                // Use paymentIntent.amount_received as authoritative source
+                const confirmedAmount = paymentIntent.amount_received || paymentIntent.amount || 0;
+                if (confirmedAmount > 0) {
+                  const receiptNumber = await storage.generateReceiptNumber(tradieUserId);
+                  await storage.createReceipt({
+                    userId: tradieUserId,
+                    receiptNumber,
+                    amount: confirmedAmount,
+                    paymentMethod: 'stripe_connect',
+                    quoteId,
+                    clientId: quote.clientId,
+                    paidAt: new Date(),
+                    paymentReference: paymentIntent.id,
+                  });
+                  console.log(`✅ Receipt ${receiptNumber} created for quote deposit ${quoteNumber} - Amount: $${(confirmedAmount / 100).toFixed(2)}`);
+                } else {
+                  console.warn(`⚠️ Skipping receipt creation for quote ${quoteId} deposit - zero amount`);
+                }
               } catch (receiptError) {
                 console.error('Failed to create deposit receipt record:', receiptError);
               }
@@ -386,20 +397,26 @@ async function handleStripeEvent(event: any, storage: any) {
                 stripePaymentIntentId: paymentIntent.id,
               });
               
-              // Create payment receipt record
+              // Create payment receipt record using Stripe-confirmed amount
               try {
-                const receiptNumber = await storage.generateReceiptNumber(tradieUserId);
-                await storage.createReceipt({
-                  userId: tradieUserId,
-                  receiptNumber,
-                  amount: paymentIntent.amount || invoice.total || 0,
-                  paymentMethod: 'stripe_connect',
-                  invoiceId,
-                  clientId: invoice.clientId,
-                  paidAt: new Date(),
-                  paymentReference: paymentIntent.id,
-                });
-                console.log(`✅ Receipt ${receiptNumber} created for invoice ${invoice.number}`);
+                // Use paymentIntent.amount_received as authoritative source
+                const confirmedAmount = paymentIntent.amount_received || paymentIntent.amount || invoice.total || 0;
+                if (confirmedAmount > 0) {
+                  const receiptNumber = await storage.generateReceiptNumber(tradieUserId);
+                  await storage.createReceipt({
+                    userId: tradieUserId,
+                    receiptNumber,
+                    amount: confirmedAmount,
+                    paymentMethod: 'stripe_connect',
+                    invoiceId,
+                    clientId: invoice.clientId,
+                    paidAt: new Date(),
+                    paymentReference: paymentIntent.id,
+                  });
+                  console.log(`✅ Receipt ${receiptNumber} created for invoice ${invoice.number} - Amount: $${(confirmedAmount / 100).toFixed(2)}`);
+                } else {
+                  console.warn(`⚠️ Skipping receipt creation for invoice ${invoiceId} - zero amount`);
+                }
               } catch (receiptError) {
                 console.error('Failed to create receipt record:', receiptError);
               }
