@@ -61,7 +61,10 @@ export default function TermsOfService() {
                 <h2 className="text-xl font-semibold mb-3">4. Subscription and Payments</h2>
                 <p className="text-muted-foreground leading-relaxed mb-3"><strong>Free Plan:</strong></p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-                  <li>Limited to 5 active jobs per month</li>
+                  <li>Unlimited quotes</li>
+                  <li>25 jobs per month</li>
+                  <li>25 invoices per month</li>
+                  <li>50 clients</li>
                   <li>Basic features included at no cost</li>
                 </ul>
                 

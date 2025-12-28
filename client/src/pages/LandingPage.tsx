@@ -742,12 +742,12 @@ export default function LandingPage() {
                 period="forever"
                 description="Perfect for trying out TradieTrack"
                 features={[
-                  "5 jobs per month",
-                  "5 invoices per month",
-                  "10 quotes per month",
-                  "Up to 10 clients",
-                  "50MB photo storage",
-                  "3 document templates"
+                  "Unlimited quotes",
+                  "25 jobs per month",
+                  "25 invoices per month",
+                  "Up to 50 clients",
+                  "100MB photo storage",
+                  "5 document templates"
                 ]}
                 buttonText="Get Started"
                 buttonVariant="outline"

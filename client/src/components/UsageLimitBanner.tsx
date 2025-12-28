@@ -133,6 +133,13 @@ export default function UsageLimitBanner({ variant = 'compact', showUpgrade = tr
         
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <UsageItem
+            icon={FileText}
+            label="Quotes"
+            used={usage.quotes.used}
+            limit={usage.quotes.limit}
+            status={getUsageStatus(usage.quotes.used, usage.quotes.limit)}
+          />
+          <UsageItem
             icon={Briefcase}
             label="Jobs"
             used={usage.jobs.used}
@@ -145,13 +152,6 @@ export default function UsageLimitBanner({ variant = 'compact', showUpgrade = tr
             used={usage.invoices.used}
             limit={usage.invoices.limit}
             status={invoicesStatus}
-          />
-          <UsageItem
-            icon={FileText}
-            label="Quotes"
-            used={usage.quotes.used}
-            limit={usage.quotes.limit}
-            status={getUsageStatus(usage.quotes.used, usage.quotes.limit)}
           />
           <UsageItem
             icon={Users}

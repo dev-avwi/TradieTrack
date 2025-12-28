@@ -688,7 +688,7 @@ export default function OnboardingSetupScreen() {
           </View>
           <View style={styles.checkItem}>
             <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-            <Text style={styles.checkText}>Ready to create jobs, quotes & invoices</Text>
+            <Text style={styles.checkText}>Ready to create quotes, jobs & invoices</Text>
           </View>
           {isTeamMode && teamInvites.length > 0 && (
             <View style={styles.checkItem}>
@@ -696,6 +696,16 @@ export default function OnboardingSetupScreen() {
               <Text style={styles.checkText}>{teamInvites.length} team invite{teamInvites.length > 1 ? 's' : ''} sent</Text>
             </View>
           )}
+        </View>
+        
+        <View style={styles.freePlanCard}>
+          <Text style={styles.freePlanTitle}>Free Plan Includes:</Text>
+          <View style={styles.freePlanList}>
+            <Text style={styles.freePlanItem}>Unlimited quotes</Text>
+            <Text style={styles.freePlanItem}>25 jobs per month</Text>
+            <Text style={styles.freePlanItem}>25 invoices per month</Text>
+            <Text style={styles.freePlanItem}>50 clients</Text>
+          </View>
         </View>
       </View>
 
@@ -1270,6 +1280,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 12,
     alignSelf: 'stretch',
     paddingHorizontal: 24,
+  },
+  freePlanCard: {
+    backgroundColor: colors.muted,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    alignSelf: 'stretch',
+    marginHorizontal: 24,
+  },
+  freePlanTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 8,
+  },
+  freePlanList: {
+    gap: 4,
+  },
+  freePlanItem: {
+    fontSize: 14,
+    color: colors.mutedForeground,
   },
   checkItem: {
     flexDirection: 'row',

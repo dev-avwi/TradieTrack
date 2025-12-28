@@ -315,11 +315,11 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         <ul className="text-sm text-muted-foreground space-y-2 text-left">
           <li className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
-            25 jobs per month
+            Unlimited quotes
           </li>
           <li className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
-            Unlimited quotes
+            25 jobs per month
           </li>
           <li className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
