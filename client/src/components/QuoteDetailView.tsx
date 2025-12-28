@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle, ChevronRight, FolderOpen } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -300,14 +300,26 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
       `}</style>
 
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
+        {/* Logical breadcrumb navigation */}
+        <div className="flex items-center gap-1 text-sm text-muted-foreground mb-4 no-print">
+          <button 
+            onClick={() => setLocation('/documents?tab=quotes')} 
+            className="hover:text-foreground transition-colors flex items-center gap-1"
+            data-testid="breadcrumb-documents"
+          >
+            <FolderOpen className="h-3.5 w-3.5" />
+            Documents
+          </button>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="text-foreground font-medium">{quote.number || `Q-${quote.id?.substring(0,8).toUpperCase()}`}</span>
+        </div>
+
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 no-print">
           <div className="flex items-center gap-4">
-            {onBack && (
-              <Button variant="outline" onClick={onBack} data-testid="button-back">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            )}
+            <Button variant="outline" onClick={onBack || (() => setLocation('/documents?tab=quotes'))} data-testid="button-back">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-muted-foreground" />
               <h1 className="text-xl sm:text-2xl font-bold">Quote Details</h1>

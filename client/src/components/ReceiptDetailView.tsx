@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Download, Mail, FileText, Receipt, Calendar, CreditCard, Hash, Building, User, MapPin, Phone, AtSign, Loader2 } from "lucide-react";
+import { Printer, ArrowLeft, Download, Mail, FileText, Receipt, Calendar, CreditCard, Hash, Building, User, MapPin, Phone, AtSign, Loader2, ChevronRight, FolderOpen } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
@@ -51,6 +52,7 @@ interface JobData {
 
 export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailViewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
+  const [, navigate] = useLocation();
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
 
@@ -265,9 +267,35 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
+      {/* Logical breadcrumb navigation */}
+      <div className="flex items-center gap-1 text-sm text-muted-foreground mb-4 print:hidden">
+        <button 
+          onClick={() => navigate('/documents?tab=receipts')} 
+          className="hover:text-foreground transition-colors flex items-center gap-1"
+          data-testid="breadcrumb-documents"
+        >
+          <FolderOpen className="h-3.5 w-3.5" />
+          Documents
+        </button>
+        {invoice && (
+          <>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <button 
+              onClick={() => navigate(`/invoices/${invoice.id}`)} 
+              className="hover:text-foreground transition-colors"
+              data-testid="breadcrumb-invoice"
+            >
+              Invoice {invoice.number}
+            </button>
+          </>
+        )}
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="text-foreground font-medium">{receipt.receiptNumber}</span>
+      </div>
+
       <div className="flex items-center justify-between mb-6 print:hidden">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back">
+          <Button variant="ghost" size="icon" onClick={onBack || (() => navigate('/documents?tab=receipts'))} data-testid="button-back">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
