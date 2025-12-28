@@ -1,7 +1,7 @@
 import { storage } from "./storage";
 
-// Beta mode - all features are free and unlimited
-export const IS_BETA = true;
+// Beta mode - set to false to enforce freemium limits
+export const IS_BETA = false;
 
 export interface FreemiumLimits {
   jobsPerMonth: number;
@@ -32,14 +32,14 @@ export interface UsageCounts {
   nextResetDate: Date;
 }
 
-// Define subscription tier limits
+// Define subscription tier limits - matches TIER_LIMITS in shared/schema.ts
 export const SUBSCRIPTION_LIMITS: Record<string, FreemiumLimits> = {
   free: {
-    jobsPerMonth: 5,
-    invoicesPerMonth: 5,
-    quotesPerMonth: 10,
-    maxClients: 10,
-    maxTemplates: 3,
+    jobsPerMonth: 25,
+    invoicesPerMonth: 25,
+    quotesPerMonth: -1, // unlimited quotes - key sales tool
+    maxClients: 50,
+    maxTemplates: 5,
     canUploadLogo: false,
     canCustomizeBranding: false,
     canAddTeamMembers: false,

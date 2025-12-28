@@ -18,14 +18,25 @@ export const session = pgTable(
 // Subscription tier limits
 export const TIER_LIMITS = {
   free: {
-    jobsPerMonth: 5,
-    invoicesPerMonth: 5,
-    quotesPerMonth: 10,
-    clients: 10,
+    jobsPerMonth: 25,
+    invoicesPerMonth: 25,
+    quotesPerMonth: -1, // unlimited quotes - key sales tool
+    clients: 50,
     teamMembers: 0,
-    photoStorage: 50, // MB
-    templates: 3,
-    features: ['basic_jobs', 'basic_invoices', 'basic_quotes'],
+    photoStorage: 100, // MB
+    templates: 5,
+    features: ['basic_jobs', 'basic_invoices', 'unlimited_quotes', 'email_send'],
+    restrictions: [
+      'no_ai_assistant',
+      'no_team_members', 
+      'no_recurring_invoices',
+      'no_sms',
+      'no_tap_to_pay',
+      'no_gps_tracking',
+      'no_custom_branding',
+      'no_xero_myob',
+      'no_reports',
+    ],
   },
   pro: {
     jobsPerMonth: -1, // unlimited

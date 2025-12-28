@@ -1328,7 +1328,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/subscription/usage", requireAuth, async (req: any, res) => {
     try {
       const usageInfo = await FreemiumService.getFullUsageInfo(req.userId);
-      res.json(usageInfo);
+      const user = await storage.getUser(req.userId);
+      res.json({
+        ...usageInfo,
+        subscriptionTier: user?.subscriptionTier || 'free',
+      });
+    } catch (error) {
+      console.error("Error fetching usage info:", error);
+      res.status(500).json({ error: "Failed to fetch usage information" });
+    }
+  });
+
+  // Simple usage endpoint for dashboard banners
+  app.get("/api/usage", requireAuth, async (req: any, res) => {
+    try {
+      const usageInfo = await FreemiumService.getFullUsageInfo(req.userId);
+      const user = await storage.getUser(req.userId);
+      res.json({
+        ...usageInfo,
+        subscriptionTier: user?.subscriptionTier || 'free',
+      });
     } catch (error) {
       console.error("Error fetching usage info:", error);
       res.status(500).json({ error: "Failed to fetch usage information" });

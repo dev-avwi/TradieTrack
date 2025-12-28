@@ -4,6 +4,7 @@ import { queryClient, clearSessionToken, getSessionToken } from "./lib/queryClie
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { WifiOff } from "lucide-react";
 import AuthFlow from "@/components/AuthFlow";
+import SimpleOnboarding from "@/components/SimpleOnboarding";
 import OnboardingWizard, { type OnboardingData } from "@/components/OnboardingWizard";
 import { useCompleteOnboarding } from "@/hooks/useCompleteOnboarding";
 import { Toaster } from "@/components/ui/toaster";
@@ -817,6 +818,16 @@ function AppLayout() {
     }
   };
 
+  const handleSimpleOnboardingComplete = async () => {
+    // SimpleOnboarding already saves business settings via its own API call
+    // Just invalidate queries to refresh the app state
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/business-settings"] }),
+    ]);
+    handleLoginSuccess();
+  };
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { 
@@ -904,10 +915,10 @@ function AppLayout() {
   }
 
   if (userCheck && businessSettings === null && !isTeamMember && !userCheck.isPlatformAdmin) {
-    // User exists but no business settings AND not a team member AND not a platform admin - show onboarding wizard
+    // User exists but no business settings AND not a team member AND not a platform admin - show simple onboarding
     // Staff users (team members) skip onboarding - they use their employer's business settings
     // Platform admins don't need business settings - they have a separate admin interface
-    return <OnboardingWizard onComplete={handleOnboardingComplete} onSignOut={handleLogout} />;
+    return <SimpleOnboarding onComplete={handleSimpleOnboardingComplete} onSkip={handleSimpleOnboardingComplete} />;
   }
 
   // If authenticated, show main app below (existing code continues...)
