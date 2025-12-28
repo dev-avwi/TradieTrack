@@ -50,6 +50,9 @@ import {
   insertSmsTemplateSchema,
   // Business Templates schema
   insertBusinessTemplateSchema,
+  // Team Presence & Activity Feed schemas
+  insertTeamPresenceSchema,
+  insertActivityFeedSchema,
   updateBusinessTemplateSchema,
   BUSINESS_TEMPLATE_FAMILIES,
   isValidPurposeForFamily,
@@ -18611,6 +18614,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error deleting account:', error);
       res.status(500).json({ error: error.message || 'Failed to delete account' });
+    }
+  });
+
+  // ============================================
+  // TEAM PRESENCE ROUTES
+  // ============================================
+
+  // Get all team member presence for current user's business
+  app.get("/api/team/presence", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      
+      // Get team membership to find business owner
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = teamMembership?.ownerId || userId;
+      
+      // Get all presence records for this business
+      const presenceRecords = await storage.getTeamPresence(businessOwnerId);
+      
+      // Enhance with user info
+      const presenceWithUserInfo = await Promise.all(
+        presenceRecords.map(async (presence) => {
+          const user = await storage.getUser(presence.userId);
+          return {
+            ...presence,
+            user: user ? {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              profileImageUrl: user.profileImageUrl,
+              themeColor: user.themeColor,
+            } : null,
+          };
+        })
+      );
+      
+      res.json(presenceWithUserInfo);
+    } catch (error: any) {
+      console.error('Error getting team presence:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update current user's presence status
+  app.patch("/api/team/presence", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { status, statusMessage, currentJobId, lat, lng } = req.body;
+      
+      // Validate status
+      const validStatuses = ['online', 'offline', 'busy', 'on_job', 'break'];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json({ error: 'Invalid status. Must be one of: ' + validStatuses.join(', ') });
+      }
+      
+      // Get team membership to find business owner
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = teamMembership?.ownerId || userId;
+      
+      const updateData: any = {};
+      if (status) updateData.status = status;
+      if (statusMessage !== undefined) updateData.statusMessage = statusMessage;
+      if (currentJobId !== undefined) updateData.currentJobId = currentJobId;
+      if (lat !== undefined) updateData.lastLocationLat = lat;
+      if (lng !== undefined) updateData.lastLocationLng = lng;
+      if (lat !== undefined || lng !== undefined) {
+        updateData.lastLocationUpdatedAt = new Date();
+      }
+      
+      const presence = await storage.updatePresence(userId, businessOwnerId, updateData);
+      res.json(presence);
+    } catch (error: any) {
+      console.error('Error updating presence:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Heartbeat to keep user online
+  app.post("/api/team/presence/heartbeat", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { lat, lng } = req.body;
+      
+      // Get team membership to find business owner
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = teamMembership?.ownerId || userId;
+      
+      const updateData: any = {
+        status: 'online',
+      };
+      
+      if (lat !== undefined) updateData.lastLocationLat = lat;
+      if (lng !== undefined) updateData.lastLocationLng = lng;
+      if (lat !== undefined || lng !== undefined) {
+        updateData.lastLocationUpdatedAt = new Date();
+      }
+      
+      const presence = await storage.updatePresence(userId, businessOwnerId, updateData);
+      res.json({ success: true, lastSeenAt: presence.lastSeenAt });
+    } catch (error: any) {
+      console.error('Error updating heartbeat:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // ACTIVITY FEED ROUTES
+  // ============================================
+
+  // Get recent activity for the business
+  app.get("/api/activity-feed", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const beforeStr = req.query.before as string;
+      const before = beforeStr ? new Date(beforeStr) : undefined;
+      
+      // Get team membership to find business owner
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = teamMembership?.ownerId || userId;
+      
+      const activities = await storage.getActivityFeed(businessOwnerId, limit, before);
+      res.json(activities);
+    } catch (error: any) {
+      console.error('Error getting activity feed:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a new activity item (internal use)
+  app.post("/api/activity-feed", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { activityType, entityType, entityId, entityTitle, description, metadata, isImportant } = req.body;
+      
+      if (!activityType) {
+        return res.status(400).json({ error: 'activityType is required' });
+      }
+      
+      // Get user info for actor name
+      const user = await storage.getUser(userId);
+      const actorName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown User';
+      
+      // Get team membership to find business owner
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = teamMembership?.ownerId || userId;
+      
+      const activity = await storage.createActivity({
+        businessOwnerId,
+        actorUserId: userId,
+        actorName,
+        activityType,
+        entityType: entityType || null,
+        entityId: entityId || null,
+        entityTitle: entityTitle || null,
+        description: description || null,
+        metadata: metadata || null,
+        isImportant: isImportant || false,
+      });
+      
+      res.status(201).json(activity);
+    } catch (error: any) {
+      console.error('Error creating activity:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 

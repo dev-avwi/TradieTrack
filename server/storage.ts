@@ -184,6 +184,12 @@ import {
   businessTemplates,
   type BusinessTemplate,
   type InsertBusinessTemplate,
+  teamPresence,
+  type TeamPresence,
+  type InsertTeamPresence,
+  activityFeed,
+  type ActivityFeed,
+  type InsertActivityFeed,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -596,6 +602,16 @@ export interface IStorage {
 
   // Account Deletion (Apple App Store Compliance)
   deleteUserAccount(userId: string): Promise<{ success: boolean; deletedCounts: Record<string, number> }>;
+
+  // Team Presence
+  getTeamPresence(businessOwnerId: string): Promise<TeamPresence[]>;
+  getPresenceByUserId(userId: string): Promise<TeamPresence | undefined>;
+  updatePresence(userId: string, businessOwnerId: string, data: Partial<InsertTeamPresence>): Promise<TeamPresence>;
+  markOffline(userId: string): Promise<void>;
+
+  // Activity Feed
+  getActivityFeed(businessOwnerId: string, limit?: number, before?: Date): Promise<ActivityFeed[]>;
+  createActivity(activity: InsertActivityFeed): Promise<ActivityFeed>;
 }
 
 // Initialize database connection
@@ -4433,6 +4449,103 @@ Thank you for your prompt attention to this matter.`,
       console.error('Error deleting user account:', error);
       return { success: false, deletedCounts };
     }
+  }
+
+  // Team Presence
+  async getTeamPresence(businessOwnerId: string): Promise<TeamPresence[]> {
+    const result = await db
+      .select()
+      .from(teamPresence)
+      .where(eq(teamPresence.businessOwnerId, businessOwnerId))
+      .orderBy(desc(teamPresence.lastSeenAt));
+    return result;
+  }
+
+  async getPresenceByUserId(userId: string): Promise<TeamPresence | undefined> {
+    const result = await db
+      .select()
+      .from(teamPresence)
+      .where(eq(teamPresence.userId, userId))
+      .limit(1);
+    return result[0];
+  }
+
+  async updatePresence(userId: string, businessOwnerId: string, data: Partial<InsertTeamPresence>): Promise<TeamPresence> {
+    const existing = await this.getPresenceByUserId(userId);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(teamPresence)
+        .set({
+          ...data,
+          lastSeenAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(teamPresence.userId, userId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(teamPresence)
+        .values({
+          id: randomUUID(),
+          userId,
+          businessOwnerId,
+          status: data.status || 'online',
+          statusMessage: data.statusMessage,
+          currentJobId: data.currentJobId,
+          lastSeenAt: new Date(),
+          lastLocationLat: data.lastLocationLat,
+          lastLocationLng: data.lastLocationLng,
+          lastLocationUpdatedAt: data.lastLocationLat && data.lastLocationLng ? new Date() : null,
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  async markOffline(userId: string): Promise<void> {
+    await db
+      .update(teamPresence)
+      .set({
+        status: 'offline',
+        updatedAt: new Date(),
+      })
+      .where(eq(teamPresence.userId, userId));
+  }
+
+  // Activity Feed
+  async getActivityFeed(businessOwnerId: string, limit: number = 50, before?: Date): Promise<ActivityFeed[]> {
+    let query = db
+      .select()
+      .from(activityFeed)
+      .where(eq(activityFeed.businessOwnerId, businessOwnerId));
+    
+    if (before) {
+      query = db
+        .select()
+        .from(activityFeed)
+        .where(and(
+          eq(activityFeed.businessOwnerId, businessOwnerId),
+          lt(activityFeed.createdAt, before)
+        ));
+    }
+    
+    const result = await query
+      .orderBy(desc(activityFeed.createdAt))
+      .limit(limit);
+    return result;
+  }
+
+  async createActivity(activity: InsertActivityFeed): Promise<ActivityFeed> {
+    const [created] = await db
+      .insert(activityFeed)
+      .values({
+        id: randomUUID(),
+        ...activity,
+      })
+      .returning();
+    return created;
   }
 }
 
