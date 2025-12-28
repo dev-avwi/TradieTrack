@@ -90,6 +90,21 @@ interface Job {
   status: string;
 }
 
+interface Receipt {
+  id: string;
+  receiptNumber: string;
+  amount: string;
+  gstAmount?: string | null;
+  paymentMethod: string;
+  paymentReference?: string | null;
+  paidAt: string | null;
+  clientId?: string | null;
+  invoiceId?: string | null;
+  jobId?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
 export default function CollectPayment() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -142,6 +157,10 @@ export default function CollectPayment() {
 
   const { data: jobs } = useQuery<Job[]>({
     queryKey: ['/api/jobs'],
+  });
+
+  const { data: receipts } = useQuery<Receipt[]>({
+    queryKey: ['/api/receipts'],
   });
 
   const unpaidInvoices = invoices?.filter(inv => inv.status !== 'paid') || [];
@@ -750,11 +769,86 @@ export default function CollectPayment() {
               </div>
             )}
 
+            {/* Receipts section */}
+            {receipts && receipts.length > 0 && (
+              <div>
+                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-muted-foreground" />
+                  Receipts ({receipts.length})
+                </h2>
+                <div className="grid gap-3">
+                  {receipts.slice(0, 10).map((receipt) => (
+                    <Card 
+                      key={receipt.id} 
+                      className="cursor-pointer hover-elevate"
+                      onClick={() => navigate(`/receipts/${receipt.id}`)}
+                      data-testid={`card-receipt-${receipt.id}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-bold text-lg">${parseFloat(receipt.amount).toFixed(2)}</span>
+                              <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" />Paid</Badge>
+                            </div>
+                            <p className="text-sm font-medium">{receipt.receiptNumber}</p>
+                            
+                            {/* Linked items */}
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {receipt.clientId && (
+                                <Badge variant="outline">
+                                  <Building2 className="h-3 w-3 mr-1" />
+                                  {getClientName(receipt.clientId)}
+                                </Badge>
+                              )}
+                              {receipt.invoiceId && (
+                                <Badge 
+                                  variant="outline" 
+                                  className="cursor-pointer hover:bg-accent"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/invoices/${receipt.invoiceId}`);
+                                  }}
+                                >
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  {getInvoiceNumber(receipt.invoiceId)}
+                                </Badge>
+                              )}
+                              {receipt.jobId && (
+                                <Badge 
+                                  variant="outline" 
+                                  className="cursor-pointer hover:bg-accent"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/jobs/${receipt.jobId}`);
+                                  }}
+                                >
+                                  <Briefcase className="h-3 w-3 mr-1" />
+                                  {getJobTitle(receipt.jobId)}
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {receipt.paidAt && (
+                              <p className="text-xs text-green-600 mt-2">
+                                Paid {format(new Date(receipt.paidAt), 'dd MMM yyyy, h:mm a')}
+                              </p>
+                            )}
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {completedRequests.length > 0 && (
               <div>
                 <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                   <CheckCircle className="h-5 w-5 text-muted-foreground" />
-                  Completed ({completedRequests.length})
+                  Completed Requests ({completedRequests.length})
                 </h2>
                 <div className="grid gap-3">
                   {completedRequests.slice(0, 10).map((request) => (

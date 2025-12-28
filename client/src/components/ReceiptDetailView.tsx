@@ -322,16 +322,8 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
         </div>
       </div>
 
-      <Card className="overflow-hidden bg-white dark:bg-card relative print:shadow-none">
-        {/* Professional PAID stamp watermark */}
-        <div 
-          className="absolute top-20 right-8 px-6 py-2 border-4 border-green-500 text-green-500 text-2xl font-bold uppercase tracking-widest rotate-[-8deg] opacity-80 z-10 pointer-events-none print:block"
-          style={{ borderRadius: '4px' }}
-        >
-          PAID
-        </div>
-        
-        <CardContent className="p-6 md:p-8">
+      <Card className="overflow-hidden bg-white relative print:shadow-none" style={{ backgroundColor: 'white' }}>
+        <CardContent className="p-6 md:p-8" style={{ backgroundColor: 'white' }}>
           <div className="flex justify-between items-start mb-8">
             <div>
               {businessSettings?.logoUrl && (
@@ -399,9 +391,9 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
             </div>
           </div>
 
-          <div className="border-2 border-green-500 rounded-lg p-5 mb-6 bg-gradient-to-br from-green-50/50 to-green-100/20 dark:from-green-950/20 dark:to-green-900/10">
+          <div className="border-2 border-green-500 rounded-lg p-5 mb-6" style={{ backgroundColor: '#f0fdf4' }}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-green-700">
                 Payment Received
               </h3>
               <span className="px-3 py-1 bg-green-500 text-white rounded-full text-xs font-semibold uppercase">
@@ -411,22 +403,22 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
             
             {gst > 0 && (
               <>
-                <div className="flex justify-between py-2 border-b border-green-200 dark:border-green-800">
-                  <span className="text-sm text-green-700 dark:text-green-400">Subtotal (excl. GST)</span>
-                  <span className="font-medium text-green-700 dark:text-green-400">{formatCurrency(subtotal)}</span>
+                <div className="flex justify-between py-2 border-b border-green-200">
+                  <span className="text-sm text-green-700">Subtotal (excl. GST)</span>
+                  <span className="font-medium text-green-700">{formatCurrency(subtotal)}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-green-200 dark:border-green-800">
-                  <span className="text-sm text-green-700 dark:text-green-400">GST (10%)</span>
-                  <span className="font-medium text-green-700 dark:text-green-400">{formatCurrency(gst)}</span>
+                <div className="flex justify-between py-2 border-b border-green-200">
+                  <span className="text-sm text-green-700">GST (10%)</span>
+                  <span className="font-medium text-green-700">{formatCurrency(gst)}</span>
                 </div>
               </>
             )}
             
             <div className="flex justify-between pt-3 mt-2 border-t-2 border-green-500">
-              <span className="text-lg font-bold text-green-700 dark:text-green-400">
+              <span className="text-lg font-bold text-green-700">
                 Amount Paid {gst > 0 ? '(incl. GST)' : ''}
               </span>
-              <span className="text-lg font-bold text-green-700 dark:text-green-400">
+              <span className="text-lg font-bold text-green-700">
                 {formatCurrency(receipt.amount)}
               </span>
             </div>

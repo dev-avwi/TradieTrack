@@ -2335,22 +2335,6 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
       line-height: 1.4 !important;
     }
     
-    /* Professional PAID watermark - smaller */
-    .paid-watermark {
-      position: absolute;
-      top: 60px;
-      right: 30px;
-      padding: 6px 16px;
-      border: 3px solid #22c55e;
-      color: #22c55e;
-      font-size: 18px;
-      font-weight: ${template.headingWeight};
-      text-transform: uppercase;
-      transform: rotate(-8deg);
-      opacity: 0.9;
-      letter-spacing: 2px;
-      border-radius: 4px;
-    }
     
     /* Compact payment summary box */
     .payment-summary {
@@ -2574,8 +2558,6 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
 </head>
 <body>
   <div class="document">
-    <div class="paid-watermark">PAID</div>
-    
     <div class="header">
       <div class="company-info">
         ${business.logoUrl ? `<img src="${business.logoUrl}" alt="${business.businessName}" class="logo" />` : ''}
