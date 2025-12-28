@@ -21,6 +21,8 @@ Key architectural decisions and features include:
 -   **Email Automation**: SendGrid integration for customizable invoice/quote emails with PDF attachments and AI suggestions.
 -   **PWA Support**: Offline capabilities via web manifest and service worker.
 -   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and role-based access. Includes two-way Twilio SMS integration with AI analysis, auto-creation of conversations for unknown numbers, and quick reply templates.
+-   **Life360-Style Team Hub** (`/team-dashboard`): Interconnected team experience with 3-panel layout showing Team Status Board (presence dots, member status), Activity Feed timeline (job/quote/invoice events), and Team Map (live locations). Includes status selector (Online/Busy/On Job/Break/Offline) and 30-second heartbeat for real-time presence tracking.
+-   **Microsoft Teams-Style Chat Hub** (`/chat`): Unified conversation inbox combining Team Chat, Customer SMS, Job Threads, and Direct Messages. Features 3-column layout with filter tabs (All/Team/Customers/Jobs), type-specific icons/colors, and context panel for customer/job details.
 -   **Live360-Style Interactive Map**: Displays job pins and real-time location tracking for team members with geofence alerts (Owner/Manager only).
 -   **Role-Based Access Control (RBAC)**: Granular permissions (OWNER, ADMIN, MANAGER, SUPERVISOR, STAFF) enforced by middleware.
 -   **Team Management Hub**: Interface for owners/managers to manage team members, assignments, and permissions.
