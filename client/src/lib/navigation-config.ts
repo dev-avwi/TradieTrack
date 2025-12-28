@@ -54,6 +54,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "bg-primary/10",
     showInBottomNav: true,
     showInSidebar: true,
+    showInMore: false,
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
   },
   {
@@ -65,6 +66,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "bg-primary/10",
     showInBottomNav: true,
     showInSidebar: true,
+    showInMore: false,
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
   },
   {
@@ -87,7 +89,7 @@ export const mainMenuItems: NavItem[] = [
     color: "text-primary",
     bgColor: "bg-primary/10",
     hideForStaff: true,
-    showInSidebar: false,
+    showInSidebar: true,
     showInBottomNav: false,
     showInMore: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
@@ -158,6 +160,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "bg-primary/10",
     showInBottomNav: true,
     showInSidebar: true,
+    showInMore: false,
     showBadge: true,
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
   },
@@ -319,9 +322,12 @@ export function getSidebarSettingsItems(options: FilterOptions): NavItem[] {
 export function getMorePageItems(options: FilterOptions): NavItem[] {
   const allItems = [...mainMenuItems, ...settingsMenuItems];
   const filtered = filterNavItems(allItems, options);
-  // Show ALL items that have showInMore OR showInSidebar
-  // This ensures More page has everything the sidebar has plus extras
-  return filtered.filter(item => item.showInMore || item.showInSidebar);
+  // Show items where showInMore is true (or undefined and showInSidebar is true)
+  // Exclude items where showInMore is explicitly false (bottom nav items)
+  return filtered.filter(item => {
+    if (item.showInMore === false) return false;
+    return item.showInMore || item.showInSidebar;
+  });
 }
 
 export function getMorePagesPattern(): RegExp {
