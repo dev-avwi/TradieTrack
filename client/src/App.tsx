@@ -74,6 +74,7 @@ import LandingPage from "@/pages/LandingPage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
 import TemplatesHub from "@/pages/TemplatesHub";
 import DocumentsHub from "@/pages/DocumentsHub";
+import CommunicationsHub from "@/pages/CommunicationsHub";
 
 // Types for job completion
 interface JobPhoto {
@@ -482,6 +483,10 @@ function Router({
       
       <Route path="/templates" component={() => (
         <TemplatesHub />
+      )} />
+      
+      <Route path="/communications" component={() => (
+        <CommunicationsHub />
       )} />
       
       <Route path="/collect-payment" component={() => (

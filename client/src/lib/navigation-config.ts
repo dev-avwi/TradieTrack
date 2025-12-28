@@ -20,6 +20,7 @@ import {
   Wallet,
   ClipboardList,
   Files,
+  Send,
   type LucideIcon
 } from "lucide-react";
 
@@ -204,6 +205,18 @@ export const mainMenuItems: NavItem[] = [
     url: "/templates",
     icon: Files,
     description: "Manage email, SMS, and document templates",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
+    hideForStaff: true,
+    showInSidebar: true,
+    showInMore: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
+    title: "Communications",
+    url: "/communications",
+    icon: Send,
+    description: "View sent emails and SMS messages",
     color: "text-primary",
     bgColor: "bg-primary/10",
     hideForStaff: true,
