@@ -322,7 +322,15 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
         </div>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden bg-white dark:bg-card relative print:shadow-none">
+        {/* Professional PAID stamp watermark */}
+        <div 
+          className="absolute top-20 right-8 px-6 py-2 border-4 border-green-500 text-green-500 text-2xl font-bold uppercase tracking-widest rotate-[-8deg] opacity-80 z-10 pointer-events-none print:block"
+          style={{ borderRadius: '4px' }}
+        >
+          PAID
+        </div>
+        
         <CardContent className="p-6 md:p-8">
           <div className="flex justify-between items-start mb-8">
             <div>
