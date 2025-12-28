@@ -71,6 +71,24 @@ async function handleStripeEvent(event: any, storage: any) {
               stripePaymentIntentId: session.payment_intent,
             });
 
+            // Create payment receipt record
+            try {
+              const receiptNumber = await storage.generateReceiptNumber(userId);
+              await storage.createReceipt({
+                userId,
+                receiptNumber,
+                amount: invoice.total || invoice.amount || 0,
+                paymentMethod: 'stripe',
+                invoiceId,
+                clientId: invoice.clientId,
+                paidAt: new Date(),
+                paymentReference: session.payment_intent as string,
+              });
+              console.log(`✅ Receipt ${receiptNumber} created for invoice ${invoice.number || invoiceId.substring(0, 8).toUpperCase()}`);
+            } catch (receiptError) {
+              console.error('Failed to create receipt record:', receiptError);
+            }
+
             // Update linked job status if applicable (best effort, don't fail if this errors)
             if (invoice.jobId) {
               try {
@@ -314,6 +332,25 @@ async function handleStripeEvent(event: any, storage: any) {
                 depositPaidAt: new Date(),
               } as any);
               
+              // Create deposit receipt record
+              try {
+                const receiptNumber = await storage.generateReceiptNumber(tradieUserId);
+                const depositAmount = paymentIntent.amount || 0; // amount in cents
+                await storage.createReceipt({
+                  userId: tradieUserId,
+                  receiptNumber,
+                  amount: depositAmount,
+                  paymentMethod: 'stripe_connect',
+                  quoteId,
+                  clientId: quote.clientId,
+                  paidAt: new Date(),
+                  paymentReference: paymentIntent.id,
+                });
+                console.log(`✅ Receipt ${receiptNumber} created for quote deposit ${quoteNumber}`);
+              } catch (receiptError) {
+                console.error('Failed to create deposit receipt record:', receiptError);
+              }
+              
               // Notify the tradie
               await createNotification(storage, {
                 userId: tradieUserId,
@@ -348,6 +385,24 @@ async function handleStripeEvent(event: any, storage: any) {
                 paymentMethod: 'stripe_connect',
                 stripePaymentIntentId: paymentIntent.id,
               });
+              
+              // Create payment receipt record
+              try {
+                const receiptNumber = await storage.generateReceiptNumber(tradieUserId);
+                await storage.createReceipt({
+                  userId: tradieUserId,
+                  receiptNumber,
+                  amount: paymentIntent.amount || invoice.total || 0,
+                  paymentMethod: 'stripe_connect',
+                  invoiceId,
+                  clientId: invoice.clientId,
+                  paidAt: new Date(),
+                  paymentReference: paymentIntent.id,
+                });
+                console.log(`✅ Receipt ${receiptNumber} created for invoice ${invoice.number}`);
+              } catch (receiptError) {
+                console.error('Failed to create receipt record:', receiptError);
+              }
               
               // Notify the tradie
               await createNotification(storage, {
