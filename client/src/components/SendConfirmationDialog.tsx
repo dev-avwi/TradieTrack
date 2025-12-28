@@ -57,9 +57,10 @@ export function SendConfirmationDialog({
   const typeLabel = type === "quote" ? "Quote" : "Invoice";
   const actionLabel = type === "quote" ? "view and accept" : "view and pay";
   
-  const shortLink = publicUrl.length > 60 
-    ? publicUrl.substring(0, 45) + "..." 
-    : publicUrl;
+  const hasPublicUrl = Boolean(publicUrl && publicUrl.length > 0);
+  const shortLink = hasPublicUrl 
+    ? (publicUrl.length > 60 ? publicUrl.substring(0, 45) + "..." : publicUrl)
+    : '';
 
   const generateEmailSubject = () => {
     return type === "quote"
@@ -68,13 +69,17 @@ export function SendConfirmationDialog({
   };
 
   const generateEmailBody = () => {
+    const linkSection = hasPublicUrl 
+      ? `\n\nHave a look when you get a chance${type === 'quote' ? ' and let me know if you want any changes' : ''}:\n${publicUrl}`
+      : '';
+    
     if (type === "quote") {
       return `G'day ${firstName},
 
-I've put together your quote (${documentNumber}) for ${formatCurrency(amount)}.
+I've put together your quote (${documentNumber}) for ${formatCurrency(amount)}.${hasPublicUrl ? `
 
 Have a look when you get a chance and let me know if you want any changes:
-${publicUrl}
+${publicUrl}` : ' I\'ve attached the PDF for your review.'}
 
 Give us a bell if you've got any questions.
 
@@ -82,10 +87,10 @@ Cheers${businessName ? `,\n${businessName}` : ''}`;
     } else {
       return `G'day ${firstName},
 
-Here's your invoice (${documentNumber}) for ${formatCurrency(amount)}.
+Here's your invoice (${documentNumber}) for ${formatCurrency(amount)}.${hasPublicUrl ? `
 
 You can view and pay it here:
-${publicUrl}
+${publicUrl}` : ' I\'ve attached the PDF with payment details.'}
 
 Thanks for the work - much appreciated!
 
@@ -186,28 +191,30 @@ Cheers${businessName ? `,\n${businessName}` : ''}`;
 
           {/* Actions Row */}
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCopyLink}
-              className="flex-1"
-              data-testid="button-copy-link"
-            >
-              {linkCopied ? (
-                <>
-                  <Check className="h-4 w-4 mr-2 text-green-600" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy Link
-                </>
-              )}
-            </Button>
+            {hasPublicUrl && (
+              <Button
+                variant="outline"
+                onClick={handleCopyLink}
+                className="flex-1"
+                data-testid="button-copy-link"
+              >
+                {linkCopied ? (
+                  <>
+                    <Check className="h-4 w-4 mr-2 text-green-600" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Link
+                  </>
+                )}
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={handleDownloadPdf}
-              className="flex-1"
+              className={hasPublicUrl ? "flex-1" : "w-full"}
               data-testid="button-download-pdf"
             >
               <Download className="h-4 w-4 mr-2" />
@@ -215,7 +222,9 @@ Cheers${businessName ? `,\n${businessName}` : ''}`;
             </Button>
           </div>
           <p className="text-xs text-muted-foreground text-center">
-            Your client can {actionLabel} using the link. Download PDF to attach to email.
+            {hasPublicUrl 
+              ? `Your client can ${actionLabel} using the link. Download PDF to attach to email.`
+              : 'Download the PDF to email directly to your client.'}
           </p>
         </div>
 

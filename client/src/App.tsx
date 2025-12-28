@@ -73,6 +73,7 @@ import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
 import LandingPage from "@/pages/LandingPage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
 import TemplatesHub from "@/pages/TemplatesHub";
+import DocumentsHub from "@/pages/DocumentsHub";
 
 // Types for job completion
 interface JobPhoto {
@@ -308,17 +309,7 @@ function Router({
         <Redirect to="/work" />
       </Route>
       
-      <Route path="/clients" component={() => (
-        <ClientsList 
-          onCreateClient={() => onNavigate('/clients/new')}
-          onViewClient={(id) => onNavigate(`/clients/${id}`)}
-          onCreateJobForClient={(id) => onNavigate(`/jobs/new?clientId=${id}`)}
-          onCallClient={(phone) => window.open(`tel:${phone}`)}
-          onEmailClient={(email) => window.open(`mailto:${email}`)}
-          onSmsClient={(clientId, phone) => onNavigate(`/chat?smsClientId=${clientId}&phone=${encodeURIComponent(phone)}`)}
-        />
-      )} />
-      
+      {/* IMPORTANT: /clients/new must come BEFORE /clients to prevent list matching */}
       <Route path="/clients/new" component={() => (
         <ClientForm 
           onSubmit={(clientId) => {
@@ -345,13 +336,22 @@ function Router({
         />
       )} />
       
-      <Route path="/quotes" component={() => (
-        <QuotesList 
-          onCreateQuote={() => onNavigate('/quotes/new')}
-          onViewQuote={(id) => onNavigate(`/quotes/${id}`)}
+      <Route path="/clients" component={() => (
+        <ClientsList 
+          onCreateClient={() => onNavigate('/clients/new')}
+          onViewClient={(id) => onNavigate(`/clients/${id}`)}
+          onCreateJobForClient={(id) => onNavigate(`/jobs/new?clientId=${id}`)}
+          onCallClient={(phone) => window.open(`tel:${phone}`)}
+          onEmailClient={(email) => window.open(`mailto:${email}`)}
+          onSmsClient={(clientId, phone) => onNavigate(`/chat?smsClientId=${clientId}&phone=${encodeURIComponent(phone)}`)}
         />
       )} />
       
+      <Route path="/documents" component={() => (
+        <DocumentsHub onNavigate={onNavigate} />
+      )} />
+      
+      {/* IMPORTANT: /quotes/new must come BEFORE /quotes redirect to prevent redirect from matching */}
       <Route path="/quotes/new" component={() => (
         <LiveQuoteEditor 
           onSave={(quoteId) => {
@@ -366,13 +366,12 @@ function Router({
         <QuoteDetailView quoteId={params.id} />
       )} />
       
-      <Route path="/invoices" component={() => (
-        <InvoicesList 
-          onCreateInvoice={() => onNavigate('/invoices/new')}
-          onViewInvoice={(id) => onNavigate(`/invoices/${id}`)}
-        />
-      )} />
+      {/* Redirect /quotes to Documents Hub after more specific routes */}
+      <Route path="/quotes">
+        <Redirect to="/documents?tab=quotes" />
+      </Route>
       
+      {/* IMPORTANT: /invoices/new must come BEFORE /invoices redirect to prevent redirect from matching */}
       <Route path="/invoices/new" component={() => (
         <LiveInvoiceEditor 
           onSave={(invoiceId) => {
@@ -386,6 +385,11 @@ function Router({
       <Route path="/invoices/:id" component={({ params }: { params: { id: string } }) => (
         <InvoiceDetailView invoiceId={params.id} />
       )} />
+      
+      {/* Redirect /invoices to Documents Hub after more specific routes */}
+      <Route path="/invoices">
+        <Redirect to="/documents?tab=invoices" />
+      </Route>
       
       <Route path="/receipts/:id" component={({ params }: { params: { id: string } }) => (
         <ReceiptDetailView receiptId={params.id} onBack={() => window.history.back()} />

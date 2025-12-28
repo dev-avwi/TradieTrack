@@ -61,6 +61,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/clients/new', label: 'New Client', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   { path: '/clients/:id', label: 'Client Details', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
   
+  // Documents Hub - unified view for quotes, invoices, and receipts
+  { path: '/documents', label: 'Documents', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  
   // Quotes - not for staff
   { path: '/quotes', label: 'Quotes', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   { path: '/quotes/new', label: 'New Quote', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
@@ -72,6 +75,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/invoices/new', label: 'New Invoice', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   { path: '/invoices/:id', label: 'Invoice Details', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   { path: '/invoice-editor/:id', label: 'Invoice Editor', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  
+  // Receipts - not for staff
+  { path: '/receipts/:id', label: 'Receipt Details', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   
   // Calendar/Schedule - staff sees only their assigned jobs
   { path: '/calendar', label: 'Calendar', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
