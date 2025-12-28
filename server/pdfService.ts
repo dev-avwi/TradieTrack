@@ -181,6 +181,8 @@ interface InvoiceWithDetails {
   timeEntries?: TimeEntry[]; // Time tracking for labor billing
   paymentUrl?: string; // Public URL for client to pay invoice online
   jobSignatures?: DigitalSignature[]; // Signatures from linked job (client/tradie completion signatures)
+  termsTemplate?: string; // Custom terms & conditions from business templates
+  warrantyTemplate?: string; // Custom warranty text from business templates
 }
 
 const formatCurrency = (amount: string | number): string => {
@@ -948,7 +950,7 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
 };
 
 export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
-  const { invoice, lineItems, client, business, job, timeEntries, paymentUrl } = data;
+  const { invoice, lineItems, client, business, job, timeEntries, paymentUrl, termsTemplate, warrantyTemplate } = data;
   // Use new unified template extraction that supports both predefined and custom AI-analyzed templates
   const { template, accentColor } = getTemplateFromBusinessSettings(business);
   
@@ -964,7 +966,10 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
   
   const warnings = getMissingInfoWarnings(business, total);
   const isGstRegistered = business.gstEnabled && gstAmount > 0;
-  const invoiceTerms = (business as any).invoiceTerms || getDefaultInvoiceTerms(business.lateFeeRate || '1.5% per month');
+  // Use provided template first, then business setting, then default
+  const invoiceTerms = termsTemplate || (business as any).invoiceTerms || getDefaultInvoiceTerms(business.lateFeeRate || '1.5% per month');
+  // Use provided warranty template or fallback to business warranty period
+  const warrantyText = warrantyTemplate || (business.warrantyPeriod ? `All work is guaranteed for ${business.warrantyPeriod} from completion date.` : null);
   
   const isPaid = invoice.status === 'paid';
   const isOverdue = invoice.status === 'overdue' || 
@@ -1157,10 +1162,10 @@ Amount: ${formatCurrency(total)}
       </div>
     ` : ''}
     
-    ${business.warrantyPeriod ? `
+    ${warrantyText ? `
       <div class="notes-section" style="margin-top: 16px;">
         <div class="notes-title">Warranty</div>
-        <div class="notes-content">All work is guaranteed for ${business.warrantyPeriod} from completion date.</div>
+        <div class="notes-content">${warrantyText}</div>
       </div>
     ` : ''}
     

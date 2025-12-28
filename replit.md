@@ -10,7 +10,7 @@ TradieTrack utilizes an event-driven architecture with TypeScript. The frontend 
 Key architectural decisions and features include:
 -   **Authentication**: Supports Email/password, Google OAuth, and secure password reset.
 -   **AI Assistant**: Integrates GPT-4o-mini for business suggestions, Australian English phrasing, proactive notifications, and quote generation. GPT-4o vision is used for AI Photo Analysis.
--   **PDF Generation**: Server-side PDF generation for quotes and invoices using Puppeteer.
+-   **PDF Generation**: Server-side PDF generation for quotes and invoices using Puppeteer. Invoice PDFs (download, preview, email, public) consistently use Templates Hub terms & warranty templates with fallback chain: custom template → business.invoiceTerms → default terms.
 -   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, and a "Today's Schedule" dashboard. Includes Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation. Customizable theming and branding.
 -   **Adaptive Solo/Team Mode**: Adjusts UI and features (e.g., time tracking, GPS check-in) based on team size.
 -   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators, professional confirmation emails, stage timestamps, and rollback capability.

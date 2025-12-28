@@ -2214,8 +2214,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const business = await storage.getBusinessSettings(userContext.effectiveUserId);
-        const { generateInvoicePDF } = await import('./pdfService');
-        const pdfBuffer = await generateInvoicePDF(invoice, invoice.lineItems || [], client, business);
+        
+        // Fetch business templates for terms and warranty
+        const termsTemplateResult = await db.select().from(businessTemplates)
+          .where(and(
+            eq(businessTemplates.userId, userContext.effectiveUserId),
+            eq(businessTemplates.family, 'terms_conditions'),
+            eq(businessTemplates.isActive, true)
+          ))
+          .limit(1);
+        const warrantyTemplateResult = await db.select().from(businessTemplates)
+          .where(and(
+            eq(businessTemplates.userId, userContext.effectiveUserId),
+            eq(businessTemplates.family, 'warranty'),
+            eq(businessTemplates.isActive, true)
+          ))
+          .limit(1);
+        
+        const termsTemplate = termsTemplateResult[0]?.content;
+        const warrantyTemplate = warrantyTemplateResult[0]?.content;
+        
+        const { generateInvoicePDF, generatePDFBuffer } = await import('./pdfService');
+        const html = generateInvoicePDF({
+          invoice,
+          lineItems: invoice.lineItems || [],
+          client,
+          business,
+          termsTemplate,
+          warrantyTemplate
+        });
+        const pdfBuffer = await generatePDFBuffer(html);
 
         const result = await sendEmailViaIntegration({
           to: client.email,
@@ -8366,6 +8394,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         jobSignatures = signatures.filter(s => s.documentType === 'job_completion');
       }
       
+      // Fetch business templates for terms and warranty
+      const termsTemplateResult = await db.select().from(businessTemplates)
+        .where(and(
+          eq(businessTemplates.userId, userContext.effectiveUserId),
+          eq(businessTemplates.family, 'terms_conditions'),
+          eq(businessTemplates.isActive, true)
+        ))
+        .limit(1);
+      const warrantyTemplateResult = await db.select().from(businessTemplates)
+        .where(and(
+          eq(businessTemplates.userId, userContext.effectiveUserId),
+          eq(businessTemplates.family, 'warranty'),
+          eq(businessTemplates.isActive, true)
+        ))
+        .limit(1);
+      
+      const termsTemplate = termsTemplateResult[0]?.content;
+      const warrantyTemplate = warrantyTemplateResult[0]?.content;
+      
       const html = generateInvoicePDF({
         invoice: invoiceWithItems,
         lineItems: invoiceWithItems.lineItems || [],
@@ -8373,7 +8420,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         business,
         job,
         timeEntries,
-        jobSignatures
+        jobSignatures,
+        termsTemplate,
+        warrantyTemplate
       });
       
       const pdfBuffer = await generatePDFBuffer(html);
@@ -8442,6 +8491,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sortOrder: index + 1,
       }));
       
+      // Fetch business templates for terms and warranty
+      const termsTemplateResult = await db.select().from(businessTemplates)
+        .where(and(
+          eq(businessTemplates.userId, userContext.effectiveUserId),
+          eq(businessTemplates.family, 'terms_conditions'),
+          eq(businessTemplates.isActive, true)
+        ))
+        .limit(1);
+      const warrantyTemplateResult = await db.select().from(businessTemplates)
+        .where(and(
+          eq(businessTemplates.userId, userContext.effectiveUserId),
+          eq(businessTemplates.family, 'warranty'),
+          eq(businessTemplates.isActive, true)
+        ))
+        .limit(1);
+      
+      const termsTemplate = termsTemplateResult[0]?.content;
+      const warrantyTemplate = warrantyTemplateResult[0]?.content;
+      
       const html = generateInvoicePDF({
         invoice: mockInvoice,
         lineItems: formattedLineItems,
@@ -8456,7 +8524,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: '',
           brandColor: '#dc2626',
           gstEnabled: true,
-        }
+        },
+        termsTemplate,
+        warrantyTemplate
       });
       
       const pdfBuffer = await generatePDFBuffer(html);
@@ -13032,6 +13102,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const client = await storage.getClientById(invoice.clientId);
       const settings = await storage.getBusinessSettingsByUserId(invoice.userId);
       
+      // Fetch business templates for terms and warranty
+      const termsTemplateResult = await db.select().from(businessTemplates)
+        .where(and(
+          eq(businessTemplates.userId, invoice.userId),
+          eq(businessTemplates.family, 'terms_conditions'),
+          eq(businessTemplates.isActive, true)
+        ))
+        .limit(1);
+      const warrantyTemplateResult = await db.select().from(businessTemplates)
+        .where(and(
+          eq(businessTemplates.userId, invoice.userId),
+          eq(businessTemplates.family, 'warranty'),
+          eq(businessTemplates.isActive, true)
+        ))
+        .limit(1);
+      
+      const termsTemplate = termsTemplateResult[0]?.content;
+      const warrantyTemplate = warrantyTemplateResult[0]?.content;
+      
       // Generate PDF
       const { generateInvoicePDF, generatePDFBuffer } = await import('./pdfService');
       
@@ -13051,6 +13140,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lineItems: invoice.lineItems || [],
         client: client || { name: 'Customer' },
         business: settings || { businessName: 'TradieTrack' },
+        termsTemplate,
+        warrantyTemplate,
       } as any);
       
       const pdfBuffer = await generatePDFBuffer(pdfHtml);
