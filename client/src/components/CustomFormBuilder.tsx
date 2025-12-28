@@ -825,9 +825,10 @@ function FieldEditDialog({ field, open, onOpenChange, onSave }: FieldEditDialogP
 interface FormListProps {
   onCreateNew: () => void;
   onEdit: (formId: string) => void;
+  hideHeader?: boolean;
 }
 
-export function FormList({ onCreateNew, onEdit }: FormListProps) {
+export function FormList({ onCreateNew, onEdit, hideHeader = false }: FormListProps) {
   const { toast } = useToast();
 
   const { data: forms, isLoading } = useQuery<CustomForm[]>({
@@ -862,16 +863,18 @@ export function FormList({ onCreateNew, onEdit }: FormListProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Custom Forms</h1>
-          <p className="text-sm text-muted-foreground">Create and manage form templates for your jobs</p>
+      {!hideHeader && (
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold">Custom Forms</h1>
+            <p className="text-sm text-muted-foreground">Create and manage form templates for your jobs</p>
+          </div>
+          <Button onClick={onCreateNew} className="rounded-xl" data-testid="button-create-form">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Form
+          </Button>
         </div>
-        <Button onClick={onCreateNew} className="rounded-xl" data-testid="button-create-form">
-          <Plus className="h-4 w-4 mr-2" />
-          Create Form
-        </Button>
-      </div>
+      )}
 
       {!forms || forms.length === 0 ? (
         <Card className="p-12 text-center rounded-2xl">
@@ -947,7 +950,11 @@ export function FormList({ onCreateNew, onEdit }: FormListProps) {
   );
 }
 
-export function CustomFormsPage() {
+interface CustomFormsPageProps {
+  hideHeader?: boolean;
+}
+
+export function CustomFormsPage({ hideHeader = false }: CustomFormsPageProps) {
   const [view, setView] = useState<'list' | 'create' | 'edit'>('list');
   const [editingFormId, setEditingFormId] = useState<string | null>(null);
 
@@ -969,5 +976,5 @@ export function CustomFormsPage() {
     return <FormBuilder formId={editingFormId} onBack={handleBack} />;
   }
 
-  return <FormList onCreateNew={() => setView('create')} onEdit={handleEdit} />;
+  return <FormList onCreateNew={() => setView('create')} onEdit={handleEdit} hideHeader={hideHeader} />;
 }

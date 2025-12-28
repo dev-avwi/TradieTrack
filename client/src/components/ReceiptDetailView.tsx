@@ -448,17 +448,29 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
           </div>
 
           {invoice && (
-            <div className="p-4 border rounded-md border-l-4 mb-4" style={{ borderLeftColor: brandColor }}>
+            <div 
+              className="p-4 border rounded-md border-l-4 mb-4 cursor-pointer hover-elevate transition-colors" 
+              style={{ borderLeftColor: brandColor }}
+              onClick={() => navigate(`/invoices/${invoice.id}`)}
+              data-testid="link-invoice-reference"
+            >
               <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Invoice Reference</p>
-              <p className="font-medium" style={{ color: brandColor }}>Invoice #{invoice.number}</p>
+              <p className="font-medium underline hover:no-underline" style={{ color: brandColor }}>
+                Invoice #{invoice.number}
+              </p>
               {invoice.title && <p className="text-sm text-muted-foreground">{invoice.title}</p>}
             </div>
           )}
 
           {job && (
-            <div className="p-4 border rounded-md border-l-4 mb-6" style={{ borderLeftColor: brandColor }}>
+            <div 
+              className="p-4 border rounded-md border-l-4 mb-6 cursor-pointer hover-elevate transition-colors" 
+              style={{ borderLeftColor: brandColor }}
+              onClick={() => navigate(`/jobs/${job.id}`)}
+              data-testid="link-job-reference"
+            >
               <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Job Reference</p>
-              <p className="font-medium" style={{ color: brandColor }}>{job.title}</p>
+              <p className="font-medium underline hover:no-underline" style={{ color: brandColor }}>{job.title}</p>
               {job.address && <p className="text-sm text-muted-foreground">{job.address}</p>}
             </div>
           )}

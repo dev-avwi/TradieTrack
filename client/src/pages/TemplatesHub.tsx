@@ -646,8 +646,7 @@ export default function TemplatesHub() {
 
                 {/* Custom Forms Builder Section */}
                 <div className="border-t pt-6 mt-6">
-                  <h3 className="text-lg font-semibold mb-4">Custom Forms Builder</h3>
-                  <CustomFormsPage />
+                  <CustomFormsPage hideHeader={false} />
                 </div>
               </>
             ) : (
