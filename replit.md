@@ -33,6 +33,7 @@ Key architectural decisions and features include:
 -   **Route Optimization**: Haversine distance calculation with nearest-neighbor algorithm for daily jobs.
 -   **Recurring Invoices & Jobs**: Toggle for recurring invoices/jobs with frequency and end date options.
 -   **Financial Management**: Unified dashboard with KPIs.
+-   **Documents Hub** (`/documents`): Consolidated view of quotes, invoices, and receipts with KPI header (Total Quotes, Outstanding Invoices, Total Received). Features status-based card borders, colored tab indicators (blue/amber/green), and document relationship links showing Quote → Invoice → Receipt workflow. Complete demo data chain available for testing.
 -   **Client Asset Library & Smart Pre-fill**: API endpoints for reusing job photos, quote items, invoice items, and notes.
 -   **Activity Feed**: Tracks lifecycle events.
 -   **Unified Dashboard API**: Single endpoint for consistent web/mobile dashboard experience.

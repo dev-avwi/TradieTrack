@@ -2250,14 +2250,12 @@ const formatCentsToAUD = (cents: number): string => {
   }).format(cents / 100);
 };
 
-// Generate Payment Receipt PDF HTML
+// Generate Payment Receipt PDF HTML - Professional template matching Quotes/Invoices
 export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
   const { payment, client, business, invoice, job } = data;
   
-  // Use minimal template for clean receipt
-  const templateId = 'minimal' as TemplateId;
-  const templateCustomization = (business as any).documentTemplateSettings as TemplateCustomization | undefined;
-  const { template, accentColor } = getCustomizedTemplate(templateId, templateCustomization);
+  // Use the SAME template extraction as quotes/invoices for consistency
+  const { template, accentColor } = getTemplateFromBusinessSettings(business);
   
   // Convert cents to dollars for display
   const amountDollars = payment.amount / 100;
@@ -2287,144 +2285,65 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Payment Receipt${payment.reference ? ` - ${payment.reference}` : ''} - ${business.businessName}</title>
   ${generateGoogleFontsLink()}
+  ${generateDocumentStyles(template, accentColor)}
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
+    /* Receipt-specific overrides for white background compliance */
     body {
-      font-family: ${template.fontFamily};
-      font-size: ${template.baseFontSize};
-      font-weight: ${template.bodyWeight};
-      line-height: 1.5;
-      color: #1a1a1a;
-      background: #fff;
+      background: #ffffff !important;
     }
     
     .document {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 24px 32px;
+      max-width: 800px;
+      background: #ffffff;
+    }
+    
+    /* Professional PAID watermark */
+    .paid-watermark {
+      position: absolute;
+      top: 100px;
+      right: 40px;
+      padding: 10px 24px;
+      border: 4px solid #22c55e;
+      color: #22c55e;
+      font-size: 24px;
+      font-weight: ${template.headingWeight};
+      text-transform: uppercase;
+      transform: rotate(-8deg);
+      opacity: 0.9;
+      letter-spacing: 3px;
+      border-radius: 4px;
+    }
+    
+    /* Payment summary box - matching invoice totals styling */
+    .payment-summary {
+      margin: 24px 0;
+      padding: 20px 24px;
+      background: #ffffff;
+      border: 2px solid #22c55e;
+      border-radius: 8px;
       position: relative;
     }
     
-    .paid-watermark {
+    .payment-summary::before {
+      content: '';
       position: absolute;
-      top: 90px;
-      right: 32px;
-      padding: 8px 20px;
-      border: 3px solid #22c55e;
-      color: #22c55e;
-      font-size: 20px;
-      font-weight: ${template.headingWeight};
-      text-transform: uppercase;
-      transform: rotate(-5deg);
-      opacity: 0.85;
-      letter-spacing: 2px;
-    }
-    
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    
-    .company-info {
-      flex: 1;
-    }
-    
-    .company-name {
-      font-size: 22px;
-      font-weight: ${template.headingWeight};
-      color: ${accentColor};
-      margin-bottom: 8px;
-    }
-    
-    .company-details {
-      color: #666;
-      font-size: 10px;
-      line-height: 1.6;
-    }
-    
-    .company-details p {
-      margin: 2px 0;
-    }
-    
-    .logo {
-      max-width: 120px;
-      max-height: 50px;
-      object-fit: contain;
-      margin-bottom: 12px;
-    }
-    
-    .document-type {
-      text-align: right;
-    }
-    
-    .document-title {
-      font-size: 24px;
-      font-weight: ${template.headingWeight};
-      color: ${accentColor};
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      line-height: 1.2;
-    }
-    
-    .receipt-number {
-      font-size: 12px;
-      color: #666;
-      margin-top: 4px;
-    }
-    
-    .receipt-date {
-      font-size: 11px;
-      color: #888;
-      margin-top: 8px;
-    }
-    
-    .info-section {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-      gap: 24px;
-    }
-    
-    .info-block {
-      flex: 1;
-    }
-    
-    .info-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #888;
-      margin-bottom: 6px;
-      font-weight: 600;
-    }
-    
-    .info-value {
-      color: #1a1a1a;
-      line-height: 1.5;
-    }
-    
-    .info-value strong {
-      font-weight: 600;
-    }
-    
-    .payment-summary {
-      margin: 16px 0;
-      padding: 16px 20px;
-      background: linear-gradient(135deg, #dcfce720, #bbf7d010);
-      border: 2px solid #22c55e;
-      border-radius: 10px;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(34, 197, 94, 0.02));
+      border-radius: 6px;
+      pointer-events: none;
     }
     
     .payment-summary-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(34, 197, 94, 0.3);
+      position: relative;
     }
     
     .payment-summary-title {
@@ -2435,23 +2354,31 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
       letter-spacing: 1px;
     }
     
-    .payment-status {
-      display: inline-block;
-      padding: 4px 12px;
+    .payment-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
       background: #22c55e;
       color: white;
       border-radius: 20px;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     
+    .payment-status-badge::before {
+      content: '✓';
+      font-size: 12px;
+    }
+    
     .payment-amount-row {
       display: flex;
       justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid #bbf7d0;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(34, 197, 94, 0.2);
+      position: relative;
     }
     
     .payment-amount-row:last-child {
@@ -2461,142 +2388,139 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     .payment-amount-row.total {
       border-bottom: none;
       border-top: 2px solid #22c55e;
-      padding-top: 12px;
-      margin-top: 8px;
+      padding-top: 16px;
+      margin-top: 12px;
     }
     
     .payment-amount-row .label {
       color: #166534;
-      font-size: 11px;
+      font-size: 12px;
+      font-weight: 500;
     }
     
     .payment-amount-row .value {
       font-weight: 600;
       color: #166534;
+      font-size: 12px;
     }
     
-    .payment-amount-row.total .label,
-    .payment-amount-row.total .value {
-      font-size: 18px;
+    .payment-amount-row.total .label {
+      font-size: 16px;
       font-weight: ${template.headingWeight};
+      color: #166534;
     }
     
-    .details-section {
-      margin: 16px 0;
+    .payment-amount-row.total .value {
+      font-size: 20px;
+      font-weight: ${template.headingWeight};
+      color: #166534;
     }
     
-    .details-title {
-      font-size: 10px;
+    /* Transaction details grid */
+    .transaction-details {
+      margin: 24px 0;
+    }
+    
+    .transaction-details-title {
+      font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: #888;
-      margin-bottom: 10px;
+      color: #666;
+      margin-bottom: 12px;
+      font-weight: 600;
+      border-bottom: 2px solid ${accentColor};
+      padding-bottom: 8px;
+      display: inline-block;
+    }
+    
+    .transaction-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    
+    .transaction-item {
+      padding: 14px 16px;
+      background: #fafafa;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+    }
+    
+    .transaction-item-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #666;
+      margin-bottom: 6px;
       font-weight: 600;
     }
     
-    .details-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    
-    .detail-item {
-      padding: 10px 12px;
-      background: transparent;
-      border: 1px solid #e5e7eb;
-      border-radius: 6px;
-    }
-    
-    .detail-item-label {
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #888;
-      margin-bottom: 4px;
-    }
-    
-    .detail-item-value {
-      font-size: 12px;
-      font-weight: 500;
+    .transaction-item-value {
+      font-size: 13px;
+      font-weight: 600;
       color: #1a1a1a;
     }
     
-    .linked-info {
-      margin: 12px 0;
-      padding: 12px 16px;
-      background: transparent;
-      border-radius: 6px;
-      border-left: 3px solid ${accentColor};
-      border: 1px solid #e5e7eb;
-      border-left: 3px solid ${accentColor};
+    /* Linked document references - matching quote/invoice styling */
+    .linked-document {
+      margin: 16px 0;
+      padding: 16px 20px;
+      background: #fafafa;
+      border-left: 4px solid ${accentColor};
+      border-radius: 0 6px 6px 0;
     }
     
-    .linked-info-title {
+    .linked-document-title {
       font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #888;
+      letter-spacing: 1px;
+      color: #666;
       margin-bottom: 8px;
       font-weight: 600;
     }
     
-    .linked-info-content {
-      font-size: 12px;
+    .linked-document-content {
+      font-size: 13px;
       color: #1a1a1a;
+      line-height: 1.6;
     }
     
-    .linked-info-content strong {
+    .linked-document-content strong {
       font-weight: 600;
       color: ${accentColor};
     }
     
-    .thank-you {
+    /* Thank you section */
+    .thank-you-section {
       text-align: center;
-      margin: 20px 0 16px 0;
-      padding: 16px;
+      margin: 32px 0 24px 0;
+      padding: 24px;
       background: linear-gradient(135deg, ${accentColor}08, ${accentColor}03);
-      border-radius: 10px;
+      border: 1px solid ${accentColor}20;
+      border-radius: 8px;
     }
     
     .thank-you-text {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: ${template.headingWeight};
       color: ${accentColor};
-      margin-bottom: 4px;
+      margin-bottom: 8px;
     }
     
     .thank-you-subtext {
-      font-size: 10px;
+      font-size: 12px;
       color: #666;
-    }
-    
-    .footer {
-      margin-top: 20px;
-      padding-top: 12px;
-      border-top: 1px solid #e5e7eb;
-      text-align: center;
-      font-size: 8px;
-      color: #888;
-    }
-    
-    .footer p {
-      margin: 2px 0;
-    }
-    
-    .footer-contact {
-      margin-top: 6px;
-      padding-top: 6px;
-      border-top: 1px dashed #e5e7eb;
+      line-height: 1.5;
     }
     
     @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .document { padding: 20px; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; }
+      .document { padding: 20px; background: #fff !important; }
     }
     
     @page {
       size: A4;
-      margin: 15mm;
+      margin: 10mm;
     }
   </style>
 </head>
@@ -2613,32 +2537,47 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
           ${business.address ? `<p>${business.address}</p>` : ''}
           ${business.phone ? `<p>Phone: ${business.phone}</p>` : ''}
           ${business.email ? `<p>Email: ${business.email}</p>` : ''}
+          ${business.licenseNumber ? `<p>Licence No: ${business.licenseNumber}</p>` : ''}
         </div>
       </div>
       <div class="document-type">
         <div class="document-title">Receipt</div>
-        ${payment.reference ? `<div class="receipt-number">${payment.reference}</div>` : ''}
-        <div class="receipt-date">${formatDateTime(payment.paidAt)}</div>
+        <div class="document-number">${payment.reference || `REC-${payment.id.slice(0, 8).toUpperCase()}`}</div>
+        <div style="margin-top: 8px;">
+          <span class="status-badge status-accepted">Paid</span>
+        </div>
       </div>
     </div>
     
-    ${client ? `
     <div class="info-section">
       <div class="info-block">
         <div class="info-label">Received From</div>
         <div class="info-value">
-          <strong>${client.name}</strong>
-          ${client.address ? `<br/>${client.address}` : ''}
-          ${client.email ? `<br/>${client.email}` : ''}
-          ${client.phone ? `<br/>${client.phone}` : ''}
+          ${client ? `
+            <strong>${client.name}</strong><br/>
+            ${client.address ? `${client.address}<br/>` : ''}
+            ${client.email ? `${client.email}<br/>` : ''}
+            ${client.phone ? `${client.phone}` : ''}
+          ` : '<em>Walk-in Customer</em>'}
         </div>
       </div>
       <div class="info-block">
         <div class="info-label">Payment Details</div>
         <div class="info-value">
-          <strong>Method:</strong> ${getPaymentMethodDisplay(payment.paymentMethod)}<br/>
-          <strong>Date:</strong> ${formatDate(payment.paidAt)}
-          ${payment.reference ? `<br/><strong>Ref:</strong> ${payment.reference}` : ''}
+          <strong>Date:</strong> ${formatDate(payment.paidAt)}<br/>
+          <strong>Time:</strong> ${new Date(payment.paidAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}<br/>
+          <strong>Method:</strong> ${getPaymentMethodDisplay(payment.paymentMethod)}
+        </div>
+      </div>
+    </div>
+    
+    ${job?.address || job?.title ? `
+    <div class="info-section" style="margin-top: 16px;">
+      <div class="info-block" style="flex: 1;">
+        <div class="info-label">Job Reference</div>
+        <div class="info-value">
+          <strong>${job.title}</strong>
+          ${job.address ? `<br/><span style="color: #666;">${job.address}</span>` : ''}
         </div>
       </div>
     </div>
@@ -2647,7 +2586,7 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     <div class="payment-summary">
       <div class="payment-summary-header">
         <div class="payment-summary-title">Payment Received</div>
-        <div class="payment-status">Paid</div>
+        <div class="payment-status-badge">Paid</div>
       </div>
       
       ${gstAmountDollars > 0 ? `
@@ -2662,69 +2601,54 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
       ` : ''}
       
       <div class="payment-amount-row total">
-        <span class="label">Amount Paid${gstAmountDollars > 0 ? ' (incl. GST)' : ''}</span>
+        <span class="label">Total Amount Paid${gstAmountDollars > 0 ? ' (incl. GST)' : ''}</span>
         <span class="value">${formatCurrency(amountDollars)}</span>
       </div>
     </div>
     
-    <div class="details-section">
-      <div class="details-title">Transaction Details</div>
-      <div class="details-grid">
-        <div class="detail-item">
-          <div class="detail-item-label">Payment Method</div>
-          <div class="detail-item-value">${getPaymentMethodDisplay(payment.paymentMethod)}</div>
+    <div class="transaction-details">
+      <div class="transaction-details-title">Transaction Details</div>
+      <div class="transaction-grid">
+        <div class="transaction-item">
+          <div class="transaction-item-label">Payment Method</div>
+          <div class="transaction-item-value">${getPaymentMethodDisplay(payment.paymentMethod)}</div>
         </div>
-        <div class="detail-item">
-          <div class="detail-item-label">Transaction ID</div>
-          <div class="detail-item-value">${payment.id}</div>
+        <div class="transaction-item">
+          <div class="transaction-item-label">Transaction ID</div>
+          <div class="transaction-item-value" style="font-size: 11px; word-break: break-all;">${payment.id}</div>
         </div>
         ${payment.reference ? `
-        <div class="detail-item">
-          <div class="detail-item-label">Reference</div>
-          <div class="detail-item-value">${payment.reference}</div>
+        <div class="transaction-item">
+          <div class="transaction-item-label">Reference Number</div>
+          <div class="transaction-item-value">${payment.reference}</div>
         </div>
         ` : ''}
-        <div class="detail-item">
-          <div class="detail-item-label">Date & Time</div>
-          <div class="detail-item-value">${formatDateTime(payment.paidAt)}</div>
+        <div class="transaction-item">
+          <div class="transaction-item-label">Date & Time</div>
+          <div class="transaction-item-value">${formatDateTime(payment.paidAt)}</div>
         </div>
       </div>
     </div>
     
     ${invoice ? `
-    <div class="linked-info">
-      <div class="linked-info-title">Invoice Reference</div>
-      <div class="linked-info-content">
+    <div class="linked-document">
+      <div class="linked-document-title">Invoice Reference</div>
+      <div class="linked-document-content">
         <strong>Invoice #${invoice.number}</strong>
         ${invoice.title ? `<br/>${invoice.title}` : ''}
       </div>
     </div>
     ` : ''}
     
-    ${job ? `
-    <div class="linked-info">
-      <div class="linked-info-title">Job Reference</div>
-      <div class="linked-info-content">
-        <strong>${job.title}</strong>
-        ${job.address ? `<br/>${job.address}` : ''}
-      </div>
-    </div>
-    ` : ''}
-    
-    <div class="thank-you">
+    <div class="thank-you-section">
       <div class="thank-you-text">Thank you for your payment!</div>
-      <div class="thank-you-subtext">This receipt confirms your payment has been received and processed.</div>
+      <div class="thank-you-subtext">This receipt confirms your payment has been received and processed.<br/>Please retain this document for your records.</div>
     </div>
     
     <div class="footer">
-      <p>Payment Receipt from ${business.businessName}</p>
-      ${business.abn ? `<p>ABN: ${business.abn}</p>` : ''}
-      <div class="footer-contact">
-        ${business.phone ? `<p>Phone: ${business.phone}</p>` : ''}
-        ${business.email ? `<p>Email: ${business.email}</p>` : ''}
-        ${business.address ? `<p>${business.address}</p>` : ''}
-      </div>
-      <p style="margin-top: 8px;">Generated by TradieTrack • ${formatDate(new Date())}</p>
+      <p>Thank you for your business!</p>
+      ${business.abn ? `<p style="margin-top: 4px;">ABN: ${business.abn}</p>` : ''}
+      <p style="margin-top: 4px;">Generated by TradieTrack • ${formatDate(new Date())}</p>
     </div>
   </div>
 </body>
