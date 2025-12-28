@@ -36,12 +36,26 @@ import {
   Briefcase,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   RefreshCw,
   Circle,
   Activity,
   Coffee,
   Wrench,
+  X,
+  Phone,
+  Mail,
+  Navigation,
+  UserCheck,
+  Plus,
 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import "leaflet/dist/leaflet.css";
 
 interface TeamPresenceData {
@@ -98,6 +112,14 @@ interface JobData {
   latitude?: number;
   longitude?: number;
   clientName?: string;
+  assignedTo?: string;
+  scheduledAt?: string;
+}
+
+interface MemberWithJobs extends TeamMemberData {
+  assignedJobs: JobData[];
+  presence?: TeamPresenceData;
+  recentActivity: ActivityFeedItem[];
 }
 
 const STATUS_CONFIG: Record<string, { color: string; label: string; icon: typeof Circle }> = {
@@ -243,11 +265,13 @@ function TeamStatusBoard({
   members,
   isLoading,
   onMessageClick,
+  onMemberClick,
 }: {
   presence: TeamPresenceData[];
   members: TeamMemberData[];
   isLoading: boolean;
   onMessageClick: (userId: string) => void;
+  onMemberClick?: (member: TeamMemberData) => void;
 }) {
   const sortedMembers = useMemo(() => {
     const memberPresenceMap = new Map(presence.map((p) => [p.userId, p]));
@@ -304,7 +328,8 @@ function TeamStatusBoard({
         return (
           <div
             key={member.id}
-            className="flex items-center gap-3 p-3 rounded-lg hover-elevate"
+            className="flex items-center gap-3 p-3 rounded-lg hover-elevate cursor-pointer"
+            onClick={() => onMemberClick?.(member)}
             data-testid={`team-member-${member.id}`}
           >
             <div className="relative">
@@ -434,16 +459,258 @@ function ActivityTimeline({
   );
 }
 
+function MemberDetailsPanel({
+  member,
+  onClose,
+  onMessageClick,
+  onNavigate,
+  onAssignJob,
+  unassignedJobs,
+}: {
+  member: MemberWithJobs | null;
+  onClose: () => void;
+  onMessageClick: (userId: string) => void;
+  onNavigate: (path: string) => void;
+  onAssignJob: (jobId: string, userId: string) => void;
+  unassignedJobs: JobData[];
+}) {
+  if (!member) return null;
+
+  const fullName = `${member.firstName || ""} ${member.lastName || ""}`.trim() || member.email || "Team Member";
+  const status = member.presence?.status || "offline";
+  const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.offline;
+  const hasLocation = member.presence?.lastLocationLat && member.presence?.lastLocationLng;
+
+  const getJobStatusColor = (jobStatus: string) => {
+    switch (jobStatus) {
+      case "in_progress": return "hsl(35 90% 55%)";
+      case "scheduled": return "hsl(210 80% 52%)";
+      case "completed": return "hsl(145 65% 45%)";
+      default: return "hsl(var(--muted-foreground))";
+    }
+  };
+
+  return (
+    <Sheet open={!!member} onOpenChange={() => onClose()}>
+      <SheetContent className="w-full sm:max-w-md p-0 flex flex-col" data-testid="member-details-panel">
+        <SheetHeader className="p-4 border-b shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={member.profileImageUrl || undefined} alt={fullName} />
+                <AvatarFallback className="text-xl">
+                  {fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div
+                className="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-background"
+                style={{ backgroundColor: statusConfig.color }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <SheetTitle className="text-left truncate">{fullName}</SheetTitle>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="secondary" className="text-xs">
+                  {member.roleName || "Team Member"}
+                </Badge>
+                <span 
+                  className="text-xs px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: `${statusConfig.color}20`, color: statusConfig.color }}
+                >
+                  {statusConfig.label}
+                </span>
+              </div>
+            </div>
+          </div>
+        </SheetHeader>
+
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-6">
+            {/* Contact Info */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground">Contact</h3>
+              {member.email && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span className="truncate">{member.email}</span>
+                </div>
+              )}
+              {hasLocation && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Navigation className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    Last seen: {member.presence?.lastSeenAt 
+                      ? formatDistanceToNow(new Date(member.presence.lastSeenAt), { addSuffix: true })
+                      : "Recently"}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Current Job */}
+            {member.presence?.currentJob && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground">Currently Working On</h3>
+                <div 
+                  className="p-3 rounded-lg bg-primary/5 border border-primary/20 cursor-pointer hover-elevate"
+                  onClick={() => onNavigate(`/jobs/${member.presence?.currentJob?.id}`)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Wrench className="h-4 w-4 text-primary" />
+                    <span className="font-medium text-sm">{member.presence.currentJob.title}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Assigned Jobs */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-muted-foreground">Assigned Jobs</h3>
+                <Badge variant="outline">{member.assignedJobs.length}</Badge>
+              </div>
+              {member.assignedJobs.length > 0 ? (
+                <div className="space-y-2">
+                  {member.assignedJobs.slice(0, 5).map((job) => (
+                    <div
+                      key={job.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30 cursor-pointer hover-elevate"
+                      onClick={() => onNavigate(`/jobs/${job.id}`)}
+                      data-testid={`member-job-${job.id}`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{job.title}</p>
+                          {job.clientName && (
+                            <p className="text-xs text-muted-foreground truncate">{job.clientName}</p>
+                          )}
+                        </div>
+                      </div>
+                      <Badge 
+                        variant="secondary"
+                        className="shrink-0 text-xs"
+                        style={{ color: getJobStatusColor(job.status) }}
+                      >
+                        {job.status.replace(/_/g, " ")}
+                      </Badge>
+                    </div>
+                  ))}
+                  {member.assignedJobs.length > 5 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => onNavigate(`/jobs?assignedTo=${member.userId}`)}
+                    >
+                      View all {member.assignedJobs.length} jobs
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">No assigned jobs</p>
+              )}
+            </div>
+
+            {/* Quick Assign Job */}
+            {unassignedJobs.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground">Quick Assign Job</h3>
+                <div className="space-y-2">
+                  {unassignedJobs.slice(0, 3).map((job) => (
+                    <div
+                      key={job.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-dashed cursor-pointer hover-elevate"
+                      onClick={() => onAssignJob(job.id, member.userId)}
+                      data-testid={`quick-assign-${job.id}`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Plus className="h-4 w-4 text-primary shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm truncate">{job.title}</p>
+                          {job.address && (
+                            <p className="text-xs text-muted-foreground truncate">{job.address}</p>
+                          )}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="shrink-0">
+                        Assign
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recent Activity */}
+            {member.recentActivity.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground">Recent Activity</h3>
+                <div className="space-y-2">
+                  {member.recentActivity.slice(0, 5).map((activity) => {
+                    const Icon = ACTIVITY_ICONS[activity.activityType] || Briefcase;
+                    const colors = ACTIVITY_COLORS[activity.activityType] || {
+                      bg: "hsl(var(--muted) / 0.5)",
+                      icon: "hsl(var(--muted-foreground))",
+                    };
+                    return (
+                      <div key={activity.id} className="flex items-start gap-3 p-2">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: colors.bg }}
+                        >
+                          <Icon className="h-3.5 w-3.5" style={{ color: colors.icon }} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs truncate">
+                            {activity.description || activity.entityTitle || activity.activityType.replace(/_/g, " ")}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        {/* Actions */}
+        <div className="p-4 border-t shrink-0 space-y-2">
+          <Button className="w-full" onClick={() => onMessageClick(member.userId)} data-testid="button-message-member">
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Send Message
+          </Button>
+          <Button variant="outline" className="w-full" onClick={() => onNavigate(`/jobs?assignedTo=${member.userId}`)}>
+            <Briefcase className="h-4 w-4 mr-2" />
+            View All Jobs
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function TeamMap({
   presence,
   members,
   jobs,
   onMessageClick,
+  onMemberClick,
+  selectedMemberId,
+  onAssignJob,
 }: {
   presence: TeamPresenceData[];
   members: TeamMemberData[];
   jobs: JobData[];
   onMessageClick: (userId: string) => void;
+  onMemberClick?: (member: TeamMemberData) => void;
+  selectedMemberId?: string | null;
+  onAssignJob?: (jobId: string, userId: string) => void;
 }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -530,15 +797,30 @@ function TeamMap({
                       Working on: {p.currentJob.title}
                     </p>
                   )}
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    onClick={() => onMessageClick(p.userId)}
-                    data-testid={`button-map-message-${p.userId}`}
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Message
-                  </Button>
+                  <div className="space-y-2">
+                    {member && onMemberClick && (
+                      <Button
+                        size="sm"
+                        variant={selectedMemberId === member.userId ? "default" : "outline"}
+                        className="w-full"
+                        onClick={() => onMemberClick(member)}
+                        data-testid={`button-map-select-${p.userId}`}
+                      >
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        {selectedMemberId === member.userId ? "Selected" : "Select for Jobs"}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => onMessageClick(p.userId)}
+                      data-testid={`button-map-message-${p.userId}`}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Message
+                    </Button>
+                  </div>
                 </div>
               </Popup>
             </Marker>
@@ -548,6 +830,13 @@ function TeamMap({
         {jobs.map((job) => {
           if (!job.latitude || !job.longitude) return null;
 
+          const isUnassigned = !job.assignedTo;
+          const isHighlighted = selectedMemberId && isUnassigned;
+          const selectedMember = selectedMemberId ? members.find(m => m.userId === selectedMemberId) : null;
+          const selectedMemberName = selectedMember 
+            ? `${selectedMember.firstName || ""} ${selectedMember.lastName || ""}`.trim() || selectedMember.email 
+            : "";
+
           return (
             <Marker
               key={job.id}
@@ -555,13 +844,29 @@ function TeamMap({
               icon={createJobMarker(job.status, isDark)}
             >
               <Popup>
-                <div className="min-w-[180px] p-2">
+                <div className="min-w-[200px] p-2">
                   <p className="font-medium text-sm mb-1">{job.title}</p>
                   {job.clientName && (
                     <p className="text-xs text-muted-foreground mb-1">{job.clientName}</p>
                   )}
                   {job.address && (
-                    <p className="text-xs text-muted-foreground">{job.address}</p>
+                    <p className="text-xs text-muted-foreground mb-2">{job.address}</p>
+                  )}
+                  {isHighlighted && selectedMemberId && onAssignJob && (
+                    <Button
+                      size="sm"
+                      className="w-full mt-2"
+                      onClick={() => onAssignJob(job.id, selectedMemberId)}
+                      data-testid={`button-map-assign-${job.id}`}
+                    >
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Assign to {selectedMemberName}
+                    </Button>
+                  )}
+                  {!isUnassigned && (
+                    <Badge variant="secondary" className="mt-2 text-xs">
+                      Already assigned
+                    </Badge>
                   )}
                 </div>
               </Popup>
@@ -580,6 +885,8 @@ export default function TeamDashboard() {
   const [statusBoardOpen, setStatusBoardOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(true);
   const [mapOpen, setMapOpen] = useState(true);
+  const [selectedMember, setSelectedMember] = useState<MemberWithJobs | null>(null);
+  const [selectedMemberIdForMap, setSelectedMemberIdForMap] = useState<string | null>(null);
 
   const { data: businessSettings } = useQuery<{ businessName?: string }>({
     queryKey: ["/api/business-settings"],
@@ -599,10 +906,68 @@ export default function TeamDashboard() {
     refetchInterval: 10000,
   });
 
-  const { data: jobs = [] } = useQuery<JobData[]>({
+  const { data: allJobs = [] } = useQuery<JobData[]>({
     queryKey: ["/api/jobs"],
-    select: (data) => data.filter((j) => j.status === "in_progress" || j.status === "scheduled"),
   });
+
+  // Derive filtered views from allJobs
+  const jobs = useMemo(() => {
+    return allJobs.filter((j) => j.status === "in_progress" || j.status === "scheduled");
+  }, [allJobs]);
+
+  const unassignedJobs = useMemo(() => {
+    return allJobs.filter(j => !j.assignedTo && (j.status === "pending" || j.status === "scheduled"));
+  }, [allJobs]);
+
+  const assignJobMutation = useMutation({
+    mutationFn: async ({ jobId, userId }: { jobId: string; userId: string }) => {
+      return apiRequest("POST", `/api/jobs/${jobId}/assign`, { assignedTo: userId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      toast({
+        title: "Job assigned",
+        description: "The job has been assigned successfully",
+      });
+      setSelectedMember(null);
+    },
+    onError: () => {
+      toast({
+        title: "Failed to assign job",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAssignJob = (jobId: string, userId: string) => {
+    assignJobMutation.mutate({ jobId, userId });
+  };
+
+  const handleMemberClick = (member: TeamMemberData) => {
+    const memberPresence = presence.find(p => p.userId === member.userId);
+    const assignedJobs = allJobs.filter(j => j.assignedTo === member.userId);
+    const memberActivity = activities.filter(a => a.actorUserId === member.userId);
+
+    const memberWithJobs: MemberWithJobs = {
+      ...member,
+      assignedJobs,
+      presence: memberPresence,
+      recentActivity: memberActivity,
+    };
+
+    setSelectedMember(memberWithJobs);
+    setSelectedMemberIdForMap(member.userId);
+  };
+
+  const handleMemberClickFromMap = (member: TeamMemberData) => {
+    if (selectedMemberIdForMap === member.userId) {
+      setSelectedMemberIdForMap(null);
+    } else {
+      setSelectedMemberIdForMap(member.userId);
+      // Also open member details panel for full info
+      handleMemberClick(member);
+    }
+  };
 
   const updateStatusMutation = useMutation({
     mutationFn: async (status: string) => {
@@ -726,6 +1091,7 @@ export default function TeamDashboard() {
                 members={members}
                 isLoading={isLoading}
                 onMessageClick={handleMessageClick}
+                onMemberClick={handleMemberClick}
               />
             </CardContent>
           </Card>
@@ -747,6 +1113,11 @@ export default function TeamDashboard() {
               <CardTitle className="text-base flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
                 Team Map
+                {selectedMemberIdForMap && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    Assigning jobs
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 p-0">
@@ -755,6 +1126,9 @@ export default function TeamDashboard() {
                 members={members}
                 jobs={jobs}
                 onMessageClick={handleMessageClick}
+                onMemberClick={handleMemberClickFromMap}
+                selectedMemberId={selectedMemberIdForMap}
+                onAssignJob={handleAssignJob}
               />
             </CardContent>
           </Card>
@@ -788,6 +1162,7 @@ export default function TeamDashboard() {
                     members={members}
                     isLoading={isLoading}
                     onMessageClick={handleMessageClick}
+                    onMemberClick={handleMemberClick}
                   />
                 </CardContent>
               </CollapsibleContent>
@@ -827,6 +1202,11 @@ export default function TeamDashboard() {
                     <CardTitle className="text-base flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
                       Team Map
+                      {selectedMemberIdForMap && (
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          Assigning
+                        </Badge>
+                      )}
                     </CardTitle>
                     {mapOpen ? (
                       <ChevronUp className="h-4 w-4" />
@@ -844,6 +1224,9 @@ export default function TeamDashboard() {
                       members={members}
                       jobs={jobs}
                       onMessageClick={handleMessageClick}
+                      onMemberClick={handleMemberClickFromMap}
+                      selectedMemberId={selectedMemberIdForMap}
+                      onAssignJob={handleAssignJob}
                     />
                   </div>
                 </CardContent>
@@ -852,6 +1235,19 @@ export default function TeamDashboard() {
           </Collapsible>
         </div>
       </div>
+
+      {/* Member Details Panel */}
+      <MemberDetailsPanel
+        member={selectedMember}
+        onClose={() => {
+          setSelectedMember(null);
+          setSelectedMemberIdForMap(null);
+        }}
+        onMessageClick={handleMessageClick}
+        onNavigate={navigate}
+        onAssignJob={handleAssignJob}
+        unassignedJobs={unassignedJobs}
+      />
     </div>
   );
 }
