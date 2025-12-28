@@ -76,12 +76,37 @@ export function getPurposesForFamily(family: BusinessTemplateFamily): BusinessTe
   return ['general'];
 }
 
+export interface PurposeOption {
+  id: BusinessTemplatePurpose;
+  label: string;
+}
+
 export function useBusinessTemplates() {
   const { token } = useAuthStore();
   const [templates, setTemplates] = useState<BusinessTemplate[]>([]);
   const [familiesMeta, setFamiliesMeta] = useState<TemplateFamilyMeta[]>([]);
+  const [purposesCache, setPurposesCache] = useState<Record<BusinessTemplateFamily, PurposeOption[]>>({} as any);
+  const [purposesLoaded, setPurposesLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchPurposesForFamily = useCallback(async (family: BusinessTemplateFamily): Promise<PurposeOption[] | null> => {
+    if (!token) return null; // No fallback - require authentication
+    
+    try {
+      const res = await fetch(`${API_URL}/api/business-templates/purposes/${family}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.purposes || [];
+      }
+      return null; // Server error - no fallback
+    } catch (err) {
+      console.error(`Failed to fetch purposes for ${family}:`, err);
+      return null; // Network error - no fallback
+    }
+  }, [token]);
 
   const fetchTemplates = useCallback(async () => {
     if (!token) return;
@@ -108,13 +133,38 @@ export function useBusinessTemplates() {
         const data = await familiesRes.json();
         setFamiliesMeta(data || []);
       }
+
+      // Prefetch purposes for all families - only mark loaded if ALL succeed
+      const allFamilies = Object.keys(FAMILY_CONFIG) as BusinessTemplateFamily[];
+      const purposeResults = await Promise.all(
+        allFamilies.map(async (family) => ({
+          family,
+          purposes: await fetchPurposesForFamily(family),
+        }))
+      );
+      
+      // Check if all purposes were fetched successfully (no nulls)
+      const allFetched = purposeResults.every(r => r.purposes !== null);
+      
+      if (allFetched) {
+        const newCache: Record<BusinessTemplateFamily, PurposeOption[]> = {} as any;
+        purposeResults.forEach(({ family, purposes }) => {
+          newCache[family] = purposes || [];
+        });
+        setPurposesCache(newCache);
+        setPurposesLoaded(true);
+      } else {
+        // Some purposes failed to load - don't set purposesLoaded
+        setError('Failed to load template purposes. Please try again.');
+        setPurposesLoaded(false);
+      }
     } catch (err) {
       setError('Failed to load templates');
       console.error('Failed to fetch business templates:', err);
     }
     
     setIsLoading(false);
-  }, [token]);
+  }, [token, fetchPurposesForFamily]);
 
   const seedTemplates = useCallback(async () => {
     if (!token) return;
@@ -233,9 +283,16 @@ export function useBusinessTemplates() {
     }
   }, [isLoading, templates.length, familiesMeta.length, seedTemplates]);
 
+  const getPurposesForFamilyFromCache = useCallback((family: BusinessTemplateFamily): PurposeOption[] => {
+    // Only return from cache - no fallback to ensure server enforcement
+    return purposesCache[family] || [];
+  }, [purposesCache]);
+
   return {
     templates,
     familiesMeta,
+    purposesCache,
+    purposesLoaded,
     isLoading,
     error,
     refetch: fetchTemplates,
@@ -245,5 +302,6 @@ export function useBusinessTemplates() {
     activateTemplate,
     getTemplatesForFamily,
     getFamilyMeta,
+    getPurposesForFamilyFromCache,
   };
 }

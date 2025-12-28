@@ -20,6 +20,7 @@ import {
   BusinessTemplate, 
   BusinessTemplateFamily,
   BusinessTemplatePurpose,
+  PurposeOption,
   FAMILY_CONFIG, 
   CATEGORIES,
   PURPOSE_LABELS,
@@ -553,6 +554,7 @@ export default function BusinessTemplatesScreen() {
   const {
     templates,
     familiesMeta,
+    purposesLoaded,
     isLoading,
     refetch,
     createTemplate,
@@ -561,6 +563,7 @@ export default function BusinessTemplatesScreen() {
     activateTemplate,
     getTemplatesForFamily,
     getFamilyMeta,
+    getPurposesForFamilyFromCache,
   } = useBusinessTemplates();
   
   const { health: integrationHealth } = useIntegrationHealth();
@@ -641,14 +644,26 @@ export default function BusinessTemplatesScreen() {
   };
 
   const openCreateModal = (family: BusinessTemplateFamily) => {
+    if (!purposesLoaded) {
+      Alert.alert('Loading', 'Please wait while template options are loading...');
+      return;
+    }
     resetForm();
     setEditingFamily(family);
-    const purposes = getPurposesForFamily(family);
-    setFormData(prev => ({ ...prev, purpose: purposes[0] }));
+    const purposes = getPurposesForFamilyFromCache(family);
+    if (purposes.length === 0) {
+      Alert.alert('Error', 'Unable to load template purposes. Please try again.');
+      return;
+    }
+    setFormData(prev => ({ ...prev, purpose: purposes[0]?.id || 'general' }));
     setShowEditModal(true);
   };
 
   const openEditModal = (template: BusinessTemplate) => {
+    if (!purposesLoaded) {
+      Alert.alert('Loading', 'Please wait while template options are loading...');
+      return;
+    }
     setEditingTemplate(template);
     setEditingFamily(template.family);
     setFormData({
@@ -947,7 +962,7 @@ export default function BusinessTemplatesScreen() {
   };
 
   const renderEditModal = () => {
-    const purposes = getPurposesForFamily(editingFamily);
+    const purposes = getPurposesForFamilyFromCache(editingFamily);
     const showSubject = editingFamily === 'email';
     const previewContent = renderTemplatePreview(formData.content);
 
@@ -1003,20 +1018,20 @@ export default function BusinessTemplatesScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Trigger / Purpose</Text>
                 <View style={styles.purposeSelector}>
-                  {purposes.map((purpose) => (
+                  {purposes.map((purposeOption) => (
                     <TouchableOpacity
-                      key={purpose}
+                      key={purposeOption.id}
                       style={[
                         styles.purposeChip,
-                        formData.purpose === purpose && styles.purposeChipActive,
+                        formData.purpose === purposeOption.id && styles.purposeChipActive,
                       ]}
-                      onPress={() => setFormData(prev => ({ ...prev, purpose }))}
+                      onPress={() => setFormData(prev => ({ ...prev, purpose: purposeOption.id }))}
                     >
                       <Text style={[
                         styles.purposeChipText,
-                        formData.purpose === purpose && styles.purposeChipTextActive,
+                        formData.purpose === purposeOption.id && styles.purposeChipTextActive,
                       ]}>
-                        {PURPOSE_LABELS[purpose]}
+                        {purposeOption.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
