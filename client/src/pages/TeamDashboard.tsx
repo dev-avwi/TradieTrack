@@ -728,7 +728,7 @@ function MemberDetailsPanel({
 
         {/* Actions */}
         <div className="p-4 border-t shrink-0 space-y-2">
-          <Button className="w-full" onClick={() => onMessageClick(member.userId)} data-testid="button-message-member">
+          <Button className="w-full" onClick={() => onMessageClick(member.userId)} data-testid="button-send-message-member">
             <MessageCircle className="h-4 w-4 mr-2" />
             Send Message
           </Button>
@@ -985,15 +985,30 @@ export default function TeamDashboard() {
     mutationFn: async ({ jobId, userId }: { jobId: string; userId: string }) => {
       return apiRequest("POST", `/api/jobs/${jobId}/assign`, { assignedTo: userId });
     },
+    onMutate: async ({ jobId, userId }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/jobs"] });
+      const previousJobs = queryClient.getQueryData<JobData[]>(["/api/jobs"]);
+      queryClient.setQueryData<JobData[]>(["/api/jobs"], (old) =>
+        old?.map((job) =>
+          job.id === jobId ? { ...job, assignedTo: userId } : job
+        )
+      );
+      return { previousJobs };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activity-feed"] });
       toast({
         title: "Job assigned",
         description: "The job has been assigned successfully",
       });
       setSelectedMember(null);
+      setSelectedMemberIdForMap(null);
     },
-    onError: () => {
+    onError: (_error, _variables, context) => {
+      if (context?.previousJobs) {
+        queryClient.setQueryData(["/api/jobs"], context.previousJobs);
+      }
       toast({
         title: "Failed to assign job",
         variant: "destructive",
