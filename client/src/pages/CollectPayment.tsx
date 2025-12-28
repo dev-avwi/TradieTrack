@@ -98,6 +98,7 @@ export default function CollectPayment() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PaymentRequest | null>(null);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("qr");
@@ -115,6 +116,14 @@ export default function CollectPayment() {
   const [recordPaymentMethod, setRecordPaymentMethod] = useState("cash");
   const [recordReference, setRecordReference] = useState("");
   const [recordNotes, setRecordNotes] = useState("");
+  
+  const [receiptAmount, setReceiptAmount] = useState("");
+  const [receiptDescription, setReceiptDescription] = useState("");
+  const [receiptPaymentMethod, setReceiptPaymentMethod] = useState("cash");
+  const [receiptReference, setReceiptReference] = useState("");
+  const [receiptClientId, setReceiptClientId] = useState<string>("");
+  const [receiptInvoiceId, setReceiptInvoiceId] = useState<string>("");
+  const [receiptJobId, setReceiptJobId] = useState<string>("");
   
   const [sharePhone, setSharePhone] = useState("");
   const [shareEmail, setShareEmail] = useState("");
@@ -164,6 +173,21 @@ export default function CollectPayment() {
       }
     }
   }, [recordInvoiceId, invoices]);
+
+  useEffect(() => {
+    if (receiptInvoiceId && invoices) {
+      const invoice = invoices.find(inv => inv.id === receiptInvoiceId);
+      if (invoice) {
+        const totalStr = typeof invoice.total === 'number' 
+          ? invoice.total.toFixed(2) 
+          : String(invoice.total || '0.00');
+        setReceiptAmount(totalStr);
+        setReceiptDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setReceiptClientId(invoice.clientId);
+        if (invoice.jobId) setReceiptJobId(invoice.jobId);
+      }
+    }
+  }, [receiptInvoiceId, invoices]);
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -264,6 +288,39 @@ export default function CollectPayment() {
     },
   });
 
+  const createReceiptMutation = useMutation({
+    mutationFn: async (data: { 
+      amount: number; 
+      description: string; 
+      paymentMethod: string;
+      paymentReference?: string;
+      clientId?: string;
+      invoiceId?: string;
+      jobId?: string;
+    }) => {
+      const response = await apiRequest('POST', '/api/receipts', data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      setShowReceiptDialog(false);
+      resetReceiptForm();
+      toast({
+        title: "Receipt generated",
+        description: `Receipt ${data.receiptNumber} created successfully`,
+      });
+      navigate(`/receipts/${data.id}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to generate receipt",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetCreateForm = () => {
     setNewAmount("");
     setNewDescription("");
@@ -279,6 +336,16 @@ export default function CollectPayment() {
     setRecordPaymentMethod("cash");
     setRecordReference("");
     setRecordNotes("");
+  };
+
+  const resetReceiptForm = () => {
+    setReceiptAmount("");
+    setReceiptDescription("");
+    setReceiptPaymentMethod("cash");
+    setReceiptReference("");
+    setReceiptClientId("");
+    setReceiptInvoiceId("");
+    setReceiptJobId("");
   };
 
   const handleCreate = () => {
@@ -330,6 +397,26 @@ export default function CollectPayment() {
       paymentMethod: recordPaymentMethod,
       reference: recordReference || undefined,
       notes: recordNotes || undefined,
+    });
+  };
+
+  const handleCreateReceipt = () => {
+    if (!receiptAmount || parseFloat(receiptAmount) <= 0) {
+      toast({
+        title: "Please enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    createReceiptMutation.mutate({
+      amount: parseFloat(receiptAmount),
+      description: receiptDescription.trim() || "Payment received",
+      paymentMethod: receiptPaymentMethod,
+      paymentReference: receiptReference || undefined,
+      clientId: receiptClientId || undefined,
+      invoiceId: receiptInvoiceId || undefined,
+      jobId: receiptJobId || undefined,
     });
   };
 
@@ -397,7 +484,15 @@ export default function CollectPayment() {
         subtitle="Request payments on-site or record cash and bank transfers"
         leading={<DollarSign className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
         action={
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowReceiptDialog(true)} 
+              data-testid="button-generate-receipt"
+            >
+              <Receipt className="h-4 w-4 mr-2" />
+              Generate Receipt
+            </Button>
             <Button 
               variant="outline" 
               onClick={() => setShowRecordPaymentDialog(true)} 
@@ -989,6 +1084,137 @@ export default function CollectPayment() {
                 <>
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Record Payment
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generate Manual Receipt Dialog */}
+      <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              Generate Receipt
+            </DialogTitle>
+            <DialogDescription>
+              Create a receipt for a payment received. Optionally link to an invoice or client.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="receipt-invoice">Link to Invoice (optional)</Label>
+              <Select value={receiptInvoiceId || ""} onValueChange={(val) => { setReceiptInvoiceId(val); }}>
+                <SelectTrigger data-testid="select-receipt-invoice">
+                  <SelectValue placeholder="Select an invoice (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No invoice</SelectItem>
+                  {invoices?.map((invoice) => (
+                    <SelectItem key={invoice.id} value={invoice.id}>
+                      {invoice.number} - ${parseFloat(invoice.total).toFixed(2)} ({invoice.title})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="receipt-amount">Amount Received (AUD) *</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  id="receipt-amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0.00"
+                  value={receiptAmount}
+                  onChange={(e) => setReceiptAmount(e.target.value)}
+                  className="pl-7"
+                  data-testid="input-receipt-amount"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="receipt-description">Description</Label>
+              <Input
+                id="receipt-description"
+                placeholder="e.g., Payment for plumbing services"
+                value={receiptDescription}
+                onChange={(e) => setReceiptDescription(e.target.value)}
+                data-testid="input-receipt-description"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="receipt-method">Payment Method *</Label>
+              <Select value={receiptPaymentMethod} onValueChange={setReceiptPaymentMethod}>
+                <SelectTrigger data-testid="select-receipt-method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                  <SelectItem value="card">Card (in person)</SelectItem>
+                  <SelectItem value="tap_to_pay">Tap to Pay</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="receipt-reference">Payment Reference (optional)</Label>
+              <Input
+                id="receipt-reference"
+                placeholder="e.g., Bank transfer ref or cheque number"
+                value={receiptReference}
+                onChange={(e) => setReceiptReference(e.target.value)}
+                data-testid="input-receipt-reference"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="receipt-client">Client (optional)</Label>
+              <Select value={receiptClientId || ""} onValueChange={setReceiptClientId}>
+                <SelectTrigger data-testid="select-receipt-client">
+                  <SelectValue placeholder="Select a client (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No client</SelectItem>
+                  {clients?.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setShowReceiptDialog(false); resetReceiptForm(); }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateReceipt} 
+              disabled={createReceiptMutation.isPending || !receiptAmount}
+              data-testid="button-generate-receipt-submit"
+            >
+              {createReceiptMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Generate Receipt
                 </>
               )}
             </Button>
