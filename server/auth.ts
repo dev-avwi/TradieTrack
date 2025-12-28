@@ -24,6 +24,7 @@ export class AuthService {
     firstName?: string;
     lastName?: string;
     tradeType?: string;
+    intendedTier?: string;
   }): Promise<{ success: true; user: SafeUser } | { success: false; error: string }> {
     try {
       // Validate input

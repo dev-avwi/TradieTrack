@@ -109,6 +109,7 @@ export const users = pgTable("users", {
   trialStartedAt: timestamp("trial_started_at"),
   trialEndsAt: timestamp("trial_ends_at"),
   trialStatus: text("trial_status"), // active, expired, converted
+  intendedTier: text("intended_tier"), // 'free', 'pro', 'team' - set during registration
   // Legacy field kept for compatibility
   subscriptionResetDate: timestamp("subscription_reset_date").defaultNow(),
   // Platform admin flag - for admin@avwebinnovation.com to access platform dashboard
@@ -130,9 +131,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
   firstName: true,
   lastName: true,
   tradeType: true,
+  intendedTier: true,
 }).extend({
   password: z.string().min(8, "Password must be at least 8 characters").optional(),
   email: z.string().email("Invalid email address").optional(),
+  intendedTier: z.enum(['free', 'pro', 'team']).optional(),
 });
 
 export const loginSchema = z.object({

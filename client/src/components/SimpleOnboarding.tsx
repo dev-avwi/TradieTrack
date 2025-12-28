@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,8 @@ import {
   Phone,
   Mail,
   MapPin,
-  Gift
+  Gift,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -70,9 +72,17 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Detect plan from URL params
-  const urlParams = new URLSearchParams(window.location.search);
-  const selectedPlan = urlParams.get('plan') || 'free';
+  // Fetch user from API to get intendedTier (persisted on server)
+  const { data: user, isLoading: userLoading } = useQuery<{
+    id: string;
+    intendedTier?: string;
+    [key: string]: any;
+  }>({
+    queryKey: ['/api/auth/me'],
+  });
+  
+  // Use intendedTier from user data, falling back to 'free'
+  const selectedPlan = user?.intendedTier || 'free';
   const isTeamPlan = selectedPlan === 'team';
   const isProPlan = selectedPlan === 'pro';
   
@@ -87,8 +97,15 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     address: '',
     gstRegistered: true,
     hourlyRate: '85',
-    teamSize: isTeamPlan ? 'team' : 'solo',
+    teamSize: 'solo',
   });
+  
+  // Update teamSize when user data loads
+  useEffect(() => {
+    if (user?.intendedTier === 'team') {
+      setFormData(prev => ({ ...prev, teamSize: 'team' }));
+    }
+  }, [user?.intendedTier]);
 
   const progressPercentage = ((currentStep + 1) / STEPS.length) * 100;
 
@@ -114,21 +131,18 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       
       setIsSubmitting(true);
       try {
-        await apiRequest('/api/business-settings', {
-          method: 'POST',
-          body: JSON.stringify({
-            businessName: formData.businessName,
-            abn: formData.abn,
-            phone: formData.phone,
-            email: formData.email,
-            address: formData.address,
-            tradeType: formData.tradeType,
-            gstEnabled: formData.gstRegistered,
-            defaultHourlyRate: parseFloat(formData.hourlyRate) || 85,
-            calloutFee: 90,
-            teamSize: isTeamPlan ? 'team' : 'solo',
-            onboardingCompleted: !isTeamPlan, // Team plan completes after team step
-          }),
+        await apiRequest('POST', '/api/business-settings', {
+          businessName: formData.businessName,
+          abn: formData.abn,
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          tradeType: formData.tradeType,
+          gstEnabled: formData.gstRegistered,
+          defaultHourlyRate: parseFloat(formData.hourlyRate) || 85,
+          calloutFee: 90,
+          teamSize: isTeamPlan ? 'team' : 'solo',
+          onboardingCompleted: !isTeamPlan, // Team plan completes after team step
         });
         
         await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
@@ -150,11 +164,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       // Team step - mark onboarding as complete and move to done step
       setIsSubmitting(true);
       try {
-        await apiRequest('/api/business-settings', {
-          method: 'PATCH',
-          body: JSON.stringify({
-            onboardingCompleted: true,
-          }),
+        await apiRequest('PATCH', '/api/business-settings', {
+          onboardingCompleted: true,
         });
         await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
         setCurrentStep(3); // Move to done step
@@ -170,9 +181,27 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       return;
     }
     
-    // Done step
+    // Done step - start trial for pro/team users before completing
     const doneStepIndex = isTeamPlan ? 3 : 2;
     if (currentStep === doneStepIndex) {
+      // If user selected pro or team, start their trial automatically
+      if (isProPlan || isTeamPlan) {
+        setIsSubmitting(true);
+        try {
+          await apiRequest('POST', '/api/subscription/trial', {});
+          await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
+        } catch (error) {
+          console.error('Failed to start trial:', error);
+          // Don't block onboarding completion if trial start fails
+          toast({
+            title: "Trial activation pending",
+            description: "You can activate your trial from the subscription settings.",
+          });
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
       onComplete();
       return;
     }
@@ -502,9 +531,18 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         </>
       )}
       
-      <Button onClick={handleNext} size="lg" className="px-8" data-testid="button-start">
-        <Sparkles className="mr-2 h-4 w-4" />
-        {isTeamPlan ? 'Go to Dashboard' : 'Start Using TradieTrack'}
+      <Button onClick={handleNext} size="lg" className="px-8" disabled={isSubmitting} data-testid="button-start">
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {isProPlan || isTeamPlan ? 'Activating Trial...' : 'Starting...'}
+          </>
+        ) : (
+          <>
+            <Sparkles className="mr-2 h-4 w-4" />
+            {isTeamPlan ? 'Go to Dashboard' : 'Start Using TradieTrack'}
+          </>
+        )}
       </Button>
     </div>
   );
@@ -524,6 +562,22 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         return null;
     }
   };
+
+  // Show loading state while fetching user data
+  if (userLoading) {
+    return (
+      <div className="min-h-screen relative overflow-hidden" data-testid="simple-onboarding-loading">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-400" />
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="flex flex-col items-center gap-4">
+            <img src={tradietrackLogo} alt="TradieTrack" className="h-12 w-auto" />
+            <Loader2 className="h-8 w-8 text-white animate-spin" />
+            <span className="text-white/80 text-sm">Loading your setup...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden" data-testid="simple-onboarding">

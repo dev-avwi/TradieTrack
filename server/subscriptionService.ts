@@ -258,30 +258,34 @@ async function resetUsageIfNeeded(userId: string, user: any): Promise<void> {
   }
 }
 
-export async function startTrial(userId: string): Promise<{ success: boolean; endsAt?: Date; error?: string }> {
+export async function startTrial(userId: string, tier?: 'pro' | 'team'): Promise<{ success: boolean; endsAt?: Date; tier?: string; error?: string }> {
   const user = await storage.getUser(userId);
   if (!user) {
     return { success: false, error: 'User not found' };
   }
   
-  if (user.subscriptionTier === 'pro') {
-    return { success: false, error: 'Already subscribed to Pro' };
+  if (user.subscriptionTier === 'pro' || user.subscriptionTier === 'team') {
+    return { success: false, error: 'Already subscribed to a paid tier' };
   }
   
   if (user.trialStatus === 'active' || user.trialStatus === 'expired' || user.trialStatus === 'converted') {
     return { success: false, error: 'Trial already used' };
   }
   
+  // Determine trial tier: explicit param > user's intendedTier > default to 'pro'
+  const trialTier = tier || (user.intendedTier === 'team' ? 'team' : 'pro');
+  
   const now = new Date();
   const endsAt = new Date(now.getTime() + (TIER_LIMITS.trial.durationDays * 24 * 60 * 60 * 1000));
   
   await storage.updateUser(userId, {
+    subscriptionTier: trialTier, // Set tier to pro/team during trial
     trialStartedAt: now,
     trialEndsAt: endsAt,
     trialStatus: 'active',
   });
   
-  return { success: true, endsAt };
+  return { success: true, endsAt, tier: trialTier };
 }
 
 export async function checkAndExpireTrials(): Promise<number> {
@@ -292,6 +296,7 @@ export async function checkAndExpireTrials(): Promise<number> {
   for (const user of usersWithActiveTrial) {
     if (user.trialEndsAt && new Date(user.trialEndsAt) <= now) {
       await storage.updateUser(user.id, {
+        subscriptionTier: 'free', // Downgrade to free when trial expires
         trialStatus: 'expired',
       });
       expiredCount++;

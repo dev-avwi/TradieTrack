@@ -715,6 +715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: userData.firstName || undefined,
         lastName: userData.lastName || undefined,
         tradeType: userData.tradeType || undefined,
+        intendedTier: userData.intendedTier || 'free',
       };
       const result = await AuthService.register(cleanUserData);
       
@@ -944,6 +945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trialStatus: user.trialStatus,
         trialEndsAt: user.trialEndsAt,
         trialUsedAt: user.trialUsedAt,
+        intendedTier: user.intendedTier,
         isPlatformAdmin: user.isPlatformAdmin ?? (user as any).is_platform_admin ?? false,
       };
       
@@ -17331,14 +17333,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/subscription/trial", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
+      const { tier } = req.body || {};
       const { startTrial } = await import('./subscriptionService');
-      const result = await startTrial(userId);
+      // Pass tier if provided (pro or team), otherwise startTrial uses intendedTier
+      const result = await startTrial(userId, tier);
       
       if (!result.success) {
         return res.status(400).json({ error: result.error });
       }
       
-      res.json({ success: true, trialEndsAt: result.endsAt });
+      res.json({ success: true, trialEndsAt: result.endsAt, tier: result.tier });
     } catch (error: any) {
       console.error('Error starting trial:', error);
       res.status(500).json({ error: error.message });
