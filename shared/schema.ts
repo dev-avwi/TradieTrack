@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, json, jsonb, index, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, json, jsonb, index, unique, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -352,6 +352,45 @@ export const activityLogs = pgTable("activity_logs", {
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+
+// Team Presence - Track real-time status of team members
+export const teamPresence = pgTable("team_presence", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  status: varchar("status", { length: 50 }).default('offline'), // online, offline, busy, on_job, break
+  statusMessage: varchar("status_message", { length: 255 }),
+  currentJobId: varchar("current_job_id").references(() => jobs.id),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+  lastLocationLat: real("last_location_lat"),
+  lastLocationLng: real("last_location_lng"),
+  lastLocationUpdatedAt: timestamp("last_location_updated_at"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type TeamPresence = typeof teamPresence.$inferSelect;
+export const insertTeamPresenceSchema = createInsertSchema(teamPresence).omit({ id: true, updatedAt: true });
+export type InsertTeamPresence = z.infer<typeof insertTeamPresenceSchema>;
+
+// Activity Feed - Track team/business activity
+export const activityFeed = pgTable("activity_feed", {
+  id: varchar("id").primaryKey(),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  actorUserId: varchar("actor_user_id").references(() => users.id),
+  actorName: varchar("actor_name", { length: 255 }),
+  activityType: varchar("activity_type", { length: 100 }).notNull(), // job_started, job_completed, check_in, check_out, message_sent, quote_sent, invoice_paid, client_added, etc.
+  entityType: varchar("entity_type", { length: 50 }), // job, quote, invoice, client, team_member
+  entityId: varchar("entity_id"),
+  entityTitle: varchar("entity_title", { length: 255 }),
+  description: text("description"),
+  metadata: jsonb("metadata"), // Additional context data
+  isImportant: boolean("is_important").default(false), // For highlighting key events
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type ActivityFeed = typeof activityFeed.$inferSelect;
+export const insertActivityFeedSchema = createInsertSchema(activityFeed).omit({ id: true, createdAt: true });
+export type InsertActivityFeed = z.infer<typeof insertActivityFeedSchema>;
 
 // Clients
 export const clients = pgTable("clients", {
