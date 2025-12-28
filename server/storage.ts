@@ -3887,6 +3887,7 @@ export class PostgresStorage implements IStorage {
       {
         userId,
         family: 'terms_conditions',
+        purpose: 'general',
         name: 'Standard Terms & Conditions',
         description: 'Australian-standard terms and conditions for quotes and invoices',
         isDefault: true,
@@ -3911,6 +3912,7 @@ export class PostgresStorage implements IStorage {
       {
         userId,
         family: 'warranty',
+        purpose: 'general',
         name: 'Standard Warranty',
         description: '12-month workmanship warranty statement',
         isDefault: true,
@@ -3923,12 +3925,13 @@ To make a warranty claim, please contact us with your original invoice number an
         mergeFields: ['business_name', 'warranty_months', 'completion_date', 'invoice_number'],
         metadata: { warrantyMonths: 12 },
       },
-      // Email Templates
+      // Email Templates - Each with its specific purpose/trigger
       {
         userId,
         family: 'email',
-        name: 'Quote Sent',
-        description: 'Email sent when a quote is delivered to client',
+        purpose: 'quote_sent',
+        name: 'Quote Sent Email',
+        description: 'Automatically used when sending quotes to clients',
         isDefault: true,
         isActive: true,
         subject: 'Quote #{quote_number} from {business_name}',
@@ -3948,10 +3951,11 @@ Kind regards,
       {
         userId,
         family: 'email',
-        name: 'Invoice Sent',
-        description: 'Email sent when an invoice is delivered to client',
-        isDefault: false,
-        isActive: false,
+        purpose: 'invoice_sent',
+        name: 'Invoice Sent Email',
+        description: 'Automatically used when sending invoices to clients',
+        isDefault: true,
+        isActive: true,
         subject: 'Invoice #{invoice_number} from {business_name}',
         content: `Hi {client_name},
 
@@ -3972,10 +3976,11 @@ Kind regards,
       {
         userId,
         family: 'email',
-        name: 'Payment Reminder',
-        description: 'Friendly reminder for overdue invoices',
-        isDefault: false,
-        isActive: false,
+        purpose: 'payment_reminder',
+        name: 'Payment Reminder Email',
+        description: 'Sent as a friendly reminder for overdue invoices',
+        isDefault: true,
+        isActive: true,
         subject: 'Payment Reminder - Invoice #{invoice_number}',
         content: `Hi {client_name},
 
@@ -3990,11 +3995,59 @@ Kind regards,
         mergeFields: ['client_name', 'business_name', 'invoice_number', 'invoice_total', 'due_date', 'days_overdue'],
         metadata: { category: 'payment' },
       },
-      // SMS Templates
+      {
+        userId,
+        family: 'email',
+        purpose: 'job_confirmation',
+        name: 'Job Confirmation Email',
+        description: 'Sent when a job is confirmed/scheduled',
+        isDefault: true,
+        isActive: true,
+        subject: 'Job Confirmed - {job_title}',
+        content: `Hi {client_name},
+
+Great news! Your job has been confirmed and scheduled.
+
+Job: {job_title}
+Address: {job_address}
+Date: {date}
+
+We'll be in touch closer to the date to confirm the exact time.
+
+Kind regards,
+{business_name}`,
+        mergeFields: ['client_name', 'business_name', 'job_title', 'job_address', 'date'],
+        metadata: { category: 'job' },
+      },
+      {
+        userId,
+        family: 'email',
+        purpose: 'job_completed',
+        name: 'Job Completed Email',
+        description: 'Sent when a job is marked as complete',
+        isDefault: true,
+        isActive: true,
+        subject: 'Job Completed - {job_title}',
+        content: `Hi {client_name},
+
+Your job has been completed!
+
+Job: {job_title}
+Completed: {completion_date}
+
+An invoice will be sent separately. Thank you for choosing {business_name}!
+
+Kind regards,
+{business_name}`,
+        mergeFields: ['client_name', 'business_name', 'job_title', 'completion_date'],
+        metadata: { category: 'job' },
+      },
+      // SMS Templates - Each with its specific purpose/trigger
       {
         userId,
         family: 'sms',
-        name: 'On My Way',
+        purpose: 'sms_job_confirmation',
+        name: 'On My Way SMS',
         description: 'Quick notification when heading to job site',
         isDefault: true,
         isActive: true,
@@ -4005,21 +4058,47 @@ Kind regards,
       {
         userId,
         family: 'sms',
-        name: 'Running Late',
-        description: 'Notify client of delay',
-        isDefault: false,
-        isActive: false,
-        content: `Hi {client_name}, just a heads up I'm running about 15 mins late. Sorry for any inconvenience. - {business_name}`,
-        mergeFields: ['client_name', 'business_name'],
-        metadata: { category: 'job_update' },
+        purpose: 'sms_quote_sent',
+        name: 'Quote Sent SMS',
+        description: 'SMS notification when a quote is sent',
+        isDefault: true,
+        isActive: true,
+        content: `Hi {client_name}, your quote #{quote_number} for ${'{quote_total}'} has been emailed to you. Any questions, just reply! - {business_name}`,
+        mergeFields: ['client_name', 'business_name', 'quote_number', 'quote_total'],
+        metadata: { category: 'quote' },
       },
       {
         userId,
         family: 'sms',
-        name: 'Job Complete',
+        purpose: 'sms_invoice_sent',
+        name: 'Invoice Sent SMS',
+        description: 'SMS notification when an invoice is sent',
+        isDefault: true,
+        isActive: true,
+        content: `Hi {client_name}, invoice #{invoice_number} for ${'{invoice_total}'} has been emailed. Due: {due_date}. Thanks! - {business_name}`,
+        mergeFields: ['client_name', 'business_name', 'invoice_number', 'invoice_total', 'due_date'],
+        metadata: { category: 'invoice' },
+      },
+      {
+        userId,
+        family: 'sms',
+        purpose: 'sms_payment_reminder',
+        name: 'Payment Reminder SMS',
+        description: 'SMS reminder for overdue invoices',
+        isDefault: true,
+        isActive: true,
+        content: `Hi {client_name}, friendly reminder that invoice #{invoice_number} for ${'{invoice_total}'} is now overdue. Please pay when you can. Thanks! - {business_name}`,
+        mergeFields: ['client_name', 'business_name', 'invoice_number', 'invoice_total'],
+        metadata: { category: 'payment' },
+      },
+      {
+        userId,
+        family: 'sms',
+        purpose: 'sms_job_completed',
+        name: 'Job Complete SMS',
         description: 'Notification when work is finished',
-        isDefault: false,
-        isActive: false,
+        isDefault: true,
+        isActive: true,
         content: `Hi {client_name}, all done at your place! Invoice will be sent shortly. Thanks for choosing {business_name}!`,
         mergeFields: ['client_name', 'business_name', 'job_title'],
         metadata: { category: 'job_update' },
@@ -4028,6 +4107,7 @@ Kind regards,
       {
         userId,
         family: 'payment_notice',
+        purpose: 'general',
         name: 'Payment Due Notice',
         description: 'Notice for upcoming or overdue payments',
         isDefault: true,
@@ -4051,6 +4131,7 @@ Thank you for your prompt attention to this matter.`,
       {
         userId,
         family: 'safety_form',
+        purpose: 'general',
         name: 'Job Safety Analysis (JSA)',
         description: 'Standard workplace hazard assessment form',
         isDefault: true,
@@ -4070,6 +4151,7 @@ Thank you for your prompt attention to this matter.`,
       {
         userId,
         family: 'checklist',
+        purpose: 'general',
         name: 'Pre-Start Checklist',
         description: 'Daily equipment and site safety checklist',
         isDefault: true,
