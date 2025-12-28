@@ -11589,11 +11589,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       
-      // Validate request data
+      // Validate request data - omit fields that the server provides
+      const inviteRequestSchema = insertTeamMemberSchema.omit({
+        businessOwnerId: true,
+        memberId: true,
+        inviteToken: true,
+        inviteSentAt: true,
+        inviteStatus: true,
+        inviteAcceptedAt: true,
+      });
+      
       let inviteData;
       try {
-        inviteData = insertTeamMemberSchema.parse(req.body);
+        console.log('[TeamInvite] Request body:', JSON.stringify(req.body, null, 2));
+        inviteData = inviteRequestSchema.parse(req.body);
+        console.log('[TeamInvite] Parsed data:', JSON.stringify(inviteData, null, 2));
       } catch (validationError: any) {
+        console.log('[TeamInvite] Validation error:', JSON.stringify(validationError.errors || validationError.message, null, 2));
         return res.status(400).json({ 
           error: 'Invalid invite data',
           details: validationError.errors || validationError.message 
@@ -11618,9 +11630,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const role = await storage.getUserRole(inviteData.roleId);
         const baseUrl = `${req.protocol}://${req.get('host')}`;
         
+        const inviteeName = [inviteData.firstName, inviteData.lastName].filter(Boolean).join(' ') || null;
         await sendTeamInviteEmail(
           inviteData.email,
-          inviteData.name || null,
+          inviteeName,
           owner?.firstName || 'The business owner',
           businessSettings?.businessName || 'A TradieTrack business',
           role?.name || 'Team Member',
