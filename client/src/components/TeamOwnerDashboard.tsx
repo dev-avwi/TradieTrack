@@ -86,6 +86,36 @@ export default function TeamOwnerDashboard({
   const { teamMembers, hasActiveTeam } = useAppMode();
   const updateJob = useUpdateJob();
   const { toast } = useToast();
+  
+  // Fetch team presence for status indicators
+  interface PresenceData {
+    userId: string;
+    status: string;
+  }
+  const { data: presenceData = [] } = useQuery<PresenceData[]>({
+    queryKey: ["/api/team/presence"],
+    refetchInterval: 30000,
+    enabled: hasActiveTeam,
+  });
+  
+  // Get presence status for a team member
+  const getPresenceStatus = (userId: string | undefined): string => {
+    if (!userId) return "offline";
+    const presence = presenceData.find(p => p.userId === userId);
+    return presence?.status || "offline";
+  };
+  
+  const getPresenceColor = (status: string): string => {
+    switch (status) {
+      case "online": return "#22C55E";
+      case "busy": return "#EAB308";
+      case "on_job": return "#3B82F6";
+      case "break": return "#F97316";
+      default: return "#6B7280";
+    }
+  };
+  
+  const onlineTeamCount = presenceData.filter(p => p.status !== "offline").length;
   const [draggedJob, setDraggedJob] = useState<Job | null>(null);
   const [dragOverMember, setDragOverMember] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -332,20 +362,23 @@ export default function TeamOwnerDashboard({
 
           <div 
             className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/team')}
+            onClick={() => onNavigate?.('/team-dashboard')}
             data-testid="kpi-team"
           >
             <div className="card-padding">
               <div className="flex items-center gap-3">
                 <div 
-                  className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center relative"
                   style={{ backgroundColor: 'hsl(217.2 91.2% 59.8% / 0.1)' }}
                 >
                   <Users className="h-5 w-5" style={{ color: 'hsl(217.2, 91.2%, 59.8%)' }} />
+                  {onlineTeamCount > 0 && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                  )}
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{teamMembers.length}</p>
-                  <p className="ios-caption">Team Members</p>
+                  <p className="ios-caption">{onlineTeamCount > 0 ? `${onlineTeamCount} online` : 'Team Hub'}</p>
                 </div>
               </div>
             </div>
@@ -426,6 +459,18 @@ export default function TeamOwnerDashboard({
                 <Map className="h-4 w-4 mr-1.5" />
                 <span className="truncate">Map</span>
               </Button>
+              {hasActiveTeam && (
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 h-10 px-3 rounded-xl press-scale min-w-[80px]"
+                  onClick={() => onNavigate?.('/team-dashboard')}
+                  data-testid="button-team-hub"
+                >
+                  <Users className="h-4 w-4 mr-1.5" />
+                  <span className="truncate">Team</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -580,14 +625,20 @@ export default function TeamOwnerDashboard({
                 >
                   <div className="card-padding">
                     <div className="flex items-center gap-3 mb-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback 
-                          className="text-sm font-medium"
-                          style={{ backgroundColor: 'hsl(var(--trade) / 0.1)', color: 'hsl(var(--trade))' }}
-                        >
-                          {getInitials(member)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback 
+                            className="text-sm font-medium"
+                            style={{ backgroundColor: 'hsl(var(--trade) / 0.1)', color: 'hsl(var(--trade))' }}
+                          >
+                            {getInitials(member)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div 
+                          className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background"
+                          style={{ backgroundColor: getPresenceColor(getPresenceStatus(member.userId)) }}
+                        />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{getMemberName(member)}</p>
                         <p className="text-xs text-muted-foreground">

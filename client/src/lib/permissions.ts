@@ -87,6 +87,7 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Team - owner/solo_owner/manager (solo owners can invite first team member)
   { path: '/team', label: 'Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   { path: '/team/invite', label: 'Invite Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  { path: '/team-dashboard', label: 'Team Hub', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   
   // Chat - all roles including solo owners for SMS conversations
   { path: '/chat', label: 'Chat', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
