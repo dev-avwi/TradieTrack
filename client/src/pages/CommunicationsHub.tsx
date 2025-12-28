@@ -5,20 +5,25 @@ import { useLocation } from "wouter";
 import { 
   Mail, 
   MessageSquare, 
-  Phone, 
   Send, 
   Clock, 
   CheckCircle2, 
   XCircle, 
   ArrowLeft,
-  Filter,
   FileText,
-  Receipt,
-  User,
   ExternalLink,
   Search,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  Paperclip,
+  X,
+  Copy,
+  Check,
+  User,
+  Phone,
+  Calendar,
+  ArrowUpRight
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +32,11 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { SmsMessage, ActivityLog } from "@shared/schema";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import type { ActivityLog } from "@shared/schema";
 
 interface CommunicationItem {
   id: string;
@@ -35,20 +44,32 @@ interface CommunicationItem {
   direction: 'outbound' | 'inbound';
   status: 'sent' | 'delivered' | 'failed' | 'pending';
   recipient: string;
+  recipientEmail?: string;
   recipientPhone?: string;
   subject?: string;
   body: string;
+  fullBody?: string;
   timestamp: Date;
   entityType?: string;
   entityId?: string;
+  entityNumber?: string;
+  hasAttachment?: boolean;
+  attachmentType?: string;
   metadata?: Record<string, any>;
+  deliveryInfo?: {
+    sentAt?: string;
+    deliveredAt?: string;
+    provider?: string;
+    messageId?: string;
+  };
 }
 
 function StatusIcon({ status }: { status: string }) {
   switch (status) {
     case 'delivered':
-    case 'sent':
       return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+    case 'sent':
+      return <Send className="h-4 w-4 text-blue-500" />;
     case 'failed':
       return <XCircle className="h-4 w-4 text-red-500" />;
     case 'pending':
@@ -75,13 +96,24 @@ function TypeIcon({ type }: { type: 'email' | 'sms' }) {
     : <MessageSquare className="h-4 w-4" />;
 }
 
-function CommunicationCard({ item, onViewEntity }: { item: CommunicationItem; onViewEntity?: (type: string, id: string) => void }) {
+function CommunicationCard({ 
+  item, 
+  onViewEntity, 
+  onViewDetails 
+}: { 
+  item: CommunicationItem; 
+  onViewEntity?: (type: string, id: string) => void;
+  onViewDetails?: (item: CommunicationItem) => void;
+}) {
   return (
-    <Card className="hover-elevate cursor-pointer transition-all">
+    <Card 
+      className="hover-elevate cursor-pointer transition-all"
+      onClick={() => onViewDetails?.(item)}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className={`p-2 rounded-lg ${item.type === 'email' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+            <div className={`p-2 rounded-lg shrink-0 ${item.type === 'email' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
               <TypeIcon type={item.type} />
             </div>
             
@@ -90,6 +122,12 @@ function CommunicationCard({ item, onViewEntity }: { item: CommunicationItem; on
                 <span className="font-medium text-sm">{item.recipient}</span>
                 {item.recipientPhone && (
                   <span className="text-xs text-muted-foreground">{item.recipientPhone}</span>
+                )}
+                {item.hasAttachment && (
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Paperclip className="h-3 w-3" />
+                    PDF
+                  </Badge>
                 )}
               </div>
               
@@ -115,7 +153,7 @@ function CommunicationCard({ item, onViewEntity }: { item: CommunicationItem; on
                     data-testid={`link-view-${item.entityType}-${item.entityId}`}
                   >
                     <ExternalLink className="h-3 w-3" />
-                    View {item.entityType}
+                    View {item.entityType} {item.entityNumber ? `#${item.entityNumber}` : ''}
                   </button>
                 )}
               </div>
@@ -127,10 +165,250 @@ function CommunicationCard({ item, onViewEntity }: { item: CommunicationItem; on
             <Badge variant="outline" className="text-xs">
               {item.type === 'email' ? 'Email' : 'SMS'}
             </Badge>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-7 text-xs gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewDetails?.(item);
+              }}
+              data-testid={`button-view-${item.id}`}
+            >
+              <Eye className="h-3 w-3" />
+              View
+            </Button>
           </div>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function CommunicationDetailSheet({ 
+  item, 
+  open, 
+  onClose,
+  onViewEntity 
+}: { 
+  item: CommunicationItem | null; 
+  open: boolean; 
+  onClose: () => void;
+  onViewEntity?: (type: string, id: string) => void;
+}) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+  
+  const copyContent = async () => {
+    if (!item) return;
+    const content = item.fullBody || item.body;
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+    toast({
+      title: "Copied to clipboard",
+      description: "Message content copied successfully",
+    });
+    setTimeout(() => setCopied(false), 2000);
+  };
+  
+  if (!item) return null;
+  
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="sm:max-w-lg w-full">
+        <SheetHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${item.type === 'email' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+              <TypeIcon type={item.type} />
+            </div>
+            <div className="flex-1">
+              <SheetTitle className="flex items-center gap-2">
+                {item.type === 'email' ? 'Email' : 'SMS'} Details
+                <StatusBadge status={item.status} />
+              </SheetTitle>
+              <SheetDescription>
+                Sent {format(new Date(item.timestamp), "EEEE, d MMMM yyyy 'at' h:mm a")}
+              </SheetDescription>
+            </div>
+          </div>
+        </SheetHeader>
+        
+        <ScrollArea className="h-[calc(100vh-180px)]">
+          <div className="space-y-4 pr-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Recipient
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{item.recipient}</span>
+                </div>
+                {item.recipientEmail && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Mail className="h-3 w-3" />
+                    {item.recipientEmail}
+                  </div>
+                )}
+                {item.recipientPhone && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="h-3 w-3" />
+                    {item.recipientPhone}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <StatusIcon status={item.status} />
+                  Delivery Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`h-2 w-2 rounded-full ${
+                      item.status === 'delivered' ? 'bg-green-500' : 
+                      item.status === 'sent' ? 'bg-blue-500' :
+                      item.status === 'failed' ? 'bg-red-500' : 'bg-amber-500'
+                    }`} />
+                    <span className="text-sm font-medium capitalize">{item.status}</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Sent at</span>
+                    <span>{format(new Date(item.timestamp), "h:mm:ss a")}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Provider</span>
+                    <span>{item.type === 'email' ? 'SendGrid' : 'Twilio'}</span>
+                  </div>
+                  {item.hasAttachment && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Attachment</span>
+                      <Badge variant="outline" className="gap-1">
+                        <Paperclip className="h-3 w-3" />
+                        PDF Document
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="bg-muted/50 rounded-lg p-3 mt-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <CheckCircle2 className="h-3 w-3 text-green-500" />
+                    <span>Message accepted by {item.type === 'email' ? 'SendGrid' : 'Twilio'} for delivery</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {item.entityType && item.entityId && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Related Document
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-between"
+                    onClick={() => onViewEntity?.(item.entityType!, item.entityId!)}
+                    data-testid="button-view-document"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      View {item.entityType} {item.entityNumber ? `#${item.entityNumber}` : ''}
+                    </span>
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Message Content
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-7 gap-1"
+                    onClick={copyContent}
+                    data-testid="button-copy-content"
+                  >
+                    {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    {copied ? 'Copied' : 'Copy'}
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {item.subject && (
+                  <>
+                    <div className="mb-3">
+                      <span className="text-xs text-muted-foreground">Subject</span>
+                      <p className="font-medium">{item.subject}</p>
+                    </div>
+                    <Separator className="mb-3" />
+                  </>
+                )}
+                <div className="bg-muted/30 rounded-lg p-4 border">
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <p className="text-sm whitespace-pre-wrap">{item.fullBody || item.body}</p>
+                  </div>
+                </div>
+                
+                {item.hasAttachment && (
+                  <div className="mt-3 flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                    <Paperclip className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{item.attachmentType || 'Document'}.pdf</p>
+                      <p className="text-xs text-muted-foreground">PDF attachment sent with this message</p>
+                    </div>
+                    <Badge variant="secondary">Attached</Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-muted/30">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-sm">Proof of Sending</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This message was sent via {item.type === 'email' ? 'SendGrid' : 'Twilio'} on{' '}
+                      {format(new Date(item.timestamp), "d MMM yyyy 'at' h:mm:ss a")}.
+                      The message was accepted by the provider for delivery to the recipient.
+                    </p>
+                    <div className="mt-2 flex items-center gap-2 text-xs">
+                      <Badge variant="outline" className="font-mono">
+                        ID: {item.id.split('-').slice(1, 3).join('-')}
+                      </Badge>
+                      <Badge variant="outline">
+                        {format(new Date(item.timestamp), "yyyy-MM-dd'T'HH:mm:ss")}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -139,6 +417,8 @@ export default function CommunicationsHub() {
   const [activeTab, setActiveTab] = useState<'all' | 'email' | 'sms'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedItem, setSelectedItem] = useState<CommunicationItem | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
   
   const { data: smsConversations = [], isLoading: smsLoading, refetch: refetchSms } = useQuery<any[]>({
     queryKey: ['/api/sms/conversations'],
@@ -158,21 +438,51 @@ export default function CommunicationsHub() {
         log.type?.includes('sent') || 
         log.type?.includes('email') ||
         log.type === 'quote_sent' ||
-        log.type === 'invoice_sent'
+        log.type === 'invoice_sent' ||
+        log.type === 'receipt_sent'
       )
       .forEach(log => {
         const metadata = (log.metadata || {}) as Record<string, any>;
+        const entityType = log.entityType as string | undefined;
+        
+        let subject = '';
+        let attachmentType = '';
+        let hasAttachment = false;
+        
+        if (log.type === 'quote_sent') {
+          subject = `Quote ${metadata.quoteNumber || ''} - ${metadata.quoteTitle || 'Quote'}`;
+          hasAttachment = true;
+          attachmentType = 'Quote';
+        } else if (log.type === 'invoice_sent') {
+          subject = `Invoice ${metadata.invoiceNumber || ''} - ${metadata.invoiceTitle || 'Invoice'}`;
+          hasAttachment = true;
+          attachmentType = 'Invoice';
+        } else if (log.type === 'receipt_sent') {
+          subject = `Receipt ${metadata.receiptNumber || ''} - Payment Confirmation`;
+          hasAttachment = true;
+          attachmentType = 'Receipt';
+        } else {
+          subject = log.title || `${log.type?.replace(/_/g, ' ')}`;
+        }
+        
+        const fullBody = metadata.emailBody || metadata.messageBody || log.description || '';
+        
         communications.push({
           id: `email-${log.id}`,
           type: 'email',
           direction: 'outbound',
           status: 'sent',
-          recipient: metadata.clientName || metadata.recipientEmail || 'Client',
-          subject: log.title || `${log.type?.replace(/_/g, ' ')}`,
+          recipient: metadata.clientName || metadata.recipientName || 'Client',
+          recipientEmail: metadata.recipientEmail || metadata.clientEmail,
+          subject,
           body: log.description || '',
+          fullBody,
           timestamp: new Date(log.createdAt || new Date()),
-          entityType: log.entityType || undefined,
+          entityType: entityType || undefined,
           entityId: log.entityId || undefined,
+          entityNumber: metadata.quoteNumber || metadata.invoiceNumber || metadata.receiptNumber,
+          hasAttachment,
+          attachmentType,
           metadata,
         });
       });
@@ -192,6 +502,7 @@ export default function CommunicationsHub() {
               recipient: conv.clientName || 'Client',
               recipientPhone: conv.clientPhone,
               body: msg.body || '',
+              fullBody: msg.body || '',
               timestamp: new Date(msg.createdAt || new Date()),
               entityType: conv.jobId ? 'job' : undefined,
               entityId: conv.jobId || undefined,
@@ -211,7 +522,9 @@ export default function CommunicationsHub() {
       return (
         item.recipient.toLowerCase().includes(query) ||
         item.body.toLowerCase().includes(query) ||
-        item.subject?.toLowerCase().includes(query)
+        item.subject?.toLowerCase().includes(query) ||
+        item.recipientEmail?.toLowerCase().includes(query) ||
+        item.recipientPhone?.includes(query)
       );
     }
     return true;
@@ -223,9 +536,11 @@ export default function CommunicationsHub() {
     sms: communications.filter(c => c.type === 'sms').length,
     delivered: communications.filter(c => c.status === 'delivered' || c.status === 'sent').length,
     failed: communications.filter(c => c.status === 'failed').length,
+    withAttachments: communications.filter(c => c.hasAttachment).length,
   };
   
   const handleViewEntity = (type: string, id: string) => {
+    setShowDetail(false);
     switch (type) {
       case 'quote':
         navigate(`/quotes/${id}`);
@@ -239,7 +554,15 @@ export default function CommunicationsHub() {
       case 'client':
         navigate(`/clients/${id}`);
         break;
+      case 'receipt':
+        navigate(`/receipts/${id}`);
+        break;
     }
+  };
+  
+  const handleViewDetails = (item: CommunicationItem) => {
+    setSelectedItem(item);
+    setShowDetail(true);
   };
   
   const handleRefresh = () => {
@@ -261,7 +584,7 @@ export default function CommunicationsHub() {
           </Button>
           <div className="flex-1">
             <h1 className="text-2xl font-bold">Communications Hub</h1>
-            <p className="text-sm text-muted-foreground">Track all sent emails and SMS messages</p>
+            <p className="text-sm text-muted-foreground">View all sent emails and SMS with delivery proof</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleRefresh} data-testid="button-refresh">
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -269,7 +592,7 @@ export default function CommunicationsHub() {
           </Button>
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -325,13 +648,27 @@ export default function CommunicationsHub() {
               </div>
             </CardContent>
           </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                  <Paperclip className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.withAttachments}</p>
+                  <p className="text-xs text-muted-foreground">With PDFs</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
         
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by recipient, content..."
+              placeholder="Search by recipient, email, phone, content..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -415,6 +752,7 @@ export default function CommunicationsHub() {
                   key={item.id} 
                   item={item} 
                   onViewEntity={handleViewEntity}
+                  onViewDetails={handleViewDetails}
                 />
               ))
             )}
@@ -446,6 +784,13 @@ export default function CommunicationsHub() {
           </Card>
         )}
       </div>
+      
+      <CommunicationDetailSheet 
+        item={selectedItem}
+        open={showDetail}
+        onClose={() => setShowDetail(false)}
+        onViewEntity={handleViewEntity}
+      />
     </div>
   );
 }

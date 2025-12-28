@@ -121,8 +121,8 @@ export default function CollectPayment() {
   const [receiptDescription, setReceiptDescription] = useState("");
   const [receiptPaymentMethod, setReceiptPaymentMethod] = useState("cash");
   const [receiptReference, setReceiptReference] = useState("");
-  const [receiptClientId, setReceiptClientId] = useState<string>("");
-  const [receiptInvoiceId, setReceiptInvoiceId] = useState<string>("");
+  const [receiptClientId, setReceiptClientId] = useState<string | null>(null);
+  const [receiptInvoiceId, setReceiptInvoiceId] = useState<string | null>(null);
   const [receiptJobId, setReceiptJobId] = useState<string>("");
   
   const [sharePhone, setSharePhone] = useState("");
