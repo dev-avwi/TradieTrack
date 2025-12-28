@@ -45,16 +45,38 @@ const TRADE_TYPES = [
   { id: 'general', label: 'General Trade', icon: Wrench, color: 'bg-green-500' },
 ];
 
-const STEPS = [
-  { id: 'trade', title: 'Your Trade', description: 'What kind of work do you do?' },
-  { id: 'business', title: 'Business Details', description: 'Quick business setup' },
-  { id: 'done', title: 'All Set!', description: 'You\'re ready to go' },
-];
+const getStepsForPlan = (plan: string) => {
+  const baseSteps = [
+    { id: 'trade', title: 'Your Trade', description: 'What kind of work do you do?' },
+    { id: 'business', title: 'Business Details', description: 'Quick business setup' },
+  ];
+  
+  if (plan === 'team') {
+    return [
+      ...baseSteps,
+      { id: 'team', title: 'Your Team', description: 'Set up your team structure' },
+      { id: 'done', title: 'All Set!', description: 'You\'re ready to go' },
+    ];
+  }
+  
+  return [
+    ...baseSteps,
+    { id: 'done', title: 'All Set!', description: 'You\'re ready to go' },
+  ];
+};
 
 export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardingProps) {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Detect plan from URL params
+  const urlParams = new URLSearchParams(window.location.search);
+  const selectedPlan = urlParams.get('plan') || 'free';
+  const isTeamPlan = selectedPlan === 'team';
+  const isProPlan = selectedPlan === 'pro';
+  
+  const STEPS = getStepsForPlan(selectedPlan);
   
   const [formData, setFormData] = useState({
     tradeType: '',
@@ -65,6 +87,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     address: '',
     gstRegistered: true,
     hourlyRate: '85',
+    teamSize: isTeamPlan ? 'team' : 'solo',
   });
 
   const progressPercentage = ((currentStep + 1) / STEPS.length) * 100;
@@ -103,8 +126,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
             gstEnabled: formData.gstRegistered,
             defaultHourlyRate: parseFloat(formData.hourlyRate) || 85,
             calloutFee: 90,
-            teamSize: 'solo',
-            onboardingCompleted: true,
+            teamSize: isTeamPlan ? 'team' : 'solo',
+            onboardingCompleted: !isTeamPlan, // Team plan completes after team step
           }),
         });
         
@@ -122,7 +145,34 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       return;
     }
     
-    if (currentStep === 2) {
+    // For Team plan, step 2 is the team setup step
+    if (isTeamPlan && currentStep === 2) {
+      // Team step - mark onboarding as complete and move to done step
+      setIsSubmitting(true);
+      try {
+        await apiRequest('/api/business-settings', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            onboardingCompleted: true,
+          }),
+        });
+        await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
+        setCurrentStep(3); // Move to done step
+      } catch (error) {
+        toast({ 
+          variant: "destructive", 
+          title: "Error saving settings", 
+          description: error instanceof Error ? error.message : "Please try again" 
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+    
+    // Done step
+    const doneStepIndex = isTeamPlan ? 3 : 2;
+    if (currentStep === doneStepIndex) {
       onComplete();
       return;
     }
@@ -295,6 +345,77 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     </div>
   );
 
+  const renderTeamStep = () => (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          You're the Team Owner
+        </h2>
+        <p className="text-muted-foreground">
+          As the owner, you'll manage your team and assign jobs to your workers
+        </p>
+      </div>
+      
+      <div className="bg-muted/50 rounded-xl p-5 max-w-md mx-auto space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span className="text-primary font-bold text-sm">1</span>
+          </div>
+          <div>
+            <h4 className="font-medium text-gray-900 dark:text-white">Your 14-day free trial</h4>
+            <p className="text-sm text-muted-foreground">Full Team features with no credit card required</p>
+          </div>
+        </div>
+        
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span className="text-primary font-bold text-sm">2</span>
+          </div>
+          <div>
+            <h4 className="font-medium text-gray-900 dark:text-white">Invite your workers</h4>
+            <p className="text-sm text-muted-foreground">They'll get an email to join your team</p>
+          </div>
+        </div>
+        
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span className="text-primary font-bold text-sm">3</span>
+          </div>
+          <div>
+            <h4 className="font-medium text-gray-900 dark:text-white">Assign jobs & track progress</h4>
+            <p className="text-sm text-muted-foreground">Live GPS tracking and team chat included</p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 max-w-md mx-auto">
+        <div className="flex items-center gap-2 mb-2">
+          <CheckCircle className="h-5 w-5 text-green-600" />
+          <span className="font-semibold text-green-900 dark:text-green-100">Team Features Ready</span>
+        </div>
+        <p className="text-sm text-green-700 dark:text-green-300">
+          After setup, go to Team Management to invite your first team member.
+        </p>
+      </div>
+      
+      <div className="flex justify-between pt-4">
+        <Button variant="outline" onClick={handleBack} data-testid="button-back">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <Button 
+          onClick={handleNext} 
+          disabled={isSubmitting}
+          size="lg"
+          data-testid="button-next"
+        >
+          {isSubmitting ? 'Saving...' : 'Continue'}
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderDoneStep = () => (
     <div className="text-center py-8 space-y-6">
       <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
@@ -310,56 +431,94 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         </p>
       </div>
       
-      <div className="bg-muted/50 rounded-xl p-4 max-w-sm mx-auto">
-        <h3 className="font-medium mb-3">Free Plan Includes:</h3>
-        <ul className="text-sm text-muted-foreground space-y-2 text-left">
-          <li className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            Unlimited quotes
-          </li>
-          <li className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            25 jobs per month
-          </li>
-          <li className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            25 invoices per month
-          </li>
-          <li className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            50 clients
-          </li>
-        </ul>
-      </div>
+      {/* Plan-specific content */}
+      {isTeamPlan ? (
+        <>
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 max-w-sm mx-auto">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Gift className="h-5 w-5 text-green-600" />
+              <span className="font-semibold text-green-900 dark:text-green-100">14-Day Team Trial Active</span>
+            </div>
+            <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+              You're the Team Owner! Start by inviting your first team member.
+            </p>
+            <a href="/team" className="text-sm font-medium text-green-600 hover:text-green-700 dark:text-green-400">
+              Go to Team Management →
+            </a>
+          </div>
+        </>
+      ) : isProPlan ? (
+        <>
+          <div className="bg-gradient-to-r from-blue-50 to-orange-50 dark:from-blue-900/20 dark:to-orange-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 max-w-sm mx-auto">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Gift className="h-5 w-5 text-orange-500" />
+              <span className="font-semibold text-blue-900 dark:text-blue-100">Start Your Pro Trial</span>
+            </div>
+            <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+              Get unlimited jobs, invoices, and AI features for 14 days free!
+            </p>
+            <a href="/subscription" className="text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400">
+              Activate Pro Trial →
+            </a>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="bg-muted/50 rounded-xl p-4 max-w-sm mx-auto">
+            <h3 className="font-medium mb-3">Free Plan Includes:</h3>
+            <ul className="text-sm text-muted-foreground space-y-2 text-left">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Unlimited quotes
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                25 jobs per month
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                25 invoices per month
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                50 clients
+              </li>
+            </ul>
+          </div>
 
-      {/* Upgrade CTA */}
-      <div className="bg-gradient-to-r from-blue-50 to-orange-50 dark:from-blue-900/20 dark:to-orange-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 max-w-sm mx-auto">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <Gift className="h-5 w-5 text-orange-500" />
-          <span className="font-semibold text-blue-900 dark:text-blue-100">Want Unlimited Access?</span>
-        </div>
-        <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-          Try Pro free for 14 days. No credit card required!
-        </p>
-        <a href="/subscription" className="text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400">
-          Start Free Trial →
-        </a>
-      </div>
+          {/* Upgrade CTA for free plan */}
+          <div className="bg-gradient-to-r from-blue-50 to-orange-50 dark:from-blue-900/20 dark:to-orange-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 max-w-sm mx-auto">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Gift className="h-5 w-5 text-orange-500" />
+              <span className="font-semibold text-blue-900 dark:text-blue-100">Want Unlimited Access?</span>
+            </div>
+            <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+              Try Pro free for 14 days. No credit card required!
+            </p>
+            <a href="/subscription" className="text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400">
+              Start Free Trial →
+            </a>
+          </div>
+        </>
+      )}
       
       <Button onClick={handleNext} size="lg" className="px-8" data-testid="button-start">
         <Sparkles className="mr-2 h-4 w-4" />
-        Start Using TradieTrack
+        {isTeamPlan ? 'Go to Dashboard' : 'Start Using TradieTrack'}
       </Button>
     </div>
   );
 
   const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 0:
+    const stepId = STEPS[currentStep]?.id;
+    switch (stepId) {
+      case 'trade':
         return renderTradeStep();
-      case 1:
+      case 'business':
         return renderBusinessStep();
-      case 2:
+      case 'team':
+        return renderTeamStep();
+      case 'done':
         return renderDoneStep();
       default:
         return null;

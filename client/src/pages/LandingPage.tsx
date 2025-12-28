@@ -799,15 +799,15 @@ export default function LandingPage() {
                   "Job assignments",
                   "Advanced reporting"
                 ]}
-                buttonText="Contact Sales"
-                buttonVariant="outline"
-                isContactSales={true}
+                buttonText="Start 14-Day Free Trial"
+                buttonVariant="default"
+                href="/auth?mode=signup&plan=team"
               />
             </AnimatedSection>
           </div>
 
           <AnimatedSection delay={400} className="text-center text-sm text-gray-500 mt-10">
-            <p>All plans include a 14-day free trial of Pro features. No credit card required to start.</p>
+            <p>All paid plans include a 14-day free trial. No credit card required. Team plan: you become the Team Owner and can invite your staff.</p>
           </AnimatedSection>
         </div>
       </section>

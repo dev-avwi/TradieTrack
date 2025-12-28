@@ -93,8 +93,8 @@ const tiers = [
       { text: 'Team chat', included: true },
       { text: 'Priority support', included: true },
     ],
-    cta: 'Contact Sales',
-    isContactSales: true,
+    cta: 'Start 14-Day Free Trial',
+    isContactSales: false,
     popular: false,
   },
 ];
