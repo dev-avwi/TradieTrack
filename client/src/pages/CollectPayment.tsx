@@ -1107,12 +1107,12 @@ export default function CollectPayment() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="receipt-invoice">Link to Invoice (optional)</Label>
-              <Select value={receiptInvoiceId || ""} onValueChange={(val) => { setReceiptInvoiceId(val); }}>
+              <Select value={receiptInvoiceId || "none"} onValueChange={(val) => { setReceiptInvoiceId(val === "none" ? null : val); }}>
                 <SelectTrigger data-testid="select-receipt-invoice">
                   <SelectValue placeholder="Select an invoice (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No invoice</SelectItem>
+                  <SelectItem value="none">No invoice</SelectItem>
                   {invoices?.map((invoice) => (
                     <SelectItem key={invoice.id} value={invoice.id}>
                       {invoice.number} - ${parseFloat(invoice.total).toFixed(2)} ({invoice.title})
@@ -1181,12 +1181,12 @@ export default function CollectPayment() {
 
             <div className="space-y-2">
               <Label htmlFor="receipt-client">Client (optional)</Label>
-              <Select value={receiptClientId || ""} onValueChange={setReceiptClientId}>
+              <Select value={receiptClientId || "none"} onValueChange={(val) => setReceiptClientId(val === "none" ? null : val)}>
                 <SelectTrigger data-testid="select-receipt-client">
                   <SelectValue placeholder="Select a client (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No client</SelectItem>
+                  <SelectItem value="none">No client</SelectItem>
                   {clients?.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.name}
