@@ -24,7 +24,11 @@ import {
   MoreVertical,
   Eye,
   Mail,
-  Download
+  Download,
+  ArrowRight,
+  Link2,
+  Briefcase,
+  TrendingUp
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -66,41 +70,99 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
+const formatCompactCurrency = (amount: number) => {
+  if (amount >= 1000000) {
+    return `$${(amount / 1000000).toFixed(1)}M`;
+  }
+  if (amount >= 1000) {
+    return `$${(amount / 1000).toFixed(1)}K`;
+  }
+  return formatCurrency(amount);
+};
+
 const getQuoteStatusConfig = (status: string) => {
   switch (status) {
     case 'draft':
-      return { label: 'Draft', variant: 'secondary' as const, icon: Clock };
+      return { label: 'Draft', variant: 'secondary' as const, icon: Clock, borderColor: 'border-l-muted-foreground/40' };
     case 'sent':
-      return { label: 'Sent', variant: 'default' as const, icon: Send };
+      return { label: 'Sent', variant: 'default' as const, icon: Send, borderColor: 'border-l-blue-500' };
     case 'accepted':
-      return { label: 'Accepted', variant: 'default' as const, icon: CheckCircle, className: 'bg-green-500 hover:bg-green-600' };
+      return { label: 'Accepted', variant: 'default' as const, icon: CheckCircle, className: 'bg-green-500 hover:bg-green-600', borderColor: 'border-l-green-500' };
     case 'rejected':
-      return { label: 'Rejected', variant: 'destructive' as const, icon: XCircle };
+      return { label: 'Rejected', variant: 'destructive' as const, icon: XCircle, borderColor: 'border-l-red-500' };
     default:
-      return { label: status, variant: 'secondary' as const, icon: Clock };
+      return { label: status, variant: 'secondary' as const, icon: Clock, borderColor: 'border-l-muted-foreground/40' };
   }
 };
 
 const getInvoiceStatusConfig = (status: string) => {
   switch (status) {
     case 'draft':
-      return { label: 'Draft', variant: 'secondary' as const, icon: Clock };
+      return { label: 'Draft', variant: 'secondary' as const, icon: Clock, borderColor: 'border-l-muted-foreground/40' };
     case 'sent':
-      return { label: 'Sent', variant: 'default' as const, icon: Send };
+      return { label: 'Sent', variant: 'default' as const, icon: Send, borderColor: 'border-l-blue-500' };
     case 'paid':
-      return { label: 'Paid', variant: 'default' as const, icon: CheckCircle, className: 'bg-green-500 hover:bg-green-600' };
+      return { label: 'Paid', variant: 'default' as const, icon: CheckCircle, className: 'bg-green-500 hover:bg-green-600', borderColor: 'border-l-green-500' };
     case 'overdue':
-      return { label: 'Overdue', variant: 'destructive' as const, icon: AlertCircle };
+      return { label: 'Overdue', variant: 'destructive' as const, icon: AlertCircle, borderColor: 'border-l-red-500' };
     default:
-      return { label: status, variant: 'secondary' as const, icon: Clock };
+      return { label: status, variant: 'secondary' as const, icon: Clock, borderColor: 'border-l-muted-foreground/40' };
   }
 };
 
-function QuoteCard({ quote, onView, onSend, onConvert }: { 
+function KPIHeader({ 
+  totalQuotes, 
+  outstandingInvoices, 
+  totalReceived 
+}: { 
+  totalQuotes: number; 
+  outstandingInvoices: number; 
+  totalReceived: number;
+}) {
+  return (
+    <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/15 dark:to-primary/10 border-b">
+      <div className="px-4 py-3">
+        <div className="grid grid-cols-3 gap-2 md:gap-4">
+          <div className="text-center p-2 rounded-lg bg-background/50" data-testid="kpi-quotes">
+            <div className="flex items-center justify-center gap-1 mb-0.5">
+              <FileText className="w-3 h-3 text-blue-500" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wide">Quotes</span>
+            </div>
+            <p className="text-base sm:text-lg md:text-xl font-bold text-blue-600 dark:text-blue-400">
+              {formatCompactCurrency(totalQuotes)}
+            </p>
+          </div>
+          <div className="text-center p-2 rounded-lg bg-background/50" data-testid="kpi-outstanding">
+            <div className="flex items-center justify-center gap-1 mb-0.5">
+              <Receipt className="w-3 h-3 text-amber-500" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wide">Outstanding</span>
+            </div>
+            <p className="text-base sm:text-lg md:text-xl font-bold text-amber-600 dark:text-amber-400">
+              {formatCompactCurrency(outstandingInvoices)}
+            </p>
+          </div>
+          <div className="text-center p-2 rounded-lg bg-background/50" data-testid="kpi-received">
+            <div className="flex items-center justify-center gap-1 mb-0.5">
+              <TrendingUp className="w-3 h-3 text-green-500" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wide">Received</span>
+            </div>
+            <p className="text-base sm:text-lg md:text-xl font-bold text-green-600 dark:text-green-400">
+              {formatCompactCurrency(totalReceived)}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuoteCard({ quote, onView, onSend, onConvert, linkedInvoice, onViewInvoice }: { 
   quote: any; 
   onView: () => void;
   onSend: () => void;
   onConvert: () => void;
+  linkedInvoice?: any;
+  onViewInvoice?: () => void;
 }) {
   const statusConfig = getQuoteStatusConfig(quote.status);
   const StatusIcon = statusConfig.icon;
@@ -108,14 +170,17 @@ function QuoteCard({ quote, onView, onSend, onConvert }: {
   
   return (
     <Card 
-      className="hover-elevate active-elevate-2 cursor-pointer transition-all"
+      className={cn(
+        "hover-elevate active-elevate-2 cursor-pointer transition-all border-l-4",
+        statusConfig.borderColor
+      )}
       onClick={onView}
       data-testid={`quote-card-${quote.id}`}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="font-semibold text-sm" data-testid={`quote-number-${quote.id}`}>
                 {quote.number}
               </span>
@@ -127,6 +192,17 @@ function QuoteCard({ quote, onView, onSend, onConvert }: {
                 <StatusIcon className="w-3 h-3 mr-1" />
                 {statusConfig.label}
               </Badge>
+              {linkedInvoice && (
+                <Badge 
+                  variant="outline" 
+                  className="text-xs cursor-pointer hover-elevate text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-600"
+                  onClick={(e) => { e.stopPropagation(); onViewInvoice?.(); }}
+                  data-testid={`quote-invoice-link-${quote.id}`}
+                >
+                  <Link2 className="w-3 h-3 mr-1" />
+                  Invoice
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-muted-foreground truncate" data-testid={`quote-client-${quote.id}`}>
               {quote.clientName || 'No client'}
@@ -179,12 +255,24 @@ function QuoteCard({ quote, onView, onSend, onConvert }: {
   );
 }
 
-function InvoiceCard({ invoice, onView, onSend, onMarkPaid, onCreateLink }: { 
+function InvoiceCard({ 
+  invoice, 
+  onView, 
+  onSend, 
+  onMarkPaid, 
+  onCreateLink, 
+  linkedReceipt, 
+  onViewReceipt,
+  onViewJob 
+}: { 
   invoice: any; 
   onView: () => void;
   onSend: () => void;
   onMarkPaid: () => void;
   onCreateLink: () => void;
+  linkedReceipt?: any;
+  onViewReceipt?: () => void;
+  onViewJob?: () => void;
 }) {
   const statusConfig = getInvoiceStatusConfig(invoice.status);
   const StatusIcon = statusConfig.icon;
@@ -192,14 +280,17 @@ function InvoiceCard({ invoice, onView, onSend, onMarkPaid, onCreateLink }: {
   
   return (
     <Card 
-      className="hover-elevate active-elevate-2 cursor-pointer transition-all"
+      className={cn(
+        "hover-elevate active-elevate-2 cursor-pointer transition-all border-l-4",
+        statusConfig.borderColor
+      )}
       onClick={onView}
       data-testid={`invoice-card-${invoice.id}`}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="font-semibold text-sm" data-testid={`invoice-number-${invoice.id}`}>
                 {invoice.number}
               </span>
@@ -211,6 +302,28 @@ function InvoiceCard({ invoice, onView, onSend, onMarkPaid, onCreateLink }: {
                 <StatusIcon className="w-3 h-3 mr-1" />
                 {statusConfig.label}
               </Badge>
+              {invoice.status === 'paid' && linkedReceipt && (
+                <Badge 
+                  variant="outline" 
+                  className="text-xs cursor-pointer hover-elevate text-green-600 dark:text-green-400 border-green-300 dark:border-green-600"
+                  onClick={(e) => { e.stopPropagation(); onViewReceipt?.(); }}
+                  data-testid={`invoice-receipt-link-${invoice.id}`}
+                >
+                  <Link2 className="w-3 h-3 mr-1" />
+                  Receipt
+                </Badge>
+              )}
+              {invoice.jobId && onViewJob && (
+                <Badge 
+                  variant="outline" 
+                  className="text-xs cursor-pointer hover-elevate"
+                  onClick={(e) => { e.stopPropagation(); onViewJob(); }}
+                  data-testid={`invoice-job-link-${invoice.id}`}
+                >
+                  <Briefcase className="w-3 h-3 mr-1" />
+                  Job
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-muted-foreground truncate" data-testid={`invoice-client-${invoice.id}`}>
               {invoice.clientName || invoice.client || 'No client'}
@@ -269,7 +382,11 @@ function InvoiceCard({ invoice, onView, onSend, onMarkPaid, onCreateLink }: {
   );
 }
 
-function ReceiptCard({ receipt, onView }: { receipt: any; onView: () => void }) {
+function ReceiptCard({ receipt, onView, onViewInvoice }: { 
+  receipt: any; 
+  onView: () => void;
+  onViewInvoice?: () => void;
+}) {
   const amount = normalizeToDollars(receipt.amount);
   
   const getPaymentMethodLabel = (method: string) => {
@@ -285,14 +402,14 @@ function ReceiptCard({ receipt, onView }: { receipt: any; onView: () => void }) 
   
   return (
     <Card 
-      className="hover-elevate active-elevate-2 cursor-pointer transition-all"
+      className="hover-elevate active-elevate-2 cursor-pointer transition-all border-l-4 border-l-green-500"
       onClick={onView}
       data-testid={`receipt-card-${receipt.id}`}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="font-semibold text-sm" data-testid={`receipt-number-${receipt.id}`}>
                 {receipt.receiptNumber}
               </span>
@@ -300,6 +417,17 @@ function ReceiptCard({ receipt, onView }: { receipt: any; onView: () => void }) 
                 <CheckCircle className="w-3 h-3 mr-1" />
                 Paid
               </Badge>
+              {receipt.invoiceId && onViewInvoice && (
+                <Badge 
+                  variant="outline" 
+                  className="text-xs cursor-pointer hover-elevate text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-600"
+                  onClick={(e) => { e.stopPropagation(); onViewInvoice(); }}
+                  data-testid={`receipt-invoice-link-${receipt.id}`}
+                >
+                  <Link2 className="w-3 h-3 mr-1" />
+                  Invoice
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-muted-foreground truncate">
               {receipt.clientName || 'Payment received'}
@@ -427,6 +555,35 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
   const sendInvoiceMutation = useSendInvoice();
   const markPaidMutation = useMarkInvoicePaid();
   const createPaymentLinkMutation = useCreatePaymentLink();
+  
+  const kpiData = useMemo(() => {
+    const totalQuotes = quotes.reduce((sum: number, q: any) => sum + normalizeToDollars(q.total), 0);
+    const outstandingInvoices = invoices
+      .filter((i: any) => i.status === 'sent' || i.status === 'overdue')
+      .reduce((sum: number, i: any) => sum + normalizeToDollars(i.total), 0);
+    const totalReceived = receipts.reduce((sum: number, r: any) => sum + normalizeToDollars(r.amount), 0);
+    return { totalQuotes, outstandingInvoices, totalReceived };
+  }, [quotes, invoices, receipts]);
+
+  const invoicesByQuoteId = useMemo(() => {
+    const map = new Map<string, any>();
+    invoices.forEach((inv: any) => {
+      if (inv.quoteId) {
+        map.set(inv.quoteId, inv);
+      }
+    });
+    return map;
+  }, [invoices]);
+
+  const receiptsByInvoiceId = useMemo(() => {
+    const map = new Map<string, any>();
+    receipts.forEach((rec: any) => {
+      if (rec.invoiceId) {
+        map.set(rec.invoiceId, rec);
+      }
+    });
+    return map;
+  }, [receipts]);
   
   const filteredQuotes = useMemo(() => {
     if (!searchTerm) return quotes;
@@ -586,48 +743,56 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
   
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full bg-background">
-      <div className="sticky top-0 z-10 bg-background border-b">
+      <div className="sticky top-0 z-10 bg-background">
         <div className="px-4 pt-4 pb-2">
           <h1 className="text-xl font-bold mb-3" data-testid="documents-hub-title">Documents</h1>
-          
-          <TabsList className="w-full grid grid-cols-3 h-12" data-testid="documents-tabs">
+        </div>
+        
+        <KPIHeader 
+          totalQuotes={kpiData.totalQuotes}
+          outstandingInvoices={kpiData.outstandingInvoices}
+          totalReceived={kpiData.totalReceived}
+        />
+        
+        <div className="px-4 pt-3 pb-2 border-b">
+          <TabsList className="w-full grid grid-cols-3 h-12 bg-muted/50" data-testid="documents-tabs">
             <TabsTrigger 
               value="quotes" 
-              className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="flex items-center gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=inactive]:hover:bg-blue-50 dark:data-[state=inactive]:hover:bg-blue-950/30"
               data-testid="tab-quotes"
             >
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">Quotes</span>
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
                 {tabCounts.quotes}
               </Badge>
             </TabsTrigger>
             <TabsTrigger 
               value="invoices" 
-              className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="flex items-center gap-2 data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=inactive]:hover:bg-amber-50 dark:data-[state=inactive]:hover:bg-amber-950/30"
               data-testid="tab-invoices"
             >
               <Receipt className="w-4 h-4" />
               <span className="hidden sm:inline">Invoices</span>
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
                 {tabCounts.invoices}
               </Badge>
             </TabsTrigger>
             <TabsTrigger 
               value="receipts" 
-              className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="flex items-center gap-2 data-[state=active]:bg-green-500 data-[state=active]:text-white data-[state=inactive]:hover:bg-green-50 dark:data-[state=inactive]:hover:bg-green-950/30"
               data-testid="tab-receipts"
             >
               <CreditCard className="w-4 h-4" />
               <span className="hidden sm:inline">Receipts</span>
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">
                 {tabCounts.receipts}
               </Badge>
             </TabsTrigger>
           </TabsList>
         </div>
         
-        <div className="px-4 pb-3">
+        <div className="px-4 py-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -659,15 +824,20 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                   <EmptyState type="quotes" onCreate={handleCreate} />
                 )
               ) : (
-                filteredQuotes.map((quote: any) => (
-                  <QuoteCard
-                    key={quote.id}
-                    quote={quote}
-                    onView={() => navigate(`/quotes/${quote.id}`)}
-                    onSend={() => handleSendQuote(quote)}
-                    onConvert={() => handleConvertToInvoice(quote)}
-                  />
-                ))
+                filteredQuotes.map((quote: any) => {
+                  const linkedInvoice = invoicesByQuoteId.get(quote.id);
+                  return (
+                    <QuoteCard
+                      key={quote.id}
+                      quote={quote}
+                      onView={() => navigate(`/quotes/${quote.id}`)}
+                      onSend={() => handleSendQuote(quote)}
+                      onConvert={() => handleConvertToInvoice(quote)}
+                      linkedInvoice={linkedInvoice}
+                      onViewInvoice={linkedInvoice ? () => navigate(`/invoices/${linkedInvoice.id}`) : undefined}
+                    />
+                  );
+                })
               )}
             </div>
           </TabsContent>
@@ -689,16 +859,22 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                   <EmptyState type="invoices" onCreate={handleCreate} />
                 )
               ) : (
-                filteredInvoices.map((invoice: any) => (
-                  <InvoiceCard
-                    key={invoice.id}
-                    invoice={invoice}
-                    onView={() => navigate(`/invoices/${invoice.id}`)}
-                    onSend={() => handleSendInvoice(invoice)}
-                    onMarkPaid={() => handleMarkPaid(invoice)}
-                    onCreateLink={() => handleCreatePaymentLink(invoice)}
-                  />
-                ))
+                filteredInvoices.map((invoice: any) => {
+                  const linkedReceipt = receiptsByInvoiceId.get(invoice.id);
+                  return (
+                    <InvoiceCard
+                      key={invoice.id}
+                      invoice={invoice}
+                      onView={() => navigate(`/invoices/${invoice.id}`)}
+                      onSend={() => handleSendInvoice(invoice)}
+                      onMarkPaid={() => handleMarkPaid(invoice)}
+                      onCreateLink={() => handleCreatePaymentLink(invoice)}
+                      linkedReceipt={linkedReceipt}
+                      onViewReceipt={linkedReceipt ? () => navigate(`/receipts/${linkedReceipt.id}`) : undefined}
+                      onViewJob={invoice.jobId ? () => navigate(`/jobs/${invoice.jobId}`) : undefined}
+                    />
+                  );
+                })
               )}
             </div>
           </TabsContent>
@@ -725,6 +901,7 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                     key={receipt.id}
                     receipt={receipt}
                     onView={() => navigate(`/receipts/${receipt.id}`)}
+                    onViewInvoice={receipt.invoiceId ? () => navigate(`/invoices/${receipt.invoiceId}`) : undefined}
                   />
                 ))
               )}
