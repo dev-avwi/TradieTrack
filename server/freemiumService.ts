@@ -67,6 +67,17 @@ export const SUBSCRIPTION_LIMITS: Record<string, FreemiumLimits> = {
     canAddTeamMembers: true,
     canUseAIFeatures: true,
   },
+  team: {
+    jobsPerMonth: -1, // unlimited
+    invoicesPerMonth: -1,
+    quotesPerMonth: -1,
+    maxClients: -1,
+    maxTemplates: -1,
+    canUploadLogo: true,
+    canCustomizeBranding: true,
+    canAddTeamMembers: true,
+    canUseAIFeatures: true,
+  },
 };
 
 export class FreemiumService {
@@ -93,8 +104,8 @@ export class FreemiumService {
         };
       }
 
-      // If user is on pro or business plan, they have unlimited jobs
-      if (user.subscriptionTier === 'pro' || user.subscriptionTier === 'business') {
+      // If user is on pro, business, or team plan, they have unlimited jobs
+      if (user.subscriptionTier === 'pro' || user.subscriptionTier === 'business' || user.subscriptionTier === 'team') {
         return {
           canCreate: true,
           usageInfo: {
