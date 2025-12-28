@@ -274,17 +274,17 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
       case 'highlighted':
         return `
     .notes-section {
-      margin-bottom: 30px;
-      padding: 16px;
+      margin-bottom: 14px;
+      padding: 10px;
       background: linear-gradient(135deg, ${brandColor}10, ${brandColor}05);
       border: 1px solid ${brandColor}30;
-      border-radius: 8px;
+      border-radius: 6px;
     }`;
       case 'simple':
         return `
     .notes-section {
-      margin-bottom: 30px;
-      padding: 16px 0;
+      margin-bottom: 14px;
+      padding: 10px 0;
       background: transparent;
       border-top: 1px solid #e5e7eb;
       border-left: none;
@@ -294,8 +294,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
       default:
         return `
     .notes-section {
-      margin-bottom: 30px;
-      padding: 16px;
+      margin-bottom: 14px;
+      padding: 10px;
       background: #fafafa;
       border-left: 4px solid ${brandColor};
       border-radius: 0 6px 6px 0;
@@ -514,13 +514,15 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     
     .notes-title {
       font-weight: ${template.headingWeight};
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       color: #333;
+      font-size: 9px;
     }
     
     .notes-content {
       color: #666;
-      font-size: 10px;
+      font-size: 8px;
+      line-height: 1.4;
       white-space: pre-wrap;
     }
     
@@ -547,20 +549,20 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     }
     
     .terms-section {
-      margin-bottom: 30px;
+      margin-bottom: 16px;
     }
     
     .terms-title {
       font-weight: ${template.headingWeight};
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       color: #333;
-      font-size: 11px;
+      font-size: 9px;
     }
     
     .terms-content {
       color: #666;
-      font-size: 9px;
-      line-height: 1.6;
+      font-size: 8px;
+      line-height: 1.4;
     }
     
     .acceptance-section {
@@ -2292,7 +2294,7 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
   ${generateGoogleFontsLink()}
   ${generateDocumentStyles(template, accentColor)}
   <style>
-    /* Receipt-specific overrides for white background compliance */
+    /* Receipt-specific overrides for single-page printing */
     body {
       background: #ffffff !important;
     }
@@ -2300,32 +2302,63 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     .document {
       max-width: 800px;
       background: #ffffff;
+      padding: 20px 30px;
     }
     
-    /* Professional PAID watermark */
+    /* Compact header for receipts */
+    .header {
+      margin-bottom: 16px !important;
+      padding-bottom: 12px !important;
+    }
+    
+    .company-name {
+      font-size: 18px !important;
+    }
+    
+    .company-details p {
+      margin-bottom: 1px !important;
+      font-size: 10px !important;
+    }
+    
+    .info-section {
+      padding: 12px !important;
+      margin-bottom: 12px !important;
+    }
+    
+    .info-label {
+      font-size: 9px !important;
+      margin-bottom: 4px !important;
+    }
+    
+    .info-value {
+      font-size: 11px !important;
+      line-height: 1.4 !important;
+    }
+    
+    /* Professional PAID watermark - smaller */
     .paid-watermark {
       position: absolute;
-      top: 100px;
-      right: 40px;
-      padding: 10px 24px;
-      border: 4px solid #22c55e;
+      top: 60px;
+      right: 30px;
+      padding: 6px 16px;
+      border: 3px solid #22c55e;
       color: #22c55e;
-      font-size: 24px;
+      font-size: 18px;
       font-weight: ${template.headingWeight};
       text-transform: uppercase;
       transform: rotate(-8deg);
       opacity: 0.9;
-      letter-spacing: 3px;
+      letter-spacing: 2px;
       border-radius: 4px;
     }
     
-    /* Payment summary box - matching invoice totals styling */
+    /* Compact payment summary box */
     .payment-summary {
-      margin: 24px 0;
-      padding: 20px 24px;
+      margin: 14px 0;
+      padding: 12px 16px;
       background: #ffffff;
       border: 2px solid #22c55e;
-      border-radius: 8px;
+      border-radius: 6px;
       position: relative;
     }
     
@@ -2337,7 +2370,7 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
       right: 0;
       bottom: 0;
       background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(34, 197, 94, 0.02));
-      border-radius: 6px;
+      border-radius: 5px;
       pointer-events: none;
     }
     
@@ -2345,14 +2378,14 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
       border-bottom: 1px solid rgba(34, 197, 94, 0.3);
       position: relative;
     }
     
     .payment-summary-title {
-      font-size: 14px;
+      font-size: 11px;
       font-weight: ${template.headingWeight};
       color: #166534;
       text-transform: uppercase;
@@ -2362,12 +2395,12 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     .payment-status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
+      gap: 4px;
+      padding: 4px 10px;
       background: #22c55e;
       color: white;
-      border-radius: 20px;
-      font-size: 11px;
+      border-radius: 16px;
+      font-size: 9px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -2375,13 +2408,13 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     
     .payment-status-badge::before {
       content: '✓';
-      font-size: 12px;
+      font-size: 10px;
     }
     
     .payment-amount-row {
       display: flex;
       justify-content: space-between;
-      padding: 10px 0;
+      padding: 6px 0;
       border-bottom: 1px solid rgba(34, 197, 94, 0.2);
       position: relative;
     }
@@ -2393,101 +2426,101 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
     .payment-amount-row.total {
       border-bottom: none;
       border-top: 2px solid #22c55e;
-      padding-top: 16px;
-      margin-top: 12px;
+      padding-top: 10px;
+      margin-top: 8px;
     }
     
     .payment-amount-row .label {
       color: #166534;
-      font-size: 12px;
+      font-size: 10px;
       font-weight: 500;
     }
     
     .payment-amount-row .value {
       font-weight: 600;
       color: #166534;
-      font-size: 12px;
+      font-size: 10px;
     }
     
     .payment-amount-row.total .label {
-      font-size: 16px;
+      font-size: 13px;
       font-weight: ${template.headingWeight};
       color: #166534;
     }
     
     .payment-amount-row.total .value {
-      font-size: 20px;
+      font-size: 16px;
       font-weight: ${template.headingWeight};
       color: #166534;
     }
     
-    /* Transaction details grid */
+    /* Compact transaction details grid */
     .transaction-details {
-      margin: 24px 0;
+      margin: 14px 0;
     }
     
     .transaction-details-title {
-      font-size: 11px;
+      font-size: 9px;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: #666;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       font-weight: 600;
       border-bottom: 2px solid ${accentColor};
-      padding-bottom: 8px;
+      padding-bottom: 4px;
       display: inline-block;
     }
     
     .transaction-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 8px;
     }
     
     .transaction-item {
-      padding: 14px 16px;
+      padding: 8px 10px;
       background: #fafafa;
       border: 1px solid #e5e7eb;
-      border-radius: 6px;
+      border-radius: 4px;
     }
     
     .transaction-item-label {
-      font-size: 10px;
+      font-size: 8px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: #666;
-      margin-bottom: 6px;
+      margin-bottom: 3px;
       font-weight: 600;
     }
     
     .transaction-item-value {
-      font-size: 13px;
+      font-size: 10px;
       font-weight: 600;
       color: #1a1a1a;
     }
     
-    /* Linked document references - matching quote/invoice styling */
+    /* Compact linked document references */
     .linked-document {
-      margin: 16px 0;
-      padding: 16px 20px;
+      margin: 10px 0;
+      padding: 10px 14px;
       background: #fafafa;
-      border-left: 4px solid ${accentColor};
-      border-radius: 0 6px 6px 0;
+      border-left: 3px solid ${accentColor};
+      border-radius: 0 4px 4px 0;
     }
     
     .linked-document-title {
-      font-size: 10px;
+      font-size: 8px;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: #666;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       font-weight: 600;
     }
     
     .linked-document-content {
-      font-size: 13px;
+      font-size: 11px;
       color: #1a1a1a;
-      line-height: 1.6;
+      line-height: 1.4;
     }
     
     .linked-document-content strong {
@@ -2495,37 +2528,47 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
       color: ${accentColor};
     }
     
-    /* Thank you section */
+    /* Compact thank you section */
     .thank-you-section {
       text-align: center;
-      margin: 32px 0 24px 0;
-      padding: 24px;
+      margin: 16px 0 12px 0;
+      padding: 14px;
       background: linear-gradient(135deg, ${accentColor}08, ${accentColor}03);
       border: 1px solid ${accentColor}20;
-      border-radius: 8px;
+      border-radius: 6px;
     }
     
     .thank-you-text {
-      font-size: 18px;
+      font-size: 14px;
       font-weight: ${template.headingWeight};
       color: ${accentColor};
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
     
     .thank-you-subtext {
-      font-size: 12px;
+      font-size: 10px;
       color: #666;
-      line-height: 1.5;
+      line-height: 1.4;
+    }
+    
+    .footer {
+      margin-top: 12px !important;
+      padding-top: 10px !important;
+      font-size: 9px !important;
+    }
+    
+    .footer p {
+      margin-bottom: 2px !important;
     }
     
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; }
-      .document { padding: 20px; background: #fff !important; }
+      .document { padding: 15px 25px; background: #fff !important; }
     }
     
     @page {
       size: A4;
-      margin: 10mm;
+      margin: 8mm;
     }
   </style>
 </head>
