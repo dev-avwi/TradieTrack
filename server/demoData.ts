@@ -126,16 +126,38 @@ export async function createDemoUserAndData() {
         invoicePrefix: "MP-",
         quotePrefix: "MPQ-",
         paymentInstructions: "Payment due within 30 days. Direct deposit preferred.",
-        brandColor: "#2563eb"
+        brandColor: "#2563eb",
+        invoiceTerms: "1. All work is guaranteed for 12 months from completion. 2. Payments must be made within 14 days of invoice date. 3. Materials remain property of Mike's Plumbing until paid in full.",
+        warrantyTerms: "Standard 12-month workmanship warranty applies to all plumbing installations. Manufacturer warranties apply to specific parts and fixtures as provided."
       });
       console.log('✅ Demo business settings created');
     }
 
-    // Check if demo user has clients
-    const existingClients = await storage.getClients(demoUser.id);
-    if (existingClients.length === 0) {
-      // Create demo clients
-      const demoClients = [
+    // Reset data for demo user to ensure clean state with complete chains
+    console.log('🔄 Resetting data for demo user to ensure clean document chains...');
+    const allClients = await storage.getClients(demoUser.id);
+    for (const client of allClients) {
+      await storage.deleteClient(client.id, demoUser.id);
+    }
+    const allJobs = await storage.getJobs(demoUser.id, true);
+    for (const job of allJobs) {
+      await storage.deleteJob(job.id, demoUser.id);
+    }
+    const allQuotes = await storage.getQuotes(demoUser.id, true);
+    for (const quote of allQuotes) {
+      await storage.deleteQuote(quote.id, demoUser.id);
+    }
+    const allInvoices = await storage.getInvoices(demoUser.id, true);
+    for (const invoice of allInvoices) {
+      await storage.deleteInvoice(invoice.id, demoUser.id);
+    }
+    const allReceipts = await storage.getReceipts(demoUser.id);
+    for (const receipt of allReceipts) {
+      await storage.deleteReceipt(receipt.id, demoUser.id);
+    }
+
+    // Create demo clients
+    const demoClients = [
         {
           userId: demoUser.id,
           name: "Sarah Johnson",
