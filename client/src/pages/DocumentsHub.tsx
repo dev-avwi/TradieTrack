@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -463,11 +463,39 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
   
   const params = new URLSearchParams(searchParams);
   const initialTab = (params.get('tab') as DocumentTab) || 'quotes';
+  const initialFilter = params.get('filter') || 'all';
   
   const [activeTab, setActiveTab] = useState<DocumentTab>(initialTab);
-  const [quoteFilter, setQuoteFilter] = useState<QuoteStatus>("all");
-  const [invoiceFilter, setInvoiceFilter] = useState<InvoiceStatus>("all");
-  const [receiptFilter, setReceiptFilter] = useState<ReceiptStatus>("all");
+  const [quoteFilter, setQuoteFilter] = useState<QuoteStatus>(
+    initialTab === 'quotes' ? (initialFilter as QuoteStatus) : "all"
+  );
+  const [invoiceFilter, setInvoiceFilter] = useState<InvoiceStatus>(
+    initialTab === 'invoices' ? (initialFilter as InvoiceStatus) : "all"
+  );
+  const [receiptFilter, setReceiptFilter] = useState<ReceiptStatus>(
+    initialTab === 'receipts' ? (initialFilter as ReceiptStatus) : "all"
+  );
+  
+  // Update tab and filter when URL params change
+  useEffect(() => {
+    const urlParams = new URLSearchParams(searchParams);
+    const tab = urlParams.get('tab') as DocumentTab;
+    const filter = urlParams.get('filter');
+    
+    if (tab) {
+      setActiveTab(tab);
+      if (filter) {
+        if (tab === 'quotes') {
+          setQuoteFilter(filter as QuoteStatus);
+        } else if (tab === 'invoices') {
+          setInvoiceFilter(filter as InvoiceStatus);
+        } else if (tab === 'receipts') {
+          setReceiptFilter(filter as ReceiptStatus);
+        }
+      }
+    }
+  }, [searchParams]);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [sendDialogOpen, setSendDialogOpen] = useState(false);

@@ -8,7 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
@@ -115,7 +115,12 @@ export default function DocumentsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
-  const [activeTab, setActiveTab] = useState<TabType>('quotes');
+  // Read URL parameters for initial tab and filter
+  const params = useLocalSearchParams<{ tab?: string; filter?: string }>();
+  const initialTab = (params.tab as TabType) || 'quotes';
+  const initialFilter = params.filter || 'all';
+  
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -123,9 +128,15 @@ export default function DocumentsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
-  const [quoteFilter, setQuoteFilter] = useState<QuoteFilterType>('all');
-  const [invoiceFilter, setInvoiceFilter] = useState<InvoiceFilterType>('all');
-  const [receiptFilter, setReceiptFilter] = useState<ReceiptFilterType>('all');
+  const [quoteFilter, setQuoteFilter] = useState<QuoteFilterType>(
+    initialTab === 'quotes' ? (initialFilter as QuoteFilterType) : 'all'
+  );
+  const [invoiceFilter, setInvoiceFilter] = useState<InvoiceFilterType>(
+    initialTab === 'invoices' ? (initialFilter as InvoiceFilterType) : 'all'
+  );
+  const [receiptFilter, setReceiptFilter] = useState<ReceiptFilterType>(
+    initialTab === 'receipts' ? (initialFilter as ReceiptFilterType) : 'all'
+  );
 
   const clientMap = useMemo(() => {
     return new Map(clients.map(c => [c.id, c]));

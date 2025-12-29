@@ -1383,7 +1383,7 @@ export default function DashboardScreen() {
                 icon="alert-circle"
                 iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
                 iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
-                onPress={() => router.push('/more/invoices')}
+                onPress={() => router.push('/more/documents?tab=invoices&filter=overdue')}
               />
               {hasActiveTeam ? (
                 <KPICard

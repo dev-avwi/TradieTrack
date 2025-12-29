@@ -237,7 +237,7 @@ export default function OwnerManagerDashboard({
           
           <div 
             className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/invoices?filter=overdue')}
+            onClick={() => onNavigate?.('/documents?tab=invoices&filter=overdue')}
             data-testid="kpi-overdue"
           >
             <div className="card-padding">
@@ -258,7 +258,7 @@ export default function OwnerManagerDashboard({
 
           <div 
             className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/quotes?filter=pending')}
+            onClick={() => onNavigate?.('/documents?tab=quotes&filter=sent')}
             data-testid="kpi-pending"
           >
             <div className="card-padding">
@@ -279,7 +279,7 @@ export default function OwnerManagerDashboard({
           
           <div 
             className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/invoices?filter=paid')}
+            onClick={() => onNavigate?.('/documents?tab=invoices&filter=paid')}
             data-testid="kpi-earnings"
           >
             <div className="card-padding">
