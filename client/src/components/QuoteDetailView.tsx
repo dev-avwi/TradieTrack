@@ -5,13 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle, ChevronRight, FolderOpen } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, getSessionToken } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { useIntegrationHealth, isEmailReady } from "@/hooks/use-integration-health";
 import StatusBadge from "./StatusBadge";
 import EmailComposeModal from "./EmailComposeModal";
 import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
 import type { BusinessTemplate } from "@shared/schema";
+
+function getAuthHeaders(): HeadersInit {
+  const headers: HeadersInit = {};
+  const token = getSessionToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 interface QuoteDetailViewProps {
   quoteId: string;
@@ -37,7 +46,10 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const { data: quote, isLoading } = useQuery({
     queryKey: ['/api/quotes', quoteId],
     queryFn: async () => {
-      const response = await fetch(`/api/quotes/${quoteId}`);
+      const response = await fetch(`/api/quotes/${quoteId}?_t=${Date.now()}`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (!response.ok) throw new Error('Failed to fetch quote');
       return response.json();
     }
@@ -47,7 +59,10 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
     queryKey: ['/api/clients', quote?.clientId],
     queryFn: async () => {
       if (!quote?.clientId) return null;
-      const response = await fetch(`/api/clients/${quote.clientId}`);
+      const response = await fetch(`/api/clients/${quote.clientId}`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (!response.ok) throw new Error('Failed to fetch client');
       return response.json();
     },
@@ -58,7 +73,10 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
     queryKey: ['/api/jobs', quote?.jobId],
     queryFn: async () => {
       if (!quote?.jobId) return null;
-      const response = await fetch(`/api/jobs/${quote.jobId}`);
+      const response = await fetch(`/api/jobs/${quote.jobId}`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (!response.ok) throw new Error('Failed to fetch job');
       return response.json();
     },

@@ -10,13 +10,22 @@ import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
 import { useLocation } from "wouter";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getSessionToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
 import EmailComposeModal from "./EmailComposeModal";
 import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
 import DemoPaymentSimulator from "./DemoPaymentSimulator";
 import type { BusinessTemplate } from "@shared/schema";
+
+function getAuthHeaders(): HeadersInit {
+  const headers: HeadersInit = {};
+  const token = getSessionToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 interface InvoiceDetailViewProps {
   invoiceId: string;
@@ -56,9 +65,10 @@ export default function InvoiceDetailView({
   const { data: invoice, isLoading, refetch: refetchInvoice } = useQuery({
     queryKey: ['/api/invoices', invoiceId],
     queryFn: async () => {
-      // Add cache buster to prevent browser caching issues
       const response = await fetch(`/api/invoices/${invoiceId}?_t=${Date.now()}`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch invoice');
       return response.json();
@@ -69,7 +79,10 @@ export default function InvoiceDetailView({
     queryKey: ['/api/clients', invoice?.clientId],
     queryFn: async () => {
       if (!invoice?.clientId) return null;
-      const response = await fetch(`/api/clients/${invoice.clientId}`);
+      const response = await fetch(`/api/clients/${invoice.clientId}`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (!response.ok) throw new Error('Failed to fetch client');
       return response.json();
     },
@@ -80,7 +93,10 @@ export default function InvoiceDetailView({
     queryKey: ['/api/jobs', invoice?.jobId],
     queryFn: async () => {
       if (!invoice?.jobId) return null;
-      const response = await fetch(`/api/jobs/${invoice.jobId}`);
+      const response = await fetch(`/api/jobs/${invoice.jobId}`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (!response.ok) throw new Error('Failed to fetch job');
       return response.json();
     },
@@ -91,7 +107,10 @@ export default function InvoiceDetailView({
     queryKey: ['/api/quotes', invoice?.quoteId],
     queryFn: async () => {
       if (!invoice?.quoteId) return null;
-      const response = await fetch(`/api/quotes/${invoice.quoteId}`);
+      const response = await fetch(`/api/quotes/${invoice.quoteId}`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (!response.ok) throw new Error('Failed to fetch linked quote');
       return response.json();
     },
@@ -102,7 +121,10 @@ export default function InvoiceDetailView({
     queryKey: ['/api/digital-signatures', invoice?.quoteId, 'quote'],
     queryFn: async () => {
       if (!invoice?.quoteId) return null;
-      const response = await fetch(`/api/digital-signatures?documentType=quote&documentId=${invoice.quoteId}`);
+      const response = await fetch(`/api/digital-signatures?documentType=quote&documentId=${invoice.quoteId}`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (!response.ok) return null;
       const signatures = await response.json();
       return signatures.length > 0 ? signatures[0] : null;

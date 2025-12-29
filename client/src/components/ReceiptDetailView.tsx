@@ -9,6 +9,16 @@ import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
 import { format } from "date-fns";
 import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
+import { getSessionToken } from "@/lib/queryClient";
+
+function getAuthHeaders(): HeadersInit {
+  const headers: HeadersInit = {};
+  const token = getSessionToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 interface ReceiptDetailViewProps {
   receiptId: string;
@@ -65,7 +75,10 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
   const { data: receipt, isLoading } = useQuery<ReceiptData>({
     queryKey: ['/api/receipts', receiptId],
     queryFn: async () => {
-      const response = await fetch(`/api/receipts/${receiptId}?_t=${Date.now()}`, { credentials: 'include' });
+      const response = await fetch(`/api/receipts/${receiptId}?_t=${Date.now()}`, { 
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (!response.ok) throw new Error('Failed to fetch receipt');
       return response.json();
     }
@@ -75,7 +88,10 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
     queryKey: ['/api/clients', receipt?.clientId],
     queryFn: async () => {
       if (!receipt?.clientId) return null;
-      const response = await fetch(`/api/clients/${receipt.clientId}`, { credentials: 'include' });
+      const response = await fetch(`/api/clients/${receipt.clientId}`, { 
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (!response.ok) throw new Error('Failed to fetch client');
       return response.json();
     },
@@ -86,7 +102,10 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
     queryKey: ['/api/invoices', receipt?.invoiceId],
     queryFn: async () => {
       if (!receipt?.invoiceId) return null;
-      const response = await fetch(`/api/invoices/${receipt.invoiceId}`, { credentials: 'include' });
+      const response = await fetch(`/api/invoices/${receipt.invoiceId}`, { 
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (!response.ok) throw new Error('Failed to fetch invoice');
       return response.json();
     },
@@ -97,7 +116,10 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
     queryKey: ['/api/jobs', invoice?.jobId],
     queryFn: async () => {
       if (!invoice?.jobId) return null;
-      const response = await fetch(`/api/jobs/${invoice.jobId}`, { credentials: 'include' });
+      const response = await fetch(`/api/jobs/${invoice.jobId}`, { 
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (!response.ok) throw new Error('Failed to fetch job');
       return response.json();
     },

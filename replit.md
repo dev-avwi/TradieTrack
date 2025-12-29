@@ -8,7 +8,7 @@ Preferred communication style: Simple, everyday language.
 TradieTrack utilizes an event-driven architecture with TypeScript. The frontend is built with React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile. The backend is an Express.js and TypeScript REST API with Zod validation, backed by PostgreSQL and Drizzle ORM.
 
 Key architectural decisions and features include:
--   **Authentication**: Supports Email/password, Google OAuth, and secure password reset.
+-   **Authentication**: Supports Email/password, Google OAuth, and secure password reset. iOS/Safari fallback uses localStorage session token with Authorization header alongside cookies. Custom queryFn in detail views MUST include both `credentials: 'include'` AND `headers: getAuthHeaders()` for cross-platform compatibility.
 -   **AI Assistant**: Integrates GPT-4o-mini for business suggestions, Australian English phrasing, proactive notifications, and quote generation. GPT-4o vision is used for AI Photo Analysis.
 -   **PDF Generation**: Server-side PDF generation for quotes and invoices using Puppeteer. Invoice PDFs (download, preview, email, public) consistently use Templates Hub terms & warranty templates with fallback chain: custom template → business.invoiceTerms → default terms.
 -   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, and a "Today's Schedule" dashboard. Includes Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation. Customizable theming and branding.
