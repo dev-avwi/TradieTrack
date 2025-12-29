@@ -7945,11 +7945,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create client lookup map
       const clientsMap = new Map(clients.map((c: any) => [c.id, c]));
       
-      // Enrich invoices with client data
+      // Get current date for overdue calculation
+      const now = new Date();
+      now.setHours(0, 0, 0, 0); // Start of today
+      
+      // Enrich invoices with client data and normalize overdue status
       const enrichedInvoices = invoices.map((invoice: any) => {
         const client = clientsMap.get(invoice.clientId);
+        
+        // Normalize status: if invoice is sent and past due date, mark as overdue
+        let normalizedStatus = invoice.status;
+        if (invoice.status === 'sent' && invoice.dueDate) {
+          const dueDate = new Date(invoice.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+          if (dueDate < now) {
+            normalizedStatus = 'overdue';
+          }
+        }
+        
         return {
           ...invoice,
+          status: normalizedStatus,
           clientName: client?.name || 'Unknown Client',
           clientEmail: client?.email || null,
         };
@@ -7999,7 +8015,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
-      res.json(invoice);
+      
+      // Normalize status: if invoice is sent and past due date, mark as overdue
+      let normalizedStatus = invoice.status;
+      if (invoice.status === 'sent' && invoice.dueDate) {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const dueDate = new Date(invoice.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        if (dueDate < now) {
+          normalizedStatus = 'overdue';
+        }
+      }
+      
+      res.json({ ...invoice, status: normalizedStatus });
     } catch (error) {
       console.error("Error fetching invoice:", error);
       res.status(500).json({ error: "Failed to fetch invoice" });
