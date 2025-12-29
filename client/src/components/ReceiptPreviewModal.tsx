@@ -280,6 +280,17 @@ export default function ReceiptPreviewModal({
       </html>
     `);
     printWindow.document.close();
+    
+    // Add a delay to ensure styles and content are fully loaded before printing
+    setTimeout(() => {
+      if (printWindow) {
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.onafterprint = function() { printWindow.close(); };
+        }, 100);
+      }
+    }, 800);
   };
 
   const formatCurrency = (amount: number) => {

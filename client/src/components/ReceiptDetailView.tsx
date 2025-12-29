@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Download, Mail, FileText, Receipt, Calendar, CreditCard, Hash, Building, User, MapPin, Phone, AtSign, Loader2, ChevronRight, FolderOpen } from "lucide-react";
+import { Printer, ArrowLeft, Download, Mail, FileText, Receipt, Calendar, CreditCard, Hash, Building, User, MapPin, Phone, AtSign, Loader2, ChevronRight, FolderOpen, Share2 } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
@@ -258,6 +258,18 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
       </html>
     `);
     printWindow.document.close();
+    
+    // Add a delay to ensure styles and content are fully loaded before printing
+    setTimeout(() => {
+      if (printWindow) {
+        printWindow.focus();
+        // Give an extra bit of time for the logo to potentially load
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.onafterprint = function() { printWindow.close(); };
+        }, 100);
+      }
+    }, 800);
   };
 
   const isIOSSafari = () => {
@@ -464,6 +476,22 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
           <Button variant="outline" size="sm" onClick={handleSaveAsPDF} disabled={isPrinting} data-testid="button-download-pdf">
             <Download className="h-4 w-4 mr-2" />
             PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => {
+            const publicUrl = `${window.location.origin}/receipts/${receiptId}/view`;
+            const text = `Payment Receipt ${receipt.receiptNumber} - ${formatCurrency(receipt.amount)}`;
+            if (navigator.share) {
+              navigator.share({ title: 'Payment Receipt', text, url: publicUrl }).catch(() => {
+                navigator.clipboard.writeText(publicUrl);
+                toast({ title: "Link Copied", description: "Receipt link copied to clipboard" });
+              });
+            } else {
+              navigator.clipboard.writeText(publicUrl);
+              toast({ title: "Link Copied", description: "Receipt link copied to clipboard" });
+            }
+          }} data-testid="button-share-receipt">
+            <Share2 className="h-4 w-4 mr-2" />
+            Share
           </Button>
           {client?.email && (
             <Button variant="outline" size="sm" onClick={handleSendEmail} data-testid="button-send-email">

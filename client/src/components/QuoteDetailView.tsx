@@ -266,6 +266,17 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
       </html>
     `);
     printWindow.document.close();
+    
+    // Add a delay to ensure styles and content are fully loaded before printing
+    setTimeout(() => {
+      if (printWindow) {
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.onafterprint = function() { printWindow.close(); };
+        }, 100);
+      }
+    }, 800);
   };
 
   // Feature detection: check if download attribute is supported
