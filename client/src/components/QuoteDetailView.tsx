@@ -330,7 +330,8 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
     
     try {
       const response = await fetch(pdfUrl, {
-        credentials: 'include'
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
       
       if (!response.ok) {

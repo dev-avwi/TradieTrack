@@ -318,7 +318,10 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
     }
     
     try {
-      const response = await fetch(pdfUrl, { credentials: 'include' });
+      const response = await fetch(pdfUrl, { 
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       
       if (!response.ok) {
         throw new Error('Failed to generate PDF');

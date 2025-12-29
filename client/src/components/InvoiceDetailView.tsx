@@ -487,7 +487,8 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
     
     try {
       const response = await fetch(pdfUrl, {
-        credentials: 'include'
+        credentials: 'include',
+        headers: getAuthHeaders()
       });
       
       if (!response.ok) {
