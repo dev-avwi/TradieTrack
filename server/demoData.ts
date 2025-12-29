@@ -282,51 +282,200 @@ export async function createDemoUserAndData() {
       }
       console.log('✅ Demo jobs created:', createdJobs.length);
 
-      // Create demo quote (linked to Kitchen Tap Replacement - index 2)
-      const quoteNumber = await storage.generateQuoteNumber(demoUser.id);
-      const demoQuote = await storage.createQuote({
+      // ============================================
+      // CREATE 8 QUOTES ACROSS ALL STATUS CATEGORIES
+      // 2 Draft, 2 Sent, 2 Accepted, 2 Rejected
+      // ============================================
+
+      // DRAFT QUOTES (2)
+      const draft1Num = await storage.generateQuoteNumber(demoUser.id);
+      const draftQuote1 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[0].id,
+        title: "Kitchen Renovation Plumbing",
+        description: "Complete kitchen plumbing upgrade including new sink, dishwasher connection, and garbage disposal",
+        status: "draft" as const,
+        subtotal: "1850.00",
+        gstAmount: "185.00",
+        total: "2035.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        number: draft1Num
+      });
+      await storage.createQuoteLineItem({ quoteId: draftQuote1.id, description: "Kitchen Sink (Stainless Steel Double Bowl)", quantity: "1.00", unitPrice: "450.00", total: "450.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: draftQuote1.id, description: "Dishwasher Connection Kit", quantity: "1.00", unitPrice: "180.00", total: "180.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: draftQuote1.id, description: "Garbage Disposal Unit", quantity: "1.00", unitPrice: "350.00", total: "350.00", sortOrder: 3 });
+      await storage.createQuoteLineItem({ quoteId: draftQuote1.id, description: "Installation Labour (7 hours)", quantity: "7.00", unitPrice: "120.00", total: "840.00", sortOrder: 4 });
+      await storage.createQuoteLineItem({ quoteId: draftQuote1.id, description: "Miscellaneous Fittings", quantity: "1.00", unitPrice: "30.00", total: "30.00", sortOrder: 5 });
+
+      const draft2Num = await storage.generateQuoteNumber(demoUser.id);
+      const draftQuote2 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[1].id,
+        title: "Outdoor Shower Installation",
+        description: "Install outdoor shower near pool area with hot and cold water",
+        status: "draft" as const,
+        subtotal: "980.00",
+        gstAmount: "98.00",
+        total: "1078.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        number: draft2Num
+      });
+      await storage.createQuoteLineItem({ quoteId: draftQuote2.id, description: "Outdoor Shower Fixture (Chrome)", quantity: "1.00", unitPrice: "320.00", total: "320.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: draftQuote2.id, description: "Hot/Cold Mixing Valve", quantity: "1.00", unitPrice: "180.00", total: "180.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: draftQuote2.id, description: "Installation Labour (4 hours)", quantity: "4.00", unitPrice: "120.00", total: "480.00", sortOrder: 3 });
+
+      // SENT QUOTES (2)
+      const sent1Num = await storage.generateQuoteNumber(demoUser.id);
+      const sentQuote1 = await storage.createQuote({
         userId: demoUser.id,
         clientId: createdClients[2].id,
         jobId: createdJobs[2].id,
-        number: quoteNumber,
         title: "Kitchen Tap Replacement Quote",
         description: "Supply and install new kitchen mixer tap",
         status: "sent" as const,
         subtotal: "280.00",
-        gstAmount: "28.00", 
+        gstAmount: "28.00",
         total: "308.00",
-        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        sentAt: new Date()
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        number: sent1Num
       });
+      await storage.createQuoteLineItem({ quoteId: sentQuote1.id, description: "Premium Kitchen Mixer Tap", quantity: "1.00", unitPrice: "180.00", total: "180.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: sentQuote1.id, description: "Installation Labour (1 hour)", quantity: "1.00", unitPrice: "120.00", total: "120.00", sortOrder: 2 });
 
-      // Add line items to quote
-      await storage.createQuoteLineItem({
-        quoteId: demoQuote.id,
-        description: "Premium Kitchen Mixer Tap",
-        quantity: "1.00",
-        unitPrice: "180.00",
-        total: "180.00",
-        sortOrder: 1
+      const sent2Num = await storage.generateQuoteNumber(demoUser.id);
+      const sentQuote2 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[0].id,
+        title: "Water Heater Replacement",
+        description: "Replace existing gas water heater with new energy-efficient model",
+        status: "sent" as const,
+        subtotal: "2200.00",
+        gstAmount: "220.00",
+        total: "2420.00",
+        validUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        number: sent2Num
       });
+      await storage.createQuoteLineItem({ quoteId: sentQuote2.id, description: "Rheem 250L Gas Water Heater", quantity: "1.00", unitPrice: "1450.00", total: "1450.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: sentQuote2.id, description: "Removal of Old Unit", quantity: "1.00", unitPrice: "150.00", total: "150.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: sentQuote2.id, description: "Installation Labour (5 hours)", quantity: "5.00", unitPrice: "120.00", total: "600.00", sortOrder: 3 });
 
-      await storage.createQuoteLineItem({
-        quoteId: demoQuote.id,
-        description: "Installation Labour (1 hour)",
-        quantity: "1.00", 
-        unitPrice: "120.00",
-        total: "120.00",
-        sortOrder: 2
+      // ACCEPTED QUOTES (2)
+      const accepted1Num = await storage.generateQuoteNumber(demoUser.id);
+      const acceptedQuote1 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[1].id,
+        title: "Ensuite Bathroom Plumbing",
+        description: "Complete plumbing for new ensuite bathroom addition",
+        status: "accepted" as const,
+        subtotal: "3200.00",
+        gstAmount: "320.00",
+        total: "3520.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        acceptedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        acceptedBy: "David Wilson",
+        number: accepted1Num
       });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote1.id, description: "Toilet Suite (Wall-Hung)", quantity: "1.00", unitPrice: "890.00", total: "890.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote1.id, description: "Vanity Basin and Cabinet", quantity: "1.00", unitPrice: "650.00", total: "650.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote1.id, description: "Shower Screen and Base", quantity: "1.00", unitPrice: "420.00", total: "420.00", sortOrder: 3 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote1.id, description: "Tapware Set", quantity: "1.00", unitPrice: "280.00", total: "280.00", sortOrder: 4 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote1.id, description: "Rough-In Plumbing", quantity: "1.00", unitPrice: "480.00", total: "480.00", sortOrder: 5 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote1.id, description: "Installation Labour (4 hours)", quantity: "4.00", unitPrice: "120.00", total: "480.00", sortOrder: 6 });
 
-      console.log('✅ Demo quote created');
+      const accepted2Num = await storage.generateQuoteNumber(demoUser.id);
+      const acceptedQuote2 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[2].id,
+        title: "Rainwater Tank Connection",
+        description: "Connect rainwater tank to toilets and laundry",
+        status: "accepted" as const,
+        subtotal: "1450.00",
+        gstAmount: "145.00",
+        total: "1595.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+        acceptedAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+        acceptedBy: "Emma Thompson",
+        number: accepted2Num
+      });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote2.id, description: "Pump and Pressure System", quantity: "1.00", unitPrice: "580.00", total: "580.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote2.id, description: "Pipework and Fittings", quantity: "1.00", unitPrice: "350.00", total: "350.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote2.id, description: "Mains Water Switching Valve", quantity: "1.00", unitPrice: "180.00", total: "180.00", sortOrder: 3 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote2.id, description: "Installation Labour (3 hours)", quantity: "3.00", unitPrice: "120.00", total: "360.00", sortOrder: 4 });
 
-      // Create demo invoice (linked to Hot Water System Service - index 5)
-      const invoiceNumber = await storage.generateInvoiceNumber(demoUser.id);
-      const demoInvoice = await storage.createInvoice({
+      // REJECTED QUOTES (2)
+      const rejected1Num = await storage.generateQuoteNumber(demoUser.id);
+      const rejectedQuote1 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[0].id,
+        title: "Solar Hot Water System",
+        description: "Supply and install solar hot water system with electric boost",
+        status: "rejected" as const,
+        subtotal: "4800.00",
+        gstAmount: "480.00",
+        total: "5280.00",
+        validUntil: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        number: rejected1Num
+      });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote1.id, description: "Solar Collector Panels (2)", quantity: "2.00", unitPrice: "1200.00", total: "2400.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote1.id, description: "Storage Tank 315L", quantity: "1.00", unitPrice: "1100.00", total: "1100.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote1.id, description: "Electric Booster Element", quantity: "1.00", unitPrice: "250.00", total: "250.00", sortOrder: 3 });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote1.id, description: "Installation Labour (9 hours)", quantity: "9.00", unitPrice: "120.00", total: "1080.00", sortOrder: 4 });
+
+      const rejected2Num = await storage.generateQuoteNumber(demoUser.id);
+      const rejectedQuote2 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[1].id,
+        title: "Greywater Recycling System",
+        description: "Install greywater system for garden irrigation",
+        status: "rejected" as const,
+        subtotal: "3650.00",
+        gstAmount: "365.00",
+        total: "4015.00",
+        validUntil: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        number: rejected2Num
+      });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote2.id, description: "Greywater Treatment Tank", quantity: "1.00", unitPrice: "1800.00", total: "1800.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote2.id, description: "Irrigation Pump", quantity: "1.00", unitPrice: "450.00", total: "450.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote2.id, description: "Diversion Valves and Pipework", quantity: "1.00", unitPrice: "680.00", total: "680.00", sortOrder: 3 });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote2.id, description: "Installation Labour (6 hours)", quantity: "6.00", unitPrice: "120.00", total: "720.00", sortOrder: 4 });
+
+      console.log('✅ 8 Demo quotes created (2 draft, 2 sent, 2 accepted, 2 rejected)');
+
+      // ============================================
+      // CREATE MULTIPLE INVOICES ACROSS ALL STATUSES
+      // Draft, Sent, Overdue, Paid
+      // ============================================
+
+      // DRAFT INVOICE
+      const draftInvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const draftInvoice = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[1].id,
+        title: "Emergency Call-Out - After Hours",
+        description: "After-hours emergency call-out for burst pipe",
+        status: "draft" as const,
+        subtotal: "380.00",
+        gstAmount: "38.00",
+        total: "418.00",
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        number: draftInvNum
+      });
+      await storage.createInvoiceLineItem({ invoiceId: draftInvoice.id, description: "After-Hours Call-Out Fee", quantity: "1.00", unitPrice: "150.00", total: "150.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: draftInvoice.id, description: "Emergency Pipe Repair", quantity: "1.00", unitPrice: "110.00", total: "110.00", sortOrder: 2 });
+      await storage.createInvoiceLineItem({ invoiceId: draftInvoice.id, description: "Labour (1 hour)", quantity: "1.00", unitPrice: "120.00", total: "120.00", sortOrder: 3 });
+
+      // SENT INVOICES (2)
+      const sentInv1Num = await storage.generateInvoiceNumber(demoUser.id);
+      const sentInvoice1 = await storage.createInvoice({
         userId: demoUser.id,
         clientId: createdClients[2].id,
         jobId: createdJobs[5].id,
-        number: invoiceNumber,
         title: "Hot Water System Service",
         description: "Annual service and maintenance completed",
         status: "sent" as const,
@@ -334,193 +483,151 @@ export async function createDemoUserAndData() {
         gstAmount: "15.00",
         total: "165.00",
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        sentAt: new Date()
+        sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        number: sentInv1Num
       });
+      await storage.createInvoiceLineItem({ invoiceId: sentInvoice1.id, description: "Hot Water System Service", quantity: "1.00", unitPrice: "150.00", total: "150.00", sortOrder: 1 });
 
-      await storage.createInvoiceLineItem({
-        invoiceId: demoInvoice.id,
-        description: "Hot Water System Service",
-        quantity: "1.00",
-        unitPrice: "150.00", 
-        total: "150.00",
-        sortOrder: 1
-      });
-
-      console.log('✅ Demo invoice created');
-
-      // ============================================
-      // CREATE COMPLETE DOCUMENT CHAIN FOR TESTING
-      // Quote → Job → Invoice → Receipt workflow
-      // ============================================
-      
-      // 1. Create a COMPLETED job for the full chain
-      const completedChainJob = await storage.createJob({
-        userId: demoUser.id,
-        clientId: createdClients[0].id, // Sarah Johnson
-        title: "Complete Bathroom Plumbing Upgrade",
-        description: "Full bathroom renovation including new fixtures, pipes, and water heater installation",
-        address: createdClients[0].address || "15 Oak Street, Cairns QLD 4870",
-        status: "invoiced" as const,
-        scheduledAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // 2 weeks ago
-        startedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // Started 2 weeks ago
-        completedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000), // Finished 12 days ago
-        notes: "Full bathroom upgrade completed successfully - customer very happy"
-      });
-      console.log('✅ Chain job created:', completedChainJob.id);
-
-      // 2. Create an ACCEPTED quote linked to this job
-      const chainQuoteNumber = await storage.generateQuoteNumber(demoUser.id);
-      const chainQuote = await storage.createQuote({
+      const sentInv2Num = await storage.generateInvoiceNumber(demoUser.id);
+      const sentInvoice2 = await storage.createInvoice({
         userId: demoUser.id,
         clientId: createdClients[0].id,
-        jobId: completedChainJob.id,
-        number: chainQuoteNumber,
-        title: "Bathroom Plumbing Upgrade Quote",
-        description: "Complete bathroom renovation plumbing works",
-        status: "accepted" as const,
-        subtotal: "2450.00",
-        gstAmount: "245.00",
-        total: "2695.00",
-        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        sentAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000), // Sent 3 weeks ago
-        acceptedAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000), // Accepted 18 days ago
-        acceptedBy: "Sarah Johnson"
+        title: "Drain Cleaning Service",
+        description: "High-pressure drain cleaning and camera inspection",
+        status: "sent" as const,
+        subtotal: "420.00",
+        gstAmount: "42.00",
+        total: "462.00",
+        dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        number: sentInv2Num
       });
+      await storage.createInvoiceLineItem({ invoiceId: sentInvoice2.id, description: "High-Pressure Jetter Service", quantity: "1.00", unitPrice: "280.00", total: "280.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: sentInvoice2.id, description: "CCTV Drain Camera Inspection", quantity: "1.00", unitPrice: "140.00", total: "140.00", sortOrder: 2 });
 
-      // Add line items to the chain quote
-      await storage.createQuoteLineItem({
-        quoteId: chainQuote.id,
-        description: "New Toilet Suite (Caroma Smart Dual Flush)",
-        quantity: "1.00",
-        unitPrice: "650.00",
-        total: "650.00",
-        sortOrder: 1
+      // OVERDUE INVOICE
+      const overdueInvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const overdueInvoice = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[1].id,
+        title: "Tap Washer Replacements",
+        description: "Replace worn washers on 3 taps throughout house",
+        status: "sent" as const,
+        subtotal: "180.00",
+        gstAmount: "18.00",
+        total: "198.00",
+        dueDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+        number: overdueInvNum
       });
+      await storage.createInvoiceLineItem({ invoiceId: overdueInvoice.id, description: "Tap Washers (3 sets)", quantity: "3.00", unitPrice: "15.00", total: "45.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: overdueInvoice.id, description: "Labour (1.5 hours)", quantity: "1.50", unitPrice: "90.00", total: "135.00", sortOrder: 2 });
 
-      await storage.createQuoteLineItem({
-        quoteId: chainQuote.id,
-        description: "Basin and Vanity Unit",
-        quantity: "1.00",
-        unitPrice: "450.00",
-        total: "450.00",
-        sortOrder: 2
-      });
-
-      await storage.createQuoteLineItem({
-        quoteId: chainQuote.id,
-        description: "Mixer Tap Set (Chrome)",
-        quantity: "2.00",
-        unitPrice: "180.00",
-        total: "360.00",
-        sortOrder: 3
-      });
-
-      await storage.createQuoteLineItem({
-        quoteId: chainQuote.id,
-        description: "Copper Pipe and Fittings",
-        quantity: "1.00",
-        unitPrice: "280.00",
-        total: "280.00",
-        sortOrder: 4
-      });
-
-      await storage.createQuoteLineItem({
-        quoteId: chainQuote.id,
-        description: "Installation Labour (6 hours @ $120/hr)",
-        quantity: "6.00",
-        unitPrice: "120.00",
-        total: "720.00",
-        sortOrder: 5
-      });
-
-      console.log('✅ Chain quote created (ACCEPTED):', chainQuote.number);
-
-      // 3. Create a PAID invoice linked to the quote and job
-      const chainInvoiceNumber = await storage.generateInvoiceNumber(demoUser.id);
-      const chainInvoice = await storage.createInvoice({
+      // PAID INVOICES (3) - with linked receipts
+      const paid1InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice1 = await storage.createInvoice({
         userId: demoUser.id,
         clientId: createdClients[0].id,
-        jobId: completedChainJob.id,
-        quoteId: chainQuote.id, // Links back to the quote!
-        number: chainInvoiceNumber,
-        title: "Bathroom Plumbing Upgrade - Final Invoice",
-        description: "Complete bathroom renovation plumbing works as per accepted quote",
+        quoteId: acceptedQuote1.id,
+        title: "Ensuite Bathroom Plumbing - Progress Payment",
+        description: "50% deposit for ensuite bathroom plumbing work",
         status: "paid" as const,
-        subtotal: "2450.00",
-        gstAmount: "245.00",
-        total: "2695.00",
-        dueDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Due 7 days ago
-        sentAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000), // Sent when job completed
-        paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) // Paid 5 days ago
+        subtotal: "1600.00",
+        gstAmount: "160.00",
+        total: "1760.00",
+        dueDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+        number: paid1InvNum
       });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice1.id, description: "50% Deposit - Ensuite Bathroom Plumbing", quantity: "1.00", unitPrice: "1600.00", total: "1600.00", sortOrder: 1 });
 
-      // Add line items to the chain invoice (same as quote)
-      await storage.createInvoiceLineItem({
-        invoiceId: chainInvoice.id,
-        description: "New Toilet Suite (Caroma Smart Dual Flush)",
-        quantity: "1.00",
-        unitPrice: "650.00",
-        total: "650.00",
-        sortOrder: 1
-      });
-
-      await storage.createInvoiceLineItem({
-        invoiceId: chainInvoice.id,
-        description: "Basin and Vanity Unit",
-        quantity: "1.00",
-        unitPrice: "450.00",
-        total: "450.00",
-        sortOrder: 2
-      });
-
-      await storage.createInvoiceLineItem({
-        invoiceId: chainInvoice.id,
-        description: "Mixer Tap Set (Chrome)",
-        quantity: "2.00",
-        unitPrice: "180.00",
-        total: "360.00",
-        sortOrder: 3
-      });
-
-      await storage.createInvoiceLineItem({
-        invoiceId: chainInvoice.id,
-        description: "Copper Pipe and Fittings",
-        quantity: "1.00",
-        unitPrice: "280.00",
-        total: "280.00",
-        sortOrder: 4
-      });
-
-      await storage.createInvoiceLineItem({
-        invoiceId: chainInvoice.id,
-        description: "Installation Labour (6 hours @ $120/hr)",
-        quantity: "6.00",
-        unitPrice: "120.00",
-        total: "720.00",
-        sortOrder: 5
-      });
-
-      console.log('✅ Chain invoice created (PAID):', chainInvoice.number);
-
-      // 4. Create a receipt linked to the invoice
-      const chainReceipt = await storage.createReceipt({
+      const paid2InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice2 = await storage.createInvoice({
         userId: demoUser.id,
-        invoiceId: chainInvoice.id, // Links back to the invoice!
-        jobId: completedChainJob.id,
+        clientId: createdClients[2].id,
+        title: "Toilet Replacement",
+        description: "Supply and install new dual-flush toilet",
+        status: "paid" as const,
+        subtotal: "680.00",
+        gstAmount: "68.00",
+        total: "748.00",
+        dueDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+        number: paid2InvNum
+      });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice2.id, description: "Caroma Dual-Flush Toilet Suite", quantity: "1.00", unitPrice: "520.00", total: "520.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice2.id, description: "Removal of Old Toilet", quantity: "1.00", unitPrice: "40.00", total: "40.00", sortOrder: 2 });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice2.id, description: "Installation Labour (1 hour)", quantity: "1.00", unitPrice: "120.00", total: "120.00", sortOrder: 3 });
+
+      const paid3InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice3 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[1].id,
+        title: "Gas Fitting Compliance Check",
+        description: "Annual gas safety inspection and compliance certificate",
+        status: "paid" as const,
+        subtotal: "220.00",
+        gstAmount: "22.00",
+        total: "242.00",
+        dueDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        number: paid3InvNum
+      });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice3.id, description: "Gas Safety Inspection", quantity: "1.00", unitPrice: "180.00", total: "180.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice3.id, description: "Compliance Certificate", quantity: "1.00", unitPrice: "40.00", total: "40.00", sortOrder: 2 });
+
+      console.log('✅ 7 Demo invoices created (1 draft, 2 sent, 1 overdue, 3 paid)');
+
+      // ============================================
+      // CREATE RECEIPTS FOR ALL PAID INVOICES
+      // ============================================
+
+      const receipt1 = await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice1.id,
         clientId: createdClients[0].id,
-        receiptNumber: `REC-CHAIN-${Date.now().toString().slice(-6)}`,
-        amount: "2695.00",
-        gstAmount: "245.00",
-        subtotal: "2450.00",
-        description: "Payment for bathroom plumbing upgrade",
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-001`,
+        amount: "1760.00",
+        gstAmount: "160.00",
+        subtotal: "1600.00",
+        description: "50% Deposit - Ensuite Bathroom Plumbing",
         paymentMethod: 'bank_transfer',
-        paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) // Same as invoice paidAt
+        paidAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000)
       });
 
-      console.log('✅ Chain receipt created:', chainReceipt.receiptNumber);
-      console.log('✅ COMPLETE DOCUMENT CHAIN CREATED:');
-      console.log(`   Quote ${chainQuote.number} → Invoice ${chainInvoice.number} → Receipt ${chainReceipt.receiptNumber}`);
-      console.log(`   Job: ${completedChainJob.title}`);
+      const receipt2 = await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice2.id,
+        clientId: createdClients[2].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-002`,
+        amount: "748.00",
+        gstAmount: "68.00",
+        subtotal: "680.00",
+        description: "Payment for toilet replacement",
+        paymentMethod: 'card',
+        paidAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
+      });
+
+      const receipt3 = await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice3.id,
+        clientId: createdClients[1].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-003`,
+        amount: "242.00",
+        gstAmount: "22.00",
+        subtotal: "220.00",
+        description: "Payment for gas compliance check",
+        paymentMethod: 'cash',
+        paidAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+      });
+
+      console.log('✅ 3 Demo receipts created for paid invoices');
+      console.log(`   Receipt ${receipt1.receiptNumber} → Invoice ${paid1InvNum}`);
+      console.log(`   Receipt ${receipt2.receiptNumber} → Invoice ${paid2InvNum}`);
+      console.log(`   Receipt ${receipt3.receiptNumber} → Invoice ${paid3InvNum}`);
     
     // Check if demo user has SMS conversations (separate from client check)
     const existingSmsConversations = await storage.getSmsConversationsByBusiness(demoUser.id);
