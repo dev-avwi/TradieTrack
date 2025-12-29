@@ -415,6 +415,7 @@ export default function DocumentsScreen() {
       <TouchableOpacity
         key={receipt.id}
         style={[styles.documentCard, { borderLeftColor: '#22c55e' }]}
+        onPress={() => router.push(`/more/receipt/${receipt.id}`)}
         activeOpacity={0.7}
       >
         <View style={styles.documentHeader}>
