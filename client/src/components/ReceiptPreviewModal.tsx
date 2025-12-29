@@ -77,7 +77,7 @@ export default function ReceiptPreviewModal({
     if (!receiptId) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/receipts/${receiptId}`, { credentials: 'include' });
+      const response = await fetch(`/api/receipts/${receiptId}?_t=${Date.now()}`, { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setReceipt(data);

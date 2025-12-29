@@ -65,7 +65,7 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
   const { data: receipt, isLoading } = useQuery<ReceiptData>({
     queryKey: ['/api/receipts', receiptId],
     queryFn: async () => {
-      const response = await fetch(`/api/receipts/${receiptId}`, { credentials: 'include' });
+      const response = await fetch(`/api/receipts/${receiptId}?_t=${Date.now()}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch receipt');
       return response.json();
     }
