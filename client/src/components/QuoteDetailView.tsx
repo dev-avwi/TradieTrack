@@ -76,11 +76,196 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   });
 
   const handlePrint = () => {
-    setIsPrinting(true);
-    setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-    }, 100);
+    if (!quote || !businessSettings) {
+      toast({ title: "Error", description: "Document not ready to print", variant: "destructive" });
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({ title: "Error", description: "Please allow popups to print", variant: "destructive" });
+      return;
+    }
+
+    const subtotalVal = (quote.lineItems || []).reduce((acc: number, item: any) => {
+      const itemTotal = Number(item.total) || (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+      return acc + itemTotal;
+    }, 0);
+    const gstVal = quote.includesGst ? subtotalVal * 0.10 : 0;
+    const totalVal = subtotalVal + gstVal;
+
+    const lineItemsHtml = (quote.lineItems || []).map((item: any) => {
+      const qty = Number(item.quantity) || 0;
+      const unitPrice = Number(item.unitPrice) || 0;
+      const itemTotal = Number(item.total) || (qty * unitPrice);
+      return `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; color: #1a1a1a;">${item.description || ''}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; color: #666;">${qty.toFixed(2)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; color: #666;">$${unitPrice.toFixed(2)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600; color: #1a1a1a;">$${itemTotal.toFixed(2)}</td>
+      </tr>`;
+    }).join('');
+
+    const logoHtml = businessSettings.logoUrl ? `<img src="${businessSettings.logoUrl}" alt="Logo" style="max-width: 150px; max-height: 60px; object-fit: contain; margin-bottom: 12px;" />` : '';
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Quote ${quote.number || ''}</title>
+        <style>
+          @page {
+            size: A4;
+            margin: 15mm;
+          }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #1a1a1a;
+            background: white;
+          }
+          .document { max-width: 800px; margin: 0 auto; padding: 20px; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 30px; padding-bottom: 16px; border-bottom: 3px solid ${primaryColor}; }
+          .company-name { font-size: 22px; font-weight: 700; color: ${primaryColor}; margin-bottom: 8px; }
+          .company-details { color: #666; font-size: 10px; line-height: 1.6; }
+          .document-title { font-size: 28px; font-weight: 700; color: ${primaryColor}; text-transform: uppercase; letter-spacing: 1px; text-align: right; }
+          .document-number { color: #666; margin-top: 4px; text-align: right; }
+          .info-section { display: flex; justify-content: space-between; margin-bottom: 24px; gap: 40px; }
+          .info-block { flex: 1; }
+          .info-label { font-size: 10px; text-transform: uppercase; color: #888; margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; }
+          .info-value { color: #1a1a1a; line-height: 1.6; }
+          .info-value strong { font-weight: 600; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+          th { background: ${primaryColor}; color: white; padding: 10px 12px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+          th:not(:first-child) { text-align: right; }
+          .totals { display: flex; justify-content: flex-end; margin-bottom: 24px; }
+          .totals-box { width: 250px; }
+          .totals-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+          .totals-row.total { border-top: 2px solid ${primaryColor}; border-bottom: none; padding-top: 12px; margin-top: 8px; }
+          .totals-row.total span { font-size: 14px; font-weight: 700; color: ${primaryColor}; }
+          .notes { background: #f8f9fa; padding: 16px; border-radius: 6px; margin-bottom: 20px; }
+          .notes-title { font-weight: 600; margin-bottom: 8px; color: #1a1a1a; }
+          .terms { border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; }
+          .terms-title { font-weight: 600; margin-bottom: 8px; color: ${primaryColor}; font-size: 12px; }
+          .terms-content { color: #666; font-size: 10px; line-height: 1.6; }
+          @media print {
+            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="document">
+          <div class="header">
+            <div>
+              ${logoHtml}
+              <div class="company-name">${businessSettings.businessName || 'Your Business'}</div>
+              <div class="company-details">
+                ${businessSettings.abn ? `<div>ABN: ${businessSettings.abn}</div>` : ''}
+                ${businessSettings.address ? `<div>${businessSettings.address}</div>` : ''}
+                ${businessSettings.phone ? `<div>Phone: ${businessSettings.phone}</div>` : ''}
+                ${businessSettings.email ? `<div>Email: ${businessSettings.email}</div>` : ''}
+                ${businessSettings.licenseNumber ? `<div>Licence: ${businessSettings.licenseNumber}</div>` : ''}
+              </div>
+            </div>
+            <div>
+              <div class="document-title">QUOTE</div>
+              <div class="document-number">${quote.number || ''}</div>
+            </div>
+          </div>
+          
+          <div class="info-section">
+            <div class="info-block">
+              <div class="info-label">Quote For</div>
+              <div class="info-value">
+                <strong>${client?.name || ''}</strong><br/>
+                ${client?.address || ''}<br/>
+                ${client?.email || ''}<br/>
+                ${client?.phone || ''}
+              </div>
+            </div>
+            <div class="info-block">
+              <div class="info-label">Quote Details</div>
+              <div class="info-value">
+                <strong>Date:</strong> ${quote.createdAt ? new Date(quote.createdAt).toLocaleDateString('en-AU') : ''}<br/>
+                ${quote.validUntil ? `<strong>Valid Until:</strong> ${new Date(quote.validUntil).toLocaleDateString('en-AU')}` : ''}
+              </div>
+            </div>
+          </div>
+
+          ${quote.title || quote.description ? `
+            <div class="notes">
+              <div class="notes-title">${quote.title || 'Description'}</div>
+              <div>${quote.description || ''}</div>
+            </div>
+          ` : ''}
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50%">Description</th>
+                <th style="width: 15%">Qty</th>
+                <th style="width: 17%">Unit Price</th>
+                <th style="width: 18%">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lineItemsHtml}
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div class="totals-box">
+              <div class="totals-row">
+                <span>Subtotal</span>
+                <span>$${subtotalVal.toFixed(2)}</span>
+              </div>
+              ${gstVal > 0 ? `
+                <div class="totals-row">
+                  <span>GST (10%)</span>
+                  <span>$${gstVal.toFixed(2)}</span>
+                </div>
+              ` : ''}
+              <div class="totals-row total">
+                <span>Total${gstVal > 0 ? ' (incl. GST)' : ''}</span>
+                <span>$${totalVal.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          ${quote.notes ? `
+            <div class="notes">
+              <div class="notes-title">Additional Notes</div>
+              <div style="color: #666;">${quote.notes}</div>
+            </div>
+          ` : ''}
+
+          ${termsTemplate?.content ? `
+            <div class="terms">
+              <div class="terms-title">Terms & Conditions</div>
+              <div class="terms-content">${termsTemplate.content}</div>
+            </div>
+          ` : ''}
+
+          ${warrantyTemplate?.content ? `
+            <div class="terms">
+              <div class="terms-title">Warranty Information</div>
+              <div class="terms-content">${warrantyTemplate.content}</div>
+            </div>
+          ` : ''}
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+            window.onafterprint = function() { window.close(); };
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   // Feature detection: check if download attribute is supported
