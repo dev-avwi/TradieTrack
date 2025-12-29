@@ -8,6 +8,7 @@ import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
 import { format } from "date-fns";
+import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
 
 interface ReceiptDetailViewProps {
   receiptId: string;
@@ -57,6 +58,9 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
   const { toast } = useToast();
 
   const brandColor = businessSettings?.brandColor || '#2563eb';
+  const templateId = (businessSettings?.documentTemplate as TemplateId) || DEFAULT_TEMPLATE;
+  const templateStyles = getTemplateStyles(templateId, brandColor);
+  const { template, primaryColor, headingStyle } = templateStyles;
 
   const { data: receipt, isLoading } = useQuery<ReceiptData>({
     queryKey: ['/api/receipts', receiptId],
@@ -322,70 +326,81 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
         </div>
       </div>
 
-      <Card className="overflow-hidden bg-white relative print:shadow-none" style={{ backgroundColor: 'white' }}>
-        <CardContent className="p-6 md:p-8" style={{ backgroundColor: 'white' }}>
-          <div className="flex justify-between items-start mb-8">
-            <div>
+      <Card 
+        className="bg-white shadow-lg border overflow-hidden print:shadow-none" 
+        style={{ fontFamily: template.fontFamily, fontSize: template.baseFontSize, fontWeight: template.bodyWeight, backgroundColor: 'white' }}
+      >
+        <div 
+          className="p-6 sm:p-8"
+          style={{ borderBottom: template.showHeaderDivider ? `${template.headerBorderWidth} solid ${primaryColor}` : 'none', backgroundColor: 'white' }}
+        >
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-6 items-start">
+            <div className="flex-1">
               {businessSettings?.logoUrl && (
                 <img 
                   src={businessSettings.logoUrl} 
-                  alt={businessSettings?.businessName || 'Business'} 
-                  className="h-12 mb-3 object-contain"
+                  alt={businessSettings?.businessName || 'Logo'} 
+                  className="max-w-[150px] max-h-[60px] object-contain mb-3"
                 />
               )}
-              <h2 className="text-xl font-bold" style={{ color: brandColor }}>
-                {businessSettings?.businessName || 'Your Business'}
-              </h2>
-              <div className="text-sm text-muted-foreground mt-1 space-y-0.5">
-                {businessSettings?.abn && <p>ABN: {businessSettings.abn}</p>}
-                {businessSettings?.businessAddress && <p>{businessSettings.businessAddress}</p>}
-                {businessSettings?.businessPhone && <p>{businessSettings.businessPhone}</p>}
-                {businessSettings?.businessEmail && <p>{businessSettings.businessEmail}</p>}
+              <h1 
+                className="text-2xl sm:text-3xl mb-2"
+                style={{ ...headingStyle }}
+              >
+                {businessSettings?.businessName || 'Your Business Name'}
+              </h1>
+              <div className="text-sm text-gray-600 space-y-0.5">
+                {businessSettings?.abn && (
+                  <p><strong>ABN:</strong> {businessSettings.abn}</p>
+                )}
+                {businessSettings?.address && <p>{businessSettings.address}</p>}
+                {businessSettings?.phone && <p>Phone: {businessSettings.phone}</p>}
+                {businessSettings?.email && <p>Email: {businessSettings.email}</p>}
+                {businessSettings?.licenseNumber && (
+                  <p>Licence No: {businessSettings.licenseNumber}</p>
+                )}
               </div>
             </div>
             
             <div className="text-right">
-              <h1 className="text-2xl font-bold uppercase tracking-wide" style={{ color: brandColor }}>
-                Receipt
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">{receipt.receiptNumber}</p>
+              <h2 
+                className="text-2xl sm:text-3xl uppercase tracking-wide"
+                style={{ ...headingStyle }}
+              >
+                RECEIPT
+              </h2>
+              <p className="text-gray-600 mt-1">{receipt.receiptNumber}</p>
               {receipt.paidAt && (
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-gray-600 mt-1">
                   {format(new Date(receipt.paidAt), 'd MMMM yyyy, h:mm a')}
                 </p>
               )}
-              <div className="mt-3">
+              <div className="mt-2">
                 <StatusBadge status="paid" />
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            {client && (
-              <div>
-                <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2 font-semibold">
-                  Received From
-                </h3>
-                <div className="space-y-1">
-                  <p className="font-medium">{client.name}</p>
-                  {client.address && <p className="text-sm text-muted-foreground">{client.address}</p>}
-                  {client.email && <p className="text-sm text-muted-foreground">{client.email}</p>}
-                  {client.phone && <p className="text-sm text-muted-foreground">{client.phone}</p>}
-                </div>
+        <CardContent className="p-6 sm:p-8" style={{ backgroundColor: 'white' }}>
+
+          <div className="flex flex-col sm:flex-row gap-8 mb-8">
+            <div className="flex-1">
+              <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Received From</p>
+              <div className="text-gray-800">
+                <p className="font-semibold">{client?.name || 'Customer'}</p>
+                {client?.address && <p>{client.address}</p>}
+                {client?.email && <p>{client.email}</p>}
+                {client?.phone && <p>{client.phone}</p>}
               </div>
-            )}
-            
-            <div>
-              <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2 font-semibold">
-                Payment Details
-              </h3>
-              <div className="space-y-1 text-sm">
-                <p><span className="font-medium">Method:</span> {formatPaymentMethod(receipt.paymentMethod)}</p>
-                {receipt.paidAt && (
-                  <p><span className="font-medium">Date:</span> {format(new Date(receipt.paidAt), 'd MMMM yyyy')}</p>
-                )}
+            </div>
+            <div className="flex-1">
+              <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Receipt Details</p>
+              <div className="text-gray-800 space-y-1">
+                <p><strong>Date:</strong> {receipt.paidAt ? format(new Date(receipt.paidAt), 'd MMMM yyyy') : format(new Date(receipt.createdAt), 'd MMMM yyyy')}</p>
+                <p><strong>Method:</strong> {formatPaymentMethod(receipt.paymentMethod)}</p>
                 {receipt.paymentReference && (
-                  <p><span className="font-medium">Reference:</span> {receipt.paymentReference}</p>
+                  <p><strong>Reference:</strong> {receipt.paymentReference}</p>
                 )}
               </div>
             </div>
