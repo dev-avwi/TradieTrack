@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
+import { useMarkInvoicePaid } from "@/hooks/use-invoices";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient, getSessionToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -43,8 +45,10 @@ export default function InvoiceDetailView({
   const [isPrinting, setIsPrinting] = useState(false);
   const [showDemoPayment, setShowDemoPayment] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
   const [copied, setCopied] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
+  const markPaidMutation = useMarkInvoicePaid();
   const { data: integrationHealth } = useIntegrationHealth();
   const stripeConnected = isStripeReady(integrationHealth);
   const [, navigate] = useLocation();
@@ -256,6 +260,31 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
       title: "Gmail opened",
       description: "Review the email and click Send in Gmail",
     });
+  };
+
+  // Record payment and mark invoice as paid
+  const handleRecordPayment = async () => {
+    if (!invoice) return;
+    
+    try {
+      await markPaidMutation.mutateAsync(invoice.id);
+      const amount = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0'));
+      toast({
+        title: "Payment recorded",
+        description: `${invoice.number} - ${amount} has been marked as paid`,
+      });
+      setShowRecordPaymentDialog(false);
+      // Refetch invoice to update status
+      refetchInvoice();
+      // Call legacy callback if provided
+      if (onMarkPaid) onMarkPaid(invoice.id);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to record payment",
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePrint = () => {
@@ -725,10 +754,10 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 Send Invoice
               </Button>
             )}
-            {invoice.status === 'sent' && onMarkPaid && (
-              <Button onClick={() => onMarkPaid(invoice.id)} className="w-full sm:w-auto" data-testid={`button-mark-paid-${invoice.id}`}>
-                <CreditCard className="h-4 w-4 mr-2" />
-                Mark Paid
+            {(invoice.status === 'sent' || invoice.status === 'overdue') && (
+              <Button onClick={() => setShowRecordPaymentDialog(true)} className="w-full sm:w-auto" data-testid="button-record-payment">
+                <DollarSign className="h-4 w-4 mr-2" />
+                Record Payment
               </Button>
             )}
             {xeroStatus?.connected && invoice.status === 'sent' && !invoice.xeroInvoiceId && (
@@ -1181,6 +1210,53 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           </Card>
         </div>
       </div>
+
+      {/* Record Payment Confirmation Dialog */}
+      {invoice && (
+        <Dialog open={showRecordPaymentDialog} onOpenChange={setShowRecordPaymentDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Record Payment</DialogTitle>
+              <DialogDescription>
+                Confirm that you've received payment for this invoice.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Invoice</span>
+                <span className="font-medium">{invoice.number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Client</span>
+                <span className="font-medium">{client?.name || 'Unknown'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Amount</span>
+                <span className="font-bold text-lg">
+                  {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0'))}
+                </span>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowRecordPaymentDialog(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleRecordPayment} 
+                disabled={markPaidMutation.isPending}
+                data-testid="button-confirm-payment"
+              >
+                {markPaidMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <DollarSign className="h-4 w-4 mr-2" />
+                )}
+                Confirm Payment
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Email Compose Modal with PDF attachment */}
       {invoice && client && (
