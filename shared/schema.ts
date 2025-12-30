@@ -1092,6 +1092,68 @@ export const staffSchedules = pgTable("staff_schedules", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Team Member Skills & Certifications - track qualifications with expiry dates
+export const teamMemberSkills = pgTable("team_member_skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: 'cascade' }),
+  skillName: text("skill_name").notNull(), // e.g., "Electrical License", "White Card", "First Aid"
+  skillType: text("skill_type").notNull().default('certification'), // 'certification', 'license', 'training', 'skill'
+  licenseNumber: text("license_number"), // For licenses/certifications
+  issueDate: timestamp("issue_date"),
+  expiryDate: timestamp("expiry_date"), // null = no expiry
+  isVerified: boolean("is_verified").default(false), // Owner has verified the documentation
+  documentUrl: text("document_url"), // Uploaded proof document
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Team Member Availability - weekly work schedule preferences
+export const teamMemberAvailability = pgTable("team_member_availability", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: 'cascade' }),
+  dayOfWeek: integer("day_of_week").notNull(), // 0 = Sunday, 1 = Monday, etc.
+  isAvailable: boolean("is_available").default(true),
+  startTime: text("start_time").default('08:00'), // HH:MM format
+  endTime: text("end_time").default('17:00'), // HH:MM format
+  notes: text("notes"), // e.g., "school pickup at 3pm"
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Team Member Time Off - leave requests and holidays
+export const teamMemberTimeOff = pgTable("team_member_time_off", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: 'cascade' }),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  reason: text("reason").notNull(), // 'annual_leave', 'sick_leave', 'personal', 'public_holiday', 'other'
+  status: text("status").default('pending'), // 'pending', 'approved', 'rejected'
+  notes: text("notes"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Team Member Performance Metrics - track productivity and ratings
+export const teamMemberMetrics = pgTable("team_member_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: 'cascade' }),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  jobsCompleted: integer("jobs_completed").default(0),
+  jobsOnTime: integer("jobs_on_time").default(0), // Completed before deadline
+  totalHoursWorked: decimal("total_hours_worked", { precision: 10, scale: 2 }).default('0'),
+  averageJobDuration: decimal("average_job_duration", { precision: 10, scale: 2 }), // hours
+  customerRatingSum: decimal("customer_rating_sum", { precision: 10, scale: 2 }).default('0'),
+  customerRatingCount: integer("customer_rating_count").default(0),
+  callbackRate: decimal("callback_rate", { precision: 5, scale: 2 }), // % of jobs requiring callback
+  revenueGenerated: decimal("revenue_generated", { precision: 12, scale: 2 }).default('0'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // GPS Tracking - Life360-style location with battery and activity
 export const locationTracking = pgTable("location_tracking", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1605,6 +1667,31 @@ export const insertStaffScheduleSchema = createInsertSchema(staffSchedules).omit
   updatedAt: true,
 });
 
+// Advanced Team Management Schemas
+export const insertTeamMemberSkillSchema = createInsertSchema(teamMemberSkills).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTeamMemberAvailabilitySchema = createInsertSchema(teamMemberAvailability).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTeamMemberTimeOffSchema = createInsertSchema(teamMemberTimeOff).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTeamMemberMetricsSchema = createInsertSchema(teamMemberMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // GPS Tracking Schemas
 export const insertLocationTrackingSchema = createInsertSchema(locationTracking).omit({
   id: true,
@@ -1777,6 +1864,19 @@ export type TeamMember = typeof teamMembers.$inferSelect;
 
 export type InsertStaffSchedule = z.infer<typeof insertStaffScheduleSchema>;
 export type StaffSchedule = typeof staffSchedules.$inferSelect;
+
+// Advanced Team Management Types
+export type InsertTeamMemberSkill = z.infer<typeof insertTeamMemberSkillSchema>;
+export type TeamMemberSkill = typeof teamMemberSkills.$inferSelect;
+
+export type InsertTeamMemberAvailability = z.infer<typeof insertTeamMemberAvailabilitySchema>;
+export type TeamMemberAvailability = typeof teamMemberAvailability.$inferSelect;
+
+export type InsertTeamMemberTimeOff = z.infer<typeof insertTeamMemberTimeOffSchema>;
+export type TeamMemberTimeOff = typeof teamMemberTimeOff.$inferSelect;
+
+export type InsertTeamMemberMetrics = z.infer<typeof insertTeamMemberMetricsSchema>;
+export type TeamMemberMetrics = typeof teamMemberMetrics.$inferSelect;
 
 // GPS Tracking Types
 export type InsertLocationTracking = z.infer<typeof insertLocationTrackingSchema>;
