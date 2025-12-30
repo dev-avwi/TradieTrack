@@ -1471,6 +1471,12 @@ export default function JobDetailScreen() {
   const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
   const [availableForms, setAvailableForms] = useState<any[]>([]);
   const [formSubmissions, setFormSubmissions] = useState<any[]>([]);
+  
+  // Automation settings for photo gates
+  const [automationSettings, setAutomationSettings] = useState<{
+    requirePhotoBeforeStart: boolean;
+    requirePhotoAfterComplete: boolean;
+  } | null>(null);
 
   const isSafetyForm = (form: any) => {
     const name = (form.name || '').toLowerCase();
@@ -1561,6 +1567,7 @@ export default function JobDetailScreen() {
     loadTimeEntries();
     loadActivityLog();
     loadJobExpenses();
+    loadAutomationSettings();
     // Forms data is loaded by JobForms component via callbacks
   }, [id]);
 
@@ -1838,6 +1845,29 @@ export default function JobDetailScreen() {
       }
     }
     setIsLoading(false);
+  };
+  
+  // Load automation settings for photo gate enforcement
+  const loadAutomationSettings = async () => {
+    try {
+      const response = await api.get<{
+        requirePhotoBeforeStart: boolean;
+        requirePhotoAfterComplete: boolean;
+      }>('/api/automation-settings');
+      if (response.data) {
+        setAutomationSettings({
+          requirePhotoBeforeStart: response.data.requirePhotoBeforeStart ?? false,
+          requirePhotoAfterComplete: response.data.requirePhotoAfterComplete ?? false,
+        });
+      }
+    } catch (error) {
+      console.log('Could not load automation settings:', error);
+      // Default to no photo requirements if settings can't be loaded
+      setAutomationSettings({
+        requirePhotoBeforeStart: false,
+        requirePhotoAfterComplete: false,
+      });
+    }
   };
 
   const loadPhotos = async () => {
@@ -2424,8 +2454,39 @@ export default function JobDetailScreen() {
       return;
     }
 
+    // PHOTO GATE: Check if "before" photos are required before starting job
+    if (action.next === 'in_progress' && automationSettings?.requirePhotoBeforeStart) {
+      const beforePhotos = photos.filter(p => p.category === 'before');
+      if (beforePhotos.length === 0) {
+        Alert.alert(
+          'Before Photo Required',
+          'A "Before" photo is required before starting this job. Please take a photo to document the work site and mark it as "Before".',
+          [
+            { text: 'Take Photo', onPress: () => setActiveTab('photos') },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+        return;
+      }
+    }
+
     // Show completion summary modal when completing a job
     if (action.next === 'done') {
+      // PHOTO GATE: Check if "after" photos are required before completing job
+      if (automationSettings?.requirePhotoAfterComplete) {
+        const afterPhotos = photos.filter(p => p.category === 'after');
+        if (afterPhotos.length === 0) {
+          Alert.alert(
+            'After Photo Required',
+            'An "After" photo is required before completing this job. Please take a photo to document the completed work and mark it as "After".',
+            [
+              { text: 'Take Photo', onPress: () => setActiveTab('photos') },
+              { text: 'Cancel', style: 'cancel' }
+            ]
+          );
+          return;
+        }
+      }
       setShowCompletionModal(true);
       return;
     }

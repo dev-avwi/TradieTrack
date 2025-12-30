@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,12 @@ import {
   ChevronRight,
   Briefcase,
   Settings,
-  Timer
+  Timer,
+  Camera,
+  MapPin,
+  Phone,
+  Save,
+  Loader2
 } from "lucide-react";
 
 interface AutomationRule {
@@ -69,6 +74,23 @@ interface AutomationRule {
     newStatus?: string;
   }>;
   createdAt: string;
+}
+
+interface AutomationSettings {
+  id: string;
+  userId: string;
+  jobReminderEnabled: boolean;
+  jobReminderHoursBefore: number;
+  jobReminderType: 'sms' | 'email' | 'both';
+  quoteFollowUpEnabled: boolean;
+  quoteFollowUpDays: number;
+  invoiceReminderEnabled: boolean;
+  invoiceReminderDaysBeforeDue: number;
+  invoiceOverdueReminderDays: number;
+  requirePhotoBeforeStart: boolean;
+  requirePhotoAfterComplete: boolean;
+  autoCheckInOnArrival: boolean;
+  autoCheckOutOnDeparture: boolean;
 }
 
 const TRIGGER_TYPES = [
@@ -270,11 +292,44 @@ function ActionIcon({ type }: { type: string }) {
 
 export default function Automations() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'active' | 'available'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'available' | 'settings'>('active');
   const { toast } = useToast();
 
   const { data: automations = [], isLoading } = useQuery<AutomationRule[]>({
     queryKey: ['/api/automations'],
+  });
+
+  const { data: settings, isLoading: settingsLoading } = useQuery<AutomationSettings>({
+    queryKey: ['/api/automation-settings'],
+  });
+
+  const [settingsForm, setSettingsForm] = useState<Partial<AutomationSettings>>({});
+
+  // Sync settings form when data loads
+  useEffect(() => {
+    if (settings) {
+      setSettingsForm(settings);
+    }
+  }, [settings]);
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (data: Partial<AutomationSettings>) => {
+      return apiRequest('PUT', '/api/automation-settings', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/automation-settings'] });
+      toast({
+        title: "Settings saved",
+        description: "Your automation settings have been updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save settings",
+        variant: "destructive",
+      });
+    },
   });
 
   const toggleAutomationMutation = useMutation({
@@ -488,21 +543,25 @@ export default function Automations() {
         </Card>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'active' | 'available')}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'active' | 'available' | 'settings')}>
         <TabsList>
-          <TabsTrigger value="active" className="gap-2">
+          <TabsTrigger value="active" className="gap-2" data-testid="tab-my-automations">
             <CheckCircle2 className="h-4 w-4" />
             My Automations
             {automations.length > 0 && (
               <Badge variant="secondary" className="ml-1">{automations.length}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="available" className="gap-2">
+          <TabsTrigger value="available" className="gap-2" data-testid="tab-templates">
             <Plus className="h-4 w-4" />
             Templates
             {availablePresets.length > 0 && (
               <Badge variant="secondary" className="ml-1">{availablePresets.length}</Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="gap-2" data-testid="tab-settings">
+            <Settings className="h-4 w-4" />
+            Settings
           </TabsTrigger>
         </TabsList>
 
@@ -677,6 +736,376 @@ export default function Automations() {
               );
             })}
           </div>
+        </TabsContent>
+
+        <TabsContent value="settings" className="mt-4">
+          {settingsLoading ? (
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {/* Job Reminders */}
+              <Card data-testid="settings-job-reminders">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                      <Bell className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Job Reminders</CardTitle>
+                      <CardDescription>
+                        Automatically remind clients before scheduled jobs
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="job-reminder-enabled">Enable job reminders</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Send automatic reminders before scheduled jobs
+                      </p>
+                    </div>
+                    <Switch
+                      id="job-reminder-enabled"
+                      checked={settingsForm.jobReminderEnabled ?? true}
+                      onCheckedChange={(checked) => 
+                        setSettingsForm(prev => ({ ...prev, jobReminderEnabled: checked }))
+                      }
+                      data-testid="switch-job-reminder-enabled"
+                    />
+                  </div>
+                  
+                  {settingsForm.jobReminderEnabled !== false && (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="job-reminder-hours">Hours before job</Label>
+                          <Select
+                            value={String(settingsForm.jobReminderHoursBefore ?? 24)}
+                            onValueChange={(v) => 
+                              setSettingsForm(prev => ({ ...prev, jobReminderHoursBefore: parseInt(v) }))
+                            }
+                          >
+                            <SelectTrigger id="job-reminder-hours" data-testid="select-reminder-hours">
+                              <SelectValue placeholder="Select hours" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1 hour before</SelectItem>
+                              <SelectItem value="2">2 hours before</SelectItem>
+                              <SelectItem value="4">4 hours before</SelectItem>
+                              <SelectItem value="12">12 hours before</SelectItem>
+                              <SelectItem value="24">24 hours before</SelectItem>
+                              <SelectItem value="48">48 hours before</SelectItem>
+                              <SelectItem value="72">72 hours before</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="job-reminder-type">Reminder type</Label>
+                          <Select
+                            value={settingsForm.jobReminderType ?? 'sms'}
+                            onValueChange={(v) => 
+                              setSettingsForm(prev => ({ ...prev, jobReminderType: v as 'sms' | 'email' | 'both' }))
+                            }
+                          >
+                            <SelectTrigger id="job-reminder-type" data-testid="select-reminder-type">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="sms">
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4" />
+                                  SMS only
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="email">
+                                <div className="flex items-center gap-2">
+                                  <Mail className="h-4 w-4" />
+                                  Email only
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="both">
+                                <div className="flex items-center gap-2">
+                                  <MessageSquare className="h-4 w-4" />
+                                  SMS and Email
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Quote Follow-ups */}
+              <Card data-testid="settings-quote-followups">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/30">
+                      <FileText className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Quote Follow-ups</CardTitle>
+                      <CardDescription>
+                        Automatically follow up on quotes that haven't been responded to
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="quote-followup-enabled">Enable quote follow-ups</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Send reminders to clients who haven't responded
+                      </p>
+                    </div>
+                    <Switch
+                      id="quote-followup-enabled"
+                      checked={settingsForm.quoteFollowUpEnabled ?? true}
+                      onCheckedChange={(checked) => 
+                        setSettingsForm(prev => ({ ...prev, quoteFollowUpEnabled: checked }))
+                      }
+                      data-testid="switch-quote-followup-enabled"
+                    />
+                  </div>
+                  
+                  {settingsForm.quoteFollowUpEnabled !== false && (
+                    <div>
+                      <Label htmlFor="quote-followup-days">Days after sending quote</Label>
+                      <Select
+                        value={String(settingsForm.quoteFollowUpDays ?? 3)}
+                        onValueChange={(v) => 
+                          setSettingsForm(prev => ({ ...prev, quoteFollowUpDays: parseInt(v) }))
+                        }
+                      >
+                        <SelectTrigger id="quote-followup-days" className="w-full md:w-48" data-testid="select-quote-followup-days">
+                          <SelectValue placeholder="Select days" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 day</SelectItem>
+                          <SelectItem value="2">2 days</SelectItem>
+                          <SelectItem value="3">3 days</SelectItem>
+                          <SelectItem value="5">5 days</SelectItem>
+                          <SelectItem value="7">7 days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Invoice Reminders */}
+              <Card data-testid="settings-invoice-reminders">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                      <Receipt className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Invoice Reminders</CardTitle>
+                      <CardDescription>
+                        Automatically remind clients about upcoming and overdue invoices
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="invoice-reminder-enabled">Enable invoice reminders</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Send payment reminders to clients
+                      </p>
+                    </div>
+                    <Switch
+                      id="invoice-reminder-enabled"
+                      checked={settingsForm.invoiceReminderEnabled ?? true}
+                      onCheckedChange={(checked) => 
+                        setSettingsForm(prev => ({ ...prev, invoiceReminderEnabled: checked }))
+                      }
+                      data-testid="switch-invoice-reminder-enabled"
+                    />
+                  </div>
+                  
+                  {settingsForm.invoiceReminderEnabled !== false && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="invoice-reminder-before">Days before due date</Label>
+                        <Select
+                          value={String(settingsForm.invoiceReminderDaysBeforeDue ?? 3)}
+                          onValueChange={(v) => 
+                            setSettingsForm(prev => ({ ...prev, invoiceReminderDaysBeforeDue: parseInt(v) }))
+                          }
+                        >
+                          <SelectTrigger id="invoice-reminder-before" data-testid="select-invoice-before">
+                            <SelectValue placeholder="Select days" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 day before</SelectItem>
+                            <SelectItem value="2">2 days before</SelectItem>
+                            <SelectItem value="3">3 days before</SelectItem>
+                            <SelectItem value="5">5 days before</SelectItem>
+                            <SelectItem value="7">7 days before</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="invoice-overdue-reminder">Days after overdue</Label>
+                        <Select
+                          value={String(settingsForm.invoiceOverdueReminderDays ?? 7)}
+                          onValueChange={(v) => 
+                            setSettingsForm(prev => ({ ...prev, invoiceOverdueReminderDays: parseInt(v) }))
+                          }
+                        >
+                          <SelectTrigger id="invoice-overdue-reminder" data-testid="select-invoice-overdue">
+                            <SelectValue placeholder="Select days" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="3">3 days overdue</SelectItem>
+                            <SelectItem value="7">7 days overdue</SelectItem>
+                            <SelectItem value="14">14 days overdue</SelectItem>
+                            <SelectItem value="21">21 days overdue</SelectItem>
+                            <SelectItem value="30">30 days overdue</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Photo Gates */}
+              <Card data-testid="settings-photo-gates">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
+                      <Camera className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Photo Requirements (Photo Gates)</CardTitle>
+                      <CardDescription>
+                        Require photos at specific job stages to maintain quality documentation
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between py-2 border-b">
+                    <div>
+                      <Label htmlFor="require-photo-before">Require photo before starting job</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Team members must capture a photo before marking job as "In Progress"
+                      </p>
+                    </div>
+                    <Switch
+                      id="require-photo-before"
+                      checked={settingsForm.requirePhotoBeforeStart ?? false}
+                      onCheckedChange={(checked) => 
+                        setSettingsForm(prev => ({ ...prev, requirePhotoBeforeStart: checked }))
+                      }
+                      data-testid="switch-photo-before-start"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <div>
+                      <Label htmlFor="require-photo-after">Require photo after completing job</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Team members must capture a photo before marking job as "Completed"
+                      </p>
+                    </div>
+                    <Switch
+                      id="require-photo-after"
+                      checked={settingsForm.requirePhotoAfterComplete ?? false}
+                      onCheckedChange={(checked) => 
+                        setSettingsForm(prev => ({ ...prev, requirePhotoAfterComplete: checked }))
+                      }
+                      data-testid="switch-photo-after-complete"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* GPS Auto Check-in */}
+              <Card data-testid="settings-gps-checkin">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30">
+                      <MapPin className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">GPS Auto Check-in</CardTitle>
+                      <CardDescription>
+                        Automatically record arrival and departure at job sites using GPS
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between py-2 border-b">
+                    <div>
+                      <Label htmlFor="auto-checkin">Auto check-in on arrival</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically start time tracking when arriving at job site
+                      </p>
+                    </div>
+                    <Switch
+                      id="auto-checkin"
+                      checked={settingsForm.autoCheckInOnArrival ?? false}
+                      onCheckedChange={(checked) => 
+                        setSettingsForm(prev => ({ ...prev, autoCheckInOnArrival: checked }))
+                      }
+                      data-testid="switch-auto-checkin"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <div>
+                      <Label htmlFor="auto-checkout">Auto check-out on departure</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically stop time tracking when leaving job site
+                      </p>
+                    </div>
+                    <Switch
+                      id="auto-checkout"
+                      checked={settingsForm.autoCheckOutOnDeparture ?? false}
+                      onCheckedChange={(checked) => 
+                        setSettingsForm(prev => ({ ...prev, autoCheckOutOnDeparture: checked }))
+                      }
+                      data-testid="switch-auto-checkout"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Save Button */}
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => updateSettingsMutation.mutate(settingsForm)}
+                  disabled={updateSettingsMutation.isPending}
+                  data-testid="button-save-settings"
+                >
+                  {updateSettingsMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Settings
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </PageShell>

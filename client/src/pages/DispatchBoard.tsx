@@ -776,8 +776,11 @@ export default function DispatchBoard() {
                       return (
                         <div
                           key={job.id}
+                          draggable
+                          onDragStart={() => handleDragStart(job, null)}
+                          onDragEnd={() => setDraggedJob(null)}
                           onClick={() => handleJobClick(job, 'assign')}
-                          className={`p-3 rounded-lg border cursor-pointer hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                          className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''} ${draggedJob?.job.id === job.id ? 'opacity-50' : ''}`}
                           data-testid={`unscheduled-job-${job.id}`}
                         >
                           <div className="flex items-start gap-2">
