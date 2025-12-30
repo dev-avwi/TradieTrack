@@ -415,6 +415,12 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
   const [showLegend, setShowLegend] = useState(false);
   const [showControls, setShowControls] = useState(true);
   
+  // Worker assignment mode - when a worker is selected, show jobs to assign
+  const [selectedWorkerForAssignment, setSelectedWorkerForAssignment] = useState<TeamMemberLocation | null>(null);
+  // Use refs for synchronous operations (avoids race conditions from batched state updates)
+  const assignmentVisibilityRef = useRef<{ showTeam: boolean; showJobs: boolean } | null>(null);
+  const isEnteringAssignmentRef = useRef(false); // Prevents rapid double-click from re-entering
+  
   // Route planning state from URL params
   const [routeJobs, setRouteJobs] = useState<RouteJob[]>([]);
   const [showRoutePanel, setShowRoutePanel] = useState(false);
@@ -642,6 +648,68 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
       queryClient.invalidateQueries({ queryKey: ["/api/map/geofence-alerts"] });
     },
   });
+
+  // Centralized exit from assignment mode - restores visibility state (idempotent)
+  const exitAssignmentMode = useCallback(() => {
+    // Clear the entering flag
+    isEnteringAssignmentRef.current = false;
+    
+    setSelectedWorkerForAssignment(null);
+    // Restore previous visibility state from ref
+    if (assignmentVisibilityRef.current) {
+      setShowTeamMembers(assignmentVisibilityRef.current.showTeam);
+      setShowJobs(assignmentVisibilityRef.current.showJobs);
+      assignmentVisibilityRef.current = null;
+    } else {
+      setShowTeamMembers(true);
+    }
+  }, []);
+
+  // Assign job to worker mutation
+  const assignJobToWorkerMutation = useMutation({
+    mutationFn: async ({ jobId, userId }: { jobId: string; userId: string }) => {
+      return apiRequest('PATCH', `/api/jobs/${jobId}`, { assignedTo: userId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/map/jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      toast({ title: "Job assigned successfully" });
+      exitAssignmentMode();
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to assign job", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Enter worker assignment mode - save current state and show only jobs
+  const enterWorkerAssignmentMode = useCallback((worker: TeamMemberLocation) => {
+    // Synchronous guard: prevent rapid double-clicks from re-entering
+    if (isEnteringAssignmentRef.current) return;
+    isEnteringAssignmentRef.current = true;
+    
+    // Capture current visibility state synchronously before any state updates
+    // Only capture if we haven't already (prevents overwriting on race conditions)
+    if (!assignmentVisibilityRef.current) {
+      assignmentVisibilityRef.current = { showTeam: showTeamMembers, showJobs: showJobs };
+    }
+    setSelectedWorkerForAssignment(worker);
+    setShowTeamMembers(false); // Hide workers during assignment
+    setShowJobs(true); // Ensure jobs are visible for selection
+  }, [showTeamMembers, showJobs]);
+
+  // Cancel worker assignment mode - calls centralized exit
+  const cancelWorkerAssignment = useCallback(() => {
+    exitAssignmentMode();
+  }, [exitAssignmentMode]);
+
+  // Assign selected worker to a job
+  const assignWorkerToJob = (jobId: string) => {
+    if (!selectedWorkerForAssignment) return;
+    assignJobToWorkerMutation.mutate({ 
+      jobId, 
+      userId: selectedWorkerForAssignment.id 
+    });
+  };
   
   const unreadAlerts = useMemo(() => {
     return geofenceAlerts.filter(a => !a.isRead);
@@ -1066,30 +1134,47 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                       </Button>
                     </div>
                     
-                    {/* Add to Route button */}
-                    <Button 
-                      size="sm" 
-                      variant={isJobInRoute(job.id) ? "secondary" : "outline"}
-                      onClick={() => isJobInRoute(job.id) ? removeFromRoute(job.id) : addJobToRoute(job)}
-                      className="w-full"
-                      style={!isJobInRoute(job.id) ? { 
-                        borderColor: 'hsl(var(--trade))',
-                        color: 'hsl(var(--trade))'
-                      } : undefined}
-                      data-testid={`button-add-to-route-${job.id}`}
-                    >
-                      {isJobInRoute(job.id) ? (
-                        <>
-                          <Check className="h-4 w-4 mr-1" />
-                          In Route - Remove
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add to Route
-                        </>
-                      )}
-                    </Button>
+                    {/* Assign to Worker button - shown when in assignment mode */}
+                    {selectedWorkerForAssignment && (
+                      <Button 
+                        size="sm" 
+                        className="w-full text-white"
+                        style={{ backgroundColor: '#22c55e' }}
+                        onClick={() => assignWorkerToJob(job.id)}
+                        disabled={assignJobToWorkerMutation.isPending}
+                        data-testid={`button-assign-worker-${job.id}`}
+                      >
+                        <User className="h-4 w-4 mr-1" />
+                        Assign to {selectedWorkerForAssignment.name.split(' ')[0]}
+                      </Button>
+                    )}
+                    
+                    {/* Add to Route button - hidden in assignment mode */}
+                    {!selectedWorkerForAssignment && (
+                      <Button 
+                        size="sm" 
+                        variant={isJobInRoute(job.id) ? "secondary" : "outline"}
+                        onClick={() => isJobInRoute(job.id) ? removeFromRoute(job.id) : addJobToRoute(job)}
+                        className="w-full"
+                        style={!isJobInRoute(job.id) ? { 
+                          borderColor: 'hsl(var(--trade))',
+                          color: 'hsl(var(--trade))'
+                        } : undefined}
+                        data-testid={`button-add-to-route-${job.id}`}
+                      >
+                        {isJobInRoute(job.id) ? (
+                          <>
+                            <Check className="h-4 w-4 mr-1" />
+                            In Route
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add to Route
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Popup>
@@ -1197,25 +1282,40 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                     )}
                   </div>
                   
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setLocation(`/chat?to=${member.id}&type=direct`)}
-                      data-testid={`button-message-${member.id}`}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-1" />
-                      Message
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => navigateTo(member.latitude, member.longitude)}
-                    >
-                      <Navigation2 className="h-4 w-4 mr-1" />
-                      Navigate
-                    </Button>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setLocation(`/chat?to=${member.id}&type=direct`)}
+                        data-testid={`button-message-${member.id}`}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        Message
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => navigateTo(member.latitude, member.longitude)}
+                      >
+                        <Navigation2 className="h-4 w-4 mr-1" />
+                        Navigate
+                      </Button>
+                    </div>
+                    {(isOwner || isManager) && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="w-full"
+                        style={{ backgroundColor: 'hsl(var(--trade))' }}
+                        onClick={() => enterWorkerAssignmentMode(member)}
+                        data-testid={`button-assign-jobs-${member.id}`}
+                      >
+                        <Briefcase className="h-4 w-4 mr-1" />
+                        Assign Jobs
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Popup>
@@ -1376,12 +1476,50 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
           </div>
         </div>
       </div>
+
+      {/* Worker Assignment Mode Banner */}
+      {selectedWorkerForAssignment && (
+        <div className="absolute left-3 right-3 md:left-4 md:right-4 top-32 z-[1002] pointer-events-none">
+          <div 
+            className={`${isDark ? 'bg-green-900/95' : 'bg-green-50/95'} backdrop-blur-xl rounded-xl shadow-xl border ${isDark ? 'border-green-700' : 'border-green-200'} p-3 pointer-events-auto`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold border-2 border-white shrink-0"
+                  style={{ backgroundColor: '#22c55e' }}
+                >
+                  {selectedWorkerForAssignment.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                </div>
+                <div>
+                  <p className={`font-semibold text-sm ${isDark ? 'text-green-100' : 'text-green-900'}`}>
+                    Assigning jobs to {selectedWorkerForAssignment.name}
+                  </p>
+                  <p className={`text-xs ${isDark ? 'text-green-300' : 'text-green-700'}`}>
+                    Tap a job on the map to assign it
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className={`shrink-0 ${isDark ? 'border-green-600 text-green-200 hover:bg-green-800' : 'border-green-300 text-green-700 hover:bg-green-100'}`}
+                onClick={cancelWorkerAssignment}
+                data-testid="button-cancel-assignment"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       
-      {/* Route Planning Panel - Compact floating card */}
-      {showRoutePanel && enrichedRouteJobs.length > 0 && (
+      {/* Route Planning Panel - Compact tab style */}
+      {showRoutePanel && enrichedRouteJobs.length > 0 && !selectedWorkerForAssignment && (
         <div className="absolute left-3 md:left-4 top-32 z-[1001] pointer-events-none">
           <div 
-            className={`${isDark ? 'bg-gray-900/95' : 'bg-white/95'} backdrop-blur-xl rounded-xl shadow-xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} p-3 w-72 max-w-[calc(100vw-24px)] pointer-events-auto`}
+            className={`${isDark ? 'bg-gray-900/95' : 'bg-white/95'} backdrop-blur-xl rounded-xl shadow-xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} p-2.5 w-56 max-w-[calc(100vw-24px)] pointer-events-auto`}
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
