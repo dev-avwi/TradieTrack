@@ -889,7 +889,7 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
       
       <div className="flex-1 overflow-auto pb-20">
         <TabsContent value="quotes" className="mt-0 h-full">
-          <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 gap-3" : "space-y-2")}>
+          <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" : "space-y-2")}>
             {quotesLoading ? (
               <>
                 <DocumentSkeleton />
@@ -926,7 +926,7 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
         </TabsContent>
           
         <TabsContent value="invoices" className="mt-0 h-full">
-          <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 gap-3" : "space-y-2")}>
+          <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" : "space-y-2")}>
             {invoicesLoading ? (
               <>
                 <DocumentSkeleton />
@@ -965,7 +965,7 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
         </TabsContent>
           
         <TabsContent value="receipts" className="mt-0 h-full">
-          <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 gap-3" : "space-y-2")}>
+          <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" : "space-y-2")}>
             {receiptsLoading ? (
               <>
                 <DocumentSkeleton />
