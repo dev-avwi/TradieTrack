@@ -50,8 +50,6 @@ import AcceptInvite from "@/pages/AcceptInvite";
 import QuoteModal from "@/components/QuoteModal";
 import InvoiceModal from "@/components/InvoiceModal";
 import TimeTrackingPage from "@/pages/TimeTracking";
-import TeamManagement from "@/pages/TeamManagement";
-import TeamDashboard from "@/pages/TeamDashboard";
 import TeamOperations from "@/pages/TeamOperations";
 import PaymentPage from "@/pages/PaymentPage";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -435,13 +433,13 @@ function Router({
         <TimeTrackingPage />
       )} />
       
-      <Route path="/team" component={() => (
-        <TeamManagement />
-      )} />
+      <Route path="/team">
+        <Redirect to="/team-operations" />
+      </Route>
       
-      <Route path="/team-dashboard" component={() => (
-        <TeamDashboard />
-      )} />
+      <Route path="/team-dashboard">
+        <Redirect to="/team-operations" />
+      </Route>
       
       <Route path="/team-operations" component={() => (
         <TeamOperations />

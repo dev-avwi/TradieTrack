@@ -90,10 +90,11 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/time-tracking', label: 'Time Tracking', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   
   
-  // Team - owner/solo_owner/manager (solo owners can invite first team member)
-  { path: '/team', label: 'Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  // Team Operations - consolidated team management
+  // Legacy routes redirect to /team-operations (keep in permissions for RouteGuard to allow access before redirect)
+  { path: '/team', label: 'Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  { path: '/team-dashboard', label: 'Team Hub', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
   { path: '/team/invite', label: 'Invite Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  { path: '/team-dashboard', label: 'Team Hub', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   { path: '/team-operations', label: 'Team Operations', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   
   // Chat - all roles including solo owners for SMS conversations
