@@ -1,88 +1,94 @@
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
+const safeHaptic = async (fn: () => Promise<void>) => {
+  try {
+    await fn();
+  } catch (error) {
+    // Silently fail - haptics not available on all devices
+  }
+};
+
 export const hapticFeedback = {
   light: () => {
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } else {
-      Haptics.selectionAsync();
-    }
+    safeHaptic(() => 
+      Platform.OS === 'ios' 
+        ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        : Haptics.selectionAsync()
+    );
   },
   
   medium: () => {
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
   },
   
   heavy: () => {
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    }
+    safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy));
   },
   
   success: () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
   },
   
   warning: () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning));
   },
   
   error: () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
   },
   
   selection: () => {
-    Haptics.selectionAsync();
+    safeHaptic(() => Haptics.selectionAsync());
   },
   
   buttonPress: () => {
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } else {
-      Haptics.selectionAsync();
-    }
+    safeHaptic(() => 
+      Platform.OS === 'ios' 
+        ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        : Haptics.selectionAsync()
+    );
   },
   
   tabSwitch: () => {
-    Haptics.selectionAsync();
+    safeHaptic(() => Haptics.selectionAsync());
   },
   
   pullToRefresh: () => {
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    safeHaptic(() => 
+      Platform.OS === 'ios' 
+        ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        : Haptics.selectionAsync()
+    );
   },
   
   swipeAction: () => {
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } else {
-      Haptics.selectionAsync();
-    }
+    safeHaptic(() => 
+      Platform.OS === 'ios' 
+        ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+        : Haptics.selectionAsync()
+    );
   },
   
   longPress: () => {
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    safeHaptic(() => 
+      Platform.OS === 'ios' 
+        ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    );
   },
   
   toggle: (enabled: boolean) => {
-    if (enabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } else {
-      Haptics.selectionAsync();
-    }
+    safeHaptic(() => 
+      enabled 
+        ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        : Haptics.selectionAsync()
+    );
   },
+  
+  // Alias for common patterns
+  tap: () => hapticFeedback.light(),
+  press: () => hapticFeedback.buttonPress(),
 };
 
 export default hapticFeedback;

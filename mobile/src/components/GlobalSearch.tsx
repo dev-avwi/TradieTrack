@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  Modal,
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
