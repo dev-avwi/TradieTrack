@@ -12063,7 +12063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get current user's role (if they're a team member)
+  // Get current user's role (if they're a team member or business owner)
   app.get("/api/team/my-role", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
@@ -12072,7 +12072,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const myMembership = await storage.getTeamMembershipByMemberId(userId);
       
       if (!myMembership || myMembership.inviteStatus !== 'accepted') {
-        // User is not a team member, they are a business owner
+        // User is not a team member - check if they're a business owner
+        const user = await storage.getUser(userId);
+        if (user) {
+          // Return owner role for business owners
+          return res.json({
+            role: 'owner',
+            permissions: {
+              canViewDashboard: true,
+              canManageJobs: true,
+              canManageClients: true,
+              canManageQuotes: true,
+              canManageInvoices: true,
+              canManageTeam: true,
+              canViewReports: true,
+              canManageSettings: true,
+              canViewMap: true,
+              canAccessDispatch: true,
+            },
+            ownerId: userId,
+            isOwner: true,
+          });
+        }
         return res.status(404).json({ error: 'Not a team member' });
       }
       
