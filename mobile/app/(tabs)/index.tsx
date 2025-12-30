@@ -1392,7 +1392,7 @@ export default function DashboardScreen() {
                   icon="users"
                   iconBg={colors.infoLight}
                   iconColor={colors.info}
-                  onPress={() => router.push('/more/team-management')}
+                  onPress={() => router.push('/more/team-operations')}
                 />
               ) : (
                 <KPICard
@@ -1432,7 +1432,7 @@ export default function DashboardScreen() {
             </View>
             <TouchableOpacity 
               style={styles.viewAllButton}
-              onPress={() => router.push('/more/team-management')}
+              onPress={() => router.push('/more/team-operations')}
               activeOpacity={0.7}
             >
               <Text style={styles.viewAllText}>Manage Team</Text>

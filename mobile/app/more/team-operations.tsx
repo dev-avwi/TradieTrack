@@ -176,8 +176,9 @@ export default function TeamOperationsScreen() {
   const [teamPresence, setTeamPresence] = useState<TeamPresenceData[]>([]);
   const [activityFeed, setActivityFeed] = useState<ActivityFeedItem[]>([]);
   const [jobs, setJobs] = useState<JobData[]>([]);
-  const [availability, setAvailability] = useState<TeamMemberAvailability[]>([]);
+  const [availabilityMap, setAvailabilityMap] = useState<Map<string, TeamMemberAvailability[]>>(new Map());
   const [timeOffRequests, setTimeOffRequests] = useState<TeamMemberTimeOff[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
 
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [showTimeOffModal, setShowTimeOffModal] = useState(false);
@@ -211,11 +212,17 @@ export default function TeamOperationsScreen() {
   }, []);
 
   const fetchAvailability = useCallback(async (memberId: string) => {
+    setAvailabilityLoading(true);
     try {
       const res = await api.get(`/api/team/availability?teamMemberId=${memberId}`);
-      if (res.ok) setAvailability(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setAvailabilityMap(prev => new Map(prev).set(memberId, data));
+      }
     } catch (error) {
       console.error('Error fetching availability:', error);
+    } finally {
+      setAvailabilityLoading(false);
     }
   }, []);
 
@@ -229,11 +236,20 @@ export default function TeamOperationsScreen() {
     }
   }, [selectedMemberId, fetchAvailability]);
 
+  const selectedMemberAvailability = useMemo(() => {
+    if (!selectedMemberId) return [];
+    return availabilityMap.get(selectedMemberId) || [];
+  }, [selectedMemberId, availabilityMap]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    setAvailabilityMap(new Map());
     await fetchData();
+    if (selectedMemberId) {
+      await fetchAvailability(selectedMemberId);
+    }
     setRefreshing(false);
-  }, [fetchData]);
+  }, [fetchData, fetchAvailability, selectedMemberId]);
 
   const acceptedMembers = useMemo(() => 
     teamMembers.filter(m => m.inviteStatus === 'accepted'),
@@ -280,18 +296,53 @@ export default function TeamOperationsScreen() {
   const handleUpdateAvailability = async (dayOfWeek: number, isAvailable: boolean, startTime?: string, endTime?: string) => {
     if (!selectedMemberId) return;
     
+    const newAvailabilityItem: TeamMemberAvailability = {
+      id: `temp-${dayOfWeek}`,
+      teamMemberId: selectedMemberId,
+      dayOfWeek,
+      isAvailable,
+      startTime: startTime || '08:00',
+      endTime: endTime || '17:00',
+    };
+    
+    setAvailabilityMap(prev => {
+      const newMap = new Map(prev);
+      const memberAvailability = [...(newMap.get(selectedMemberId) || [])];
+      const existingIndex = memberAvailability.findIndex(a => a.dayOfWeek === dayOfWeek);
+      if (existingIndex >= 0) {
+        memberAvailability[existingIndex] = newAvailabilityItem;
+      } else {
+        memberAvailability.push(newAvailabilityItem);
+      }
+      newMap.set(selectedMemberId, memberAvailability);
+      return newMap;
+    });
+    
     try {
       const res = await api.post('/api/team/availability', {
         teamMemberId: selectedMemberId,
         dayOfWeek,
         isAvailable,
-        startTime,
-        endTime,
+        startTime: startTime || '08:00',
+        endTime: endTime || '17:00',
       });
       if (res.ok) {
-        await fetchAvailability(selectedMemberId);
+        const data = await res.json();
+        setAvailabilityMap(prev => {
+          const newMap = new Map(prev);
+          const memberAvailability = [...(newMap.get(selectedMemberId) || [])];
+          const idx = memberAvailability.findIndex(a => a.dayOfWeek === dayOfWeek);
+          if (idx >= 0) {
+            memberAvailability[idx] = data;
+          } else {
+            memberAvailability.push(data);
+          }
+          newMap.set(selectedMemberId, memberAvailability);
+          return newMap;
+        });
       }
     } catch (error) {
+      await fetchAvailability(selectedMemberId);
       Alert.alert('Error', 'Failed to update availability');
     }
   };
@@ -618,9 +669,15 @@ export default function TeamOperationsScreen() {
         </View>
 
         {selectedMemberId ? (
+          availabilityLoading ? (
+            <View style={styles.emptyState}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.emptyStateText}>Loading availability...</Text>
+            </View>
+          ) : (
           <View style={styles.availabilityList}>
             {DAY_NAMES.map((day, index) => {
-              const dayAvailability = availability.find(a => a.dayOfWeek === index);
+              const dayAvailability = selectedMemberAvailability.find(a => a.dayOfWeek === index);
               const isAvailable = dayAvailability?.isAvailable ?? (index > 0 && index < 6);
               const startTime = dayAvailability?.startTime || '08:00';
               const endTime = dayAvailability?.endTime || '17:00';
@@ -643,6 +700,7 @@ export default function TeamOperationsScreen() {
               );
             })}
           </View>
+          )
         ) : (
           <View style={styles.emptyState}>
             <Feather name="calendar" size={32} color={colors.mutedForeground} />
