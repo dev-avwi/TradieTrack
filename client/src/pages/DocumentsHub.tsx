@@ -193,16 +193,7 @@ function CompactQuoteCard({ quote, onView, onSend, onConvert, linkedInvoice, onV
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={(e) => { e.stopPropagation(); onView(); }}
-              data-testid={`quote-view-${quote.id}`}
-            >
-              <Briefcase className="h-4 w-4 mr-1" />
-              View
-            </Button>
+          {(quote.status === 'draft' || quote.status === 'accepted') && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`quote-menu-${quote.id}`}>
@@ -224,7 +215,7 @@ function CompactQuoteCard({ quote, onView, onSend, onConvert, linkedInvoice, onV
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -318,16 +309,7 @@ function CompactInvoiceCard({
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={(e) => { e.stopPropagation(); onView(); }}
-              data-testid={`invoice-view-${invoice.id}`}
-            >
-              <Briefcase className="h-4 w-4 mr-1" />
-              View
-            </Button>
+          {(invoice.status === 'draft' || invoice.status === 'sent' || invoice.status === 'overdue') && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`invoice-menu-${invoice.id}`}>
@@ -355,7 +337,7 @@ function CompactInvoiceCard({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -406,31 +388,20 @@ function CompactReceiptCard({ receipt, onView, onViewInvoice }: {
           </p>
         </div>
         
-        {/* Action row */}
-        <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t">
-          <div className="flex items-center gap-2">
-            {receipt.invoiceId && onViewInvoice && (
-              <Badge 
-                variant="outline" 
-                className="text-xs px-2 py-0.5 cursor-pointer"
-                onClick={(e) => { e.stopPropagation(); onViewInvoice(); }}
-                data-testid={`receipt-invoice-link-${receipt.id}`}
-              >
-                <Link2 className="w-3 h-3 mr-1" />
-                Invoice
-              </Badge>
-            )}
+        {/* Action row - only show if there are linked items */}
+        {receipt.invoiceId && onViewInvoice && (
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+            <Badge 
+              variant="outline" 
+              className="text-xs px-2 py-0.5 cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); onViewInvoice(); }}
+              data-testid={`receipt-invoice-link-${receipt.id}`}
+            >
+              <Link2 className="w-3 h-3 mr-1" />
+              Invoice
+            </Badge>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); onView(); }} 
-            data-testid={`receipt-view-${receipt.id}`}
-          >
-            <Briefcase className="h-4 w-4 mr-1" />
-            View
-          </Button>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
