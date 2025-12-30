@@ -2075,8 +2075,8 @@ export default function Integrations() {
       {/* Stripe Setup Guide - shows when not fully connected */}
       {!stripeConnected && (
         <StripeSetupGuide
-          isConnected={stripeConnected}
-          isPartiallyConnected={stripePartiallyConnected}
+          isConnected={stripeConnected ?? false}
+          isPartiallyConnected={stripePartiallyConnected ?? false}
           chargesEnabled={stripeConnect?.chargesEnabled || false}
           payoutsEnabled={stripeConnect?.payoutsEnabled || false}
           onConnect={handleConnectStripe}
