@@ -140,18 +140,6 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
   },
   {
-    title: "Manage Team",
-    url: "/team",
-    icon: UserPlus,
-    description: "Manage team members and roles",
-    color: "text-success",
-    bgColor: "bg-success/10",
-    hideForStaff: true,
-    showInSidebar: false,
-    showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
-  },
-  {
     title: "Chat",
     url: "/chat",
     icon: MessageCircle,

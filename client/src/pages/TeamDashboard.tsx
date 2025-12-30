@@ -23,6 +23,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/components/ThemeProvider";
 import { useLocation } from "wouter";
+import { useAppMode } from "@/hooks/use-app-mode";
 import { formatDistanceToNow } from "date-fns";
 import {
   Users,
@@ -48,6 +49,7 @@ import {
   Navigation,
   UserCheck,
   Plus,
+  Settings,
 } from "lucide-react";
 import {
   Sheet,
@@ -944,12 +946,16 @@ function TeamMap({
 export default function TeamDashboard() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const { isOwner, isManager } = useAppMode();
   const [myStatus, setMyStatus] = useState<string>("online");
   const [statusBoardOpen, setStatusBoardOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(true);
   const [mapOpen, setMapOpen] = useState(true);
   const [selectedMember, setSelectedMember] = useState<MemberWithJobs | null>(null);
   const [selectedMemberIdForMap, setSelectedMemberIdForMap] = useState<string | null>(null);
+
+  // Only owners and managers can manage team
+  const canManageTeam = isOwner || isManager;
 
   const { data: businessSettings } = useQuery<{ businessName?: string }>({
     queryKey: ["/api/business-settings"],
@@ -1150,6 +1156,17 @@ export default function TeamDashboard() {
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
+            {canManageTeam && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/team")}
+                data-testid="button-manage-team"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Manage Team
+              </Button>
+            )}
           </div>
         </div>
       </header>
