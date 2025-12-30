@@ -1,5 +1,6 @@
-import { storage } from './storage';
+import { storage, db } from './storage';
 import { AuthService } from './auth';
+import { teamMemberSkills } from '@shared/schema';
 
 // Demo user data
 const DEMO_USER = {
@@ -875,6 +876,215 @@ export async function seedSmsDataForTestUsers() {
     console.log('✅ Test user SMS demo data created:', createdConversations.length, 'conversations');
   } catch (error) {
     console.error('Error seeding SMS data for test users:', error);
+  }
+}
+
+// Create demo team members with realistic Australian data for testing live locations
+export async function createDemoTeamMembers() {
+  try {
+    console.log('🔧 Setting up demo team members...');
+    
+    const demoUser = await storage.getUserByEmail(DEMO_USER.email);
+    if (!demoUser) {
+      console.log('Demo user not found, skipping team member creation');
+      return;
+    }
+    
+    // Check if team members already exist - we want at least 5 demo members
+    const existingTeamMembers = await storage.getTeamMembers(demoUser.id);
+    if (existingTeamMembers.length >= 5) {
+      console.log(`✅ Demo team already has ${existingTeamMembers.length} members`);
+      return;
+    }
+    
+    // Get emails of existing team members to avoid duplicates
+    const existingEmails = new Set(existingTeamMembers.map(m => m.email));
+    
+    // Create roles if they don't exist
+    const existingRoles = await storage.getUserRoles();
+    let workerRole = existingRoles.find(r => r.name === 'Worker');
+    let managerRole = existingRoles.find(r => r.name === 'Manager');
+    
+    if (!workerRole) {
+      workerRole = await storage.createUserRole({
+        name: 'Worker',
+        description: 'Field worker - works on assigned jobs',
+        permissions: ['read_jobs', 'write_job_notes', 'write_job_media', 'read_clients', 'read_time_entries', 'write_time_entries'],
+      });
+    }
+    if (!managerRole) {
+      managerRole = await storage.createUserRole({
+        name: 'Manager', 
+        description: 'Manages jobs, team members, quotes and invoices',
+        permissions: ['read_jobs', 'write_jobs', 'assign_jobs', 'read_quotes', 'write_quotes', 'read_invoices', 'write_invoices', 'read_clients', 'manage_team', 'read_reports'],
+      });
+    }
+    
+    // Demo team members - realistic Australian names with Cairns area locations
+    const teamMemberData = [
+      {
+        firstName: 'Jake',
+        lastName: 'Morrison',
+        email: 'jake.morrison@mikesplumbing.com.au',
+        role: workerRole.id,
+        status: 'online',
+        lat: -16.9203, // Cairns CBD
+        lng: 145.7710,
+        statusMessage: 'On-site at client',
+      },
+      {
+        firstName: 'Sarah',
+        lastName: 'Chen',
+        email: 'sarah.chen@mikesplumbing.com.au',
+        role: managerRole.id,
+        status: 'online',
+        lat: -16.9282, // Parramatta Park
+        lng: 145.7571,
+        statusMessage: 'Managing afternoon schedule',
+      },
+      {
+        firstName: 'Liam',
+        lastName: 'OConnor',
+        email: 'liam.oconnor@mikesplumbing.com.au',
+        role: workerRole.id,
+        status: 'on_job',
+        lat: -16.8853, // Edge Hill
+        lng: 145.7321,
+        statusMessage: 'Hot water install - 42 Smith St',
+      },
+      {
+        firstName: 'Brodie',
+        lastName: 'Williams',
+        email: 'brodie.williams@mikesplumbing.com.au',
+        role: workerRole.id,
+        status: 'busy',
+        lat: -16.8513, // Whitfield
+        lng: 145.7109,
+        statusMessage: 'Emergency callout',
+      },
+      {
+        firstName: 'Emma',
+        lastName: 'Patterson',
+        email: 'emma.patterson@mikesplumbing.com.au',
+        role: workerRole.id,
+        status: 'break',
+        lat: -16.9187, // Cairns Esplanade
+        lng: 145.7788,
+        statusMessage: 'Lunch break',
+      },
+      {
+        firstName: 'Trent',
+        lastName: 'Nguyen',
+        email: 'trent.nguyen@mikesplumbing.com.au',
+        role: workerRole.id,
+        status: 'on_job',
+        lat: -16.9475, // Earlville
+        lng: 145.7401,
+        statusMessage: 'Blocked drain - residential',
+      },
+    ];
+    
+    // Skills/certifications data
+    const skillsData: Record<string, Array<{name: string; type: string; license?: string; expiry?: Date}>> = {
+      'Jake Morrison': [
+        { name: 'QBCC Plumbing License', type: 'license', license: 'QLD-PL-45678', expiry: new Date('2025-08-15') },
+        { name: 'White Card', type: 'certification', license: 'WC-123456' },
+      ],
+      'Sarah Chen': [
+        { name: 'QBCC Plumbing License', type: 'license', license: 'QLD-PL-34567', expiry: new Date('2025-11-20') },
+        { name: 'First Aid Certificate', type: 'certification', expiry: new Date('2025-03-10') },
+        { name: 'Working at Heights', type: 'certification', expiry: new Date('2025-06-30') },
+      ],
+      'Liam OConnor': [
+        { name: 'QBCC Plumbing License', type: 'license', license: 'QLD-PL-56789', expiry: new Date('2026-02-28') },
+        { name: 'Gas Fitting License', type: 'license', license: 'QLD-GAS-11223', expiry: new Date('2025-09-15') },
+        { name: 'White Card', type: 'certification', license: 'WC-234567' },
+      ],
+      'Brodie Williams': [
+        { name: 'Apprentice Plumber (3rd Year)', type: 'training' },
+        { name: 'White Card', type: 'certification', license: 'WC-345678' },
+        { name: 'First Aid Certificate', type: 'certification', expiry: new Date('2025-05-20') },
+      ],
+      'Emma Patterson': [
+        { name: 'QBCC Plumbing License', type: 'license', license: 'QLD-PL-67890', expiry: new Date('2025-12-01') },
+        { name: 'Backflow Prevention', type: 'certification', expiry: new Date('2025-07-15') },
+        { name: 'White Card', type: 'certification', license: 'WC-456789' },
+      ],
+      'Trent Nguyen': [
+        { name: 'QBCC Plumbing License', type: 'license', license: 'QLD-PL-78901', expiry: new Date('2026-01-10') },
+        { name: 'Drain Camera Certification', type: 'certification' },
+        { name: 'White Card', type: 'certification', license: 'WC-567890' },
+      ],
+    };
+    
+    for (const member of teamMemberData) {
+      // Skip if team member with this email already exists
+      if (existingEmails.has(member.email)) {
+        console.log(`  ⏭️ Skipping existing member: ${member.firstName} ${member.lastName}`);
+        continue;
+      }
+      
+      // Create user account for team member
+      const hashedPassword = await AuthService.hashPassword('TeamMember123!');
+      let memberUser = await storage.getUserByEmail(member.email);
+      
+      if (!memberUser) {
+        memberUser = await storage.createUser({
+          email: member.email,
+          username: member.email.split('@')[0],
+          password: hashedPassword,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          emailVerified: true,
+        });
+      }
+      
+      // Create team member record
+      const teamMember = await storage.createTeamMember({
+        businessOwnerId: demoUser.id,
+        memberId: memberUser.id,
+        roleId: member.role,
+        email: member.email,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        inviteStatus: 'accepted',
+        inviteAcceptedAt: new Date(),
+        allowLocationSharing: true,
+        locationEnabledByOwner: true,
+        hourlyRate: '55.00',
+        startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 90 days ago
+        isActive: true,
+      });
+      
+      // Create presence record with location
+      const lastSeenOffset = Math.floor(Math.random() * 30) * 60 * 1000; // 0-30 mins ago
+      await storage.updatePresence(memberUser.id, demoUser.id, {
+        status: member.status,
+        statusMessage: member.statusMessage,
+        lastLocationLat: member.lat,
+        lastLocationLng: member.lng,
+        lastLocationUpdatedAt: new Date(Date.now() - lastSeenOffset),
+      });
+      
+      // Add skills for this member
+      const memberSkills = skillsData[`${member.firstName} ${member.lastName}`] || [];
+      for (const skill of memberSkills) {
+        await db.insert(teamMemberSkills).values({
+          teamMemberId: teamMember.id,
+          skillName: skill.name,
+          skillType: skill.type,
+          licenseNumber: skill.license,
+          expiryDate: skill.expiry,
+          isVerified: true,
+        });
+      }
+      
+      console.log(`  ✅ Created team member: ${member.firstName} ${member.lastName} (${member.status})`);
+    }
+    
+    console.log('✅ Demo team members created successfully');
+  } catch (error) {
+    console.error('Error creating demo team members:', error);
   }
 }
 

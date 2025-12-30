@@ -3,7 +3,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { createDemoUserAndData, fixTestUserPasswords, seedSmsDataForTestUsers } from "./demoData";
+import { createDemoUserAndData, fixTestUserPasswords, seedSmsDataForTestUsers, createDemoTeamMembers } from "./demoData";
 import { initializeStripe } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { storage } from "./storage";
@@ -143,6 +143,9 @@ if (process.env.DATABASE_URL) {
   // Demo data seeding - ALWAYS run to ensure demo account works for Apple review
   // This creates/updates demo@tradietrack.com.au with password demo123456
   await createDemoUserAndData();
+  
+  // Create demo team members with realistic Australian data and live locations
+  await createDemoTeamMembers();
   
   const server = await registerRoutes(app);
 

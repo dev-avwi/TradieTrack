@@ -342,9 +342,13 @@ function LiveOpsTab() {
       </div>
 
       <div className="flex-1 overflow-auto p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Collapsible open={statusBoardOpen} onOpenChange={setStatusBoardOpen}>
-            <Card>
+        {/* Desktop: 2-column layout with Team Status + Map on left, Activity on right */}
+        {/* Mobile: stacked layout */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {/* Left column: Team Status + Map */}
+          <div className="space-y-4">
+            <Collapsible open={statusBoardOpen} onOpenChange={setStatusBoardOpen}>
+              <Card>
               <CollapsibleTrigger asChild>
                 <CardHeader className="cursor-pointer hover-elevate py-3">
                   <div className="flex items-center justify-between gap-2">
@@ -414,8 +418,91 @@ function LiveOpsTab() {
             </Card>
           </Collapsible>
 
-          <Collapsible open={activityOpen} onOpenChange={setActivityOpen} className="lg:col-span-2">
-            <Card>
+            {/* Team Map - shows team member locations */}
+            <Collapsible open={mapOpen} onOpenChange={setMapOpen}>
+              <Card>
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="cursor-pointer hover-elevate py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Team Map
+                      </CardTitle>
+                      {mapOpen ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <div className="h-[300px] rounded-lg overflow-hidden border" data-testid="team-map-container">
+                      {presence.some(p => p.lastLocationLat && p.lastLocationLng) ? (
+                        <MapContainer
+                          center={(() => {
+                            const withLocation = presence.find(p => p.lastLocationLat && p.lastLocationLng);
+                            return withLocation 
+                              ? [withLocation.lastLocationLat!, withLocation.lastLocationLng!] as [number, number]
+                              : [-16.92, 145.77] as [number, number]; // Default to Cairns
+                          })()}
+                          zoom={13}
+                          className="h-full w-full"
+                          scrollWheelZoom={true}
+                        >
+                          <TileLayer
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                          />
+                          {presence.filter(p => p.lastLocationLat && p.lastLocationLng).map((p) => {
+                            const member = acceptedMembers.find(m => m.userId === p.userId);
+                            const statusDisplay = getStatusDisplay(p.status);
+                            return (
+                              <Marker
+                                key={p.userId}
+                                position={[p.lastLocationLat!, p.lastLocationLng!]}
+                                icon={L.divIcon({
+                                  className: 'custom-marker',
+                                  html: `<div class="flex items-center justify-center w-8 h-8 rounded-full ${statusDisplay.bg} border-2 border-white shadow-lg">
+                                    <span class="text-xs font-bold ${statusDisplay.text}">${getInitials(member?.firstName, member?.lastName, member?.email)}</span>
+                                  </div>`,
+                                  iconSize: [32, 32],
+                                  iconAnchor: [16, 16],
+                                })}
+                              >
+                                <Popup>
+                                  <div className="text-sm">
+                                    <p className="font-medium">{member?.firstName} {member?.lastName}</p>
+                                    <p className="text-muted-foreground">{statusDisplay.label}</p>
+                                    {p.statusMessage && (
+                                      <p className="text-xs mt-1">{p.statusMessage}</p>
+                                    )}
+                                  </div>
+                                </Popup>
+                              </Marker>
+                            );
+                          })}
+                        </MapContainer>
+                      ) : (
+                        <div className="h-full flex items-center justify-center bg-muted/50">
+                          <div className="text-center text-muted-foreground">
+                            <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p>No location data available</p>
+                            <p className="text-xs">Team members will appear here when they share their location</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          </div>
+
+          {/* Right column: Activity Feed */}
+          <Collapsible open={activityOpen} onOpenChange={setActivityOpen}>
+            <Card className="h-full">
               <CollapsibleTrigger asChild>
                 <CardHeader className="cursor-pointer hover-elevate py-3">
                   <div className="flex items-center justify-between gap-2">
