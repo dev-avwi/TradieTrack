@@ -188,11 +188,12 @@ interface PermissionItem {
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; icon: any }> = {
-  online: { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-400", icon: Circle },
-  on_job: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400", icon: Wrench },
-  break: { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-400", icon: Coffee },
-  offline: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-500 dark:text-gray-400", icon: Circle },
+const STATUS_COLORS: Record<string, { bg: string; text: string; icon: any; markerBg: string; markerText: string }> = {
+  online: { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-400", icon: Circle, markerBg: "#22c55e", markerText: "#fff" },
+  on_job: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400", icon: Wrench, markerBg: "#3b82f6", markerText: "#fff" },
+  busy: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-400", icon: Clock, markerBg: "#f59e0b", markerText: "#fff" },
+  break: { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-400", icon: Coffee, markerBg: "#eab308", markerText: "#000" },
+  offline: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-500 dark:text-gray-400", icon: Circle, markerBg: "#9ca3af", markerText: "#fff" },
 };
 
 function getStatusDisplay(status: string) {
@@ -200,6 +201,7 @@ function getStatusDisplay(status: string) {
   const statusLabels: Record<string, string> = {
     online: "Available",
     on_job: "On Job",
+    busy: "Busy",
     break: "On Break",
     offline: "Offline",
   };
@@ -220,11 +222,14 @@ function getInitials(firstName?: string, lastName?: string, email?: string): str
 
 function LiveOpsTab() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [statusBoardOpen, setStatusBoardOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(true);
   const [mapOpen, setMapOpen] = useState(true);
   const [selectedMember, setSelectedMember] = useState<MemberWithJobs | null>(null);
   const [selectedMemberIdForMap, setSelectedMemberIdForMap] = useState<string | null>(null);
+  const [assignJobDialogOpen, setAssignJobDialogOpen] = useState(false);
+  const [selectedJobToAssign, setSelectedJobToAssign] = useState<string>("");
 
   const { data: presence = [], isLoading: presenceLoading } = useQuery<TeamPresenceData[]>({
     queryKey: ["/api/team/presence"],
@@ -255,6 +260,33 @@ function LiveOpsTab() {
   const unassignedJobs = useMemo(() => {
     return allJobs.filter(j => !j.assignedTo && (j.status === "pending" || j.status === "scheduled"));
   }, [allJobs]);
+
+  const assignJobMutation = useMutation({
+    mutationFn: async ({ jobId, userId }: { jobId: string; userId: string }) => {
+      const response = await apiRequest('PATCH', `/api/jobs/${jobId}`, { assignedTo: userId });
+      return response.json();
+    },
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/team/presence'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/activity-feed'] });
+      toast({ title: "Job assigned successfully" });
+      setAssignJobDialogOpen(false);
+      setSelectedJobToAssign("");
+      // Refresh selected member to show the newly assigned job
+      if (selectedMember) {
+        const updatedJobs = await queryClient.fetchQuery({ queryKey: ['/api/jobs'] }) as JobData[];
+        const assignedJobs = updatedJobs.filter((j: JobData) => j.assignedTo === selectedMember.userId);
+        setSelectedMember({
+          ...selectedMember,
+          assignedJobs,
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to assign job", description: error.message, variant: "destructive" });
+    },
+  });
 
   const handleMemberClick = (member: TeamMemberData) => {
     const memberPresence = presence.find(p => p.userId === member.userId);
@@ -458,25 +490,42 @@ function LiveOpsTab() {
                           {presence.filter(p => p.lastLocationLat && p.lastLocationLng).map((p) => {
                             const member = acceptedMembers.find(m => m.userId === p.userId);
                             const statusDisplay = getStatusDisplay(p.status);
+                            const initials = getInitials(member?.firstName, member?.lastName, member?.email);
                             return (
                               <Marker
                                 key={p.userId}
                                 position={[p.lastLocationLat!, p.lastLocationLng!]}
                                 icon={L.divIcon({
-                                  className: 'custom-marker',
-                                  html: `<div class="flex items-center justify-center w-8 h-8 rounded-full ${statusDisplay.bg} border-2 border-white shadow-lg">
-                                    <span class="text-xs font-bold ${statusDisplay.text}">${getInitials(member?.firstName, member?.lastName, member?.email)}</span>
+                                  className: '',
+                                  html: `<div style="
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    width: 40px;
+                                    height: 40px;
+                                    border-radius: 50%;
+                                    background: ${statusDisplay.markerBg};
+                                    border: 3px solid white;
+                                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                                    font-family: system-ui, -apple-system, sans-serif;
+                                  ">
+                                    <span style="
+                                      color: ${statusDisplay.markerText};
+                                      font-size: 14px;
+                                      font-weight: 700;
+                                      letter-spacing: 0.5px;
+                                    ">${initials}</span>
                                   </div>`,
-                                  iconSize: [32, 32],
-                                  iconAnchor: [16, 16],
+                                  iconSize: [40, 40],
+                                  iconAnchor: [20, 20],
                                 })}
                               >
                                 <Popup>
-                                  <div className="text-sm">
-                                    <p className="font-medium">{member?.firstName} {member?.lastName}</p>
-                                    <p className="text-muted-foreground">{statusDisplay.label}</p>
+                                  <div style="font-size: 14px; min-width: 120px;">
+                                    <p style="font-weight: 600; margin: 0 0 4px 0;">{member?.firstName} {member?.lastName}</p>
+                                    <p style="color: #666; margin: 0;">{statusDisplay.label}</p>
                                     {p.statusMessage && (
-                                      <p className="text-xs mt-1">{p.statusMessage}</p>
+                                      <p style="font-size: 12px; margin: 8px 0 0 0; color: #888;">{p.statusMessage}</p>
                                     )}
                                   </div>
                                 </Popup>
@@ -577,62 +626,121 @@ function LiveOpsTab() {
             <>
               <SheetHeader>
                 <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16">
-                    <AvatarImage src={selectedMember.profileImageUrl} />
-                    <AvatarFallback className="text-lg">
-                      {getInitials(selectedMember.firstName, selectedMember.lastName, selectedMember.email)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
+                  <div className="relative">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src={selectedMember.profileImageUrl} />
+                      <AvatarFallback className="text-lg">
+                        {getInitials(selectedMember.firstName, selectedMember.lastName, selectedMember.email)}
+                      </AvatarFallback>
+                    </Avatar>
+                    {selectedMember.presence && (
+                      <div 
+                        className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-background ${
+                          selectedMember.presence.status === 'online' || selectedMember.presence.status === 'on_job' 
+                            ? 'bg-green-500' 
+                            : selectedMember.presence.status === 'busy' 
+                              ? 'bg-amber-500' 
+                              : 'bg-gray-400'
+                        }`}
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1">
                     <SheetTitle>
                       {selectedMember.firstName} {selectedMember.lastName}
                     </SheetTitle>
                     <p className="text-sm text-muted-foreground">{selectedMember.email}</p>
-                    {selectedMember.roleName && (
-                      <Badge variant="secondary" className="mt-1">{selectedMember.roleName}</Badge>
-                    )}
+                    <div className="flex items-center gap-2 mt-1">
+                      {selectedMember.roleName && (
+                        <Badge variant="secondary">{selectedMember.roleName}</Badge>
+                      )}
+                      {selectedMember.presence && (
+                        <Badge variant="outline" className={getStatusDisplay(selectedMember.presence.status).text}>
+                          {getStatusDisplay(selectedMember.presence.status).label}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               </SheetHeader>
 
               <div className="mt-6 space-y-6">
-                <div className="flex gap-2">
+                {/* Quick Actions */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {selectedMember.phone && (
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="outline" size="sm" className="flex-col h-auto py-3" asChild data-testid="button-call-member">
                       <a href={`tel:${selectedMember.phone}`}>
-                        <Phone className="h-4 w-4 mr-2" />
-                        Call
+                        <Phone className="h-5 w-5 mb-1" />
+                        <span className="text-xs">Call</span>
                       </a>
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" asChild>
+                  {selectedMember.phone && (
+                    <Button variant="outline" size="sm" className="flex-col h-auto py-3" asChild data-testid="button-sms-member">
+                      <a href={`sms:${selectedMember.phone}`}>
+                        <MessageCircle className="h-5 w-5 mb-1" />
+                        <span className="text-xs">Text</span>
+                      </a>
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" className="flex-col h-auto py-3" asChild data-testid="button-email-member">
                     <a href={`mailto:${selectedMember.email}`}>
-                      <Mail className="h-4 w-4 mr-2" />
-                      Email
+                      <Mail className="h-5 w-5 mb-1" />
+                      <span className="text-xs">Email</span>
                     </a>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-col h-auto py-3"
+                    onClick={() => navigate(`/direct-messages?userId=${selectedMember.userId}`)}
+                    data-testid="button-dm-member"
+                  >
+                    <Send className="h-5 w-5 mb-1" />
+                    <span className="text-xs">Message</span>
                   </Button>
                 </div>
 
+                {/* Assign Job Section */}
                 <div>
-                  <h4 className="font-medium mb-3">Assigned Jobs ({selectedMember.assignedJobs.length})</h4>
-                  <ScrollArea className="h-[200px]">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium">Assigned Jobs ({selectedMember.assignedJobs.length})</h4>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setAssignJobDialogOpen(true)}
+                      disabled={unassignedJobs.length === 0}
+                      data-testid="button-assign-job"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Assign Job
+                    </Button>
+                  </div>
+                  <ScrollArea className="h-[180px]">
                     <div className="space-y-2">
                       {selectedMember.assignedJobs.map((job) => (
                         <div
                           key={job.id}
-                          className="p-3 border rounded-lg"
+                          className="p-3 border rounded-lg hover-elevate cursor-pointer"
+                          onClick={() => navigate(`/jobs/${job.id}`)}
                           data-testid={`member-job-${job.id}`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <p className="font-medium truncate">{job.title}</p>
                             <Badge variant={job.status === 'in_progress' ? 'default' : 'secondary'}>
-                              {job.status}
+                              {job.status.replace('_', ' ')}
                             </Badge>
                           </div>
                           {job.address && (
                             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
                               {job.address}
+                            </p>
+                          )}
+                          {job.scheduledAt && (
+                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {format(new Date(job.scheduledAt), 'EEE, d MMM h:mm a')}
                             </p>
                           )}
                         </div>
@@ -646,14 +754,15 @@ function LiveOpsTab() {
                   </ScrollArea>
                 </div>
 
+                {/* Recent Activity */}
                 <div>
                   <h4 className="font-medium mb-3">Recent Activity</h4>
-                  <ScrollArea className="h-[150px]">
+                  <ScrollArea className="h-[130px]">
                     <div className="space-y-2">
                       {selectedMember.recentActivity.slice(0, 5).map((activity) => (
-                        <div key={activity.id} className="text-sm">
-                          <p>{activity.description}</p>
-                          <p className="text-xs text-muted-foreground">
+                        <div key={activity.id} className="text-sm p-2 rounded border">
+                          <p className="text-muted-foreground">{activity.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
                             {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
                           </p>
                         </div>
@@ -671,6 +780,57 @@ function LiveOpsTab() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Assign Job Dialog */}
+      <Dialog open={assignJobDialogOpen} onOpenChange={setAssignJobDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Job to {selectedMember?.firstName}</DialogTitle>
+            <DialogDescription>
+              Select a job to assign to this team member.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label>Select Job</Label>
+            <Select value={selectedJobToAssign} onValueChange={setSelectedJobToAssign}>
+              <SelectTrigger className="mt-2" data-testid="select-job-to-assign">
+                <SelectValue placeholder="Choose a job..." />
+              </SelectTrigger>
+              <SelectContent>
+                {unassignedJobs.map((job) => (
+                  <SelectItem key={job.id} value={job.id}>
+                    <div className="flex flex-col">
+                      <span>{job.title}</span>
+                      {job.clientName && (
+                        <span className="text-xs text-muted-foreground">{job.clientName}</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignJobDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedMember && selectedJobToAssign) {
+                  assignJobMutation.mutate({
+                    jobId: selectedJobToAssign,
+                    userId: selectedMember.userId,
+                  });
+                }
+              }}
+              disabled={!selectedJobToAssign || assignJobMutation.isPending}
+              data-testid="button-confirm-assign-job"
+            >
+              {assignJobMutation.isPending ? "Assigning..." : "Assign Job"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -2049,11 +2209,6 @@ export default function TeamOperations() {
               <span className="hidden sm:inline">Scheduling</span>
               <span className="sm:hidden">Schedule</span>
             </TabsTrigger>
-            <TabsTrigger value="skills" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-skills">
-              <Award className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Skills & Certs</span>
-              <span className="sm:hidden">Skills</span>
-            </TabsTrigger>
             <TabsTrigger value="performance" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-performance">
               <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Performance</span>
@@ -2074,10 +2229,6 @@ export default function TeamOperations() {
 
         <TabsContent value="scheduling" className="flex-1 m-0">
           <SchedulingTab />
-        </TabsContent>
-
-        <TabsContent value="skills" className="flex-1 m-0">
-          <SkillsTab />
         </TabsContent>
 
         <TabsContent value="performance" className="flex-1 m-0">
