@@ -18,9 +18,11 @@ interface BusinessSettings {
 }
 
 interface TeamMemberInfo {
-  roleId: string;
-  roleName: string;
-  permissions: string[];
+  roleId?: string;
+  roleName?: string;
+  role?: string; // New format for owners
+  permissions: Record<string, boolean> | string[];
+  isOwner?: boolean;
 }
 
 // Custom fetch function that returns null for 404 (expected for business owners)
@@ -56,13 +58,21 @@ export function useUserRole() {
     // Wait for all data to load before determining role
     if (isLoading) return "loading";
     
-    // First check if user is a team member (this takes priority)
+    // Check API response for role info
     if (teamMemberInfo) {
-      const roleName = teamMemberInfo.roleName.toLowerCase();
-      if (roleName.includes("manager") || roleName.includes("admin")) {
-        return "manager";
+      // New format: API returns { role: 'owner', isOwner: true } for business owners
+      if (teamMemberInfo.isOwner || teamMemberInfo.role === 'owner') {
+        return "owner";
       }
-      return "tradie";
+      
+      // Team member format: API returns { roleName: '...', roleId: '...' }
+      if (teamMemberInfo.roleName) {
+        const roleName = teamMemberInfo.roleName.toLowerCase();
+        if (roleName.includes("manager") || roleName.includes("admin")) {
+          return "manager";
+        }
+        return "tradie";
+      }
     }
     
     // If user has business settings, they're the owner
@@ -76,12 +86,24 @@ export function useUserRole() {
 
   const role = getUserRole();
   
+  // Handle permissions - can be object (for owners) or array (for team members)
+  const getPermissions = () => {
+    if (!teamMemberInfo?.permissions) return [];
+    if (Array.isArray(teamMemberInfo.permissions)) {
+      return teamMemberInfo.permissions;
+    }
+    // Convert object to array of enabled permission keys
+    return Object.entries(teamMemberInfo.permissions)
+      .filter(([_, enabled]) => enabled)
+      .map(([key]) => key);
+  };
+
   return {
     role,
     isOwner: role === "owner",
     isManager: role === "manager",
     isTradie: role === "tradie",
     isLoading,
-    permissions: teamMemberInfo?.permissions || [],
+    permissions: getPermissions(),
   };
 }
