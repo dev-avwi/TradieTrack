@@ -312,7 +312,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.lg,
   },
   modalTitle: {
-    ...typography.h3,
+    ...typography.sectionTitle,
     color: colors.foreground,
   },
   modalLabel: {

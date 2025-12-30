@@ -111,15 +111,15 @@ export default function PaymentHubScreen() {
 
   const fetchStripeData = useCallback(async () => {
     try {
-      const statusRes = await api.get('/api/stripe-connect/status');
-      setStripeStatus(statusRes.data);
+      const statusRes = await api.get<StripeConnectStatus>('/api/stripe-connect/status');
+      setStripeStatus(statusRes.data ?? null);
       
       if (statusRes.data?.connected && statusRes.data?.chargesEnabled) {
         const [balanceRes, payoutsRes] = await Promise.all([
-          api.get('/api/stripe-connect/balance').catch(() => ({ data: null })),
-          api.get('/api/stripe-connect/payouts').catch(() => ({ data: { payouts: [] } })),
+          api.get<StripeBalance>('/api/stripe-connect/balance').catch(() => ({ data: null })),
+          api.get<{ payouts: StripePayout[] }>('/api/stripe-connect/payouts').catch(() => ({ data: { payouts: [] } })),
         ]);
-        setStripeBalance(balanceRes.data);
+        setStripeBalance(balanceRes.data ?? null);
         setStripePayouts(payoutsRes.data?.payouts || []);
       }
     } catch (error) {
@@ -132,9 +132,9 @@ export default function PaymentHubScreen() {
   const fetchData = useCallback(async () => {
     try {
       const [invoicesRes, quotesRes, clientsRes] = await Promise.all([
-        api.get('/api/invoices'),
-        api.get('/api/quotes'),
-        api.get('/api/clients'),
+        api.get<Invoice[]>('/api/invoices'),
+        api.get<Quote[]>('/api/quotes'),
+        api.get<Client[]>('/api/clients'),
       ]);
       setInvoices(invoicesRes.data || []);
       setQuotes(quotesRes.data || []);
@@ -161,7 +161,7 @@ export default function PaymentHubScreen() {
   const handleConnectStripe = useCallback(async () => {
     setIsConnecting(true);
     try {
-      const response = await api.post('/api/stripe-connect/onboard');
+      const response = await api.post<{ url?: string }>('/api/stripe-connect/onboard');
       if (response.data?.url) {
         const url = response.data.url;
         const canOpen = await Linking.canOpenURL(url);
@@ -188,7 +188,7 @@ export default function PaymentHubScreen() {
 
   const handleOpenStripeDashboard = useCallback(async () => {
     try {
-      const response = await api.get('/api/stripe-connect/dashboard');
+      const response = await api.get<{ url?: string }>('/api/stripe-connect/dashboard');
       if (response.data?.url) {
         const url = response.data.url;
         const canOpen = await Linking.canOpenURL(url);
@@ -707,11 +707,11 @@ export default function PaymentHubScreen() {
     <View style={styles.listContainer}>
       <View style={styles.filterRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {renderFilterChip('All', 'all', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Outstanding', 'outstanding', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Overdue', 'overdue', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Paid', 'paid', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Drafts', 'draft', invoiceFilter, setInvoiceFilter)}
+          {renderFilterChip('All', 'all', invoiceFilter, (v) => setInvoiceFilter(v as InvoiceFilterType))}
+          {renderFilterChip('Outstanding', 'outstanding', invoiceFilter, (v) => setInvoiceFilter(v as InvoiceFilterType))}
+          {renderFilterChip('Overdue', 'overdue', invoiceFilter, (v) => setInvoiceFilter(v as InvoiceFilterType))}
+          {renderFilterChip('Paid', 'paid', invoiceFilter, (v) => setInvoiceFilter(v as InvoiceFilterType))}
+          {renderFilterChip('Drafts', 'draft', invoiceFilter, (v) => setInvoiceFilter(v as InvoiceFilterType))}
         </ScrollView>
       </View>
       <View style={styles.sectionContent}>
@@ -758,10 +758,10 @@ export default function PaymentHubScreen() {
     <View style={styles.listContainer}>
       <View style={styles.filterRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {renderFilterChip('7d', '7d', timeRange, setTimeRange)}
-          {renderFilterChip('30d', '30d', timeRange, setTimeRange)}
-          {renderFilterChip('90d', '90d', timeRange, setTimeRange)}
-          {renderFilterChip('All', 'all', timeRange, setTimeRange)}
+          {renderFilterChip('7d', '7d', timeRange, (v) => setTimeRange(v as TimeRangeType))}
+          {renderFilterChip('30d', '30d', timeRange, (v) => setTimeRange(v as TimeRangeType))}
+          {renderFilterChip('90d', '90d', timeRange, (v) => setTimeRange(v as TimeRangeType))}
+          {renderFilterChip('All', 'all', timeRange, (v) => setTimeRange(v as TimeRangeType))}
         </ScrollView>
       </View>
 
