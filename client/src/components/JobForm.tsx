@@ -67,11 +67,23 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
   const [previousJobsOpen, setPreviousJobsOpen] = useState(false);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   
-  // Read clientId from URL params (when navigating from client view)
+  // Read clientId and quoteId from URL params (when navigating from client view or quote)
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
   const urlClientId = urlParams.get('clientId');
+  const urlQuoteId = urlParams.get('quoteId');
   const [urlClientApplied, setUrlClientApplied] = useState(false);
+
+  // Fetch quote details if creating job from quote
+  const { data: sourceQuote } = useQuery({
+    queryKey: ['/api/quotes', urlQuoteId],
+    queryFn: async () => {
+      const response = await fetch(`/api/quotes/${urlQuoteId}`, { credentials: 'include' });
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!urlQuoteId,
+  });
 
   // Get current user's trade type for personalized templates
   const { data: userCheck } = useQuery({
@@ -150,6 +162,30 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
       }
     }
   }, [urlClientId, urlClientApplied, clients, form, toast]);
+
+  // Effect to pre-fill job details from source quote
+  const [quoteApplied, setQuoteApplied] = useState(false);
+  useEffect(() => {
+    if (sourceQuote && !quoteApplied) {
+      // Pre-fill job title from quote title or number
+      if (sourceQuote.title) {
+        form.setValue("title", sourceQuote.title, { shouldValidate: true });
+      } else if (sourceQuote.number) {
+        form.setValue("title", `Job from ${sourceQuote.number}`, { shouldValidate: true });
+      }
+      
+      // Pre-fill description from quote description or job scope
+      if (sourceQuote.description || sourceQuote.jobScope) {
+        form.setValue("description", sourceQuote.description || sourceQuote.jobScope);
+      }
+      
+      setQuoteApplied(true);
+      toast({
+        title: "Creating job from quote",
+        description: `Quote ${sourceQuote.number} details have been pre-filled`,
+      });
+    }
+  }, [sourceQuote, quoteApplied, form, toast]);
   
   useEffect(() => {
     if (selectedClientId && selectedClientId !== lastAutoFilledClientId) {
@@ -295,6 +331,26 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
       };
 
       const result = await createJobMutation.mutateAsync(jobData);
+
+      // After job is created, update the quote to link to this job
+      if (urlQuoteId && result.id) {
+        try {
+          await fetch(`/api/quotes/${urlQuoteId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ jobId: result.id }),
+          });
+          queryClient.invalidateQueries({ queryKey: ['/api/quotes', urlQuoteId] });
+          queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+          toast({
+            title: "Job linked to quote",
+            description: `Quote ${sourceQuote?.number || ''} is now linked to this job`,
+          });
+        } catch (e) {
+          console.error('Failed to link quote to job:', e);
+        }
+      }
       
       // Success handling is now in the hook
       if (onSubmit) onSubmit(result.id);
@@ -316,6 +372,17 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
         <h1 className="text-xl sm:text-2xl font-bold">Create New Job</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Fill in the details to create a new job</p>
       </div>
+
+      {/* Creating from Quote Banner */}
+      {sourceQuote && (
+        <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg" data-testid="quote-source-banner">
+          <FileText className="h-5 w-5 text-green-600" />
+          <div className="flex-1">
+            <p className="font-medium text-green-800 dark:text-green-300">Creating job from quote {sourceQuote.number}</p>
+            <p className="text-sm text-green-700 dark:text-green-400">Job details have been pre-filled from the accepted quote</p>
+          </div>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Template Selector */}

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle, ChevronRight, FolderOpen } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, getSessionToken } from "@/lib/queryClient";
@@ -586,6 +586,29 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
               {copied ? <Check className="h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}
               {copied ? 'Copied!' : 'Share'}
             </Button>
+            {/* Create Job from Quote - only for accepted quotes without a linked job */}
+            {quote.status === 'accepted' && !quote.jobId && (
+              <Button 
+                onClick={() => setLocation(`/jobs/new?quoteId=${quote.id}&clientId=${quote.clientId}`)}
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+                data-testid="button-create-job-from-quote"
+              >
+                <Briefcase className="h-4 w-4 mr-2" />
+                Create Job
+              </Button>
+            )}
+            {/* View linked job if exists */}
+            {quote.jobId && job && (
+              <Button 
+                variant="outline"
+                onClick={() => setLocation(`/jobs/${quote.jobId}`)}
+                className="w-full sm:w-auto"
+                data-testid="button-view-linked-job"
+              >
+                <Briefcase className="h-4 w-4 mr-2" />
+                View Job
+              </Button>
+            )}
           </div>
         </div>
 
