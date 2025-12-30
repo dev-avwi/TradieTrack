@@ -6,6 +6,7 @@ interface DashboardKPIs {
   unpaidInvoicesCount: number;
   quotesAwaiting: number;
   monthlyEarnings: number;
+  jobsToInvoice: number;
 }
 
 interface RecentActivity {

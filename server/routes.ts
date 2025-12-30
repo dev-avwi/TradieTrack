@@ -9110,6 +9110,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard KPIs - main metrics for tradie dashboard
+  app.get("/api/dashboard/kpis", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      let [jobs, quotes, invoices] = await Promise.all([
+        storage.getJobs(userContext.effectiveUserId),
+        storage.getQuotes(userContext.effectiveUserId),
+        storage.getInvoices(userContext.effectiveUserId)
+      ]);
+      
+      // Staff tradies only see stats for their assigned jobs
+      const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
+      if (!hasViewAll && userContext.teamMemberId) {
+        jobs = jobs.filter(job => job.assignedTo === req.userId);
+        quotes = [];
+        invoices = [];
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // Jobs scheduled for today
+      const jobsToday = jobs.filter(job => {
+        if (!job.scheduledAt) return false;
+        const schedDate = new Date(job.scheduledAt);
+        return schedDate >= today && schedDate < tomorrow;
+      }).length;
+
+      // Unpaid invoices (money owed to tradie)
+      const unpaidInvoices = invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'draft');
+      const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+
+      // Quotes awaiting response
+      const quotesAwaiting = quotes.filter(q => q.status === 'sent').length;
+
+      // Jobs completed but not yet invoiced (money left on the table!)
+      // Exclude jobs that already have an invoice linked
+      const invoicedJobIds = new Set(invoices.filter(inv => inv.jobId).map(inv => inv.jobId));
+      const jobsToInvoice = jobs.filter(j => 
+        j.status === 'done' && !invoicedJobIds.has(j.id)
+      ).length;
+
+      // This month's earnings
+      const currentMonth = new Date();
+      currentMonth.setDate(1);
+      currentMonth.setHours(0, 0, 0, 0);
+      
+      const monthlyEarnings = invoices
+        .filter(inv => inv.status === 'paid' && inv.paidAt && new Date(inv.paidAt) >= currentMonth)
+        .reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+
+      res.json({
+        jobsToday,
+        unpaidInvoicesCount: unpaidInvoices.length,
+        unpaidInvoicesTotal: unpaidTotal,
+        quotesAwaiting,
+        monthlyEarnings,
+        jobsToInvoice,
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard KPIs:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard KPIs" });
+    }
+  });
+
   // Unified dashboard endpoint - single call for web/mobile consistency
   app.get("/api/dashboard/unified", requireAuth, async (req: any, res) => {
     try {

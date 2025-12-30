@@ -36,7 +36,8 @@ import {
   ArrowRight,
   Map,
   Loader2,
-  X
+  X,
+  Zap
 } from "lucide-react";
 
 interface TeamOwnerDashboardProps {
@@ -314,8 +315,45 @@ export default function TeamOwnerDashboard({
 
       <TrustBanner />
 
+      {/* MONEY OWED - Most important metric for tradies */}
+      {(kpis?.unpaidInvoicesTotal ?? 0) > 0 && (
+        <section className="animate-fade-up" style={{ animationDelay: '50ms' }}>
+          <div 
+            className="feed-card card-press cursor-pointer border-2"
+            style={{ borderColor: 'hsl(var(--destructive) / 0.3)' }}
+            onClick={() => onNavigate?.('/documents?tab=invoices&filter=sent')}
+            data-testid="kpi-money-owed"
+          >
+            <div className="card-padding">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: 'hsl(var(--destructive) / 0.1)' }}
+                  >
+                    <DollarSign className="h-6 w-6" style={{ color: 'hsl(var(--destructive))' }} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Money Owed to You</p>
+                    <p className="text-3xl font-bold" style={{ color: 'hsl(var(--destructive))' }}>
+                      ${(kpis?.unpaidInvoicesTotal || 0).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge variant="outline" className="text-destructive border-destructive/30">
+                    {kpis?.unpaidInvoicesCount || 0} unpaid
+                  </Badge>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Quick Stats - KPIs */}
-      <section className="animate-fade-up" style={{ animationDelay: '50ms' }}>
+      <section className="animate-fade-up" style={{ animationDelay: '75ms' }}>
         <h2 className="ios-label mb-3">Quick Stats</h2>
         <div className="grid grid-cols-2 gap-3">
           <div 
@@ -341,20 +379,20 @@ export default function TeamOwnerDashboard({
           
           <div 
             className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/invoices?filter=overdue')}
-            data-testid="kpi-overdue"
+            onClick={() => onNavigate?.('/jobs?filter=done')}
+            data-testid="kpi-jobs-to-invoice"
           >
             <div className="card-padding">
               <div className="flex items-center gap-3">
                 <div 
                   className="w-11 h-11 rounded-xl flex items-center justify-center"
-                  style={{ backgroundColor: (kpis?.unpaidInvoicesCount ?? 0) > 0 ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--muted) / 0.5)' }}
+                  style={{ backgroundColor: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50% / 0.1)' : 'hsl(var(--muted) / 0.5)' }}
                 >
-                  <AlertCircle className="h-5 w-5" style={{ color: (kpis?.unpaidInvoicesCount ?? 0) > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))' }} />
+                  <Zap className="h-5 w-5" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : 'hsl(var(--muted-foreground))' }} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{kpis?.unpaidInvoicesCount ?? 0}</p>
-                  <p className="ios-caption">Overdue</p>
+                  <p className="text-2xl font-bold">{kpis?.jobsToInvoice ?? 0}</p>
+                  <p className="ios-caption">To Invoice</p>
                 </div>
               </div>
             </div>
@@ -362,7 +400,7 @@ export default function TeamOwnerDashboard({
 
           <div 
             className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/team-dashboard')}
+            onClick={() => onNavigate?.('/team-operations')}
             data-testid="kpi-team"
           >
             <div className="card-padding">
@@ -386,7 +424,7 @@ export default function TeamOwnerDashboard({
           
           <div 
             className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/invoices?filter=paid')}
+            onClick={() => onNavigate?.('/documents?tab=invoices&filter=paid')}
             data-testid="kpi-earnings"
           >
             <div className="card-padding">
@@ -823,6 +861,19 @@ export default function TeamOwnerDashboard({
                             <User className="h-3 w-3" />
                             {job.assignedToName}
                           </p>
+                        )}
+                        {job.address && (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-muted-foreground flex items-center gap-1 mt-1 underline underline-offset-2 hover:text-foreground transition-colors"
+                            data-testid={`address-link-${job.id}`}
+                          >
+                            <Navigation className="h-3 w-3 flex-shrink-0" />
+                            <span className="line-clamp-1">{job.address}</span>
+                          </a>
                         )}
                       </div>
                     </div>
