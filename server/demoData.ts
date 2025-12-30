@@ -129,7 +129,7 @@ export async function createDemoUserAndData() {
         paymentInstructions: "Payment due within 30 days. Direct deposit preferred.",
         brandColor: "#2563eb",
         invoiceTerms: "1. All work is guaranteed for 12 months from completion. 2. Payments must be made within 14 days of invoice date. 3. Materials remain property of Mike's Plumbing until paid in full.",
-        warrantyTerms: "Standard 12-month workmanship warranty applies to all plumbing installations. Manufacturer warranties apply to specific parts and fixtures as provided."
+        warrantyPeriod: "12 months workmanship warranty on all plumbing installations"
       });
       console.log('✅ Demo business settings created');
     }
@@ -193,6 +193,7 @@ export async function createDemoUserAndData() {
       console.log('✅ Demo clients created:', createdClients.length);
 
       // Create demo jobs with varied statuses and dates to show urgency badges
+      // Cairns QLD coordinates: -16.92, 145.77
       const now = new Date();
       const demoJobs = [
         // OVERDUE - scheduled job that's past its time (shows red pulsing badge)
@@ -202,6 +203,8 @@ export async function createDemoUserAndData() {
           title: "Urgent Drain Blockage",
           description: "Clear blocked drain in laundry - customer waiting",
           address: createdClients[0].address || "",
+          latitude: "-16.9186",
+          longitude: "145.7781",
           status: "scheduled" as const,
           scheduledAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago (OVERDUE)
           notes: "Customer called twice - high priority"
@@ -213,6 +216,8 @@ export async function createDemoUserAndData() {
           title: "Gas Line Inspection",
           description: "Annual gas safety check and compliance certificate",
           address: createdClients[1].address || "",
+          latitude: "-16.7889",
+          longitude: "145.6967",
           status: "scheduled" as const,
           scheduledAt: new Date(Date.now() + 45 * 60 * 1000), // 45 minutes from now
           notes: "Need gas certificate for landlord"
@@ -224,6 +229,8 @@ export async function createDemoUserAndData() {
           title: "Kitchen Tap Replacement",
           description: "Replace old kitchen tap with new mixer tap",
           address: createdClients[2].address || "",
+          latitude: "-16.4827",
+          longitude: "145.4635",
           status: "scheduled" as const,
           scheduledAt: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours from now
           notes: "Customer prefers afternoon appointment"
@@ -235,6 +242,8 @@ export async function createDemoUserAndData() {
           title: "Bathroom Renovation Plumbing",
           description: "Rough-in plumbing for new bathroom fixtures",
           address: createdClients[0].address || "",
+          latitude: "-16.9250",
+          longitude: "145.7720",
           status: "scheduled" as const,
           scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
           notes: "Full day job - bring extra supplies"
@@ -246,6 +255,8 @@ export async function createDemoUserAndData() {
           title: "Bathroom Leak Repair",
           description: "Fix leak under bathroom sink",
           address: createdClients[1].address || "",
+          latitude: "-16.7950",
+          longitude: "145.7000",
           status: "in_progress" as const,
           scheduledAt: new Date(), // Today
           startedAt: new Date(Date.now() - 30 * 60 * 1000), // Started 30 mins ago
@@ -258,6 +269,8 @@ export async function createDemoUserAndData() {
           title: "Hot Water System Service",
           description: "Annual service and maintenance",
           address: createdClients[2].address || "",
+          latitude: "-16.4900",
+          longitude: "145.4700",
           status: "done" as const,
           scheduledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last week
           completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hours after start
@@ -270,6 +283,8 @@ export async function createDemoUserAndData() {
           title: "Pool Pump Installation",
           description: "Install new pool pump and filter system",
           address: createdClients[2].address || "",
+          latitude: "-16.5000",
+          longitude: "145.4800",
           status: "pending" as const,
           scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
           notes: "Awaiting quote approval"
@@ -1035,8 +1050,9 @@ export async function createDemoTeamMembers() {
           password: hashedPassword,
           firstName: member.firstName,
           lastName: member.lastName,
-          emailVerified: true,
         });
+        // Mark email as verified
+        await storage.updateUser(memberUser.id, { emailVerified: true });
       }
       
       // Create team member record
