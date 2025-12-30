@@ -9154,6 +9154,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         j.status === 'done' && !invoicedJobIds.has(j.id)
       ).length;
 
+      // This week's earnings (motivation to see money coming in!)
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay()); // Start from Sunday
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      const weeklyEarnings = invoices
+        .filter(inv => inv.status === 'paid' && inv.paidAt && new Date(inv.paidAt) >= startOfWeek)
+        .reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+
       // This month's earnings
       const currentMonth = new Date();
       currentMonth.setDate(1);
@@ -9169,6 +9178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         unpaidInvoicesTotal: unpaidTotal,
         quotesAwaiting,
         monthlyEarnings,
+        weeklyEarnings,
         jobsToInvoice,
       });
     } catch (error) {

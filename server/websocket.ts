@@ -255,3 +255,34 @@ export function getActiveConnections(businessId: string): string[] {
   });
   return active;
 }
+
+/**
+ * Broadcast a payment received notification to a specific user
+ * Used for celebratory "Cha-ching!" toasts when Stripe payments come in
+ */
+export function broadcastPaymentReceived(
+  userId: string,
+  paymentDetails: {
+    amount: number;
+    invoiceNumber?: string;
+    clientName?: string;
+    paymentMethod?: string;
+  }
+) {
+  const message = {
+    type: 'payment_received',
+    ...paymentDetails,
+    timestamp: Date.now(),
+  };
+  
+  let notifiedCount = 0;
+  connections.forEach((conn) => {
+    if (conn.userId === userId && conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.send(JSON.stringify(message));
+      notifiedCount++;
+    }
+  });
+  
+  console.log(`[WebSocket] 💰 Payment notification sent to user ${userId}: $${(paymentDetails.amount / 100).toFixed(2)}`);
+  return notifiedCount > 0;
+}

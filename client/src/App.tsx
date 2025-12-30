@@ -18,6 +18,7 @@ import AppSidebar from "@/components/AppSidebar";
 import BottomNav from "@/components/BottomNav";
 import Header from "@/components/Header";
 import FloatingAIChat from "@/components/FloatingAIChat";
+import PaymentToastProvider from "@/components/PaymentToastProvider";
 import RouteGuard from "@/components/RouteGuard";
 import Dashboard from "@/components/Dashboard";
 import JobsList from "@/components/JobsList";
@@ -1035,6 +1036,9 @@ function AppLayout() {
         {/* Fixed position elements - inside SidebarProvider for context access */}
         <BottomNav onNavigate={handleNavigation} />
       </SidebarProvider>
+      
+      {/* Payment Toast Provider - shows celebratory "Cha-ching!" when payments come in */}
+      <PaymentToastProvider />
       
       {/* AI Assistant - floating above all pages */}
       <FloatingAIChat onNavigate={handleNavigation} />

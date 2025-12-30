@@ -3,6 +3,7 @@ import { createNotification } from './notifications';
 import { sendPaymentSuccessEmail, sendPaymentFailedEmail, sendReceiptEmail } from './emailService';
 import { processPaymentReceivedAutomation } from './automationService';
 import { markInvoicePaidInXero } from './xeroService';
+import { broadcastPaymentReceived } from './websocket';
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string, uuid: string, storage: any): Promise<void> {
@@ -122,6 +123,15 @@ async function handleStripeEvent(event: any, storage: any) {
               message: `Invoice #${invoice.number || invoiceId.substring(0, 8).toUpperCase()} has been paid via Stripe.`,
               relatedType: 'invoice',
               relatedId: invoiceId,
+            });
+
+            // 💰 Broadcast celebratory payment notification via WebSocket
+            const paymentClient = invoice.clientId ? await storage.getClient(invoice.clientId, userId) : null;
+            broadcastPaymentReceived(userId, {
+              amount: session.amount_total || parseFloat(invoice.total || '0') * 100,
+              invoiceNumber: invoice.number || invoiceId.substring(0, 8).toUpperCase(),
+              clientName: paymentClient?.name || paymentClient?.firstName || 'Customer',
+              paymentMethod: 'stripe',
             });
 
             // Send automatic payment receipt to the client
@@ -429,6 +439,15 @@ async function handleStripeEvent(event: any, storage: any) {
                 message: `Invoice #${invoice.number} has been paid online via card payment.`,
                 relatedType: 'invoice',
                 relatedId: invoiceId,
+              });
+
+              // 💰 Broadcast celebratory payment notification via WebSocket
+              const connectClient = await storage.getClientById(invoice.clientId);
+              broadcastPaymentReceived(tradieUserId, {
+                amount: paymentIntent.amount_received || paymentIntent.amount || parseFloat(invoice.total || '0') * 100,
+                invoiceNumber: invoice.number,
+                clientName: connectClient?.name || connectClient?.firstName || 'Customer',
+                paymentMethod: 'stripe_connect',
               });
               
               console.log(`✅ Invoice ${invoice.number} marked as paid via Stripe Connect`);

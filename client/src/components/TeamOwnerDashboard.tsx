@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import GettingStartedChecklist from "./GettingStartedChecklist";
 import TrustBanner from "./TrustBanner";
 import ActivityFeed from "./ActivityFeed";
+import FloatingActionButton from "./FloatingActionButton";
 import { useDashboardKPIs, useTodaysJobs } from "@/hooks/use-dashboard-data";
 import { useUpdateJob } from "@/hooks/use-jobs";
 import { useAppMode } from "@/hooks/use-app-mode";
@@ -436,8 +437,13 @@ export default function TeamOwnerDashboard({
                   <TrendingUp className="h-5 w-5" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">${kpis?.monthlyEarnings?.toFixed(0) || "0"}</p>
-                  <p className="ios-caption">This Month</p>
+                  <p className="text-2xl font-bold" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }}>
+                    ${kpis?.weeklyEarnings?.toFixed(0) || "0"}
+                  </p>
+                  <p className="ios-caption">This Week</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    ${kpis?.monthlyEarnings?.toFixed(0) || "0"} this month
+                  </p>
                 </div>
               </div>
             </div>
@@ -895,6 +901,12 @@ export default function TeamOwnerDashboard({
       <ActivityFeed 
         limit={5}
         onViewAll={() => onNavigate?.('/notifications')}
+      />
+
+      <FloatingActionButton
+        onCreateJob={onCreateJob}
+        onCreateQuote={onCreateQuote}
+        onCreateInvoice={onCreateInvoice}
       />
     </div>
   );
