@@ -35,6 +35,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -284,48 +294,48 @@ function LiveOpsTab() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="grid grid-cols-4 gap-4 p-4 border-b">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 p-4 border-b">
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Users className="h-5 w-5 text-primary" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{acceptedMembers.length}</p>
-              <p className="text-xs text-muted-foreground">Team Members</p>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{acceptedMembers.length}</p>
+              <p className="text-xs text-muted-foreground truncate">Team Members</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <Circle className="h-5 w-5 text-green-600 fill-green-600" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 rounded-lg shrink-0">
+              <Circle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 fill-green-600" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{onlineCount}</p>
-              <p className="text-xs text-muted-foreground">Online Now</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Wrench className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{onJobCount}</p>
-              <p className="text-xs text-muted-foreground">On Job</p>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{onlineCount}</p>
+              <p className="text-xs text-muted-foreground truncate">Online Now</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-              <Briefcase className="h-5 w-5 text-orange-600" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+              <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{unassignedJobs.length}</p>
-              <p className="text-xs text-muted-foreground">Unassigned Jobs</p>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{onJobCount}</p>
+              <p className="text-xs text-muted-foreground truncate">On Job</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg shrink-0">
+              <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{unassignedJobs.length}</p>
+              <p className="text-xs text-muted-foreground truncate">Unassigned</p>
             </div>
           </CardContent>
         </Card>
@@ -589,6 +599,7 @@ function TeamAdminTab() {
   const [inviteLastName, setInviteLastName] = useState("");
   const [inviteRoleId, setInviteRoleId] = useState("");
   const [inviteHourlyRate, setInviteHourlyRate] = useState("");
+  const [memberToDelete, setMemberToDelete] = useState<TeamMemberData | null>(null);
 
   const { data: teamMembers, isLoading: membersLoading } = useQuery<TeamMemberData[]>({
     queryKey: ['/api/team/members'],
@@ -723,17 +734,17 @@ function TeamAdminTab() {
 
   return (
     <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4 flex-1">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 flex-1">
           <Input
             placeholder="Search team members..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-xs"
+            className="w-full sm:max-w-xs"
             data-testid="input-search-members"
           />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]" data-testid="select-status-filter">
+            <SelectTrigger className="w-full sm:w-[150px]" data-testid="select-status-filter">
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -744,13 +755,15 @@ function TeamAdminTab() {
           </Select>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setRolesDialogOpen(true)} data-testid="button-manage-roles">
-            <Shield className="h-4 w-4 mr-2" />
-            Manage Roles
+          <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => setRolesDialogOpen(true)} data-testid="button-manage-roles">
+            <Shield className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Manage Roles</span>
+            <span className="sm:hidden">Roles</span>
           </Button>
-          <Button onClick={() => setInviteDialogOpen(true)} data-testid="button-invite-member">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Invite Member
+          <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setInviteDialogOpen(true)} data-testid="button-invite-member">
+            <UserPlus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Invite Member</span>
+            <span className="sm:hidden">Invite</span>
           </Button>
         </div>
       </div>
@@ -761,36 +774,36 @@ function TeamAdminTab() {
           return (
             <Card key={member.id} data-testid={`member-card-${member.id}`}>
               <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
                       <AvatarImage src={member.profileImageUrl} />
                       <AvatarFallback>
                         {getInitials(member.firstName, member.lastName, member.email)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="font-medium">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">
                         {member.firstName} {member.lastName}
                       </p>
-                      <p className="text-sm text-muted-foreground">{member.email}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="secondary">{role?.name || 'No Role'}</Badge>
-                        <Badge variant={member.inviteStatus === 'accepted' ? 'default' : 'outline'}>
+                      <p className="text-sm text-muted-foreground truncate">{member.email}</p>
+                      <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-1">
+                        <Badge variant="secondary" className="text-xs">{role?.name || 'No Role'}</Badge>
+                        <Badge variant={member.inviteStatus === 'accepted' ? 'default' : 'outline'} className="text-xs">
                           {member.inviteStatus === 'accepted' ? 'Active' : 'Pending'}
                         </Badge>
                         {member.hourlyRate && (
-                          <Badge variant="outline">${member.hourlyRate}/hr</Badge>
+                          <Badge variant="outline" className="text-xs">${member.hourlyRate}/hr</Badge>
                         )}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 ml-auto sm:ml-0">
                     <Select
                       value={member.roleId || ""}
                       onValueChange={(value) => updateRoleMutation.mutate({ memberId: member.id, roleId: value })}
                     >
-                      <SelectTrigger className="w-[140px]" data-testid={`select-role-${member.id}`}>
+                      <SelectTrigger className="w-[120px] sm:w-[140px]" data-testid={`select-role-${member.id}`}>
                         <SelectValue placeholder="Change role" />
                       </SelectTrigger>
                       <SelectContent>
@@ -802,7 +815,7 @@ function TeamAdminTab() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeMemberMutation.mutate(member.id)}
+                      onClick={() => setMemberToDelete(member)}
                       data-testid={`button-remove-${member.id}`}
                     >
                       <UserX className="h-4 w-4 text-destructive" />
@@ -934,6 +947,33 @@ function TeamAdminTab() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!memberToDelete} onOpenChange={(open) => !open && setMemberToDelete(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-remove">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{memberToDelete?.firstName} {memberToDelete?.lastName}</strong> from your team? 
+              This action cannot be undone and they will lose access to your business.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-remove">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (memberToDelete) {
+                  removeMemberMutation.mutate(memberToDelete.id);
+                  setMemberToDelete(null);
+                }
+              }}
+              data-testid="button-confirm-remove"
+            >
+              Remove Member
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -1017,18 +1057,18 @@ function SchedulingTab() {
 
   return (
     <div className="p-4 space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-2">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5" />
                 Weekly Availability
               </CardTitle>
-              <CardDescription>Set standard working hours for each team member</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">Set standard working hours for each team member</CardDescription>
             </div>
             <Select value={selectedMember || ""} onValueChange={setSelectedMember}>
-              <SelectTrigger className="w-[200px]" data-testid="select-member-availability">
+              <SelectTrigger className="w-full sm:w-[200px]" data-testid="select-member-availability">
                 <SelectValue placeholder="Select member" />
               </SelectTrigger>
               <SelectContent>
@@ -1052,10 +1092,10 @@ function SchedulingTab() {
                   return (
                     <div
                       key={day}
-                      className="flex items-center justify-between gap-4 p-3 border rounded-lg"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 p-3 border rounded-lg"
                       data-testid={`availability-${index}`}
                     >
-                      <div className="flex items-center gap-3 w-32">
+                      <div className="flex items-center gap-3 sm:w-32">
                         <Switch
                           checked={isAvailable}
                           onCheckedChange={(checked) => {
@@ -1067,12 +1107,12 @@ function SchedulingTab() {
                           }}
                           data-testid={`switch-available-${index}`}
                         />
-                        <span className={`font-medium ${!isAvailable ? 'text-muted-foreground' : ''}`}>
+                        <span className={`font-medium text-sm sm:text-base ${!isAvailable ? 'text-muted-foreground' : ''}`}>
                           {day}
                         </span>
                       </div>
                       {isAvailable && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 ml-8 sm:ml-0">
                           <Input
                             type="time"
                             value={startTime}
@@ -1085,10 +1125,10 @@ function SchedulingTab() {
                                 endTime,
                               });
                             }}
-                            className="w-32"
+                            className="w-24 sm:w-32"
                             data-testid={`input-start-${index}`}
                           />
-                          <span className="text-muted-foreground">to</span>
+                          <span className="text-muted-foreground text-sm">to</span>
                           <Input
                             type="time"
                             value={endTime}
@@ -1101,7 +1141,7 @@ function SchedulingTab() {
                                 endTime: e.target.value,
                               });
                             }}
-                            className="w-32"
+                            className="w-24 sm:w-32"
                             data-testid={`input-end-${index}`}
                           />
                         </div>
@@ -1409,17 +1449,18 @@ function SkillsTab() {
 
   return (
     <div className="p-4 space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Award className="h-5 w-5" />
+          <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+            <Award className="h-4 w-4 sm:h-5 sm:w-5" />
             Skills & Certifications
           </h2>
-          <p className="text-sm text-muted-foreground">Track qualifications, licenses, and training for your team</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Track qualifications, licenses, and training for your team</p>
         </div>
-        <Button onClick={() => setAddSkillDialogOpen(true)} data-testid="button-add-skill">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Skill
+        <Button size="sm" onClick={() => setAddSkillDialogOpen(true)} data-testid="button-add-skill">
+          <Plus className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Add Skill</span>
+          <span className="sm:hidden">Add</span>
         </Button>
       </div>
 
@@ -1479,12 +1520,12 @@ function SkillsTab() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">Team Member Skills</CardTitle>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-2">
+            <CardTitle className="text-sm sm:text-base">Team Member Skills</CardTitle>
             <Select value={selectedMember || ""} onValueChange={setSelectedMember}>
-              <SelectTrigger className="w-[200px]" data-testid="select-member-skills">
+              <SelectTrigger className="w-full sm:w-[200px]" data-testid="select-member-skills">
                 <SelectValue placeholder="Select member" />
               </SelectTrigger>
               <SelectContent>
@@ -1770,55 +1811,55 @@ function PerformanceTab() {
   return (
     <div className="p-4 space-y-6">
       <div>
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <BarChart3 className="h-5 w-5" />
+        <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
           Team Performance
         </h2>
-        <p className="text-sm text-muted-foreground">Track productivity and job completion metrics</p>
+        <p className="text-xs sm:text-sm text-muted-foreground">Track productivity and job completion metrics</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 rounded-lg shrink-0">
+              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{totalCompleted}</p>
-              <p className="text-xs text-muted-foreground">Jobs Completed</p>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{totalCompleted}</p>
+              <p className="text-xs text-muted-foreground truncate">Jobs Completed</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Timer className="h-5 w-5 text-blue-600" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+              <Timer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{totalInProgress}</p>
-              <p className="text-xs text-muted-foreground">In Progress</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{avgCompletionRate}%</p>
-              <p className="text-xs text-muted-foreground">Avg Completion</p>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{totalInProgress}</p>
+              <p className="text-xs text-muted-foreground truncate">In Progress</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-              <Star className="h-5 w-5 text-yellow-600" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">-</p>
-              <p className="text-xs text-muted-foreground">Avg Rating</p>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{avgCompletionRate}%</p>
+              <p className="text-xs text-muted-foreground truncate">Avg Completion</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg shrink-0">
+              <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">-</p>
+              <p className="text-xs text-muted-foreground truncate">Avg Rating</p>
             </div>
           </CardContent>
         </Card>
@@ -1826,40 +1867,39 @@ function PerformanceTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Individual Performance</CardTitle>
-          <CardDescription>Job completion metrics by team member</CardDescription>
+          <CardTitle className="text-sm sm:text-base">Individual Performance</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Job completion metrics by team member</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {memberStats.map((member, index) => (
               <div
                 key={member.id}
-                className="flex items-center gap-4 p-4 border rounded-lg"
+                className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 border rounded-lg"
                 data-testid={`performance-${member.id}`}
               >
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
-                  {index + 1}
-                </div>
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={member.profileImageUrl} />
-                  <AvatarFallback>
-                    {getInitials(member.firstName, member.lastName, member.email)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="font-medium">{member.firstName} {member.lastName}</p>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <span>{member.completedJobs} completed</span>
-                    <span>{member.inProgressJobs} in progress</span>
-                    <span>{member.scheduledJobs} scheduled</span>
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-muted text-xs sm:text-sm font-medium shrink-0">
+                    {index + 1}
+                  </div>
+                  <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
+                    <AvatarImage src={member.profileImageUrl} />
+                    <AvatarFallback className="text-xs sm:text-sm">
+                      {getInitials(member.firstName, member.lastName, member.email)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1 sm:flex-none">
+                    <p className="font-medium text-sm sm:text-base truncate">{member.firstName} {member.lastName}</p>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
+                      <span>{member.completedJobs} done</span>
+                      <span>{member.inProgressJobs} active</span>
+                      <span className="hidden sm:inline">{member.scheduledJobs} scheduled</span>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-2">
-                    <Progress value={member.completionRate} className="w-24 h-2" />
-                    <span className="text-sm font-medium w-12">{member.completionRate}%</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Completion rate</p>
+                <div className="flex items-center gap-2 sm:ml-auto pl-9 sm:pl-0">
+                  <Progress value={member.completionRate} className="flex-1 sm:w-24 h-2" />
+                  <span className="text-xs sm:text-sm font-medium w-10 sm:w-12 text-right">{member.completionRate}%</span>
                 </div>
               </div>
             ))}
@@ -1883,10 +1923,10 @@ export default function TeamOperations() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex items-center justify-between gap-4 p-4 border-b bg-background">
-        <div>
-          <h1 className="text-xl font-bold">Team Operations</h1>
-          <p className="text-sm text-muted-foreground">Manage your team, schedules, and performance</p>
+      <header className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 border-b bg-background">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-bold truncate">Team Operations</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Manage your team, schedules, and performance</p>
         </div>
         <Button
           variant="ghost"
@@ -1903,29 +1943,34 @@ export default function TeamOperations() {
       </header>
 
       <Tabs defaultValue="live" className="flex-1 flex flex-col">
-        <div className="border-b px-4">
-          <TabsList className="h-12">
-            <TabsTrigger value="live" className="gap-2" data-testid="tab-live-ops">
-              <Activity className="h-4 w-4" />
-              Live Ops
+        <div className="border-b px-2 sm:px-4 overflow-x-auto">
+          <TabsList className="h-10 sm:h-12">
+            <TabsTrigger value="live" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-live-ops">
+              <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Live Ops</span>
+              <span className="sm:hidden">Live</span>
             </TabsTrigger>
             {canManageTeam && (
-              <TabsTrigger value="admin" className="gap-2" data-testid="tab-team-admin">
-                <Users className="h-4 w-4" />
-                Team Admin
+              <TabsTrigger value="admin" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-team-admin">
+                <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Team Admin</span>
+                <span className="sm:hidden">Admin</span>
               </TabsTrigger>
             )}
-            <TabsTrigger value="scheduling" className="gap-2" data-testid="tab-scheduling">
-              <CalendarDays className="h-4 w-4" />
-              Scheduling
+            <TabsTrigger value="scheduling" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-scheduling">
+              <CalendarDays className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Scheduling</span>
+              <span className="sm:hidden">Schedule</span>
             </TabsTrigger>
-            <TabsTrigger value="skills" className="gap-2" data-testid="tab-skills">
-              <Award className="h-4 w-4" />
-              Skills & Certs
+            <TabsTrigger value="skills" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-skills">
+              <Award className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Skills & Certs</span>
+              <span className="sm:hidden">Skills</span>
             </TabsTrigger>
-            <TabsTrigger value="performance" className="gap-2" data-testid="tab-performance">
-              <TrendingUp className="h-4 w-4" />
-              Performance
+            <TabsTrigger value="performance" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-performance">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Performance</span>
+              <span className="sm:hidden">Stats</span>
             </TabsTrigger>
           </TabsList>
         </div>
