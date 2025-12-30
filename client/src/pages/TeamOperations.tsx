@@ -757,12 +757,12 @@ function LiveOpsTab() {
                 {/* Recent Activity */}
                 <div>
                   <h4 className="font-medium mb-3">Recent Activity</h4>
-                  <ScrollArea className="h-[130px]">
-                    <div className="space-y-2">
+                  <ScrollArea className="h-[180px]">
+                    <div className="space-y-2 pr-3">
                       {selectedMember.recentActivity.slice(0, 5).map((activity) => (
-                        <div key={activity.id} className="text-sm p-2 rounded border">
-                          <p className="text-muted-foreground">{activity.description}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
+                        <div key={activity.id} className="text-sm p-3 rounded-lg border bg-muted/30">
+                          <p className="text-foreground">{activity.description}</p>
+                          <p className="text-xs text-muted-foreground mt-2">
                             {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
                           </p>
                         </div>

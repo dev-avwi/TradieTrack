@@ -144,7 +144,6 @@ function CompactQuoteCard({ quote, onView, onSend, onConvert, linkedInvoice, onV
   onViewInvoice?: () => void;
 }) {
   const statusConfig = getQuoteStatusConfig(quote.status);
-  const StatusIcon = statusConfig.icon;
   const amount = normalizeToDollars(quote.total);
   
   return (
@@ -153,41 +152,57 @@ function CompactQuoteCard({ quote, onView, onSend, onConvert, linkedInvoice, onV
       onClick={onView}
       data-testid={`quote-card-${quote.id}`}
     >
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-sm truncate" data-testid={`quote-number-${quote.id}`}>
-                {quote.title || quote.number}
-              </span>
-              <Badge className={cn("text-[10px] px-1.5 py-0", statusConfig.className)} data-testid={`quote-status-${quote.id}`}>
-                {statusConfig.label}
+      <CardContent className="p-4">
+        {/* Header row: Title + Status Badge */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h4 className="font-semibold text-base line-clamp-2 flex-1" data-testid={`quote-number-${quote.id}`}>
+            {quote.title || quote.number}
+          </h4>
+          <Badge className={cn("text-xs px-2 py-0.5 shrink-0", statusConfig.className)} data-testid={`quote-status-${quote.id}`}>
+            {statusConfig.label}
+          </Badge>
+        </div>
+        
+        {/* Client name */}
+        <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
+          {quote.clientName || 'No client'}
+        </p>
+        
+        {/* Amount and time */}
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-bold text-lg" data-testid={`quote-amount-${quote.id}`}>
+            {formatCurrency(amount)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {quote.createdAt ? formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true }) : ''}
+          </p>
+        </div>
+        
+        {/* Action row */}
+        <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t">
+          <div className="flex items-center gap-2">
+            {linkedInvoice && (
+              <Badge 
+                variant="outline" 
+                className="text-xs px-2 py-0.5 cursor-pointer text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700"
+                onClick={(e) => { e.stopPropagation(); onViewInvoice?.(); }}
+                data-testid={`quote-invoice-link-${quote.id}`}
+              >
+                <Link2 className="w-3 h-3 mr-1" />
+                Invoice
               </Badge>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="truncate">{quote.clientName || 'No client'}</span>
-              {linkedInvoice && (
-                <Badge 
-                  variant="outline" 
-                  className="text-[10px] px-1.5 py-0 cursor-pointer text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700"
-                  onClick={(e) => { e.stopPropagation(); onViewInvoice?.(); }}
-                  data-testid={`quote-invoice-link-${quote.id}`}
-                >
-                  <Link2 className="w-2.5 h-2.5 mr-0.5" />
-                  Invoice
-                </Badge>
-              )}
-            </div>
+            )}
           </div>
-          <div className="text-right flex-shrink-0 flex items-center gap-2">
-            <div>
-              <p className="font-bold text-base" data-testid={`quote-amount-${quote.id}`}>
-                {formatCurrency(amount)}
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                {quote.createdAt ? formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true }) : ''}
-              </p>
-            </div>
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); onView(); }}
+              data-testid={`quote-view-${quote.id}`}
+            >
+              <Briefcase className="h-4 w-4 mr-1" />
+              View
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`quote-menu-${quote.id}`}>
@@ -195,10 +210,6 @@ function CompactQuoteCard({ quote, onView, onSend, onConvert, linkedInvoice, onV
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(); }}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  View
-                </DropdownMenuItem>
                 {quote.status === 'draft' && (
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSend(); }}>
                     <Send className="h-4 w-4 mr-2" />
@@ -248,55 +259,75 @@ function CompactInvoiceCard({
       onClick={onView}
       data-testid={`invoice-card-${invoice.id}`}
     >
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-sm truncate" data-testid={`invoice-number-${invoice.id}`}>
-                {invoice.title || invoice.number}
-              </span>
-              <Badge className={cn("text-[10px] px-1.5 py-0", statusConfig.className)} data-testid={`invoice-status-${invoice.id}`}>
-                {statusConfig.label}
+      <CardContent className="p-4">
+        {/* Header row: Title + Status Badge */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h4 className="font-semibold text-base line-clamp-2 flex-1" data-testid={`invoice-number-${invoice.id}`}>
+            {invoice.title || invoice.number}
+          </h4>
+          <Badge className={cn("text-xs px-2 py-0.5 shrink-0", statusConfig.className)} data-testid={`invoice-status-${invoice.id}`}>
+            {statusConfig.label}
+          </Badge>
+        </div>
+        
+        {/* Client name */}
+        <p className="text-sm text-muted-foreground mb-1 line-clamp-1">
+          {invoice.clientName || invoice.client || 'No client'}
+        </p>
+        
+        {/* Due date for unpaid invoices */}
+        {invoice.dueDate && invoice.status !== 'paid' && (
+          <p className="text-xs text-muted-foreground mb-2">
+            Due: {new Date(invoice.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+          </p>
+        )}
+        
+        {/* Amount and time */}
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-bold text-lg" data-testid={`invoice-amount-${invoice.id}`}>
+            {formatCurrency(amount)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {invoice.createdAt ? formatDistanceToNow(new Date(invoice.createdAt), { addSuffix: true }) : ''}
+          </p>
+        </div>
+        
+        {/* Action row */}
+        <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t">
+          <div className="flex items-center gap-2 flex-wrap">
+            {invoice.status === 'paid' && linkedReceipt && (
+              <Badge 
+                variant="outline" 
+                className="text-xs px-2 py-0.5 cursor-pointer text-green-600 dark:text-green-400 border-green-300 dark:border-green-700"
+                onClick={(e) => { e.stopPropagation(); onViewReceipt?.(); }}
+                data-testid={`invoice-receipt-link-${invoice.id}`}
+              >
+                <Link2 className="w-3 h-3 mr-1" />
+                Receipt
               </Badge>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-              <span className="truncate">{invoice.clientName || invoice.client || 'No client'}</span>
-              {invoice.dueDate && invoice.status !== 'paid' && (
-                <span className="text-[10px]">Due: {new Date(invoice.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
-              )}
-              {invoice.status === 'paid' && linkedReceipt && (
-                <Badge 
-                  variant="outline" 
-                  className="text-[10px] px-1.5 py-0 cursor-pointer text-green-600 dark:text-green-400 border-green-300 dark:border-green-700"
-                  onClick={(e) => { e.stopPropagation(); onViewReceipt?.(); }}
-                  data-testid={`invoice-receipt-link-${invoice.id}`}
-                >
-                  <Link2 className="w-2.5 h-2.5 mr-0.5" />
-                  Receipt
-                </Badge>
-              )}
-              {invoice.jobId && onViewJob && (
-                <Badge 
-                  variant="outline" 
-                  className="text-[10px] px-1.5 py-0 cursor-pointer"
-                  onClick={(e) => { e.stopPropagation(); onViewJob(); }}
-                  data-testid={`invoice-job-link-${invoice.id}`}
-                >
-                  <Briefcase className="w-2.5 h-2.5 mr-0.5" />
-                  Job
-                </Badge>
-              )}
-            </div>
+            )}
+            {invoice.jobId && onViewJob && (
+              <Badge 
+                variant="outline" 
+                className="text-xs px-2 py-0.5 cursor-pointer"
+                onClick={(e) => { e.stopPropagation(); onViewJob(); }}
+                data-testid={`invoice-job-link-${invoice.id}`}
+              >
+                <Briefcase className="w-3 h-3 mr-1" />
+                Job
+              </Badge>
+            )}
           </div>
-          <div className="text-right flex-shrink-0 flex items-center gap-2">
-            <div>
-              <p className="font-bold text-base" data-testid={`invoice-amount-${invoice.id}`}>
-                {formatCurrency(amount)}
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                {invoice.createdAt ? formatDistanceToNow(new Date(invoice.createdAt), { addSuffix: true }) : ''}
-              </p>
-            </div>
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); onView(); }}
+              data-testid={`invoice-view-${invoice.id}`}
+            >
+              <Briefcase className="h-4 w-4 mr-1" />
+              View
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`invoice-menu-${invoice.id}`}>
@@ -304,10 +335,6 @@ function CompactInvoiceCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(); }}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  View
-                </DropdownMenuItem>
                 {invoice.status === 'draft' && (
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSend(); }}>
                     <Send className="h-4 w-4 mr-2" />
@@ -353,45 +380,56 @@ function CompactReceiptCard({ receipt, onView, onViewInvoice }: {
       onClick={onView}
       data-testid={`receipt-card-${receipt.id}`}
     >
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-sm truncate" data-testid={`receipt-number-${receipt.id}`}>
-                {receipt.receiptNumber || receipt.description || 'Receipt'}
-              </span>
-              <Badge className="text-[10px] px-1.5 py-0 bg-green-500/10 text-green-600 dark:text-green-400">
-                {paymentMethodLabel}
+      <CardContent className="p-4">
+        {/* Header row: Receipt number + Payment method badge */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h4 className="font-semibold text-base line-clamp-2 flex-1" data-testid={`receipt-number-${receipt.id}`}>
+            {receipt.receiptNumber || receipt.description || 'Receipt'}
+          </h4>
+          <Badge className="text-xs px-2 py-0.5 shrink-0 bg-green-500/10 text-green-600 dark:text-green-400">
+            {paymentMethodLabel}
+          </Badge>
+        </div>
+        
+        {/* Client name */}
+        <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
+          {receipt.clientName || 'Unknown client'}
+        </p>
+        
+        {/* Amount and time */}
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-bold text-lg text-green-600 dark:text-green-400" data-testid={`receipt-amount-${receipt.id}`}>
+            +{formatCurrency(amount)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {receipt.paidAt ? formatDistanceToNow(new Date(receipt.paidAt), { addSuffix: true }) : ''}
+          </p>
+        </div>
+        
+        {/* Action row */}
+        <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t">
+          <div className="flex items-center gap-2">
+            {receipt.invoiceId && onViewInvoice && (
+              <Badge 
+                variant="outline" 
+                className="text-xs px-2 py-0.5 cursor-pointer"
+                onClick={(e) => { e.stopPropagation(); onViewInvoice(); }}
+                data-testid={`receipt-invoice-link-${receipt.id}`}
+              >
+                <Link2 className="w-3 h-3 mr-1" />
+                Invoice
               </Badge>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="truncate">{receipt.clientName || 'Unknown client'}</span>
-              {receipt.invoiceId && onViewInvoice && (
-                <Badge 
-                  variant="outline" 
-                  className="text-[10px] px-1.5 py-0 cursor-pointer"
-                  onClick={(e) => { e.stopPropagation(); onViewInvoice(); }}
-                  data-testid={`receipt-invoice-link-${receipt.id}`}
-                >
-                  <Link2 className="w-2.5 h-2.5 mr-0.5" />
-                  Invoice
-                </Badge>
-              )}
-            </div>
+            )}
           </div>
-          <div className="text-right flex-shrink-0 flex items-center gap-2">
-            <div>
-              <p className="font-bold text-base text-green-600 dark:text-green-400" data-testid={`receipt-amount-${receipt.id}`}>
-                +{formatCurrency(amount)}
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                {receipt.paidAt ? formatDistanceToNow(new Date(receipt.paidAt), { addSuffix: true }) : ''}
-              </p>
-            </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); onView(); }} data-testid={`receipt-view-${receipt.id}`}>
-              <Eye className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={(e) => { e.stopPropagation(); onView(); }} 
+            data-testid={`receipt-view-${receipt.id}`}
+          >
+            <Briefcase className="h-4 w-4 mr-1" />
+            View
+          </Button>
         </div>
       </CardContent>
     </Card>
