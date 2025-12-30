@@ -61,8 +61,21 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
   const [analysisText, setAnalysisText] = useState('');
   const [isComplete, setIsComplete] = useState(false);
   const [isAddingToNotes, setIsAddingToNotes] = useState(false);
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
   const { data: settings } = useBusinessSettings();
+
+  const togglePhotoSelection = (photoId: string) => {
+    setSelectedPhotoIds(prev => {
+      const next = new Set(prev);
+      if (next.has(photoId)) {
+        next.delete(photoId);
+      } else {
+        next.add(photoId);
+      }
+      return next;
+    });
+  };
 
   const { data: photos = [], isLoading } = useQuery<JobPhoto[]>({
     queryKey: ['/api/jobs', jobId, 'photos'],
@@ -194,7 +207,10 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
     abortControllerRef.current = new AbortController();
     
     try {
-      const response = await fetch(`/api/jobs/${jobId}/photos/analyze`, {
+      const photoIdsParam = selectedPhotoIds.size > 0 
+        ? `?photoIds=${Array.from(selectedPhotoIds).join(',')}`
+        : '';
+      const response = await fetch(`/api/jobs/${jobId}/photos/analyze${photoIdsParam}`, {
         method: 'GET',
         credentials: 'include',
         signal: abortControllerRef.current.signal
@@ -681,6 +697,7 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
             cancelAnalysis();
           }
           setIsAIDialogOpen(false);
+          setSelectedPhotoIds(new Set());
         }
       }}>
         <DialogContent className="sm:max-w-lg">
@@ -696,11 +713,58 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
             {!isAnalysing && !analysisText && (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Use AI to analyse your job photos and automatically generate notes with photo references.
+                  Tap photos to select which ones to analyse, or leave all selected to analyse everything.
                 </p>
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <span className="text-sm font-medium">{photos.length} photo{photos.length !== 1 ? 's' : ''} available</span>
-                  <Badge variant="outline" className="text-xs">Ready to analyse</Badge>
+                
+                {/* Photo selection grid */}
+                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
+                  {photos.filter(p => p.mimeType?.startsWith('image/')).map(photo => {
+                    const isSelected = selectedPhotoIds.size === 0 || selectedPhotoIds.has(photo.id);
+                    return (
+                      <button
+                        key={photo.id}
+                        onClick={() => {
+                          if (selectedPhotoIds.size === 0) {
+                            const allImageIds = photos.filter(p => p.mimeType?.startsWith('image/')).map(p => p.id);
+                            const remaining = allImageIds.filter(id => id !== photo.id);
+                            setSelectedPhotoIds(new Set(remaining));
+                          } else {
+                            togglePhotoSelection(photo.id);
+                          }
+                        }}
+                        className={`aspect-square rounded-md overflow-hidden relative border-2 transition-all ${isSelected ? 'border-primary ring-1 ring-primary' : 'border-transparent opacity-50'}`}
+                        data-testid={`select-photo-${photo.id}`}
+                      >
+                        <img
+                          src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
+                          alt={photo.caption || photo.fileName}
+                          className="w-full h-full object-cover"
+                        />
+                        {isSelected && (
+                          <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
+                  <span className="text-muted-foreground">
+                    {selectedPhotoIds.size === 0 
+                      ? `All ${photos.filter(p => p.mimeType?.startsWith('image/')).length} photos selected`
+                      : `${selectedPhotoIds.size} of ${photos.filter(p => p.mimeType?.startsWith('image/')).length} selected`
+                    }
+                  </span>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={() => setSelectedPhotoIds(new Set())}
+                    className="h-7 text-xs"
+                  >
+                    Select All
+                  </Button>
                 </div>
               </div>
             )}
@@ -745,9 +809,13 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
                 <Button variant="outline" onClick={() => setIsAIDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={startAnalysis} data-testid="button-start-analysis">
+                <Button 
+                  onClick={startAnalysis} 
+                  disabled={selectedPhotoIds.size === 0 && photos.filter(p => p.mimeType?.startsWith('image/')).length === 0}
+                  data-testid="button-start-analysis"
+                >
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Analyse {photos.length} Photo{photos.length !== 1 ? 's' : ''}
+                  Analyse {selectedPhotoIds.size > 0 ? selectedPhotoIds.size : photos.filter(p => p.mimeType?.startsWith('image/')).length} Photo{(selectedPhotoIds.size > 0 ? selectedPhotoIds.size : photos.filter(p => p.mimeType?.startsWith('image/')).length) !== 1 ? 's' : ''}
                 </Button>
               </>
             )}
