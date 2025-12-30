@@ -3395,10 +3395,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/integrations/settings", requireAuth, async (req: any, res) => {
     try {
       const settings = await storage.getIntegrationSettings(req.userId);
+      // Detect if Stripe is configured from environment
+      const stripeConfigured = !!(process.env.STRIPE_SECRET_KEY || process.env.TESTING_STRIPE_SECRET_KEY);
+      
       if (!settings) {
         // Return default settings if none exist
         return res.json({
-          stripeEnabled: false,
+          stripeEnabled: stripeConfigured,
           emailEnabled: false,
           autoSendInvoices: false,
           autoGeneratePaymentLinks: false,
@@ -3406,7 +3409,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentTerms: 'Net 30'
         });
       }
-      res.json(settings);
+      // Override stripeEnabled if keys are configured
+      res.json({
+        ...settings,
+        stripeEnabled: stripeConfigured || settings.stripeEnabled
+      });
     } catch (error) {
       console.error("Error fetching integration settings:", error);
       res.status(500).json({ error: "Failed to fetch integration settings" });
@@ -19466,6 +19473,445 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     res.send(html);
+  });
+
+  // ============================================
+  // AUTOMATION SETTINGS & FIELD OPERATIONS
+  // ============================================
+
+  // Get automation settings
+  app.get("/api/automation-settings", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      let settings = await storage.getAutomationSettings(userId);
+      
+      if (!settings) {
+        settings = await storage.createAutomationSettings({
+          userId,
+          jobReminderEnabled: true,
+          jobReminderHoursBefore: 24,
+          jobReminderType: 'sms',
+          quoteFollowUpEnabled: true,
+          quoteFollowUpDays: 3,
+          invoiceReminderEnabled: true,
+          invoiceReminderDaysBeforeDue: 3,
+          invoiceOverdueReminderDays: 7,
+          requirePhotoBeforeStart: false,
+          requirePhotoAfterComplete: false,
+          autoCheckInOnArrival: false,
+          autoCheckOutOnDeparture: false,
+        });
+      }
+      
+      res.json(settings);
+    } catch (error: any) {
+      console.error('Error getting automation settings:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update automation settings
+  app.put("/api/automation-settings", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const updates = req.body;
+      
+      const settings = await storage.upsertAutomationSettings(userId, updates);
+      res.json(settings);
+    } catch (error: any) {
+      console.error('Error updating automation settings:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get job reminders for a job
+  app.get("/api/jobs/:jobId/reminders", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      // Verify job ownership
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const reminders = await storage.getJobReminders(jobId);
+      res.json(reminders);
+    } catch (error: any) {
+      console.error('Error getting job reminders:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a job reminder
+  app.post("/api/jobs/:jobId/reminders", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      const { type, sendAt, hoursBeforeJob } = req.body;
+      
+      // Verify job ownership
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      if (!sendAt) {
+        return res.status(400).json({ error: 'sendAt is required' });
+      }
+      
+      const reminder = await storage.createJobReminder({
+        jobId,
+        userId,
+        type: type || 'sms',
+        sendAt: new Date(sendAt),
+        hoursBeforeJob: hoursBeforeJob || 24,
+        status: 'pending',
+      });
+      
+      res.json(reminder);
+    } catch (error: any) {
+      console.error('Error creating job reminder:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Cancel job reminders
+  app.post("/api/jobs/:jobId/reminders/cancel", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      // Verify job ownership
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      await storage.cancelJobReminders(jobId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error cancelling job reminders:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get job photo requirements
+  app.get("/api/jobs/:jobId/photo-requirements", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      // Verify job ownership
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const requirements = await storage.getJobPhotoRequirements(jobId);
+      res.json(requirements);
+    } catch (error: any) {
+      console.error('Error getting photo requirements:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create photo requirement
+  app.post("/api/jobs/:jobId/photo-requirements", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      const { stage, description, isRequired } = req.body;
+      
+      // Verify job ownership
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      if (!stage || !description) {
+        return res.status(400).json({ error: 'stage and description are required' });
+      }
+      
+      const requirement = await storage.createJobPhotoRequirement({
+        jobId,
+        stage,
+        description,
+        isRequired: isRequired !== false,
+      });
+      
+      res.json(requirement);
+    } catch (error: any) {
+      console.error('Error creating photo requirement:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Fulfill photo requirement
+  app.post("/api/photo-requirements/:id/fulfill", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { photoUrl } = req.body;
+      
+      const requirement = await storage.fulfillPhotoRequirement(id, photoUrl);
+      if (!requirement) {
+        return res.status(404).json({ error: 'Requirement not found' });
+      }
+      
+      res.json(requirement);
+    } catch (error: any) {
+      console.error('Error fulfilling photo requirement:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // DEFECT TRACKING
+  // ============================================
+
+  // Get all defects
+  app.get("/api/defects", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, status, severity } = req.query;
+      
+      const defects = await storage.getDefects(userId, {
+        jobId: jobId as string,
+        status: status as string,
+        severity: severity as string,
+      });
+      
+      res.json(defects);
+    } catch (error: any) {
+      console.error('Error getting defects:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get single defect
+  app.get("/api/defects/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const defect = await storage.getDefect(id, userId);
+      if (!defect) {
+        return res.status(404).json({ error: 'Defect not found' });
+      }
+      
+      res.json(defect);
+    } catch (error: any) {
+      console.error('Error getting defect:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create defect
+  app.post("/api/defects", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, clientId, title, description, severity, reportedBy, photos } = req.body;
+      
+      if (!jobId || !title) {
+        return res.status(400).json({ error: 'Job ID and title are required' });
+      }
+      
+      // Verify job ownership
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const defect = await storage.createDefect({
+        jobId,
+        userId,
+        clientId: clientId || job.clientId,
+        title,
+        description,
+        severity: severity || 'medium',
+        reportedBy,
+        photos: photos || [],
+      });
+      
+      res.json(defect);
+    } catch (error: any) {
+      console.error('Error creating defect:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update defect
+  app.put("/api/defects/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const defect = await storage.updateDefect(id, userId, req.body);
+      if (!defect) {
+        return res.status(404).json({ error: 'Defect not found' });
+      }
+      
+      res.json(defect);
+    } catch (error: any) {
+      console.error('Error updating defect:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Acknowledge defect
+  app.post("/api/defects/:id/acknowledge", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const defect = await storage.acknowledgeDefect(id, userId);
+      if (!defect) {
+        return res.status(404).json({ error: 'Defect not found' });
+      }
+      
+      res.json(defect);
+    } catch (error: any) {
+      console.error('Error acknowledging defect:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Resolve defect
+  app.post("/api/defects/:id/resolve", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { resolutionNotes } = req.body;
+      
+      const defect = await storage.resolveDefect(id, userId, resolutionNotes);
+      if (!defect) {
+        return res.status(404).json({ error: 'Defect not found' });
+      }
+      
+      res.json(defect);
+    } catch (error: any) {
+      console.error('Error resolving defect:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Close defect
+  app.post("/api/defects/:id/close", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const defect = await storage.closeDefect(id, userId);
+      if (!defect) {
+        return res.status(404).json({ error: 'Defect not found' });
+      }
+      
+      res.json(defect);
+    } catch (error: any) {
+      console.error('Error closing defect:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // TIMESHEET APPROVALS
+  // ============================================
+
+  // Get pending timesheet approvals
+  app.get("/api/timesheet-approvals", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const approvals = await storage.getPendingTimesheetApprovals(userId);
+      res.json(approvals);
+    } catch (error: any) {
+      console.error('Error getting timesheet approvals:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Submit timesheet for approval
+  app.post("/api/time-entries/:id/submit", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id: timeEntryId } = req.params;
+      
+      const approval = await storage.createTimesheetApproval({
+        timeEntryId,
+        submittedBy: userId,
+        status: 'pending',
+      });
+      
+      res.json(approval);
+    } catch (error: any) {
+      console.error('Error submitting timesheet:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Approve timesheet
+  app.post("/api/timesheet-approvals/:id/approve", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { notes } = req.body;
+      
+      const approval = await storage.approveTimesheet(id, userId, notes);
+      if (!approval) {
+        return res.status(404).json({ error: 'Approval not found' });
+      }
+      
+      res.json(approval);
+    } catch (error: any) {
+      console.error('Error approving timesheet:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Reject timesheet
+  app.post("/api/timesheet-approvals/:id/reject", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { notes } = req.body;
+      
+      if (!notes) {
+        return res.status(400).json({ error: 'Notes are required when rejecting a timesheet' });
+      }
+      
+      const approval = await storage.rejectTimesheet(id, userId, notes);
+      if (!approval) {
+        return res.status(404).json({ error: 'Approval not found' });
+      }
+      
+      res.json(approval);
+    } catch (error: any) {
+      console.error('Error rejecting timesheet:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Request timesheet revision
+  app.post("/api/timesheet-approvals/:id/revision", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { notes } = req.body;
+      
+      if (!notes) {
+        return res.status(400).json({ error: 'Notes are required when requesting a revision' });
+      }
+      
+      const approval = await storage.requestTimesheetRevision(id, userId, notes);
+      if (!approval) {
+        return res.status(404).json({ error: 'Approval not found' });
+      }
+      
+      res.json(approval);
+    } catch (error: any) {
+      console.error('Error requesting revision:', error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   const httpServer = createServer(app);

@@ -2753,3 +2753,110 @@ export const SAFETY_FORM_TYPES = {
 } as const;
 
 export type SafetyFormType = keyof typeof SAFETY_FORM_TYPES;
+
+// Job Reminders - Automated SMS/email notifications before job starts
+export const jobReminders = pgTable("job_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text("type").notNull().default('sms'), // sms, email, both
+  sendAt: timestamp("send_at").notNull(), // When to send the reminder
+  hoursBeforeJob: integer("hours_before_job").notNull().default(24), // 24h, 1h, etc.
+  status: text("status").notNull().default('pending'), // pending, sent, failed, cancelled
+  sentAt: timestamp("sent_at"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertJobReminderSchema = createInsertSchema(jobReminders).omit({ id: true, createdAt: true });
+export type InsertJobReminder = z.infer<typeof insertJobReminderSchema>;
+export type JobReminder = typeof jobReminders.$inferSelect;
+
+// Job Photo Requirements - Require photos at specific stages
+export const jobPhotoRequirements = pgTable("job_photo_requirements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  stage: text("stage").notNull(), // before_start, during, after_completion
+  description: text("description").notNull(),
+  isRequired: boolean("is_required").default(true),
+  isFulfilled: boolean("is_fulfilled").default(false),
+  fulfilledAt: timestamp("fulfilled_at"),
+  photoUrl: text("photo_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertJobPhotoRequirementSchema = createInsertSchema(jobPhotoRequirements).omit({ id: true, createdAt: true });
+export type InsertJobPhotoRequirement = z.infer<typeof insertJobPhotoRequirementSchema>;
+export type JobPhotoRequirement = typeof jobPhotoRequirements.$inferSelect;
+
+// Defect Tracking - Track warranty work and defects
+export const defects = pgTable("defects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  title: text("title").notNull(),
+  description: text("description"),
+  severity: text("severity").notNull().default('medium'), // low, medium, high, critical
+  status: text("status").notNull().default('reported'), // reported, acknowledged, in_progress, resolved, closed
+  reportedBy: text("reported_by"), // Client name or staff member
+  reportedAt: timestamp("reported_at").defaultNow(),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedAt: timestamp("resolved_at"),
+  closedAt: timestamp("closed_at"),
+  photos: jsonb("photos").default([]),
+  resolutionNotes: text("resolution_notes"),
+  warrantyClaimId: varchar("warranty_claim_id"), // Link to warranty if applicable
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDefectSchema = createInsertSchema(defects).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDefect = z.infer<typeof insertDefectSchema>;
+export type Defect = typeof defects.$inferSelect;
+
+// Timesheet Approvals - Workflow for crew timesheets
+export const timesheetApprovals = pgTable("timesheet_approvals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timeEntryId: varchar("time_entry_id").notNull().references(() => timeEntries.id, { onDelete: 'cascade' }),
+  submittedBy: varchar("submitted_by").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  approvedBy: varchar("approved_by").references(() => users.id, { onDelete: 'set null' }),
+  status: text("status").notNull().default('pending'), // pending, approved, rejected, revision_requested
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTimesheetApprovalSchema = createInsertSchema(timesheetApprovals).omit({ id: true, createdAt: true });
+export type InsertTimesheetApproval = z.infer<typeof insertTimesheetApprovalSchema>;
+export type TimesheetApproval = typeof timesheetApprovals.$inferSelect;
+
+// Automation Settings - Configure automatic behaviors
+export const automationSettings = pgTable("automation_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  // Job Reminders
+  jobReminderEnabled: boolean("job_reminder_enabled").default(true),
+  jobReminderHoursBefore: integer("job_reminder_hours_before").default(24),
+  jobReminderType: text("job_reminder_type").default('sms'), // sms, email, both
+  // Quote Reminders
+  quoteFollowUpEnabled: boolean("quote_follow_up_enabled").default(true),
+  quoteFollowUpDays: integer("quote_follow_up_days").default(3), // Days after sending to follow up
+  // Invoice Reminders
+  invoiceReminderEnabled: boolean("invoice_reminder_enabled").default(true),
+  invoiceReminderDaysBeforeDue: integer("invoice_reminder_days_before_due").default(3),
+  invoiceOverdueReminderDays: integer("invoice_overdue_reminder_days").default(7), // Days after overdue
+  // Photo Requirements
+  requirePhotoBeforeStart: boolean("require_photo_before_start").default(false),
+  requirePhotoAfterComplete: boolean("require_photo_after_complete").default(false),
+  // GPS Check-in
+  autoCheckInOnArrival: boolean("auto_check_in_on_arrival").default(false),
+  autoCheckOutOnDeparture: boolean("auto_check_out_on_departure").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertAutomationSettingsSchema = createInsertSchema(automationSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertAutomationSettings = z.infer<typeof insertAutomationSettingsSchema>;
+export type AutomationSettings = typeof automationSettings.$inferSelect;

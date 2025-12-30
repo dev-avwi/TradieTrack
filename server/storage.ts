@@ -190,6 +190,21 @@ import {
   activityFeed,
   type ActivityFeed,
   type InsertActivityFeed,
+  jobReminders,
+  type JobReminder,
+  type InsertJobReminder,
+  jobPhotoRequirements,
+  type JobPhotoRequirement,
+  type InsertJobPhotoRequirement,
+  defects,
+  type Defect,
+  type InsertDefect,
+  timesheetApprovals,
+  type TimesheetApproval,
+  type InsertTimesheetApproval,
+  automationSettings,
+  type AutomationSettings,
+  type InsertAutomationSettings,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -4546,6 +4561,302 @@ Thank you for your prompt attention to this matter.`,
       })
       .returning();
     return created;
+  }
+
+  // Automation Settings
+  async getAutomationSettings(userId: string): Promise<AutomationSettings | undefined> {
+    const [settings] = await db
+      .select()
+      .from(automationSettings)
+      .where(eq(automationSettings.userId, userId));
+    return settings;
+  }
+
+  async createAutomationSettings(data: InsertAutomationSettings): Promise<AutomationSettings> {
+    const [created] = await db
+      .insert(automationSettings)
+      .values({
+        id: randomUUID(),
+        ...data,
+      })
+      .returning();
+    return created;
+  }
+
+  async updateAutomationSettings(userId: string, updates: Partial<AutomationSettings>): Promise<AutomationSettings | undefined> {
+    const [updated] = await db
+      .update(automationSettings)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(automationSettings.userId, userId))
+      .returning();
+    return updated;
+  }
+
+  async upsertAutomationSettings(userId: string, data: Partial<InsertAutomationSettings>): Promise<AutomationSettings> {
+    const existing = await this.getAutomationSettings(userId);
+    if (existing) {
+      return (await this.updateAutomationSettings(userId, data))!;
+    }
+    return this.createAutomationSettings({ userId, ...data } as InsertAutomationSettings);
+  }
+
+  // Job Reminders
+  async createJobReminder(data: InsertJobReminder): Promise<JobReminder> {
+    const [created] = await db
+      .insert(jobReminders)
+      .values({
+        id: randomUUID(),
+        ...data,
+      })
+      .returning();
+    return created;
+  }
+
+  async getJobReminders(jobId: string): Promise<JobReminder[]> {
+    return db
+      .select()
+      .from(jobReminders)
+      .where(eq(jobReminders.jobId, jobId))
+      .orderBy(desc(jobReminders.createdAt));
+  }
+
+  async getPendingJobReminders(): Promise<JobReminder[]> {
+    const now = new Date();
+    return db
+      .select()
+      .from(jobReminders)
+      .where(and(
+        eq(jobReminders.status, 'pending'),
+        lte(jobReminders.sendAt, now)
+      ))
+      .orderBy(asc(jobReminders.sendAt));
+  }
+
+  async updateJobReminder(id: string, updates: Partial<JobReminder>): Promise<JobReminder | undefined> {
+    const [updated] = await db
+      .update(jobReminders)
+      .set(updates)
+      .where(eq(jobReminders.id, id))
+      .returning();
+    return updated;
+  }
+
+  async cancelJobReminders(jobId: string): Promise<void> {
+    await db
+      .update(jobReminders)
+      .set({ status: 'cancelled' })
+      .where(and(
+        eq(jobReminders.jobId, jobId),
+        eq(jobReminders.status, 'pending')
+      ));
+  }
+
+  // Job Photo Requirements
+  async createJobPhotoRequirement(data: InsertJobPhotoRequirement): Promise<JobPhotoRequirement> {
+    const [created] = await db
+      .insert(jobPhotoRequirements)
+      .values({
+        id: randomUUID(),
+        ...data,
+      })
+      .returning();
+    return created;
+  }
+
+  async getJobPhotoRequirements(jobId: string): Promise<JobPhotoRequirement[]> {
+    return db
+      .select()
+      .from(jobPhotoRequirements)
+      .where(eq(jobPhotoRequirements.jobId, jobId))
+      .orderBy(asc(jobPhotoRequirements.stage));
+  }
+
+  async updateJobPhotoRequirement(id: string, updates: Partial<JobPhotoRequirement>): Promise<JobPhotoRequirement | undefined> {
+    const [updated] = await db
+      .update(jobPhotoRequirements)
+      .set(updates)
+      .where(eq(jobPhotoRequirements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async fulfillPhotoRequirement(id: string, photoUrl: string): Promise<JobPhotoRequirement | undefined> {
+    return this.updateJobPhotoRequirement(id, {
+      isFulfilled: true,
+      fulfilledAt: new Date(),
+      photoUrl,
+    });
+  }
+
+  // Defects
+  async createDefect(data: InsertDefect): Promise<Defect> {
+    const [created] = await db
+      .insert(defects)
+      .values({
+        id: randomUUID(),
+        ...data,
+      })
+      .returning();
+    return created;
+  }
+
+  async getDefects(userId: string, filters?: { jobId?: string; status?: string; severity?: string }): Promise<Defect[]> {
+    let conditions = [eq(defects.userId, userId)];
+    
+    if (filters?.jobId) {
+      conditions.push(eq(defects.jobId, filters.jobId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(defects.status, filters.status));
+    }
+    if (filters?.severity) {
+      conditions.push(eq(defects.severity, filters.severity));
+    }
+    
+    return db
+      .select()
+      .from(defects)
+      .where(and(...conditions))
+      .orderBy(desc(defects.createdAt));
+  }
+
+  async getDefect(id: string, userId: string): Promise<Defect | undefined> {
+    const [defect] = await db
+      .select()
+      .from(defects)
+      .where(and(
+        eq(defects.id, id),
+        eq(defects.userId, userId)
+      ));
+    return defect;
+  }
+
+  async updateDefect(id: string, userId: string, updates: Partial<Defect>): Promise<Defect | undefined> {
+    const [updated] = await db
+      .update(defects)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(defects.id, id),
+        eq(defects.userId, userId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async acknowledgeDefect(id: string, userId: string): Promise<Defect | undefined> {
+    return this.updateDefect(id, userId, {
+      status: 'acknowledged',
+      acknowledgedAt: new Date(),
+    });
+  }
+
+  async resolveDefect(id: string, userId: string, resolutionNotes?: string): Promise<Defect | undefined> {
+    return this.updateDefect(id, userId, {
+      status: 'resolved',
+      resolvedAt: new Date(),
+      resolutionNotes,
+    });
+  }
+
+  async closeDefect(id: string, userId: string): Promise<Defect | undefined> {
+    return this.updateDefect(id, userId, {
+      status: 'closed',
+      closedAt: new Date(),
+    });
+  }
+
+  // Timesheet Approvals
+  async createTimesheetApproval(data: InsertTimesheetApproval): Promise<TimesheetApproval> {
+    const [created] = await db
+      .insert(timesheetApprovals)
+      .values({
+        id: randomUUID(),
+        ...data,
+      })
+      .returning();
+    return created;
+  }
+
+  async getPendingTimesheetApprovals(businessOwnerId: string): Promise<TimesheetApproval[]> {
+    // Get team members for this business owner
+    const members = await db
+      .select({ userId: teamMembers.userId })
+      .from(teamMembers)
+      .where(eq(teamMembers.businessOwnerId, businessOwnerId));
+    
+    const memberIds = members.map(m => m.userId);
+    
+    // Include the business owner themselves plus all their team members
+    const allUserIds = [businessOwnerId, ...memberIds];
+    
+    if (allUserIds.length === 0) {
+      return [];
+    }
+    
+    return db
+      .select()
+      .from(timesheetApprovals)
+      .where(and(
+        eq(timesheetApprovals.status, 'pending'),
+        inArray(timesheetApprovals.submittedBy, allUserIds)
+      ))
+      .orderBy(asc(timesheetApprovals.submittedAt));
+  }
+
+  async getTimesheetApproval(id: string): Promise<TimesheetApproval | undefined> {
+    const [approval] = await db
+      .select()
+      .from(timesheetApprovals)
+      .where(eq(timesheetApprovals.id, id));
+    return approval;
+  }
+
+  async approveTimesheet(id: string, approverId: string, notes?: string): Promise<TimesheetApproval | undefined> {
+    const [updated] = await db
+      .update(timesheetApprovals)
+      .set({
+        status: 'approved',
+        approvedBy: approverId,
+        reviewedAt: new Date(),
+        reviewNotes: notes,
+      })
+      .where(eq(timesheetApprovals.id, id))
+      .returning();
+    return updated;
+  }
+
+  async rejectTimesheet(id: string, approverId: string, notes: string): Promise<TimesheetApproval | undefined> {
+    const [updated] = await db
+      .update(timesheetApprovals)
+      .set({
+        status: 'rejected',
+        approvedBy: approverId,
+        reviewedAt: new Date(),
+        reviewNotes: notes,
+      })
+      .where(eq(timesheetApprovals.id, id))
+      .returning();
+    return updated;
+  }
+
+  async requestTimesheetRevision(id: string, approverId: string, notes: string): Promise<TimesheetApproval | undefined> {
+    const [updated] = await db
+      .update(timesheetApprovals)
+      .set({
+        status: 'revision_requested',
+        approvedBy: approverId,
+        reviewedAt: new Date(),
+        reviewNotes: notes,
+      })
+      .where(eq(timesheetApprovals.id, id))
+      .returning();
+    return updated;
   }
 }
 
