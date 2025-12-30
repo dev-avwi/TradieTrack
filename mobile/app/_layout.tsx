@@ -69,7 +69,7 @@ function DeepLinkHandler() {
         const token = queryParams?.token as string;
         if (token) {
           try {
-            const response = await api.get(`/api/verify-email?token=${token}`);
+            const response = await api.get<{ success?: boolean }>(`/api/verify-email?token=${token}`);
             if (response.data?.success) {
               Alert.alert('Email Verified', 'Your email has been verified successfully!');
               checkAuth();
