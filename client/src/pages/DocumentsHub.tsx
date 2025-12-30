@@ -571,6 +571,31 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
     });
     return counts;
   }, [receipts]);
+
+  const quoteStats = useMemo(() => {
+    const totalValue = quotes.reduce((sum: number, q: any) => sum + normalizeToDollars(q.total), 0);
+    const acceptedValue = quotes.filter((q: any) => q.status === 'accepted').reduce((sum: number, q: any) => sum + normalizeToDollars(q.total), 0);
+    const pendingCount = quotes.filter((q: any) => q.status === 'draft' || q.status === 'sent').length;
+    return { totalValue, acceptedValue, pendingCount };
+  }, [quotes]);
+
+  const invoiceStats = useMemo(() => {
+    const outstandingValue = invoices.filter((i: any) => i.status === 'sent' || i.status === 'overdue').reduce((sum: number, i: any) => sum + normalizeToDollars(i.total), 0);
+    const paidValue = invoices.filter((i: any) => i.status === 'paid').reduce((sum: number, i: any) => sum + normalizeToDollars(i.total), 0);
+    const overdueCount = invoices.filter((i: any) => i.status === 'overdue').length;
+    return { outstandingValue, paidValue, overdueCount };
+  }, [invoices]);
+
+  const receiptStats = useMemo(() => {
+    const totalCollected = receipts.reduce((sum: number, r: any) => sum + normalizeToDollars(r.amount), 0);
+    const thisMonth = receipts.filter((r: any) => {
+      if (!r.paidAt) return false;
+      const paidDate = new Date(r.paidAt);
+      const now = new Date();
+      return paidDate.getMonth() === now.getMonth() && paidDate.getFullYear() === now.getFullYear();
+    }).reduce((sum: number, r: any) => sum + normalizeToDollars(r.amount), 0);
+    return { totalCollected, thisMonth };
+  }, [receipts]);
   
   const filteredQuotes = useMemo(() => {
     let result = quotes;
@@ -743,6 +768,59 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
           </div>
         </div>
         
+        <div className="px-4 pb-3 overflow-x-auto">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 min-w-0">
+            {activeTab === 'quotes' && (
+              <>
+                <Card className="p-1.5 sm:p-3 min-w-0" data-testid="stat-quote-total">
+                  <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wide truncate">Total</p>
+                  <p className="text-xs sm:text-lg font-bold text-primary truncate">{formatCurrency(quoteStats.totalValue)}</p>
+                </Card>
+                <Card className="p-1.5 sm:p-3 min-w-0" data-testid="stat-quote-pending">
+                  <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wide truncate">Pending</p>
+                  <p className="text-xs sm:text-lg font-bold text-amber-600 dark:text-amber-400">{quoteStats.pendingCount}</p>
+                </Card>
+                <Card className="p-1.5 sm:p-3 min-w-0" data-testid="stat-quote-accepted">
+                  <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wide truncate">Won</p>
+                  <p className="text-xs sm:text-lg font-bold text-green-600 dark:text-green-400 truncate">{formatCurrency(quoteStats.acceptedValue)}</p>
+                </Card>
+              </>
+            )}
+            {activeTab === 'invoices' && (
+              <>
+                <Card className="p-1.5 sm:p-3 min-w-0" data-testid="stat-invoice-outstanding">
+                  <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wide truncate">Owed</p>
+                  <p className="text-xs sm:text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatCurrency(invoiceStats.outstandingValue)}</p>
+                </Card>
+                <Card className="p-1.5 sm:p-3 min-w-0" data-testid="stat-invoice-paid">
+                  <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wide truncate">Paid</p>
+                  <p className="text-xs sm:text-lg font-bold text-green-600 dark:text-green-400 truncate">{formatCurrency(invoiceStats.paidValue)}</p>
+                </Card>
+                <Card className="p-1.5 sm:p-3 min-w-0" data-testid="stat-invoice-overdue">
+                  <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wide truncate">Overdue</p>
+                  <p className="text-xs sm:text-lg font-bold text-red-600 dark:text-red-400">{invoiceStats.overdueCount}</p>
+                </Card>
+              </>
+            )}
+            {activeTab === 'receipts' && (
+              <>
+                <Card className="p-1.5 sm:p-3 min-w-0" data-testid="stat-receipt-total">
+                  <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wide truncate">Total</p>
+                  <p className="text-xs sm:text-lg font-bold text-green-600 dark:text-green-400 truncate">{formatCurrency(receiptStats.totalCollected)}</p>
+                </Card>
+                <Card className="p-1.5 sm:p-3 min-w-0" data-testid="stat-receipt-month">
+                  <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wide truncate">Month</p>
+                  <p className="text-xs sm:text-lg font-bold text-primary truncate">{formatCurrency(receiptStats.thisMonth)}</p>
+                </Card>
+                <Card className="p-1.5 sm:p-3 min-w-0" data-testid="stat-receipt-count">
+                  <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wide truncate">Count</p>
+                  <p className="text-xs sm:text-lg font-bold">{receipts.length}</p>
+                </Card>
+              </>
+            )}
+          </div>
+        </div>
+
         <div className="px-4 pb-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

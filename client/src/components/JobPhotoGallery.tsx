@@ -13,9 +13,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2, Video, Film, Download } from "lucide-react";
+import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2, Video, Film, Download, Sparkles, Check } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useBusinessSettings } from "@/hooks/use-business-settings";
 
 interface JobPhoto {
   id: string;
@@ -34,6 +35,8 @@ interface JobPhotoGalleryProps {
   jobId: string;
   canUpload?: boolean;
   onPhotoUploaded?: () => void;
+  existingNotes?: string;
+  onNotesUpdated?: () => void;
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
@@ -44,7 +47,7 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   general: { label: 'General', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' },
 };
 
-export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUploaded }: JobPhotoGalleryProps) {
+export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUploaded, existingNotes, onNotesUpdated }: JobPhotoGalleryProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
@@ -53,6 +56,13 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
   const [caption, setCaption] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<JobPhoto | null>(null);
+  const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);
+  const [isAnalysing, setIsAnalysing] = useState(false);
+  const [analysisText, setAnalysisText] = useState('');
+  const [isComplete, setIsComplete] = useState(false);
+  const [isAddingToNotes, setIsAddingToNotes] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const { data: settings } = useBusinessSettings();
 
   const { data: photos = [], isLoading } = useQuery<JobPhoto[]>({
     queryKey: ['/api/jobs', jobId, 'photos'],
@@ -170,6 +180,127 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
     return acc;
   }, {} as Record<string, JobPhoto[]>);
 
+  const aiEnabled = settings?.aiEnabled !== false;
+  const photoAnalysisEnabled = settings?.aiPhotoAnalysisEnabled !== false;
+  const canUseAI = aiEnabled && photoAnalysisEnabled && photos.length > 0;
+
+  const startAnalysis = async () => {
+    if (isAnalysing) return;
+    
+    setIsAnalysing(true);
+    setAnalysisText('');
+    setIsComplete(false);
+    
+    abortControllerRef.current = new AbortController();
+    
+    try {
+      const response = await fetch(`/api/jobs/${jobId}/photos/analyze`, {
+        method: 'GET',
+        credentials: 'include',
+        signal: abortControllerRef.current.signal
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to analyse photos');
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response stream');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.text) {
+                setAnalysisText(prev => prev + data.text);
+              }
+              if (data.done) {
+                setIsComplete(true);
+              }
+              if (data.error) {
+                throw new Error(data.error);
+              }
+            } catch (e) {
+              console.error('SSE parse error:', e);
+            }
+          }
+        }
+      }
+      
+      setIsComplete(true);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        return;
+      }
+      console.error('Photo analysis error:', error);
+      toast({
+        variant: "destructive",
+        title: "Analysis Failed",
+        description: error.message || "Could not analyse photos"
+      });
+      setAnalysisText('');
+    } finally {
+      setIsAnalysing(false);
+    }
+  };
+
+  const cancelAnalysis = () => {
+    abortControllerRef.current?.abort();
+    setIsAnalysing(false);
+    setAnalysisText('');
+    setIsComplete(false);
+  };
+
+  const addToNotes = async () => {
+    if (!analysisText.trim()) return;
+    
+    setIsAddingToNotes(true);
+    try {
+      const newNotes = existingNotes 
+        ? `${existingNotes}\n\n--- AI Photo Analysis ---\n${analysisText}`
+        : `--- AI Photo Analysis ---\n${analysisText}`;
+      
+      await apiRequest("PATCH", `/api/jobs/${jobId}`, { notes: newNotes });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+      
+      toast({
+        title: "Added to Notes",
+        description: "Photo analysis has been added to job notes"
+      });
+      
+      setAnalysisText('');
+      setIsComplete(false);
+      setIsAIDialogOpen(false);
+      onNotesUpdated?.();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to Add",
+        description: error.message || "Could not add analysis to notes"
+      });
+    } finally {
+      setIsAddingToNotes(false);
+    }
+  };
+
+  const discardAnalysis = () => {
+    setAnalysisText('');
+    setIsComplete(false);
+  };
+
   return (
     <Card data-testid="job-photo-gallery">
       <CardHeader className="pb-3">
@@ -178,17 +309,31 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
             <Film className="h-4 w-4" />
             Media {photos.length > 0 && `(${photos.length})`}
           </CardTitle>
-          {canUpload && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              data-testid="button-add-photo"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Media
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {canUseAI && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsAIDialogOpen(true)}
+                className="text-primary"
+                data-testid="button-ai-analysis"
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                AI
+              </Button>
+            )}
+            {canUpload && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="button-add-photo"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Media
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -527,6 +672,119 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAIDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          if (isAnalysing) {
+            cancelAnalysis();
+          }
+          setIsAIDialogOpen(false);
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI Photo Analysis
+              <Badge variant="secondary" className="text-xs">Beta</Badge>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {!isAnalysing && !analysisText && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Use AI to analyse your job photos and automatically generate notes with photo references.
+                </p>
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <span className="text-sm font-medium">{photos.length} photo{photos.length !== 1 ? 's' : ''} available</span>
+                  <Badge variant="outline" className="text-xs">Ready to analyse</Badge>
+                </div>
+              </div>
+            )}
+
+            {isAnalysing && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Analysing photos...</span>
+                </div>
+                {analysisText && (
+                  <div 
+                    className="text-sm whitespace-pre-wrap p-3 bg-muted/50 rounded-lg border max-h-64 overflow-y-auto"
+                    data-testid="text-analysis-streaming"
+                  >
+                    {analysisText}
+                    <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-0.5" />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isComplete && analysisText && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                  <Check className="h-4 w-4" />
+                  <span>Analysis complete</span>
+                </div>
+                <div 
+                  className="text-sm whitespace-pre-wrap p-3 bg-muted/50 rounded-lg border max-h-64 overflow-y-auto"
+                  data-testid="text-analysis-result"
+                >
+                  {analysisText}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            {!isAnalysing && !analysisText && (
+              <>
+                <Button variant="outline" onClick={() => setIsAIDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={startAnalysis} data-testid="button-start-analysis">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Analyse {photos.length} Photo{photos.length !== 1 ? 's' : ''}
+                </Button>
+              </>
+            )}
+
+            {isAnalysing && (
+              <Button variant="outline" onClick={cancelAnalysis} data-testid="button-cancel-analysis">
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+            )}
+
+            {isComplete && analysisText && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={discardAnalysis}
+                  disabled={isAddingToNotes}
+                  data-testid="button-discard-analysis"
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Discard
+                </Button>
+                <Button
+                  onClick={addToNotes}
+                  disabled={isAddingToNotes}
+                  data-testid="button-add-to-notes"
+                >
+                  {isAddingToNotes ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
+                  Add to Job Notes
+                </Button>
+              </>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
