@@ -251,8 +251,9 @@ export async function syncInvoicesToXero(userId: string): Promise<{ synced: numb
 
         const lineItems = await storage.getInvoiceLineItems(invoice.id);
         
+        const invoiceDate = (invoice as any).issueDate || invoice.createdAt;
         const xeroInvoice = {
-          type: "ACCREC" as const,
+          type: "ACCREC" as any, // Xero invoice type
           contact: {
             name: client.name,
             emailAddress: client.email || undefined,
@@ -263,14 +264,14 @@ export async function syncInvoicesToXero(userId: string): Promise<{ synced: numb
             unitAmount: parseFloat(item.unitPrice || "0"),
             accountCode: "200",
           })),
-          date: invoice.issueDate ? new Date(invoice.issueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          date: invoiceDate ? new Date(invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split('T')[0] : undefined,
-          reference: invoice.invoiceNumber || undefined,
-          status: invoice.status === 'sent' ? "AUTHORISED" as const : "DRAFT" as const,
+          reference: invoice.number || (invoice as any).invoiceNumber || undefined,
+          status: invoice.status === 'sent' ? "AUTHORISED" as any : "DRAFT" as any,
         };
 
         const response = await xero.accountingApi.createInvoices(refreshedConnection.tenantId, {
-          invoices: [xeroInvoice],
+          invoices: [xeroInvoice as any],
         });
         
         // Store the Xero invoice ID to prevent duplicate syncs
@@ -284,7 +285,7 @@ export async function syncInvoicesToXero(userId: string): Promise<{ synced: numb
         
         synced++;
       } catch (err) {
-        errors.push(`Failed to sync invoice ${invoice.invoiceNumber}: ${err}`);
+        errors.push(`Failed to sync invoice ${invoice.number || (invoice as any).invoiceNumber}: ${err}`);
       }
     }
 
@@ -339,8 +340,9 @@ export async function syncSingleInvoiceToXero(userId: string, invoiceId: string)
 
     const lineItems = await storage.getInvoiceLineItems(invoice.id);
     
+    const invoiceDate = (invoice as any).issueDate || invoice.createdAt;
     const xeroInvoice = {
-      type: "ACCREC" as const,
+      type: "ACCREC" as any, // Xero invoice type
       contact: {
         name: client.name,
         emailAddress: client.email || undefined,
@@ -351,14 +353,14 @@ export async function syncSingleInvoiceToXero(userId: string, invoiceId: string)
         unitAmount: parseFloat(item.unitPrice || "0"),
         accountCode: "200",
       })),
-      date: invoice.issueDate ? new Date(invoice.issueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      date: invoiceDate ? new Date(invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split('T')[0] : undefined,
-      reference: invoice.invoiceNumber || undefined,
-      status: "AUTHORISED" as const,
+      reference: invoice.number || (invoice as any).invoiceNumber || undefined,
+      status: "AUTHORISED" as any,
     };
 
     const response = await xero.accountingApi.createInvoices(refreshedConnection.tenantId, {
-      invoices: [xeroInvoice],
+      invoices: [xeroInvoice as any],
     });
     
     const createdXeroInvoice = response.body.invoices?.[0];
