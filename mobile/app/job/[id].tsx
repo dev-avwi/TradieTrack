@@ -1110,6 +1110,39 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  categoryPhotoButton: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 180 : 160,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(100,100,100,0.8)',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+  },
+  categoryPhotoText: {
+    color: colors.primaryForeground,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  photoCategoryBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    backgroundColor: 'rgba(100,100,100,0.9)',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoCategoryBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   savePhotoButton: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 180 : 160,
@@ -2668,7 +2701,7 @@ export default function JobDetailScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      uploadMedia(result.assets[0].uri, 'image');
+      promptForCategoryAndUpload(result.assets[0].uri, 'image');
     }
   };
 
@@ -2688,7 +2721,40 @@ export default function JobDetailScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      uploadMedia(result.assets[0].uri, 'video');
+      promptForCategoryAndUpload(result.assets[0].uri, 'video');
+    }
+  };
+
+  const promptForCategoryAndUpload = (uri: string, mediaType: 'image' | 'video') => {
+    // Always prompt for category when any photo gate is enabled (even if already satisfied)
+    // This ensures all uploads are properly categorized for documentation
+    const hasBeforeGate = automationSettings?.requirePhotoBeforeStart;
+    const hasAfterGate = automationSettings?.requirePhotoAfterComplete;
+    
+    if (hasBeforeGate || hasAfterGate) {
+      // Build contextual message showing what's still needed
+      const beforeCount = photos.filter(p => p.category === 'before').length;
+      const afterCount = photos.filter(p => p.category === 'after').length;
+      const needsMore: string[] = [];
+      if (hasBeforeGate && beforeCount === 0) needsMore.push('Before photo');
+      if (hasAfterGate && afterCount === 0 && job?.status === 'in_progress') needsMore.push('After photo');
+      
+      const message = needsMore.length > 0 
+        ? `Still needed: ${needsMore.join(', ')}. What type of ${mediaType === 'video' ? 'video' : 'photo'} is this?`
+        : `What type of ${mediaType === 'video' ? 'video' : 'photo'} is this?`;
+      
+      Alert.alert(
+        `${mediaType === 'video' ? 'Video' : 'Photo'} Category`,
+        message,
+        [
+          { text: 'Before (Site Condition)', onPress: () => uploadMedia(uri, mediaType, 'before') },
+          { text: 'After (Completed Work)', onPress: () => uploadMedia(uri, mediaType, 'after') },
+          { text: 'Progress', onPress: () => uploadMedia(uri, mediaType, 'progress') },
+          { text: 'General', onPress: () => uploadMedia(uri, mediaType, 'general') },
+        ]
+      );
+    } else {
+      uploadMedia(uri, mediaType, 'general');
     }
   };
 
@@ -2710,7 +2776,7 @@ export default function JobDetailScreen() {
                           asset.uri.endsWith('.mp4') || 
                           asset.uri.endsWith('.mov') || 
                           asset.uri.endsWith('.m4v');
-      uploadMedia(asset.uri, isVideoFile ? 'video' : 'image');
+      promptForCategoryAndUpload(asset.uri, isVideoFile ? 'video' : 'image');
     }
   };
 
@@ -2729,11 +2795,11 @@ export default function JobDetailScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      uploadMedia(result.assets[0].uri, 'image');
+      promptForCategoryAndUpload(result.assets[0].uri, 'image');
     }
   };
 
-  const uploadMedia = async (uri: string, mediaType: 'image' | 'video') => {
+  const uploadMedia = async (uri: string, mediaType: 'image' | 'video', category: string = 'general') => {
     if (!job) return;
     
     setIsUploadingPhoto(true);
@@ -2746,6 +2812,7 @@ export default function JobDetailScreen() {
       signedUrl: uri,
       createdAt: new Date().toISOString(),
       mimeType: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
+      category: category,
     };
     
     // Add media optimistically
@@ -2775,7 +2842,7 @@ export default function JobDetailScreen() {
         fieldName: 'file',
         mimeType: mimeType,
         parameters: {
-          category: mediaType,
+          category: category,
         },
         headers: {
           Authorization: token ? `Bearer ${token}` : '',
@@ -2805,7 +2872,42 @@ export default function JobDetailScreen() {
   };
 
   const uploadPhoto = async (uri: string) => {
-    uploadMedia(uri, 'image');
+    uploadMedia(uri, 'image', 'general');
+  };
+
+  const handleChangePhotoCategory = (photo: JobPhoto) => {
+    Alert.alert(
+      'Change Photo Category',
+      `Current category: ${photo.category || 'general'}`,
+      [
+        { text: 'Before (Site Condition)', onPress: () => updatePhotoCategory(photo, 'before') },
+        { text: 'After (Completed Work)', onPress: () => updatePhotoCategory(photo, 'after') },
+        { text: 'Progress', onPress: () => updatePhotoCategory(photo, 'progress') },
+        { text: 'General', onPress: () => updatePhotoCategory(photo, 'general') },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const updatePhotoCategory = async (photo: JobPhoto, newCategory: string) => {
+    try {
+      const response = await api.patch(`/api/jobs/${job?.id}/photos/${photo.id}`, { category: newCategory });
+      if (response.data) {
+        // Update local state
+        setPhotos(prev => prev.map(p => 
+          p.id === photo.id ? { ...p, category: newCategory } : p
+        ));
+        if (selectedPhoto?.id === photo.id) {
+          setSelectedPhoto({ ...selectedPhoto, category: newCategory });
+        }
+        Alert.alert('Success', `Photo category changed to "${newCategory}"`);
+      } else {
+        Alert.alert('Error', 'Failed to update photo category');
+      }
+    } catch (error: any) {
+      console.error('Update category error:', error);
+      Alert.alert('Error', 'Failed to update photo category');
+    }
   };
 
   const handleDeletePhoto = async (photo: JobPhoto) => {
@@ -3854,6 +3956,7 @@ export default function JobDetailScreen() {
                       setSelectedPhoto(photo);
                     }
                   }}
+                  onLongPress={() => handleChangePhotoCategory(photo)}
                   activeOpacity={0.8}
                 >
                   <Image 
@@ -3866,6 +3969,17 @@ export default function JobDetailScreen() {
                       <View style={styles.videoPlayIcon}>
                         <Feather name="play" size={16} color={colors.foreground} />
                       </View>
+                    </View>
+                  )}
+                  {photo.category && photo.category !== 'general' && (
+                    <View style={[styles.photoCategoryBadge, 
+                      photo.category === 'before' && { backgroundColor: colors.info || '#3b82f6' },
+                      photo.category === 'after' && { backgroundColor: colors.success || '#22c55e' },
+                      photo.category === 'progress' && { backgroundColor: colors.warning || '#f59e0b' }
+                    ]}>
+                      <Text style={styles.photoCategoryBadgeText}>
+                        {photo.category.charAt(0).toUpperCase()}
+                      </Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -4428,6 +4542,7 @@ export default function JobDetailScreen() {
                           setSelectedPhoto(photo);
                         }
                       }}
+                      onLongPress={() => handleChangePhotoCategory(photo)}
                     >
                       <Image 
                         source={{ uri: photo.signedUrl || photo.url || photo.thumbnailUrl || '' }} 
@@ -4439,6 +4554,17 @@ export default function JobDetailScreen() {
                           <View style={styles.videoPlayIcon}>
                             <Feather name="play" size={16} color={colors.foreground} />
                           </View>
+                        </View>
+                      )}
+                      {photo.category && photo.category !== 'general' && (
+                        <View style={[styles.photoCategoryBadge, 
+                          photo.category === 'before' && { backgroundColor: colors.info || '#3b82f6' },
+                          photo.category === 'after' && { backgroundColor: colors.success || '#22c55e' },
+                          photo.category === 'progress' && { backgroundColor: colors.warning || '#f59e0b' }
+                        ]}>
+                          <Text style={styles.photoCategoryBadgeText}>
+                            {photo.category.charAt(0).toUpperCase()}
+                          </Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -4524,6 +4650,16 @@ export default function JobDetailScreen() {
               >
                 <Feather name="edit-2" size={18} color={colors.primaryForeground} />
                 <Text style={styles.markupPhotoText}>Markup</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.categoryPhotoButton}
+                onPress={() => handleChangePhotoCategory(selectedPhoto)}
+                data-testid="button-change-category"
+              >
+                <Feather name="tag" size={18} color={colors.primaryForeground} />
+                <Text style={styles.categoryPhotoText}>
+                  {selectedPhoto.category ? selectedPhoto.category.charAt(0).toUpperCase() + selectedPhoto.category.slice(1) : 'General'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.deletePhotoButton}
