@@ -1,0 +1,385 @@
+import { useState, useEffect, useMemo } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { Stack } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { spacing, radius, typography, iconSizes } from '../../src/lib/design-tokens';
+import haptics from '../../src/lib/haptics';
+
+interface NotificationPreference {
+  key: string;
+  label: string;
+  description: string;
+  icon: keyof typeof Feather.glyphMap;
+  color: string;
+  category: 'jobs' | 'payments' | 'team' | 'reminders';
+}
+
+const NOTIFICATION_PREFERENCES: NotificationPreference[] = [
+  {
+    key: 'job_assigned',
+    label: 'Job Assigned',
+    description: 'When a new job is assigned to you',
+    icon: 'briefcase',
+    color: '#3b82f6',
+    category: 'jobs',
+  },
+  {
+    key: 'job_updated',
+    label: 'Job Updates',
+    description: 'When a job status changes',
+    icon: 'refresh-cw',
+    color: '#3b82f6',
+    category: 'jobs',
+  },
+  {
+    key: 'job_reminder',
+    label: 'Job Reminders',
+    description: 'Reminders for upcoming scheduled jobs',
+    icon: 'clock',
+    color: '#f59e0b',
+    category: 'jobs',
+  },
+  {
+    key: 'quote_accepted',
+    label: 'Quote Accepted',
+    description: 'When a client accepts your quote',
+    icon: 'check-circle',
+    color: '#22c55e',
+    category: 'payments',
+  },
+  {
+    key: 'quote_rejected',
+    label: 'Quote Rejected',
+    description: 'When a client rejects your quote',
+    icon: 'x-circle',
+    color: '#ef4444',
+    category: 'payments',
+  },
+  {
+    key: 'payment_received',
+    label: 'Payment Received',
+    description: 'When you receive a payment',
+    icon: 'dollar-sign',
+    color: '#22c55e',
+    category: 'payments',
+  },
+  {
+    key: 'invoice_overdue',
+    label: 'Overdue Invoices',
+    description: 'Alerts for overdue invoices',
+    icon: 'alert-circle',
+    color: '#ef4444',
+    category: 'payments',
+  },
+  {
+    key: 'team_message',
+    label: 'Team Messages',
+    description: 'Messages from team members',
+    icon: 'message-circle',
+    color: '#8b5cf6',
+    category: 'team',
+  },
+  {
+    key: 'team_location',
+    label: 'Team Location Alerts',
+    description: 'When team members check in/out',
+    icon: 'map-pin',
+    color: '#8b5cf6',
+    category: 'team',
+  },
+  {
+    key: 'daily_summary',
+    label: 'Daily Summary',
+    description: 'Daily overview of your schedule',
+    icon: 'calendar',
+    color: '#6b7280',
+    category: 'reminders',
+  },
+  {
+    key: 'weekly_report',
+    label: 'Weekly Report',
+    description: 'Weekly business performance summary',
+    icon: 'bar-chart-2',
+    color: '#6b7280',
+    category: 'reminders',
+  },
+];
+
+const STORAGE_KEY = 'notification_preferences';
+
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  headerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  headerSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  masterToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  masterToggleLabel: {
+    fontSize: typography.sizes.md,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  masterToggleDesc: {
+    fontSize: typography.sizes.sm,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  section: {
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
+  },
+  sectionTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
+  },
+  prefCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  prefItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  prefItemLast: {
+    borderBottomWidth: 0,
+  },
+  prefIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  prefContent: {
+    flex: 1,
+  },
+  prefLabel: {
+    fontSize: typography.sizes.md,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  prefDesc: {
+    fontSize: typography.sizes.sm,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  footer: {
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: typography.sizes.sm,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+  },
+});
+
+export default function NotificationPreferencesScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  const [preferences, setPreferences] = useState<Record<string, boolean>>({});
+  const [masterEnabled, setMasterEnabled] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    loadPreferences();
+  }, []);
+  
+  const loadPreferences = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setPreferences(parsed.preferences || {});
+        setMasterEnabled(parsed.masterEnabled !== false);
+      } else {
+        const defaultPrefs: Record<string, boolean> = {};
+        NOTIFICATION_PREFERENCES.forEach(pref => {
+          defaultPrefs[pref.key] = true;
+        });
+        setPreferences(defaultPrefs);
+      }
+    } catch (error) {
+      console.error('Failed to load notification preferences:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const savePreferences = async (newPrefs: Record<string, boolean>, newMaster: boolean) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
+        preferences: newPrefs,
+        masterEnabled: newMaster,
+      }));
+    } catch (error) {
+      console.error('Failed to save notification preferences:', error);
+    }
+  };
+  
+  const toggleMaster = (value: boolean) => {
+    haptics.toggle(value);
+    setMasterEnabled(value);
+    savePreferences(preferences, value);
+  };
+  
+  const togglePreference = (key: string) => {
+    haptics.selection();
+    const newPrefs = {
+      ...preferences,
+      [key]: !preferences[key],
+    };
+    setPreferences(newPrefs);
+    savePreferences(newPrefs, masterEnabled);
+  };
+  
+  const renderCategory = (category: string, title: string) => {
+    const categoryPrefs = NOTIFICATION_PREFERENCES.filter(p => p.category === category);
+    
+    return (
+      <View style={styles.section} key={category}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <View style={styles.prefCard}>
+          {categoryPrefs.map((pref, index) => (
+            <View 
+              key={pref.key}
+              style={[
+                styles.prefItem,
+                index === categoryPrefs.length - 1 && styles.prefItemLast,
+              ]}
+            >
+              <View style={[styles.prefIconContainer, { backgroundColor: pref.color + '20' }]}>
+                <Feather name={pref.icon} size={iconSizes.md} color={pref.color} />
+              </View>
+              <View style={styles.prefContent}>
+                <Text style={styles.prefLabel}>{pref.label}</Text>
+                <Text style={styles.prefDesc}>{pref.description}</Text>
+              </View>
+              <Switch
+                value={masterEnabled && (preferences[pref.key] !== false)}
+                onValueChange={() => togglePreference(pref.key)}
+                disabled={!masterEnabled}
+                trackColor={{ false: colors.muted, true: colors.primary + '80' }}
+                thumbColor={preferences[pref.key] ? colors.primary : colors.mutedForeground}
+              />
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+  
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+  
+  return (
+    <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      
+      <View style={styles.headerCard}>
+        <View style={styles.headerIconContainer}>
+          <Feather name="bell" size={iconSizes.lg} color={colors.primary} />
+        </View>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Notification Preferences</Text>
+          <Text style={styles.headerSubtitle}>Choose which notifications you receive</Text>
+        </View>
+      </View>
+      
+      <ScrollView>
+        <View style={styles.masterToggle}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.masterToggleLabel}>Push Notifications</Text>
+            <Text style={styles.masterToggleDesc}>Enable all push notifications</Text>
+          </View>
+          <Switch
+            value={masterEnabled}
+            onValueChange={toggleMaster}
+            trackColor={{ false: colors.muted, true: colors.primary + '80' }}
+            thumbColor={masterEnabled ? colors.primary : colors.mutedForeground}
+          />
+        </View>
+        
+        {renderCategory('jobs', 'Jobs')}
+        {renderCategory('payments', 'Payments & Quotes')}
+        {renderCategory('team', 'Team')}
+        {renderCategory('reminders', 'Reminders & Reports')}
+        
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            You can also manage notifications in your device settings
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}

@@ -74,6 +74,7 @@ import SubscriptionPage from "@/pages/SubscriptionPage";
 import TemplatesHub from "@/pages/TemplatesHub";
 import DocumentsHub from "@/pages/DocumentsHub";
 import CommunicationsHub from "@/pages/CommunicationsHub";
+import { KeyboardShortcutsDialog, useKeyboardShortcuts } from "@/components/KeyboardShortcuts";
 
 // Types for job completion
 interface JobPhoto {
@@ -1068,6 +1069,9 @@ function AppLayout() {
         onClose={closeTour}
         onComplete={completeTour}
       />
+      
+      {/* Keyboard Shortcuts */}
+      <KeyboardShortcutsDialog />
     </>
   );
 }
