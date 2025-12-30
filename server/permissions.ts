@@ -59,6 +59,7 @@ export const ROLE_TEMPLATES = {
       PERMISSIONS.READ_QUOTES, PERMISSIONS.WRITE_QUOTES,
       PERMISSIONS.READ_INVOICES, PERMISSIONS.WRITE_INVOICES,
       PERMISSIONS.READ_CLIENTS,
+      PERMISSIONS.MANAGE_TEAM,
       PERMISSIONS.READ_REPORTS,
       PERMISSIONS.READ_TIME_ENTRIES, PERMISSIONS.WRITE_TIME_ENTRIES,
       PERMISSIONS.READ_EXPENSES, PERMISSIONS.WRITE_EXPENSES,
@@ -67,7 +68,7 @@ export const ROLE_TEMPLATES = {
       PERMISSIONS.WRITE_JOB_NOTES,
       PERMISSIONS.WRITE_JOB_MEDIA,
     ],
-    description: 'Manages jobs, quotes, invoices - assigns to workers only',
+    description: 'Manages jobs, quotes, invoices, team members - assigns to workers only',
   },
   SUPERVISOR: {
     name: 'Supervisor',
@@ -219,6 +220,36 @@ export function ownerOnly() {
       next();
     } catch (error) {
       console.error('Owner check error:', error);
+      return res.status(500).json({ error: 'Permission check failed' });
+    }
+  };
+}
+
+export function ownerOrManagerOnly() {
+  return async (req: any, res: any, next: any) => {
+    try {
+      if (!req.userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+      
+      const userContext = await getUserContext(req.userId);
+      req.userContext = userContext;
+      req.effectiveUserId = userContext.effectiveUserId;
+      
+      // Check if owner or has MANAGE_TEAM permission (managers have this)
+      const isOwnerOrManager = userContext.isOwner || 
+        userContext.permissions.includes(PERMISSIONS.MANAGE_TEAM);
+      
+      if (!isOwnerOrManager) {
+        return res.status(403).json({ 
+          error: 'Access denied', 
+          message: 'This action is restricted to business owners and managers only',
+        });
+      }
+      
+      next();
+    } catch (error) {
+      console.error('Owner/Manager check error:', error);
       return res.status(500).json({ error: 'Permission check failed' });
     }
   };

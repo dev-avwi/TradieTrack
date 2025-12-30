@@ -11,7 +11,7 @@ import { loginSchema, insertUserSchema, type SafeUser, requestLoginCodeSchema, v
 import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail, sendTeamInviteEmail, sendJobAssignmentEmail, sendJobCompletionNotificationEmail, sendWelcomeEmail } from "./emailService";
 import { FreemiumService } from "./freemiumService";
 import { DEMO_USER } from "./demoData";
-import { ownerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo } from "./permissions";
+import { ownerOnly, ownerOrManagerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo } from "./permissions";
 import {
   insertBusinessSettingsSchema,
   insertIntegrationSettingsSchema,
@@ -11805,7 +11805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update a team member (role, details, etc.) - owner only
-  app.patch("/api/team/members/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.patch("/api/team/members/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId!;
       const memberId = req.params.id;
@@ -11834,7 +11834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Remove a team member - owner only
-  app.delete("/api/team/members/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.delete("/api/team/members/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId!;
       const memberId = req.params.id;
@@ -12123,7 +12123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update custom permissions for a team member (owner only)
-  app.patch("/api/team/members/:id/permissions", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.patch("/api/team/members/:id/permissions", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const memberId = req.params.id;
       const { permissions, useCustomPermissions } = req.body;
@@ -12188,7 +12188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Toggle location sharing for a team member (owner only)
-  app.patch("/api/team/members/:id/location", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.patch("/api/team/members/:id/location", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const memberId = req.params.id;
       const { locationEnabledByOwner } = req.body;
@@ -18904,7 +18904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add a skill for a team member (owner/manager only)
-  app.post("/api/team/skills", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.post("/api/team/skills", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { teamMemberId, skillName, skillType, licenseNumber, issueDate, expiryDate, notes } = req.body;
@@ -18938,7 +18938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update a skill (owner/manager only)
-  app.patch("/api/team/skills/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.patch("/api/team/skills/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { id } = req.params;
@@ -18978,7 +18978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a skill (owner/manager only)
-  app.delete("/api/team/skills/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.delete("/api/team/skills/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { id } = req.params;
@@ -19035,7 +19035,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Set or update availability for a day (owner/manager only)
-  app.post("/api/team/availability", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.post("/api/team/availability", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { teamMemberId, dayOfWeek, isAvailable, startTime, endTime, notes } = req.body;
@@ -19111,7 +19111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Request time off (owner/manager only for now - staff could self-request in future)
-  app.post("/api/team/time-off", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.post("/api/team/time-off", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { teamMemberId, startDate, endDate, reason, notes } = req.body;
@@ -19143,7 +19143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Approve or reject time off (owner/manager only)
-  app.patch("/api/team/time-off/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.patch("/api/team/time-off/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { id } = req.params;
@@ -19184,7 +19184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete time off request (owner/manager only)
-  app.delete("/api/team/time-off/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.delete("/api/team/time-off/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { id } = req.params;
