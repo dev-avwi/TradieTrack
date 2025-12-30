@@ -145,10 +145,10 @@ export default function DocumentsScreen() {
   const fetchData = useCallback(async () => {
     try {
       const [quotesRes, invoicesRes, receiptsRes, clientsRes] = await Promise.all([
-        api.get('/quotes'),
-        api.get('/invoices'),
-        api.get('/receipts').catch(() => ({ data: [] })),
-        api.get('/clients'),
+        api.get<Quote[]>('/api/quotes'),
+        api.get<Invoice[]>('/api/invoices'),
+        api.get<Receipt[]>('/api/receipts').catch(() => ({ data: [] as Receipt[] })),
+        api.get<Client[]>('/api/clients'),
       ]);
       
       setQuotes(quotesRes.data || []);
@@ -722,22 +722,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: '#fff',
   },
   documentList: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   documentCard: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    padding: spacing.md,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    borderLeftWidth: 4,
+    borderLeftWidth: 3,
     ...shadows.sm,
   },
   documentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   documentTitleRow: {
     flexDirection: 'row',
@@ -770,21 +771,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 4,
   },
   metaText: {
-    ...typography.caption,
+    ...typography.captionSmall,
     color: colors.mutedForeground,
   },
   metaDate: {
     ...typography.captionSmall,
     color: colors.mutedForeground,
     marginLeft: 'auto',
+    fontSize: 10,
   },
   linkBadge: {
     flexDirection: 'row',

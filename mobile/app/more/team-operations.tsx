@@ -192,18 +192,18 @@ export default function TeamOperationsScreen() {
   const fetchData = useCallback(async () => {
     try {
       const [membersRes, presenceRes, activityRes, jobsRes, timeOffRes] = await Promise.all([
-        api.get('/api/team/members'),
-        api.get('/api/team/presence'),
-        api.get('/api/activity-feed?limit=50'),
-        api.get('/api/jobs'),
-        api.get('/api/team/time-off'),
+        api.get<TeamMemberData[]>('/api/team/members'),
+        api.get<TeamPresenceData[]>('/api/team/presence'),
+        api.get<ActivityFeedItem[]>('/api/activity-feed?limit=50'),
+        api.get<JobData[]>('/api/jobs'),
+        api.get<TeamMemberTimeOff[]>('/api/team/time-off'),
       ]);
 
-      if (membersRes.ok) setTeamMembers(await membersRes.json());
-      if (presenceRes.ok) setTeamPresence(await presenceRes.json());
-      if (activityRes.ok) setActivityFeed(await activityRes.json());
-      if (jobsRes.ok) setJobs(await jobsRes.json());
-      if (timeOffRes.ok) setTimeOffRequests(await timeOffRes.json());
+      if (membersRes.data) setTeamMembers(membersRes.data);
+      if (presenceRes.data) setTeamPresence(presenceRes.data);
+      if (activityRes.data) setActivityFeed(activityRes.data);
+      if (jobsRes.data) setJobs(jobsRes.data);
+      if (timeOffRes.data) setTimeOffRequests(timeOffRes.data);
     } catch (error) {
       console.error('Error fetching team data:', error);
     } finally {
@@ -214,10 +214,9 @@ export default function TeamOperationsScreen() {
   const fetchAvailability = useCallback(async (memberId: string) => {
     setAvailabilityLoading(true);
     try {
-      const res = await api.get(`/api/team/availability?teamMemberId=${memberId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAvailabilityMap(prev => new Map(prev).set(memberId, data));
+      const res = await api.get<TeamMemberAvailability[]>(`/api/team/availability?teamMemberId=${memberId}`);
+      if (res.data) {
+        setAvailabilityMap(prev => new Map(prev).set(memberId, res.data!));
       }
     } catch (error) {
       console.error('Error fetching availability:', error);
@@ -319,23 +318,22 @@ export default function TeamOperationsScreen() {
     });
     
     try {
-      const res = await api.post('/api/team/availability', {
+      const res = await api.post<TeamMemberAvailability>('/api/team/availability', {
         teamMemberId: selectedMemberId,
         dayOfWeek,
         isAvailable,
         startTime: startTime || '08:00',
         endTime: endTime || '17:00',
       });
-      if (res.ok) {
-        const data = await res.json();
+      if (res.data) {
         setAvailabilityMap(prev => {
           const newMap = new Map(prev);
           const memberAvailability = [...(newMap.get(selectedMemberId) || [])];
           const idx = memberAvailability.findIndex(a => a.dayOfWeek === dayOfWeek);
           if (idx >= 0) {
-            memberAvailability[idx] = data;
+            memberAvailability[idx] = res.data!;
           } else {
-            memberAvailability.push(data);
+            memberAvailability.push(res.data!);
           }
           newMap.set(selectedMemberId, memberAvailability);
           return newMap;
@@ -354,7 +352,7 @@ export default function TeamOperationsScreen() {
     }
 
     try {
-      const res = await api.post('/api/team/time-off', {
+      const res = await api.post<TeamMemberTimeOff>('/api/team/time-off', {
         teamMemberId: selectedMemberId,
         startDate: timeOffStart,
         endDate: timeOffEnd,
@@ -362,7 +360,7 @@ export default function TeamOperationsScreen() {
         notes: timeOffNotes || undefined,
       });
 
-      if (res.ok) {
+      if (res.data && !res.error) {
         setShowTimeOffModal(false);
         setTimeOffStart('');
         setTimeOffEnd('');
@@ -378,8 +376,8 @@ export default function TeamOperationsScreen() {
 
   const handleApproveTimeOff = async (id: string, status: 'approved' | 'rejected') => {
     try {
-      const res = await api.patch(`/api/team/time-off/${id}`, { status });
-      if (res.ok) {
+      const res = await api.patch<TeamMemberTimeOff>(`/api/team/time-off/${id}`, { status });
+      if (res.data && !res.error) {
         await fetchData();
       }
     } catch (error) {
@@ -1382,7 +1380,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.sm,
   },
   statCardValue: {
-    ...typography.title,
+    ...typography.headline,
     color: colors.foreground,
   },
   statCardLabel: {
