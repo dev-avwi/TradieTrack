@@ -129,10 +129,10 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
   },
   {
-    title: "Team Hub",
-    url: "/team-dashboard",
+    title: "Team Operations",
+    url: "/team-operations",
     icon: Users,
-    description: "Live team status, map, and activity",
+    description: "Team management, scheduling, and performance",
     color: "text-success",
     bgColor: "bg-success/10",
     showInSidebar: true,

@@ -73,9 +73,15 @@ import {
   quotes,
   clients,
   businessSettings,
+  // Advanced team management tables
+  teamMembers,
+  teamMemberSkills,
+  teamMemberAvailability,
+  teamMemberTimeOff,
+  teamMemberMetrics,
 } from "@shared/schema";
 import { db } from "./storage";
-import { eq, sql, desc } from "drizzle-orm";
+import { eq, sql, desc, and } from "drizzle-orm";
 import { 
   ObjectStorageService, 
   ObjectNotFoundError,
@@ -18836,6 +18842,349 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, lastSeenAt: presence.lastSeenAt });
     } catch (error: any) {
       console.error('Error updating heartbeat:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // TEAM MEMBER SKILLS ROUTES
+  // ============================================
+
+  // Helper to verify team member belongs to current user's business
+  async function verifyTeamMemberOwnership(userId: string, teamMemberId: string): Promise<boolean> {
+    const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+    const businessOwnerId = teamMembership?.ownerId || userId;
+    
+    const [member] = await db.select().from(teamMembers)
+      .where(and(
+        eq(teamMembers.id, teamMemberId),
+        eq(teamMembers.businessOwnerId, businessOwnerId)
+      ));
+    
+    return !!member;
+  }
+
+  // Get all skills for the team
+  app.get("/api/team/skills", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = teamMembership?.ownerId || userId;
+      
+      const skills = await db.select().from(teamMemberSkills)
+        .innerJoin(teamMembers, eq(teamMemberSkills.teamMemberId, teamMembers.id))
+        .where(eq(teamMembers.businessOwnerId, businessOwnerId));
+      
+      res.json(skills.map(s => s.team_member_skills));
+    } catch (error: any) {
+      console.error('Error getting team skills:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Add a skill for a team member (owner/manager only)
+  app.post("/api/team/skills", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { teamMemberId, skillName, skillType, licenseNumber, issueDate, expiryDate, notes } = req.body;
+      
+      if (!teamMemberId || !skillName) {
+        return res.status(400).json({ error: 'teamMemberId and skillName are required' });
+      }
+      
+      // Verify team member belongs to this business
+      const isOwned = await verifyTeamMemberOwnership(userId, teamMemberId);
+      if (!isOwned) {
+        return res.status(403).json({ error: 'Team member does not belong to your business' });
+      }
+      
+      const [skill] = await db.insert(teamMemberSkills).values({
+        teamMemberId,
+        skillName,
+        skillType: skillType || 'certification',
+        licenseNumber: licenseNumber || null,
+        issueDate: issueDate ? new Date(issueDate) : null,
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
+        notes: notes || null,
+        isVerified: false,
+      }).returning();
+      
+      res.status(201).json(skill);
+    } catch (error: any) {
+      console.error('Error adding team skill:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update a skill (owner/manager only)
+  app.patch("/api/team/skills/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { isVerified, skillName, licenseNumber, issueDate, expiryDate, notes } = req.body;
+      
+      // Verify the skill belongs to a team member in this business
+      const [existingSkill] = await db.select().from(teamMemberSkills)
+        .where(eq(teamMemberSkills.id, id));
+      
+      if (!existingSkill) {
+        return res.status(404).json({ error: 'Skill not found' });
+      }
+      
+      const isOwned = await verifyTeamMemberOwnership(userId, existingSkill.teamMemberId);
+      if (!isOwned) {
+        return res.status(403).json({ error: 'Skill does not belong to your business' });
+      }
+      
+      const updateData: any = { updatedAt: new Date() };
+      if (isVerified !== undefined) updateData.isVerified = isVerified;
+      if (skillName !== undefined) updateData.skillName = skillName;
+      if (licenseNumber !== undefined) updateData.licenseNumber = licenseNumber;
+      if (issueDate !== undefined) updateData.issueDate = issueDate ? new Date(issueDate) : null;
+      if (expiryDate !== undefined) updateData.expiryDate = expiryDate ? new Date(expiryDate) : null;
+      if (notes !== undefined) updateData.notes = notes;
+      
+      const [skill] = await db.update(teamMemberSkills)
+        .set(updateData)
+        .where(eq(teamMemberSkills.id, id))
+        .returning();
+      
+      res.json(skill);
+    } catch (error: any) {
+      console.error('Error updating team skill:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a skill (owner/manager only)
+  app.delete("/api/team/skills/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      // Verify the skill belongs to a team member in this business
+      const [existingSkill] = await db.select().from(teamMemberSkills)
+        .where(eq(teamMemberSkills.id, id));
+      
+      if (!existingSkill) {
+        return res.status(404).json({ error: 'Skill not found' });
+      }
+      
+      const isOwned = await verifyTeamMemberOwnership(userId, existingSkill.teamMemberId);
+      if (!isOwned) {
+        return res.status(403).json({ error: 'Skill does not belong to your business' });
+      }
+      
+      await db.delete(teamMemberSkills).where(eq(teamMemberSkills.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting team skill:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // TEAM MEMBER AVAILABILITY ROUTES
+  // ============================================
+
+  // Get availability for a team member
+  app.get("/api/team/availability", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const teamMemberId = req.query.teamMemberId as string;
+      
+      if (!teamMemberId) {
+        return res.json([]);
+      }
+      
+      // Verify team member belongs to this business
+      const isOwned = await verifyTeamMemberOwnership(userId, teamMemberId);
+      if (!isOwned) {
+        return res.status(403).json({ error: 'Team member does not belong to your business' });
+      }
+      
+      const availability = await db.select().from(teamMemberAvailability)
+        .where(eq(teamMemberAvailability.teamMemberId, teamMemberId));
+      
+      res.json(availability);
+    } catch (error: any) {
+      console.error('Error getting availability:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Set or update availability for a day (owner/manager only)
+  app.post("/api/team/availability", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { teamMemberId, dayOfWeek, isAvailable, startTime, endTime, notes } = req.body;
+      
+      if (!teamMemberId || dayOfWeek === undefined) {
+        return res.status(400).json({ error: 'teamMemberId and dayOfWeek are required' });
+      }
+      
+      // Verify team member belongs to this business
+      const isOwned = await verifyTeamMemberOwnership(userId, teamMemberId);
+      if (!isOwned) {
+        return res.status(403).json({ error: 'Team member does not belong to your business' });
+      }
+      
+      // Check if record exists
+      const existing = await db.select().from(teamMemberAvailability)
+        .where(and(
+          eq(teamMemberAvailability.teamMemberId, teamMemberId),
+          eq(teamMemberAvailability.dayOfWeek, dayOfWeek)
+        ));
+      
+      let result;
+      if (existing.length > 0) {
+        [result] = await db.update(teamMemberAvailability)
+          .set({
+            isAvailable: isAvailable !== undefined ? isAvailable : existing[0].isAvailable,
+            startTime: startTime || existing[0].startTime,
+            endTime: endTime || existing[0].endTime,
+            notes: notes !== undefined ? notes : existing[0].notes,
+            updatedAt: new Date(),
+          })
+          .where(eq(teamMemberAvailability.id, existing[0].id))
+          .returning();
+      } else {
+        [result] = await db.insert(teamMemberAvailability).values({
+          teamMemberId,
+          dayOfWeek,
+          isAvailable: isAvailable !== undefined ? isAvailable : true,
+          startTime: startTime || '08:00',
+          endTime: endTime || '17:00',
+          notes: notes || null,
+        }).returning();
+      }
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error setting availability:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // TEAM MEMBER TIME OFF ROUTES
+  // ============================================
+
+  // Get all time off requests
+  app.get("/api/team/time-off", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = teamMembership?.ownerId || userId;
+      
+      const timeOff = await db.select().from(teamMemberTimeOff)
+        .innerJoin(teamMembers, eq(teamMemberTimeOff.teamMemberId, teamMembers.id))
+        .where(eq(teamMembers.businessOwnerId, businessOwnerId))
+        .orderBy(desc(teamMemberTimeOff.startDate));
+      
+      res.json(timeOff.map(t => t.team_member_time_off));
+    } catch (error: any) {
+      console.error('Error getting time off:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Request time off (owner/manager only for now - staff could self-request in future)
+  app.post("/api/team/time-off", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { teamMemberId, startDate, endDate, reason, notes } = req.body;
+      
+      if (!teamMemberId || !startDate || !endDate || !reason) {
+        return res.status(400).json({ error: 'teamMemberId, startDate, endDate, and reason are required' });
+      }
+      
+      // Verify team member belongs to this business
+      const isOwned = await verifyTeamMemberOwnership(userId, teamMemberId);
+      if (!isOwned) {
+        return res.status(403).json({ error: 'Team member does not belong to your business' });
+      }
+      
+      const [timeOff] = await db.insert(teamMemberTimeOff).values({
+        teamMemberId,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        reason,
+        notes: notes || null,
+        status: 'pending',
+      }).returning();
+      
+      res.status(201).json(timeOff);
+    } catch (error: any) {
+      console.error('Error requesting time off:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Approve or reject time off (owner/manager only)
+  app.patch("/api/team/time-off/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!status || !['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ error: 'Status must be approved or rejected' });
+      }
+      
+      // Verify the time off request belongs to this business
+      const [existingTimeOff] = await db.select().from(teamMemberTimeOff)
+        .where(eq(teamMemberTimeOff.id, id));
+      
+      if (!existingTimeOff) {
+        return res.status(404).json({ error: 'Time off request not found' });
+      }
+      
+      const isOwned = await verifyTeamMemberOwnership(userId, existingTimeOff.teamMemberId);
+      if (!isOwned) {
+        return res.status(403).json({ error: 'Time off request does not belong to your business' });
+      }
+      
+      const [timeOff] = await db.update(teamMemberTimeOff)
+        .set({
+          status,
+          approvedBy: userId,
+          approvedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(teamMemberTimeOff.id, id))
+        .returning();
+      
+      res.json(timeOff);
+    } catch (error: any) {
+      console.error('Error updating time off:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete time off request (owner/manager only)
+  app.delete("/api/team/time-off/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      // Verify the time off request belongs to this business
+      const [existingTimeOff] = await db.select().from(teamMemberTimeOff)
+        .where(eq(teamMemberTimeOff.id, id));
+      
+      if (!existingTimeOff) {
+        return res.status(404).json({ error: 'Time off request not found' });
+      }
+      
+      const isOwned = await verifyTeamMemberOwnership(userId, existingTimeOff.teamMemberId);
+      if (!isOwned) {
+        return res.status(403).json({ error: 'Time off request does not belong to your business' });
+      }
+      
+      await db.delete(teamMemberTimeOff).where(eq(teamMemberTimeOff.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting time off:', error);
       res.status(500).json({ error: error.message });
     }
   });

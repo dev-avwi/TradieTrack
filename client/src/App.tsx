@@ -52,6 +52,7 @@ import InvoiceModal from "@/components/InvoiceModal";
 import TimeTrackingPage from "@/pages/TimeTracking";
 import TeamManagement from "@/pages/TeamManagement";
 import TeamDashboard from "@/pages/TeamDashboard";
+import TeamOperations from "@/pages/TeamOperations";
 import PaymentPage from "@/pages/PaymentPage";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
@@ -440,6 +441,10 @@ function Router({
       
       <Route path="/team-dashboard" component={() => (
         <TeamDashboard />
+      )} />
+      
+      <Route path="/team-operations" component={() => (
+        <TeamOperations />
       )} />
       
       <Route path="/team-chat" component={() => (
