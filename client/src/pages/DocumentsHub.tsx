@@ -152,34 +152,34 @@ function CompactQuoteCard({ quote, onView, onSend, onConvert, linkedInvoice, onV
       onClick={onView}
       data-testid={`quote-card-${quote.id}`}
     >
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         {/* Header row: Title + Status Badge */}
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h4 className="font-semibold text-base line-clamp-2 flex-1" data-testid={`quote-number-${quote.id}`}>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <h4 className="font-semibold text-sm line-clamp-1 flex-1" data-testid={`quote-number-${quote.id}`}>
             {quote.title || quote.number}
           </h4>
-          <Badge className={cn("text-xs px-2 py-0.5 shrink-0", statusConfig.className)} data-testid={`quote-status-${quote.id}`}>
+          <Badge className={cn("text-[10px] px-1.5 py-0 shrink-0", statusConfig.className)} data-testid={`quote-status-${quote.id}`}>
             {statusConfig.label}
           </Badge>
         </div>
         
         {/* Client name */}
-        <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
+        <p className="text-xs text-muted-foreground mb-1.5 line-clamp-1">
           {quote.clientName || 'No client'}
         </p>
         
         {/* Amount and time */}
         <div className="flex items-center justify-between gap-2">
-          <p className="font-bold text-lg" data-testid={`quote-amount-${quote.id}`}>
+          <p className="font-bold text-base" data-testid={`quote-amount-${quote.id}`}>
             {formatCurrency(amount)}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[10px] text-muted-foreground">
             {quote.createdAt ? formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true }) : ''}
           </p>
         </div>
         
         {/* Action row */}
-        <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t">
+        <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t">
           <div className="flex items-center gap-2">
             {linkedInvoice && (
               <Badge 
@@ -250,41 +250,41 @@ function CompactInvoiceCard({
       onClick={onView}
       data-testid={`invoice-card-${invoice.id}`}
     >
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         {/* Header row: Title + Status Badge */}
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h4 className="font-semibold text-base line-clamp-2 flex-1" data-testid={`invoice-number-${invoice.id}`}>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <h4 className="font-semibold text-sm line-clamp-1 flex-1" data-testid={`invoice-number-${invoice.id}`}>
             {invoice.title || invoice.number}
           </h4>
-          <Badge className={cn("text-xs px-2 py-0.5 shrink-0", statusConfig.className)} data-testid={`invoice-status-${invoice.id}`}>
+          <Badge className={cn("text-[10px] px-1.5 py-0 shrink-0", statusConfig.className)} data-testid={`invoice-status-${invoice.id}`}>
             {statusConfig.label}
           </Badge>
         </div>
         
-        {/* Client name */}
-        <p className="text-sm text-muted-foreground mb-1 line-clamp-1">
-          {invoice.clientName || invoice.client || 'No client'}
-        </p>
-        
-        {/* Due date for unpaid invoices */}
-        {invoice.dueDate && invoice.status !== 'paid' && (
-          <p className="text-xs text-muted-foreground mb-2">
-            Due: {new Date(invoice.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+        {/* Client name + due date inline */}
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <p className="text-xs text-muted-foreground line-clamp-1">
+            {invoice.clientName || invoice.client || 'No client'}
           </p>
-        )}
+          {invoice.dueDate && invoice.status !== 'paid' && (
+            <p className="text-[10px] text-muted-foreground shrink-0">
+              Due: {new Date(invoice.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+            </p>
+          )}
+        </div>
         
         {/* Amount and time */}
         <div className="flex items-center justify-between gap-2">
-          <p className="font-bold text-lg" data-testid={`invoice-amount-${invoice.id}`}>
+          <p className="font-bold text-base" data-testid={`invoice-amount-${invoice.id}`}>
             {formatCurrency(amount)}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[10px] text-muted-foreground">
             {invoice.createdAt ? formatDistanceToNow(new Date(invoice.createdAt), { addSuffix: true }) : ''}
           </p>
         </div>
         
         {/* Action row */}
-        <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t">
+        <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t">
           <div className="flex items-center gap-2 flex-wrap">
             {invoice.status === 'paid' && linkedReceipt && (
               <Badge 
@@ -362,35 +362,35 @@ function CompactReceiptCard({ receipt, onView, onViewInvoice }: {
       onClick={onView}
       data-testid={`receipt-card-${receipt.id}`}
     >
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         {/* Header row: Receipt number + Payment method badge */}
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h4 className="font-semibold text-base line-clamp-2 flex-1" data-testid={`receipt-number-${receipt.id}`}>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <h4 className="font-semibold text-sm line-clamp-1 flex-1" data-testid={`receipt-number-${receipt.id}`}>
             {receipt.receiptNumber || receipt.description || 'Receipt'}
           </h4>
-          <Badge className="text-xs px-2 py-0.5 shrink-0 bg-green-500/10 text-green-600 dark:text-green-400">
+          <Badge className="text-[10px] px-1.5 py-0 shrink-0 bg-green-500/10 text-green-600 dark:text-green-400">
             {paymentMethodLabel}
           </Badge>
         </div>
         
         {/* Client name */}
-        <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
+        <p className="text-xs text-muted-foreground mb-1.5 line-clamp-1">
           {receipt.clientName || 'Unknown client'}
         </p>
         
         {/* Amount and time */}
         <div className="flex items-center justify-between gap-2">
-          <p className="font-bold text-lg text-green-600 dark:text-green-400" data-testid={`receipt-amount-${receipt.id}`}>
+          <p className="font-bold text-base text-green-600 dark:text-green-400" data-testid={`receipt-amount-${receipt.id}`}>
             +{formatCurrency(amount)}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[10px] text-muted-foreground">
             {receipt.paidAt ? formatDistanceToNow(new Date(receipt.paidAt), { addSuffix: true }) : ''}
           </p>
         </div>
         
         {/* Action row - only show if there are linked items */}
         {receipt.invoiceId && onViewInvoice && (
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t">
             <Badge 
               variant="outline" 
               className="text-xs px-2 py-0.5 cursor-pointer"
