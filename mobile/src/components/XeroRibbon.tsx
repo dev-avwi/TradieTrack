@@ -16,7 +16,7 @@ export function XeroRibbon({ size = 'small' }: XeroRibbonProps) {
     ribbonContainer: {
       position: 'absolute',
       top: 0,
-      right: 0,
+      left: 0,
       width: ribbonSize,
       height: ribbonSize,
       overflow: 'hidden',
@@ -25,10 +25,10 @@ export function XeroRibbon({ size = 'small' }: XeroRibbonProps) {
     ribbon: {
       position: 'absolute',
       top: 8,
-      right: -18,
+      left: -18,
       width: 70,
       backgroundColor: '#13B5EA',
-      transform: [{ rotate: '45deg' }],
+      transform: [{ rotate: '-45deg' }],
       paddingVertical: 2,
       alignItems: 'center',
       justifyContent: 'center',

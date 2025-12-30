@@ -214,7 +214,8 @@ export default function InvoicesList({
       status: invoice.status,
       sentAt: invoice.sentAt ? new Date(invoice.sentAt).toLocaleDateString() : undefined,
       paidAt: invoice.paidAt ? new Date(invoice.paidAt).toLocaleDateString() : undefined,
-      dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : undefined
+      dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : undefined,
+      xeroInvoiceId: invoice.xeroInvoiceId
     };
   });
 
@@ -621,6 +622,7 @@ export default function InvoicesList({
               sentAt={invoice.sentAt}
               paidAt={invoice.paidAt}
               dueDate={invoice.dueDate}
+              xeroInvoiceId={invoice.xeroInvoiceId}
               onViewClick={onViewInvoice}
               onSendClick={handleSendInvoice}
               onCreatePaymentLink={handleCreatePaymentLink}

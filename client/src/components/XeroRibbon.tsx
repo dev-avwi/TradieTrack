@@ -7,7 +7,7 @@ export default function XeroRibbon({ size = 'md' }: XeroRibbonProps) {
   
   return (
     <div 
-      className="absolute top-0 right-0 overflow-hidden pointer-events-none z-10"
+      className="absolute top-0 left-0 overflow-hidden pointer-events-none z-10"
       style={{
         width: isSm ? '64px' : '80px',
         height: isSm ? '64px' : '80px',
@@ -22,9 +22,9 @@ export default function XeroRibbon({ size = 'md' }: XeroRibbonProps) {
           fontSize: isSm ? '9px' : '10px',
           letterSpacing: '0.5px',
           backgroundColor: '#13B5EA',
-          transform: 'rotate(45deg)',
+          transform: 'rotate(-45deg)',
           top: isSm ? '14px' : '18px',
-          right: isSm ? '-22px' : '-26px',
+          left: isSm ? '-22px' : '-26px',
           boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
         }}
       >
