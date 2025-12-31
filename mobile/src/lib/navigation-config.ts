@@ -167,9 +167,9 @@ export const mainMenuItems: NavItem[] = [
   },
   {
     title: "Collect Payment",
-    url: "/(tabs)/collect",
+    url: "/more/collect-payment",
     icon: "credit-card",
-    description: "Tap to Pay, QR codes, links",
+    description: "QR codes, payment links, receipts",
     color: "success",
     bgColor: "success",
     hideForStaff: true,

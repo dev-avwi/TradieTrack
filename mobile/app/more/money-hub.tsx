@@ -350,7 +350,7 @@ export default function MoneyHubScreen() {
         
         <TouchableOpacity 
           style={styles.quickActionCard}
-          onPress={() => router.push('/(tabs)/collect')}
+          onPress={() => router.push('/more/collect-payment')}
           activeOpacity={0.7}
         >
           <View style={[styles.quickActionIcon, { backgroundColor: `${colors.success}15` }]}>
