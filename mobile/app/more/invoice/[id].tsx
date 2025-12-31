@@ -58,6 +58,8 @@ export default function InvoiceDetailScreen() {
   }), [colors]);
   const [invoice, setInvoice] = useState<any>(null);
   const [linkedQuote, setLinkedQuote] = useState<any>(null);
+  const [linkedJob, setLinkedJob] = useState<any>(null);
+  const [linkedReceipt, setLinkedReceipt] = useState<any>(null);
   const [allSignatures, setAllSignatures] = useState<Signature[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
@@ -143,6 +145,47 @@ export default function InvoiceDetailScreen() {
     }
     
     setAllSignatures(signatures);
+    
+    // Fetch linked job if exists (optional, clear state on failure)
+    if (invoiceData?.jobId) {
+      try {
+        const jobResponse = await fetch(`${API_URL}/api/jobs/${invoiceData.jobId}`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (jobResponse.ok) {
+          const jobData = await jobResponse.json();
+          setLinkedJob(jobData);
+        } else {
+          setLinkedJob(null);
+        }
+      } catch (err) {
+        console.log('Could not fetch linked job:', err);
+        setLinkedJob(null);
+      }
+    } else {
+      setLinkedJob(null);
+    }
+    
+    // Fetch linked receipt if exists (optional, clear state on failure)
+    try {
+      const receiptResponse = await fetch(`${API_URL}/api/receipts?invoiceId=${id}`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (receiptResponse.ok) {
+        const receipts = await receiptResponse.json();
+        if (receipts.length > 0) {
+          setLinkedReceipt(receipts[0]);
+        } else {
+          setLinkedReceipt(null);
+        }
+      } else {
+        setLinkedReceipt(null);
+      }
+    } catch (err) {
+      console.log('Could not fetch linked receipt:', err);
+      setLinkedReceipt(null);
+    }
+    
     setIsLoading(false);
   };
 
@@ -805,6 +848,73 @@ export default function InvoiceDetailScreen() {
               </View>
             )}
           </View>
+
+          {/* Related Documents */}
+          {(linkedQuote || linkedJob || linkedReceipt) && (
+            <>
+              <Text style={styles.sectionTitle}>Related Documents</Text>
+              <View style={styles.card}>
+                {linkedQuote && (
+                  <TouchableOpacity 
+                    style={styles.linkedDocRow}
+                    onPress={() => router.push(`/more/quote/${linkedQuote.id}`)}
+                  >
+                    <View style={[styles.linkedDocIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+                      <Feather name="file" size={18} color="#3b82f6" />
+                    </View>
+                    <View style={styles.linkedDocInfo}>
+                      <Text style={styles.linkedDocLabel}>Quote</Text>
+                      <Text style={styles.linkedDocTitle}>{linkedQuote.quoteNumber || `Quote #${linkedQuote.id.slice(0,6)}`}</Text>
+                    </View>
+                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedQuote.status === 'accepted' ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.1)' }]}>
+                      <Text style={[styles.linkedDocStatusText, { color: linkedQuote.status === 'accepted' ? '#22c55e' : '#3b82f6' }]}>
+                        {linkedQuote.status.charAt(0).toUpperCase() + linkedQuote.status.slice(1)}
+                      </Text>
+                    </View>
+                    <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                )}
+                {linkedJob && (
+                  <TouchableOpacity 
+                    style={[styles.linkedDocRow, linkedQuote && styles.linkedDocRowBorder]}
+                    onPress={() => router.push(`/job/${linkedJob.id}`)}
+                  >
+                    <View style={[styles.linkedDocIcon, { backgroundColor: colors.primaryLight }]}>
+                      <Feather name="briefcase" size={18} color={colors.primary} />
+                    </View>
+                    <View style={styles.linkedDocInfo}>
+                      <Text style={styles.linkedDocLabel}>Job</Text>
+                      <Text style={styles.linkedDocTitle} numberOfLines={1}>{linkedJob.title}</Text>
+                    </View>
+                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedJob.status === 'completed' ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.1)' }]}>
+                      <Text style={[styles.linkedDocStatusText, { color: linkedJob.status === 'completed' ? '#22c55e' : '#3b82f6' }]}>
+                        {linkedJob.status.charAt(0).toUpperCase() + linkedJob.status.slice(1)}
+                      </Text>
+                    </View>
+                    <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                )}
+                {linkedReceipt && (
+                  <TouchableOpacity 
+                    style={[styles.linkedDocRow, (linkedQuote || linkedJob) && styles.linkedDocRowBorder]}
+                    onPress={() => router.push(`/more/receipt/${linkedReceipt.id}`)}
+                  >
+                    <View style={[styles.linkedDocIcon, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+                      <Feather name="check-circle" size={18} color="#22c55e" />
+                    </View>
+                    <View style={styles.linkedDocInfo}>
+                      <Text style={styles.linkedDocLabel}>Receipt</Text>
+                      <Text style={styles.linkedDocTitle}>{linkedReceipt.receiptNumber || `Receipt #${linkedReceipt.id.slice(0,6)}`}</Text>
+                    </View>
+                    <View style={[styles.linkedDocStatus, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+                      <Text style={[styles.linkedDocStatusText, { color: '#22c55e' }]}>Paid</Text>
+                    </View>
+                    <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
 
           {/* Recurring Invoice Section */}
           {(invoice as any).isRecurring && (
@@ -1549,6 +1659,45 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 24,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  linkedDocRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+  },
+  linkedDocRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  linkedDocIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkedDocInfo: {
+    flex: 1,
+  },
+  linkedDocLabel: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginBottom: 2,
+  },
+  linkedDocTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  linkedDocStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  linkedDocStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   infoRow: {
     flexDirection: 'row',

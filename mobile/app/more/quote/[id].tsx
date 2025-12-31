@@ -15,11 +15,24 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { useQuotesStore, useClientsStore, useAuthStore, useJobsStore } from '../../../src/lib/store';
+import { useQuotesStore, useClientsStore, useAuthStore, useJobsStore, useInvoicesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { API_URL, api } from '../../../src/lib/api';
+
+interface LinkedInvoice {
+  id: string;
+  invoiceNumber?: string;
+  total: number;
+  status: string;
+}
+
+interface LinkedJob {
+  id: string;
+  title: string;
+  status: string;
+}
 
 interface Signature {
   id: string;
@@ -40,6 +53,8 @@ const TEMPLATE_OPTIONS = [
 export default function QuoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getQuote, updateQuoteStatus } = useQuotesStore();
+  const { invoices, fetchInvoices } = useInvoicesStore();
+  const { jobs, fetchJobs } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
   const { user, businessSettings } = useAuthStore();
   const { colors } = useTheme();
@@ -53,6 +68,8 @@ export default function QuoteDetailScreen() {
     expired: { label: 'Expired', color: colors.mutedForeground, bg: colors.cardHover },
   }), [colors]);
   const [quote, setQuote] = useState<any>(null);
+  const [linkedInvoice, setLinkedInvoice] = useState<LinkedInvoice | null>(null);
+  const [linkedJob, setLinkedJob] = useState<LinkedJob | null>(null);
   const [allSignatures, setAllSignatures] = useState<Signature[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
@@ -75,7 +92,25 @@ export default function QuoteDetailScreen() {
     setIsLoading(true);
     const quoteData = await getQuote(id!);
     setQuote(quoteData);
-    await fetchClients();
+    
+    // Fetch related data - don't block on optional fetches
+    try {
+      await fetchClients();
+    } catch (e) {
+      console.log('Could not fetch clients:', e);
+    }
+    
+    // Fetch invoices and jobs for related documents (optional, don't block)
+    try {
+      await fetchInvoices();
+    } catch (e) {
+      console.log('Could not fetch invoices:', e);
+    }
+    try {
+      await fetchJobs();
+    } catch (e) {
+      console.log('Could not fetch jobs:', e);
+    }
     
     const signatures: Signature[] = [];
     const authToken = await api.getToken();
@@ -116,6 +151,34 @@ export default function QuoteDetailScreen() {
     }
     
     setAllSignatures(signatures);
+    
+    // Find linked invoice (invoice created from this quote)
+    const invoicesArray = useInvoicesStore.getState().invoices;
+    const foundInvoice = invoicesArray.find((inv: any) => inv.quoteId === id);
+    if (foundInvoice) {
+      setLinkedInvoice({
+        id: foundInvoice.id,
+        invoiceNumber: foundInvoice.invoiceNumber,
+        total: foundInvoice.total,
+        status: foundInvoice.status,
+      });
+    } else {
+      setLinkedInvoice(null);
+    }
+    
+    // Find linked job (job created from this quote or quote linked to job)
+    const jobsArray = useJobsStore.getState().jobs;
+    const foundJob = jobsArray.find((job: any) => job.quoteId === id || quoteData?.jobId === job.id);
+    if (foundJob) {
+      setLinkedJob({
+        id: foundJob.id,
+        title: foundJob.title,
+        status: foundJob.status,
+      });
+    } else {
+      setLinkedJob(null);
+    }
+    
     setIsLoading(false);
   };
 
@@ -606,6 +669,63 @@ export default function QuoteDetailScreen() {
             )}
           </View>
 
+          {/* Related Documents */}
+          {(linkedInvoice || linkedJob) && (
+            <>
+              <Text style={styles.sectionTitle}>Related Documents</Text>
+              <View style={styles.card}>
+                {linkedJob && (
+                  <TouchableOpacity 
+                    style={styles.linkedDocRow}
+                    onPress={() => router.push(`/job/${linkedJob.id}`)}
+                  >
+                    <View style={styles.linkedDocIcon}>
+                      <Feather name="briefcase" size={18} color={colors.primary} />
+                    </View>
+                    <View style={styles.linkedDocInfo}>
+                      <Text style={styles.linkedDocLabel}>Job</Text>
+                      <Text style={styles.linkedDocTitle} numberOfLines={1}>{linkedJob.title}</Text>
+                    </View>
+                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedJob.status === 'completed' ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.1)' }]}>
+                      <Text style={[styles.linkedDocStatusText, { color: linkedJob.status === 'completed' ? '#22c55e' : '#3b82f6' }]}>
+                        {linkedJob.status.charAt(0).toUpperCase() + linkedJob.status.slice(1)}
+                      </Text>
+                    </View>
+                    <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                )}
+                {linkedInvoice && (
+                  <TouchableOpacity 
+                    style={[styles.linkedDocRow, linkedJob && styles.linkedDocRowBorder]}
+                    onPress={() => router.push(`/more/invoice/${linkedInvoice.id}`)}
+                  >
+                    <View style={[styles.linkedDocIcon, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
+                      <Feather name="file-text" size={18} color="#f59e0b" />
+                    </View>
+                    <View style={styles.linkedDocInfo}>
+                      <Text style={styles.linkedDocLabel}>Invoice</Text>
+                      <Text style={styles.linkedDocTitle}>{linkedInvoice.invoiceNumber || `Invoice #${linkedInvoice.id.slice(0,6)}`}</Text>
+                    </View>
+                    <View style={[styles.linkedDocStatus, { 
+                      backgroundColor: linkedInvoice.status === 'paid' ? 'rgba(34,197,94,0.1)' : 
+                                       linkedInvoice.status === 'overdue' ? 'rgba(239,68,68,0.1)' : 
+                                       'rgba(59,130,246,0.1)' 
+                    }]}>
+                      <Text style={[styles.linkedDocStatusText, { 
+                        color: linkedInvoice.status === 'paid' ? '#22c55e' : 
+                               linkedInvoice.status === 'overdue' ? '#ef4444' : 
+                               '#3b82f6' 
+                      }]}>
+                        {linkedInvoice.status.charAt(0).toUpperCase() + linkedInvoice.status.slice(1)}
+                      </Text>
+                    </View>
+                    <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
+
           {/* Line Items */}
           {lineItems.length > 0 && (
             <>
@@ -1083,6 +1203,46 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 24,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  linkedDocRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+  },
+  linkedDocRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  linkedDocIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkedDocInfo: {
+    flex: 1,
+  },
+  linkedDocLabel: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginBottom: 2,
+  },
+  linkedDocTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  linkedDocStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  linkedDocStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   infoRow: {
     flexDirection: 'row',
