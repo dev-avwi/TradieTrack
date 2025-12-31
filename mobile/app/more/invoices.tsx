@@ -240,17 +240,17 @@ export default function InvoicesScreen() {
     .reduce((sum, i) => sum + (i.total || 0), 0);
 
   const totalAll = invoices
-    .filter(i => !i.archived)
+    .filter(i => !(i as any).archived)
     .reduce((sum, i) => sum + (i.total || 0), 0);
 
   const filterCounts = {
-    all: invoices.filter(i => !i.archived).length,
-    draft: invoices.filter(i => i.status === 'draft' && !i.archived).length,
-    sent: invoices.filter(i => i.status === 'sent' && !i.archived).length,
-    paid: invoices.filter(i => i.status === 'paid' && !i.archived).length,
-    overdue: invoices.filter(i => i.status === 'overdue' && !i.archived).length,
-    recurring: invoices.filter(i => (i as any).isRecurring && !i.archived).length,
-    archived: invoices.filter(i => i.archived).length,
+    all: invoices.filter(i => !(i as any).archived).length,
+    draft: invoices.filter(i => i.status === 'draft' && !(i as any).archived).length,
+    sent: invoices.filter(i => i.status === 'sent' && !(i as any).archived).length,
+    paid: invoices.filter(i => i.status === 'paid' && !(i as any).archived).length,
+    overdue: invoices.filter(i => i.status === 'overdue' && !(i as any).archived).length,
+    recurring: invoices.filter(i => (i as any).isRecurring && !(i as any).archived).length,
+    archived: invoices.filter(i => (i as any).archived).length,
   };
 
   const filteredInvoices = invoices.filter(invoice => {
@@ -262,13 +262,13 @@ export default function InvoicesScreen() {
     
     let matchesFilter = false;
     if (activeFilter === 'all') {
-      matchesFilter = !invoice.archived;
+      matchesFilter = !(invoice as any).archived;
     } else if (activeFilter === 'archived') {
-      matchesFilter = !!invoice.archived;
+      matchesFilter = !!(invoice as any).archived;
     } else if (activeFilter === 'recurring') {
-      matchesFilter = (invoice as any).isRecurring === true && !invoice.archived;
+      matchesFilter = (invoice as any).isRecurring === true && !(invoice as any).archived;
     } else {
-      matchesFilter = invoice.status === activeFilter && !invoice.archived;
+      matchesFilter = invoice.status === activeFilter && !(invoice as any).archived;
     }
     
     return matchesSearch && matchesFilter;
@@ -532,7 +532,7 @@ export default function InvoicesScreen() {
                     key={invoice.id}
                     invoice={invoice}
                     clientName={getClientName(invoice.clientId)}
-                    jobTitle={invoice.description || invoice.title || ''}
+                    jobTitle={(invoice as any).description || (invoice as any).title || ''}
                     onPress={() => router.push(`/more/invoice/${invoice.id}`)}
                     onSend={() => handleSendInvoice(invoice.id)}
                     onMarkPaid={() => handleMarkPaid(invoice.id)}
