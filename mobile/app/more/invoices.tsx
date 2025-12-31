@@ -12,12 +12,13 @@ import {
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useInvoicesStore, useClientsStore } from '../../src/lib/store';
+import { useInvoicesStore, useClientsStore, useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { api } from '../../src/lib/api';
+import { api, API_URL } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
+import { EmailComposeModal } from '../../src/components/EmailComposeModal';
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'paid' | 'overdue' | 'recurring' | 'archived';
 
@@ -183,8 +184,13 @@ export default function InvoicesScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { invoices, fetchInvoices, isLoading } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
+  const { user, businessSettings } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+  
+  // Inline email compose state
+  const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [selectedInvoiceForEmail, setSelectedInvoiceForEmail] = useState<any>(null);
 
   const refreshData = useCallback(async () => {
     await Promise.all([fetchInvoices(), fetchClients()]);
@@ -277,7 +283,38 @@ export default function InvoicesScreen() {
       return;
     }
     
-    router.push(`/more/invoice/${invoiceId}`);
+    // Show inline email compose modal
+    setSelectedInvoiceForEmail({ ...invoice, client });
+    setShowEmailCompose(true);
+  };
+  
+  const handleSendEmail = async (customSubject: string, customMessage: string) => {
+    if (!selectedInvoiceForEmail) return;
+    
+    try {
+      const response = await api.post<{ success?: boolean; error?: string }>(
+        `/api/invoices/${selectedInvoiceForEmail.id}/send`, 
+        { customSubject, customMessage }
+      );
+      
+      // Check for API error response
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      // Check for backend-returned error in data
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+      
+      setShowEmailCompose(false);
+      setSelectedInvoiceForEmail(null);
+      await refreshData();
+      Alert.alert('Success', 'Invoice sent successfully');
+    } catch (error) {
+      console.error('Error sending invoice:', error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to send invoice');
+    }
   };
 
   const handleMarkPaid = async (invoiceId: string) => {
@@ -292,22 +329,28 @@ export default function InvoicesScreen() {
           text: 'Mark Paid', 
           onPress: async () => {
             try {
-              const response = await api.patch(`/api/invoices/${invoiceId}`, {
+              const response = await api.patch<{ error?: string }>(`/api/invoices/${invoiceId}`, {
                 status: 'paid',
                 paidAt: new Date().toISOString(),
                 amountPaid: invoice?.total?.toString(),
                 paymentMethod: 'on_site',
               });
               
+              // Check for API error response
               if (response.error) {
                 throw new Error(response.error);
+              }
+              
+              // Check for backend-returned error in data
+              if (response.data?.error) {
+                throw new Error(response.data.error);
               }
               
               await refreshData();
               Alert.alert('Success', 'Payment recorded successfully');
             } catch (error) {
               console.error('Error marking paid:', error);
-              Alert.alert('Error', 'Failed to record payment');
+              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to record payment');
             }
           }
         }
@@ -488,6 +531,27 @@ export default function InvoicesScreen() {
           </View>
         </ScrollView>
       </View>
+      
+      {/* Inline Email Compose Modal */}
+      {selectedInvoiceForEmail && (
+        <EmailComposeModal
+          visible={showEmailCompose}
+          onClose={() => {
+            setShowEmailCompose(false);
+            setSelectedInvoiceForEmail(null);
+          }}
+          type="invoice"
+          documentId={selectedInvoiceForEmail.id}
+          clientName={selectedInvoiceForEmail.client?.name || 'Client'}
+          clientEmail={selectedInvoiceForEmail.client?.email || ''}
+          documentNumber={selectedInvoiceForEmail.invoiceNumber || ''}
+          documentTitle={selectedInvoiceForEmail.description || 'Services'}
+          total={`$${((selectedInvoiceForEmail.total || 0) / 100).toFixed(2)}`}
+          businessName={businessSettings?.businessName || user?.businessName || 'Your Business'}
+          publicUrl={`${API_URL}/public/invoice/${selectedInvoiceForEmail.id}`}
+          onSend={handleSendEmail}
+        />
+      )}
     </>
   );
 }

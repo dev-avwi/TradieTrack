@@ -41,7 +41,7 @@ const TEMPLATE_OPTIONS = [
 ];
 
 export default function InvoiceDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, autoEmail } = useLocalSearchParams<{ id: string; autoEmail?: string }>();
   const { getInvoice, updateInvoiceStatus, fetchInvoices } = useInvoicesStore();
   const { getQuote } = useQuotesStore();
   const { clients, fetchClients } = useClientsStore();
@@ -81,6 +81,13 @@ export default function InvoiceDetailScreen() {
   useEffect(() => {
     loadData();
   }, [id]);
+
+  // Auto-open email compose when navigated with autoEmail param
+  useEffect(() => {
+    if (autoEmail === 'true' && invoice && !isLoading) {
+      setTimeout(() => setShowEmailCompose(true), 300);
+    }
+  }, [autoEmail, invoice, isLoading]);
 
   const loadData = async () => {
     setIsLoading(true);

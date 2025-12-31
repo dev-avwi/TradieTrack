@@ -52,7 +52,7 @@ const TEMPLATE_OPTIONS = [
 ];
 
 export default function QuoteDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, autoEmail } = useLocalSearchParams<{ id: string; autoEmail?: string }>();
   const { getQuote, updateQuoteStatus } = useQuotesStore();
   const { invoices, fetchInvoices } = useInvoicesStore();
   const { jobs, fetchJobs } = useJobsStore();
@@ -88,6 +88,13 @@ export default function QuoteDetailScreen() {
   useEffect(() => {
     loadData();
   }, [id]);
+
+  // Auto-open email compose when navigated with autoEmail param
+  useEffect(() => {
+    if (autoEmail === 'true' && quote && !isLoading) {
+      setTimeout(() => setShowEmailCompose(true), 300);
+    }
+  }, [autoEmail, quote, isLoading]);
 
   const loadData = async () => {
     setIsLoading(true);

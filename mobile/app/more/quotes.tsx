@@ -12,12 +12,13 @@ import {
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useQuotesStore, useClientsStore } from '../../src/lib/store';
+import { useQuotesStore, useClientsStore, useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { api } from '../../src/lib/api';
+import { api, API_URL } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
+import { EmailComposeModal } from '../../src/components/EmailComposeModal';
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected' | 'archived';
 
@@ -183,8 +184,13 @@ export default function QuotesScreen() {
   
   const { quotes, fetchQuotes, isLoading } = useQuotesStore();
   const { clients, fetchClients } = useClientsStore();
+  const { user, businessSettings } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+  
+  // Inline email compose state
+  const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [selectedQuoteForEmail, setSelectedQuoteForEmail] = useState<any>(null);
 
   const refreshData = useCallback(async () => {
     await Promise.all([fetchQuotes(), fetchClients()]);
@@ -265,7 +271,38 @@ export default function QuotesScreen() {
       return;
     }
     
-    router.push(`/more/quote/${quoteId}`);
+    // Show inline email compose modal
+    setSelectedQuoteForEmail({ ...quote, client });
+    setShowEmailCompose(true);
+  };
+  
+  const handleSendEmail = async (customSubject: string, customMessage: string) => {
+    if (!selectedQuoteForEmail) return;
+    
+    try {
+      const response = await api.post<{ success?: boolean; error?: string }>(
+        `/api/quotes/${selectedQuoteForEmail.id}/send`, 
+        { customSubject, customMessage }
+      );
+      
+      // Check for API error response
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      // Check for backend-returned error in data
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+      
+      setShowEmailCompose(false);
+      setSelectedQuoteForEmail(null);
+      await refreshData();
+      Alert.alert('Success', 'Quote sent successfully');
+    } catch (error) {
+      console.error('Error sending quote:', error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to send quote');
+    }
   };
 
   const handleConvertToInvoice = async (quoteId: string) => {
@@ -468,6 +505,27 @@ export default function QuotesScreen() {
           </View>
         </ScrollView>
       </View>
+      
+      {/* Inline Email Compose Modal */}
+      {selectedQuoteForEmail && (
+        <EmailComposeModal
+          visible={showEmailCompose}
+          onClose={() => {
+            setShowEmailCompose(false);
+            setSelectedQuoteForEmail(null);
+          }}
+          type="quote"
+          documentId={selectedQuoteForEmail.id}
+          clientName={selectedQuoteForEmail.client?.name || 'Client'}
+          clientEmail={selectedQuoteForEmail.client?.email || ''}
+          documentNumber={selectedQuoteForEmail.quoteNumber || ''}
+          documentTitle={selectedQuoteForEmail.title || 'Services'}
+          total={`$${((selectedQuoteForEmail.total || 0) / 100).toFixed(2)}`}
+          businessName={businessSettings?.businessName || user?.businessName || 'Your Business'}
+          publicUrl={`${API_URL}/public/quote/${selectedQuoteForEmail.id}`}
+          onSend={handleSendEmail}
+        />
+      )}
     </>
   );
 }
