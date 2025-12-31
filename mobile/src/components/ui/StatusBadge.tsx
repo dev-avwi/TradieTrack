@@ -11,11 +11,12 @@ interface StatusBadgeProps {
 
 function getStatusConfig(colors: ThemeColors): Record<string, { bg: string; text: string; dot: string; label: string }> {
   return {
+    // Job statuses - ServiceM8 style workflow (matching web labels)
     pending: { 
       bg: colors.pendingBg,
       text: colors.pending,
       dot: colors.pending,
-      label: 'Pending'
+      label: 'New'  // Web uses "New" for pending
     },
     scheduled: { 
       bg: colors.scheduledBg,
@@ -33,7 +34,7 @@ function getStatusConfig(colors: ThemeColors): Record<string, { bg: string; text
       bg: colors.doneBg,
       text: colors.done,
       dot: colors.done,
-      label: 'Done'
+      label: 'Completed'  // Web uses "Completed" for done
     },
     invoiced: { 
       bg: colors.invoicedBg,
@@ -41,16 +42,18 @@ function getStatusConfig(colors: ThemeColors): Record<string, { bg: string; text
       dot: colors.invoiced,
       label: 'Invoiced'
     },
+    
+    // Quote/Invoice statuses (matching web)
     draft: {
-      bg: colors.warningLight,
-      text: colors.warning,
-      dot: colors.warning,
+      bg: colors.muted,  // Web uses secondary/slate for draft
+      text: colors.mutedForeground,
+      dot: colors.mutedForeground,
       label: 'Draft'
     },
     sent: {
-      bg: colors.infoLight,
-      text: colors.info,
-      dot: colors.info,
+      bg: colors.invoicedBg,  // Purple to match web
+      text: colors.invoiced,
+      dot: colors.invoiced,
       label: 'Sent'
     },
     accepted: {
@@ -63,7 +66,13 @@ function getStatusConfig(colors: ThemeColors): Record<string, { bg: string; text
       bg: colors.destructiveLight,
       text: colors.destructive,
       dot: colors.destructive,
-      label: 'Rejected'
+      label: 'Declined'  // Web uses "Declined" for rejected
+    },
+    expired: {
+      bg: colors.muted,
+      text: colors.mutedForeground,
+      dot: colors.mutedForeground,
+      label: 'Expired'
     },
     paid: {
       bg: colors.successLight,
@@ -76,6 +85,12 @@ function getStatusConfig(colors: ThemeColors): Record<string, { bg: string; text
       text: colors.destructive,
       dot: colors.destructive,
       label: 'Overdue'
+    },
+    partial: {
+      bg: colors.warningLight,
+      text: colors.warning,
+      dot: colors.warning,
+      label: 'Partial'
     },
   };
 }

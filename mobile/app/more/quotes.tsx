@@ -163,9 +163,11 @@ function QuoteCard({
                       : styles.actionButtonOutline
                   ]}
                   onPress={(e) => {
+                    e.stopPropagation();
                     quickAction.action?.();
                   }}
                   activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Feather 
                     name={quickAction.icon} 
