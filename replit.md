@@ -4,6 +4,11 @@ TradieTrack is a mobile-first web application for Australian tradespeople. It ce
 ### User Preferences
 Preferred communication style: Simple, everyday language.
 
+### Demo Account
+- Email: demo@tradietrack.com.au
+- Password: demo123456
+- Role: Business Owner with demo team (7 members)
+
 ### System Architecture
 TradieTrack utilizes an event-driven architecture with TypeScript. The frontend is built with React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile. The backend is an Express.js and TypeScript REST API with Zod validation, backed by PostgreSQL and Drizzle ORM.
 
