@@ -758,10 +758,10 @@ export default function InvoiceDetailScreen() {
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.quickAction}
-              onPress={() => setShowTemplateSelector(true)}
+              onPress={() => isPaid ? router.push(`/more/receipt/new?invoiceId=${id}`) : setShowTemplateSelector(true)}
             >
-              <Feather name="layout" size={20} color={colors.primary} />
-              <Text style={styles.quickActionText}>Template</Text>
+              <Feather name={isPaid ? "receipt" : "layout"} size={20} color={colors.primary} />
+              <Text style={styles.quickActionText}>{isPaid ? "Receipt" : "Template"}</Text>
             </TouchableOpacity>
             {invoice.status === 'draft' && (
               <TouchableOpacity style={styles.quickAction}>
@@ -772,10 +772,10 @@ export default function InvoiceDetailScreen() {
             {(invoice.status === 'sent' || invoice.status === 'overdue') && (
               <TouchableOpacity 
                 style={[styles.quickAction, styles.quickActionPrimary]}
-                onPress={handleCollectPayment}
+                onPress={handleRecordOnSitePayment}
               >
-                <Feather name="credit-card" size={20} color={colors.white} />
-                <Text style={[styles.quickActionText, { color: colors.white }]}>Pay</Text>
+                <Feather name="dollar-sign" size={20} color={colors.white} />
+                <Text style={[styles.quickActionText, { color: colors.white }]}>Paid</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -787,6 +787,44 @@ export default function InvoiceDetailScreen() {
               <Text style={styles.overdueText}>This invoice is overdue</Text>
             </View>
           )}
+
+          {/* Status History (Parity with Web Timeline) */}
+          <Text style={styles.sectionTitle}>Status History</Text>
+          <View style={styles.card}>
+            <View style={styles.timelineItem}>
+              <View style={styles.timelineIndicator}>
+                <View style={[styles.timelineDot, { backgroundColor: colors.primary }]} />
+                <View style={styles.timelineLine} />
+              </View>
+              <View style={styles.timelineContent}>
+                <Text style={styles.timelineLabel}>Invoice Created</Text>
+                <Text style={styles.timelineDate}>{formatDate(invoice.createdAt)}</Text>
+              </View>
+            </View>
+            {invoice.sentAt && (
+              <View style={styles.timelineItem}>
+                <View style={styles.timelineIndicator}>
+                  <View style={[styles.timelineDot, { backgroundColor: colors.primary }]} />
+                  <View style={styles.timelineLine} />
+                </View>
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineLabel}>Invoice Sent</Text>
+                  <Text style={styles.timelineDate}>{formatDate(invoice.sentAt)}</Text>
+                </View>
+              </View>
+            )}
+            {invoice.paidAt && (
+              <View style={styles.timelineItem}>
+                <View style={styles.timelineIndicator}>
+                  <View style={[styles.timelineDot, { backgroundColor: colors.success }]} />
+                </View>
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineLabel}>Payment Received</Text>
+                  <Text style={styles.timelineDate}>{formatDate(invoice.paidAt)}</Text>
+                </View>
+              </View>
+            )}
+          </View>
 
           {/* Client Info */}
           <Text style={styles.sectionTitle}>Client</Text>
@@ -1651,6 +1689,41 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 8,
     marginLeft: 4,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    minHeight: 50,
+  },
+  timelineIndicator: {
+    width: 20,
+    alignItems: 'center',
+  },
+  timelineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+  },
+  timelineLine: {
+    flex: 1,
+    width: 2,
+    backgroundColor: colors.border,
+    marginVertical: 4,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingLeft: 12,
+    paddingBottom: 16,
+  },
+  timelineLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  timelineDate: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 2,
   },
   card: {
     backgroundColor: colors.card,

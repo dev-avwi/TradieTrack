@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../lib/store';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useNotificationsStore } from '../lib/notifications-store';
+import { useUserRole } from '../hooks/use-user-role';
 import { HEADER_HEIGHT } from '../lib/design-tokens';
 import { BackgroundLocationIndicator } from './BackgroundLocationIndicator';
 
@@ -160,14 +161,21 @@ export function Header({
   showAvatar = true,
   onBackPress,
 }: HeaderProps) {
-  const { user, isOwner, roleInfo } = useAuthStore();
+  const { user, isOwner: isOwnerFromStore, roleInfo } = useAuthStore();
   const { colors, isDark, setThemeMode, themeMode } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const { unreadCount } = useNotificationsStore();
   const pathname = usePathname();
-  const isManager = roleInfo?.roleName === 'MANAGER' || roleInfo?.roleName === 'manager';
-  const canViewMap = isOwner() || isManager;
+  // Use useUserRole hook for consistent owner/manager detection (matches web behavior)
+  // The hook has optimistic loading - returns 'owner'/'solo_owner' during loading if user is business owner
+  const { canAccessMap, isLoading: roleLoading } = useUserRole();
+  // Show map for users with VIEW_MAP permission (owners/managers have this by default)
+  // Fallback: During loading only, also check cached auth store data
+  const isManagerFromStore = roleInfo?.roleName === 'MANAGER' || roleInfo?.roleName === 'manager';
+  const cachedCanViewMap = isOwnerFromStore() || isManagerFromStore;
+  // Once role hook settles, use its result; during loading, allow cached fallback
+  const canViewMap = canAccessMap || (roleLoading && cachedCanViewMap);
   
   const displayTitle = title || (!showMenuButton ? getPageTitleFromPath(pathname) : '');
   

@@ -17,7 +17,7 @@ import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } fro
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 
-type FilterKey = 'all' | 'draft' | 'sent' | 'paid' | 'overdue' | 'recurring';
+type FilterKey = 'all' | 'draft' | 'sent' | 'paid' | 'overdue' | 'recurring' | 'archived';
 
 const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
   { key: 'all', label: 'All', icon: 'file-text' },
@@ -26,6 +26,7 @@ const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
   { key: 'paid', label: 'Paid', icon: 'check-circle' },
   { key: 'overdue', label: 'Overdue', icon: 'alert-circle' },
   { key: 'recurring', label: 'Recurring', icon: 'repeat' },
+  { key: 'archived', label: 'Archived', icon: 'archive' },
 ];
 
 const navigateToCreateInvoice = () => {
@@ -196,12 +197,13 @@ export default function InvoicesScreen() {
     .reduce((sum, i) => sum + (i.total || 0), 0);
 
   const filterCounts = {
-    all: invoices.length,
-    draft: invoices.filter(i => i.status === 'draft').length,
-    sent: invoices.filter(i => i.status === 'sent').length,
-    paid: invoices.filter(i => i.status === 'paid').length,
-    overdue: invoices.filter(i => i.status === 'overdue').length,
-    recurring: invoices.filter(i => (i as any).isRecurring).length,
+    all: invoices.filter(i => !i.archived).length,
+    draft: invoices.filter(i => i.status === 'draft' && !i.archived).length,
+    sent: invoices.filter(i => i.status === 'sent' && !i.archived).length,
+    paid: invoices.filter(i => i.status === 'paid' && !i.archived).length,
+    overdue: invoices.filter(i => i.status === 'overdue' && !i.archived).length,
+    recurring: invoices.filter(i => (i as any).isRecurring && !i.archived).length,
+    archived: invoices.filter(i => i.archived).length,
   };
 
   const filteredInvoices = invoices.filter(invoice => {
@@ -211,9 +213,15 @@ export default function InvoicesScreen() {
       invoice.invoiceNumber?.toLowerCase().includes(searchLower) ||
       clientName.toLowerCase().includes(searchLower);
     
-    let matchesFilter = activeFilter === 'all' || invoice.status === activeFilter;
-    if (activeFilter === 'recurring') {
-      matchesFilter = (invoice as any).isRecurring === true;
+    let matchesFilter = false;
+    if (activeFilter === 'all') {
+      matchesFilter = !invoice.archived;
+    } else if (activeFilter === 'archived') {
+      matchesFilter = !!invoice.archived;
+    } else if (activeFilter === 'recurring') {
+      matchesFilter = (invoice as any).isRecurring === true && !invoice.archived;
+    } else {
+      matchesFilter = invoice.status === activeFilter && !invoice.archived;
     }
     
     return matchesSearch && matchesFilter;

@@ -230,7 +230,9 @@ export default function InvoicesList({
                          client.includes(search) ||
                          jobTitle.includes(search);
     
-    const matchesFilter = activeFilter === 'all' || activeFilter === 'archived' || invoice.status === activeFilter;
+    const matchesFilter = activeFilter === 'all' || 
+                         activeFilter === 'archived' || 
+                         (activeFilter === 'recurring' ? (invoices.find((i: any) => i.id === invoice.id)?.isRecurring) : invoice.status === activeFilter);
     
     return matchesSearch && matchesFilter;
   });
@@ -242,6 +244,7 @@ export default function InvoicesList({
     sent: transformedInvoices.filter((i: any) => i.status && i.status === 'sent').length,
     paid: transformedInvoices.filter((i: any) => i.status && i.status === 'paid').length,
     overdue: transformedInvoices.filter((i: any) => i.status && i.status === 'overdue').length,
+    recurring: invoices.filter((i: any) => i.isRecurring).length,
     archived: showArchived ? transformedInvoices.length : undefined
   };
 
@@ -266,6 +269,7 @@ export default function InvoicesList({
     { id: 'sent', label: 'Sent', count: stats.sent, icon: <Send className="h-3 w-3" /> },
     { id: 'paid', label: 'Paid', count: stats.paid, icon: <CheckCircle className="h-3 w-3" /> },
     { id: 'overdue', label: 'Overdue', count: stats.overdue, icon: <AlertCircle className="h-3 w-3" /> },
+    { id: 'recurring', label: 'Recurring', count: stats.recurring, icon: <RotateCcw className="h-3 w-3" /> },
     { id: 'archived', label: 'Archived', count: stats.archived, icon: <Archive className="h-3 w-3" /> }
   ];
 
