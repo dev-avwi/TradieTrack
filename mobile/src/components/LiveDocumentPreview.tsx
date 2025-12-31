@@ -239,8 +239,10 @@ export default function LiveDocumentPreview({
       borderBottomColor: template.showHeaderDivider ? primaryColor : 'transparent',
     },
     companyInfo: {
-      flex: 1,
-      marginRight: 16,
+      flex: 3,
+      minWidth: 150,
+      maxWidth: '65%',
+      marginRight: 12,
     },
     logo: {
       width: 60,
@@ -275,7 +277,9 @@ export default function LiveDocumentPreview({
       fontWeight: '600',
     },
     documentMeta: {
+      flex: 1,
       alignItems: 'flex-end',
+      minWidth: 100,
     },
     documentType: {
       fontSize: gstEnabled && type === 'invoice' ? 20 : 24,
@@ -773,7 +777,8 @@ export default function LiveDocumentPreview({
             <View style={styles.documentMeta}>
               <Text style={styles.documentType}>{documentTitle}</Text>
               <Text style={styles.documentNumber}>{documentNumber || 'AUTO'}</Text>
-              {status && (
+              {/* Only show status badge if NOT paid (paid status already shown with watermark/badge) */}
+              {status && status !== 'paid' && (
                 <View style={[styles.statusBadge, { backgroundColor: getStatusBadgeStyle(status).background }]}>
                   <Text style={[styles.statusText, { color: getStatusBadgeStyle(status).color }]}>
                     {status.toUpperCase()}
