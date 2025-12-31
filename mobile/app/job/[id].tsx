@@ -4472,13 +4472,6 @@ export default function JobDetailScreen() {
           headerLeft: () => <IOSBackButton />,
           headerRight: () => (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-              <TouchableOpacity
-                onPress={() => router.push(`/more/create-job?editJobId=${job.id}`)}
-                style={{ padding: spacing.sm }}
-                data-testid="button-edit-job"
-              >
-                <Feather name="edit-2" size={iconSizes.md} color={colors.foreground} />
-              </TouchableOpacity>
               {canDeleteJobs && (
                 <TouchableOpacity
                   onPress={handleDeleteJob}
@@ -4775,6 +4768,23 @@ export default function JobDetailScreen() {
                 <View style={styles.photoToolbarRow}>
                   <TouchableOpacity 
                     style={styles.photoToolbarButton}
+                    onPress={() => {
+                      const photoToAnalyse = selectedPhoto;
+                      setSelectedPhoto(null);
+                      requestAnimationFrame(() => {
+                        setShowAIAnalysisModal(true);
+                      });
+                    }}
+                    data-testid="button-ai-analyse-photo"
+                  >
+                    <Feather name="zap" size={22} color={colors.warning} />
+                    <Text style={[styles.photoToolbarButtonText, { color: colors.warning }]}>AI Analyse</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.photoToolbarDivider} />
+                  
+                  <TouchableOpacity 
+                    style={styles.photoToolbarButton}
                     onPress={() => handleSaveMedia(selectedPhoto)}
                     disabled={isSavingMedia}
                     data-testid="button-share-photo"
@@ -4792,17 +4802,6 @@ export default function JobDetailScreen() {
                   >
                     <Feather name="edit-2" size={22} color="#fff" />
                     <Text style={styles.photoToolbarButtonText}>Markup</Text>
-                  </TouchableOpacity>
-                  
-                  <View style={styles.photoToolbarDivider} />
-                  
-                  <TouchableOpacity 
-                    style={styles.photoToolbarButton}
-                    onPress={() => handleChangePhotoCategory(selectedPhoto)}
-                    data-testid="button-change-category"
-                  >
-                    <Feather name="folder" size={22} color="#fff" />
-                    <Text style={styles.photoToolbarButtonText}>Category</Text>
                   </TouchableOpacity>
                   
                   <View style={styles.photoToolbarDivider} />
