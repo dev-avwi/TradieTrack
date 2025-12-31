@@ -9634,6 +9634,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate QR code for a payment request
+  app.get("/api/payment-requests/:id/qrcode", requireAuth, async (req: any, res) => {
+    try {
+      const request = await storage.getPaymentRequest(req.params.id, req.userId);
+      if (!request) {
+        return res.status(404).json({ error: "Payment request not found" });
+      }
+      
+      const QRCode = require('qrcode');
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const paymentUrl = `${baseUrl}/pay/${request.token}`;
+      
+      // Generate QR code as data URL (base64)
+      const qrDataUrl = await QRCode.toDataURL(paymentUrl, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        }
+      });
+      
+      res.json({ 
+        success: true, 
+        qrCode: qrDataUrl,
+        paymentUrl
+      });
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      res.status(500).json({ error: "Failed to generate QR code" });
+    }
+  });
+
   // ========== RECEIPT ENDPOINTS ==========
   
   // Get all receipts for user

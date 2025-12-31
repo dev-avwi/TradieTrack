@@ -12,6 +12,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router } from 'expo-router';
@@ -134,6 +135,10 @@ export default function CollectPaymentScreen() {
   const [shareEmail, setShareEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // QR Code state
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
   const [showInvoicePicker, setShowInvoicePicker] = useState(false);
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -216,6 +221,27 @@ export default function CollectPaymentScreen() {
       }
     }
   }, [receiptInvoiceId, invoices]);
+
+  // Fetch QR code when share modal opens
+  useEffect(() => {
+    const fetchQrCode = async () => {
+      if (showShareModal && selectedRequest) {
+        setQrLoading(true);
+        setQrCodeDataUrl(null);
+        try {
+          const response = await api.get(`/api/payment-requests/${selectedRequest.id}/qrcode`);
+          if (response.data?.qrCode) {
+            setQrCodeDataUrl(response.data.qrCode);
+          }
+        } catch (error) {
+          console.error('Failed to fetch QR code:', error);
+        } finally {
+          setQrLoading(false);
+        }
+      }
+    };
+    fetchQrCode();
+  }, [showShareModal, selectedRequest]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -1123,13 +1149,26 @@ export default function CollectPaymentScreen() {
               {shareTab === 'qr' && (
                 <View style={styles.qrContainer}>
                   <View style={styles.qrWrapper}>
-                    <View style={styles.qrFallback}>
-                      <Feather name="maximize-2" size={80} color={colors.primary} />
-                      <Text style={styles.qrFallbackTitle}>Payment QR Code</Text>
-                      <Text style={styles.qrFallbackAmount}>{formatCurrency(selectedRequest.amount)}</Text>
-                    </View>
+                    {qrLoading ? (
+                      <View style={styles.qrLoading}>
+                        <ActivityIndicator size="large" color={colors.primary} />
+                        <Text style={styles.qrLoadingText}>Generating QR Code...</Text>
+                      </View>
+                    ) : qrCodeDataUrl ? (
+                      <Image 
+                        source={{ uri: qrCodeDataUrl }} 
+                        style={styles.qrImage} 
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <View style={styles.qrFallback}>
+                        <Feather name="maximize-2" size={80} color={colors.primary} />
+                        <Text style={styles.qrFallbackTitle}>Payment QR Code</Text>
+                        <Text style={styles.qrFallbackAmount}>{formatCurrency(selectedRequest.amount)}</Text>
+                      </View>
+                    )}
                   </View>
-                  <Text style={styles.qrHint}>Use the Link or Send tabs to share the payment link with your customer</Text>
+                  <Text style={styles.qrHint}>Customer can scan this code to pay</Text>
                   <TouchableOpacity 
                     style={styles.qrCopyButton}
                     onPress={handleCopyLink}
@@ -1867,6 +1906,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   qrFallbackAmount: {
     ...typography.headline,
     color: colors.primary,
+  },
+  qrImage: {
+    width: 200,
+    height: 200,
+  },
+  qrLoading: {
+    width: 200,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+  },
+  qrLoadingText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
   },
   qrHint: {
     ...typography.caption,
