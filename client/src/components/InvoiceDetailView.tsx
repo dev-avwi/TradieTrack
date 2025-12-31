@@ -1178,25 +1178,20 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 </div>
               )}
 
-              {/* Compact Terms & Warranty Section */}
-              {(termsTemplate?.content || warrantyTemplate?.content || businessSettings?.warrantyPeriod) && (
+              {/* Terms & Warranty Section - Full content with compact styling */}
+              {termsTemplate?.content && (
                 <div className="mb-4 pt-3 border-t border-gray-100">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {termsTemplate?.content && (
-                      <div className="text-xs">
-                        <h4 className="font-medium text-gray-500 text-[10px] uppercase tracking-wide mb-1">Terms & Conditions</h4>
-                        <p className="text-gray-400 leading-tight line-clamp-3">{termsTemplate.content}</p>
-                      </div>
-                    )}
-                    {(warrantyTemplate?.content || businessSettings?.warrantyPeriod) && (
-                      <div className="text-xs">
-                        <h4 className="font-medium text-gray-500 text-[10px] uppercase tracking-wide mb-1">Warranty</h4>
-                        <p className="text-gray-400 leading-tight line-clamp-2">
-                          {warrantyTemplate?.content || `All work guaranteed for ${businessSettings?.warrantyPeriod} from completion.`}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  <h4 className="font-medium text-gray-500 text-[10px] uppercase tracking-wide mb-2">Terms & Conditions</h4>
+                  <p className="text-gray-500 text-xs leading-relaxed whitespace-pre-wrap">{termsTemplate.content}</p>
+                </div>
+              )}
+
+              {(warrantyTemplate?.content || businessSettings?.warrantyPeriod) && (
+                <div className="mb-4 pt-3 border-t border-gray-100">
+                  <h4 className="font-medium text-gray-500 text-[10px] uppercase tracking-wide mb-2">Warranty</h4>
+                  <p className="text-gray-500 text-xs leading-relaxed whitespace-pre-wrap">
+                    {warrantyTemplate?.content || `All work is guaranteed for ${businessSettings?.warrantyPeriod} from completion date.`}
+                  </p>
                 </div>
               )}
 
