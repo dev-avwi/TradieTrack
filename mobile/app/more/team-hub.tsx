@@ -741,7 +741,8 @@ export default function TeamHubScreen() {
 
   const sortedMembers = useMemo(() => {
     const statusOrder = ['online', 'on_job', 'busy', 'break', 'offline'];
-    return [...teamMembers].sort((a, b) => {
+    const members = Array.isArray(teamMembers) ? teamMembers : [];
+    return [...members].sort((a, b) => {
       const aStatus = getMemberPresence(a.userId)?.status || 'offline';
       const bStatus = getMemberPresence(b.userId)?.status || 'offline';
       return statusOrder.indexOf(aStatus) - statusOrder.indexOf(bStatus);

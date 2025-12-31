@@ -201,7 +201,7 @@ export default function InvoicesScreen() {
     sent: invoices.filter(i => i.status === 'sent').length,
     paid: invoices.filter(i => i.status === 'paid').length,
     overdue: invoices.filter(i => i.status === 'overdue').length,
-    recurring: invoices.filter(i => i.isRecurring).length,
+    recurring: invoices.filter(i => (i as any).isRecurring).length,
   };
 
   const filteredInvoices = invoices.filter(invoice => {
@@ -213,7 +213,7 @@ export default function InvoicesScreen() {
     
     let matchesFilter = activeFilter === 'all' || invoice.status === activeFilter;
     if (activeFilter === 'recurring') {
-      matchesFilter = invoice.isRecurring === true;
+      matchesFilter = (invoice as any).isRecurring === true;
     }
     
     return matchesSearch && matchesFilter;
@@ -561,6 +561,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
+  },
+  invoiceCardAccent: {
+    width: 4,
   },
   invoiceCardContent: {
     flex: 1,
