@@ -1,5 +1,19 @@
-import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
+let Haptics: any = null;
+let Platform: any = { OS: 'ios' };
+
+try {
+  Haptics = require('expo-haptics');
+  Platform = require('react-native').Platform;
+} catch (e) {
+  // expo-haptics not available - provide mock
+  Haptics = {
+    impactAsync: async () => {},
+    selectionAsync: async () => {},
+    notificationAsync: async () => {},
+    ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+    NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
+  };
+}
 
 const safeHaptic = async (fn: () => Promise<void>) => {
   try {
