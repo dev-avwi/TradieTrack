@@ -35,28 +35,19 @@ export const mainMenuItems: NavItem[] = [
     category: "featured",
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
   },
-  {
-    title: "Dashboard",
-    url: "/(tabs)/dashboard",
-    icon: "home",
-    description: "Overview of your business",
-    color: "primary",
-    bgColor: "primary",
-    showInMore: true,
-    category: "work",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
-  },
-  {
-    title: "Work",
-    url: "/(tabs)/jobs",
-    icon: "briefcase",
-    description: "Manage your jobs and work",
-    color: "primary",
-    bgColor: "primary",
-    showInMore: true,
-    category: "work",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
-  },
+  // Dashboard and Work are already in bottom navbar tabs - don't show in More
+  // {
+  //   title: "Dashboard",
+  //   url: "/(tabs)/dashboard",
+  //   icon: "home",
+  //   showInMore: false, // Already in navbar
+  // },
+  // {
+  //   title: "Work",
+  //   url: "/(tabs)/jobs",
+  //   icon: "briefcase",
+  //   showInMore: false, // Already in navbar
+  // },
   {
     title: "Documents",
     url: "/more/documents",
@@ -166,6 +157,18 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
+    title: "Receipts",
+    url: "/more/receipts",
+    icon: "check-square",
+    description: "Payment receipts and records",
+    color: "success",
+    bgColor: "success",
+    hideForStaff: true,
+    showInMore: true,
+    category: "money",
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
     title: "Collect Payment",
     url: "/more/collect-payment",
     icon: "credit-card",
@@ -250,19 +253,13 @@ export const mainMenuItems: NavItem[] = [
     category: "team",
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
   },
-  {
-    title: "Map",
-    url: "/(tabs)/map",
-    icon: "map-pin",
-    description: "View jobs and team on map",
-    color: "success",
-    bgColor: "success",
-    requiresOwnerOrManager: true,
-    hideForStaff: true,
-    showInMore: true,
-    category: "work",
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
-  },
+  // Map is already in bottom navbar tabs - don't show in More
+  // {
+  //   title: "Map",
+  //   url: "/(tabs)/map",
+  //   icon: "map-pin",
+  //   showInMore: false, // Already in navbar
+  // },
   {
     title: "Workflow Automations",
     url: "/more/automations",
@@ -277,38 +274,27 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
-    title: "Chat",
-    url: "/more/chat",
+    title: "Chat Hub",
+    url: "/more/chat-hub",
     icon: "message-circle",
-    description: "Team and job messaging",
+    description: "All conversations in one place",
     color: "primary",
     bgColor: "primary",
     showInMore: true,
     category: "communication",
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
   },
-  {
-    title: "Team Chat",
-    url: "/more/team-chat",
-    icon: "users",
-    description: "Chat with your team",
-    color: "info",
-    bgColor: "info",
-    showInMore: true,
-    category: "communication",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
-  },
-  {
-    title: "Direct Messages",
-    url: "/more/direct-messages",
-    icon: "send",
-    description: "Private conversations",
-    color: "success",
-    bgColor: "success",
-    showInMore: true,
-    category: "communication",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
-  },
+  // Team Chat and Direct Messages merged into Chat Hub
+  // {
+  //   title: "Team Chat",
+  //   url: "/more/team-chat",
+  //   ...
+  // },
+  // {
+  //   title: "Direct Messages",
+  //   url: "/more/direct-messages",
+  //   ...
+  // },
 ];
 
 export const settingsMenuItems: NavItem[] = [

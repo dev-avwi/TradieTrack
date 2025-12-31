@@ -59,10 +59,14 @@ interface Invoice {
   id: string;
   number: string;
   title: string;
-  total: string;
+  total: string | number;
   status: string;
   clientId: string;
   jobId?: string | null;
+}
+
+interface QRCodeResponse {
+  qrCode: string;
 }
 
 interface Job {
@@ -171,20 +175,20 @@ export default function CollectPaymentScreen() {
   const fetchData = useCallback(async () => {
     try {
       const [requestsRes, clientsRes, invoicesRes, jobsRes, receiptsRes, stripeRes] = await Promise.all([
-        api.get('/api/payment-requests'),
-        api.get('/api/clients'),
-        api.get('/api/invoices'),
-        api.get('/api/jobs'),
-        api.get('/api/receipts'),
-        api.get('/api/stripe/connect/status').catch(() => ({ connected: false })),
+        api.get<PaymentRequest[]>('/api/payment-requests'),
+        api.get<Client[]>('/api/clients'),
+        api.get<Invoice[]>('/api/invoices'),
+        api.get<Job[]>('/api/jobs'),
+        api.get<Receipt[]>('/api/receipts'),
+        api.get<StripeConnectStatus>('/api/stripe/connect/status').catch(() => ({ data: { connected: false } as StripeConnectStatus })),
       ]);
       
-      setPaymentRequests(requestsRes || []);
-      setClients(clientsRes || []);
-      setInvoices(invoicesRes || []);
-      setJobs(jobsRes || []);
-      setReceipts(receiptsRes || []);
-      setStripeStatus(stripeRes);
+      if (requestsRes.data) setPaymentRequests(Array.isArray(requestsRes.data) ? requestsRes.data : []);
+      if (clientsRes.data) setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
+      if (invoicesRes.data) setInvoices(Array.isArray(invoicesRes.data) ? invoicesRes.data : []);
+      if (jobsRes.data) setJobs(Array.isArray(jobsRes.data) ? jobsRes.data : []);
+      if (receiptsRes.data) setReceipts(Array.isArray(receiptsRes.data) ? receiptsRes.data : []);
+      if (stripeRes.data) setStripeStatus(stripeRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -240,7 +244,7 @@ export default function CollectPaymentScreen() {
         setQrLoading(true);
         setQrCodeDataUrl(null);
         try {
-          const response = await api.get(`/api/payment-requests/${selectedRequest.id}/qrcode`);
+          const response = await api.get<QRCodeResponse>(`/api/payment-requests/${selectedRequest.id}/qrcode`);
           if (response.data?.qrCode) {
             setQrCodeDataUrl(response.data.qrCode);
           }
@@ -299,7 +303,7 @@ export default function CollectPaymentScreen() {
 
     setIsSubmitting(true);
     try {
-      const response = await api.post('/api/payment-requests', {
+      const response = await api.post<PaymentRequest>('/api/payment-requests', {
         amount: parseFloat(newAmount),
         description: newDescription.trim(),
         reference: newReference.trim() || undefined,
@@ -312,7 +316,7 @@ export default function CollectPaymentScreen() {
       if (response.data) {
         setShowCreateModal(false);
         resetCreateForm();
-        setSelectedRequest(response.data);
+        setSelectedRequest(response.data as PaymentRequest);
         setShowShareModal(true);
         fetchData();
         Alert.alert('Success', 'Payment request created');
@@ -368,7 +372,7 @@ export default function CollectPaymentScreen() {
 
     setIsSubmitting(true);
     try {
-      const response = await api.post('/api/receipts', {
+      const response = await api.post<Receipt>('/api/receipts', {
         amount: parseFloat(receiptAmount),
         description: receiptDescription.trim() || 'Payment received',
         paymentMethod: receiptPaymentMethod,
@@ -382,8 +386,9 @@ export default function CollectPaymentScreen() {
         setShowReceiptModal(false);
         resetReceiptForm();
         fetchData();
-        Alert.alert('Success', `Receipt ${response.data.receiptNumber} created`);
-        router.push(`/more/receipt/${response.data.id}`);
+        const receiptData = response.data as Receipt;
+        Alert.alert('Success', `Receipt ${receiptData.receiptNumber} created`);
+        router.push(`/more/receipt/${receiptData.id}`);
       } else if (response.error) {
         Alert.alert('Error', response.error);
       }

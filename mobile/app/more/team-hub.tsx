@@ -963,7 +963,7 @@ export default function TeamHubScreen() {
           showsUserLocation
           showsMyLocationButton={false}
         >
-          {showTeamOnMap && teamLocations.map(p => {
+          {showTeamOnMap && Array.isArray(teamMembers) && teamLocations.map(p => {
             const member = teamMembers.find(m => m.userId === p.userId);
             if (!member) return null;
             const status = p.status || 'offline';
@@ -1313,7 +1313,7 @@ export default function TeamHubScreen() {
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Team Hub</Text>
           <Text style={styles.headerSubtitle}>
-            {teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''} • {presence.filter(p => p.status === 'online' || p.status === 'on_job').length} active
+            {Array.isArray(teamMembers) ? teamMembers.length : 0} member{(Array.isArray(teamMembers) ? teamMembers.length : 0) !== 1 ? 's' : ''} • {Array.isArray(presence) ? presence.filter(p => p.status === 'online' || p.status === 'on_job').length : 0} active
           </Text>
         </View>
         <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
