@@ -11,6 +11,9 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Modal,
+  Linking,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -44,6 +47,35 @@ interface Participant {
 interface Job {
   id: string;
   title: string;
+  status: string;
+  clientId?: string;
+}
+
+interface Client {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  email?: string;
+}
+
+interface JobPhoto {
+  id: string;
+  url: string;
+  caption?: string;
+}
+
+interface Quote {
+  id: string;
+  quoteNumber: string;
+  total: number;
+  status: string;
+}
+
+interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  total: number;
   status: string;
 }
 
@@ -85,63 +117,98 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   messageBadge: {
     backgroundColor: colors.muted,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: 4,
     borderRadius: radius.full,
   },
   messageBadgeText: {
     fontSize: 11,
+    fontWeight: '500',
     color: colors.mutedForeground,
+  },
+  internalBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.infoLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  internalBannerIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.info,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  internalBannerText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.info,
     fontWeight: '500',
   },
+  contactClientBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    gap: 4,
+  },
+  contactClientText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
   participantsBanner: {
-    margin: spacing.md,
-    padding: spacing.md,
-    backgroundColor: colors.info + '10',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.info + '20',
+    backgroundColor: colors.card,
+    padding: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   participantsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
+    gap: 6,
+    marginBottom: 8,
   },
   participantsTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '500',
-    color: colors.info,
+    color: colors.mutedForeground,
   },
   participantsList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.xs,
+    gap: 6,
   },
   participantChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
-    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.muted,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: radius.md,
+    borderRadius: radius.full,
     gap: 4,
   },
   participantAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.info + '20',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   participantInitials: {
     fontSize: 9,
     fontWeight: '600',
-    color: colors.info,
+    color: colors.primaryForeground,
   },
   participantName: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 11,
     color: colors.foreground,
   },
   participantRole: {
@@ -150,40 +217,42 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   messagesContainer: {
     flex: 1,
-    paddingHorizontal: spacing.md,
   },
   messagesContent: {
-    paddingVertical: spacing.md,
-    flexGrow: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl * 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingBottom: 100,
   },
   emptyContainer: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.xl * 2,
+    paddingVertical: 60,
   },
   emptyIcon: {
-    marginBottom: spacing.md,
-    opacity: 0.5,
+    opacity: 0.3,
+    marginBottom: spacing.sm,
   },
   emptyText: {
-    fontSize: 14,
-    color: colors.mutedForeground,
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.foreground,
   },
   emptySubtext: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: 4,
+  },
+  systemMessage: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  systemMessageText: {
     fontSize: 12,
     color: colors.mutedForeground,
-    opacity: 0.7,
+    fontStyle: 'italic',
   },
   messageRow: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   messageRowOwn: {
     alignItems: 'flex-end',
@@ -195,22 +264,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     color: colors.mutedForeground,
-    marginBottom: 4,
+    marginBottom: 2,
     marginLeft: 4,
   },
   messageBubble: {
     maxWidth: '80%',
-    padding: spacing.md,
-    borderRadius: radius.xl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 16,
   },
   messageBubbleOwn: {
     backgroundColor: colors.primary,
     borderBottomRightRadius: 4,
   },
   messageBubbleOther: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.muted,
     borderBottomLeftRadius: 4,
   },
   messageText: {
@@ -234,40 +302,56 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   messageTimeOther: {
     color: colors.mutedForeground,
   },
-  systemMessage: {
-    alignSelf: 'center',
-    backgroundColor: colors.muted,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.full,
-    marginVertical: spacing.sm,
+  attachmentPreview: {
+    marginTop: spacing.sm,
+    borderRadius: radius.md,
+    overflow: 'hidden',
   },
-  systemMessageText: {
-    fontSize: 11,
-    color: colors.mutedForeground,
-    fontStyle: 'italic',
+  attachmentImage: {
+    width: 200,
+    height: 150,
+    borderRadius: radius.md,
+  },
+  attachmentDoc: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+    gap: 6,
+  },
+  attachmentDocText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   composerContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: spacing.md,
+    padding: spacing.sm,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    gap: spacing.sm,
+    gap: spacing.xs,
+  },
+  attachButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   composerInput: {
     flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    backgroundColor: colors.background,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.muted,
+    borderRadius: 20,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     fontSize: 15,
     color: colors.foreground,
+    maxHeight: 100,
+    minHeight: 40,
   },
   sendButton: {
     width: 40,
@@ -278,7 +362,93 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   sendButtonDisabled: {
+    opacity: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  modalCloseBtn: {
+    padding: spacing.xs,
+  },
+  attachmentGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  attachmentOption: {
+    width: '30%',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.muted,
+  },
+  attachmentOptionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  attachmentOptionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.foreground,
+    textAlign: 'center',
+  },
+  documentsList: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  documentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.muted,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    gap: spacing.sm,
+  },
+  documentIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  documentInfo: {
+    flex: 1,
+  },
+  documentTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  documentMeta: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 2,
   },
 });
 
@@ -290,12 +460,19 @@ export default function JobChatScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const [job, setJob] = useState<Job | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [messages, setMessages] = useState<JobChatMessage[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [showAttachModal, setShowAttachModal] = useState(false);
+  const [showDocumentsModal, setShowDocumentsModal] = useState(false);
+  const [documentType, setDocumentType] = useState<'photos' | 'quotes' | 'invoices' | null>(null);
+  const [jobPhotos, setJobPhotos] = useState<JobPhoto[]>([]);
+  const [jobQuotes, setJobQuotes] = useState<Quote[]>([]);
+  const [jobInvoices, setJobInvoices] = useState<Invoice[]>([]);
 
   useEffect(() => {
     loadData();
@@ -314,9 +491,23 @@ export default function JobChatScreen() {
       const response = await api.get<Job>(`/api/jobs/${jobId}`);
       if (response.data) {
         setJob(response.data);
+        if (response.data.clientId) {
+          loadClient(response.data.clientId);
+        }
       }
     } catch (error) {
       console.error('Error loading job:', error);
+    }
+  };
+
+  const loadClient = async (clientId: string) => {
+    try {
+      const response = await api.get<Client>(`/api/clients/${clientId}`);
+      if (response.data) {
+        setClient(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading client:', error);
     }
   };
 
@@ -345,6 +536,23 @@ export default function JobChatScreen() {
     }
   };
 
+  const loadJobDocuments = async (type: 'photos' | 'quotes' | 'invoices') => {
+    try {
+      if (type === 'photos') {
+        const response = await api.get<JobPhoto[]>(`/api/jobs/${jobId}/photos`);
+        setJobPhotos(response.data || []);
+      } else if (type === 'quotes') {
+        const response = await api.get<Quote[]>(`/api/quotes?jobId=${jobId}`);
+        setJobQuotes(response.data || []);
+      } else if (type === 'invoices') {
+        const response = await api.get<Invoice[]>(`/api/invoices?jobId=${jobId}`);
+        setJobInvoices(response.data || []);
+      }
+    } catch (error) {
+      console.error(`Error loading ${type}:`, error);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadMessages();
@@ -370,6 +578,95 @@ export default function JobChatScreen() {
     }
   };
 
+  const handleAttachPhoto = async () => {
+    setShowAttachModal(false);
+    Alert.alert(
+      'Add Photo',
+      'To share photos in this discussion, please add them to the job\'s photo gallery first, then share from "Job Photos".',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Go to Job Photos', 
+          onPress: () => router.push(`/job/${jobId}` as any) 
+        }
+      ]
+    );
+  };
+
+  const handleTakePhoto = async () => {
+    setShowAttachModal(false);
+    Alert.alert(
+      'Take Photo',
+      'To share photos in this discussion, please add them to the job\'s photo gallery first, then share from "Job Photos".',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Go to Job', 
+          onPress: () => router.push(`/job/${jobId}` as any) 
+        }
+      ]
+    );
+  };
+
+  const handleShareDocument = async (type: 'photos' | 'quotes' | 'invoices') => {
+    setShowAttachModal(false);
+    setDocumentType(type);
+    await loadJobDocuments(type);
+    setShowDocumentsModal(true);
+  };
+
+  const handleSelectDocument = async (docType: string, docId: string, docName: string) => {
+    setShowDocumentsModal(false);
+    setIsSending(true);
+    try {
+      await api.post(`/api/jobs/${jobId}/chat`, {
+        message: `Shared ${docType}: ${docName}`,
+        messageType: docType.toLowerCase(),
+        attachmentName: docName,
+        attachmentUrl: docId,
+      });
+      await loadMessages();
+      Alert.alert('Shared', `${docType} "${docName}" shared. Team members can tap to view.`);
+    } catch (error) {
+      Alert.alert('Error', `Failed to share ${docType}`);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleAttachmentTap = (msg: JobChatMessage) => {
+    const docType = msg.messageType;
+    const docId = msg.attachmentUrl;
+    
+    if (docType === 'quote' && docId) {
+      router.push(`/more/quote/${docId}` as any);
+    } else if (docType === 'invoice' && docId) {
+      router.push(`/more/invoice/${docId}` as any);
+    } else if (docType === 'photo' && docId) {
+      router.push(`/job/${jobId}` as any);
+    } else {
+      router.push(`/job/${jobId}` as any);
+    }
+  };
+
+  const handleContactClient = () => {
+    if (!client) {
+      Alert.alert('No Client', 'This job does not have an assigned client');
+      return;
+    }
+
+    Alert.alert(
+      `Contact ${client.firstName}`,
+      'How would you like to contact the client?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        client.phone ? { text: 'Call', onPress: () => Linking.openURL(`tel:${client.phone}`) } : null,
+        client.phone ? { text: 'SMS', onPress: () => Linking.openURL(`sms:${client.phone}`) } : null,
+        client.email ? { text: 'Email', onPress: () => Linking.openURL(`mailto:${client.email}`) } : null,
+      ].filter(Boolean) as any[]
+    );
+  };
+
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -391,24 +688,55 @@ export default function JobChatScreen() {
 
   const isOwnMessage = (msg: JobChatMessage) => msg.userId === user?.id;
 
+  const renderAttachment = (msg: JobChatMessage) => {
+    if (!msg.attachmentName && !msg.attachmentUrl) return null;
+    
+    const isOwn = isOwnMessage(msg);
+    const docName = msg.attachmentName || 'Document';
+    const docType = msg.messageType || 'document';
+    const hasLink = msg.attachmentUrl;
+    
+    return (
+      <TouchableOpacity 
+        style={styles.attachmentDoc}
+        onPress={() => handleAttachmentTap(msg)}
+        disabled={!hasLink}
+        activeOpacity={0.7}
+      >
+        <Feather 
+          name={docType === 'quote' ? 'file-text' : docType === 'invoice' ? 'dollar-sign' : docType === 'photo' ? 'image' : 'file'} 
+          size={14} 
+          color={isOwn ? colors.primaryForeground : colors.foreground} 
+        />
+        <Text style={[styles.attachmentDocText, { color: isOwn ? colors.primaryForeground : colors.foreground }]}>
+          {docName}
+        </Text>
+        {hasLink && (
+          <Feather 
+            name="external-link" 
+            size={12} 
+            color={isOwn ? colors.primaryForeground : colors.mutedForeground} 
+          />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   if (isLoading) {
     return (
-      <>
-        <Stack.Screen options={{ title: 'Job Chat' }} />
-        <View style={[styles.container, styles.loadingContainer]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </>
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
     );
   }
 
   return (
     <>
-      <Stack.Screen options={{ title: job?.title || 'Job Chat' }} />
+      <Stack.Screen options={{ title: 'Job Discussion' }} />
 
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <View style={styles.headerCard}>
@@ -416,7 +744,7 @@ export default function JobChatScreen() {
             <Feather name="message-circle" size={20} color={colors.primary} />
           </View>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Job Discussion</Text>
+            <Text style={styles.headerTitle}>Team Discussion</Text>
             <Text style={styles.headerSubtitle} numberOfLines={1}>{job?.title}</Text>
           </View>
           <View style={styles.messageBadge}>
@@ -424,6 +752,21 @@ export default function JobChatScreen() {
               {messages.length} {messages.length === 1 ? 'message' : 'messages'}
             </Text>
           </View>
+        </View>
+
+        <View style={styles.internalBanner}>
+          <View style={styles.internalBannerIcon}>
+            <Feather name="users" size={12} color="#fff" />
+          </View>
+          <Text style={styles.internalBannerText}>
+            This is an internal team discussion. Messages are not sent to the client.
+          </Text>
+          {client && (
+            <TouchableOpacity style={styles.contactClientBtn} onPress={handleContactClient}>
+              <Feather name="phone" size={12} color={colors.primaryForeground} />
+              <Text style={styles.contactClientText}>Contact Client</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {participants.length > 0 && (
@@ -459,7 +802,7 @@ export default function JobChatScreen() {
             <View style={styles.emptyContainer}>
               <Feather name="message-circle" size={48} color={colors.mutedForeground} style={styles.emptyIcon} />
               <Text style={styles.emptyText}>No messages yet</Text>
-              <Text style={styles.emptySubtext}>Start the conversation about this job</Text>
+              <Text style={styles.emptySubtext}>Start the internal discussion about this job</Text>
             </View>
           ) : (
             messages.map((msg) => {
@@ -479,6 +822,7 @@ export default function JobChatScreen() {
                     <Text style={[styles.messageText, own ? styles.messageTextOwn : styles.messageTextOther]}>
                       {msg.message}
                     </Text>
+                    {renderAttachment(msg)}
                     <Text style={[styles.messageTime, own ? styles.messageTimeOwn : styles.messageTimeOther]}>
                       {formatTime(msg.createdAt)}
                     </Text>
@@ -490,6 +834,13 @@ export default function JobChatScreen() {
         </ScrollView>
 
         <View style={styles.composerContainer}>
+          <TouchableOpacity 
+            style={styles.attachButton} 
+            onPress={() => setShowAttachModal(true)}
+            activeOpacity={0.7}
+          >
+            <Feather name="plus" size={22} color={colors.mutedForeground} />
+          </TouchableOpacity>
           <TextInput
             style={styles.composerInput}
             value={messageText}
@@ -513,6 +864,152 @@ export default function JobChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={showAttachModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAttachModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowAttachModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Share</Text>
+              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowAttachModal(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.attachmentGrid}>
+              <TouchableOpacity style={styles.attachmentOption} onPress={handleTakePhoto}>
+                <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.primaryLight }]}>
+                  <Feather name="camera" size={24} color={colors.primary} />
+                </View>
+                <Text style={styles.attachmentOptionText}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachmentOption} onPress={handleAttachPhoto}>
+                <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.successLight }]}>
+                  <Feather name="image" size={24} color={colors.success} />
+                </View>
+                <Text style={styles.attachmentOptionText}>Gallery</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachmentOption} onPress={() => handleShareDocument('photos')}>
+                <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.warningLight }]}>
+                  <Feather name="folder" size={24} color={colors.warning} />
+                </View>
+                <Text style={styles.attachmentOptionText}>Job Photos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachmentOption} onPress={() => handleShareDocument('quotes')}>
+                <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.infoLight }]}>
+                  <Feather name="file-text" size={24} color={colors.info} />
+                </View>
+                <Text style={styles.attachmentOptionText}>Quotes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachmentOption} onPress={() => handleShareDocument('invoices')}>
+                <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.destructiveLight }]}>
+                  <Feather name="dollar-sign" size={24} color={colors.destructive} />
+                </View>
+                <Text style={styles.attachmentOptionText}>Invoices</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.attachmentOption} 
+                onPress={() => {
+                  setShowAttachModal(false);
+                  router.push(`/job/${jobId}` as any);
+                }}
+              >
+                <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.muted }]}>
+                  <Feather name="briefcase" size={24} color={colors.mutedForeground} />
+                </View>
+                <Text style={styles.attachmentOptionText}>Job Details</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={showDocumentsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDocumentsModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowDocumentsModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {documentType === 'photos' ? 'Job Photos' : 
+                 documentType === 'quotes' ? 'Quotes' : 'Invoices'}
+              </Text>
+              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowDocumentsModal(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.documentsList}>
+              {documentType === 'photos' && jobPhotos.map((photo) => (
+                <TouchableOpacity 
+                  key={photo.id} 
+                  style={styles.documentItem}
+                  onPress={() => handleSelectDocument('Photo', photo.id, photo.caption || 'Job Photo')}
+                >
+                  <Image source={{ uri: photo.url }} style={{ width: 40, height: 40, borderRadius: 8 }} />
+                  <View style={styles.documentInfo}>
+                    <Text style={styles.documentTitle}>{photo.caption || 'Job Photo'}</Text>
+                  </View>
+                  <Feather name="send" size={18} color={colors.primary} />
+                </TouchableOpacity>
+              ))}
+              {documentType === 'quotes' && jobQuotes.map((quote) => (
+                <TouchableOpacity 
+                  key={quote.id} 
+                  style={styles.documentItem}
+                  onPress={() => handleSelectDocument('Quote', quote.id, quote.quoteNumber)}
+                >
+                  <View style={[styles.documentIcon, { backgroundColor: colors.infoLight }]}>
+                    <Feather name="file-text" size={20} color={colors.info} />
+                  </View>
+                  <View style={styles.documentInfo}>
+                    <Text style={styles.documentTitle}>{quote.quoteNumber}</Text>
+                    <Text style={styles.documentMeta}>${(quote.total / 100).toFixed(2)} - {quote.status}</Text>
+                  </View>
+                  <Feather name="send" size={18} color={colors.primary} />
+                </TouchableOpacity>
+              ))}
+              {documentType === 'invoices' && jobInvoices.map((invoice) => (
+                <TouchableOpacity 
+                  key={invoice.id} 
+                  style={styles.documentItem}
+                  onPress={() => handleSelectDocument('Invoice', invoice.id, invoice.invoiceNumber)}
+                >
+                  <View style={[styles.documentIcon, { backgroundColor: colors.warningLight }]}>
+                    <Feather name="dollar-sign" size={20} color={colors.warning} />
+                  </View>
+                  <View style={styles.documentInfo}>
+                    <Text style={styles.documentTitle}>{invoice.invoiceNumber}</Text>
+                    <Text style={styles.documentMeta}>${(invoice.total / 100).toFixed(2)} - {invoice.status}</Text>
+                  </View>
+                  <Feather name="send" size={18} color={colors.primary} />
+                </TouchableOpacity>
+              ))}
+              {((documentType === 'photos' && jobPhotos.length === 0) ||
+                (documentType === 'quotes' && jobQuotes.length === 0) ||
+                (documentType === 'invoices' && jobInvoices.length === 0)) && (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No {documentType} found</Text>
+                  <Text style={styles.emptySubtext}>Add {documentType} to the job first</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </>
   );
 }

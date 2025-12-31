@@ -1323,9 +1323,7 @@ export default function DashboardScreen() {
       />
 
       {/* Trust Banner - Dismissible */}
-      <View style={{ marginBottom: spacing.lg }}>
-        <TrustBanner />
-      </View>
+      <TrustBanner />
 
       {/* Time Tracking Widget - Staff Only */}
       {isStaffUser && (

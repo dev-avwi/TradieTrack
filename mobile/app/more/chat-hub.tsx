@@ -7,7 +7,9 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  Linking,
+  Alert
 } from 'react-native';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -28,6 +30,14 @@ interface User {
   lastName?: string | null;
 }
 
+interface Client {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  email?: string;
+}
+
 interface Conversation {
   otherUser: User;
   lastMessage?: { content: string; createdAt: string };
@@ -39,11 +49,12 @@ interface Job {
   title: string;
   status: string;
   address?: string;
+  clientId?: string;
 }
 
 interface ConversationItem {
   id: string;
-  type: 'team' | 'direct' | 'job';
+  type: 'team' | 'client' | 'job';
   title: string;
   subtitle?: string;
   avatarFallback: string;
@@ -51,10 +62,12 @@ interface ConversationItem {
   lastMessageTime?: string;
   unreadCount: number;
   status?: string;
+  phone?: string;
+  email?: string;
   data: any;
 }
 
-type FilterType = 'all' | 'team' | 'direct' | 'jobs';
+type FilterType = 'all' | 'team' | 'clients' | 'jobs';
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
@@ -91,52 +104,70 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: 2,
   },
-  smsBanner: {
+  infoBanner: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.infoLight,
+    alignItems: 'flex-start',
+    backgroundColor: colors.warningLight,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     gap: 10,
   },
-  smsBannerIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: colors.info,
+  infoBannerIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.warning,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  smsBannerContent: {
+  infoBannerContent: {
     flex: 1,
   },
-  smsBannerTitle: {
+  infoBannerTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.info,
+    color: colors.warning,
   },
-  smsBannerText: {
-    fontSize: 11,
+  infoBannerText: {
+    fontSize: 12,
     color: colors.mutedForeground,
-    marginTop: 1,
+    marginTop: 2,
+    lineHeight: 16,
   },
-  newSmsButton: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
+  quickActionsContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  quickActionButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    padding: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  quickActionButtonPrimary: {
+    backgroundColor: colors.primary,
+  },
+  quickActionButtonSecondary: {
+    backgroundColor: colors.muted,
+  },
+  quickActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  quickActionTextPrimary: {
+    color: colors.primaryForeground,
+  },
+  quickActionTextSecondary: {
+    color: colors.foreground,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -174,17 +205,14 @@ const createStyles = (colors: any) => StyleSheet.create({
     height: 36,
     paddingHorizontal: 14,
     borderRadius: 18,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.muted,
     gap: 6,
   },
   filterChipActive: {
     backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
   filterChipText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: colors.foreground,
   },
@@ -192,45 +220,45 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   filterBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: colors.muted,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
   },
   filterBadgeActive: {
-    backgroundColor: colors.isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
+    backgroundColor: colors.primaryForeground,
   },
   filterBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
-    color: colors.foreground,
+    color: colors.mutedForeground,
   },
   filterBadgeTextActive: {
-    color: colors.primaryForeground,
+    color: colors.primary,
   },
   listContainer: {
     flex: 1,
-    marginTop: 0,
   },
   listContent: {
-    paddingBottom: 24,
-    flexGrow: 1,
+    padding: 16,
+    gap: 8,
   },
   conversationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
     backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   conversationAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -280,6 +308,25 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  contactActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  contactActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: colors.muted,
+    gap: 4,
+  },
+  contactActionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
   emptyState: {
     flex: 1,
     alignItems: 'center',
@@ -306,6 +353,18 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 14,
     color: colors.mutedForeground,
     textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  sectionHeader: {
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });
 
@@ -319,21 +378,21 @@ export default function ChatHubScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   const [teamMessages, setTeamMessages] = useState<TeamChatMessage[]>([]);
-  const [dmConversations, setDmConversations] = useState<Conversation[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
-      const [teamRes, dmRes, jobsRes, membersRes] = await Promise.all([
+      const [teamRes, clientsRes, jobsRes, membersRes] = await Promise.all([
         api.get('/api/team-chat').catch(() => ({ data: [] })),
-        api.get('/api/direct-messages/conversations').catch(() => ({ data: [] })),
+        api.get('/api/clients').catch(() => ({ data: [] })),
         api.get('/api/jobs').catch(() => ({ data: [] })),
         api.get('/api/team/members').catch(() => ({ data: [] }))
       ]);
       
       setTeamMessages(Array.isArray(teamRes.data) ? teamRes.data : []);
-      setDmConversations(Array.isArray(dmRes.data) ? dmRes.data : []);
+      setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
       setJobs(Array.isArray(jobsRes.data) ? jobsRes.data : []);
       setTeamMembers(Array.isArray(membersRes.data) ? membersRes.data : []);
     } catch (error) {
@@ -350,7 +409,6 @@ export default function ChatHubScreen() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  // Refresh data when screen gains focus (syncs with web app)
   useFocusEffect(
     useCallback(() => {
       fetchData();
@@ -362,11 +420,50 @@ export default function ChatHubScreen() {
     fetchData();
   };
 
-  const getUserDisplayName = (user: User) => {
-    if (user.firstName || user.lastName) {
-      return `${user.firstName || ''} ${user.lastName || ''}`.trim();
+  const openSMS = (phone: string, clientName: string) => {
+    if (!phone) {
+      Alert.alert('No Phone Number', `${clientName} doesn't have a phone number on file.`);
+      return;
     }
-    return user.email || 'Unknown';
+    Linking.openURL(`sms:${phone}`);
+  };
+
+  const openCall = (phone: string, clientName: string) => {
+    if (!phone) {
+      Alert.alert('No Phone Number', `${clientName} doesn't have a phone number on file.`);
+      return;
+    }
+    Linking.openURL(`tel:${phone}`);
+  };
+
+  const openEmail = (email: string, clientName: string) => {
+    if (!email) {
+      Alert.alert('No Email', `${clientName} doesn't have an email on file.`);
+      return;
+    }
+    Linking.openURL(`mailto:${email}`);
+  };
+
+  const getIcon = (type: 'team' | 'client' | 'job') => {
+    switch (type) {
+      case 'team':
+        return <Feather name="users" size={20} color={colors.info} />;
+      case 'client':
+        return <Feather name="user" size={20} color={colors.success} />;
+      case 'job':
+        return <Feather name="briefcase" size={20} color={colors.warning} />;
+    }
+  };
+
+  const getIconBg = (type: 'team' | 'client' | 'job') => {
+    switch (type) {
+      case 'team':
+        return colors.infoLight;
+      case 'client':
+        return colors.successLight;
+      case 'job':
+        return colors.warningLight;
+    }
   };
 
   const buildConversationList = (): ConversationItem[] => {
@@ -379,27 +476,28 @@ export default function ChatHubScreen() {
         id: 'team-chat',
         type: 'team',
         title: 'Team Chat',
-        subtitle: `${activeMembers.length + 1} members`,
+        subtitle: `${activeMembers.length + 1} team members`,
         avatarFallback: 'TC',
-        lastMessage: lastTeamMsg?.message,
+        lastMessage: lastTeamMsg?.message || 'In-app team discussion',
         lastMessageTime: lastTeamMsg?.createdAt,
         unreadCount: 0,
         data: null,
       });
     }
 
-    if (filter === 'all' || filter === 'direct') {
-      dmConversations.forEach(convo => {
+    if (filter === 'all' || filter === 'clients') {
+      const recentClients = clients.slice(0, 10);
+      recentClients.forEach(client => {
         items.push({
-          id: `dm-${convo.otherUser.id}`,
-          type: 'direct',
-          title: getUserDisplayName(convo.otherUser),
-          subtitle: convo.otherUser.email || undefined,
-          avatarFallback: getUserDisplayName(convo.otherUser)[0]?.toUpperCase() || '?',
-          lastMessage: convo.lastMessage?.content,
-          lastMessageTime: convo.lastMessage?.createdAt,
-          unreadCount: convo.unreadCount,
-          data: convo.otherUser,
+          id: `client-${client.id}`,
+          type: 'client',
+          title: `${client.firstName} ${client.lastName}`,
+          subtitle: client.phone || client.email || 'No contact info',
+          avatarFallback: `${client.firstName?.[0] || ''}${client.lastName?.[0] || ''}`.toUpperCase(),
+          phone: client.phone,
+          email: client.email,
+          unreadCount: 0,
+          data: client,
         });
       });
     }
@@ -414,7 +512,7 @@ export default function ChatHubScreen() {
           id: `job-${job.id}`,
           type: 'job',
           title: job.title,
-          subtitle: job.address?.split(',')[0],
+          subtitle: job.address?.split(',')[0] || 'Job discussion',
           avatarFallback: job.title[0]?.toUpperCase() || 'J',
           status: job.status,
           unreadCount: 0,
@@ -423,114 +521,101 @@ export default function ChatHubScreen() {
       });
     }
 
-    items.sort((a, b) => {
-      if (a.id === 'team-chat') return -1;
-      if (b.id === 'team-chat') return 1;
-      if (!a.lastMessageTime && !b.lastMessageTime) return 0;
-      if (!a.lastMessageTime) return 1;
-      if (!b.lastMessageTime) return -1;
-      return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
-    });
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      return items.filter(item => 
-        item.title.toLowerCase().includes(term) ||
-        item.subtitle?.toLowerCase().includes(term)
-      );
-    }
-
     return items;
   };
-
-  const handleConversationPress = (item: ConversationItem) => {
-    if (item.type === 'team') {
-      router.push('/more/team-chat');
-    } else if (item.type === 'direct') {
-      router.push('/more/direct-messages');
-    } else if (item.type === 'job') {
-      router.push(`/job/chat?jobId=${item.data.id}`);
-    }
-  };
-
-  const conversationList = buildConversationList();
-  const totalUnread = dmConversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   const formatTime = (dateStr?: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
     
-    if (diffDays === 0) {
-      return date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
+    if (diffHours < 24) {
+      return date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+    } else if (diffHours < 168) {
       return date.toLocaleDateString('en-AU', { weekday: 'short' });
-    } else {
-      return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    }
+    return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  };
+
+  const handleConversationPress = (item: ConversationItem) => {
+    if (item.type === 'team') {
+      router.push('/more/team-chat');
+    } else if (item.type === 'job') {
+      router.push(`/job/${item.data.id}`);
+    } else if (item.type === 'client') {
+      router.push(`/client/${item.data.id}` as any);
     }
   };
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'team':
-        return <Feather name="users" size={20} color={colors.primary} />;
-      case 'direct':
-        return <Feather name="mail" size={20} color={colors.info} />;
-      case 'job':
-        return <Feather name="briefcase" size={20} color={colors.warning} />;
-    }
-    return null;
-  };
+  const conversationList = buildConversationList();
+  const totalUnread = conversationList.reduce((sum, c) => sum + c.unreadCount, 0);
 
-  const getIconBg = (type: string) => {
-    switch (type) {
-      case 'team':
-        return colors.primaryLight;
-      case 'direct':
-        return colors.infoLight;
-      case 'job':
-        return colors.warningLight;
-    }
-    return colors.muted;
-  };
+  const filteredList = conversationList.filter(item => {
+    if (!searchTerm) return true;
+    return item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           item.subtitle?.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Chat Hub' }} />
+      <Stack.Screen options={{ title: 'Communications' }} />
       
       <View style={styles.container}>
         <View style={styles.headerCard}>
           <View style={styles.headerIconContainer}>
-            <Feather name="message-circle" size={24} color={colors.primary} />
+            <Feather name="message-circle" size={22} color={colors.primary} />
           </View>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Chat Hub</Text>
-            <Text style={styles.headerSubtitle}>SMS messaging with clients via Twilio</Text>
+            <Text style={styles.headerTitle}>Communications Hub</Text>
+            <Text style={styles.headerSubtitle}>Contact clients & team members</Text>
           </View>
         </View>
 
-        <View style={styles.smsBanner}>
-          <View style={styles.smsBannerIcon}>
-            <Feather name="smartphone" size={16} color="#fff" />
+        <View style={styles.infoBanner}>
+          <View style={styles.infoBannerIcon}>
+            <Feather name="info" size={14} color="#fff" />
           </View>
-          <View style={styles.smsBannerContent}>
-            <Text style={styles.smsBannerTitle}>Twilio SMS Integration</Text>
-            <Text style={styles.smsBannerText}>Send real SMS messages to clients. Standard SMS rates apply.</Text>
+          <View style={styles.infoBannerContent}>
+            <Text style={styles.infoBannerTitle}>How client messaging works</Text>
+            <Text style={styles.infoBannerText}>
+              Tap a client to view their details. Use the Call, SMS or Email buttons to contact them using your phone's built-in apps.
+            </Text>
           </View>
+        </View>
+
+        <View style={styles.quickActionsContainer}>
+          <TouchableOpacity 
+            style={[styles.quickActionButton, styles.quickActionButtonPrimary]}
+            onPress={() => router.push('/more/clients')}
+          >
+            <Feather name="users" size={18} color={colors.primaryForeground} />
+            <Text style={[styles.quickActionText, styles.quickActionTextPrimary]}>All Clients</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.quickActionButton, styles.quickActionButtonSecondary]}
+            onPress={() => router.push('/more/team-chat')}
+          >
+            <Feather name="message-square" size={18} color={colors.foreground} />
+            <Text style={[styles.quickActionText, styles.quickActionTextSecondary]}>Team Chat</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.searchContainer}>
           <Feather name="search" size={18} color={colors.mutedForeground} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search conversations..."
+            placeholder="Search clients, team, jobs..."
             placeholderTextColor={colors.mutedForeground}
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
+          {searchTerm.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchTerm('')}>
+              <Feather name="x" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.filterWrapper}>
@@ -547,30 +632,16 @@ export default function ChatHubScreen() {
               <Text style={[styles.filterChipText, filter === 'all' && styles.filterChipTextActive]}>
                 All
               </Text>
-              {totalUnread > 0 && (
-                <View style={[styles.filterBadge, filter === 'all' && styles.filterBadgeActive]}>
-                  <Text style={[styles.filterBadgeText, filter === 'all' && styles.filterBadgeTextActive]}>
-                    {totalUnread}
-                  </Text>
-                </View>
-              )}
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setFilter('direct')}
-              style={[styles.filterChip, filter === 'direct' && styles.filterChipActive]}
+              onPress={() => setFilter('clients')}
+              style={[styles.filterChip, filter === 'clients' && styles.filterChipActive]}
               activeOpacity={0.7}
             >
-              <Feather name="smartphone" size={14} color={filter === 'direct' ? colors.primaryForeground : colors.foreground} />
-              <Text style={[styles.filterChipText, filter === 'direct' && styles.filterChipTextActive]}>
-                Client SMS
+              <Feather name="user" size={14} color={filter === 'clients' ? colors.primaryForeground : colors.foreground} />
+              <Text style={[styles.filterChipText, filter === 'clients' && styles.filterChipTextActive]}>
+                Clients
               </Text>
-              {totalUnread > 0 && (
-                <View style={[styles.filterBadge, filter === 'direct' && styles.filterBadgeActive]}>
-                  <Text style={[styles.filterBadgeText, filter === 'direct' && styles.filterBadgeTextActive]}>
-                    {totalUnread}
-                  </Text>
-                </View>
-              )}
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setFilter('team')}
@@ -579,7 +650,7 @@ export default function ChatHubScreen() {
             >
               <Feather name="users" size={14} color={filter === 'team' ? colors.primaryForeground : colors.foreground} />
               <Text style={[styles.filterChipText, filter === 'team' && styles.filterChipTextActive]}>
-                Team (In-App)
+                Team
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -606,18 +677,18 @@ export default function ChatHubScreen() {
             <View style={styles.emptyState}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
-          ) : conversationList.length === 0 ? (
+          ) : filteredList.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconContainer}>
                 <Feather name="message-circle" size={48} color={colors.mutedForeground} />
               </View>
-              <Text style={styles.emptyTitle}>No conversations</Text>
+              <Text style={styles.emptyTitle}>No results</Text>
               <Text style={styles.emptySubtitle}>
-                {searchTerm ? 'Try a different search term' : 'Tap + to start a new SMS conversation with a client'}
+                {searchTerm ? 'Try a different search term' : 'Add clients to start communicating'}
               </Text>
             </View>
           ) : (
-            conversationList.map((item) => (
+            filteredList.map((item) => (
               <TouchableOpacity 
                 key={item.id}
                 style={styles.conversationCard} 
@@ -642,7 +713,7 @@ export default function ChatHubScreen() {
                   
                   <View style={styles.conversationPreview}>
                     <Text style={styles.conversationMessage} numberOfLines={1}>
-                      {item.lastMessage || item.subtitle || 'No messages yet'}
+                      {item.lastMessage || item.subtitle || ''}
                     </Text>
                     {item.unreadCount > 0 && (
                       <View style={styles.unreadBadge}>
@@ -650,6 +721,47 @@ export default function ChatHubScreen() {
                       </View>
                     )}
                   </View>
+
+                  {item.type === 'client' && (item.phone || item.email) && (
+                    <View style={styles.contactActions}>
+                      {item.phone && (
+                        <>
+                          <TouchableOpacity 
+                            style={styles.contactActionBtn}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              openCall(item.phone!, item.title);
+                            }}
+                          >
+                            <Feather name="phone" size={12} color={colors.success} />
+                            <Text style={styles.contactActionText}>Call</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={styles.contactActionBtn}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              openSMS(item.phone!, item.title);
+                            }}
+                          >
+                            <Feather name="message-square" size={12} color={colors.primary} />
+                            <Text style={styles.contactActionText}>SMS</Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
+                      {item.email && (
+                        <TouchableOpacity 
+                          style={styles.contactActionBtn}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            openEmail(item.email!, item.title);
+                          }}
+                        >
+                          <Feather name="mail" size={12} color={colors.info} />
+                          <Text style={styles.contactActionText}>Email</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
                 </View>
                 
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
@@ -657,14 +769,6 @@ export default function ChatHubScreen() {
             ))
           )}
         </ScrollView>
-        
-        <TouchableOpacity 
-          style={styles.newSmsButton}
-          onPress={() => router.push('/more/new-sms-conversation')}
-          activeOpacity={0.8}
-        >
-          <Feather name="edit-3" size={24} color="#fff" />
-        </TouchableOpacity>
       </View>
     </>
   );

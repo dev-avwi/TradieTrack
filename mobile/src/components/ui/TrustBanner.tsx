@@ -89,6 +89,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     borderWidth: 1,
     borderColor: isDark ? colors.info : '#bfdbfe',
     position: 'relative',
+    marginBottom: spacing.lg,
   },
   dismissButton: {
     position: 'absolute',
