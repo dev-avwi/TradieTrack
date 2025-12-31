@@ -1092,24 +1092,56 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     position: 'absolute',
     top: Platform.OS === 'ios' ? 60 : 40,
     right: 20,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deletePhotoButton: {
+  // Bottom toolbar for photo actions
+  photoToolbar: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 60 : 40,
-    alignSelf: 'center',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16, // Safe area
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  photoToolbarRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    gap: 8,
+  },
+  photoToolbarButton: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    minHeight: 56,
+  },
+  photoToolbarButtonText: {
+    fontSize: 11,
+    color: '#fff',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  photoToolbarDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  // Legacy styles kept for compatibility but now using photoToolbar
+  deletePhotoButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.destructive,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
   },
   deletePhotoText: {
     color: colors.primaryForeground,
@@ -4675,48 +4707,97 @@ export default function JobDetailScreen() {
                 style={styles.fullPhoto}
                 resizeMode="contain"
               />
+              
+              {/* Close button - top right */}
               <TouchableOpacity 
                 style={styles.closePhotoButton}
                 onPress={() => setSelectedPhoto(null)}
                 data-testid="button-close-photo"
               >
-                <Feather name="x" size={24} color={colors.primaryForeground} />
+                <Feather name="x" size={24} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.savePhotoButton, isSavingMedia && { opacity: 0.6 }]}
-                onPress={() => handleSaveMedia(selectedPhoto)}
-                disabled={isSavingMedia}
-                data-testid="button-share-photo"
-              >
-                <Feather name={isSavingMedia ? "loader" : "share"} size={18} color={colors.primaryForeground} />
-                <Text style={styles.savePhotoText}>{isSavingMedia ? 'Preparing...' : 'Share Photo'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.markupPhotoButton}
-                onPress={() => setShowAnnotationEditor(true)}
-                data-testid="button-markup-photo"
-              >
-                <Feather name="edit-2" size={18} color={colors.primaryForeground} />
-                <Text style={styles.markupPhotoText}>Markup</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.categoryPhotoButton}
-                onPress={() => handleChangePhotoCategory(selectedPhoto)}
-                data-testid="button-change-category"
-              >
-                <Feather name="tag" size={18} color={colors.primaryForeground} />
-                <Text style={styles.categoryPhotoText}>
-                  {selectedPhoto.category ? selectedPhoto.category.charAt(0).toUpperCase() + selectedPhoto.category.slice(1) : 'General'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.deletePhotoButton}
-                onPress={() => handleDeletePhoto(selectedPhoto)}
-                data-testid="button-delete-photo"
-              >
-                <Feather name="trash-2" size={18} color={colors.primaryForeground} />
-                <Text style={styles.deletePhotoText}>Delete Photo</Text>
-              </TouchableOpacity>
+              
+              {/* Bottom toolbar with all actions */}
+              <View style={styles.photoToolbar}>
+                {/* Category badge display */}
+                <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 8 }}>
+                  <View style={{ 
+                    backgroundColor: selectedPhoto.category === 'before' ? colors.info + '30' : 
+                                    selectedPhoto.category === 'after' ? colors.success + '30' : 
+                                    selectedPhoto.category === 'progress' ? colors.warning + '30' : 
+                                    'rgba(255,255,255,0.15)',
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}>
+                    <Feather 
+                      name="tag" 
+                      size={14} 
+                      color={selectedPhoto.category === 'before' ? colors.info : 
+                             selectedPhoto.category === 'after' ? colors.success : 
+                             selectedPhoto.category === 'progress' ? colors.warning : '#fff'} 
+                    />
+                    <Text style={{ 
+                      color: selectedPhoto.category === 'before' ? colors.info : 
+                             selectedPhoto.category === 'after' ? colors.success : 
+                             selectedPhoto.category === 'progress' ? colors.warning : '#fff',
+                      fontWeight: '600',
+                      fontSize: 13,
+                    }}>
+                      {selectedPhoto.category ? selectedPhoto.category.charAt(0).toUpperCase() + selectedPhoto.category.slice(1) : 'General'}
+                    </Text>
+                  </View>
+                </View>
+                
+                {/* Action buttons row */}
+                <View style={styles.photoToolbarRow}>
+                  <TouchableOpacity 
+                    style={styles.photoToolbarButton}
+                    onPress={() => handleSaveMedia(selectedPhoto)}
+                    disabled={isSavingMedia}
+                    data-testid="button-share-photo"
+                  >
+                    <Feather name={isSavingMedia ? "loader" : "share"} size={22} color="#fff" />
+                    <Text style={styles.photoToolbarButtonText}>Share</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.photoToolbarDivider} />
+                  
+                  <TouchableOpacity 
+                    style={styles.photoToolbarButton}
+                    onPress={() => setShowAnnotationEditor(true)}
+                    data-testid="button-markup-photo"
+                  >
+                    <Feather name="edit-2" size={22} color="#fff" />
+                    <Text style={styles.photoToolbarButtonText}>Markup</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.photoToolbarDivider} />
+                  
+                  <TouchableOpacity 
+                    style={styles.photoToolbarButton}
+                    onPress={() => handleChangePhotoCategory(selectedPhoto)}
+                    data-testid="button-change-category"
+                  >
+                    <Feather name="folder" size={22} color="#fff" />
+                    <Text style={styles.photoToolbarButtonText}>Category</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.photoToolbarDivider} />
+                  
+                  <TouchableOpacity 
+                    style={styles.photoToolbarButton}
+                    onPress={() => handleDeletePhoto(selectedPhoto)}
+                    data-testid="button-delete-photo"
+                  >
+                    <Feather name="trash-2" size={22} color={colors.destructive} />
+                    <Text style={[styles.photoToolbarButtonText, { color: colors.destructive }]}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </>
           )}
         </View>
