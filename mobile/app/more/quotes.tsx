@@ -8,11 +8,13 @@ import {
   StyleSheet,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useQuotesStore, useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
@@ -71,11 +73,15 @@ function KPICard({
 function QuoteCard({ 
   quote, 
   clientName,
-  onPress 
+  onPress,
+  onSend,
+  onConvertToInvoice,
 }: { 
   quote: any;
   clientName: string;
   onPress: () => void;
+  onSend?: () => void;
+  onConvertToInvoice?: () => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -100,6 +106,21 @@ function QuoteCard({
       default: return colors.primary;
     }
   };
+
+  const getQuickAction = () => {
+    switch (quote.status) {
+      case 'draft':
+        return { label: 'Send', icon: 'send' as const, color: colors.primary, action: onSend };
+      case 'sent':
+        return { label: 'Resend', icon: 'refresh-cw' as const, color: colors.info, action: onSend };
+      case 'accepted':
+        return { label: 'Invoice', icon: 'arrow-right' as const, color: colors.success, action: onConvertToInvoice };
+      default:
+        return null;
+    }
+  };
+
+  const quickAction = getQuickAction();
 
   return (
     <AnimatedCardPressable
@@ -131,6 +152,23 @@ function QuoteCard({
             </Text>
           </View>
         </View>
+
+        {/* Inline Quick Action - Web Parity */}
+        {quickAction && (
+          <View style={styles.quickActionRow}>
+            <TouchableOpacity
+              style={[styles.quickActionButton, { backgroundColor: quickAction.color }]}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                quickAction.action?.();
+              }}
+              activeOpacity={0.7}
+            >
+              <Feather name={quickAction.icon} size={14} color={colors.white} />
+              <Text style={styles.quickActionText}>{quickAction.label}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
       <View style={styles.quoteCardChevron}>
         <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
@@ -209,6 +247,46 @@ export default function QuotesScreen() {
       case 'archived': return 'ARCHIVED QUOTES';
       default: return 'QUOTES';
     }
+  };
+
+  const handleSendQuote = async (quoteId: string) => {
+    const quote = quotes.find(q => q.id === quoteId);
+    const client = clients.find(c => c.id === quote?.clientId);
+    
+    if (!client?.email) {
+      Alert.alert(
+        'No Email Address',
+        'This client does not have an email address. Would you like to view the quote and add one?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'View Quote', onPress: () => router.push(`/more/quote/${quoteId}`) }
+        ]
+      );
+      return;
+    }
+    
+    router.push(`/more/quote/${quoteId}`);
+  };
+
+  const handleConvertToInvoice = async (quoteId: string) => {
+    const quote = quotes.find(q => q.id === quoteId);
+    
+    Alert.alert(
+      'Create Invoice',
+      `Create an invoice from quote ${quote?.quoteNumber}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Create Invoice', 
+          onPress: () => {
+            router.push({
+              pathname: '/more/invoice/new',
+              params: { fromQuoteId: quoteId }
+            });
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -381,6 +459,8 @@ export default function QuotesScreen() {
                     quote={quote}
                     clientName={getClientName(quote.clientId)}
                     onPress={() => router.push(`/more/quote/${quote.id}`)}
+                    onSend={() => handleSendQuote(quote.id)}
+                    onConvertToInvoice={() => handleConvertToInvoice(quote.id)}
                   />
                 ))}
               </View>
@@ -643,5 +723,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   quoteCardChevron: {
     justifyContent: 'center',
     paddingRight: spacing.md,
+  },
+  quickActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  quickActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+  },
+  quickActionText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

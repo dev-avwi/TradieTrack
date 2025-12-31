@@ -8,11 +8,13 @@ import {
   StyleSheet,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useInvoicesStore, useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
@@ -36,11 +38,15 @@ const navigateToCreateInvoice = () => {
 function InvoiceCard({ 
   invoice, 
   clientName,
-  onPress 
+  onPress,
+  onSend,
+  onMarkPaid,
 }: { 
   invoice: any;
   clientName: string;
   onPress: () => void;
+  onSend?: () => void;
+  onMarkPaid?: () => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -66,36 +72,35 @@ function InvoiceCard({
     }
   };
 
-  const getNextAction = () => {
+  const getQuickAction = () => {
     switch (invoice.status) {
       case 'draft':
         return { 
           label: 'Send', 
           icon: 'send' as const, 
           color: colors.primary,
+          action: onSend,
         };
       case 'sent':
         return { 
-          label: 'Collect', 
-          icon: 'credit-card' as const, 
+          label: 'Paid', 
+          icon: 'check-circle' as const, 
           color: colors.success,
+          action: onMarkPaid,
         };
       case 'overdue':
         return { 
-          label: 'Remind', 
-          icon: 'bell' as const, 
-          color: colors.destructive,
+          label: 'Paid', 
+          icon: 'check-circle' as const, 
+          color: colors.success,
+          action: onMarkPaid,
         };
       default:
-        return { 
-          label: 'View', 
-          icon: 'eye' as const, 
-          color: colors.primary,
-        };
+        return null;
     }
   };
 
-  const nextAction = getNextAction();
+  const quickAction = getQuickAction();
   const gstAmount = (invoice.total || 0) / 11;
   const subtotal = (invoice.total || 0) - gstAmount;
 
@@ -148,6 +153,23 @@ function InvoiceCard({
             </View>
           )}
         </View>
+
+        {/* Inline Quick Action - Web Parity */}
+        {quickAction && (
+          <View style={styles.quickActionRow}>
+            <TouchableOpacity
+              style={[styles.quickActionButton, { backgroundColor: quickAction.color }]}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                quickAction.action?.();
+              }}
+              activeOpacity={0.7}
+            >
+              <Feather name={quickAction.icon} size={14} color={colors.white} />
+              <Text style={styles.quickActionText}>{quickAction.label}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
       <View style={styles.invoiceCardChevron}>
         <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
@@ -238,6 +260,60 @@ export default function InvoicesScreen() {
   const sortedInvoices = [...filteredInvoices].sort((a, b) => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+
+  const handleSendInvoice = async (invoiceId: string) => {
+    const invoice = invoices.find(i => i.id === invoiceId);
+    const client = clients.find(c => c.id === invoice?.clientId);
+    
+    if (!client?.email) {
+      Alert.alert(
+        'No Email Address',
+        'This client does not have an email address. Would you like to view the invoice and add one?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'View Invoice', onPress: () => router.push(`/more/invoice/${invoiceId}`) }
+        ]
+      );
+      return;
+    }
+    
+    router.push(`/more/invoice/${invoiceId}`);
+  };
+
+  const handleMarkPaid = async (invoiceId: string) => {
+    const invoice = invoices.find(i => i.id === invoiceId);
+    
+    Alert.alert(
+      'Mark as Paid',
+      `Record payment of ${formatCurrency(invoice?.total || 0)} received?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Mark Paid', 
+          onPress: async () => {
+            try {
+              const response = await api.patch(`/api/invoices/${invoiceId}`, {
+                status: 'paid',
+                paidAt: new Date().toISOString(),
+                amountPaid: invoice?.total?.toString(),
+                paymentMethod: 'on_site',
+              });
+              
+              if (response.error) {
+                throw new Error(response.error);
+              }
+              
+              await refreshData();
+              Alert.alert('Success', 'Payment recorded successfully');
+            } catch (error) {
+              console.error('Error marking paid:', error);
+              Alert.alert('Error', 'Failed to record payment');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <>
@@ -403,6 +479,8 @@ export default function InvoicesScreen() {
                     invoice={invoice}
                     clientName={getClientName(invoice.clientId)}
                     onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+                    onSend={() => handleSendInvoice(invoice.id)}
+                    onMarkPaid={() => handleMarkPaid(invoice.id)}
                   />
                 ))}
               </View>
@@ -696,5 +774,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   invoiceCardChevron: {
     justifyContent: 'center',
     paddingRight: spacing.md,
+  },
+  quickActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  quickActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+  },
+  quickActionText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
