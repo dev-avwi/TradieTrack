@@ -332,6 +332,20 @@ export default function DocumentsScreen() {
     </View>
   );
 
+  const handleViewAll = () => {
+    switch (activeTab) {
+      case 'quotes':
+        router.push('/more/quotes');
+        break;
+      case 'invoices':
+        router.push('/more/invoices');
+        break;
+      case 'receipts':
+        router.push('/more/receipts');
+        break;
+    }
+  };
+
   const renderTabs = () => (
     <View style={styles.tabContainer}>
       <TouchableOpacity
@@ -388,6 +402,20 @@ export default function DocumentsScreen() {
         </View>
       </TouchableOpacity>
     </View>
+  );
+
+  const renderViewAllButton = () => (
+    <TouchableOpacity
+      style={styles.viewAllButton}
+      onPress={handleViewAll}
+      activeOpacity={0.7}
+    >
+      <Feather name="maximize-2" size={16} color={colors.primary} />
+      <Text style={styles.viewAllText}>
+        View All {activeTab === 'quotes' ? 'Quotes' : activeTab === 'invoices' ? 'Invoices' : 'Receipts'}
+      </Text>
+      <Feather name="chevron-right" size={16} color={colors.primary} />
+    </TouchableOpacity>
   );
 
   const renderQuoteFilters = () => (
@@ -801,6 +829,7 @@ export default function DocumentsScreen() {
         {renderKPICards()}
         {renderSearchBar()}
         {renderTabs()}
+        {renderViewAllButton()}
         {renderContent()}
         <View style={{ height: spacing['4xl'] }} />
       </ScrollView>
@@ -940,6 +969,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     fontSize: 10,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+  },
+  viewAllText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.primary,
+    flex: 1,
+    textAlign: 'center',
   },
   filterScroll: {
     marginBottom: spacing.md,

@@ -74,6 +74,9 @@ export default function InvoiceDetailScreen() {
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
+  
+  // Computed payment status
+  const isPaid = invoice?.status === 'paid';
 
   useEffect(() => {
     loadData();
