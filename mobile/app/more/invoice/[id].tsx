@@ -290,50 +290,79 @@ export default function InvoiceDetailScreen() {
 
   const handleEmailSend = async (subject: string, message: string) => {
     const authToken = await api.getToken();
-    let emailSent = false;
-    let apiError = false;
     
     try {
-      const response = await fetch(`${API_URL}/api/invoices/${id}/send`, {
+      // Use the email-with-pdf endpoint (same as web app) which attaches PDF automatically
+      const response = await fetch(`${API_URL}/api/invoices/${id}/email-with-pdf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          subject,
-          message,
+          customSubject: subject,
+          customMessage: message,
         }),
       });
 
-      if (response.ok) {
-        emailSent = true;
-      } else {
-        apiError = true;
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        result = { message: 'Server error - please try again' };
       }
-    } catch (networkError) {
-      console.log('Network error sending invoice:', networkError);
-      apiError = true;
-    }
 
-    if (emailSent) {
-      await loadData();
-      setShowEmailCompose(false);
-      Alert.alert('Success', 'Invoice sent successfully to the client');
-      return;
-    }
-
-    if (apiError) {
-      const statusSuccess = await updateInvoiceStatus(id!, 'sent');
-      if (statusSuccess) {
-        await loadData();
-        setShowEmailCompose(false);
-        Alert.alert('Invoice Updated', 'Invoice marked as sent. Email delivery may be delayed due to network issues.');
+      if (!response.ok) {
+        // Show tradie-friendly error message from backend
+        Alert.alert(
+          result.title || "Couldn't send email",
+          result.fix || result.message || "Please try again or use your email app instead."
+        );
         return;
       }
-    }
 
-    throw new Error('Unable to send invoice. Please check your connection and try again.');
+      // Handle automatic mode (SendGrid) - email already sent
+      if (result.sent) {
+        await loadData();
+        setShowEmailCompose(false);
+        Alert.alert(
+          'Invoice Sent!',
+          `Email sent to ${result.recipientEmail} with PDF attached.`
+        );
+        return;
+      }
+
+      // Handle manual mode (Gmail draft) - open the draft URL
+      if (result.draftUrl) {
+        await loadData();
+        setShowEmailCompose(false);
+        
+        // Open Gmail draft in browser
+        const canOpen = await Linking.canOpenURL(result.draftUrl);
+        if (canOpen) {
+          await Linking.openURL(result.draftUrl);
+          Alert.alert(
+            'Gmail Draft Created!',
+            'PDF attached automatically. Review and click Send in Gmail.'
+          );
+        } else {
+          Alert.alert(
+            'Draft Created',
+            'Your email draft has been created. Open Gmail to review and send.'
+          );
+        }
+        return;
+      }
+
+      // Fallback - status updated successfully even if email mechanism unclear
+      await loadData();
+      setShowEmailCompose(false);
+      Alert.alert('Invoice Updated', 'Invoice has been processed.');
+
+    } catch (networkError) {
+      console.log('Network error sending invoice:', networkError);
+      throw new Error('Unable to send invoice. Please check your connection and try again.');
+    }
   };
 
   const toggleOnlinePayment = async () => {
