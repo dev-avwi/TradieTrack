@@ -1147,11 +1147,6 @@ ${business.lateFeeRate ? `Late payments may incur interest at ${business.lateFee
       </div>
     ` : ''}
     
-    <div class="terms-section">
-      <div class="terms-title">Terms & Conditions</div>
-      <div class="terms-content" style="white-space: pre-wrap;">${invoiceTerms}</div>
-    </div>
-    
     ${isPaid && invoice.paymentReference ? `
       <div class="notes-section" style="background: #dcfce7; border-left-color: #22c55e;">
         <div class="notes-title" style="color: #166534;">Payment Received - Thank You!</div>
@@ -1164,12 +1159,19 @@ Amount: ${formatCurrency(total)}
       </div>
     ` : ''}
     
-    ${warrantyText ? `
-      <div class="notes-section" style="margin-top: 16px;">
-        <div class="notes-title">Warranty</div>
-        <div class="notes-content">${warrantyText}</div>
+    <!-- Compact Terms & Warranty Footer -->
+    <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb; display: flex; gap: 20px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 200px;">
+        <div style="font-size: 7px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Terms & Conditions</div>
+        <div style="font-size: 6px; color: #9ca3af; line-height: 1.3; overflow: hidden; max-height: 36px;">${invoiceTerms?.split('\n').slice(0, 3).join(' ') || 'Standard trading terms apply.'}</div>
       </div>
-    ` : ''}
+      ${warrantyText ? `
+      <div style="flex: 0 0 auto; min-width: 150px;">
+        <div style="font-size: 7px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Warranty</div>
+        <div style="font-size: 6px; color: #9ca3af; line-height: 1.3;">${warrantyText}</div>
+      </div>
+      ` : ''}
+    </div>
     
     ${(business as any).insuranceDetails || (business as any).insuranceProvider ? `
       <div class="notes-section" style="margin-top: 16px; background: #f0f9ff; border-left-color: #3b82f6;">
