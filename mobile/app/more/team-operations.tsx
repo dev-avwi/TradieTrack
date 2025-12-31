@@ -141,8 +141,20 @@ interface TeamMemberTimeOff {
   notes?: string;
 }
 
-type TabType = 'live' | 'admin' | 'scheduling' | 'performance';
+type TabType = 'live' | 'admin' | 'scheduling' | 'skills' | 'performance';
 type LiveViewMode = 'status' | 'activity' | 'map';
+
+interface TeamMemberSkill {
+  id: string;
+  teamMemberId: string;
+  skillName: string;
+  skillType: string;
+  licenseNumber?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  isVerified: boolean;
+  notes?: string;
+}
 
 const DEFAULT_REGION: Region = {
   latitude: -33.8688,
@@ -187,16 +199,26 @@ export default function TeamOperationsScreen() {
   const [timeOffReason, setTimeOffReason] = useState('annual_leave');
   const [timeOffNotes, setTimeOffNotes] = useState('');
 
+  const [skills, setSkills] = useState<TeamMemberSkill[]>([]);
+  const [showAddSkillModal, setShowAddSkillModal] = useState(false);
+  const [skillName, setSkillName] = useState('');
+  const [skillType, setSkillType] = useState('certification');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [issueDate, setIssueDate] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [skillNotes, setSkillNotes] = useState('');
+
   const isOwnerOrManager = user?.role === 'owner' || user?.role === 'admin' || user?.role === 'manager';
 
   const fetchData = useCallback(async () => {
     try {
-      const [membersRes, presenceRes, activityRes, jobsRes, timeOffRes] = await Promise.all([
+      const [membersRes, presenceRes, activityRes, jobsRes, timeOffRes, skillsRes] = await Promise.all([
         api.get<TeamMemberData[]>('/api/team/members'),
         api.get<TeamPresenceData[]>('/api/team/presence'),
         api.get<ActivityFeedItem[]>('/api/activity-feed?limit=50'),
         api.get<JobData[]>('/api/jobs'),
         api.get<TeamMemberTimeOff[]>('/api/team/time-off'),
+        api.get<TeamMemberSkill[]>('/api/team/skills'),
       ]);
 
       if (membersRes.data) setTeamMembers(membersRes.data);
@@ -204,6 +226,7 @@ export default function TeamOperationsScreen() {
       if (activityRes.data) setActivityFeed(activityRes.data);
       if (jobsRes.data) setJobs(jobsRes.data);
       if (timeOffRes.data) setTimeOffRequests(timeOffRes.data);
+      if (skillsRes.data) setSkills(skillsRes.data);
     } catch (error) {
       console.error('Error fetching team data:', error);
     } finally {
@@ -291,6 +314,52 @@ export default function TeamOperationsScreen() {
   const upcomingTimeOff = timeOffRequests.filter(t => 
     t.status === 'approved' && isAfter(new Date(t.startDate), new Date())
   );
+
+  const expiringSkills = useMemo(() => {
+    return skills.filter(s => {
+      if (!s.expiryDate) return false;
+      const expiry = new Date(s.expiryDate);
+      const thirtyDaysFromNow = addDays(new Date(), 30);
+      return isBefore(expiry, thirtyDaysFromNow) && isAfter(expiry, new Date());
+    });
+  }, [skills]);
+
+  const expiredSkills = useMemo(() => {
+    return skills.filter(s => {
+      if (!s.expiryDate) return false;
+      return isBefore(new Date(s.expiryDate), new Date());
+    });
+  }, [skills]);
+
+  const memberSkills = useMemo(() => {
+    if (!selectedMemberId) return [];
+    return skills.filter(s => s.teamMemberId === selectedMemberId);
+  }, [skills, selectedMemberId]);
+
+  const onlineCount = useMemo(() => {
+    return teamPresence.filter(p => p.status === 'online' || p.status === 'on_job').length;
+  }, [teamPresence]);
+
+  const onJobCount = useMemo(() => {
+    return teamPresence.filter(p => p.status === 'on_job').length;
+  }, [teamPresence]);
+
+  const unassignedJobs = useMemo(() => {
+    return jobs.filter(j => !j.assignedTo && (j.status === 'pending' || j.status === 'scheduled'));
+  }, [jobs]);
+
+  const COMMON_SKILLS = [
+    "White Card (Construction Induction)",
+    "Electrical License",
+    "Plumbing License",
+    "Gas Fitting License",
+    "First Aid Certificate",
+    "Working at Heights",
+    "Confined Space Entry",
+    "Forklift License",
+    "EWP License",
+    "Asbestos Awareness",
+  ];
 
   const handleUpdateAvailability = async (dayOfWeek: number, isAvailable: boolean, startTime?: string, endTime?: string) => {
     if (!selectedMemberId) return;
@@ -385,6 +454,72 @@ export default function TeamOperationsScreen() {
     }
   };
 
+  const handleAddSkill = async () => {
+    if (!selectedMemberId || !skillName) {
+      Alert.alert('Error', 'Please select a team member and skill name');
+      return;
+    }
+
+    try {
+      const res = await api.post<TeamMemberSkill>('/api/team/skills', {
+        teamMemberId: selectedMemberId,
+        skillName,
+        skillType,
+        licenseNumber: licenseNumber || undefined,
+        issueDate: issueDate || undefined,
+        expiryDate: expiryDate || undefined,
+        notes: skillNotes || undefined,
+      });
+
+      if (res.data && !res.error) {
+        setShowAddSkillModal(false);
+        setSkillName('');
+        setSkillType('certification');
+        setLicenseNumber('');
+        setIssueDate('');
+        setExpiryDate('');
+        setSkillNotes('');
+        await fetchData();
+        Alert.alert('Success', 'Skill added');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add skill');
+    }
+  };
+
+  const handleVerifySkill = async (id: string, isVerified: boolean) => {
+    try {
+      const res = await api.patch<TeamMemberSkill>(`/api/team/skills/${id}`, { isVerified });
+      if (res.data && !res.error) {
+        await fetchData();
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update skill');
+    }
+  };
+
+  const handleDeleteSkill = async (id: string) => {
+    Alert.alert(
+      'Delete Skill',
+      'Are you sure you want to delete this skill?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/team/skills/${id}`);
+              await fetchData();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete skill');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderTabs = () => (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
       <TouchableOpacity
@@ -414,6 +549,15 @@ export default function TeamOperationsScreen() {
       >
         <Feather name="calendar" size={16} color={activeTab === 'scheduling' ? colors.primary : colors.mutedForeground} />
         <Text style={[styles.tabButtonText, activeTab === 'scheduling' && styles.tabButtonTextActive]}>Scheduling</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.tabButton, activeTab === 'skills' && styles.tabButtonActive]}
+        onPress={() => setActiveTab('skills')}
+        activeOpacity={0.7}
+      >
+        <Feather name="award" size={16} color={activeTab === 'skills' ? colors.primary : colors.mutedForeground} />
+        <Text style={[styles.tabButtonText, activeTab === 'skills' && styles.tabButtonTextActive]}>Skills & Certs</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -554,6 +698,37 @@ export default function TeamOperationsScreen() {
         style={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <View style={styles.kpiStatsRow}>
+          <View style={styles.kpiStatItem}>
+            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+              <Feather name="users" size={16} color="#3b82f6" />
+            </View>
+            <Text style={styles.kpiStatValue}>{acceptedMembers.length}</Text>
+            <Text style={styles.kpiStatLabel}>Team</Text>
+          </View>
+          <View style={styles.kpiStatItem}>
+            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+              <Feather name="circle" size={16} color="#22c55e" />
+            </View>
+            <Text style={styles.kpiStatValue}>{onlineCount}</Text>
+            <Text style={styles.kpiStatLabel}>Online</Text>
+          </View>
+          <View style={styles.kpiStatItem}>
+            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+              <Feather name="tool" size={16} color="#3b82f6" />
+            </View>
+            <Text style={styles.kpiStatValue}>{onJobCount}</Text>
+            <Text style={styles.kpiStatLabel}>On Job</Text>
+          </View>
+          <View style={styles.kpiStatItem}>
+            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(249,115,22,0.1)' }]}>
+              <Feather name="briefcase" size={16} color="#f97316" />
+            </View>
+            <Text style={styles.kpiStatValue}>{unassignedJobs.length}</Text>
+            <Text style={styles.kpiStatLabel}>Unassigned</Text>
+          </View>
+        </View>
+
         {renderLiveViewToggle()}
 
         {liveViewMode === 'status' && (
@@ -765,6 +940,203 @@ export default function TeamOperationsScreen() {
     </ScrollView>
   );
 
+  const renderSkillsTab = () => (
+    <ScrollView
+      style={styles.scrollContent}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      <View style={styles.skillsHeader}>
+        <View>
+          <Text style={styles.skillsTitle}>Skills & Certifications</Text>
+          <Text style={styles.skillsSubtitle}>Track qualifications and licenses</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.addSkillButton}
+          onPress={() => setShowAddSkillModal(true)}
+          activeOpacity={0.7}
+        >
+          <Feather name="plus" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {(expiredSkills.length > 0 || expiringSkills.length > 0) && (
+        <View style={styles.alertsContainer}>
+          {expiredSkills.length > 0 && (
+            <View style={[styles.alertCard, { borderColor: '#ef4444' }]}>
+              <View style={styles.alertHeader}>
+                <Feather name="alert-triangle" size={16} color="#ef4444" />
+                <Text style={[styles.alertTitle, { color: '#ef4444' }]}>Expired ({expiredSkills.length})</Text>
+              </View>
+              {expiredSkills.slice(0, 3).map(skill => {
+                const member = teamMembers.find(m => m.id === skill.teamMemberId);
+                return (
+                  <Text key={skill.id} style={styles.alertText}>
+                    {member?.firstName} - {skill.skillName}
+                  </Text>
+                );
+              })}
+            </View>
+          )}
+
+          {expiringSkills.length > 0 && (
+            <View style={[styles.alertCard, { borderColor: '#f59e0b' }]}>
+              <View style={styles.alertHeader}>
+                <Feather name="clock" size={16} color="#f59e0b" />
+                <Text style={[styles.alertTitle, { color: '#f59e0b' }]}>Expiring Soon ({expiringSkills.length})</Text>
+              </View>
+              {expiringSkills.slice(0, 3).map(skill => {
+                const member = teamMembers.find(m => m.id === skill.teamMemberId);
+                return (
+                  <Text key={skill.id} style={styles.alertText}>
+                    {member?.firstName} - {skill.skillName}
+                  </Text>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      )}
+
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Team Member Skills</Text>
+        </View>
+
+        <View style={styles.selectContainer}>
+          <Text style={styles.selectLabel}>Select Team Member</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.memberChips}>
+              {acceptedMembers.map(member => (
+                <TouchableOpacity
+                  key={member.id}
+                  style={[styles.memberChip, selectedMemberId === member.id && styles.memberChipActive]}
+                  onPress={() => setSelectedMemberId(member.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.memberChipText, selectedMemberId === member.id && styles.memberChipTextActive]}>
+                    {member.firstName} {member.lastName}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        {selectedMemberId ? (
+          memberSkills.length > 0 ? (
+            <View style={styles.skillsList}>
+              {memberSkills.map(skill => {
+                const isExpired = skill.expiryDate && isBefore(new Date(skill.expiryDate), new Date());
+                const isExpiring = skill.expiryDate && !isExpired && isBefore(new Date(skill.expiryDate), addDays(new Date(), 30));
+
+                return (
+                  <View
+                    key={skill.id}
+                    style={[
+                      styles.skillCard,
+                      isExpired && styles.skillCardExpired,
+                      isExpiring && styles.skillCardExpiring,
+                    ]}
+                  >
+                    <View style={styles.skillHeader}>
+                      <View style={styles.skillTitleRow}>
+                        <Text style={styles.skillName}>{skill.skillName}</Text>
+                        <View style={styles.skillBadges}>
+                          <View style={styles.skillTypeBadge}>
+                            <Text style={styles.skillTypeBadgeText}>{skill.skillType}</Text>
+                          </View>
+                          {skill.isVerified && (
+                            <View style={[styles.skillTypeBadge, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+                              <Feather name="check-circle" size={10} color="#22c55e" />
+                              <Text style={[styles.skillTypeBadgeText, { color: '#22c55e', marginLeft: 4 }]}>Verified</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                      {skill.licenseNumber && (
+                        <Text style={styles.skillLicense}>License: {skill.licenseNumber}</Text>
+                      )}
+                      <View style={styles.skillDates}>
+                        {skill.issueDate && (
+                          <Text style={styles.skillDateText}>Issued: {format(new Date(skill.issueDate), 'MMM d, yyyy')}</Text>
+                        )}
+                        {skill.expiryDate && (
+                          <Text style={[styles.skillDateText, isExpired && { color: '#ef4444' }, isExpiring && { color: '#f59e0b' }]}>
+                            {isExpired ? 'Expired' : 'Expires'}: {format(new Date(skill.expiryDate), 'MMM d, yyyy')}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    <View style={styles.skillActions}>
+                      {!skill.isVerified && isOwnerOrManager && (
+                        <TouchableOpacity
+                          style={styles.verifyButton}
+                          onPress={() => handleVerifySkill(skill.id, true)}
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="check" size={14} color={colors.primary} />
+                          <Text style={styles.verifyButtonText}>Verify</Text>
+                        </TouchableOpacity>
+                      )}
+                      {isOwnerOrManager && (
+                        <TouchableOpacity
+                          style={styles.deleteSkillButton}
+                          onPress={() => handleDeleteSkill(skill.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="x" size={14} color={colors.mutedForeground} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Feather name="award" size={32} color={colors.mutedForeground} />
+              <Text style={styles.emptyStateText}>No skills recorded for this team member</Text>
+              <TouchableOpacity
+                style={[styles.actionButton, { marginTop: spacing.md }]}
+                onPress={() => setShowAddSkillModal(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.actionButtonText}>Add First Skill</Text>
+              </TouchableOpacity>
+            </View>
+          )
+        ) : (
+          <View style={styles.emptyState}>
+            <Feather name="award" size={32} color={colors.mutedForeground} />
+            <Text style={styles.emptyStateText}>Select a team member to view skills</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Team Compliance</Text>
+        </View>
+        {COMMON_SKILLS.slice(0, 5).map(skillName => {
+          const membersWithSkill = skills.filter(s => s.skillName === skillName && s.isVerified);
+          const percentage = acceptedMembers.length > 0
+            ? Math.round((membersWithSkill.length / acceptedMembers.length) * 100)
+            : 0;
+
+          return (
+            <View key={skillName} style={styles.complianceRow}>
+              <Text style={styles.complianceSkillName} numberOfLines={1}>{skillName}</Text>
+              <View style={styles.complianceBarContainer}>
+                <View style={[styles.complianceBar, { width: `${percentage}%` }]} />
+              </View>
+              <Text style={styles.complianceCount}>{membersWithSkill.length}/{acceptedMembers.length}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </ScrollView>
+  );
+
   const renderPerformanceTab = () => (
     <ScrollView
       style={styles.scrollContent}
@@ -859,6 +1231,7 @@ export default function TeamOperationsScreen() {
         {activeTab === 'live' && renderLiveOpsTab()}
         {activeTab === 'admin' && isOwnerOrManager && renderTeamAdminTab()}
         {activeTab === 'scheduling' && renderSchedulingTab()}
+        {activeTab === 'skills' && renderSkillsTab()}
         {activeTab === 'performance' && renderPerformanceTab()}
       </View>
 
@@ -946,6 +1319,150 @@ export default function TeamOperationsScreen() {
               <Text style={styles.submitButtonText}>Submit Request</Text>
             </TouchableOpacity>
           </ScrollView>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showAddSkillModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAddSkillModal(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Skill/Certification</Text>
+            <TouchableOpacity onPress={() => setShowAddSkillModal(false)} activeOpacity={0.7}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Team Member</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.memberChips}>
+                  {acceptedMembers.map(member => (
+                    <TouchableOpacity
+                      key={member.id}
+                      style={[styles.memberChip, selectedMemberId === member.id && styles.memberChipActive]}
+                      onPress={() => setSelectedMemberId(member.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.memberChipText, selectedMemberId === member.id && styles.memberChipTextActive]}>
+                        {member.firstName} {member.lastName}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Skill/Certification Name</Text>
+              <View style={styles.skillSelectContainer}>
+                {COMMON_SKILLS.map(skill => (
+                  <TouchableOpacity
+                    key={skill}
+                    style={[styles.skillOption, skillName === skill && styles.skillOptionActive]}
+                    onPress={() => setSkillName(skill)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.skillOptionText, skillName === skill && styles.skillOptionTextActive]} numberOfLines={2}>
+                      {skill}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Or enter custom skill name"
+                placeholderTextColor={colors.mutedForeground}
+                value={skillName}
+                onChangeText={setSkillName}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Type</Text>
+              <View style={styles.radioGroup}>
+                {['certification', 'license', 'training', 'skill'].map(type => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.radioOption, skillType === type && styles.radioOptionActive]}
+                    onPress={() => setSkillType(type)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.radioOptionText, skillType === type && styles.radioOptionTextActive]}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>License Number (Optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Enter license number"
+                placeholderTextColor={colors.mutedForeground}
+                value={licenseNumber}
+                onChangeText={setLicenseNumber}
+              />
+            </View>
+
+            <View style={styles.formRow}>
+              <View style={[styles.formGroup, { flex: 1, marginRight: spacing.sm }]}>
+                <Text style={styles.formLabel}>Issue Date</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={issueDate}
+                  onChangeText={setIssueDate}
+                />
+              </View>
+              <View style={[styles.formGroup, { flex: 1 }]}>
+                <Text style={styles.formLabel}>Expiry Date</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={expiryDate}
+                  onChangeText={setExpiryDate}
+                />
+              </View>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Notes (Optional)</Text>
+              <TextInput
+                style={[styles.textInput, { height: 80, textAlignVertical: 'top' }]}
+                placeholder="Enter any notes"
+                placeholderTextColor={colors.mutedForeground}
+                value={skillNotes}
+                onChangeText={setSkillNotes}
+                multiline
+              />
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalButtonSecondary]}
+              onPress={() => setShowAddSkillModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalButtonPrimary]}
+              onPress={handleAddSkill}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.modalButtonPrimaryText}>Add Skill</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </>
@@ -1499,6 +2016,327 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   submitButtonText: {
     ...typography.subtitle,
     color: '#ffffff',
+    fontWeight: '600',
+  },
+  kpiStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    gap: spacing.xs,
+  },
+  kpiStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    padding: spacing.sm,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  kpiStatIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  kpiStatValue: {
+    ...typography.headline,
+    color: colors.foreground,
+  },
+  kpiStatLabel: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+  skillsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+  },
+  skillsTitle: {
+    ...typography.headline,
+    color: colors.foreground,
+  },
+  skillsSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  addSkillButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertsContainer: {
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  alertCard: {
+    padding: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+  },
+  alertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  alertTitle: {
+    ...typography.subtitle,
+    fontWeight: '600',
+  },
+  alertText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginLeft: 24,
+    marginTop: 2,
+  },
+  selectContainer: {
+    marginBottom: spacing.md,
+  },
+  selectLabel: {
+    ...typography.label,
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  memberChips: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  memberChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.xl,
+    backgroundColor: colors.muted,
+  },
+  memberChipActive: {
+    backgroundColor: colors.primary,
+  },
+  memberChipText: {
+    ...typography.caption,
+    color: colors.foreground,
+  },
+  memberChipTextActive: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  skillsList: {
+    gap: spacing.sm,
+  },
+  skillCard: {
+    padding: spacing.md,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.border,
+  },
+  skillCardExpired: {
+    borderLeftColor: '#ef4444',
+    backgroundColor: 'rgba(239,68,68,0.05)',
+  },
+  skillCardExpiring: {
+    borderLeftColor: '#f59e0b',
+    backgroundColor: 'rgba(245,158,11,0.05)',
+  },
+  skillHeader: {
+    flex: 1,
+  },
+  skillTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  skillName: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    fontWeight: '600',
+  },
+  skillBadges: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  skillTypeBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(59,130,246,0.1)',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  skillTypeBadgeText: {
+    ...typography.captionSmall,
+    color: '#3b82f6',
+    textTransform: 'capitalize',
+  },
+  skillLicense: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginBottom: spacing.xs,
+  },
+  skillDates: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    flexWrap: 'wrap',
+  },
+  skillDateText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  skillActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    justifyContent: 'flex-end',
+  },
+  verifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(59,130,246,0.1)',
+  },
+  verifyButtonText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  deleteSkillButton: {
+    padding: spacing.xs,
+    borderRadius: radius.sm,
+  },
+  complianceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  complianceSkillName: {
+    ...typography.caption,
+    color: colors.foreground,
+    flex: 1,
+  },
+  complianceBarContainer: {
+    flex: 1,
+    height: 6,
+    backgroundColor: colors.muted,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  complianceBar: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 3,
+  },
+  complianceCount: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    width: 40,
+    textAlign: 'right',
+  },
+  formGroup: {
+    marginBottom: spacing.md,
+  },
+  formLabel: {
+    ...typography.label,
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  formRow: {
+    flexDirection: 'row',
+    marginBottom: spacing.md,
+  },
+  skillSelectContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  skillOption: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.muted,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  skillOptionActive: {
+    backgroundColor: 'rgba(59,130,246,0.1)',
+    borderColor: colors.primary,
+  },
+  skillOptionText: {
+    ...typography.captionSmall,
+    color: colors.foreground,
+  },
+  skillOptionTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  radioGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  radioOption: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.muted,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  radioOptionActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  radioOptionText: {
+    ...typography.caption,
+    color: colors.foreground,
+  },
+  radioOptionTextActive: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+  },
+  modalButtonPrimary: {
+    backgroundColor: colors.primary,
+  },
+  modalButtonSecondary: {
+    backgroundColor: colors.muted,
+  },
+  modalButtonPrimaryText: {
+    ...typography.subtitle,
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  modalButtonSecondaryText: {
+    ...typography.subtitle,
+    color: colors.foreground,
     fontWeight: '600',
   },
 });

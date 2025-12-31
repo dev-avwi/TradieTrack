@@ -21,6 +21,12 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
 import { api, API_URL } from '../../src/lib/api';
 import { format, formatDistanceToNow } from 'date-fns';
+
+interface StripeConnectStatus {
+  connected: boolean;
+  chargesEnabled?: boolean;
+  payoutsEnabled?: boolean;
+}
 // QR code display - using fallback visual since react-native-qrcode-svg has peer dependency conflicts
 // The customer can still use the link/send options which work perfectly
 
@@ -146,6 +152,8 @@ export default function CollectPaymentScreen() {
   const [showExpiryPicker, setShowExpiryPicker] = useState(false);
   const [showMethodPicker, setShowMethodPicker] = useState(false);
   const [pickerContext, setPickerContext] = useState<'create' | 'record' | 'receipt'>('create');
+  
+  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
 
   const unpaidInvoices = useMemo(() => 
     invoices.filter(inv => inv.status !== 'paid'), [invoices]);
@@ -162,20 +170,23 @@ export default function CollectPaymentScreen() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [requestsRes, clientsRes, invoicesRes, jobsRes, receiptsRes] = await Promise.all([
+      const [requestsRes, clientsRes, invoicesRes, jobsRes, receiptsRes, stripeRes] = await Promise.all([
         api.get('/api/payment-requests'),
         api.get('/api/clients'),
         api.get('/api/invoices'),
         api.get('/api/jobs'),
         api.get('/api/receipts'),
+        api.get('/api/stripe/connect/status').catch(() => ({ connected: false })),
       ]);
-      setPaymentRequests(requestsRes.data || []);
-      setClients(clientsRes.data || []);
-      setInvoices(invoicesRes.data || []);
-      setJobs(jobsRes.data || []);
-      setReceipts(receiptsRes.data || []);
+      
+      setPaymentRequests(requestsRes || []);
+      setClients(clientsRes || []);
+      setInvoices(invoicesRes || []);
+      setJobs(jobsRes || []);
+      setReceipts(receiptsRes || []);
+      setStripeStatus(stripeRes);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -538,6 +549,90 @@ export default function CollectPaymentScreen() {
       </View>
     </View>
   );
+
+  const renderStripeWarning = () => {
+    if (stripeStatus?.connected) return null;
+    
+    return (
+      <TouchableOpacity 
+        style={styles.stripeWarningCard}
+        onPress={() => router.push('/more/money-hub')}
+        activeOpacity={0.7}
+      >
+        <View style={styles.stripeWarningIcon}>
+          <Feather name="alert-triangle" size={iconSizes.lg} color={colors.warning} />
+        </View>
+        <View style={styles.stripeWarningContent}>
+          <Text style={styles.stripeWarningTitle}>Connect Stripe to Accept Payments</Text>
+          <Text style={styles.stripeWarningDescription}>
+            Set up Stripe to accept card payments and receive funds directly to your bank account.
+          </Text>
+        </View>
+        <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
+      </TouchableOpacity>
+    );
+  };
+
+  const renderQuickLinks = () => {
+    const unpaidCount = invoices.filter(inv => inv.status !== 'paid').length;
+    const activeJobsCount = jobs.filter(job => job.status !== 'invoiced').length;
+    const clientsCount = clients.length;
+    
+    const links = [
+      { 
+        icon: 'file-text' as const, 
+        label: 'Invoices', 
+        count: unpaidCount > 0 ? `${unpaidCount} unpaid` : null,
+        route: '/more/invoices',
+        color: colors.primary,
+      },
+      { 
+        icon: 'briefcase' as const, 
+        label: 'Jobs', 
+        count: activeJobsCount > 0 ? `${activeJobsCount} active` : null,
+        route: '/(tabs)/jobs',
+        color: colors.info,
+      },
+      { 
+        icon: 'users' as const, 
+        label: 'Clients', 
+        count: clientsCount > 0 ? `${clientsCount} total` : null,
+        route: '/more/clients',
+        color: colors.success,
+      },
+      { 
+        icon: 'bar-chart-2' as const, 
+        label: 'Reports', 
+        count: null,
+        route: '/more/reports',
+        color: colors.warning,
+      },
+    ];
+    
+    return (
+      <View style={styles.quickLinksContainer}>
+        <Text style={styles.quickLinksTitle}>Quick Links</Text>
+        <View style={styles.quickLinksGrid}>
+          {links.map((link, index) => (
+            <TouchableOpacity 
+              key={index}
+              style={styles.quickLinkCard}
+              onPress={() => router.push(link.route as any)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.quickLinkIconContainer, { backgroundColor: link.color + '20' }]}>
+                <Feather name={link.icon} size={iconSizes.lg} color={link.color} />
+              </View>
+              <Text style={styles.quickLinkLabel}>{link.label}</Text>
+              {link.count && (
+                <Text style={styles.quickLinkCount}>{link.count}</Text>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
 
   const renderRequestCard = (request: PaymentRequest, isPending: boolean) => {
     const clientName = request.clientId ? clientMap.get(request.clientId)?.name : null;
@@ -1339,7 +1434,9 @@ export default function CollectPaymentScreen() {
         showsVerticalScrollIndicator={false}
       >
         {renderHeader()}
+        {renderStripeWarning()}
         {renderContactlessInfo()}
+        {renderQuickLinks()}
         
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -1545,6 +1642,76 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.xs,
   },
   contactlessCardsText: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+  stripeWarningCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.lg,
+    backgroundColor: `${colors.warning}15`,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: `${colors.warning}40`,
+    marginBottom: spacing.lg,
+  },
+  stripeWarningIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    backgroundColor: `${colors.warning}20`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stripeWarningContent: {
+    flex: 1,
+  },
+  stripeWarningTitle: {
+    ...typography.cardTitle,
+    color: colors.foreground,
+    marginBottom: spacing.xs,
+  },
+  stripeWarningDescription: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  quickLinksContainer: {
+    marginBottom: spacing.lg,
+  },
+  quickLinksTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    marginBottom: spacing.md,
+  },
+  quickLinksGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  quickLinkCard: {
+    width: '48%',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  quickLinkIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  quickLinkLabel: {
+    ...typography.button,
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  quickLinkCount: {
     ...typography.captionSmall,
     color: colors.mutedForeground,
   },
