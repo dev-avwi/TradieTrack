@@ -17,7 +17,6 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { api, API_URL } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
-import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 import { EmailComposeModal } from '../../src/components/EmailComposeModal';
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected' | 'archived';
@@ -74,12 +73,14 @@ function KPICard({
 function QuoteCard({ 
   quote, 
   clientName,
+  jobTitle,
   onPress,
   onSend,
   onConvertToInvoice,
 }: { 
   quote: any;
   clientName: string;
+  jobTitle?: string;
   onPress: () => void;
   onSend?: () => void;
   onConvertToInvoice?: () => void;
@@ -88,7 +89,10 @@ function QuoteCard({
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const formatCurrency = (amount: number) => {
-    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
+    return new Intl.NumberFormat('en-AU', {
+      style: 'currency',
+      currency: 'AUD'
+    }).format(amount / 100);
   };
 
   const formatDate = (dateStr: string) => {
@@ -98,24 +102,14 @@ function QuoteCard({
     });
   };
 
-  const getAccentColor = () => {
-    switch (quote.status) {
-      case 'draft': return colors.warning;
-      case 'sent': return colors.info;
-      case 'accepted': return colors.success;
-      case 'rejected': return colors.destructive;
-      default: return colors.primary;
-    }
-  };
-
   const getQuickAction = () => {
     switch (quote.status) {
       case 'draft':
-        return { label: 'Send', icon: 'send' as const, color: colors.primary, action: onSend };
+        return { label: 'Send', icon: 'send' as const, variant: 'primary' as const, action: onSend };
       case 'sent':
-        return { label: 'Resend', icon: 'refresh-cw' as const, color: colors.info, action: onSend };
+        return { label: 'Resend', icon: 'refresh-cw' as const, variant: 'outline' as const, action: onSend };
       case 'accepted':
-        return { label: 'Invoice', icon: 'arrow-right' as const, color: colors.success, action: onConvertToInvoice };
+        return { label: 'Invoice', icon: 'arrow-right' as const, variant: 'primary' as const, action: onConvertToInvoice };
       default:
         return null;
     }
@@ -124,65 +118,100 @@ function QuoteCard({
   const quickAction = getQuickAction();
 
   return (
-    <View style={styles.quoteCard}>
-      {/* Main card content - tappable to view details */}
-      <TouchableOpacity 
-        style={styles.cardPressable}
-        onPress={onPress}
-        activeOpacity={0.7}
-      >
-        <View style={styles.quoteCardContent}>
-          {/* Web-style horizontal layout: Icon + Info on left, Amount on right */}
-          <View style={styles.cardRow}>
-            {/* Left: Icon circle + Info */}
-            <View style={styles.cardLeft}>
-              <View style={[styles.iconCircle, { backgroundColor: `${getAccentColor()}20` }]}>
-                <Feather name="file-text" size={20} color={getAccentColor()} />
-              </View>
-              <View style={styles.cardInfo}>
-                <View style={styles.cardTitleRow}>
-                  <Text style={styles.quoteNumber} numberOfLines={1}>{quote.quoteNumber || 'Draft'}</Text>
-                  <StatusBadge status={quote.status} size="sm" />
-                </View>
-                <View style={styles.cardSubtitle}>
-                  <Feather name="user" size={12} color={colors.mutedForeground} />
-                  <Text style={styles.clientName} numberOfLines={1}>{clientName || 'No client'}</Text>
-                </View>
-              </View>
+    <TouchableOpacity 
+      style={styles.quoteCard}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.quoteCardContent}>
+        {/* Main row: Left info + Right amount/actions */}
+        <View style={styles.cardMainRow}>
+          {/* Left side: Icon + Info */}
+          <View style={styles.cardLeftSection}>
+            {/* Icon circle - always primary/trade color */}
+            <View style={styles.iconCircle}>
+              <Feather name="file-text" size={20} color={colors.primary} />
             </View>
             
-            {/* Right: Amount + Chevron */}
-            <View style={styles.cardRight}>
-              <Text style={styles.quoteTotal}>{formatCurrency(quote.total || 0)}</Text>
-              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            {/* Info section */}
+            <View style={styles.cardInfoSection}>
+              {/* Number + Status badge */}
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardNumber}>{quote.quoteNumber || 'Draft'}</Text>
+                <StatusBadge status={quote.status} size="sm" />
+              </View>
+              
+              {/* Client name */}
+              <View style={styles.cardClientRow}>
+                <Feather name="user" size={12} color={colors.mutedForeground} />
+                <Text style={styles.cardClientText} numberOfLines={1}>{clientName || 'No client'}</Text>
+              </View>
             </View>
           </View>
           
-          {/* Details row */}
-          <View style={styles.detailsRow}>
-            <Feather name="calendar" size={12} color={colors.mutedForeground} />
-            <Text style={styles.quoteDetailText} numberOfLines={1}>
-              {quote.createdAt ? formatDate(quote.createdAt) : 'No date'}
-              {quote.expiryDate && ` • Expires ${formatDate(quote.expiryDate)}`}
-            </Text>
+          {/* Right side: Amount + Action + Chevron */}
+          <View style={styles.cardRightSection}>
+            <Text style={styles.cardAmount}>{formatCurrency(quote.total || 0)}</Text>
+            
+            <View style={styles.cardActionsRow}>
+              {quickAction && (
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    quickAction.variant === 'primary' 
+                      ? styles.actionButtonPrimary 
+                      : styles.actionButtonOutline
+                  ]}
+                  onPress={(e) => {
+                    quickAction.action?.();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Feather 
+                    name={quickAction.icon} 
+                    size={14} 
+                    color={quickAction.variant === 'primary' ? colors.white : colors.foreground} 
+                  />
+                  <Text style={[
+                    styles.actionButtonText,
+                    quickAction.variant === 'outline' && { color: colors.foreground }
+                  ]}>{quickAction.label}</Text>
+                </TouchableOpacity>
+              )}
+              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            </View>
           </View>
         </View>
-      </TouchableOpacity>
-      
-      {/* Quick action button - separate touch target */}
-      {quickAction && (
-        <View style={styles.quickActionContainer}>
-          <TouchableOpacity
-            style={[styles.quickActionButton, { backgroundColor: quickAction.color }]}
-            onPress={quickAction.action}
-            activeOpacity={0.7}
-          >
-            <Feather name={quickAction.icon} size={14} color={colors.white} />
-            <Text style={styles.quickActionText}>{quickAction.label}</Text>
-          </TouchableOpacity>
+        
+        {/* Job title + dates - indented to align with text */}
+        <View style={styles.cardDetailsSection}>
+          {jobTitle && (
+            <Text style={styles.cardJobTitle} numberOfLines={1}>{jobTitle}</Text>
+          )}
+          
+          <View style={styles.cardDatesRow}>
+            {quote.expiryDate && (
+              <View style={styles.cardDateItem}>
+                <Feather name="calendar" size={12} color={colors.mutedForeground} />
+                <Text style={styles.cardDateText}>Valid until {formatDate(quote.expiryDate)}</Text>
+              </View>
+            )}
+            {quote.sentAt && (
+              <View style={styles.cardDateItem}>
+                <Feather name="calendar" size={12} color={colors.mutedForeground} />
+                <Text style={styles.cardDateText}>Sent {formatDate(quote.sentAt)}</Text>
+              </View>
+            )}
+            {!quote.expiryDate && !quote.sentAt && quote.createdAt && (
+              <View style={styles.cardDateItem}>
+                <Feather name="calendar" size={12} color={colors.mutedForeground} />
+                <Text style={styles.cardDateText}>Created {formatDate(quote.createdAt)}</Text>
+              </View>
+            )}
+          </View>
         </View>
-      )}
-    </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -503,6 +532,7 @@ export default function QuotesScreen() {
                     key={quote.id}
                     quote={quote}
                     clientName={getClientName(quote.clientId)}
+                    jobTitle={quote.title || quote.description || ''}
                     onPress={() => router.push(`/more/quote/${quote.id}`)}
                     onSend={() => handleSendQuote(quote.id)}
                     onConvertToInvoice={() => handleConvertToInvoice(quote.id)}
@@ -731,115 +761,155 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   quotesList: {
     gap: spacing.md,
   },
+  
+  // === WEB-MATCHING CARD STYLES ===
   quoteCard: {
     width: '100%',
     backgroundColor: colors.card,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    overflow: 'hidden',
     ...shadows.sm,
   },
-  cardPressable: {
-    flex: 1,
-  },
   quoteCardContent: {
-    padding: spacing.md,
+    padding: 16, // p-4 equivalent
   },
-  quickActionContainer: {
-    borderTopWidth: 1,
-    borderTopColor: colors.cardBorder,
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  // Web-style horizontal layout
-  cardRow: {
+  
+  // Main horizontal row: left info + right amount/actions
+  cardMainRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: spacing.md,
+    gap: 12, // gap-3
   },
-  cardLeft: {
+  
+  // Left section: icon circle + info
+  cardLeftSection: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing.md,
+    gap: 10, // gap-2.5
     flex: 1,
     minWidth: 0,
   },
+  
+  // Icon circle (40x40, primary color background at 10% opacity)
   iconCircle: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: `${colors.primary}15`, // hsl(var(--trade) / 0.1)
   },
-  cardInfo: {
+  
+  // Info section next to icon
+  cardInfoSection: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 2,
   },
-  cardTitleRow: {
+  
+  // Number + status badge row
+  cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 8, // gap-2
     flexWrap: 'wrap',
   },
-  cardSubtitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  clientName: {
-    fontSize: 13,
-    color: colors.mutedForeground,
-    flex: 1,
-  },
-  cardRight: {
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-    flexShrink: 0,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  detailsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    paddingLeft: 52, // Align with text after icon
-  },
-  quoteNumber: {
+  
+  // Quote/Invoice number - 15px semibold
+  cardNumber: {
     fontSize: 15,
     fontWeight: '600',
     color: colors.foreground,
   },
-  quoteTotal: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.primary,
+  
+  // Client row with user icon
+  cardClientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4, // gap-1
   },
-  quoteDetailText: {
-    fontSize: 12,
+  cardClientText: {
+    fontSize: 14, // text-sm
     color: colors.mutedForeground,
     flex: 1,
   },
-  quickActionButton: {
+  
+  // Right section: amount + actions
+  cardRightSection: {
+    alignItems: 'flex-end',
+    gap: 8, // gap-2
+    flexShrink: 0,
+  },
+  
+  // Amount - 18px bold, primary/trade color
+  cardAmount: {
+    fontSize: 18, // text-lg
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  
+  // Actions row: button + chevron
+  cardActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 8, // gap-2
+  },
+  
+  // Action button - matches web Button size="xl"
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: radius.md,
-    minHeight: 36,
+    borderRadius: 8,
+    minHeight: 40, // size="xl" height
   },
-  quickActionText: {
+  actionButtonPrimary: {
+    backgroundColor: colors.primary,
+  },
+  actionButtonOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.white,
+  },
+  
+  // Details section - indented to align with text (pl-12 = 48px, approx icon width + gap)
+  cardDetailsSection: {
+    marginTop: 8, // space-y-2
+    paddingLeft: 50, // pl-12 equivalent (40px icon + 10px gap)
+    gap: 6, // space-y-1.5
+  },
+  
+  // Job title
+  cardJobTitle: {
+    fontSize: 14, // text-sm
+    fontWeight: '500', // font-medium
+    color: colors.foreground,
+  },
+  
+  // Dates row
+  cardDatesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16, // gap-4
+    flexWrap: 'wrap',
+  },
+  cardDateItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4, // gap-1
+  },
+  cardDateText: {
+    fontSize: 12, // text-xs
+    color: colors.mutedForeground,
   },
 });
