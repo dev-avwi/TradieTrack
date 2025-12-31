@@ -261,12 +261,12 @@ const createStyles = (colors: ThemeColors) => {
         position: 'absolute',
         right: spacing.md,
         backgroundColor: colors.card,
-        borderRadius: radius.xl,
+        borderRadius: radius['2xl'],
         padding: spacing.md,
         borderWidth: 1,
         borderColor: colors.border,
-        ...shadows.md,
-        minWidth: 120,
+        ...shadows.lg,
+        minWidth: 130,
       },
       legendTitle: {
         fontSize: 12,
@@ -1640,75 +1640,88 @@ export default function MapScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* Route Panel (Bottom Sheet) */}
+      {/* Route Panel (Bottom Sheet) - Matches header card design */}
       {routeJobs.length > 0 && (
         <View style={{
           position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: bottomNavHeight,
+          left: spacing.md,
+          right: spacing.md,
+          bottom: bottomNavHeight + spacing.sm,
           backgroundColor: colors.card,
-          borderTopLeftRadius: radius['2xl'],
-          borderTopRightRadius: radius['2xl'],
-          maxHeight: showRoutePanel ? SCREEN_HEIGHT * 0.45 : 60,
-          ...shadows.xl,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
+          borderRadius: radius['2xl'],
+          maxHeight: showRoutePanel ? SCREEN_HEIGHT * 0.45 : 56,
+          ...shadows.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
         }}>
-          {/* Collapsed Header */}
+          {/* Collapsed Header - Matches header card style */}
           <TouchableOpacity
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: spacing.md,
-              borderBottomWidth: showRoutePanel ? 1 : 0,
-              borderBottomColor: colors.border,
             }}
             onPress={() => setShowRoutePanel(!showRoutePanel)}
             activeOpacity={0.7}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
               <View style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: colors.primary,
+                width: 36,
+                height: 36,
+                borderRadius: radius.lg,
+                backgroundColor: colors.primaryLight,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
-                <Feather name="map-pin" size={16} color="#fff" />
+                <Feather name="navigation" size={18} color={colors.primary} />
               </View>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>
-                Route: {routeJobs.length} stop{routeJobs.length !== 1 ? 's' : ''}
-              </Text>
+              <View>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>
+                  Route: {routeJobs.length} stop{routeJobs.length !== 1 ? 's' : ''}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                  Tap to {showRoutePanel ? 'collapse' : 'expand'}
+                </Text>
+              </View>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
               <TouchableOpacity
                 style={{
                   backgroundColor: colors.primary,
                   paddingHorizontal: spacing.md,
                   paddingVertical: spacing.sm,
-                  borderRadius: radius.md,
+                  borderRadius: radius.lg,
                 }}
                 onPress={handleStartRoute}
                 activeOpacity={0.7}
               >
                 <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Start</Text>
               </TouchableOpacity>
-              <Feather 
-                name={showRoutePanel ? "chevron-down" : "chevron-up"} 
-                size={20} 
-                color={colors.mutedForeground} 
-              />
+              <View style={{
+                width: 32,
+                height: 32,
+                borderRadius: radius.lg,
+                backgroundColor: colors.muted,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Feather 
+                  name={showRoutePanel ? "chevron-down" : "chevron-up"} 
+                  size={18} 
+                  color={colors.mutedForeground} 
+                />
+              </View>
             </View>
           </TouchableOpacity>
           
           {/* Expanded Content */}
           {showRoutePanel && (
             <View style={{ flex: 1 }}>
+              {/* Subtle divider */}
+              <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: spacing.md }} />
               <ScrollView 
-                style={{ flex: 1, padding: spacing.md }}
+                style={{ flex: 1, padding: spacing.md, paddingTop: spacing.sm }}
                 showsVerticalScrollIndicator={false}
               >
                 {routeJobs.map((job, index) => (
@@ -1757,13 +1770,12 @@ export default function MapScreen() {
                 ))}
               </ScrollView>
               
-              {/* Route Actions */}
+              {/* Route Actions - Compact button row */}
               <View style={{
                 flexDirection: 'row',
                 gap: spacing.sm,
                 padding: spacing.md,
-                borderTopWidth: 1,
-                borderTopColor: colors.border,
+                paddingTop: spacing.sm,
               }}>
                 <TouchableOpacity
                   style={{
@@ -1772,15 +1784,17 @@ export default function MapScreen() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: colors.muted,
-                    paddingVertical: spacing.md,
-                    borderRadius: radius.md,
+                    paddingVertical: spacing.sm + 2,
+                    borderRadius: radius.lg,
                     gap: spacing.xs,
+                    borderWidth: 1,
+                    borderColor: colors.border,
                   }}
                   onPress={handleClearRoute}
                   activeOpacity={0.7}
                 >
-                  <Feather name="trash-2" size={16} color={colors.destructive} />
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.destructive }}>
+                  <Feather name="trash-2" size={14} color={colors.destructive} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.destructive }}>
                     Clear
                   </Text>
                 </TouchableOpacity>
@@ -1792,9 +1806,12 @@ export default function MapScreen() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: colors.muted,
-                    paddingVertical: spacing.md,
-                    borderRadius: radius.md,
+                    paddingVertical: spacing.sm + 2,
+                    borderRadius: radius.lg,
                     gap: spacing.xs,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    opacity: (isOptimizing || routeJobs.length < 2) ? 0.5 : 1,
                   }}
                   onPress={handleOptimizeRoute}
                   disabled={isOptimizing || routeJobs.length < 2}
@@ -1804,8 +1821,8 @@ export default function MapScreen() {
                     <ActivityIndicator size="small" color={colors.primary} />
                   ) : (
                     <>
-                      <Feather name="zap" size={16} color={colors.primary} />
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
+                      <Feather name="zap" size={14} color={colors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
                         Optimize
                       </Text>
                     </>
@@ -1814,20 +1831,20 @@ export default function MapScreen() {
                 
                 <TouchableOpacity
                   style={{
-                    flex: 1,
+                    flex: 1.2,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: colors.primary,
-                    paddingVertical: spacing.md,
-                    borderRadius: radius.md,
+                    paddingVertical: spacing.sm + 2,
+                    borderRadius: radius.lg,
                     gap: spacing.xs,
                   }}
                   onPress={handleStartRoute}
                   activeOpacity={0.7}
                 >
-                  <Feather name="navigation" size={16} color="#fff" />
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+                  <Feather name="navigation" size={14} color="#fff" />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>
                     Start
                   </Text>
                 </TouchableOpacity>
