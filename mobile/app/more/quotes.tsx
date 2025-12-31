@@ -124,28 +124,42 @@ function QuoteCard({
   const quickAction = getQuickAction();
 
   return (
-    <AnimatedCardPressable
-      onPress={onPress}
-      style={styles.quoteCard}
-    >
-      <View style={[styles.quoteCardAccent, { backgroundColor: getAccentColor() }]} />
-      <View style={styles.quoteCardContent}>
-        <View style={styles.quoteCardHeader}>
-          <View style={styles.quoteHeaderLeft}>
-            <Text style={styles.quoteNumber} numberOfLines={1}>{quote.quoteNumber || 'Draft'}</Text>
-            <StatusBadge status={quote.status} size="sm" />
-          </View>
-          <Text style={styles.quoteTotal}>{formatCurrency(quote.total || 0)}</Text>
-        </View>
-
-        <View style={styles.quoteDetails}>
-          {clientName && (
-            <View style={styles.quoteDetailRow}>
-              <Feather name="user" size={12} color={colors.mutedForeground} />
-              <Text style={styles.quoteDetailText} numberOfLines={1}>{clientName}</Text>
+    <View style={styles.quoteCard}>
+      {/* Main card content - tappable to view details */}
+      <TouchableOpacity 
+        style={styles.cardPressable}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.quoteCardContent}>
+          {/* Web-style horizontal layout: Icon + Info on left, Amount on right */}
+          <View style={styles.cardRow}>
+            {/* Left: Icon circle + Info */}
+            <View style={styles.cardLeft}>
+              <View style={[styles.iconCircle, { backgroundColor: `${getAccentColor()}20` }]}>
+                <Feather name="file-text" size={20} color={getAccentColor()} />
+              </View>
+              <View style={styles.cardInfo}>
+                <View style={styles.cardTitleRow}>
+                  <Text style={styles.quoteNumber} numberOfLines={1}>{quote.quoteNumber || 'Draft'}</Text>
+                  <StatusBadge status={quote.status} size="sm" />
+                </View>
+                <View style={styles.cardSubtitle}>
+                  <Feather name="user" size={12} color={colors.mutedForeground} />
+                  <Text style={styles.clientName} numberOfLines={1}>{clientName || 'No client'}</Text>
+                </View>
+              </View>
             </View>
-          )}
-          <View style={styles.quoteDetailRow}>
+            
+            {/* Right: Amount + Chevron */}
+            <View style={styles.cardRight}>
+              <Text style={styles.quoteTotal}>{formatCurrency(quote.total || 0)}</Text>
+              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            </View>
+          </View>
+          
+          {/* Details row */}
+          <View style={styles.detailsRow}>
             <Feather name="calendar" size={12} color={colors.mutedForeground} />
             <Text style={styles.quoteDetailText} numberOfLines={1}>
               {quote.createdAt ? formatDate(quote.createdAt) : 'No date'}
@@ -153,28 +167,22 @@ function QuoteCard({
             </Text>
           </View>
         </View>
-
-        {/* Inline Quick Action - Web Parity */}
-        {quickAction && (
-          <View style={styles.quickActionRow}>
-            <TouchableOpacity
-              style={[styles.quickActionButton, { backgroundColor: quickAction.color }]}
-              onPress={(e) => {
-                e.stopPropagation?.();
-                quickAction.action?.();
-              }}
-              activeOpacity={0.7}
-            >
-              <Feather name={quickAction.icon} size={14} color={colors.white} />
-              <Text style={styles.quickActionText}>{quickAction.label}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-      <View style={styles.quoteCardChevron}>
-        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-      </View>
-    </AnimatedCardPressable>
+      </TouchableOpacity>
+      
+      {/* Quick action button - separate touch target */}
+      {quickAction && (
+        <View style={styles.quickActionContainer}>
+          <TouchableOpacity
+            style={[styles.quickActionButton, { backgroundColor: quickAction.color }]}
+            onPress={quickAction.action}
+            activeOpacity={0.7}
+          >
+            <Feather name={quickAction.icon} size={14} color={colors.white} />
+            <Text style={styles.quickActionText}>{quickAction.label}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -725,81 +733,112 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   quoteCard: {
     width: '100%',
-    flexDirection: 'row',
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    overflow: 'hidden',
     ...shadows.sm,
   },
-  quoteCardAccent: {
-    width: 4,
+  cardPressable: {
+    flex: 1,
   },
   quoteCardContent: {
-    flex: 1,
     padding: spacing.md,
   },
-  quoteCardHeader: {
+  quickActionContainer: {
+    borderTopWidth: 1,
+    borderTopColor: colors.cardBorder,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  // Web-style horizontal layout
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
+    gap: spacing.md,
   },
-  quoteNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.foreground,
+  cardLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
     flex: 1,
+    minWidth: 0,
   },
-  quoteHeaderLeft: {
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    flex: 1,
+    flexWrap: 'wrap',
   },
-  quoteTotal: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.foreground,
-  },
-  quoteDetails: {
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  quoteDetailRow: {
+  cardSubtitle: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 4,
   },
-  quoteDetailText: {
+  clientName: {
     fontSize: 13,
     color: colors.mutedForeground,
     flex: 1,
   },
-  quoteCardChevron: {
-    justifyContent: 'center',
-    paddingRight: spacing.md,
+  cardRight: {
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+    flexShrink: 0,
   },
-  quickActionRow: {
+  actionRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingLeft: 52, // Align with text after icon
+  },
+  quoteNumber: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  quoteTotal: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  quoteDetailText: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    flex: 1,
   },
   quickActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: radius.md,
+    minHeight: 36,
   },
   quickActionText: {
-    ...typography.caption,
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
   },

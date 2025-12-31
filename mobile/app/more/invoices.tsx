@@ -106,76 +106,73 @@ function InvoiceCard({
   const subtotal = (invoice.total || 0) - gstAmount;
 
   return (
-    <AnimatedCardPressable
-      onPress={onPress}
-      style={styles.invoiceCard}
-    >
-      <View style={[styles.invoiceCardAccent, { backgroundColor: getAccentColor() }]} />
-      <View style={styles.invoiceCardContent}>
-        <View style={styles.invoiceCardHeader}>
-          <View style={styles.invoiceHeaderLeft}>
-            <Text style={styles.invoiceNumber} numberOfLines={1}>{invoice.invoiceNumber || 'Draft'}</Text>
-            <StatusBadge status={invoice.status || 'draft'} size="sm" />
-          </View>
-          <View style={styles.invoiceAmountCol}>
-            <Text style={styles.invoiceTotal}>{formatCurrency(invoice.total || 0)}</Text>
-            <Text style={styles.invoiceGst}>inc. GST</Text>
-          </View>
-        </View>
-
-        {/* Details section like web */}
-        <View style={styles.invoiceDetails}>
-          {clientName && (
-            <View style={styles.invoiceDetailRow}>
-              <Feather name="user" size={12} color={colors.mutedForeground} />
-              <Text style={styles.invoiceDetailText} numberOfLines={1}>{clientName}</Text>
+    <View style={styles.invoiceCard}>
+      {/* Main card content - tappable to view details */}
+      <TouchableOpacity 
+        style={styles.cardPressable}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.invoiceCardContent}>
+          {/* Web-style horizontal layout: Icon + Info on left, Amount on right */}
+          <View style={styles.cardRow}>
+            {/* Left: Icon circle + Info */}
+            <View style={styles.cardLeft}>
+              <View style={[styles.iconCircle, { backgroundColor: `${getAccentColor()}20` }]}>
+                <Feather name="file-text" size={20} color={getAccentColor()} />
+              </View>
+              <View style={styles.cardInfo}>
+                <View style={styles.cardTitleRow}>
+                  <Text style={styles.invoiceNumber} numberOfLines={1}>{invoice.invoiceNumber || 'Draft'}</Text>
+                  <StatusBadge status={invoice.status || 'draft'} size="sm" />
+                </View>
+                <View style={styles.cardSubtitle}>
+                  <Feather name="user" size={12} color={colors.mutedForeground} />
+                  <Text style={styles.clientName} numberOfLines={1}>{clientName || 'No client'}</Text>
+                </View>
+              </View>
             </View>
-          )}
-          <View style={styles.invoiceDetailRow}>
+            
+            {/* Right: Amount + Chevron */}
+            <View style={styles.cardRight}>
+              <Text style={styles.invoiceTotal}>{formatCurrency(invoice.total || 0)}</Text>
+              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            </View>
+          </View>
+          
+          {/* Details row */}
+          <View style={styles.detailsRow}>
             <Feather name="calendar" size={12} color={colors.mutedForeground} />
-            <Text style={styles.invoiceDetailText} numberOfLines={1}>
+            <Text style={[
+              styles.invoiceDetailText,
+              invoice.status === 'overdue' && { color: colors.destructive }
+            ]} numberOfLines={1}>
               {invoice.dueDate ? `Due ${formatDate(invoice.dueDate)}` : 'No due date'}
             </Text>
-          </View>
-          {invoice.isRecurring && (
-            <View style={styles.invoiceDetailRow}>
+            {invoice.isRecurring && (
               <View style={styles.recurringBadge}>
                 <Feather name="repeat" size={10} color={colors.info} />
-                <Text style={styles.recurringBadgeText}>
-                  {invoice.recurrencePattern === 'fortnightly' ? 'Fortnightly' : 
-                   invoice.recurrencePattern?.charAt(0).toUpperCase() + invoice.recurrencePattern?.slice(1)}
-                </Text>
+                <Text style={styles.recurringBadgeText}>Recurring</Text>
               </View>
-              {invoice.nextRecurrenceDate && (
-                <Text style={styles.nextRecurrenceText}>
-                  Next: {formatDate(invoice.nextRecurrenceDate)}
-                </Text>
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* Inline Quick Action - Web Parity */}
-        {quickAction && (
-          <View style={styles.quickActionRow}>
-            <TouchableOpacity
-              style={[styles.quickActionButton, { backgroundColor: quickAction.color }]}
-              onPress={(e) => {
-                e.stopPropagation?.();
-                quickAction.action?.();
-              }}
-              activeOpacity={0.7}
-            >
-              <Feather name={quickAction.icon} size={14} color={colors.white} />
-              <Text style={styles.quickActionText}>{quickAction.label}</Text>
-            </TouchableOpacity>
+            )}
           </View>
-        )}
-      </View>
-      <View style={styles.invoiceCardChevron}>
-        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-      </View>
-    </AnimatedCardPressable>
+        </View>
+      </TouchableOpacity>
+      
+      {/* Quick action button - separate touch target */}
+      {quickAction && (
+        <View style={styles.quickActionContainer}>
+          <TouchableOpacity
+            style={[styles.quickActionButton, { backgroundColor: quickAction.color }]}
+            onPress={quickAction.action}
+            activeOpacity={0.7}
+          >
+            <Feather name={quickAction.icon} size={14} color={colors.white} />
+            <Text style={styles.quickActionText}>{quickAction.label}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -755,64 +752,98 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   invoiceCard: {
     width: '100%',
-    flexDirection: 'row',
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    overflow: 'hidden',
     ...shadows.sm,
   },
-  invoiceCardAccent: {
-    width: 4,
+  cardPressable: {
+    flex: 1,
   },
   invoiceCardContent: {
-    flex: 1,
     padding: spacing.md,
   },
-  invoiceCardHeader: {
+  quickActionContainer: {
+    borderTopWidth: 1,
+    borderTopColor: colors.cardBorder,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  // Web-style horizontal layout
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  cardLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    flex: 1,
+    minWidth: 0,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
     gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  cardSubtitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  clientName: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    flex: 1,
+  },
+  cardRight: {
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+    flexShrink: 0,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingLeft: 52, // Align with text after icon
   },
   invoiceNumber: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: colors.foreground,
-    flex: 1,
-  },
-  invoiceHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flex: 1,
-  },
-  invoiceAmountCol: {
-    alignItems: 'flex-end',
   },
   invoiceTotal: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.foreground,
-  },
-  invoiceGst: {
-    fontSize: 10,
-    color: colors.mutedForeground,
-    fontWeight: '500',
-  },
-  invoiceDetails: {
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  invoiceDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+    color: colors.primary,
   },
   invoiceDetailText: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.mutedForeground,
     flex: 1,
   },
@@ -824,39 +855,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+    marginLeft: spacing.sm,
   },
   recurringBadgeText: {
     fontSize: 10,
     fontWeight: '600',
     color: colors.info,
   },
-  nextRecurrenceText: {
-    fontSize: 11,
-    color: colors.info,
-    marginLeft: 8,
-  },
-  invoiceCardChevron: {
-    justifyContent: 'center',
-    paddingRight: spacing.md,
-  },
-  quickActionRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
-  },
   quickActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: radius.md,
+    minHeight: 36,
   },
   quickActionText: {
-    ...typography.caption,
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
   },
