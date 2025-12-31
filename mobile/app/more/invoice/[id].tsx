@@ -807,7 +807,7 @@ export default function InvoiceDetailScreen() {
           </View>
 
           {/* Recurring Invoice Section */}
-          {invoice.isRecurring && (
+          {(invoice as any).isRecurring && (
             <>
               <Text style={styles.sectionTitle}>Recurring Schedule</Text>
               <View style={[styles.card, styles.recurringCard]}>
