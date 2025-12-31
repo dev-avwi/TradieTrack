@@ -556,23 +556,13 @@ export default function ChatHubScreen() {
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setFilter('team')}
-              style={[styles.filterChip, filter === 'team' && styles.filterChipActive]}
-              activeOpacity={0.7}
-            >
-              <Feather name="users" size={14} color={filter === 'team' ? colors.primaryForeground : colors.foreground} />
-              <Text style={[styles.filterChipText, filter === 'team' && styles.filterChipTextActive]}>
-                Team
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
               onPress={() => setFilter('direct')}
               style={[styles.filterChip, filter === 'direct' && styles.filterChipActive]}
               activeOpacity={0.7}
             >
-              <Feather name="mail" size={14} color={filter === 'direct' ? colors.primaryForeground : colors.foreground} />
+              <Feather name="smartphone" size={14} color={filter === 'direct' ? colors.primaryForeground : colors.foreground} />
               <Text style={[styles.filterChipText, filter === 'direct' && styles.filterChipTextActive]}>
-                Direct
+                Client SMS
               </Text>
               {totalUnread > 0 && (
                 <View style={[styles.filterBadge, filter === 'direct' && styles.filterBadgeActive]}>
@@ -581,6 +571,16 @@ export default function ChatHubScreen() {
                   </Text>
                 </View>
               )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setFilter('team')}
+              style={[styles.filterChip, filter === 'team' && styles.filterChipActive]}
+              activeOpacity={0.7}
+            >
+              <Feather name="users" size={14} color={filter === 'team' ? colors.primaryForeground : colors.foreground} />
+              <Text style={[styles.filterChipText, filter === 'team' && styles.filterChipTextActive]}>
+                Team (In-App)
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setFilter('jobs')}

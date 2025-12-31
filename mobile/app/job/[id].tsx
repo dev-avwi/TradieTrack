@@ -3138,9 +3138,18 @@ export default function JobDetailScreen() {
       <View style={styles.errorContainer}>
         <Feather name="alert-circle" size={48} color={colors.mutedForeground} />
         <Text style={styles.errorText}>Job not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.errorButton}>
-          <Text style={styles.errorButtonText}>Go back</Text>
-        </TouchableOpacity>
+        <Text style={[styles.errorText, { fontSize: 14, marginTop: 4 }]}>
+          The job may have been deleted or you don't have access.
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+          <TouchableOpacity onPress={loadJob} style={[styles.errorButton, { backgroundColor: colors.primary }]}>
+            <Feather name="refresh-cw" size={16} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={[styles.errorButtonText, { color: '#fff' }]}>Retry</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.back()} style={styles.errorButton}>
+            <Text style={styles.errorButtonText}>Go back</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }

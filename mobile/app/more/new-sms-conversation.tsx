@@ -228,7 +228,7 @@ export default function NewSmsConversation() {
            client.company?.toLowerCase().includes(term);
   });
 
-  const handleClientSelect = (client: Client) => {
+  const handleClientSelect = async (client: Client) => {
     if (!client.phone) {
       Alert.alert(
         'No Phone Number',
@@ -243,14 +243,37 @@ export default function NewSmsConversation() {
 
     Alert.alert(
       'Start SMS Conversation',
-      `Send SMS to ${client.firstName} ${client.lastName} at ${client.phone}?\n\nThis will send a real text message via Twilio.`,
+      `Send SMS to ${client.firstName} ${client.lastName} at ${client.phone}?\n\nThis will send a real text message via Twilio. Standard SMS charges apply.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Start Chat', 
-          onPress: () => {
-            router.back();
-            router.push('/more/direct-messages');
+          text: 'Send SMS', 
+          onPress: async () => {
+            try {
+              const response = await api.post('/api/sms/conversations', {
+                clientId: client.id,
+                phoneNumber: client.phone,
+                initialMessage: `Hi ${client.firstName}, this is a message from your tradie. How can I help you today?`
+              });
+              
+              if (response.data) {
+                Alert.alert('SMS Sent', `Started SMS conversation with ${client.firstName} ${client.lastName}`);
+                router.back();
+              } else {
+                Alert.alert(
+                  'Failed to Send SMS',
+                  'Could not start SMS conversation. Please check your Twilio configuration or try again later.',
+                  [{ text: 'OK' }]
+                );
+              }
+            } catch (error: any) {
+              console.error('Failed to create SMS conversation:', error);
+              Alert.alert(
+                'SMS Failed',
+                error?.message || 'Failed to send SMS. Please check your Twilio settings and try again.',
+                [{ text: 'OK' }]
+              );
+            }
           }
         }
       ]
