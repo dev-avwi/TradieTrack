@@ -36,7 +36,7 @@ interface Client {
   name: string;
 }
 
-type FilterKey = 'all' | 'card' | 'bank_transfer' | 'cash' | 'tap_to_pay';
+type FilterKey = 'all' | 'card' | 'bank_transfer' | 'cash' | 'tap_to_pay' | 'other';
 
 const FILTERS: { key: FilterKey; label: string; icon: string }[] = [
   { key: 'all', label: 'All', icon: 'credit-card' },
@@ -44,7 +44,10 @@ const FILTERS: { key: FilterKey; label: string; icon: string }[] = [
   { key: 'bank_transfer', label: 'Bank Transfer', icon: 'building' },
   { key: 'cash', label: 'Cash', icon: 'dollar-sign' },
   { key: 'tap_to_pay', label: 'Tap to Pay', icon: 'smartphone' },
+  { key: 'other', label: 'Other', icon: 'more-horizontal' },
 ];
+
+const KNOWN_METHODS = ['card', 'bank_transfer', 'cash', 'tap_to_pay'];
 
 const formatCurrency = (cents: number) => {
   return new Intl.NumberFormat('en-AU', {
@@ -227,6 +230,7 @@ export default function ReceiptsScreen() {
     bank_transfer: receipts.filter(r => r.paymentMethod === 'bank_transfer').length,
     cash: receipts.filter(r => r.paymentMethod === 'cash').length,
     tap_to_pay: receipts.filter(r => r.paymentMethod === 'tap_to_pay').length,
+    other: receipts.filter(r => !KNOWN_METHODS.includes(r.paymentMethod)).length,
   }), [receipts]);
 
   const stats = useMemo(() => {
@@ -246,7 +250,10 @@ export default function ReceiptsScreen() {
         clientName.toLowerCase().includes(searchLower) ||
         (receipt.notes || '').toLowerCase().includes(searchLower);
       
-      const matchesFilter = activeFilter === 'all' || receipt.paymentMethod === activeFilter;
+      const matchesFilter = 
+        activeFilter === 'all' || 
+        (activeFilter === 'other' && !KNOWN_METHODS.includes(receipt.paymentMethod)) ||
+        receipt.paymentMethod === activeFilter;
       
       return matchesSearch && matchesFilter;
     });
@@ -265,6 +272,7 @@ export default function ReceiptsScreen() {
       case 'bank_transfer': return 'BANK TRANSFERS';
       case 'cash': return 'CASH PAYMENTS';
       case 'tap_to_pay': return 'TAP TO PAY';
+      case 'other': return 'OTHER PAYMENTS';
       default: return 'RECEIPTS';
     }
   };
