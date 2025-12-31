@@ -1919,18 +1919,28 @@ export default function JobDetailScreen() {
   };
 
   const loadJob = async () => {
+    if (!id) {
+      console.error('No job ID provided');
+      setIsLoading(false);
+      return;
+    }
+    
     setIsLoading(true);
-    const response = await api.get<Job>(`/api/jobs/${id}`);
-    if (response.data) {
-      setJob(response.data);
-      setEditedNotes(response.data.notes || '');
-      setSliderRadius(response.data.geofenceRadius || 100);
-      if (response.data.clientId) {
-        const clientResponse = await api.get<Client>(`/api/clients/${response.data.clientId}`);
-        if (clientResponse.data) {
-          setClient(clientResponse.data);
+    try {
+      const response = await api.get<Job>(`/api/jobs/${id}`);
+      if (response.data) {
+        setJob(response.data);
+        setEditedNotes(response.data.notes || '');
+        setSliderRadius(response.data.geofenceRadius || 100);
+        if (response.data.clientId) {
+          const clientResponse = await api.get<Client>(`/api/clients/${response.data.clientId}`);
+          if (clientResponse.data) {
+            setClient(clientResponse.data);
+          }
         }
       }
+    } catch (error) {
+      console.error('Failed to load job:', error);
     }
     setIsLoading(false);
   };

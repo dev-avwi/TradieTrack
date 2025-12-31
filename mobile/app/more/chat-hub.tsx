@@ -91,6 +91,53 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: 2,
   },
+  smsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.infoLight,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: 10,
+  },
+  smsBannerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: colors.info,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  smsBannerContent: {
+    flex: 1,
+  },
+  smsBannerTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.info,
+  },
+  smsBannerText: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+    marginTop: 1,
+  },
+  newSmsButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -452,7 +499,7 @@ export default function ChatHubScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Messages' }} />
+      <Stack.Screen options={{ title: 'Chat Hub' }} />
       
       <View style={styles.container}>
         <View style={styles.headerCard}>
@@ -460,8 +507,18 @@ export default function ChatHubScreen() {
             <Feather name="message-circle" size={24} color={colors.primary} />
           </View>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Messages</Text>
-            <Text style={styles.headerSubtitle}>Stay connected with your team</Text>
+            <Text style={styles.headerTitle}>Chat Hub</Text>
+            <Text style={styles.headerSubtitle}>SMS messaging with clients via Twilio</Text>
+          </View>
+        </View>
+
+        <View style={styles.smsBanner}>
+          <View style={styles.smsBannerIcon}>
+            <Feather name="smartphone" size={16} color="#fff" />
+          </View>
+          <View style={styles.smsBannerContent}>
+            <Text style={styles.smsBannerTitle}>Twilio SMS Integration</Text>
+            <Text style={styles.smsBannerText}>Send real SMS messages to clients. Standard SMS rates apply.</Text>
           </View>
         </View>
 
@@ -556,7 +613,7 @@ export default function ChatHubScreen() {
               </View>
               <Text style={styles.emptyTitle}>No conversations</Text>
               <Text style={styles.emptySubtitle}>
-                {searchTerm ? 'Try a different search term' : 'Start chatting with your team'}
+                {searchTerm ? 'Try a different search term' : 'Tap + to start a new SMS conversation with a client'}
               </Text>
             </View>
           ) : (
@@ -600,6 +657,14 @@ export default function ChatHubScreen() {
             ))
           )}
         </ScrollView>
+        
+        <TouchableOpacity 
+          style={styles.newSmsButton}
+          onPress={() => router.push('/more/new-sms-conversation')}
+          activeOpacity={0.8}
+        >
+          <Feather name="edit-3" size={24} color="#fff" />
+        </TouchableOpacity>
       </View>
     </>
   );
