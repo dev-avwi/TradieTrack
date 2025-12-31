@@ -121,6 +121,22 @@ export function EmailComposeModal({
     }
   };
 
+  // Quick tone adjustments with Australian English (matches web app)
+  const adjustTone = (tone: 'formal' | 'friendly' | 'brief') => {
+    const tones = {
+      formal: type === 'quote'
+        ? `Dear ${clientFirstName},\n\nPlease find attached the quotation for "${documentTitle}" as requested.\n\nThe quoted amount is ${total}. This quote remains valid for 30 days from the date of issue.\n\nShould you have any queries or require clarification, please do not hesitate to contact us.\n\nKind regards,\n${businessName || 'Your Business'}`
+        : `Dear ${clientFirstName},\n\nPlease find attached your tax invoice for "${documentTitle}".\n\nThe total amount payable is ${total}. Payment is due within the terms specified on the invoice.\n\nShould you have any queries regarding this invoice, please do not hesitate to contact us.\n\nKind regards,\n${businessName || 'Your Business'}`,
+      friendly: type === 'quote'
+        ? `Hey ${clientFirstName}!\n\nGreat chatting with you - here's the quote we discussed for "${documentTitle}".\n\nIt comes to ${total} all up. Let me know if you've got any questions or want to tweak anything!\n\nCheers mate,\n${businessName || 'Your Business'}`
+        : `Hey ${clientFirstName}!\n\nJust popping this invoice through for "${documentTitle}".\n\nThe total is ${total}. You can pay online using the link below - super easy!\n\nThanks heaps for your custom - really appreciate it!\n\nCheers mate,\n${businessName || 'Your Business'}`,
+      brief: type === 'quote'
+        ? `Hi ${clientFirstName},\n\nAttached: Quote for "${documentTitle}" - ${total}.\n\nAny questions, just ask.\n\nCheers,\n${businessName || 'Your Business'}`
+        : `Hi ${clientFirstName},\n\nAttached: Invoice for "${documentTitle}" - ${total}.\n\nPayment link included.\n\nCheers,\n${businessName || 'Your Business'}`
+    };
+    setMessage(tones[tone]);
+  };
+
   const handleSend = async () => {
     if (!subject.trim() || !message.trim()) {
       Alert.alert('Missing Information', 'Please enter both subject and message.');
@@ -253,8 +269,36 @@ export function EmailComposeModal({
                   onPress={() => setActiveTab('ai')}
                 >
                   <Feather name="zap" size={16} color={colors.primary} />
-                  <Text style={styles.quickActionText}>Get AI suggestions</Text>
+                  <Text style={styles.quickActionText}>AI</Text>
                 </TouchableOpacity>
+                
+                {/* Tone adjustment buttons like web app */}
+                <TouchableOpacity
+                  style={styles.toneButton}
+                  onPress={() => adjustTone('friendly')}
+                >
+                  <Text style={styles.toneButtonText}>Friendly</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.toneButton}
+                  onPress={() => adjustTone('formal')}
+                >
+                  <Text style={styles.toneButtonText}>Formal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.toneButton}
+                  onPress={() => adjustTone('brief')}
+                >
+                  <Text style={styles.toneButtonText}>Brief</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {/* Info about auto-attached content */}
+              <View style={styles.autoIncludedInfo}>
+                <Feather name="paperclip" size={14} color={colors.mutedForeground} />
+                <Text style={styles.autoIncludedText}>
+                  PDF + payment link included automatically
+                </Text>
               </View>
             </View>
           )}
@@ -504,20 +548,50 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     },
     quickActions: {
       marginTop: spacing.md,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
     },
     quickActionButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.primaryLight,
-      paddingVertical: spacing.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
       borderRadius: radius.lg,
-      gap: spacing.sm,
+      gap: spacing.xs,
     },
     quickActionText: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: '600',
       color: colors.primary,
+    },
+    toneButton: {
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.lg,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    toneButtonText: {
+      fontSize: 13,
+      color: colors.foreground,
+    },
+    autoIncludedInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginTop: spacing.lg,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      backgroundColor: colors.cardHover,
+      borderRadius: radius.md,
+    },
+    autoIncludedText: {
+      fontSize: 12,
+      color: colors.mutedForeground,
     },
     aiContent: {
       padding: spacing.lg,
