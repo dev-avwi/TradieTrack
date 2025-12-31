@@ -11,6 +11,7 @@ import {
   TextInput,
   Linking,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -499,6 +500,23 @@ export default function QuoteDetailScreen() {
     setShowEmailCompose(true);
   };
 
+  const handleCopyLink = async () => {
+    if (!quote?.acceptanceToken) {
+      Alert.alert('Link Not Available', 'This quote does not have a shareable link. Try sending the quote first.');
+      return;
+    }
+    
+    const publicUrl = `${API_URL.replace('/api', '')}/q/${quote.acceptanceToken}`;
+    
+    try {
+      await Clipboard.setStringAsync(publicUrl);
+      Alert.alert('Link Copied', 'The quote link has been copied to your clipboard. Share it with your client so they can view and accept the quote online.');
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      Alert.alert('Error', 'Failed to copy link to clipboard');
+    }
+  };
+
   if (isLoading) {
     return (
       <>
@@ -580,7 +598,7 @@ export default function QuoteDetailScreen() {
             <Text style={styles.totalLabel}>Total (inc. GST)</Text>
           </View>
 
-          {/* Quick Actions */}
+          {/* Quick Actions Row 1 */}
           <View style={styles.quickActions}>
             <TouchableOpacity 
               style={styles.quickAction}
@@ -603,21 +621,39 @@ export default function QuoteDetailScreen() {
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.quickAction}
+              onPress={handleCopyLink}
+            >
+              <Feather name="link" size={20} color={colors.primary} />
+              <Text style={styles.quickActionText}>Copy Link</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.quickAction}
               onPress={() => setShowTemplateSelector(true)}
             >
               <Feather name="layout" size={20} color={colors.primary} />
               <Text style={styles.quickActionText}>Template</Text>
             </TouchableOpacity>
-            {quote.status === 'accepted' && (
+          </View>
+          
+          {/* Quick Actions Row 2 - Status-dependent */}
+          {quote.status === 'accepted' && (
+            <View style={[styles.quickActions, { marginTop: 8 }]}>
               <TouchableOpacity 
                 style={[styles.quickAction, styles.quickActionPrimary]}
                 onPress={handleConvertToInvoice}
               >
-                <Feather name="arrow-right" size={20} color={colors.white} />
-                <Text style={[styles.quickActionText, { color: colors.white }]}>Invoice</Text>
+                <Feather name="file-text" size={20} color={colors.white} />
+                <Text style={[styles.quickActionText, { color: colors.white }]}>Create Invoice</Text>
               </TouchableOpacity>
-            )}
-          </View>
+              <TouchableOpacity 
+                style={[styles.quickAction, { backgroundColor: colors.success }]}
+                onPress={handleConvertToJob}
+              >
+                <Feather name="briefcase" size={20} color={colors.white} />
+                <Text style={[styles.quickActionText, { color: colors.white }]}>Create Job</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Client Info */}
           <Text style={styles.sectionTitle}>Client</Text>
@@ -1044,6 +1080,20 @@ export default function QuoteDetailScreen() {
                   <Feather name="mail" size={22} color={colors.primary} />
                 </View>
                 <Text style={styles.shareOptionText}>Email to Client</Text>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.shareOption}
+                onPress={() => {
+                  setShowShareSheet(false);
+                  handleCopyLink();
+                }}
+              >
+                <View style={[styles.shareOptionIcon, { backgroundColor: colors.infoLight }]}>
+                  <Feather name="link" size={22} color={colors.info} />
+                </View>
+                <Text style={styles.shareOptionText}>Copy Quote Link</Text>
                 <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
               </TouchableOpacity>
 

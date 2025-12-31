@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -33,14 +34,50 @@ const handleCreateClient = () => {
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_GAP = 12;
 const HORIZONTAL_PADDING = 16;
-const CARD_WIDTH = (SCREEN_WIDTH - (HORIZONTAL_PADDING * 2) - CARD_GAP) / 2;
+
+function KPIBox({ 
+  icon, 
+  title, 
+  value, 
+  onPress 
+}: { 
+  icon: string; 
+  title: string; 
+  value: string; 
+  onPress?: () => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  return (
+    <TouchableOpacity 
+      style={styles.kpiBox} 
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
+      <View style={[styles.kpiIconContainer, { backgroundColor: colors.primaryLight }]}>
+        <Feather name={icon as any} size={iconSizes.md} color={colors.primary} />
+      </View>
+      <Text style={styles.kpiValue}>{value}</Text>
+      <Text style={styles.kpiTitle}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
 
 function ClientCard({ 
   client, 
-  onPress 
+  onPress,
+  onCall,
+  onEmail,
+  onSms,
+  onCreateJob,
 }: { 
   client: any; 
   onPress: () => void;
+  onCall?: () => void;
+  onEmail?: () => void;
+  onSms?: () => void;
+  onCreateJob?: () => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -54,27 +91,86 @@ function ClientCard({
       .toUpperCase();
   };
 
-  const primaryContact = client.email || client.phone || null;
-
   return (
     <AnimatedCardPressable
       onPress={onPress}
-      style={[styles.clientCard, { width: CARD_WIDTH }]}
+      style={styles.clientCardFull}
     >
-      <View style={styles.clientCardContent}>
+      <View style={styles.clientCardRow}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
         </View>
         
-        <Text style={styles.clientName} numberOfLines={2}>{client.name}</Text>
+        <View style={styles.clientCardInfo}>
+          <Text style={styles.clientName} numberOfLines={1}>{client.name}</Text>
+          <View style={styles.clientMeta}>
+            <View style={styles.jobsBadge}>
+              <Text style={styles.jobsBadgeText}>
+                {client.jobsCount || 0} {(client.jobsCount || 0) === 1 ? 'job' : 'jobs'}
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.contactRow}>
+            {client.email && (
+              <View style={styles.contactItem}>
+                <Feather name="mail" size={12} color={colors.mutedForeground} />
+                <Text style={styles.contactItemText} numberOfLines={1}>{client.email}</Text>
+              </View>
+            )}
+            {client.phone && (
+              <View style={styles.contactItem}>
+                <Feather name="phone" size={12} color={colors.mutedForeground} />
+                <Text style={styles.contactItemText}>{client.phone}</Text>
+              </View>
+            )}
+            {client.address && (
+              <View style={styles.contactItem}>
+                <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                <Text style={styles.contactItemText} numberOfLines={1}>{client.address}</Text>
+              </View>
+            )}
+          </View>
+        </View>
         
-        {primaryContact && (
-          <Text style={styles.contactText} numberOfLines={1}>{primaryContact}</Text>
+        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+      </View>
+      
+      <View style={styles.clientCardActions}>
+        {client.phone && (
+          <TouchableOpacity 
+            style={styles.cardActionButton}
+            onPress={(e) => { e.stopPropagation(); onCall?.(); }}
+          >
+            <Feather name="phone" size={14} color={colors.primary} />
+            <Text style={styles.cardActionText}>Call</Text>
+          </TouchableOpacity>
         )}
-        
-        {client.jobsCount !== undefined && client.jobsCount > 0 && (
-          <Text style={styles.jobsText}>{client.jobsCount} {client.jobsCount === 1 ? 'job' : 'jobs'}</Text>
+        {client.email && (
+          <TouchableOpacity 
+            style={styles.cardActionButton}
+            onPress={(e) => { e.stopPropagation(); onEmail?.(); }}
+          >
+            <Feather name="mail" size={14} color={colors.primary} />
+            <Text style={styles.cardActionText}>Email</Text>
+          </TouchableOpacity>
         )}
+        {client.phone && (
+          <TouchableOpacity 
+            style={styles.cardActionButton}
+            onPress={(e) => { e.stopPropagation(); onSms?.(); }}
+          >
+            <Feather name="message-circle" size={14} color={colors.primary} />
+            <Text style={styles.cardActionText}>SMS</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity 
+          style={[styles.cardActionButton, styles.cardActionButtonPrimary]}
+          onPress={(e) => { e.stopPropagation(); onCreateJob?.(); }}
+        >
+          <Feather name="briefcase" size={14} color={colors.white} />
+          <Text style={[styles.cardActionText, styles.cardActionTextPrimary]}>Job</Text>
+        </TouchableOpacity>
       </View>
     </AnimatedCardPressable>
   );
@@ -125,25 +221,35 @@ export default function ClientsScreen() {
     return matchesSearch && matchesFilter;
   });
 
-  const renderClientGrid = () => {
-    const rows: any[][] = [];
-    for (let i = 0; i < filteredClients.length; i += 2) {
-      rows.push(filteredClients.slice(i, i + 2));
-    }
+  const handleCall = (phone: string) => {
+    Linking.openURL(`tel:${phone}`);
+  };
 
+  const handleEmail = (email: string) => {
+    Linking.openURL(`mailto:${email}`);
+  };
+
+  const handleSms = (phone: string) => {
+    Linking.openURL(`sms:${phone}`);
+  };
+
+  const handleCreateJob = (clientId: string) => {
+    router.push(`/job/new?clientId=${clientId}`);
+  };
+
+  const renderClientList = () => {
     return (
-      <View style={styles.clientsGrid}>
-        {rows.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.clientRow}>
-            {row.map((client) => (
-              <ClientCard
-                key={client.id}
-                client={client}
-                onPress={() => router.push(`/more/client/${client.id}`)}
-              />
-            ))}
-            {row.length === 1 && <View style={styles.placeholderCard} />}
-          </View>
+      <View style={styles.clientsList}>
+        {filteredClients.map((client) => (
+          <ClientCard
+            key={client.id}
+            client={client}
+            onPress={() => router.push(`/more/client/${client.id}`)}
+            onCall={() => client.phone && handleCall(client.phone)}
+            onEmail={() => client.email && handleEmail(client.email)}
+            onSms={() => client.phone && handleSms(client.phone)}
+            onCreateJob={() => handleCreateJob(client.id)}
+          />
         ))}
       </View>
     );
@@ -233,6 +339,33 @@ export default function ClientsScreen() {
             })}
           </ScrollView>
 
+          <View style={styles.kpiRow}>
+            <KPIBox 
+              icon="users" 
+              title="Total" 
+              value={filterCounts.all.toString()} 
+              onPress={() => setActiveFilter('all')}
+            />
+            <KPIBox 
+              icon="mail" 
+              title="With Email" 
+              value={filterCounts.with_email.toString()} 
+              onPress={() => setActiveFilter('with_email')}
+            />
+            <KPIBox 
+              icon="phone" 
+              title="With Phone" 
+              value={filterCounts.with_phone.toString()} 
+              onPress={() => setActiveFilter('with_phone')}
+            />
+            <KPIBox 
+              icon="map-pin" 
+              title="With Addr" 
+              value={filterCounts.with_address.toString()} 
+              onPress={() => setActiveFilter('with_address')}
+            />
+          </View>
+
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Feather name="users" size={iconSizes.md} color={colors.primary} />
@@ -252,11 +385,20 @@ export default function ClientsScreen() {
                 <Text style={styles.emptyStateSubtitle}>
                   {searchQuery || activeFilter !== 'all'
                     ? 'Try adjusting your search or filters'
-                    : 'Add your first client to get started'}
+                    : 'Save client details once, use them everywhere. Makes quoting and invoicing a breeze.'}
                 </Text>
+                {!searchQuery && activeFilter === 'all' && (
+                  <TouchableOpacity 
+                    style={styles.emptyStateButton}
+                    onPress={handleCreateClient}
+                  >
+                    <Feather name="plus" size={16} color={colors.white} />
+                    <Text style={styles.emptyStateButtonText}>Add Your First Client</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : (
-              renderClientGrid()
+              renderClientList()
             )}
           </View>
         </ScrollView>
@@ -424,38 +566,143 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: spacing.xl,
   },
-
-  clientsGrid: {
-    gap: 12,
-  },
-  clientRow: {
+  emptyStateButton: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    marginTop: spacing.lg,
+    gap: spacing.xs,
   },
-  placeholderCard: {
-    width: CARD_WIDTH,
+  emptyStateButtonText: {
+    color: colors.white,
+    fontWeight: '600',
+    fontSize: 14,
   },
-  clientCard: {
+
+  kpiRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  kpiBox: {
+    flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    overflow: 'hidden',
+    padding: spacing.md,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
-  clientCardContent: {
-    alignItems: 'center',
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
+  kpiIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
+  },
+  kpiValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  kpiTitle: {
+    fontSize: 10,
+    color: colors.mutedForeground,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+
+  clientsList: {
+    gap: spacing.md,
+  },
+  clientCardFull: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  clientCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  clientCardInfo: {
+    flex: 1,
+  },
+  clientMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  jobsBadge: {
+    backgroundColor: colors.muted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  jobsBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+  },
+  contactRow: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  contactItemText: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    flex: 1,
+  },
+  clientCardActions: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  cardActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.muted,
+    gap: spacing.xs,
+  },
+  cardActionButtonPrimary: {
+    backgroundColor: colors.primary,
+    marginLeft: 'auto',
+  },
+  cardActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  cardActionTextPrimary: {
+    color: colors.white,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarText: {
     fontSize: 16,
@@ -466,17 +713,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.foreground,
-    textAlign: 'center',
     lineHeight: 20,
-  },
-  contactText: {
-    fontSize: 13,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-  },
-  jobsText: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginTop: spacing.xs,
   },
 });

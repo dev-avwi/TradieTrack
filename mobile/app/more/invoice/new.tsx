@@ -636,10 +636,11 @@ interface LineItem {
 
 export default function NewInvoiceScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ jobId?: string; clientId?: string }>();
+  const params = useLocalSearchParams<{ jobId?: string; clientId?: string; editInvoiceId?: string }>();
   const { user, businessSettings } = useAuthStore();
   const { clients, fetchClients } = useClientsStore();
-  const { fetchInvoices } = useInvoicesStore();
+  const { fetchInvoices, getInvoice } = useInvoicesStore();
+  const isEditing = !!params.editInvoiceId;
   const { colors, isDark } = useTheme();
   const { isOnline, pendingSyncCount } = useOfflineStore();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -721,7 +722,45 @@ export default function NewInvoiceScreen() {
       fetchJobExpenses(params.jobId);
       fetchJobAndPrefill(params.jobId);
     }
+    if (params.editInvoiceId) {
+      loadInvoiceForEditing(params.editInvoiceId);
+    }
   }, []);
+
+  const loadInvoiceForEditing = async (invoiceId: string) => {
+    setIsLoading(true);
+    try {
+      const invoiceData = await getInvoice(invoiceId);
+      if (invoiceData) {
+        setForm(prev => ({
+          ...prev,
+          clientId: invoiceData.clientId || '',
+          title: invoiceData.title || '',
+          description: invoiceData.description || '',
+          dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          notes: invoiceData.notes || '',
+          terms: invoiceData.terms || '',
+          includeGst: invoiceData.gstAmount > 0,
+          isRecurring: invoiceData.isRecurring || false,
+          recurrencePattern: invoiceData.recurrencePattern || 'monthly',
+          recurrenceEndDate: invoiceData.recurrenceEndDate ? new Date(invoiceData.recurrenceEndDate) : null,
+        }));
+        if (invoiceData.lineItems && invoiceData.lineItems.length > 0) {
+          setLineItems(invoiceData.lineItems.map((item: any) => ({
+            id: item.id || `line-${Date.now()}-${Math.random()}`,
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            rate: item.unitPrice || 0,
+          })));
+        }
+      }
+    } catch (error) {
+      console.log('Error loading invoice for editing:', error);
+      Alert.alert('Error', 'Failed to load invoice data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchJobAndPrefill = async (jId: string) => {
     setIsLoadingJob(true);
@@ -953,19 +992,21 @@ export default function NewInvoiceScreen() {
     
     // Online: try API first, fallback to offline if network error
     try {
-      const response = await api.post('/api/invoices', invoiceData);
+      const response = isEditing 
+        ? await api.patch(`/api/invoices/${params.editInvoiceId}`, invoiceData)
+        : await api.post('/api/invoices', invoiceData);
 
       if (response.data) {
         await fetchInvoices();
-        Alert.alert('Success', 'Invoice created successfully', [
+        Alert.alert('Success', isEditing ? 'Invoice updated successfully' : 'Invoice created successfully', [
           { text: 'OK', onPress: () => router.back() }
         ]);
       } else {
-        Alert.alert('Error', response.error || 'Failed to create invoice');
+        Alert.alert('Error', response.error || (isEditing ? 'Failed to update invoice' : 'Failed to create invoice'));
       }
     } catch (error: any) {
-      // Network error - save offline
-      if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
+      // Network error - save offline (only for create, not edit)
+      if (!isEditing && (error.message?.includes('Network') || error.code === 'ECONNABORTED')) {
         try {
           await offlineStorage.saveInvoiceOffline(invoiceData);
           Alert.alert(
@@ -978,7 +1019,7 @@ export default function NewInvoiceScreen() {
           Alert.alert('Error', 'Failed to save invoice. Please try again.');
         }
       } else {
-        Alert.alert('Error', 'Failed to create invoice. Please try again.');
+        Alert.alert('Error', isEditing ? 'Failed to update invoice. Please try again.' : 'Failed to create invoice. Please try again.');
       }
     }
     setIsLoading(false);
@@ -1044,7 +1085,7 @@ export default function NewInvoiceScreen() {
             >
               <Feather name="chevron-left" size={24} color={colors.foreground} />
             </Pressable>
-            <Text style={styles.headerTitle}>New Invoice</Text>
+            <Text style={styles.headerTitle}>{isEditing ? 'Edit Invoice' : 'New Invoice'}</Text>
             <View style={styles.totalBadge}>
               <Text style={styles.totalBadgeText}>{formatCurrency(total)}</Text>
             </View>
@@ -1474,7 +1515,7 @@ export default function NewInvoiceScreen() {
                 ) : (
                   <>
                     <Feather name="check" size={18} color={colors.primaryForeground} />
-                    <Text style={{ color: colors.primaryForeground, fontSize: 16, fontWeight: '600' }}>Create Invoice</Text>
+                    <Text style={{ color: colors.primaryForeground, fontSize: 16, fontWeight: '600' }}>{isEditing ? 'Update Invoice' : 'Create Invoice'}</Text>
                   </>
                 )}
               </TouchableOpacity>

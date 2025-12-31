@@ -764,7 +764,10 @@ export default function InvoiceDetailScreen() {
               <Text style={styles.quickActionText}>{isPaid ? "Receipt" : "Template"}</Text>
             </TouchableOpacity>
             {invoice.status === 'draft' && (
-              <TouchableOpacity style={styles.quickAction}>
+              <TouchableOpacity 
+                style={styles.quickAction}
+                onPress={() => router.push(`/more/invoice/new?editInvoiceId=${id}`)}
+              >
                 <Feather name="edit-2" size={20} color={colors.primary} />
                 <Text style={styles.quickActionText}>Edit</Text>
               </TouchableOpacity>

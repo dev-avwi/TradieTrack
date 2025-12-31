@@ -8,7 +8,8 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Dimensions
+  Dimensions,
+  Alert
 } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -20,6 +21,7 @@ import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
+import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
@@ -39,10 +41,12 @@ const STATUS_FILTERS: { key: string; label: string; icon: string }[] = [
 
 function JobCard({ 
   job, 
-  onPress
+  onPress,
+  onQuickAction
 }: { 
   job: any;
   onPress: () => void;
+  onQuickAction?: (action: string, jobId: string) => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -84,16 +88,40 @@ function JobCard({
     }
   };
 
+  const urgency = getJobUrgency(job.scheduledAt, job.status);
+
+  const handleMorePress = () => {
+    const actions: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' }[] = [];
+    
+    actions.push({ text: 'View Details', onPress: () => router.push(`/job/${job.id}`) });
+    
+    if (job.status === 'pending') {
+      actions.push({ text: 'Schedule Job', onPress: () => onQuickAction?.('schedule', job.id) });
+    }
+    if (job.status === 'scheduled') {
+      actions.push({ text: 'Start Job', onPress: () => onQuickAction?.('start', job.id) });
+    }
+    if (job.status === 'in_progress') {
+      actions.push({ text: 'Complete Job', onPress: () => onQuickAction?.('complete', job.id) });
+    }
+    if (job.status !== 'invoiced') {
+      actions.push({ text: 'Create Quote', onPress: () => router.push(`/more/quote/new?jobId=${job.id}`) });
+    }
+    if (job.status === 'done') {
+      actions.push({ text: 'Create Invoice', onPress: () => router.push(`/more/invoice/new?jobId=${job.id}`) });
+    }
+    
+    actions.push({ text: 'Cancel', style: 'cancel' });
+    
+    Alert.alert('Job Actions', job.title || 'Untitled Job', actions);
+  };
+
   return (
     <AnimatedCardPressable
       onPress={onPress}
       style={styles.jobCard}
     >
-      {/* Top accent bar for 2-column cards */}
-      <View style={[styles.jobCardAccent, { backgroundColor: getAccentColor() }]} />
-      
       <View style={styles.jobCardContent}>
-        {/* Status badge at top */}
         <View style={styles.jobCardStatusRow}>
           <StatusBadge status={job.status} size="sm" />
           {job.isRecurring && (
@@ -102,19 +130,33 @@ function JobCard({
               <Text style={styles.recurringBadgeText}>Recurring</Text>
             </View>
           )}
+          {urgency && (
+            <View style={[styles.urgencyBadge, { backgroundColor: urgency.bgColor }]}>
+              {urgency.animate && (
+                <View style={[styles.urgencyDot, { backgroundColor: urgency.color }]} />
+              )}
+              <Text style={[styles.urgencyBadgeText, { color: urgency.color }]} numberOfLines={1}>
+                {urgency.shortLabel}
+              </Text>
+            </View>
+          )}
+          <TouchableOpacity 
+            style={styles.moreButton}
+            onPress={handleMorePress}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="more-horizontal" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
         </View>
 
-        {/* Title */}
         <Text style={styles.jobTitle} numberOfLines={2}>{job.title || 'Untitled Job'}</Text>
         
-        {/* Next recurrence date for recurring jobs */}
         {job.isRecurring && job.nextRecurrenceDate && (
           <Text style={styles.nextRecurrenceText}>
             Next: {new Date(job.nextRecurrenceDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
           </Text>
         )}
 
-        {/* Details section */}
         <View style={styles.jobCardDetails}>
           {job.clientName && (
             <View style={styles.jobDetailRow}>
@@ -136,11 +178,13 @@ function JobCard({
           </View>
         </View>
 
-        {/* Action button for done jobs */}
         {job.status === 'done' && (
           <TouchableOpacity
             style={styles.invoiceBtn}
-            onPress={() => router.push(`/more/invoice/new?jobId=${job.id}`)}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              router.push(`/more/invoice/new?jobId=${job.id}`);
+            }}
             activeOpacity={0.8}
           >
             <Feather name="file-text" size={iconSizes.sm} color={colors.white} />
@@ -164,7 +208,7 @@ export default function JobsScreen() {
     }
   }, [scrollToTopTrigger]);
   
-  const { jobs, fetchJobs, isLoading } = useJobsStore();
+  const { jobs, fetchJobs, isLoading, updateJobStatus } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
@@ -172,6 +216,29 @@ export default function JobsScreen() {
   const refreshData = useCallback(async () => {
     await Promise.all([fetchJobs(), fetchClients()]);
   }, [fetchJobs, fetchClients]);
+
+  const handleQuickAction = useCallback(async (action: string, jobId: string) => {
+    if (action === 'schedule') {
+      router.push(`/job/${jobId}?action=schedule`);
+    } else if (action === 'start') {
+      Alert.alert(
+        'Start Job',
+        'Are you sure you want to start this job?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Start', 
+            onPress: async () => {
+              await updateJobStatus(jobId, 'in_progress');
+              refreshData();
+            }
+          }
+        ]
+      );
+    } else if (action === 'complete') {
+      router.push(`/job/${jobId}?action=complete`);
+    }
+  }, [updateJobStatus, refreshData]);
 
   useEffect(() => {
     refreshData();
@@ -361,6 +428,65 @@ export default function JobsScreen() {
           })}
         </ScrollView>
 
+        {/* KPI Stats Grid */}
+        <View style={styles.kpiGrid}>
+          <TouchableOpacity 
+            style={styles.kpiCard} 
+            onPress={() => setActiveFilter('all')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.kpiIcon, { backgroundColor: `${colors.primary}15` }]}>
+              <Feather name="briefcase" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <View>
+              <Text style={styles.kpiValue}>{statusCounts.all}</Text>
+              <Text style={styles.kpiLabel}>Total Jobs</Text>
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.kpiCard} 
+            onPress={() => setActiveFilter('scheduled')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.kpiIcon, { backgroundColor: `${colors.scheduled}15` }]}>
+              <Feather name="calendar" size={iconSizes.lg} color={colors.scheduled} />
+            </View>
+            <View>
+              <Text style={styles.kpiValue}>{statusCounts.scheduled}</Text>
+              <Text style={styles.kpiLabel}>Scheduled</Text>
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.kpiCard} 
+            onPress={() => setActiveFilter('in_progress')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.kpiIcon, { backgroundColor: `${colors.inProgress}15` }]}>
+              <Feather name="play" size={iconSizes.lg} color={colors.inProgress} />
+            </View>
+            <View>
+              <Text style={styles.kpiValue}>{statusCounts.in_progress}</Text>
+              <Text style={styles.kpiLabel}>In Progress</Text>
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.kpiCard} 
+            onPress={() => setActiveFilter('done')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.kpiIcon, { backgroundColor: `${colors.done}15` }]}>
+              <Feather name="check-circle" size={iconSizes.lg} color={colors.done} />
+            </View>
+            <View>
+              <Text style={styles.kpiValue}>{statusCounts.done}</Text>
+              <Text style={styles.kpiLabel}>Completed</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* All Jobs Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -391,6 +517,7 @@ export default function JobsScreen() {
                   key={job.id}
                   job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
                   onPress={() => router.push(`/job/${job.id}`)}
+                  onQuickAction={handleQuickAction}
                 />
               ))}
             </View>
@@ -641,5 +768,62 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.captionSmall,
     fontWeight: '600',
     color: colors.white,
+  },
+
+  urgencyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    gap: 4,
+  },
+  urgencyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  urgencyBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  moreButton: {
+    marginLeft: 'auto',
+    padding: spacing.xs,
+  },
+
+  kpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  kpiCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+    width: (SCREEN_WIDTH - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  kpiIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  kpiValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  kpiLabel: {
+    fontSize: 11,
+    color: colors.mutedForeground,
   },
 });

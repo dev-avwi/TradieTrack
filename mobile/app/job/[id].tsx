@@ -42,6 +42,7 @@ import { SmartAction, getJobSmartActions } from '../../src/components/SmartActio
 import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from '../../src/components/JobWorkflowComponents';
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
+import { getJobUrgency } from '../../src/lib/jobUrgency';
 
 interface Job {
   id: string;
@@ -212,6 +213,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   statusRow: {
     marginBottom: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  headerUrgencyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: 6,
+  },
+  headerUrgencyDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  headerUrgencyText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   title: {
     fontSize: 26,
@@ -4396,20 +4419,31 @@ export default function JobDetailScreen() {
           title: '',
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
-          headerRight: () => canDeleteJobs ? (
-            <TouchableOpacity
-              onPress={handleDeleteJob}
-              disabled={isDeletingJob}
-              style={{ padding: spacing.sm, marginRight: spacing.sm }}
-              data-testid="button-delete-job"
-            >
-              {isDeletingJob ? (
-                <ActivityIndicator size="small" color={colors.destructive} />
-              ) : (
-                <Feather name="trash-2" size={iconSizes.md} color={colors.destructive} />
+          headerRight: () => (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              <TouchableOpacity
+                onPress={() => router.push(`/more/create-job?editJobId=${job.id}`)}
+                style={{ padding: spacing.sm }}
+                data-testid="button-edit-job"
+              >
+                <Feather name="edit-2" size={iconSizes.md} color={colors.foreground} />
+              </TouchableOpacity>
+              {canDeleteJobs && (
+                <TouchableOpacity
+                  onPress={handleDeleteJob}
+                  disabled={isDeletingJob}
+                  style={{ padding: spacing.sm, marginRight: spacing.sm }}
+                  data-testid="button-delete-job"
+                >
+                  {isDeletingJob ? (
+                    <ActivityIndicator size="small" color={colors.destructive} />
+                  ) : (
+                    <Feather name="trash-2" size={iconSizes.md} color={colors.destructive} />
+                  )}
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-          ) : null,
+            </View>
+          ),
           headerStyle: {
             backgroundColor: colors.background,
           },
@@ -4422,6 +4456,20 @@ export default function JobDetailScreen() {
       <View style={styles.fixedHeader}>
         <View style={styles.statusRow}>
           <StatusBadge status={job.status} />
+          {(() => {
+            const urgency = getJobUrgency(job.scheduledAt, job.status);
+            if (!urgency) return null;
+            return (
+              <View style={[styles.headerUrgencyBadge, { backgroundColor: urgency.bgColor, borderColor: `${urgency.color}30` }]}>
+                {urgency.animate && (
+                  <View style={[styles.headerUrgencyDot, { backgroundColor: urgency.color }]} />
+                )}
+                <Text style={[styles.headerUrgencyText, { color: urgency.color }]}>
+                  {urgency.label}
+                </Text>
+              </View>
+            );
+          })()}
         </View>
         <Text style={styles.title}>{job.title}</Text>
         {job.description && (

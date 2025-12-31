@@ -196,6 +196,14 @@ export default function InvoicesScreen() {
     .filter(i => i.status === 'paid')
     .reduce((sum, i) => sum + (i.total || 0), 0);
 
+  const totalOverdue = invoices
+    .filter(i => i.status === 'overdue')
+    .reduce((sum, i) => sum + (i.total || 0), 0);
+
+  const totalAll = invoices
+    .filter(i => !i.archived)
+    .reduce((sum, i) => sum + (i.total || 0), 0);
+
   const filterCounts = {
     all: invoices.filter(i => !i.archived).length,
     draft: invoices.filter(i => i.status === 'draft' && !i.archived).length,
@@ -262,16 +270,54 @@ export default function InvoicesScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Outstanding</Text>
-              <Text style={styles.summaryValue}>{formatCurrency(totalOutstanding)}</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Paid</Text>
-              <Text style={[styles.summaryValue, { color: colors.success }]}>{formatCurrency(totalPaid)}</Text>
-            </View>
+          <View style={styles.kpiGrid}>
+            <TouchableOpacity 
+              style={styles.kpiCard}
+              onPress={() => setActiveFilter('all')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.kpiIconContainer, { backgroundColor: colors.primaryLight }]}>
+                <Feather name="dollar-sign" size={16} color={colors.primary} />
+              </View>
+              <Text style={styles.kpiLabel}>Total Value</Text>
+              <Text style={styles.kpiValue}>{formatCurrency(totalAll)}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.kpiCard}
+              onPress={() => setActiveFilter('sent')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.kpiIconContainer, { backgroundColor: colors.warningLight }]}>
+                <Feather name="alert-circle" size={16} color={colors.warning} />
+              </View>
+              <Text style={styles.kpiLabel}>Unpaid</Text>
+              <Text style={styles.kpiValue}>{formatCurrency(totalOutstanding)}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.kpiCard}
+              onPress={() => setActiveFilter('paid')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.kpiIconContainer, { backgroundColor: colors.successLight }]}>
+                <Feather name="check-circle" size={16} color={colors.success} />
+              </View>
+              <Text style={styles.kpiLabel}>Paid</Text>
+              <Text style={[styles.kpiValue, { color: colors.success }]}>{formatCurrency(totalPaid)}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.kpiCard}
+              onPress={() => setActiveFilter('overdue')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.kpiIconContainer, { backgroundColor: colors.destructiveLight }]}>
+                <Feather name="clock" size={16} color={colors.destructive} />
+              </View>
+              <Text style={styles.kpiLabel}>Overdue</Text>
+              <Text style={[styles.kpiValue, { color: colors.destructive }]}>{formatCurrency(totalOverdue)}</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.searchBar}>
@@ -417,33 +463,38 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
   },
 
-  summaryCard: {
+  kpiGrid: {
     flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  kpiCard: {
+    width: '48%',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
-  summaryItem: {
-    flex: 1,
+  kpiIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
-  summaryLabel: {
+  kpiLabel: {
     ...typography.caption,
     color: colors.mutedForeground,
     marginBottom: spacing.xs,
   },
-  summaryValue: {
-    ...typography.statValue,
+  kpiValue: {
+    fontSize: 18,
+    fontWeight: '700',
     color: colors.foreground,
-  },
-  summaryDivider: {
-    width: 1,
-    backgroundColor: colors.cardBorder,
-    marginHorizontal: spacing.lg,
   },
 
   searchBar: {

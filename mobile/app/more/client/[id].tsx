@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -10,12 +10,14 @@ import {
   Alert,
   Image
 } from 'react-native';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useClientsStore, useJobsStore, useQuotesStore, useInvoicesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../../src/lib/design-tokens';
 import api from '../../../src/lib/api';
+
+type TabKey = 'overview' | 'jobs' | 'quotes' | 'invoices';
 
 interface ActivityItem {
   id: string;
@@ -36,6 +38,7 @@ export default function ClientDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [savedSignature, setSavedSignature] = useState<{ signatureData: string | null; signatureDate: string | null } | null>(null);
   const [isLoadingSignature, setIsLoadingSignature] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -98,6 +101,10 @@ export default function ClientDetailScreen() {
   const clientJobs = jobs.filter(j => j.clientId === id);
   const clientQuotes = quotes.filter(q => q.clientId === id);
   const clientInvoices = invoices.filter(i => i.clientId === id);
+
+  const activeJobs = clientJobs.filter(j => j.status !== 'done' && j.status !== 'invoiced').length;
+  const totalRevenue = clientInvoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + (i.total || 0), 0);
+  const outstanding = clientInvoices.filter(i => i.status !== 'paid').reduce((sum, i) => sum + (i.total || 0), 0);
 
   const activityTimeline = useMemo(() => {
     const activities: ActivityItem[] = [];
@@ -165,6 +172,16 @@ export default function ClientDetailScreen() {
     }
   };
 
+  const handleSms = () => {
+    if (client?.phone) {
+      Linking.openURL(`sms:${client.phone}`);
+    }
+  };
+
+  const handleCreateJob = () => {
+    router.push(`/job/new?clientId=${id}`);
+  };
+
   const handleDelete = () => {
     Alert.alert(
       'Delete Client',
@@ -218,6 +235,303 @@ export default function ClientDetailScreen() {
     );
   }
 
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <>
+            {/* Contact Info */}
+            <Text style={styles.sectionTitle}>Contact Info</Text>
+            <View style={styles.card}>
+              {client.phone || client.email || client.address ? (
+                <>
+                  {client.phone && (
+                    <TouchableOpacity style={styles.infoRow} onPress={handleCall}>
+                      <Feather name="phone" size={18} color={colors.mutedForeground} />
+                      <Text style={styles.infoText}>{client.phone}</Text>
+                      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                  )}
+                  {client.email && (
+                    <TouchableOpacity style={styles.infoRow} onPress={handleEmail}>
+                      <Feather name="mail" size={18} color={colors.mutedForeground} />
+                      <Text style={styles.infoText}>{client.email}</Text>
+                      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                  )}
+                  {client.address && (
+                    <View style={styles.infoRow}>
+                      <Feather name="map-pin" size={18} color={colors.mutedForeground} />
+                      <Text style={styles.infoText}>{client.address}</Text>
+                    </View>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.noInfoText}>No contact information</Text>
+              )}
+            </View>
+
+            {/* Activity Timeline */}
+            {activityTimeline.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>Recent Activity</Text>
+                <View style={styles.timelineCard}>
+                  {activityTimeline.map((activity, index) => {
+                    const icon = getTimelineIcon(activity.type);
+                    return (
+                      <View 
+                        key={activity.id} 
+                        style={[
+                          styles.timelineItem,
+                          index === activityTimeline.length - 1 && { borderBottomWidth: 0 }
+                        ]}
+                      >
+                        <View style={[styles.timelineIcon, { backgroundColor: icon.color + '20' }]}>
+                          <Feather name={icon.name} size={16} color={icon.color} />
+                        </View>
+                        <View style={styles.timelineContent}>
+                          <Text style={styles.timelineTitle}>{activity.title}</Text>
+                          <Text style={styles.timelineDate}>
+                            {activity.date.toLocaleDateString('en-AU', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </Text>
+                        </View>
+                        {activity.status && (
+                          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(activity.status, colors).bg }]}>
+                            <Text style={[styles.statusText, { color: getStatusColor(activity.status, colors).text }]}>
+                              {activity.status.replace('_', ' ')}
+                            </Text>
+                          </View>
+                        )}
+                        {activity.amount !== undefined && (
+                          <Text style={styles.timelineAmount}>{formatCurrency(activity.amount)}</Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+
+            {/* Saved Signature */}
+            <Text style={styles.sectionTitle}>Saved Signature</Text>
+            <View style={styles.card}>
+              {isLoadingSignature ? (
+                <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.md }} />
+              ) : savedSignature?.signatureData ? (
+                <View style={styles.signatureContainer}>
+                  <Image 
+                    source={{ uri: savedSignature.signatureData }} 
+                    style={styles.signatureImage} 
+                    resizeMode="contain"
+                  />
+                  <View style={styles.signatureFooter}>
+                    <Text style={styles.signatureDate}>
+                      Saved on {new Date(savedSignature.signatureDate!).toLocaleDateString('en-AU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </Text>
+                    <TouchableOpacity 
+                      style={styles.clearSignatureButton}
+                      onPress={handleClearSignature}
+                    >
+                      <Feather name="x-circle" size={16} color={colors.destructive} />
+                      <Text style={styles.clearSignatureText}>Clear</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <Text style={styles.noInfoText}>No saved signature</Text>
+              )}
+            </View>
+
+            {/* Notes */}
+            {client.notes && (
+              <>
+                <Text style={styles.sectionTitle}>Notes</Text>
+                <View style={styles.card}>
+                  <Text style={styles.notesText}>{client.notes}</Text>
+                </View>
+              </>
+            )}
+          </>
+        );
+
+      case 'jobs':
+        return (
+          <>
+            {clientJobs.length === 0 ? (
+              <View style={styles.emptyState}>
+                <View style={styles.emptyStateIcon}>
+                  <Feather name="briefcase" size={40} color={colors.mutedForeground} />
+                </View>
+                <Text style={styles.emptyStateTitle}>No jobs yet</Text>
+                <Text style={styles.emptyStateSubtitle}>Create your first job for this client</Text>
+                <TouchableOpacity style={styles.emptyStateButton} onPress={handleCreateJob}>
+                  <Feather name="plus" size={16} color={colors.white} />
+                  <Text style={styles.emptyStateButtonText}>Create Job</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              clientJobs.map((job) => (
+                <TouchableOpacity
+                  key={job.id}
+                  style={styles.jobCard}
+                  onPress={() => router.push(`/job/${job.id}`)}
+                  data-testid={`card-job-${job.id}`}
+                >
+                  <View style={styles.jobCardContent}>
+                    <View style={styles.jobCardHeader}>
+                      <View style={styles.jobIconContainer}>
+                        <Feather name="briefcase" size={18} color={colors.primary} />
+                      </View>
+                      <View style={styles.jobCardInfo}>
+                        <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
+                        {job.scheduledAt && (
+                          <Text style={styles.jobDate}>
+                            {new Date(job.scheduledAt).toLocaleDateString('en-AU', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(job.status, colors).bg }]}>
+                      <Text style={[styles.statusText, { color: getStatusColor(job.status, colors).text }]}>
+                        {job.status.replace('_', ' ')}
+                      </Text>
+                    </View>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              ))
+            )}
+          </>
+        );
+
+      case 'quotes':
+        return (
+          <>
+            {clientQuotes.length === 0 ? (
+              <View style={styles.emptyState}>
+                <View style={styles.emptyStateIcon}>
+                  <Feather name="file-text" size={40} color={colors.mutedForeground} />
+                </View>
+                <Text style={styles.emptyStateTitle}>No quotes yet</Text>
+                <Text style={styles.emptyStateSubtitle}>Create a quote for this client</Text>
+                <TouchableOpacity 
+                  style={styles.emptyStateButton} 
+                  onPress={() => router.push(`/more/quote/new?clientId=${id}`)}
+                >
+                  <Feather name="plus" size={16} color={colors.white} />
+                  <Text style={styles.emptyStateButtonText}>Create Quote</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              clientQuotes.map((quote: any) => (
+                <TouchableOpacity
+                  key={quote.id}
+                  style={styles.jobCard}
+                  onPress={() => router.push(`/more/quote/${quote.id}`)}
+                  data-testid={`card-quote-${quote.id}`}
+                >
+                  <View style={styles.jobCardContent}>
+                    <View style={styles.jobCardHeader}>
+                      <View style={[styles.jobIconContainer, { backgroundColor: colors.infoLight }]}>
+                        <Feather name="file-text" size={18} color={colors.info} />
+                      </View>
+                      <View style={styles.jobCardInfo}>
+                        <Text style={styles.jobTitle} numberOfLines={1}>
+                          Quote #{quote.quoteNumber || quote.id.slice(0, 6)}
+                        </Text>
+                        <Text style={styles.jobDate}>{quote.title || 'Untitled'}</Text>
+                      </View>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={styles.quoteAmount}>{formatCurrency(quote.total || 0)}</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(quote.status, colors).bg }]}>
+                        <Text style={[styles.statusText, { color: getStatusColor(quote.status, colors).text }]}>
+                          {quote.status?.replace('_', ' ') || 'draft'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              ))
+            )}
+          </>
+        );
+
+      case 'invoices':
+        return (
+          <>
+            {outstanding > 0 && (
+              <View style={styles.outstandingBanner}>
+                <Feather name="alert-circle" size={16} color={colors.warning} />
+                <Text style={styles.outstandingText}>
+                  {formatCurrency(outstanding)} outstanding
+                </Text>
+              </View>
+            )}
+            {clientInvoices.length === 0 ? (
+              <View style={styles.emptyState}>
+                <View style={styles.emptyStateIcon}>
+                  <Feather name="file" size={40} color={colors.mutedForeground} />
+                </View>
+                <Text style={styles.emptyStateTitle}>No invoices yet</Text>
+                <Text style={styles.emptyStateSubtitle}>Invoices will appear here after converting quotes</Text>
+              </View>
+            ) : (
+              clientInvoices.map((invoice: any) => (
+                <TouchableOpacity
+                  key={invoice.id}
+                  style={styles.jobCard}
+                  onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+                  data-testid={`card-invoice-${invoice.id}`}
+                >
+                  <View style={styles.jobCardContent}>
+                    <View style={styles.jobCardHeader}>
+                      <View style={[styles.jobIconContainer, { backgroundColor: invoice.status === 'paid' ? colors.successLight : colors.warningLight }]}>
+                        <Feather name="file" size={18} color={invoice.status === 'paid' ? colors.success : colors.warning} />
+                      </View>
+                      <View style={styles.jobCardInfo}>
+                        <Text style={styles.jobTitle} numberOfLines={1}>
+                          Invoice #{invoice.invoiceNumber || invoice.id.slice(0, 6)}
+                        </Text>
+                        <Text style={styles.jobDate}>{invoice.title || 'Untitled'}</Text>
+                      </View>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[styles.quoteAmount, invoice.status === 'paid' && { color: colors.success }]}>
+                        {formatCurrency(invoice.total || 0)}
+                      </Text>
+                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(invoice.status, colors).bg }]}>
+                        <Text style={[styles.statusText, { color: getStatusColor(invoice.status, colors).text }]}>
+                          {invoice.status?.replace('_', ' ') || 'draft'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              ))
+            )}
+          </>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <>
       <Stack.Screen 
@@ -256,7 +570,7 @@ export default function ClientDetailScreen() {
                 onPress={handleCall}
                 disabled={!client.phone}
               >
-                <Feather name="phone" size={18} color={client.phone ? colors.primaryForeground : colors.mutedForeground} />
+                <Feather name="phone" size={16} color={client.phone ? colors.primaryForeground : colors.mutedForeground} />
                 <Text style={[styles.actionButtonText, !client.phone && styles.actionButtonTextDisabled]}>
                   Call
                 </Text>
@@ -266,231 +580,106 @@ export default function ClientDetailScreen() {
                 onPress={handleEmail}
                 disabled={!client.email}
               >
-                <Feather name="mail" size={18} color={client.email ? colors.primaryForeground : colors.mutedForeground} />
+                <Feather name="mail" size={16} color={client.email ? colors.primaryForeground : colors.mutedForeground} />
                 <Text style={[styles.actionButtonText, !client.email && styles.actionButtonTextDisabled]}>
                   Email
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
+                style={[styles.actionButton, !client.phone && styles.actionButtonDisabled]}
+                onPress={handleSms}
+                disabled={!client.phone}
+              >
+                <Feather name="message-circle" size={16} color={client.phone ? colors.primaryForeground : colors.mutedForeground} />
+                <Text style={[styles.actionButtonText, !client.phone && styles.actionButtonTextDisabled]}>
+                  SMS
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Secondary Actions */}
+            <View style={styles.actionsRowSecondary}>
+              <TouchableOpacity
+                style={styles.actionButtonSecondary}
+                onPress={handleCreateJob}
+              >
+                <Feather name="briefcase" size={16} color={colors.primary} />
+                <Text style={styles.actionButtonSecondaryText}>New Job</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.actionButtonSecondary}
                 onPress={() => router.push(`/more/quote/new?clientId=${id}`)}
               >
-                <Feather name="file-text" size={18} color={colors.primary} />
+                <Feather name="file-text" size={16} color={colors.primary} />
                 <Text style={styles.actionButtonSecondaryText}>Quote</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Contact Info */}
-          <Text style={styles.sectionTitle}>Contact Info</Text>
-          <View style={styles.card}>
-            {client.phone || client.email || client.address ? (
-              <>
-                {client.phone && (
-                  <View style={styles.infoRow}>
-                    <Feather name="phone" size={18} color={colors.mutedForeground} />
-                    <Text style={styles.infoText}>{client.phone}</Text>
-                  </View>
-                )}
-                {client.email && (
-                  <View style={styles.infoRow}>
-                    <Feather name="mail" size={18} color={colors.mutedForeground} />
-                    <Text style={styles.infoText}>{client.email}</Text>
-                  </View>
-                )}
-                {client.address && (
-                  <View style={styles.infoRow}>
-                    <Feather name="map-pin" size={18} color={colors.mutedForeground} />
-                    <Text style={styles.infoText}>{client.address}</Text>
-                  </View>
-                )}
-              </>
-            ) : (
-              <Text style={styles.noInfoText}>No contact information</Text>
-            )}
-          </View>
-
-          {/* Saved Signature */}
-          <Text style={styles.sectionTitle}>Saved Signature</Text>
-          <View style={styles.card}>
-            {isLoadingSignature ? (
-              <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.md }} />
-            ) : savedSignature?.signatureData ? (
-              <View style={styles.signatureContainer}>
-                <Image 
-                  source={{ uri: savedSignature.signatureData }} 
-                  style={styles.signatureImage} 
-                  resizeMode="contain"
-                />
-                <View style={styles.signatureFooter}>
-                  <Text style={styles.signatureDate}>
-                    Saved on {new Date(savedSignature.signatureDate!).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    })}
-                  </Text>
-                  <TouchableOpacity 
-                    style={styles.clearSignatureButton}
-                    onPress={handleClearSignature}
-                  >
-                    <Feather name="x-circle" size={16} color={colors.destructive} />
-                    <Text style={styles.clearSignatureText}>Clear Signature</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <Text style={styles.noInfoText}>No saved signature - signatures can be saved during job sign-off</Text>
-            )}
-          </View>
-
-          {/* Stats */}
-          <Text style={styles.sectionTitle}>Activity</Text>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Feather name="briefcase" size={20} color={colors.primary} />
-              <Text style={styles.statValue}>{clientJobs.length}</Text>
-              <Text style={styles.statLabel}>Jobs</Text>
+          {/* KPI Stats Row */}
+          <View style={styles.kpiRow}>
+            <View style={styles.kpiBox}>
+              <Text style={styles.kpiValue}>{clientJobs.length}</Text>
+              <Text style={styles.kpiLabel}>Total Jobs</Text>
             </View>
-            <View style={styles.statItem}>
-              <Feather name="file-text" size={20} color={colors.primary} />
-              <Text style={styles.statValue}>{clientQuotes.length}</Text>
-              <Text style={styles.statLabel}>Quotes</Text>
+            <View style={styles.kpiBox}>
+              <Text style={[styles.kpiValue, { color: colors.success }]}>{formatCurrency(totalRevenue)}</Text>
+              <Text style={styles.kpiLabel}>Revenue</Text>
             </View>
-            <View style={styles.statItem}>
-              <Feather name="file-text" size={20} color={colors.primary} />
-              <Text style={styles.statValue}>{clientInvoices.length}</Text>
-              <Text style={styles.statLabel}>Invoices</Text>
+            <View style={styles.kpiBox}>
+              <Text style={[styles.kpiValue, outstanding > 0 && { color: colors.warning }]}>{formatCurrency(outstanding)}</Text>
+              <Text style={styles.kpiLabel}>Outstanding</Text>
+            </View>
+            <View style={styles.kpiBox}>
+              <Text style={styles.kpiValue}>{activeJobs}</Text>
+              <Text style={styles.kpiLabel}>Active</Text>
             </View>
           </View>
 
-          {/* Activity Timeline */}
-          {activityTimeline.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-              <View style={styles.timelineCard}>
-                {activityTimeline.map((activity, index) => {
-                  const icon = getTimelineIcon(activity.type);
-                  return (
-                    <View 
-                      key={activity.id} 
-                      style={[
-                        styles.timelineItem,
-                        index === activityTimeline.length - 1 && { borderBottomWidth: 0 }
-                      ]}
-                    >
-                      <View style={[styles.timelineIcon, { backgroundColor: icon.color + '20' }]}>
-                        <Feather name={icon.name} size={16} color={icon.color} />
-                      </View>
-                      <View style={styles.timelineContent}>
-                        <Text style={styles.timelineTitle}>{activity.title}</Text>
-                        <Text style={styles.timelineDate}>
-                          {activity.date.toLocaleDateString('en-AU', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric'
-                          })}
-                        </Text>
-                      </View>
-                      {activity.status && (
-                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(activity.status, colors).bg }]}>
-                          <Text style={[styles.statusText, { color: getStatusColor(activity.status, colors).text }]}>
-                            {activity.status.replace('_', ' ')}
-                          </Text>
-                        </View>
-                      )}
-                      {activity.amount !== undefined && (
-                        <Text style={styles.timelineAmount}>{formatCurrency(activity.amount)}</Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            </>
-          )}
-
-          {/* Past Jobs - Clickable List */}
-          {clientJobs.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Past Jobs</Text>
-              {clientJobs.map((job) => (
-                <TouchableOpacity
-                  key={job.id}
-                  style={styles.jobCard}
-                  onPress={() => router.push(`/job/${job.id}`)}
-                  data-testid={`card-job-${job.id}`}
-                >
-                  <View style={styles.jobCardContent}>
-                    <View style={styles.jobCardHeader}>
-                      <View style={styles.jobIconContainer}>
-                        <Feather name="briefcase" size={18} color={colors.primary} />
-                      </View>
-                      <View style={styles.jobCardInfo}>
-                        <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
-                        {job.scheduledAt && (
-                          <Text style={styles.jobDate}>
-                            {new Date(job.scheduledAt).toLocaleDateString('en-AU', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(job.status, colors).bg }]}>
-                      <Text style={[styles.statusText, { color: getStatusColor(job.status, colors).text }]}>
-                        {job.status.replace('_', ' ')}
-                      </Text>
-                    </View>
-                  </View>
-                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              ))}
-            </>
-          )}
-
-          {/* Photos Section */}
-          <Text style={styles.sectionTitle}>Photos</Text>
-          <View style={styles.photosSection}>
-            {clientJobs.some(job => job.attachments && job.attachments.length > 0) ? (
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                style={styles.photosScroll}
-                contentContainerStyle={{ gap: spacing.sm }}
+          {/* Tabs */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.tabsScroll}
+            contentContainerStyle={styles.tabsContainer}
+          >
+            {(['overview', 'jobs', 'quotes', 'invoices'] as TabKey[]).map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tab, activeTab === tab && styles.tabActive]}
+                onPress={() => setActiveTab(tab)}
               >
-                {clientJobs.flatMap(job => 
-                  (job.attachments || []).map((attachment: any, index: number) => {
-                    const imageUrl = typeof attachment === 'string' ? attachment : attachment?.url;
-                    if (!imageUrl) return null;
-                    return (
-                      <Image
-                        key={`${job.id}-${index}`}
-                        source={{ uri: imageUrl }}
-                        style={styles.photoThumbnail}
-                        resizeMode="cover"
-                      />
-                    );
-                  }).filter(Boolean)
+                <Feather 
+                  name={tab === 'overview' ? 'activity' : tab === 'jobs' ? 'briefcase' : tab === 'quotes' ? 'file-text' : 'file'} 
+                  size={16} 
+                  color={activeTab === tab ? colors.primary : colors.mutedForeground} 
+                />
+                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </Text>
+                {tab === 'jobs' && clientJobs.length > 0 && (
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>{clientJobs.length}</Text>
+                  </View>
                 )}
-              </ScrollView>
-            ) : (
-              <View style={styles.card}>
-                <Text style={styles.noPhotosText}>No photos from jobs yet</Text>
-              </View>
-            )}
-          </View>
+                {tab === 'quotes' && clientQuotes.length > 0 && (
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>{clientQuotes.length}</Text>
+                  </View>
+                )}
+                {tab === 'invoices' && clientInvoices.length > 0 && (
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>{clientInvoices.length}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-          {/* Notes */}
-          {client.notes && (
-            <>
-              <Text style={styles.sectionTitle}>Notes</Text>
-              <View style={styles.card}>
-                <Text style={styles.notesText}>{client.notes}</Text>
-              </View>
-            </>
-          )}
+          {/* Tab Content */}
+          <View style={styles.tabContent}>
+            {renderTabContent()}
+          </View>
         </View>
       </ScrollView>
     </>
@@ -579,8 +768,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   actionsRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginTop: spacing.lg,
+    width: '100%',
+  },
+  actionsRowSecondary: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
     width: '100%',
   },
   actionButton: {
@@ -588,17 +783,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
+    gap: 4,
     backgroundColor: colors.primary,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    minHeight: 52,
   },
   actionButtonDisabled: {
     backgroundColor: colors.muted,
   },
   actionButtonText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.primaryForeground,
   },
@@ -607,19 +803,151 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   actionButtonSecondary: {
     flex: 1,
-    flexDirection: 'column',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    minHeight: 44,
   },
   actionButtonSecondaryText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
+    color: colors.foreground,
+  },
+
+  kpiRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  kpiBox: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  kpiValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  kpiLabel: {
+    fontSize: 9,
+    color: colors.mutedForeground,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+
+  tabsScroll: {
+    marginBottom: spacing.md,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: colors.muted,
+    gap: spacing.xs,
+  },
+  tabActive: {
+    backgroundColor: colors.primaryLight,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  tabTextActive: {
     color: colors.primary,
+    fontWeight: '600',
+  },
+  tabBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 2,
+  },
+  tabBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+  tabContent: {
+    marginBottom: spacing.xl,
+  },
+
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  emptyStateIcon: {
+    marginBottom: spacing.md,
+    opacity: 0.5,
+  },
+  emptyStateTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    marginBottom: spacing.xs,
+  },
+  emptyStateSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+  },
+  emptyStateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    marginTop: spacing.lg,
+    gap: spacing.xs,
+  },
+  emptyStateButtonText: {
+    color: colors.primaryForeground,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  quoteAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+
+  outstandingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.warningLight,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    marginBottom: spacing.md,
+  },
+  outstandingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.warning,
   },
   sectionTitle: {
     ...typography.caption,

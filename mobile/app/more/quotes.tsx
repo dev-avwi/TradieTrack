@@ -17,19 +17,56 @@ import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } fro
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 
-type FilterKey = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected';
+type FilterKey = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected' | 'archived';
 
-const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
+const FILTERS: { key: FilterKey; label: string; icon: string }[] = [
   { key: 'all', label: 'All', icon: 'file-text' },
   { key: 'draft', label: 'Draft', icon: 'clock' },
   { key: 'sent', label: 'Sent', icon: 'send' },
   { key: 'accepted', label: 'Accepted', icon: 'check-circle' },
   { key: 'rejected', label: 'Rejected', icon: 'x-circle' },
+  { key: 'archived', label: 'Archived', icon: 'archive' },
 ];
 
 const navigateToCreateQuote = () => {
   router.push('/more/quote/new');
 };
+
+function KPICard({ 
+  title, 
+  value, 
+  icon, 
+  onPress,
+  colors 
+}: { 
+  title: string;
+  value: number;
+  icon: string;
+  onPress: () => void;
+  colors: ThemeColors;
+}) {
+  return (
+    <TouchableOpacity 
+      style={{
+        flex: 1,
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        padding: spacing.md,
+        borderWidth: 1,
+        borderColor: colors.cardBorder,
+        minWidth: '45%',
+      }}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+        <Feather name={icon as any} size={16} color={colors.primary} />
+        <Text style={{ fontSize: 12, color: colors.mutedForeground, fontWeight: '500' }}>{title}</Text>
+      </View>
+      <Text style={{ fontSize: 24, fontWeight: '700', color: colors.foreground }}>{value}</Text>
+    </TouchableOpacity>
+  );
+}
 
 function QuoteCard({ 
   quote, 
@@ -64,37 +101,6 @@ function QuoteCard({
     }
   };
 
-  const getNextAction = () => {
-    switch (quote.status) {
-      case 'draft':
-        return { 
-          label: 'Send', 
-          icon: 'send' as const, 
-          color: colors.primary,
-        };
-      case 'sent':
-        return { 
-          label: 'View', 
-          icon: 'eye' as const, 
-          color: colors.info,
-        };
-      case 'accepted':
-        return { 
-          label: 'Job', 
-          icon: 'briefcase' as const, 
-          color: colors.success,
-        };
-      default:
-        return { 
-          label: 'View', 
-          icon: 'eye' as const, 
-          color: colors.primary,
-        };
-    }
-  };
-
-  const nextAction = getNextAction();
-
   return (
     <AnimatedCardPressable
       onPress={onPress}
@@ -110,7 +116,6 @@ function QuoteCard({
           <Text style={styles.quoteTotal}>{formatCurrency(quote.total || 0)}</Text>
         </View>
 
-        {/* Details section like web */}
         <View style={styles.quoteDetails}>
           {clientName && (
             <View style={styles.quoteDetailRow}>
@@ -151,7 +156,6 @@ export default function QuotesScreen() {
     refreshData();
   }, []);
 
-  // Refresh data when screen gains focus (syncs with web app)
   useFocusEffect(
     useCallback(() => {
       refreshData();
@@ -164,11 +168,12 @@ export default function QuotesScreen() {
   };
 
   const filterCounts = {
-    all: quotes.length,
+    all: quotes.filter(q => q.status !== 'archived').length,
     draft: quotes.filter(q => q.status === 'draft').length,
     sent: quotes.filter(q => q.status === 'sent').length,
     accepted: quotes.filter(q => q.status === 'accepted').length,
     rejected: quotes.filter(q => q.status === 'rejected').length,
+    archived: quotes.filter(q => q.status === 'archived' || q.archived).length,
   };
 
   const filteredQuotes = quotes.filter(quote => {
@@ -176,9 +181,16 @@ export default function QuotesScreen() {
     const clientName = getClientName(quote.clientId);
     const matchesSearch = 
       quote.quoteNumber?.toLowerCase().includes(searchLower) ||
-      clientName.toLowerCase().includes(searchLower);
+      clientName.toLowerCase().includes(searchLower) ||
+      quote.title?.toLowerCase().includes(searchLower);
     
-    const matchesFilter = activeFilter === 'all' || quote.status === activeFilter;
+    if (activeFilter === 'archived') {
+      return matchesSearch && (quote.status === 'archived' || quote.archived);
+    }
+    
+    const matchesFilter = activeFilter === 'all' 
+      ? quote.status !== 'archived' && !quote.archived
+      : quote.status === activeFilter;
     
     return matchesSearch && matchesFilter;
   });
@@ -186,6 +198,18 @@ export default function QuotesScreen() {
   const sortedQuotes = [...filteredQuotes].sort((a, b) => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+
+  const getSectionTitle = () => {
+    switch (activeFilter) {
+      case 'all': return 'ALL QUOTES';
+      case 'draft': return 'DRAFT QUOTES';
+      case 'sent': return 'SENT QUOTES';
+      case 'accepted': return 'ACCEPTED QUOTES';
+      case 'rejected': return 'REJECTED QUOTES';
+      case 'archived': return 'ARCHIVED QUOTES';
+      default: return 'QUOTES';
+    }
+  };
 
   return (
     <>
@@ -227,6 +251,11 @@ export default function QuotesScreen() {
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Feather name="x" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
           </View>
 
           <ScrollView 
@@ -249,6 +278,11 @@ export default function QuotesScreen() {
                     isActive && styles.filterPillActive
                   ]}
                 >
+                  <Feather 
+                    name={filter.icon as any} 
+                    size={12} 
+                    color={isActive ? colors.white : colors.foreground} 
+                  />
                   <Text style={[
                     styles.filterPillText,
                     isActive && styles.filterPillTextActive
@@ -271,10 +305,42 @@ export default function QuotesScreen() {
             })}
           </ScrollView>
 
+          {/* KPI Stats Cards - 2x2 grid like web */}
+          <View style={styles.kpiGrid}>
+            <KPICard
+              title="Total Quotes"
+              value={filterCounts.all}
+              icon="file-text"
+              onPress={() => setActiveFilter('all')}
+              colors={colors}
+            />
+            <KPICard
+              title="Draft"
+              value={filterCounts.draft}
+              icon="clock"
+              onPress={() => setActiveFilter('draft')}
+              colors={colors}
+            />
+            <KPICard
+              title="Sent"
+              value={filterCounts.sent}
+              icon="send"
+              onPress={() => setActiveFilter('sent')}
+              colors={colors}
+            />
+            <KPICard
+              title="Accepted"
+              value={filterCounts.accepted}
+              icon="check-circle"
+              onPress={() => setActiveFilter('accepted')}
+              colors={colors}
+            />
+          </View>
+
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Feather name="file-text" size={iconSizes.md} color={colors.primary} />
-              <Text style={styles.sectionTitle}>ALL QUOTES</Text>
+              <Text style={styles.sectionTitle}>{getSectionTitle()}</Text>
             </View>
             
             {isLoading ? (
@@ -290,8 +356,22 @@ export default function QuotesScreen() {
                 <Text style={styles.emptyStateSubtitle}>
                   {searchQuery || activeFilter !== 'all'
                     ? 'Try adjusting your search or filters'
-                    : 'Create your first quote to get started'}
+                    : 'Send professional quotes that clients can accept online. GST calculated automatically.'}
                 </Text>
+                {!searchQuery && activeFilter === 'all' && (
+                  <>
+                    <TouchableOpacity 
+                      style={styles.emptyStateButton}
+                      onPress={navigateToCreateQuote}
+                    >
+                      <Feather name="plus" size={16} color={colors.white} />
+                      <Text style={styles.emptyStateButtonText}>Create Your First Quote</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.emptyStateTip}>
+                      Tip: Accepted quotes can be converted to invoices with one tap
+                    </Text>
+                  </>
+                )}
               </View>
             ) : (
               <View style={styles.quotesList}>
@@ -390,7 +470,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.full,
     backgroundColor: colors.card,
@@ -430,6 +510,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.white,
   },
 
+  kpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+
   section: {
     marginBottom: spacing.xl,
   },
@@ -452,6 +539,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: spacing['4xl'],
+    paddingHorizontal: spacing.lg,
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -469,7 +557,29 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
     textAlign: 'center',
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  emptyStateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
     paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  emptyStateButtonText: {
+    color: colors.white,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  emptyStateTip: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 
   quotesList: {
