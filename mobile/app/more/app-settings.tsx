@@ -1,14 +1,13 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Switch, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { View, Text, ScrollView, StyleSheet, Pressable, Animated, Switch, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeMode } from '../../src/lib/theme';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useLocationStore, getActivityStatus, formatAccuracy } from '../../src/lib/location-store';
 import { useOfflineStore } from '../../src/lib/offline-storage';
 import offlineStorage from '../../src/lib/offline-storage';
 import { useAuthStore } from '../../src/lib/store';
 import api from '../../src/lib/api';
-import { spacing, radius, typography } from '../../src/lib/design-tokens';
 
 const MAP_COLORS = [
   { name: 'Blue', hex: '#3b82f6' },
@@ -38,81 +37,710 @@ interface ColorAvailabilityResponse {
   availableCount: number;
 }
 
-const createStyles = (colors: any) => StyleSheet.create({
+function MapColorSection({ colors }: { colors: any }) {
+  const { user, setUser } = useAuthStore();
+  const [colorOptions, setColorOptions] = useState<ColorOption[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedColor, setSelectedColor] = useState<string | null>(user?.themeColor || null);
+  
+  const loadAvailableColors = useCallback(async () => {
+    try {
+      const response = await api.request<ColorAvailabilityResponse>('GET', '/api/team/colors/available');
+      
+      if (response.error) {
+        console.error('Failed to load available colors:', response.error);
+        return;
+      }
+      
+      if (response.data) {
+        setColorOptions(response.data.colors);
+        if (response.data.currentColor) {
+          setSelectedColor(response.data.currentColor);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load available colors:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
+  useEffect(() => {
+    loadAvailableColors();
+  }, [loadAvailableColors]);
+  
+  const handleColorSelect = async (colorHex: string, isAvailable: boolean) => {
+    if (!isAvailable) return;
+    
+    setSelectedColor(colorHex);
+    setIsSaving(true);
+    
+    try {
+      const response = await api.request<{ success: boolean }>('PATCH', '/api/user/theme-color', { themeColor: colorHex });
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      if (response.data?.success && user) {
+        setUser({ ...user, themeColor: colorHex });
+        await loadAvailableColors();
+      }
+    } catch (error) {
+      console.error('Failed to save theme color:', error);
+      setSelectedColor(user?.themeColor || null);
+      Alert.alert('Error', 'Failed to save your map color. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  const getColorOptionByHex = (hex: string): ColorOption | undefined => {
+    return colorOptions.find(opt => opt.color.toLowerCase() === hex.toLowerCase());
+  };
+  
+  const initials = user 
+    ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'
+    : 'U';
+  
+  return (
+    <>
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Map Identity</Text>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.cardTitle, { color: colors.foreground }]}>Your Map Color</Text>
+        <Text style={[styles.cardSubtitle, { color: colors.mutedForeground }]}>
+          Choose a unique color to identify yourself on the team map
+        </Text>
+        
+        <View style={styles.previewContainer}>
+          <View style={[styles.mapPreview, { backgroundColor: selectedColor || colors.primary }]}>
+            <Text style={styles.mapPreviewInitials}>{initials}</Text>
+          </View>
+          <View style={styles.previewInfo}>
+            <Text style={[styles.previewName, { color: colors.foreground }]}>
+              {user?.firstName} {user?.lastName}
+            </Text>
+            <Text style={[styles.previewSubtext, { color: colors.mutedForeground }]}>
+              {selectedColor ? `${MAP_COLORS.find(c => c.hex.toLowerCase() === selectedColor.toLowerCase())?.name || 'Custom'}` : 'No color selected'}
+            </Text>
+          </View>
+        </View>
+        
+        {isLoading ? (
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 16 }} />
+        ) : (
+          <View style={styles.colorGrid}>
+            {MAP_COLORS.map((color) => {
+              const colorOption = getColorOptionByHex(color.hex);
+              const isAvailable = colorOption ? colorOption.available : colorOptions.length === 0;
+              const isCurrentUser = colorOption?.isCurrentUser ?? false;
+              const isSelected = selectedColor?.toLowerCase() === color.hex.toLowerCase();
+              const isTaken = colorOptions.length > 0 && !isAvailable && !isCurrentUser;
+              
+              return (
+                <TouchableOpacity
+                  key={color.hex}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: color.hex },
+                    isSelected && styles.colorOptionSelected,
+                    isTaken && styles.colorOptionTaken,
+                  ]}
+                  onPress={() => handleColorSelect(color.hex, isAvailable || isCurrentUser)}
+                  disabled={isTaken || isSaving}
+                  activeOpacity={0.7}
+                >
+                  {isSelected && (
+                    <Feather name="check" size={20} color="#fff" />
+                  )}
+                  {isTaken && (
+                    <View style={styles.takenOverlay}>
+                      <Feather name="x" size={16} color="#fff" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+        
+        {colorOptions.some(opt => !opt.available && !opt.isCurrentUser) && (
+          <View style={[styles.locationNote, { backgroundColor: colors.muted }]}>
+            <Feather name="info" size={14} color={colors.mutedForeground} />
+            <Text style={[styles.locationNoteText, { color: colors.mutedForeground }]}>
+              Greyed out colors are already taken by other team members.
+            </Text>
+          </View>
+        )}
+      </View>
+    </>
+  );
+}
+
+function DataSyncSection({ colors }: { colors: any }) {
+  const { isOnline, isSyncing, pendingSyncCount, lastSyncTime, syncError, isInitialized } = useOfflineStore();
+  const [isFullSyncing, setIsFullSyncing] = useState(false);
+  
+  const formatLastSync = () => {
+    if (!lastSyncTime) return 'Never';
+    const diff = Date.now() - lastSyncTime;
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} hours ago`;
+    return new Date(lastSyncTime).toLocaleDateString();
+  };
+  
+  const handleSync = async () => {
+    if (!isOnline || isSyncing || isFullSyncing) return;
+    setIsFullSyncing(true);
+    try {
+      await offlineStorage.fullSync();
+    } finally {
+      setIsFullSyncing(false);
+    }
+  };
+  
+  const handleClearCache = () => {
+    Alert.alert(
+      'Clear Local Data?',
+      'This will remove cached data from your device. Your data on the server will not be affected. The app will re-download everything when you\'re online.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Clear', 
+          style: 'destructive',
+          onPress: async () => {
+            await offlineStorage.clearCache();
+            Alert.alert('Done', 'Local cache cleared');
+          }
+        },
+      ]
+    );
+  };
+  
+  if (!isInitialized) {
+    return null;
+  }
+  
+  return (
+    <>
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Data & Sync</Text>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.settingRow}>
+          <View style={[styles.settingIcon, { backgroundColor: isOnline ? (colors.successLight || '#dcfce7') : colors.muted }]}>
+            <Feather 
+              name={isOnline ? 'wifi' : 'wifi-off'} 
+              size={20} 
+              color={isOnline ? (colors.success || '#16a34a') : colors.mutedForeground} 
+            />
+          </View>
+          <View style={styles.settingContent}>
+            <Text style={[styles.settingTitle, { color: colors.foreground }]}>Connection</Text>
+            <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
+              {isOnline ? 'Online' : 'Offline - changes will sync when back online'}
+            </Text>
+          </View>
+          <View style={[styles.statusDot, { backgroundColor: isOnline ? (colors.success || '#16a34a') : colors.mutedForeground }]} />
+        </View>
+        
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        
+        <View style={styles.settingRow}>
+          <View style={[styles.settingIcon, { backgroundColor: colors.primaryLight }]}>
+            <Feather name="refresh-cw" size={20} color={colors.primary} />
+          </View>
+          <View style={styles.settingContent}>
+            <Text style={[styles.settingTitle, { color: colors.foreground }]}>Last Synced</Text>
+            <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
+              {formatLastSync()}
+            </Text>
+          </View>
+        </View>
+        
+        {pendingSyncCount > 0 && (
+          <>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={styles.settingRow}>
+              <View style={[styles.settingIcon, { backgroundColor: '#fef3c7' }]}>
+                <Feather name="upload-cloud" size={20} color="#f59e0b" />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingTitle, { color: colors.foreground }]}>Pending Changes</Text>
+                <Text style={[styles.settingSubtitle, { color: '#f59e0b' }]}>
+                  {pendingSyncCount} change{pendingSyncCount !== 1 ? 's' : ''} waiting to sync
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
+        
+        {syncError && (
+          <>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.locationNote, { backgroundColor: colors.destructiveLight || '#fee2e2' }]}>
+              <Feather name="alert-circle" size={14} color={colors.destructive || '#dc2626'} />
+              <Text style={[styles.locationNoteText, { color: colors.destructive || '#dc2626' }]}>
+                {syncError}
+              </Text>
+            </View>
+          </>
+        )}
+        
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        
+        <View style={styles.syncButtonsRow}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.syncButton,
+              { 
+                backgroundColor: (!isOnline || isSyncing || isFullSyncing) 
+                  ? colors.muted 
+                  : pressed ? colors.primaryLight : colors.primary 
+              }
+            ]}
+            onPress={handleSync}
+            disabled={!isOnline || isSyncing || isFullSyncing}
+          >
+            {(isSyncing || isFullSyncing) ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <Feather name="refresh-cw" size={16} color={isOnline ? colors.white : colors.mutedForeground} />
+            )}
+            <Text style={[
+              styles.syncButtonText,
+              { color: isOnline ? colors.white : colors.mutedForeground }
+            ]}>
+              {(isSyncing || isFullSyncing) ? 'Syncing...' : 'Sync Now'}
+            </Text>
+          </Pressable>
+          
+          <Pressable
+            style={({ pressed }) => [
+              styles.clearCacheButton,
+              { 
+                backgroundColor: pressed ? colors.cardHover : 'transparent',
+                borderColor: colors.border 
+              }
+            ]}
+            onPress={handleClearCache}
+          >
+            <Feather name="trash-2" size={16} color={colors.mutedForeground} />
+            <Text style={[styles.clearCacheText, { color: colors.mutedForeground }]}>Clear Cache</Text>
+          </Pressable>
+        </View>
+        
+        <View style={[styles.locationNote, { backgroundColor: colors.muted }]}>
+          <Feather name="info" size={14} color={colors.mutedForeground} />
+          <Text style={[styles.locationNoteText, { color: colors.mutedForeground }]}>
+            Offline mode keeps your jobs, clients, quotes and invoices available even without internet.
+          </Text>
+        </View>
+      </View>
+    </>
+  );
+}
+
+function ThemeModeButton({ 
+  mode, 
+  label, 
+  icon, 
+  active, 
+  onPress 
+}: { 
+  mode: ThemeMode; 
+  label: string; 
+  icon: keyof typeof Feather.glyphMap;
+  active: boolean; 
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+      speed: 50,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 50,
+    }).start();
+  };
+
+  return (
+    <Animated.View style={[{ flex: 1, transform: [{ scale: scaleAnim }] }]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={({ pressed }) => [
+          styles.themeButton,
+          {
+            backgroundColor: active ? colors.primary : pressed ? colors.cardHover : colors.card,
+            borderColor: active ? colors.primary : colors.border,
+          },
+        ]}
+      >
+        <Feather 
+          name={icon} 
+          size={24} 
+          color={active ? colors.white : colors.foreground} 
+        />
+        <Text style={[
+          styles.themeButtonLabel,
+          { color: active ? colors.white : colors.foreground },
+        ]}>
+          {label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+export default function AppSettingsScreen() {
+  const { colors, themeMode, setThemeMode, isDark, brandColor } = useTheme();
+  const { 
+    isEnabled: locationEnabled, 
+    status: locationStatus,
+    lastLocation,
+    lastGeofenceEvent,
+    isMoving,
+    permissionGranted,
+    batteryLevel,
+    errorMessage: locationError,
+    enableTracking, 
+    disableTracking,
+    initializeTracking 
+  } = useLocationStore();
+  
+  const [isToggling, setIsToggling] = useState(false);
+
+  useEffect(() => {
+    initializeTracking();
+  }, []);
+
+  const handleLocationToggle = async (value: boolean) => {
+    setIsToggling(true);
+    try {
+      if (value) {
+        const success = await enableTracking();
+        if (!success) {
+          Alert.alert(
+            'Location Permission Required',
+            'To enable team location tracking, please allow location access in your device settings. This helps your team see where you are on the map.',
+            [{ text: 'OK' }]
+          );
+        }
+      } else {
+        await disableTracking();
+      }
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  const getLocationStatusText = () => {
+    if (!locationEnabled) return 'Off';
+    if (locationStatus === 'tracking') return 'Active';
+    if (locationStatus === 'starting') return 'Starting...';
+    if (locationStatus === 'error') return 'Error';
+    return 'Stopped';
+  };
+
+  return (
+    <>
+      <Stack.Screen 
+        options={{ 
+          title: 'App Settings',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.foreground,
+        }} 
+      />
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.content}>
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Appearance</Text>
+          
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Theme Mode</Text>
+            <Text style={[styles.cardSubtitle, { color: colors.mutedForeground }]}>
+              Choose how TradieTrack looks
+            </Text>
+            
+            <View style={styles.themeButtonsRow}>
+              <ThemeModeButton
+                mode="light"
+                label="Light"
+                icon="sun"
+                active={themeMode === 'light'}
+                onPress={() => setThemeMode('light')}
+              />
+              <ThemeModeButton
+                mode="dark"
+                label="Dark"
+                icon="moon"
+                active={themeMode === 'dark'}
+                onPress={() => setThemeMode('dark')}
+              />
+              <ThemeModeButton
+                mode="system"
+                label="Auto"
+                icon="smartphone"
+                active={themeMode === 'system'}
+                onPress={() => setThemeMode('system')}
+              />
+            </View>
+            
+            <Text style={[styles.themeNote, { color: colors.mutedForeground }]}>
+              {themeMode === 'system' 
+                ? `Auto mode is active (currently ${isDark ? 'dark' : 'light'})`
+                : `${themeMode.charAt(0).toUpperCase() + themeMode.slice(1)} mode is active`
+              }
+            </Text>
+          </View>
+
+          {brandColor && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Brand Color</Text>
+              <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.brandColorRow}>
+                  <View style={[styles.brandColorSwatch, { backgroundColor: brandColor }]} />
+                  <View style={styles.brandColorInfo}>
+                    <Text style={[styles.cardTitle, { color: colors.foreground }]}>Custom Brand</Text>
+                    <Text style={[styles.cardSubtitle, { color: colors.mutedForeground }]}>
+                      Set from business settings on web
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </>
+          )}
+
+          <MapColorSection colors={colors} />
+
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Location Tracking</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingRow}>
+              <View style={[styles.settingIcon, { backgroundColor: locationEnabled ? colors.successLight || '#dcfce7' : colors.primaryLight }]}>
+                <Feather 
+                  name="map-pin" 
+                  size={20} 
+                  color={locationEnabled ? colors.success || '#16a34a' : colors.primary} 
+                />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingTitle, { color: colors.foreground }]}>Share My Location</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
+                  {getLocationStatusText()} - Let your team see where you are
+                </Text>
+              </View>
+              <Switch
+                value={locationEnabled}
+                onValueChange={handleLocationToggle}
+                disabled={isToggling}
+                trackColor={{ false: colors.muted, true: colors.primary }}
+                thumbColor={colors.white}
+              />
+            </View>
+            
+            {locationEnabled && lastLocation && (
+              <>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={styles.locationInfo}>
+                  <View style={styles.locationInfoRow}>
+                    <Feather name="activity" size={14} color={colors.mutedForeground} />
+                    <Text style={[styles.locationInfoText, { color: colors.mutedForeground }]}>
+                      Status: {getActivityStatus({ 
+                        isEnabled: locationEnabled, 
+                        status: locationStatus, 
+                        lastLocation, 
+                        lastGeofenceEvent,
+                        batteryLevel,
+                        isMoving,
+                        permissionGranted,
+                        errorMessage: locationError
+                      })}
+                    </Text>
+                  </View>
+                  <View style={styles.locationInfoRow}>
+                    <Feather name="crosshair" size={14} color={colors.mutedForeground} />
+                    <Text style={[styles.locationInfoText, { color: colors.mutedForeground }]}>
+                      Accuracy: {formatAccuracy(lastLocation.accuracy)}
+                    </Text>
+                  </View>
+                  <View style={styles.locationInfoRow}>
+                    <Feather name="clock" size={14} color={colors.mutedForeground} />
+                    <Text style={[styles.locationInfoText, { color: colors.mutedForeground }]}>
+                      Last update: {new Date(lastLocation.timestamp).toLocaleTimeString()}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
+            
+            {locationError && (
+              <View style={[styles.locationNote, { backgroundColor: colors.destructiveLight || '#fee2e2' }]}>
+                <Feather name="alert-circle" size={14} color={colors.destructive || '#dc2626'} />
+                <Text style={[styles.locationNoteText, { color: colors.destructive || '#dc2626' }]}>
+                  {locationError}
+                </Text>
+              </View>
+            )}
+            
+            <View style={[styles.locationNote, { backgroundColor: colors.muted }]}>
+              <Feather name="info" size={14} color={colors.mutedForeground} />
+              <Text style={[styles.locationNoteText, { color: colors.mutedForeground }]}>
+                Location is shared with your team's map view. Updates every 30 seconds to save battery.
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Regional</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Pressable 
+              style={({ pressed }) => [
+                styles.settingRow,
+                { backgroundColor: pressed ? colors.cardHover : 'transparent' }
+              ]}
+            >
+              <View style={[styles.settingIcon, { backgroundColor: colors.primaryLight }]}>
+                <Feather name="globe" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingTitle, { color: colors.foreground }]}>Region</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>Australia</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+            </Pressable>
+            
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            
+            <Pressable 
+              style={({ pressed }) => [
+                styles.settingRow,
+                { backgroundColor: pressed ? colors.cardHover : 'transparent' }
+              ]}
+            >
+              <View style={[styles.settingIcon, { backgroundColor: colors.primaryLight }]}>
+                <Feather name="dollar-sign" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingTitle, { color: colors.foreground }]}>Currency</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>AUD ($)</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+
+          <DataSyncSection colors={colors} />
+
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>About</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingRow}>
+              <View style={[styles.settingIcon, { backgroundColor: colors.primaryLight }]}>
+                <Feather name="info" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingTitle, { color: colors.foreground }]}>Version</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>1.0.0 (Beta)</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: colors.foreground }]}>TradieTrack</Text>
+            <Text style={[styles.footerSubtext, { color: colors.mutedForeground }]}>
+              Made in Australia for Australian Tradies
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  scrollContent: {
+  content: {
+    padding: 16,
     paddingBottom: 100,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: spacing['3xl'],
-    paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    marginRight: spacing.md,
-    padding: spacing.xs,
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    ...typography.pageTitle,
-    color: colors.foreground,
-  },
-  headerSubtitle: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  section: {
-    marginTop: spacing.lg,
-    paddingHorizontal: spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  sectionIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   sectionTitle: {
-    ...typography.label,
-    color: colors.foreground,
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginTop: 8,
+    marginLeft: 4,
   },
   card: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
   },
-  settingItem: {
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  themeButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  themeButton: {
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    gap: 8,
+  },
+  themeButtonLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  themeNote: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  brandColorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
-    gap: spacing.md,
+    gap: 12,
   },
-  settingItemPressed: {
-    backgroundColor: colors.cardHover,
+  brandColorSwatch: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
   },
-  settingIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
+  brandColorInfo: {
+    flex: 1,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    gap: 12,
+  },
+  settingIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -120,128 +748,142 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   settingTitle: {
-    ...typography.subtitle,
-    color: colors.foreground,
+    fontSize: 15,
+    fontWeight: '500',
   },
-  settingDescription: {
-    ...typography.caption,
-    color: colors.mutedForeground,
+  settingSubtitle: {
+    fontSize: 13,
     marginTop: 2,
-  },
-  settingValue: {
-    ...typography.body,
-    color: colors.mutedForeground,
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
-    marginLeft: 68,
+    marginHorizontal: 12,
   },
-  themeRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    padding: spacing.lg,
+  locationInfo: {
+    padding: 12,
+    gap: 8,
   },
-  themeOption: {
-    flex: 1,
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    backgroundColor: colors.muted,
-  },
-  themeOptionActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  themeOptionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  themeOptionLabel: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: colors.foreground,
-  },
-  themeOptionLabelActive: {
-    color: colors.primary,
-  },
-  statusBadge: {
+  locationInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-    gap: 4,
+    gap: 8,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  locationInfoText: {
+    fontSize: 13,
   },
-  statusText: {
-    ...typography.captionSmall,
-    fontWeight: '500',
-  },
-  infoBox: {
+  locationNote: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
   },
-  infoText: {
+  locationNoteText: {
     flex: 1,
-    ...typography.caption,
+    fontSize: 12,
     lineHeight: 18,
   },
-  colorPreview: {
+  footer: {
+    alignItems: 'center',
+    marginTop: 32,
+  },
+  footerText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  footerSubtext: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  syncButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 8,
+  },
+  syncButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
-    gap: spacing.md,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 8,
   },
-  colorAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  syncButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  clearCacheButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  clearCacheText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  previewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  mapPreview: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: colors.card,
+    borderColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
   },
-  colorAvatarInitials: {
-    fontSize: 18,
+  mapPreviewInitials: {
+    fontSize: 20,
     fontWeight: '700',
     color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  colorInfo: {
+  previewInfo: {
     flex: 1,
+  },
+  previewName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  previewSubtext: {
+    fontSize: 13,
+    marginTop: 2,
   },
   colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    padding: spacing.lg,
-    paddingTop: 0,
   },
   colorOption: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -261,524 +903,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: 22,
     backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  syncStats: {
-    flexDirection: 'row',
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  syncStat: {
-    flex: 1,
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.muted,
-  },
-  syncStatValue: {
-    ...typography.subtitle,
-    color: colors.foreground,
-  },
-  syncStatLabel: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  syncActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    padding: spacing.lg,
-    paddingTop: 0,
-  },
-  syncButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-  },
-  syncButtonText: {
-    ...typography.body,
-    fontWeight: '600',
-  },
-  outlineButton: {
-    borderWidth: 1,
-  },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: spacing['2xl'],
-    paddingHorizontal: spacing.lg,
-  },
-  footerLogo: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  footerTitle: {
-    ...typography.subtitle,
-    color: colors.foreground,
-  },
-  footerSubtitle: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginTop: 4,
-  },
-  footerVersion: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-    marginTop: spacing.md,
-  },
 });
-
-export default function AppSettingsScreen() {
-  const { colors, themeMode, setThemeMode, isDark, brandColor } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
-  const { user, setUser } = useAuthStore();
-  
-  const { 
-    isEnabled: locationEnabled, 
-    status: locationStatus,
-    lastLocation,
-    lastGeofenceEvent,
-    isMoving,
-    permissionGranted,
-    batteryLevel,
-    errorMessage: locationError,
-    enableTracking, 
-    disableTracking,
-    initializeTracking 
-  } = useLocationStore();
-  
-  const { isOnline, isSyncing, pendingSyncCount, lastSyncTime, syncError, isInitialized } = useOfflineStore();
-  
-  const [isToggling, setIsToggling] = useState(false);
-  const [isFullSyncing, setIsFullSyncing] = useState(false);
-  const [colorOptions, setColorOptions] = useState<ColorOption[]>([]);
-  const [isLoadingColors, setIsLoadingColors] = useState(true);
-  const [isSavingColor, setIsSavingColor] = useState(false);
-  const [selectedColor, setSelectedColor] = useState<string | null>(user?.themeColor || null);
-
-  useEffect(() => {
-    initializeTracking();
-    loadAvailableColors();
-  }, []);
-
-  const loadAvailableColors = useCallback(async () => {
-    try {
-      const response = await api.request<ColorAvailabilityResponse>('GET', '/api/team/colors/available');
-      if (response.data) {
-        setColorOptions(response.data.colors);
-        if (response.data.currentColor) {
-          setSelectedColor(response.data.currentColor);
-        }
-      }
-    } catch (error) {
-      console.log('Failed to load colors:', error);
-    } finally {
-      setIsLoadingColors(false);
-    }
-  }, []);
-
-  const handleLocationToggle = async (value: boolean) => {
-    setIsToggling(true);
-    try {
-      if (value) {
-        const success = await enableTracking();
-        if (!success) {
-          Alert.alert(
-            'Location Permission Required',
-            'Allow location access in your device settings to enable team tracking.',
-            [{ text: 'OK' }]
-          );
-        }
-      } else {
-        await disableTracking();
-      }
-    } finally {
-      setIsToggling(false);
-    }
-  };
-
-  const handleSync = async () => {
-    if (!isOnline || isSyncing || isFullSyncing) return;
-    setIsFullSyncing(true);
-    try {
-      await offlineStorage.fullSync();
-    } finally {
-      setIsFullSyncing(false);
-    }
-  };
-
-  const handleClearCache = () => {
-    Alert.alert(
-      'Clear Local Data?',
-      'This removes cached data from your device. Server data stays safe.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Clear', 
-          style: 'destructive',
-          onPress: async () => {
-            await offlineStorage.clearCache();
-            Alert.alert('Done', 'Local cache cleared');
-          }
-        },
-      ]
-    );
-  };
-
-  const handleColorSelect = async (colorHex: string, isAvailable: boolean) => {
-    if (!isAvailable) return;
-    
-    setSelectedColor(colorHex);
-    setIsSavingColor(true);
-    
-    try {
-      const response = await api.request<{ success: boolean }>('PATCH', '/api/user/theme-color', { themeColor: colorHex });
-      if (response.data?.success && user) {
-        setUser({ ...user, themeColor: colorHex });
-        await loadAvailableColors();
-      }
-    } catch (error) {
-      setSelectedColor(user?.themeColor || null);
-      Alert.alert('Error', 'Failed to save your map color.');
-    } finally {
-      setIsSavingColor(false);
-    }
-  };
-
-  const getLocationStatusText = () => {
-    if (!locationEnabled) return 'Off';
-    if (locationStatus === 'tracking') return 'Active';
-    if (locationStatus === 'starting') return 'Starting...';
-    if (locationStatus === 'error') return 'Error';
-    return 'Stopped';
-  };
-
-  const formatLastSync = () => {
-    if (!lastSyncTime) return 'Never';
-    const diff = Date.now() - lastSyncTime;
-    if (diff < 60000) return 'Just now';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    return new Date(lastSyncTime).toLocaleDateString();
-  };
-
-  const initials = user 
-    ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'
-    : 'U';
-
-  const getColorOption = (hex: string) => colorOptions.find(opt => opt.color.toLowerCase() === hex.toLowerCase());
-
-  return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-      <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Feather name="arrow-left" size={24} color={colors.foreground} />
-            </TouchableOpacity>
-            <View style={styles.headerContent}>
-              <Text style={styles.headerTitle}>App Settings</Text>
-              <Text style={styles.headerSubtitle}>Customize your experience</Text>
-            </View>
-          </View>
-
-          {/* Appearance Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIcon, { backgroundColor: colors.primaryLight }]}>
-                <Feather name="sun" size={16} color={colors.primary} />
-              </View>
-              <Text style={styles.sectionTitle}>Appearance</Text>
-            </View>
-            <View style={styles.card}>
-              <View style={styles.themeRow}>
-                {[
-                  { mode: 'light' as ThemeMode, icon: 'sun', label: 'Light' },
-                  { mode: 'dark' as ThemeMode, icon: 'moon', label: 'Dark' },
-                  { mode: 'system' as ThemeMode, icon: 'smartphone', label: 'Auto' },
-                ].map(({ mode, icon, label }) => (
-                  <TouchableOpacity
-                    key={mode}
-                    style={[styles.themeOption, themeMode === mode && styles.themeOptionActive]}
-                    onPress={() => setThemeMode(mode)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[
-                      styles.themeOptionIcon, 
-                      { backgroundColor: themeMode === mode ? colors.primary : colors.mutedForeground + '20' }
-                    ]}>
-                      <Feather 
-                        name={icon as any} 
-                        size={22} 
-                        color={themeMode === mode ? '#fff' : colors.mutedForeground} 
-                      />
-                    </View>
-                    <Text style={[
-                      styles.themeOptionLabel,
-                      themeMode === mode && styles.themeOptionLabelActive
-                    ]}>{label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </View>
-
-          {/* Map Identity Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIcon, { backgroundColor: colors.infoLight }]}>
-                <Feather name="map-pin" size={16} color={colors.info} />
-              </View>
-              <Text style={styles.sectionTitle}>Map Identity</Text>
-            </View>
-            <View style={styles.card}>
-              <View style={styles.colorPreview}>
-                <View style={[styles.colorAvatar, { backgroundColor: selectedColor || colors.primary }]}>
-                  <Text style={styles.colorAvatarInitials}>{initials}</Text>
-                </View>
-                <View style={styles.colorInfo}>
-                  <Text style={styles.settingTitle}>{user?.firstName} {user?.lastName}</Text>
-                  <Text style={styles.settingDescription}>
-                    {selectedColor ? MAP_COLORS.find(c => c.hex.toLowerCase() === selectedColor.toLowerCase())?.name || 'Custom' : 'Select a color'}
-                  </Text>
-                </View>
-                {isSavingColor && <ActivityIndicator size="small" color={colors.primary} />}
-              </View>
-              
-              {isLoadingColors ? (
-                <ActivityIndicator size="small" color={colors.primary} style={{ padding: spacing.lg }} />
-              ) : (
-                <View style={styles.colorGrid}>
-                  {MAP_COLORS.map((color) => {
-                    const opt = getColorOption(color.hex);
-                    const isAvailable = opt ? opt.available : colorOptions.length === 0;
-                    const isCurrentUser = opt?.isCurrentUser ?? false;
-                    const isSelected = selectedColor?.toLowerCase() === color.hex.toLowerCase();
-                    const isTaken = colorOptions.length > 0 && !isAvailable && !isCurrentUser;
-                    
-                    return (
-                      <TouchableOpacity
-                        key={color.hex}
-                        style={[
-                          styles.colorOption,
-                          { backgroundColor: color.hex },
-                          isSelected && styles.colorOptionSelected,
-                          isTaken && styles.colorOptionTaken,
-                        ]}
-                        onPress={() => handleColorSelect(color.hex, isAvailable || isCurrentUser)}
-                        disabled={isTaken || isSavingColor}
-                        activeOpacity={0.7}
-                      >
-                        {isSelected && <Feather name="check" size={18} color="#fff" />}
-                        {isTaken && (
-                          <View style={styles.takenOverlay}>
-                            <Feather name="x" size={14} color="#fff" />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
-          </View>
-
-          {/* Location Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIcon, { backgroundColor: colors.successLight }]}>
-                <Feather name="navigation" size={16} color={colors.success} />
-              </View>
-              <Text style={styles.sectionTitle}>Location Sharing</Text>
-            </View>
-            <View style={styles.card}>
-              <View style={styles.settingItem}>
-                <View style={[styles.settingIconCircle, { backgroundColor: locationEnabled ? colors.successLight : colors.muted }]}>
-                  <Feather 
-                    name={locationEnabled ? 'navigation' : 'navigation-2'} 
-                    size={20} 
-                    color={locationEnabled ? colors.success : colors.mutedForeground} 
-                  />
-                </View>
-                <View style={styles.settingContent}>
-                  <Text style={styles.settingTitle}>Share Location</Text>
-                  <Text style={styles.settingDescription}>
-                    {locationEnabled ? getLocationStatusText() : 'Let your team see where you are'}
-                  </Text>
-                </View>
-                <Switch
-                  value={locationEnabled}
-                  onValueChange={handleLocationToggle}
-                  disabled={isToggling}
-                  trackColor={{ false: colors.muted, true: colors.success }}
-                  thumbColor={colors.white}
-                />
-              </View>
-              
-              {locationEnabled && lastLocation && (
-                <>
-                  <View style={styles.divider} />
-                  <View style={[styles.settingItem, { paddingVertical: spacing.sm }]}>
-                    <View style={[styles.settingIconCircle, { backgroundColor: colors.muted, width: 32, height: 32 }]}>
-                      <Feather name="activity" size={14} color={colors.mutedForeground} />
-                    </View>
-                    <View style={styles.settingContent}>
-                      <Text style={styles.settingDescription}>
-                        {getActivityStatus({ 
-                          isEnabled: locationEnabled, 
-                          status: locationStatus, 
-                          lastLocation, 
-                          lastGeofenceEvent,
-                          batteryLevel,
-                          isMoving,
-                          permissionGranted,
-                          errorMessage: locationError
-                        })} • Accuracy: {formatAccuracy(lastLocation.accuracy)}
-                      </Text>
-                    </View>
-                  </View>
-                </>
-              )}
-            </View>
-            
-            {locationError && (
-              <View style={[styles.infoBox, { backgroundColor: colors.destructiveLight }]}>
-                <Feather name="alert-circle" size={14} color={colors.destructive} />
-                <Text style={[styles.infoText, { color: colors.destructive }]}>{locationError}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Data & Sync Section */}
-          {isInitialized && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <View style={[styles.sectionIcon, { backgroundColor: colors.warningLight }]}>
-                  <Feather name="refresh-cw" size={16} color={colors.warning} />
-                </View>
-                <Text style={styles.sectionTitle}>Data & Sync</Text>
-              </View>
-              <View style={styles.card}>
-                <View style={styles.syncStats}>
-                  <View style={styles.syncStat}>
-                    <View style={[
-                      styles.statusBadge, 
-                      { backgroundColor: isOnline ? colors.successLight : colors.muted }
-                    ]}>
-                      <View style={[styles.statusDot, { backgroundColor: isOnline ? colors.success : colors.mutedForeground }]} />
-                      <Text style={[styles.statusText, { color: isOnline ? colors.success : colors.mutedForeground }]}>
-                        {isOnline ? 'Online' : 'Offline'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.syncStat}>
-                    <Text style={styles.syncStatValue}>{formatLastSync()}</Text>
-                    <Text style={styles.syncStatLabel}>Last Sync</Text>
-                  </View>
-                  {pendingSyncCount > 0 && (
-                    <View style={styles.syncStat}>
-                      <Text style={[styles.syncStatValue, { color: colors.warning }]}>{pendingSyncCount}</Text>
-                      <Text style={styles.syncStatLabel}>Pending</Text>
-                    </View>
-                  )}
-                </View>
-                
-                <View style={styles.syncActions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.syncButton,
-                      { backgroundColor: isOnline && !isSyncing && !isFullSyncing ? colors.primary : colors.muted }
-                    ]}
-                    onPress={handleSync}
-                    disabled={!isOnline || isSyncing || isFullSyncing}
-                    activeOpacity={0.7}
-                  >
-                    {(isSyncing || isFullSyncing) ? (
-                      <ActivityIndicator size="small" color={colors.white} />
-                    ) : (
-                      <Feather name="refresh-cw" size={16} color={isOnline ? colors.white : colors.mutedForeground} />
-                    )}
-                    <Text style={[styles.syncButtonText, { color: isOnline ? colors.white : colors.mutedForeground }]}>
-                      {(isSyncing || isFullSyncing) ? 'Syncing...' : 'Sync Now'}
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[styles.syncButton, styles.outlineButton, { borderColor: colors.border }]}
-                    onPress={handleClearCache}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="trash-2" size={16} color={colors.mutedForeground} />
-                    <Text style={[styles.syncButtonText, { color: colors.mutedForeground }]}>Clear</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              
-              {syncError && (
-                <View style={[styles.infoBox, { backgroundColor: colors.destructiveLight }]}>
-                  <Feather name="alert-circle" size={14} color={colors.destructive} />
-                  <Text style={[styles.infoText, { color: colors.destructive }]}>{syncError}</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Regional Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIcon, { backgroundColor: colors.muted }]}>
-                <Feather name="globe" size={16} color={colors.mutedForeground} />
-              </View>
-              <Text style={styles.sectionTitle}>Regional</Text>
-            </View>
-            <View style={styles.card}>
-              <View style={styles.settingItem}>
-                <View style={[styles.settingIconCircle, { backgroundColor: colors.primaryLight }]}>
-                  <Feather name="flag" size={20} color={colors.primary} />
-                </View>
-                <View style={styles.settingContent}>
-                  <Text style={styles.settingTitle}>Region</Text>
-                  <Text style={styles.settingDescription}>Australia</Text>
-                </View>
-                <Text style={styles.settingValue}>AU</Text>
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.settingItem}>
-                <View style={[styles.settingIconCircle, { backgroundColor: colors.successLight }]}>
-                  <Feather name="dollar-sign" size={20} color={colors.success} />
-                </View>
-                <View style={styles.settingContent}>
-                  <Text style={styles.settingTitle}>Currency</Text>
-                  <Text style={styles.settingDescription}>Australian Dollar</Text>
-                </View>
-                <Text style={styles.settingValue}>AUD</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <View style={styles.footerLogo}>
-              <Feather name="tool" size={24} color="#fff" />
-            </View>
-            <Text style={styles.footerTitle}>TradieTrack</Text>
-            <Text style={styles.footerSubtitle}>Made in Australia for Australian Tradies</Text>
-            <Text style={styles.footerVersion}>Version 1.0.0 (Beta)</Text>
-          </View>
-        </ScrollView>
-      </View>
-    </>
-  );
-}

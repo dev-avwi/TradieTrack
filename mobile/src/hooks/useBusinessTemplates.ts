@@ -82,7 +82,7 @@ export interface PurposeOption {
 }
 
 export function useBusinessTemplates() {
-  const { token } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [templates, setTemplates] = useState<BusinessTemplate[]>([]);
   const [familiesMeta, setFamiliesMeta] = useState<TemplateFamilyMeta[]>([]);
   const [purposesCache, setPurposesCache] = useState<Record<BusinessTemplateFamily, PurposeOption[]>>({} as any);
@@ -91,25 +91,25 @@ export function useBusinessTemplates() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPurposesForFamily = useCallback(async (family: BusinessTemplateFamily): Promise<PurposeOption[] | null> => {
-    if (!token) return null; // No fallback - require authentication
+    if (!isAuthenticated) return null;
     
     try {
       const res = await fetch(`${API_URL}/api/business-templates/purposes/${family}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include',
       });
       if (res.ok) {
         const data = await res.json();
         return data.purposes || [];
       }
-      return null; // Server error - no fallback
+      return null;
     } catch (err) {
       console.error(`Failed to fetch purposes for ${family}:`, err);
-      return null; // Network error - no fallback
+      return null;
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   const fetchTemplates = useCallback(async () => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     
     setIsLoading(true);
     setError(null);
@@ -117,10 +117,10 @@ export function useBusinessTemplates() {
     try {
       const [templatesRes, familiesRes] = await Promise.all([
         fetch(`${API_URL}/api/business-templates`, {
-          headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include',
         }),
         fetch(`${API_URL}/api/business-templates/families`, {
-          headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include',
         }),
       ]);
 
@@ -164,21 +164,21 @@ export function useBusinessTemplates() {
     }
     
     setIsLoading(false);
-  }, [token, fetchPurposesForFamily]);
+  }, [isAuthenticated, fetchPurposesForFamily]);
 
   const seedTemplates = useCallback(async () => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     
     try {
       await fetch(`${API_URL}/api/business-templates/seed`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include',
       });
       await fetchTemplates();
     } catch (err) {
       console.error('Failed to seed templates:', err);
     }
-  }, [token, fetchTemplates]);
+  }, [isAuthenticated, fetchTemplates]);
 
   const createTemplate = useCallback(async (data: {
     family: string;
@@ -188,13 +188,13 @@ export function useBusinessTemplates() {
     subject?: string;
     purpose?: string;
   }) => {
-    if (!token) throw new Error('Not authenticated');
+    if (!isAuthenticated) throw new Error('Not authenticated');
     
     const response = await fetch(`${API_URL}/api/business-templates`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(data),
     });
@@ -206,7 +206,7 @@ export function useBusinessTemplates() {
 
     await fetchTemplates();
     return response.json();
-  }, [token, fetchTemplates]);
+  }, [isAuthenticated, fetchTemplates]);
 
   const updateTemplate = useCallback(async (id: string, data: {
     name?: string;
@@ -215,13 +215,13 @@ export function useBusinessTemplates() {
     subject?: string;
     purpose?: string;
   }) => {
-    if (!token) throw new Error('Not authenticated');
+    if (!isAuthenticated) throw new Error('Not authenticated');
     
     const response = await fetch(`${API_URL}/api/business-templates/${id}`, {
       method: 'PATCH',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(data),
     });
@@ -233,14 +233,14 @@ export function useBusinessTemplates() {
 
     await fetchTemplates();
     return response.json();
-  }, [token, fetchTemplates]);
+  }, [isAuthenticated, fetchTemplates]);
 
   const deleteTemplate = useCallback(async (id: string) => {
-    if (!token) throw new Error('Not authenticated');
+    if (!isAuthenticated) throw new Error('Not authenticated');
     
     const response = await fetch(`${API_URL}/api/business-templates/${id}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -248,14 +248,14 @@ export function useBusinessTemplates() {
     }
 
     await fetchTemplates();
-  }, [token, fetchTemplates]);
+  }, [isAuthenticated, fetchTemplates]);
 
   const activateTemplate = useCallback(async (id: string) => {
-    if (!token) throw new Error('Not authenticated');
+    if (!isAuthenticated) throw new Error('Not authenticated');
     
     const response = await fetch(`${API_URL}/api/business-templates/${id}/activate`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -263,7 +263,7 @@ export function useBusinessTemplates() {
     }
 
     await fetchTemplates();
-  }, [token, fetchTemplates]);
+  }, [isAuthenticated, fetchTemplates]);
 
   const getTemplatesForFamily = useCallback((family: BusinessTemplateFamily) => {
     return templates.filter(t => t.family === family);
