@@ -883,7 +883,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { businessSettings } = useAuthStore();
+  const { businessSettings, user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('account');
   const [showTour, setShowTour] = useState(false);
@@ -977,9 +977,21 @@ export default function SettingsScreen() {
     saveGeofenceSettings({ enabled: geofenceEnabled, radius: geofenceRadius, autoClockIn, autoClockOut: value });
   }, [saveGeofenceSettings, geofenceEnabled, geofenceRadius, autoClockIn]);
 
-  // Load brand settings
+  // Load brand settings - prioritize server businessSettings, fallback to local storage
   const loadBrandSettings = useCallback(async () => {
     try {
+      // First try to use server-synced business settings
+      if (businessSettings?.brandColor || businessSettings?.logoUrl) {
+        setSelectedColor(businessSettings.brandColor || '#3B5998');
+        setLogoUrl(businessSettings.logoUrl || null);
+        // Also save locally for offline access
+        await AsyncStorage.setItem(BRAND_SETTINGS_KEY, JSON.stringify({ 
+          color: businessSettings.brandColor || '#3B5998', 
+          logoUrl: businessSettings.logoUrl || null 
+        }));
+        return;
+      }
+      // Fallback to local storage
       const stored = await AsyncStorage.getItem(BRAND_SETTINGS_KEY);
       if (stored) {
         const settings = JSON.parse(stored);
@@ -989,11 +1001,14 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('Failed to load brand settings:', error);
     }
-  }, []);
+  }, [businessSettings]);
 
   const saveBrandSettings = useCallback(async (color: string, logo: string | null) => {
     try {
+      // Save locally first for immediate feedback
       await AsyncStorage.setItem(BRAND_SETTINGS_KEY, JSON.stringify({ color, logoUrl: logo }));
+      // Note: Syncing to server would require PATCH /api/business-settings with brandColor
+      // This is handled when the user explicitly saves settings or navigates to business settings page
     } catch (error) {
       console.error('Failed to save brand settings:', error);
     }
@@ -1307,7 +1322,7 @@ export default function SettingsScreen() {
     }
   }, [typeFilter, activeTab]);
 
-  const currentPlan = 'free' as 'free' | 'pro' | 'team';
+  const currentPlan = (user?.subscriptionTier || 'free') as 'free' | 'pro' | 'team' | 'trial';
 
   return (
     <>
