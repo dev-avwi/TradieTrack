@@ -99,6 +99,9 @@ import {
   Timer,
   DollarSign,
   User,
+  Navigation2,
+  Car,
+  MessageSquare,
 } from "lucide-react";
 import {
   Sheet,
@@ -511,24 +514,24 @@ function LiveOpsTab() {
                                     display: flex;
                                     align-items: center;
                                     justify-content: center;
-                                    width: 40px;
-                                    height: 40px;
+                                    width: 32px;
+                                    height: 32px;
                                     border-radius: 50%;
                                     background: ${statusDisplay.markerBg};
-                                    border: 3px solid white;
-                                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                                    border: 2px solid white;
+                                    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
                                     font-family: system-ui, -apple-system, sans-serif;
                                     cursor: pointer;
                                   ">
                                     <span style="
                                       color: ${statusDisplay.markerText};
-                                      font-size: 14px;
+                                      font-size: 11px;
                                       font-weight: 700;
-                                      letter-spacing: 0.5px;
+                                      letter-spacing: 0.3px;
                                     ">${initials}</span>
                                   </div>`,
-                                  iconSize: [40, 40],
-                                  iconAnchor: [20, 20],
+                                  iconSize: [32, 32],
+                                  iconAnchor: [16, 16],
                                 })}
                                 eventHandlers={{
                                   click: () => {
@@ -539,23 +542,29 @@ function LiveOpsTab() {
                                 }}
                               >
                                 <Popup>
-                                  <div className="min-w-[200px] max-w-[280px]" data-testid={`map-popup-${member?.id}`}>
-                                    <div className="flex items-center gap-2 mb-2 pb-2 border-b">
+                                  <div className="min-w-[220px] max-w-[280px]" data-testid={`map-popup-${member?.id}`}>
+                                    <div className="flex items-center gap-3 mb-3">
                                       <div 
-                                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base border-2 border-white shadow-md"
                                         style={{ background: statusDisplay.markerBg }}
                                       >
                                         {initials}
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-sm truncate">{member?.firstName} {member?.lastName}</p>
-                                        <div className="flex items-center gap-1">
-                                          <span className={`w-2 h-2 rounded-full ${
-                                            p.status === 'online' || p.status === 'on_job' ? 'bg-green-500' : 
-                                            p.status === 'away' || p.status === 'break' ? 'bg-yellow-500' : 'bg-gray-400'
-                                          }`} />
-                                          <span className="text-xs text-muted-foreground">{statusDisplay.label}</span>
-                                        </div>
+                                        <p className="font-semibold text-sm">{member?.firstName} {member?.lastName}</p>
+                                        <Badge 
+                                          className={`text-xs ${
+                                            p.status === 'on_job' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' :
+                                            p.status === 'online' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
+                                            p.status === 'break' ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' :
+                                            'bg-gray-500/20 text-gray-600 dark:text-gray-400'
+                                          } border-0`}
+                                        >
+                                          {p.status === 'on_job' && <Wrench className="h-3 w-3 mr-1" />}
+                                          {p.status === 'online' && <Circle className="h-2 w-2 mr-1 fill-current" />}
+                                          {p.status === 'break' && <Coffee className="h-3 w-3 mr-1" />}
+                                          {statusDisplay.label}
+                                        </Badge>
                                       </div>
                                     </div>
                                     
@@ -564,37 +573,61 @@ function LiveOpsTab() {
                                     )}
                                     
                                     {currentJob && (
-                                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-2 mb-2">
-                                        <p className="text-xs font-medium text-blue-700 dark:text-blue-300 flex items-center gap-1">
-                                          <Briefcase className="h-3 w-3" />
-                                          Working on:
-                                        </p>
-                                        <p className="text-xs truncate mt-0.5">{currentJob.title}</p>
-                                        {currentJob.clientName && (
-                                          <p className="text-xs text-muted-foreground truncate">{currentJob.clientName}</p>
-                                        )}
+                                      <div className="flex items-center gap-2 text-sm mb-2">
+                                        <Briefcase className="h-4 w-4 text-muted-foreground" />
+                                        <span className="truncate">{currentJob.title}</span>
                                       </div>
                                     )}
                                     
                                     {!currentJob && nextJob && (
-                                      <div className="bg-amber-50 dark:bg-amber-900/20 rounded p-2 mb-2">
-                                        <p className="text-xs font-medium text-amber-700 dark:text-amber-300 flex items-center gap-1">
-                                          <Clock className="h-3 w-3" />
-                                          Next job:
-                                        </p>
-                                        <p className="text-xs truncate mt-0.5">{nextJob.title}</p>
+                                      <div className="flex items-center gap-2 text-sm mb-2 text-muted-foreground">
+                                        <Clock className="h-4 w-4" />
+                                        <span className="truncate">Next: {nextJob.title}</span>
                                       </div>
                                     )}
                                     
-                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                      <span>{member?.roleName || 'Team Member'}</span>
-                                      {lastSeenTime && <span>Updated {lastSeenTime}</span>}
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
+                                      <Clock className="h-3 w-3" />
+                                      {lastSeenTime ? `Active ${lastSeenTime}` : 'Active now'}
+                                    </div>
+                                    
+                                    <div className="flex gap-2 mb-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        className="flex-1"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (member?.email) {
+                                            window.location.href = `mailto:${member.email}`;
+                                          }
+                                        }}
+                                        data-testid={`button-message-${member?.id}`}
+                                      >
+                                        <MessageSquare className="h-3 w-3 mr-1" />
+                                        Message
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        variant="default"
+                                        className="flex-1"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (p.lastLocationLat && p.lastLocationLng) {
+                                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${p.lastLocationLat},${p.lastLocationLng}`, '_blank');
+                                          }
+                                        }}
+                                        data-testid={`button-navigate-${member?.id}`}
+                                      >
+                                        <Navigation2 className="h-3 w-3 mr-1" />
+                                        Navigate
+                                      </Button>
                                     </div>
                                     
                                     <Button 
                                       size="sm" 
                                       variant="outline"
-                                      className="w-full mt-2"
+                                      className="w-full"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         if (member) handleMemberClick(member);
