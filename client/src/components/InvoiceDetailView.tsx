@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
@@ -152,6 +152,20 @@ export default function InvoiceDetailView({
   const { data: warrantyTemplate } = useQuery<BusinessTemplate>({
     queryKey: ["/api/business-templates/active/warranty"],
     enabled: !!invoice,
+  });
+
+  // Get related receipt for paid invoices
+  const { data: relatedReceipt } = useQuery({
+    queryKey: ['/api/invoices', invoiceId, 'receipt'],
+    queryFn: async () => {
+      const response = await fetch(`/api/invoices/${invoiceId}/receipt`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: invoice?.status === 'paid'
   });
 
   const toggleOnlinePaymentMutation = useMutation({
@@ -1277,6 +1291,20 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                       </div>
                     )}
                   </div>
+                  {relatedReceipt && (
+                    <div className="mt-4 pt-3 border-t border-green-200">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/receipts/${relatedReceipt.id}`)}
+                        className="text-green-700 border-green-300 hover:bg-green-100"
+                        data-testid="link-invoice-receipt"
+                      >
+                        <Receipt className="h-4 w-4 mr-2" />
+                        View Receipt ({relatedReceipt.number})
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 

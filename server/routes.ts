@@ -9766,6 +9766,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get receipt for a specific invoice
+  app.get("/api/invoices/:id/receipt", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const allReceipts = await storage.getReceipts(effectiveUserId);
+      const receipt = allReceipts.find((r: any) => r.invoiceId === req.params.id);
+      if (!receipt) {
+        return res.status(404).json({ error: "Receipt not found" });
+      }
+      res.json(receipt);
+    } catch (error) {
+      console.error("Error fetching invoice receipt:", error);
+      res.status(500).json({ error: "Failed to fetch invoice receipt" });
+    }
+  });
+
   // Create a receipt (typically called after payment is collected)
   app.post("/api/receipts", requireAuth, async (req: any, res) => {
     try {
