@@ -92,30 +92,32 @@ export default function StaffTradieDashboard({
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
     startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 7);
     
+    // Count jobs scheduled this week that are completed
     const completedThisWeek = myJobs.filter(job => {
       if (job.status !== 'done' && job.status !== 'invoiced') return false;
-      return true; // In real app, would check completedAt date
-    });
-    
-    const scheduledThisWeek = myJobs.filter(job => {
+      // Filter by scheduled date being this week (best proxy for completion date)
       if (!job.scheduledAt) return false;
       const jobDate = new Date(job.scheduledAt);
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(endOfWeek.getDate() + 7);
       return jobDate >= startOfWeek && jobDate < endOfWeek;
     });
     
-    // Estimate weekly hours from time tracking (multiply today by work days so far)
-    const dayOfWeek = now.getDay() || 7; // 1-7, treating Sunday as 7
-    const workDays = Math.min(dayOfWeek, 5); // Cap at 5 work days
-    const estimatedWeeklyMinutes = totalMinutesToday + (workDays > 1 ? totalMinutesToday * (workDays - 1) * 0.8 : 0);
+    // Count all jobs scheduled this week (regardless of status)
+    const scheduledThisWeek = myJobs.filter(job => {
+      if (!job.scheduledAt) return false;
+      const jobDate = new Date(job.scheduledAt);
+      return jobDate >= startOfWeek && jobDate < endOfWeek;
+    });
+    
+    // Use actual time tracking data
+    const hoursWorked = Math.floor(totalMinutesToday / 60);
     
     return {
       completedCount: completedThisWeek.length,
       scheduledCount: scheduledThisWeek.length,
-      weeklyHours: Math.floor(estimatedWeeklyMinutes / 60),
-      weeklyMinutes: Math.floor(estimatedWeeklyMinutes % 60),
+      weeklyHours: hoursWorked,
     };
   };
   
