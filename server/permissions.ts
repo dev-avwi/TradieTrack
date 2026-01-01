@@ -1,4 +1,11 @@
 import { storage } from './storage';
+import { 
+  WORKER_PERMISSIONS, 
+  DEFAULT_WORKER_PERMISSIONS, 
+  ALL_WORKER_PERMISSIONS,
+  type WorkerPermission,
+  type TeamMember,
+} from '@shared/schema';
 
 export const PERMISSIONS = {
   READ_JOBS: 'read_jobs',
@@ -551,3 +558,101 @@ function maskSensitiveClientFields(client: any): any {
 export function canViewClientSensitiveData(userContext: UserContext): boolean {
   return userContext.isOwner || userContext.permissions.includes(PERMISSIONS.READ_CLIENTS_SENSITIVE);
 }
+
+/**
+ * Gets the worker permissions for a team member.
+ * Uses customPermissions if useCustomPermissions is true, otherwise returns DEFAULT_WORKER_PERMISSIONS.
+ * 
+ * @param teamMember - The team member record
+ * @returns Array of WorkerPermission strings
+ */
+export function getWorkerPermissions(teamMember: TeamMember | null): WorkerPermission[] {
+  if (!teamMember) {
+    return [];
+  }
+  
+  if (teamMember.useCustomPermissions && teamMember.customPermissions) {
+    return teamMember.customPermissions as WorkerPermission[];
+  }
+  
+  return [...DEFAULT_WORKER_PERMISSIONS];
+}
+
+/**
+ * Checks if a specific worker permission exists in the permissions array.
+ * 
+ * @param permissions - Array of worker permissions
+ * @param permission - The permission to check for
+ * @returns true if the permission exists
+ */
+export function hasWorkerPermission(permissions: WorkerPermission[], permission: WorkerPermission): boolean {
+  return permissions.includes(permission);
+}
+
+/**
+ * Checks if a user is the business owner.
+ * 
+ * @param userId - The user's ID
+ * @param businessOwnerId - The business owner's ID
+ * @returns true if the user is the business owner
+ */
+export function isBusinessOwner(userId: string, businessOwnerId: string | null): boolean {
+  if (!businessOwnerId) return true; // If no business owner ID is provided, user is their own owner
+  return userId === businessOwnerId;
+}
+
+/**
+ * Gets the complete worker permission context for a user.
+ * Owners and managers get ALL worker permissions.
+ * Workers get their assigned permissions (custom or default).
+ * 
+ * @param userId - The user's ID
+ * @returns Object with permissions array, isOwner, and isWorker flags
+ */
+export async function getWorkerPermissionContext(userId: string): Promise<{
+  permissions: WorkerPermission[];
+  isOwner: boolean;
+  isWorker: boolean;
+  teamMemberId: string | null;
+  businessOwnerId: string | null;
+}> {
+  const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+  
+  if (teamMembership && teamMembership.inviteStatus === 'accepted') {
+    // User is a team member/worker
+    const role = await storage.getUserRole(teamMembership.roleId);
+    const roleName = role?.name?.toUpperCase() || '';
+    
+    // Managers get ALL worker permissions
+    const isManager = roleName === 'MANAGER' || roleName === 'ADMIN' || roleName === 'ADMINISTRATOR';
+    
+    let permissions: WorkerPermission[];
+    if (isManager) {
+      // Managers get all worker permissions
+      permissions = [...ALL_WORKER_PERMISSIONS];
+    } else {
+      // Regular workers get their assigned permissions
+      permissions = getWorkerPermissions(teamMembership);
+    }
+    
+    return {
+      permissions,
+      isOwner: false,
+      isWorker: true,
+      teamMemberId: teamMembership.id,
+      businessOwnerId: teamMembership.businessOwnerId,
+    };
+  }
+  
+  // User is a business owner - they get ALL worker permissions
+  return {
+    permissions: [...ALL_WORKER_PERMISSIONS],
+    isOwner: true,
+    isWorker: false,
+    teamMemberId: null,
+    businessOwnerId: null,
+  };
+}
+
+// Re-export worker permission constants for convenience
+export { WORKER_PERMISSIONS, DEFAULT_WORKER_PERMISSIONS, ALL_WORKER_PERMISSIONS, type WorkerPermission };

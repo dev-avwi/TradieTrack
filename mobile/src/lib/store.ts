@@ -174,6 +174,8 @@ interface AuthState {
   businessSettings: BusinessSettings | null;
   roleInfo: RoleInfo | null;
   teamState: TeamState;
+  workerPermissions: string[];
+  isWorker: boolean;
   isLoading: boolean;
   isAuthenticated: boolean;
   isInitialized: boolean;
@@ -191,6 +193,7 @@ interface AuthState {
   clearError: () => void;
   updateBusinessSettings: (settings: Partial<BusinessSettings>) => Promise<boolean>;
   hasPermission: (permission: string) => boolean;
+  hasWorkerPermission: (permission: string) => boolean;
   isOwner: () => boolean;
   isStaff: () => boolean;
   hasActiveTeam: () => boolean;
@@ -201,6 +204,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   businessSettings: null,
   roleInfo: null,
   teamState: { hasActiveTeam: false, activeTeamCount: 0, members: [], isLoading: false, lastFetched: null },
+  workerPermissions: [],
+  isWorker: false,
   isLoading: false,
   isAuthenticated: false,
   isInitialized: false,
@@ -283,6 +288,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       businessSettings: null,
       roleInfo: null,
       teamState: { hasActiveTeam: false, activeTeamCount: 0, members: [], isLoading: false, lastFetched: null },
+      workerPermissions: [],
+      isWorker: false,
       isAuthenticated: false,
       isLoading: false,
       error: null 
@@ -377,8 +384,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
+    // Extract worker permissions from response
+    const workerPerms = response.data?.workerPermissions || [];
+    const isWorkerUser = response.data?.isWorker || false;
+    
     set({ 
       user: response.data, 
+      workerPermissions: workerPerms,
+      isWorker: isWorkerUser,
       isAuthenticated: true, 
       isLoading: false,
       isInitialized: true 
@@ -483,6 +496,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (roleInfo.isOwner) return true;
     if (roleInfo.permissions.includes('*')) return true;
     return roleInfo.permissions.includes(permission);
+  },
+  
+  hasWorkerPermission: (permission: string) => {
+    const { workerPermissions, roleInfo } = get();
+    // Owners have all permissions
+    if (roleInfo?.isOwner) return true;
+    // Check worker permissions array from /api/auth/me
+    return workerPermissions.includes(permission);
   },
   
   isOwner: () => {

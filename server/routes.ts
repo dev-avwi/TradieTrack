@@ -11,7 +11,7 @@ import { loginSchema, insertUserSchema, type SafeUser, requestLoginCodeSchema, v
 import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail, sendTeamInviteEmail, sendJobAssignmentEmail, sendJobCompletionNotificationEmail, sendWelcomeEmail } from "./emailService";
 import { FreemiumService } from "./freemiumService";
 import { DEMO_USER } from "./demoData";
-import { ownerOnly, ownerOrManagerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo } from "./permissions";
+import { ownerOnly, ownerOrManagerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, getWorkerPermissionContext } from "./permissions";
 import {
   insertBusinessSettingsSchema,
   insertIntegrationSettingsSchema,
@@ -975,7 +975,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      res.json(safeUser);
+      // Get worker permission context
+      const workerPermissionContext = await getWorkerPermissionContext(userId);
+      
+      // Add permission context to response
+      const response = {
+        ...safeUser,
+        workerPermissions: workerPermissionContext.permissions,
+        isOwner: workerPermissionContext.isOwner,
+        isWorker: workerPermissionContext.isWorker,
+        teamMemberId: workerPermissionContext.teamMemberId,
+        businessOwnerId: workerPermissionContext.businessOwnerId,
+      };
+      
+      res.json(response);
     } catch (error) {
       console.error("Auth check error:", error);
       res.status(500).json({ error: "Failed to check authentication" });

@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore } from '../../src/lib/store';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
+import { useWorkerPermission } from '../../src/hooks/useWorkerPermission';
 import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
@@ -973,6 +974,14 @@ export default function DashboardScreen() {
   const canViewMap = isOwnerUser || isManager;
   const hasActiveTeam = teamMembers.length > 0;
   
+  // Worker permissions for staff Quick Actions
+  const { 
+    canCollectPayments, 
+    canCreateQuotes, 
+    canCreateInvoices, 
+    canViewDocuments 
+  } = useWorkerPermission();
+  
   const handleNavigateToItem = (type: string, id: string) => {
     switch (type) {
       case 'job':
@@ -1345,6 +1354,46 @@ export default function DashboardScreen() {
       {isStaffUser && (
         <View style={styles.section}>
           <TimeTrackingWidget />
+        </View>
+      )}
+
+      {/* Quick Actions - Staff Only (Permission-gated) */}
+      {isStaffUser && (canCollectPayments || canCreateQuotes || canCreateInvoices || canViewDocuments) && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Quick Actions</Text>
+          <View style={styles.quickActionsCard}>
+            <View style={styles.quickActionsRow}>
+              {canCollectPayments && (
+                <QuickActionButton
+                  title="Collect Payment"
+                  icon="credit-card"
+                  variant="primary"
+                  onPress={() => router.push('/more/collect-payment')}
+                />
+              )}
+              {canCreateQuotes && (
+                <QuickActionButton
+                  title="Create Quote"
+                  icon="file-text"
+                  onPress={() => router.push('/more/quotes/new')}
+                />
+              )}
+              {canCreateInvoices && (
+                <QuickActionButton
+                  title="Create Invoice"
+                  icon="dollar-sign"
+                  onPress={() => router.push('/more/invoices/new')}
+                />
+              )}
+              {canViewDocuments && (
+                <QuickActionButton
+                  title="View Documents"
+                  icon="folder"
+                  onPress={() => router.push('/more/documents')}
+                />
+              )}
+            </View>
+          </View>
         </View>
       )}
 

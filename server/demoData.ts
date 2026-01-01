@@ -1,6 +1,6 @@
 import { storage, db } from './storage';
 import { AuthService } from './auth';
-import { teamMemberSkills } from '@shared/schema';
+import { teamMemberSkills, WORKER_PERMISSIONS } from '@shared/schema';
 
 // Demo user data - Business Owner
 const DEMO_USER = {
@@ -1596,6 +1596,17 @@ export async function createDemoTeamMembers() {
         lng: 145.7710,
         statusMessage: 'On-site at client',
         inviteStatus: 'accepted' as const, // Can login as worker@tradietrack.com.au
+        useCustomPermissions: true,
+        customPermissions: [
+          WORKER_PERMISSIONS.COLLECT_PAYMENTS,
+          WORKER_PERMISSIONS.VIEW_INVOICES,
+          WORKER_PERMISSIONS.CREATE_QUOTES,
+          WORKER_PERMISSIONS.UPDATE_JOB_STATUS,
+          WORKER_PERMISSIONS.TIME_TRACKING,
+          WORKER_PERMISSIONS.GPS_CHECKIN,
+          WORKER_PERMISSIONS.TEAM_CHAT,
+          WORKER_PERMISSIONS.VIEW_CLIENTS,
+        ],
       },
       {
         firstName: 'Sarah',
@@ -1717,7 +1728,7 @@ export async function createDemoTeamMembers() {
       
       // Create team member record with proper invite status
       const isAccepted = member.inviteStatus === 'accepted';
-      const teamMember = await storage.createTeamMember({
+      const teamMemberRecord: any = {
         businessOwnerId: demoUser.id,
         memberId: isAccepted ? memberUser.id : undefined, // Only link user if accepted
         roleId: member.role,
@@ -1731,7 +1742,15 @@ export async function createDemoTeamMembers() {
         hourlyRate: '55.00',
         startDate: isAccepted ? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) : undefined,
         isActive: isAccepted,
-      });
+      };
+      
+      // Add custom permissions if defined for this team member
+      if ('useCustomPermissions' in member) {
+        teamMemberRecord.useCustomPermissions = member.useCustomPermissions;
+        teamMemberRecord.customPermissions = member.customPermissions;
+      }
+      
+      const teamMember = await storage.createTeamMember(teamMemberRecord);
       
       // Only create presence/location data for accepted team members
       if (isAccepted) {

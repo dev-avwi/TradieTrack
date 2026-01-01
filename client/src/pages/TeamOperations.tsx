@@ -108,6 +108,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { TeamMember, UserRole, TeamMemberSkill, TeamMemberAvailability, TeamMemberTimeOff } from "@shared/schema";
+import { PERMISSION_CATEGORIES, PERMISSION_LABELS, type WorkerPermission, DEFAULT_WORKER_PERMISSIONS } from "@shared/schema";
 import "leaflet/dist/leaflet.css";
 
 interface TeamPresenceData {
@@ -848,6 +849,10 @@ function TeamAdminTab() {
   const [inviteRoleId, setInviteRoleId] = useState("");
   const [inviteHourlyRate, setInviteHourlyRate] = useState("");
   const [memberToDelete, setMemberToDelete] = useState<TeamMemberData | null>(null);
+  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
+  const [selectedMemberForPermissions, setSelectedMemberForPermissions] = useState<TeamMemberData | null>(null);
+  const [editedPermissions, setEditedPermissions] = useState<string[]>([]);
+  const [useCustomPermissions, setUseCustomPermissions] = useState(false);
 
   const { data: teamMembers, isLoading: membersLoading } = useQuery<TeamMemberData[]>({
     queryKey: ['/api/team/members'],
@@ -927,6 +932,47 @@ function TeamAdminTab() {
       });
     },
   });
+
+  const updatePermissionsMutation = useMutation({
+    mutationFn: async ({ memberId, permissions, useCustomPermissions }: { memberId: string; permissions: string[]; useCustomPermissions: boolean }) => {
+      const response = await apiRequest('PATCH', `/api/team/members/${memberId}/permissions`, { 
+        permissions, 
+        useCustomPermissions 
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
+      toast({
+        title: "Permissions updated",
+        description: "Team member's permissions have been updated.",
+      });
+      setPermissionsDialogOpen(false);
+      setSelectedMemberForPermissions(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update permissions",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const openPermissionsDialog = (member: TeamMemberData) => {
+    setSelectedMemberForPermissions(member);
+    setUseCustomPermissions(member.useCustomPermissions ?? false);
+    setEditedPermissions(member.customPermissions || [...DEFAULT_WORKER_PERMISSIONS]);
+    setPermissionsDialogOpen(true);
+  };
+
+  const togglePermission = (permission: string) => {
+    setEditedPermissions(prev => 
+      prev.includes(permission)
+        ? prev.filter(p => p !== permission)
+        : [...prev, permission]
+    );
+  };
 
   const resetInviteForm = () => {
     setInviteEmail("");
@@ -1060,6 +1106,15 @@ function TeamAdminTab() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openPermissionsDialog(member)}
+                      title="Edit permissions"
+                      data-testid={`button-permissions-${member.id}`}
+                    >
+                      <Key className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1222,6 +1277,101 @@ function TeamAdminTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={permissionsDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setPermissionsDialogOpen(false);
+          setSelectedMemberForPermissions(null);
+        }
+      }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col" data-testid="dialog-permissions">
+          <DialogHeader className="shrink-0">
+            <DialogTitle>Edit Permissions</DialogTitle>
+            <DialogDescription>
+              {selectedMemberForPermissions ? (
+                <>Manage permissions for <strong>{selectedMemberForPermissions.firstName} {selectedMemberForPermissions.lastName}</strong></>
+              ) : (
+                'Configure team member permissions'
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto">
+            <div className="space-y-4 py-4">
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="space-y-0.5">
+                  <Label htmlFor="use-custom-permissions" className="text-base font-medium">Use Custom Permissions</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Override role-based permissions with custom settings
+                  </p>
+                </div>
+                <Switch
+                  id="use-custom-permissions"
+                  checked={useCustomPermissions}
+                  onCheckedChange={setUseCustomPermissions}
+                  data-testid="switch-use-custom-permissions"
+                />
+              </div>
+
+              {!useCustomPermissions ? (
+                <div className="p-6 border rounded-lg bg-muted/50 text-center">
+                  <Shield className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="font-medium">Using Default Permissions</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    This team member is using the default permissions assigned to their role.
+                    Enable custom permissions above to override.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(PERMISSION_CATEGORIES).map(([categoryKey, category]) => (
+                    <div key={categoryKey} className="border rounded-lg">
+                      <div className="p-3 bg-muted/30 border-b">
+                        <h4 className="font-medium text-sm">{category.label}</h4>
+                        <p className="text-xs text-muted-foreground">{category.description}</p>
+                      </div>
+                      <div className="divide-y">
+                        {category.permissions.map((permission) => (
+                          <div key={permission} className="flex items-center justify-between p-3">
+                            <Label htmlFor={`perm-${permission}`} className="text-sm cursor-pointer flex-1">
+                              {PERMISSION_LABELS[permission as WorkerPermission] || permission}
+                            </Label>
+                            <Switch
+                              id={`perm-${permission}`}
+                              checked={editedPermissions.includes(permission)}
+                              onCheckedChange={() => togglePermission(permission)}
+                              data-testid={`switch-permission-${permission}`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="shrink-0 pt-4 border-t">
+            <Button variant="outline" onClick={() => setPermissionsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (selectedMemberForPermissions) {
+                  updatePermissionsMutation.mutate({
+                    memberId: selectedMemberForPermissions.id,
+                    permissions: editedPermissions,
+                    useCustomPermissions,
+                  });
+                }
+              }}
+              disabled={updatePermissionsMutation.isPending}
+              data-testid="button-save-permissions"
+            >
+              {updatePermissionsMutation.isPending ? "Saving..." : "Save Permissions"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

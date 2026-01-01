@@ -24,7 +24,12 @@ import {
   Bell,
   TrendingUp,
   Target,
-  Award
+  Award,
+  DollarSign,
+  FileText,
+  Receipt,
+  FolderOpen,
+  Zap
 } from "lucide-react";
 
 interface StaffTradieDashboardProps {
@@ -56,6 +61,29 @@ export default function StaffTradieDashboard({
   const { toast } = useToast();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch user session data including worker permissions
+  const { data: userSession } = useQuery<{
+    workerPermissions?: string[];
+    role?: string;
+  }>({
+    queryKey: ["/api/auth/me"],
+    staleTime: 300000,
+  });
+
+  // Helper function to check if user has a specific permission
+  const hasPermission = (permission: string): boolean => {
+    if (!userSession?.workerPermissions) return false;
+    return userSession.workerPermissions.includes(permission);
+  };
+
+  // Check if any quick action permissions are available
+  const hasAnyQuickActionPermission = 
+    hasPermission('collect_payments') ||
+    hasPermission('create_quotes') ||
+    hasPermission('create_invoices') ||
+    hasPermission('view_invoices') ||
+    hasPermission('view_quotes');
 
   // Fetch only jobs assigned to this user
   const { data: myJobs = [], isLoading: jobsLoading } = useQuery<Job[]>({
@@ -413,6 +441,93 @@ export default function StaffTradieDashboard({
           </Card>
         </div>
       </section>
+
+      {/* Quick Actions - Permission Gated */}
+      {hasAnyQuickActionPermission && (
+        <section className="space-y-3" data-testid="quick-actions-section">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {hasPermission('collect_payments') && (
+              <Card className="hover-elevate active-elevate-2" data-testid="quick-action-collect-payment">
+                <Button
+                  variant="ghost"
+                  className="w-full h-auto p-4 flex flex-col items-center gap-2 text-center hover:bg-transparent no-default-hover-elevate no-default-active-elevate"
+                  onClick={() => onNavigate?.('/payments')}
+                  data-testid="button-collect-payment"
+                >
+                  <div 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: 'hsl(142.1 76.2% 36.3% / 0.15)' }}
+                  >
+                    <DollarSign className="h-6 w-6" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+                  </div>
+                  <span className="text-sm font-medium">Collect Payment</span>
+                </Button>
+              </Card>
+            )}
+            
+            {hasPermission('create_quotes') && (
+              <Card className="hover-elevate active-elevate-2" data-testid="quick-action-create-quote">
+                <Button
+                  variant="ghost"
+                  className="w-full h-auto p-4 flex flex-col items-center gap-2 text-center hover:bg-transparent no-default-hover-elevate no-default-active-elevate"
+                  onClick={() => onNavigate?.('/quotes/new')}
+                  data-testid="button-create-quote"
+                >
+                  <div 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}
+                  >
+                    <FileText className="h-6 w-6" style={{ color: 'hsl(var(--trade))' }} />
+                  </div>
+                  <span className="text-sm font-medium">Create Quote</span>
+                </Button>
+              </Card>
+            )}
+            
+            {hasPermission('create_invoices') && (
+              <Card className="hover-elevate active-elevate-2" data-testid="quick-action-create-invoice">
+                <Button
+                  variant="ghost"
+                  className="w-full h-auto p-4 flex flex-col items-center gap-2 text-center hover:bg-transparent no-default-hover-elevate no-default-active-elevate"
+                  onClick={() => onNavigate?.('/invoices/new')}
+                  data-testid="button-create-invoice"
+                >
+                  <div 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: 'hsl(35 90% 55% / 0.15)' }}
+                  >
+                    <Receipt className="h-6 w-6" style={{ color: 'hsl(35 90% 55%)' }} />
+                  </div>
+                  <span className="text-sm font-medium">Create Invoice</span>
+                </Button>
+              </Card>
+            )}
+            
+            {(hasPermission('view_invoices') || hasPermission('view_quotes')) && (
+              <Card className="hover-elevate active-elevate-2" data-testid="quick-action-view-documents">
+                <Button
+                  variant="ghost"
+                  className="w-full h-auto p-4 flex flex-col items-center gap-2 text-center hover:bg-transparent no-default-hover-elevate no-default-active-elevate"
+                  onClick={() => onNavigate?.('/documents')}
+                  data-testid="button-view-documents"
+                >
+                  <div 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: 'hsl(var(--muted))' }}
+                  >
+                    <FolderOpen className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm font-medium">View Documents</span>
+                </Button>
+              </Card>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* No Jobs Assigned */}
       {activeJobs.length === 0 && (
