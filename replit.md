@@ -17,12 +17,13 @@ Preferred communication style: Simple, everyday language.
 - Use this account to test the worker experience within the same team
 
 **Demo Data:**
-- 9 clients (expanded for realistic testing)
-- 7 jobs (various statuses: pending, scheduled, in_progress, done, invoiced)
-- 8 quotes (2 draft, 2 sent, 2 accepted, 2 rejected)
-- 7 invoices (1 draft, 2 sent, 1 overdue, 3 paid)
-- 3 receipts (for paid invoices)
+- 16 clients (realistic Cairns QLD area addresses)
+- 19 jobs (4 pending, 5 scheduled, 3 in_progress, 4 done, 3 invoiced)
+- 13 quotes (3 draft, 4 sent, 3 accepted, 3 rejected)
+- 13 invoices (2 draft, 4 sent, 2 overdue, 6 paid)
+- 6 receipts (for paid invoices)
 - Team: 4 accepted members + 2 pending invites (Brodie Williams, Emma Patterson)
+- Worker assignments: Jake Morrison has 4 jobs (overdue, today, upcoming, in_progress)
 
 ### System Architecture
 TradieTrack utilizes an event-driven architecture with TypeScript. The frontend is built with React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile. The backend is an Express.js and TypeScript REST API with Zod validation, backed by PostgreSQL and Drizzle ORM.
