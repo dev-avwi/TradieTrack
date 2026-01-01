@@ -23,6 +23,7 @@ import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } fro
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
+import { FloatingActionButton } from '../../src/components/FloatingActionButton';
 
 // Activity Feed Component - matches web Recent Activity section
 function ActivityFeed({ 
@@ -1709,6 +1710,8 @@ export default function DashboardScreen() {
       <View style={{ height: spacing['4xl'] + 80 }} />
     </ScrollView>
     
+    {/* Floating Action Button */}
+    <FloatingActionButton isTeamOwner={!isStaffUser} />
   </>
   );
 }
