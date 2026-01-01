@@ -15,6 +15,7 @@ import {
   Image,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import * as Linking from 'expo-linking';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -175,11 +176,11 @@ export default function CollectPaymentScreen() {
   const fetchData = useCallback(async () => {
     try {
       const [requestsRes, clientsRes, invoicesRes, jobsRes, receiptsRes, stripeRes] = await Promise.all([
-        api.get<PaymentRequest[]>('/api/payment-requests'),
-        api.get<Client[]>('/api/clients'),
-        api.get<Invoice[]>('/api/invoices'),
-        api.get<Job[]>('/api/jobs'),
-        api.get<Receipt[]>('/api/receipts'),
+        api.get<PaymentRequest[]>('/api/payment-requests').catch(() => ({ data: [] as PaymentRequest[] })),
+        api.get<Client[]>('/api/clients').catch(() => ({ data: [] as Client[] })),
+        api.get<Invoice[]>('/api/invoices').catch(() => ({ data: [] as Invoice[] })),
+        api.get<Job[]>('/api/jobs').catch(() => ({ data: [] as Job[] })),
+        api.get<Receipt[]>('/api/receipts').catch(() => ({ data: [] as Receipt[] })),
         api.get<StripeConnectStatus>('/api/stripe/connect/status').catch(() => ({ data: { connected: false } as StripeConnectStatus })),
       ]);
       
@@ -470,6 +471,33 @@ export default function CollectPaymentScreen() {
     }
   };
 
+  const handleComposeEmail = async () => {
+    if (!selectedRequest) return;
+    const client = selectedRequest.clientId ? clientMap.get(selectedRequest.clientId) : null;
+    const paymentUrl = getPaymentUrl(selectedRequest);
+    const subject = encodeURIComponent(`Payment Request - ${formatCurrency(selectedRequest.amount)}`);
+    const body = encodeURIComponent(
+      `Hi${client ? ` ${client.name}` : ''},\n\n` +
+      `Please find your payment request for ${formatCurrency(selectedRequest.amount)}.\n\n` +
+      `${selectedRequest.description}\n\n` +
+      `Pay securely online: ${paymentUrl}\n\n` +
+      `Thank you for your business.`
+    );
+    const email = client?.email || shareEmail || '';
+    const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
+    
+    try {
+      const canOpen = await Linking.canOpenURL(mailtoUrl);
+      if (canOpen) {
+        await Linking.openURL(mailtoUrl);
+      } else {
+        Alert.alert('Error', 'No email app available');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to open email app');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const configs: Record<string, { bg: string; text: string; label: string }> = {
       pending: { bg: `${colors.warning}20`, text: colors.warning, label: 'Pending' },
@@ -552,6 +580,29 @@ export default function CollectPaymentScreen() {
           <Text style={styles.contactlessCardsText}>Visa, Mastercard, Amex</Text>
         </View>
       </View>
+    </View>
+  );
+
+  const renderTapToPaySection = () => (
+    <View style={styles.tapToPaySection}>
+      <Text style={styles.sectionTitle}>Accept Card Payment</Text>
+      <TouchableOpacity
+        style={styles.applePayButton}
+        onPress={() => {
+          Alert.alert(
+            'Tap to Pay Ready',
+            'Tap to Pay on iPhone requires Stripe Terminal setup in production. Contact support to enable.',
+            [{ text: 'OK' }]
+          );
+        }}
+        activeOpacity={0.8}
+      >
+        <View style={styles.applePayButtonContent}>
+          <Feather name="smartphone" size={24} color="#FFFFFF" />
+          <Text style={styles.applePayButtonText}>Tap to Pay on iPhone</Text>
+        </View>
+      </TouchableOpacity>
+      <Text style={styles.tapToPayHint}>Accept contactless cards, Apple Pay, and Google Pay</Text>
     </View>
   );
 
@@ -1302,6 +1353,21 @@ export default function CollectPaymentScreen() {
               
               {shareTab === 'send' && (
                 <View style={styles.sendContainer}>
+                  <TouchableOpacity
+                    style={styles.composeEmailButton}
+                    onPress={handleComposeEmail}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name="mail" size={iconSizes.md} color={colors.primaryForeground} />
+                    <Text style={styles.composeEmailButtonText}>Open in Email App</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.sendDivider}>
+                    <View style={styles.sendDividerLine} />
+                    <Text style={styles.sendDividerText}>or send directly</Text>
+                    <View style={styles.sendDividerLine} />
+                  </View>
+                  
                   <View style={styles.formGroup}>
                     <View style={styles.sendLabelRow}>
                       <Feather name="mail" size={iconSizes.md} color={colors.primary} />
@@ -1441,6 +1507,7 @@ export default function CollectPaymentScreen() {
         {renderHeader()}
         {renderStripeWarning()}
         {renderContactlessInfo()}
+        {renderTapToPaySection()}
         {renderQuickLinks()}
         
         {isLoading ? (
@@ -2229,5 +2296,71 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     flex: 1,
     marginRight: spacing.md,
+  },
+  tapToPaySection: {
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  applePayButton: {
+    backgroundColor: '#000000',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginTop: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  applePayButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  applePayButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  tapToPayHint: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  composeEmailButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+  },
+  composeEmailButtonText: {
+    ...typography.button,
+    color: colors.primaryForeground,
+  },
+  sendDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  sendDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.cardBorder,
+  },
+  sendDividerText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
   },
 });
