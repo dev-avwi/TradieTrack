@@ -352,6 +352,16 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
       return;
     }
 
+    const escapeHtml = (text: string): string => {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/\n/g, '<br/>');
+    };
+
     const subtotalVal = (invoice.lineItems || []).reduce((acc: number, item: any) => {
       const itemTotal = Number(item.total) || (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
       return acc + itemTotal;
@@ -415,6 +425,9 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           .notes-title { font-weight: 600; margin-bottom: 8px; color: #1a1a1a; }
           .payment-box { background: linear-gradient(135deg, ${primaryColor}10, ${primaryColor}05); border: 1px solid ${primaryColor}30; padding: 16px; border-radius: 6px; margin-bottom: 20px; }
           .payment-title { font-weight: 600; margin-bottom: 8px; color: ${primaryColor}; font-size: 12px; }
+          .terms { border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; }
+          .terms-title { font-weight: 600; margin-bottom: 8px; color: ${primaryColor}; font-size: 12px; }
+          .terms-content { color: #666; font-size: 10px; line-height: 1.6; white-space: pre-wrap; }
           @media print {
             body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           }
@@ -502,14 +515,28 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           ${businessSettings.paymentInstructions ? `
             <div class="payment-box">
               <div class="payment-title">Payment Details</div>
-              <div style="white-space: pre-wrap; color: #666; font-size: 11px; line-height: 1.6;">${businessSettings.paymentInstructions}</div>
+              <div style="color: #666; font-size: 11px; line-height: 1.6;">${escapeHtml(businessSettings.paymentInstructions)}</div>
             </div>
           ` : ''}
 
           ${invoice.notes ? `
             <div class="notes">
               <div class="notes-title">Additional Notes</div>
-              <div style="color: #666;">${invoice.notes}</div>
+              <div style="color: #666;">${escapeHtml(invoice.notes)}</div>
+            </div>
+          ` : ''}
+
+          ${termsTemplate?.content ? `
+            <div class="terms">
+              <div class="terms-title">Terms & Conditions</div>
+              <div class="terms-content">${escapeHtml(termsTemplate.content)}</div>
+            </div>
+          ` : ''}
+
+          ${warrantyTemplate?.content ? `
+            <div class="terms">
+              <div class="terms-title">Warranty Information</div>
+              <div class="terms-content">${escapeHtml(warrantyTemplate.content)}</div>
             </div>
           ` : ''}
         </div>

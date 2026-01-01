@@ -54,6 +54,19 @@ async function getAccessToken(): Promise<string> {
   return accessToken;
 }
 
+// Get email from connection settings if available (doesn't require API call)
+export function getEmailFromConnectionSettings(): string | null {
+  if (!connectionSettings) return null;
+  
+  // Check various possible locations for the email in connection settings
+  const email = connectionSettings.settings?.email ||
+                connectionSettings.settings?.user_email ||
+                connectionSettings.email ||
+                connectionSettings.settings?.oauth?.email;
+  
+  return email || null;
+}
+
 // Get Gmail client - WARNING: Never cache this, tokens expire
 export async function getGmailClient() {
   const accessToken = await getAccessToken();
@@ -185,6 +198,88 @@ function createRawMessage(options: {
     .replace(/=+$/, '');
 }
 
+// Create a raw email message WITHOUT From header - Gmail will auto-fill it
+function createRawMessageWithoutFrom(options: {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
+}): string {
+  const boundary = `boundary_${Date.now()}`;
+  const { to, subject, html, text, attachments } = options;
+
+  // Note: No From header - Gmail API will use authenticated user's email
+  let message = [
+    `To: ${to}`,
+    `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
+    'MIME-Version: 1.0',
+  ];
+
+  if (attachments && attachments.length > 0) {
+    message.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+    message.push('');
+    message.push(`--${boundary}`);
+    message.push('Content-Type: multipart/alternative; boundary="alt_boundary"');
+    message.push('');
+
+    if (text) {
+      message.push('--alt_boundary');
+      message.push('Content-Type: text/plain; charset="UTF-8"');
+      message.push('');
+      message.push(text);
+    }
+
+    message.push('--alt_boundary');
+    message.push('Content-Type: text/html; charset="UTF-8"');
+    message.push('');
+    message.push(html);
+    message.push('--alt_boundary--');
+
+    for (const attachment of attachments) {
+      const content = Buffer.isBuffer(attachment.content) 
+        ? attachment.content.toString('base64')
+        : Buffer.from(attachment.content).toString('base64');
+      
+      message.push(`--${boundary}`);
+      message.push(`Content-Type: ${attachment.contentType || 'application/octet-stream'}`);
+      message.push('Content-Transfer-Encoding: base64');
+      message.push(`Content-Disposition: attachment; filename="${attachment.filename}"`);
+      message.push('');
+      message.push(content);
+    }
+
+    message.push(`--${boundary}--`);
+  } else {
+    message.push('Content-Type: multipart/alternative; boundary="alt_boundary"');
+    message.push('');
+
+    if (text) {
+      message.push('--alt_boundary');
+      message.push('Content-Type: text/plain; charset="UTF-8"');
+      message.push('');
+      message.push(text);
+    }
+
+    message.push('--alt_boundary');
+    message.push('Content-Type: text/html; charset="UTF-8"');
+    message.push('');
+    message.push(html);
+    message.push('--alt_boundary--');
+  }
+
+  const rawMessage = message.join('\r\n');
+  return Buffer.from(rawMessage)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
 // Send email via Gmail API
 export async function sendViaGmailAPI(options: {
   to: string;
@@ -201,12 +296,53 @@ export async function sendViaGmailAPI(options: {
   try {
     const gmail = await getGmailClient();
     
-    // Get the authenticated user's email
-    const profile = await gmail.users.getProfile({ userId: 'me' });
-    const fromEmail = profile.data.emailAddress;
+    // Try to get the authenticated user's email from multiple sources
+    let fromEmail: string | null = null;
     
+    // 1. First try to get email from connection settings (no API call needed)
+    fromEmail = getEmailFromConnectionSettings();
+    
+    // 2. If not available, try the profile API
     if (!fromEmail) {
-      throw new Error('Could not get Gmail email address');
+      try {
+        const profile = await gmail.users.getProfile({ userId: 'me' });
+        fromEmail = profile.data.emailAddress || null;
+      } catch (profileError: any) {
+        // 403 is expected if the connector only has send permissions
+        if (profileError?.code === 403 || profileError?.status === 403) {
+          console.log('[Gmail] Profile API returned 403 - connector has send-only permissions, will try sending without explicit From');
+        } else {
+          console.warn('[Gmail] Profile fetch failed:', profileError?.message);
+        }
+      }
+    }
+    
+    // 3. If we still don't have an email, we'll try sending anyway
+    // Gmail API will use the authenticated user's email as the From address
+    if (!fromEmail) {
+      console.log('[Gmail] No from email available, attempting send with auto-from');
+      // Create a minimal raw message - Gmail will add the From header
+      const raw = createRawMessageWithoutFrom({
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        attachments: options.attachments,
+      });
+
+      const result = await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: {
+          raw
+        }
+      });
+
+      console.log(`✅ Email sent via Gmail (auto-from), messageId: ${result.data.id}`);
+      
+      return {
+        success: true,
+        messageId: result.data.id || undefined
+      };
     }
 
     const raw = createRawMessage({
@@ -226,14 +362,14 @@ export async function sendViaGmailAPI(options: {
       }
     });
 
-    console.log(`✅ Email sent via Gmail to ${options.to}, messageId: ${result.data.id}`);
+    console.log(`✅ Email sent via Gmail, messageId: ${result.data.id}`);
     
     return {
       success: true,
       messageId: result.data.id || undefined
     };
   } catch (error: any) {
-    console.error('Gmail send error:', error);
+    console.error('Gmail send error:', error?.message || 'Unknown error');
     return {
       success: false,
       error: error.message || 'Failed to send via Gmail'
@@ -257,23 +393,47 @@ export async function createGmailDraftWithAttachment(options: {
   try {
     const gmail = await getGmailClient();
     
-    // Get the authenticated user's email
-    const profile = await gmail.users.getProfile({ userId: 'me' });
-    const fromEmail = profile.data.emailAddress;
+    // Try to get the authenticated user's email from multiple sources
+    let fromEmail: string | null = null;
     
+    // 1. First try to get email from connection settings (no API call needed)
+    fromEmail = getEmailFromConnectionSettings();
+    
+    // 2. If not available, try the profile API
     if (!fromEmail) {
-      throw new Error('Could not get Gmail email address');
+      try {
+        const profile = await gmail.users.getProfile({ userId: 'me' });
+        fromEmail = profile.data.emailAddress || null;
+      } catch (profileError: any) {
+        if (profileError?.code === 403 || profileError?.status === 403) {
+          console.log('[Gmail] Profile API returned 403 for draft creation - will try without explicit From');
+        } else {
+          console.warn('[Gmail] Profile fetch failed for draft:', profileError?.message);
+        }
+      }
     }
-
-    const raw = createRawMessage({
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-      fromEmail,
-      fromName: options.fromName,
-      attachments: options.attachments,
-    });
+    
+    // 3. Create draft with or without explicit From
+    let raw: string;
+    if (fromEmail) {
+      raw = createRawMessage({
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        fromEmail,
+        fromName: options.fromName,
+        attachments: options.attachments,
+      });
+    } else {
+      raw = createRawMessageWithoutFrom({
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        attachments: options.attachments,
+      });
+    }
 
     // Create draft instead of sending
     const result = await gmail.users.drafts.create({
@@ -299,7 +459,7 @@ export async function createGmailDraftWithAttachment(options: {
       draftUrl: draftUrl || undefined
     };
   } catch (error: any) {
-    console.error('Gmail draft creation error:', error);
+    console.error('Gmail draft creation error:', error?.message || 'Unknown error');
     return {
       success: false,
       error: error.message || 'Failed to create Gmail draft'
