@@ -26,19 +26,27 @@ interface FABAction {
   color?: string;
 }
 
+// Action colors for visual differentiation
+const ACTION_COLORS = {
+  job: '#3B82F6',      // Blue
+  quote: '#8B5CF6',    // Purple  
+  invoice: '#10B981',  // Green
+  payment: '#F59E0B',  // Amber
+  assign: '#EC4899',   // Pink
+  ai: '#6366F1',       // Indigo
+};
+
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   fabButton: {
     position: 'absolute',
     bottom: 24,
     right: 20,
-    // iOS: True pill shape (wider, shorter), Android: Material circular FAB (56x56 minimum)
-    width: isIOS ? 56 : 56,
-    height: isIOS ? 44 : 56,
-    borderRadius: isIOS ? 22 : 28,
+    width: isIOS ? 52 : 52,
+    height: isIOS ? 40 : 52,
+    borderRadius: isIOS ? 20 : 26,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    // iOS: Subtle shadow, Android: Material elevation
     ...(isIOS ? {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
@@ -59,8 +67,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderTopLeftRadius: radius['xl'],
     borderTopRightRadius: radius['xl'],
-    paddingTop: spacing.md,
-    paddingBottom: 24,
+    paddingTop: spacing.sm,
+    paddingBottom: 20,
     paddingHorizontal: spacing.md,
   },
   menuHandle: {
@@ -69,61 +77,62 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.border,
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   menuTitle: {
-    ...typography.body,
+    ...typography.caption,
     fontWeight: '600',
-    color: colors.foreground,
-    marginBottom: spacing.md,
+    color: colors.mutedForeground,
+    marginBottom: spacing.sm,
     textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   menuGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   menuItem: {
     alignItems: 'center',
-    width: 72,
+    width: 68,
     paddingVertical: spacing.xs,
   },
   menuItemIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   menuItemLabel: {
-    ...typography.captionSmall,
+    fontSize: 10,
     color: colors.foreground,
     textAlign: 'center',
     fontWeight: '500',
   },
-  quickActionsRow: {
+  quickActionsBar: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    gap: spacing.xs,
   },
-  quickAction: {
+  quickActionButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.muted,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: radius.md,
   },
   quickActionText: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 
@@ -159,10 +168,12 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     }).start();
   };
 
-  const actions: FABAction[] = [
+  // Main grid actions (4 items)
+  const gridActions: (FABAction & { colorKey: keyof typeof ACTION_COLORS })[] = [
     {
       icon: 'briefcase',
       label: 'New Job',
+      colorKey: 'job',
       onPress: () => {
         setIsOpen(false);
         router.push('/job/create');
@@ -171,6 +182,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     {
       icon: 'file-text',
       label: 'New Quote',
+      colorKey: 'quote',
       onPress: () => {
         setIsOpen(false);
         router.push('/more/quote/new');
@@ -179,40 +191,45 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     {
       icon: 'dollar-sign',
       label: 'New Invoice',
+      colorKey: 'invoice',
       onPress: () => {
         setIsOpen(false);
         router.push('/more/invoice/new');
       },
     },
     {
-      icon: 'credit-card',
-      label: 'Collect Payment',
+      icon: 'user-plus',
+      label: 'New Client',
+      colorKey: 'assign',
       onPress: () => {
         setIsOpen(false);
-        router.push('/more/collect-payment');
-      },
-    },
-    {
-      icon: 'users',
-      label: 'Assign Job',
-      onPress: () => {
-        setIsOpen(false);
-        if (onAssignPress) {
-          onAssignPress();
-        } else {
-          router.push('/more/team-management');
-        }
-      },
-    },
-    {
-      icon: 'zap',
-      label: 'AI Assistant',
-      onPress: () => {
-        setIsOpen(false);
-        router.push('/more/ai-assistant');
+        router.push('/more/client/new');
       },
     },
   ];
+
+  // Role-based right action: Assign Job for owners/managers, Collect Payment for others
+  const rightBarAction = isTeamOwner ? {
+    icon: 'users' as const,
+    label: 'Assign Job',
+    color: ACTION_COLORS.assign,
+    onPress: () => {
+      setIsOpen(false);
+      if (onAssignPress) {
+        onAssignPress();
+      } else {
+        router.push('/more/team-management');
+      }
+    },
+  } : {
+    icon: 'credit-card' as const,
+    label: 'Collect Payment',
+    color: ACTION_COLORS.payment,
+    onPress: () => {
+      setIsOpen(false);
+      router.push('/more/collect-payment');
+    },
+  };
 
   return (
     <>
@@ -251,24 +268,52 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
             <View style={styles.menuHandle} />
             <Text style={styles.menuTitle}>Quick Create</Text>
             
+            {/* Main grid with colored icons */}
             <View style={styles.menuGrid}>
-              {actions.map((action, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.menuItem}
-                  onPress={action.onPress}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.menuItemIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
-                    <Feather 
-                      name={action.icon} 
-                      size={24} 
-                      color={colors.primary} 
-                    />
-                  </View>
-                  <Text style={styles.menuItemLabel}>{action.label}</Text>
-                </TouchableOpacity>
-              ))}
+              {gridActions.map((action, index) => {
+                const actionColor = ACTION_COLORS[action.colorKey];
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.menuItem}
+                    onPress={action.onPress}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.menuItemIcon, { backgroundColor: colorWithOpacity(actionColor, 0.15) }]}>
+                      <Feather 
+                        name={action.icon} 
+                        size={20} 
+                        color={actionColor} 
+                      />
+                    </View>
+                    <Text style={styles.menuItemLabel}>{action.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Bottom bar: AI Assistant (left) + Role-based action (right) */}
+            <View style={styles.quickActionsBar}>
+              <TouchableOpacity
+                style={[styles.quickActionButton, { backgroundColor: colorWithOpacity(ACTION_COLORS.ai, 0.12) }]}
+                onPress={() => {
+                  setIsOpen(false);
+                  router.push('/more/ai-assistant');
+                }}
+                activeOpacity={0.7}
+              >
+                <Feather name="zap" size={16} color={ACTION_COLORS.ai} />
+                <Text style={[styles.quickActionText, { color: ACTION_COLORS.ai }]}>AI Assistant</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.quickActionButton, { backgroundColor: colorWithOpacity(rightBarAction.color, 0.12) }]}
+                onPress={rightBarAction.onPress}
+                activeOpacity={0.7}
+              >
+                <Feather name={rightBarAction.icon} size={16} color={rightBarAction.color} />
+                <Text style={[styles.quickActionText, { color: rightBarAction.color }]}>{rightBarAction.label}</Text>
+              </TouchableOpacity>
             </View>
 
           </View>
