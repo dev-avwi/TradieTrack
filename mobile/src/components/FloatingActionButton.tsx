@@ -188,12 +188,12 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
       },
     },
     {
-      icon: 'check-square',
-      label: 'Receipts',
+      icon: 'credit-card',
+      label: 'Collect Payment',
       color: colors.done || '#22C55E',
       onPress: () => {
         setIsOpen(false);
-        router.push('/more/receipts');
+        router.push('/more/collect-payment');
       },
     },
     {
