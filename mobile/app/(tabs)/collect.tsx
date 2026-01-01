@@ -14,7 +14,7 @@ import {
   Image
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useStripeTerminal } from '../../src/hooks/useServices';
 import { isTapToPayAvailable } from '../../src/lib/stripe-terminal';
@@ -1465,13 +1465,21 @@ export default function CollectScreen() {
           </View>
 
           <View style={styles.quickLinksRow}>
-            <TouchableOpacity style={styles.quickLink} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.quickLink} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/more/invoices')}
+            >
               <View style={styles.quickLinkIconContainer}>
                 <Feather name="file-text" size={18} color={colors.info} />
               </View>
               <Text style={styles.quickLinkText}>View Invoices</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickLink} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.quickLink} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/more/payments')}
+            >
               <View style={styles.quickLinkIconContainer}>
                 <Feather name="clock" size={18} color={colors.warning} />
               </View>
