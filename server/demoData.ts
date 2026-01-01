@@ -894,6 +894,57 @@ export async function seedSmsDataForTestUsers() {
   }
 }
 
+// Sydney-area coordinates for demo team members (realistic Australian locations)
+const SYDNEY_TEAM_LOCATIONS = [
+  { lat: -33.8688, lng: 151.2093 }, // Sydney CBD
+  { lat: -33.8568, lng: 151.2153 }, // Circular Quay
+  { lat: -33.8915, lng: 151.2767 }, // Bondi Beach
+  { lat: -33.8402, lng: 151.2086 }, // North Sydney
+  { lat: -33.9285, lng: 151.1683 }, // Marrickville
+  { lat: -33.8749, lng: 151.2062 }, // Pyrmont
+];
+
+// Ensure existing team members have tradieStatus records for map visibility
+async function ensureTeamMemberLocations(businessOwnerId: string, teamMembers: any[]) {
+  console.log('🔧 Ensuring team members have location data for map...');
+  let updated = 0;
+  
+  for (let i = 0; i < teamMembers.length; i++) {
+    const member = teamMembers[i];
+    if (!member.memberId) continue;
+    
+    // Check if tradieStatus exists
+    const existingStatus = await storage.getTradieStatus(member.memberId);
+    if (existingStatus?.currentLatitude && existingStatus?.currentLongitude) {
+      continue; // Already has location
+    }
+    
+    // Use Sydney coordinates (rotating through the array)
+    const coords = SYDNEY_TEAM_LOCATIONS[i % SYDNEY_TEAM_LOCATIONS.length];
+    const lastSeenOffset = Math.floor(Math.random() * 30) * 60 * 1000; // 0-30 mins ago
+    const activityStatuses = ['online', 'working', 'driving', 'offline'];
+    const activityStatus = activityStatuses[Math.floor(Math.random() * activityStatuses.length)];
+    
+    await storage.upsertTradieStatus({
+      userId: member.memberId,
+      businessOwnerId: businessOwnerId,
+      currentLatitude: coords.lat.toString(),
+      currentLongitude: coords.lng.toString(),
+      activityStatus: activityStatus,
+      lastSeenAt: new Date(Date.now() - lastSeenOffset),
+      lastLocationUpdate: new Date(Date.now() - lastSeenOffset),
+      batteryLevel: Math.floor(Math.random() * 60) + 40, // 40-100%
+      isCharging: Math.random() > 0.7, // 30% chance charging
+      speed: activityStatus === 'driving' ? String(Math.floor(Math.random() * 60) + 20) : '0', // 20-80 km/h if driving
+    });
+    updated++;
+  }
+  
+  if (updated > 0) {
+    console.log(`✅ Added location data for ${updated} team members`);
+  }
+}
+
 // Create demo team members with realistic Australian data for testing live locations
 export async function createDemoTeamMembers() {
   try {
@@ -909,6 +960,8 @@ export async function createDemoTeamMembers() {
     const existingTeamMembers = await storage.getTeamMembers(demoUser.id);
     if (existingTeamMembers.length >= 5) {
       console.log(`✅ Demo team already has ${existingTeamMembers.length} members`);
+      // Ensure existing team members have tradieStatus records for map visibility
+      await ensureTeamMemberLocations(demoUser.id, existingTeamMembers);
       return;
     }
     
@@ -1080,6 +1133,23 @@ export async function createDemoTeamMembers() {
         lastLocationLat: member.lat,
         lastLocationLng: member.lng,
         lastLocationUpdatedAt: new Date(Date.now() - lastSeenOffset),
+      });
+      
+      // Create tradieStatus record for map visibility (used by /api/map/team-locations)
+      const activityStatus = member.status === 'on_job' ? 'working' : 
+                            member.status === 'busy' ? 'working' :
+                            member.status === 'break' ? 'offline' : 'online';
+      await storage.upsertTradieStatus({
+        userId: memberUser.id,
+        businessOwnerId: demoUser.id,
+        currentLatitude: member.lat.toString(),
+        currentLongitude: member.lng.toString(),
+        activityStatus: activityStatus,
+        lastSeenAt: new Date(Date.now() - lastSeenOffset),
+        lastLocationUpdate: new Date(Date.now() - lastSeenOffset),
+        batteryLevel: Math.floor(Math.random() * 60) + 40, // 40-100%
+        isCharging: Math.random() > 0.7, // 30% chance charging
+        speed: activityStatus === 'working' ? '0' : String(Math.floor(Math.random() * 40)), // 0-40 km/h if not working
       });
       
       // Add skills for this member
