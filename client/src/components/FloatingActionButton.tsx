@@ -15,9 +15,9 @@ export default function FloatingActionButton({
   const [isOpen, setIsOpen] = useState(false);
 
   const actions = [
-    { label: "New Job", icon: Briefcase, onClick: onCreateJob, color: 'hsl(var(--trade))' },
-    { label: "New Quote", icon: FileText, onClick: onCreateQuote, color: 'hsl(217.2, 91.2%, 59.8%)' },
-    { label: "New Invoice", icon: DollarSign, onClick: onCreateInvoice, color: 'hsl(142.1, 76.2%, 36.3%)' },
+    { label: "New Job", icon: Briefcase, onClick: onCreateJob, color: 'hsl(var(--trade))', bgColor: 'hsl(var(--trade) / 0.15)' },
+    { label: "New Quote", icon: FileText, onClick: onCreateQuote, color: 'hsl(217, 91%, 60%)', bgColor: 'hsl(217, 91%, 60% / 0.15)' },
+    { label: "New Invoice", icon: DollarSign, onClick: onCreateInvoice, color: 'hsl(142, 76%, 36%)', bgColor: 'hsl(142, 76%, 36% / 0.15)' },
   ].filter(a => a.onClick);
 
   const handleActionClick = (action: () => void | undefined) => {
@@ -28,7 +28,7 @@ export default function FloatingActionButton({
   };
 
   return (
-    <div className="fixed bottom-20 right-4 z-50 md:hidden" data-testid="fab-container">
+    <div className="fixed bottom-24 right-4 z-50 md:hidden" data-testid="fab-container">
       {isOpen && (
         <>
           <div 
@@ -42,21 +42,22 @@ export default function FloatingActionButton({
                 className="flex items-center gap-3 animate-fade-up"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <span className="text-sm font-medium bg-background/95 backdrop-blur px-3 py-1.5 rounded-full shadow-lg border">
+                <span className="text-xs font-medium bg-background/95 backdrop-blur px-2.5 py-1 rounded-full shadow-md border">
                   {action.label}
                 </span>
                 <button
                   onClick={() => handleActionClick(action.onClick!)}
-                  className="h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center border-2"
+                  className="h-10 w-10 rounded-full shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center border"
                   style={{ 
-                    backgroundColor: action.color, 
-                    borderColor: 'rgba(255,255,255,0.2)'
+                    backgroundColor: action.bgColor, 
+                    borderColor: action.color,
+                    color: action.color
                   }}
                   data-testid={`fab-action-${action.label.toLowerCase().replace(' ', '-')}`}
                   aria-label={action.label}
                   type="button"
                 >
-                  <action.icon className="h-5 w-5 text-white" />
+                  <action.icon className="h-4 w-4" style={{ color: action.color }} />
                 </button>
               </div>
             ))}
@@ -66,7 +67,7 @@ export default function FloatingActionButton({
       
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95 z-50 flex items-center justify-center ${
+        className={`h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95 z-50 flex items-center justify-center ${
           isOpen 
             ? 'bg-muted-foreground rotate-45' 
             : 'bg-primary border border-primary-border'
@@ -76,9 +77,9 @@ export default function FloatingActionButton({
         type="button"
       >
         {isOpen ? (
-          <X className="h-6 w-6 text-white -rotate-45" />
+          <X className="h-5 w-5 text-white -rotate-45" />
         ) : (
-          <Plus className="h-6 w-6 text-primary-foreground" />
+          <Plus className="h-5 w-5 text-primary-foreground" />
         )}
       </button>
     </div>
