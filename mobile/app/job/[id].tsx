@@ -43,6 +43,7 @@ import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from '../../src/c
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { getJobUrgency } from '../../src/lib/jobUrgency';
+import { useIntegrationHealth } from '../../src/hooks/useIntegrationHealth';
 
 interface Job {
   id: string;
@@ -1601,9 +1602,11 @@ export default function JobDetailScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [isDeletingJob, setIsDeletingJob] = useState(false);
+  const [isSendingOnMyWay, setIsSendingOnMyWay] = useState(false);
   
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { businessSettings, roleInfo, user } = useAuthStore();
+  const { isSmsReady } = useIntegrationHealth();
   
   // Check if user can delete jobs (owner, admin, or manager only)
   // - If roleInfo.isOwner is true: they're the business owner
@@ -2672,6 +2675,52 @@ export default function JobDetailScreen() {
     );
   };
 
+  const handleOnMyWay = async () => {
+    if (!job) return;
+    
+    const { isOnline } = useOfflineStore.getState();
+    
+    if (!isOnline) {
+      Alert.alert(
+        'No Connection',
+        'Sending "On My Way" notifications requires an internet connection. Please try again when online.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    if (!isSmsReady) {
+      Alert.alert(
+        'SMS Not Configured',
+        'SMS notifications require Twilio setup. Configure in Settings > Integrations.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    setIsSendingOnMyWay(true);
+    try {
+      const response = await api.post(`/api/jobs/${job.id}/on-my-way`);
+      
+      if (response.data?.demoMode) {
+        Alert.alert(
+          'SMS Not Configured',
+          'Twilio SMS is not set up. The "On My Way" action was logged but no message was sent to the client.\n\nSet up Twilio in Settings > Integrations to enable real SMS notifications.',
+          [{ text: 'OK' }]
+        );
+      } else if (response.error) {
+        Alert.alert('Error', response.error);
+      } else {
+        Alert.alert('Sent!', 'Client has been notified via SMS.');
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'Failed to send notification. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setIsSendingOnMyWay(false);
+    }
+  };
+
   const handleConfirmComplete = async () => {
     if (!job) return;
     setIsCompletingJob(true);
@@ -3671,16 +3720,69 @@ export default function JobDetailScreen() {
       {/* Main Action Button */}
       <View style={styles.actionButtonContainer}>
         {action ? (
-          <TouchableOpacity
-            style={[styles.mainActionButton, { backgroundColor: statusColor }]}
-            onPress={handleStatusChange}
-            activeOpacity={0.8}
-          >
-            <View style={styles.mainActionButtonIcon}>
-              <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
+          job.status === 'scheduled' && job.clientId ? (
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {/* On My Way Button */}
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.xs,
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: radius.lg,
+                  borderWidth: 2,
+                  borderColor: isSmsReady ? colors.info : colors.muted,
+                  backgroundColor: colors.card,
+                  opacity: isSendingOnMyWay ? 0.6 : 1,
+                  minHeight: 52,
+                }}
+                onPress={handleOnMyWay}
+                activeOpacity={0.8}
+                disabled={isSendingOnMyWay}
+                data-testid="button-on-my-way"
+              >
+                <Feather name="navigation" size={18} color={isSmsReady ? colors.info : colors.mutedForeground} />
+                <Text style={{ 
+                  color: isSmsReady ? colors.info : colors.mutedForeground, 
+                  fontWeight: '600', 
+                  fontSize: 14 
+                }}>
+                  On My Way
+                </Text>
+                {isSendingOnMyWay && (
+                  <ActivityIndicator size="small" color={colors.info} style={{ marginLeft: 4 }} />
+                )}
+              </TouchableOpacity>
+              
+              {/* Main Action Button */}
+              <TouchableOpacity
+                style={[styles.mainActionButton, { backgroundColor: statusColor, flex: 1 }]}
+                onPress={handleStatusChange}
+                activeOpacity={0.8}
+                data-testid="button-main-action"
+              >
+                <View style={styles.mainActionButtonIcon}>
+                  <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
+                </View>
+                <Text style={styles.mainActionText}>{action.label}</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.mainActionText}>{action.label}</Text>
-          </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.mainActionButton, { backgroundColor: statusColor }]}
+              onPress={handleStatusChange}
+              activeOpacity={0.8}
+              data-testid="button-main-action"
+            >
+              <View style={styles.mainActionButtonIcon}>
+                <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
+              </View>
+              <Text style={styles.mainActionText}>{action.label}</Text>
+            </TouchableOpacity>
+          )
         ) : job.status === 'invoiced' && !invoice && (
           <Text style={styles.invoicedMessage}>This job has been invoiced</Text>
         )}
