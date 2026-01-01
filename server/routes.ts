@@ -73,6 +73,7 @@ import {
   quotes,
   clients,
   businessSettings,
+  businessTemplates,
   // Advanced team management tables
   teamMembers,
   teamMemberSkills,
