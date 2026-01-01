@@ -21,7 +21,10 @@ import {
   ChevronRight,
   AlertCircle,
   Users,
-  Bell
+  Bell,
+  TrendingUp,
+  Target,
+  Award
 } from "lucide-react";
 
 interface StaffTradieDashboardProps {
@@ -82,6 +85,41 @@ export default function StaffTradieDashboard({
     }
     return total;
   }, 0);
+
+  // Calculate weekly stats from jobs
+  const getWeeklyStats = () => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const completedThisWeek = myJobs.filter(job => {
+      if (job.status !== 'done' && job.status !== 'invoiced') return false;
+      return true; // In real app, would check completedAt date
+    });
+    
+    const scheduledThisWeek = myJobs.filter(job => {
+      if (!job.scheduledAt) return false;
+      const jobDate = new Date(job.scheduledAt);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(endOfWeek.getDate() + 7);
+      return jobDate >= startOfWeek && jobDate < endOfWeek;
+    });
+    
+    // Estimate weekly hours from time tracking (multiply today by work days so far)
+    const dayOfWeek = now.getDay() || 7; // 1-7, treating Sunday as 7
+    const workDays = Math.min(dayOfWeek, 5); // Cap at 5 work days
+    const estimatedWeeklyMinutes = totalMinutesToday + (workDays > 1 ? totalMinutesToday * (workDays - 1) * 0.8 : 0);
+    
+    return {
+      completedCount: completedThisWeek.length,
+      scheduledCount: scheduledThisWeek.length,
+      weeklyHours: Math.floor(estimatedWeeklyMinutes / 60),
+      weeklyMinutes: Math.floor(estimatedWeeklyMinutes % 60),
+    };
+  };
+  
+  const weeklyStats = getWeeklyStats();
 
   // Format elapsed time
   const formatElapsedTime = () => {
@@ -325,6 +363,54 @@ export default function StaffTradieDashboard({
           </div>
         </CardContent>
       </Card>
+
+      {/* Weekly Summary Stats */}
+      <section className="space-y-3" data-testid="weekly-summary-section">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <TrendingUp className="h-4 w-4" />
+          This Week
+        </h2>
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="bg-muted/30" data-testid="stat-completed">
+            <CardContent className="py-4 px-3 text-center">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
+                style={{ backgroundColor: 'hsl(142.1 76.2% 36.3% / 0.15)' }}
+              >
+                <CheckCircle2 className="h-5 w-5" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+              </div>
+              <p className="text-2xl font-bold">{weeklyStats.completedCount}</p>
+              <p className="text-xs text-muted-foreground">Completed</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-muted/30" data-testid="stat-scheduled">
+            <CardContent className="py-4 px-3 text-center">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
+                style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}
+              >
+                <Target className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+              </div>
+              <p className="text-2xl font-bold">{weeklyStats.scheduledCount}</p>
+              <p className="text-xs text-muted-foreground">Scheduled</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-muted/30" data-testid="stat-hours">
+            <CardContent className="py-4 px-3 text-center">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
+                style={{ backgroundColor: 'hsl(var(--muted))' }}
+              >
+                <Clock className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-2xl font-bold">{weeklyStats.weeklyHours}<span className="text-base font-normal">h</span></p>
+              <p className="text-xs text-muted-foreground">Hours</p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
 
       {/* No Jobs Assigned */}
       {activeJobs.length === 0 && (

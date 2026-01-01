@@ -176,7 +176,7 @@ export async function createDemoUserAndData() {
       await storage.deleteReceipt(receipt.id, demoUser.id);
     }
 
-    // Create demo clients - expanded list for realistic testing
+    // Create demo clients - expanded list for realistic testing (16 clients for variety)
     const demoClients = [
         {
           userId: demoUser.id,
@@ -249,6 +249,62 @@ export async function createDemoUserAndData() {
           phone: "(07) 4666 1122",
           address: "5 Banyan Close, Holloways Beach QLD 4878",
           notes: "Rental property investor - 3 properties"
+        },
+        {
+          userId: demoUser.id,
+          name: "Greg Patterson",
+          email: "greg.p@outlook.com.au",
+          phone: "(07) 4777 8899",
+          address: "67 Esplanade Way, Yorkeys Knob QLD 4878",
+          notes: "Beachfront property - salt corrosion issues"
+        },
+        {
+          userId: demoUser.id,
+          name: "Wendy Chang",
+          email: "wendy.chang@gmail.com",
+          phone: "(07) 4888 2211",
+          address: "14 Tropical Court, Kewarra Beach QLD 4879",
+          notes: "Holiday rental owner - quick turnarounds needed"
+        },
+        {
+          userId: demoUser.id,
+          name: "Steve Morrison",
+          email: "steve.m@email.com.au",
+          phone: "(07) 4999 3322",
+          address: "28 Mountain View Rd, Redlynch QLD 4870",
+          notes: "New home build in progress"
+        },
+        {
+          userId: demoUser.id,
+          name: "Catherine Murray",
+          email: "cmurray@bigpond.net.au",
+          phone: "(07) 4111 4455",
+          address: "3 Rainforest Crescent, Freshwater QLD 4870",
+          notes: "Elderly customer - requires morning appointments"
+        },
+        {
+          userId: demoUser.id,
+          name: "Tom Benson",
+          email: "tbenson@tradiemail.com.au",
+          phone: "(07) 4222 6677",
+          address: "55 Cane Road, Gordonvale QLD 4865",
+          notes: "Sugarcane farmer - rural property"
+        },
+        {
+          userId: demoUser.id,
+          name: "Angela White",
+          email: "angela.w@icloud.com",
+          phone: "(07) 4333 7788",
+          address: "19 Lake Street, Cairns City QLD 4870",
+          notes: "Apartment complex body corporate contact"
+        },
+        {
+          userId: demoUser.id,
+          name: "Paul Davidson",
+          email: "paul.davidson@email.com",
+          phone: "(07) 4444 8899",
+          address: "42 Captain Cook Highway, Clifton Beach QLD 4879",
+          notes: "Cafe owner - commercial kitchen work"
         }
       ];
 
@@ -259,11 +315,70 @@ export async function createDemoUserAndData() {
       }
       console.log('✅ Demo clients created:', createdClients.length);
 
+      // Look up demo worker for job assignments (Jake Morrison)
+      const demoWorkerUser = await storage.getUserByEmail(DEMO_WORKER.email);
+      const demoWorkerId = demoWorkerUser?.id || null;
+      if (demoWorkerId) {
+        console.log('✅ Found demo worker for job assignments:', DEMO_WORKER.email);
+      }
+
       // Create demo jobs with varied statuses and dates to show urgency badges
       // Cairns QLD coordinates: -16.92, 145.77
+      // 19 jobs total: 4 pending, 5 scheduled, 3 in_progress, 4 done, 3 invoiced
       const now = new Date();
       const demoJobs = [
-        // OVERDUE - scheduled job that's past its time (shows red pulsing badge)
+        // ============================================
+        // PENDING JOBS (4) - waiting for quote acceptance or scheduling
+        // ============================================
+        {
+          userId: demoUser.id,
+          clientId: createdClients[2].id,
+          title: "Pool Pump Installation",
+          description: "Install new pool pump and filter system",
+          address: createdClients[2].address || "",
+          latitude: "-16.5000",
+          longitude: "145.4800",
+          status: "pending" as const,
+          scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+          notes: "Awaiting quote approval"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[9].id,
+          title: "Pipe Corrosion Assessment",
+          description: "Assess salt corrosion damage on beachfront property pipes",
+          address: createdClients[9].address || "",
+          latitude: "-16.8120",
+          longitude: "145.7200",
+          status: "pending" as const,
+          notes: "Customer requested quote first - salt damage suspected"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[11].id,
+          title: "New Build Plumbing Quote",
+          description: "Complete rough-in plumbing for new 4-bedroom home",
+          address: createdClients[11].address || "",
+          latitude: "-16.8650",
+          longitude: "145.6950",
+          status: "pending" as const,
+          notes: "Builder contact: Steve Morrison. Large job - needs site visit."
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[15].id,
+          title: "Commercial Kitchen Grease Trap",
+          description: "Install new grease trap for cafe kitchen - council requirement",
+          address: createdClients[15].address || "",
+          latitude: "-16.7950",
+          longitude: "145.7100",
+          status: "pending" as const,
+          notes: "Council compliance deadline in 2 weeks"
+        },
+
+        // ============================================
+        // SCHEDULED JOBS (5) - some overdue, some today, some this week
+        // ============================================
         {
           userId: demoUser.id,
           clientId: createdClients[0].id,
@@ -274,9 +389,9 @@ export async function createDemoUserAndData() {
           longitude: "145.7781",
           status: "scheduled" as const,
           scheduledAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago (OVERDUE)
+          assignedTo: demoWorkerId, // Assigned to Jake Morrison
           notes: "Customer called twice - high priority"
         },
-        // STARTING SOON - within 45 minutes (shows orange pulsing badge)
         {
           userId: demoUser.id,
           clientId: createdClients[1].id,
@@ -289,7 +404,6 @@ export async function createDemoUserAndData() {
           scheduledAt: new Date(Date.now() + 45 * 60 * 1000), // 45 minutes from now
           notes: "Need gas certificate for landlord"
         },
-        // TODAY - later today (shows blue badge)
         {
           userId: demoUser.id,
           clientId: createdClients[2].id,
@@ -300,9 +414,9 @@ export async function createDemoUserAndData() {
           longitude: "145.4635",
           status: "scheduled" as const,
           scheduledAt: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours from now
+          assignedTo: demoWorkerId, // Assigned to Jake Morrison
           notes: "Customer prefers afternoon appointment"
         },
-        // TOMORROW (shows purple badge)
         {
           userId: demoUser.id,
           clientId: createdClients[0].id,
@@ -315,7 +429,23 @@ export async function createDemoUserAndData() {
           scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
           notes: "Full day job - bring extra supplies"
         },
-        // IN PROGRESS - active job to test timer banner
+        {
+          userId: demoUser.id,
+          clientId: createdClients[10].id,
+          title: "Holiday Rental Turnover",
+          description: "Quick bathroom check and minor repairs between guests",
+          address: createdClients[10].address || "",
+          latitude: "-16.7830",
+          longitude: "145.6890",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+          assignedTo: demoWorkerId, // Assigned to Jake Morrison
+          notes: "Guest checking in at 2pm - must be done by noon"
+        },
+
+        // ============================================
+        // IN PROGRESS JOBS (3) - active jobs to test timer banner
+        // ============================================
         {
           userId: demoUser.id,
           clientId: createdClients[1].id,
@@ -325,11 +455,41 @@ export async function createDemoUserAndData() {
           latitude: "-16.7950",
           longitude: "145.7000",
           status: "in_progress" as const,
-          scheduledAt: new Date(), // Today
+          scheduledAt: new Date(),
           startedAt: new Date(Date.now() - 30 * 60 * 1000), // Started 30 mins ago
           notes: "Emergency job - water damage prevention"
         },
-        // DONE - completed job
+        {
+          userId: demoUser.id,
+          clientId: createdClients[3].id,
+          title: "Unit Complex Maintenance",
+          description: "Replace water heaters in units 3 and 7",
+          address: createdClients[3].address || "",
+          latitude: "-16.7860",
+          longitude: "145.6940",
+          status: "in_progress" as const,
+          scheduledAt: new Date(),
+          startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // Started 2 hours ago
+          assignedTo: demoWorkerId, // Assigned to Jake Morrison
+          notes: "Property manager Marcus on site. Two units to complete."
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[7].id,
+          title: "Restaurant Dishwasher Connection",
+          description: "Install commercial dishwasher water lines",
+          address: createdClients[7].address || "",
+          latitude: "-16.8200",
+          longitude: "145.7350",
+          status: "in_progress" as const,
+          scheduledAt: new Date(),
+          startedAt: new Date(Date.now() - 45 * 60 * 1000), // Started 45 mins ago
+          notes: "Commercial kitchen - after hours work. Restaurant closed Mondays."
+        },
+
+        // ============================================
+        // DONE JOBS (4) - completed, ready for invoicing
+        // ============================================
         {
           userId: demoUser.id,
           clientId: createdClients[2].id,
@@ -339,22 +499,91 @@ export async function createDemoUserAndData() {
           latitude: "-16.4900",
           longitude: "145.4700",
           status: "done" as const,
-          scheduledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last week
-          completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hours after start
+          scheduledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
           notes: "System in good condition - no issues found"
         },
-        // PENDING - waiting for quote acceptance
         {
           userId: demoUser.id,
-          clientId: createdClients[2].id,
-          title: "Pool Pump Installation",
-          description: "Install new pool pump and filter system",
-          address: createdClients[2].address || "",
-          latitude: "-16.5000",
-          longitude: "145.4800",
-          status: "pending" as const,
-          scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-          notes: "Awaiting quote approval"
+          clientId: createdClients[4].id,
+          title: "Leaking Shower Head Fix",
+          description: "Replace washer and cartridge in shower mixer",
+          address: createdClients[4].address || "",
+          latitude: "-16.9100",
+          longitude: "145.7600",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 1 * 60 * 60 * 1000),
+          notes: "Quick fix - customer very happy with prompt service"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[12].id,
+          title: "Toilet Replacement",
+          description: "Replace old single-flush with new dual-flush toilet",
+          address: createdClients[12].address || "",
+          latitude: "-16.8750",
+          longitude: "145.7150",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 1.5 * 60 * 60 * 1000),
+          notes: "Elderly customer - explained how dual flush works"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[13].id,
+          title: "Rural Bore Pump Service",
+          description: "Annual service and pressure test on bore pump",
+          address: createdClients[13].address || "",
+          latitude: "-17.0800",
+          longitude: "145.7850",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000),
+          notes: "Long drive out to Gordonvale. Pump running well."
+        },
+
+        // ============================================
+        // INVOICED JOBS (3) - completed and invoiced
+        // ============================================
+        {
+          userId: demoUser.id,
+          clientId: createdClients[5].id,
+          title: "Pool Filter Replacement",
+          description: "Replace pool filter cartridge and service pump",
+          address: createdClients[5].address || "",
+          latitude: "-16.8950",
+          longitude: "145.7450",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+          notes: "Invoice sent - awaiting payment"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[6].id,
+          title: "Rough-In Plumbing Stage 1",
+          description: "First fix plumbing for new build bathroom and kitchen",
+          address: createdClients[6].address || "",
+          latitude: "-16.8350",
+          longitude: "145.6850",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+          notes: "Builder payment - 50% deposit received, awaiting final"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[8].id,
+          title: "Rental Property Maintenance",
+          description: "Fix kitchen tap, bathroom sink drain, toilet cistern",
+          address: createdClients[8].address || "",
+          latitude: "-16.8450",
+          longitude: "145.7280",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000),
+          notes: "Invoice paid - excellent property manager"
         }
       ];
 
@@ -528,7 +757,113 @@ export async function createDemoUserAndData() {
       await storage.createQuoteLineItem({ quoteId: rejectedQuote2.id, description: "Diversion Valves and Pipework", quantity: "1.00", unitPrice: "680.00", total: "680.00", sortOrder: 3 });
       await storage.createQuoteLineItem({ quoteId: rejectedQuote2.id, description: "Installation Labour (6 hours)", quantity: "6.00", unitPrice: "120.00", total: "720.00", sortOrder: 4 });
 
-      console.log('✅ 8 Demo quotes created (2 draft, 2 sent, 2 accepted, 2 rejected)');
+      // ============================================
+      // ADDITIONAL QUOTES (5 more for variety)
+      // ============================================
+
+      // DRAFT QUOTE 3 - Commercial job
+      const draft3Num = await storage.generateQuoteNumber(demoUser.id);
+      const draftQuote3 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[15].id,
+        title: "Grease Trap Installation",
+        description: "Supply and install commercial grease trap for cafe kitchen",
+        status: "draft" as const,
+        subtotal: "2450.00",
+        gstAmount: "245.00",
+        total: "2695.00",
+        validUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        number: draft3Num
+      });
+      await storage.createQuoteLineItem({ quoteId: draftQuote3.id, description: "Commercial Grease Trap (100L)", quantity: "1.00", unitPrice: "1200.00", total: "1200.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: draftQuote3.id, description: "Drainage Connection Kit", quantity: "1.00", unitPrice: "350.00", total: "350.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: draftQuote3.id, description: "Council Inspection Fee", quantity: "1.00", unitPrice: "180.00", total: "180.00", sortOrder: 3 });
+      await storage.createQuoteLineItem({ quoteId: draftQuote3.id, description: "Installation Labour (6 hours)", quantity: "6.00", unitPrice: "120.00", total: "720.00", sortOrder: 4 });
+
+      // SENT QUOTE 3 - Awaiting response
+      const sent3Num = await storage.generateQuoteNumber(demoUser.id);
+      const sentQuote3 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[9].id,
+        title: "Corrosion Repair Package",
+        description: "Replace corroded copper pipes in beachfront property",
+        status: "sent" as const,
+        subtotal: "1680.00",
+        gstAmount: "168.00",
+        total: "1848.00",
+        validUntil: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        number: sent3Num
+      });
+      await storage.createQuoteLineItem({ quoteId: sentQuote3.id, description: "Copper Pipe (15m)", quantity: "15.00", unitPrice: "45.00", total: "675.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: sentQuote3.id, description: "Marine-Grade Fittings", quantity: "1.00", unitPrice: "285.00", total: "285.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: sentQuote3.id, description: "Installation Labour (6 hours)", quantity: "6.00", unitPrice: "120.00", total: "720.00", sortOrder: 3 });
+
+      // SENT QUOTE 4 - Recent submission
+      const sent4Num = await storage.generateQuoteNumber(demoUser.id);
+      const sentQuote4 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[11].id,
+        title: "New Build Plumbing - Stage 1",
+        description: "First fix rough-in plumbing for new 4-bedroom home",
+        status: "sent" as const,
+        subtotal: "8500.00",
+        gstAmount: "850.00",
+        total: "9350.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        number: sent4Num
+      });
+      await storage.createQuoteLineItem({ quoteId: sentQuote4.id, description: "PVC Drainage System", quantity: "1.00", unitPrice: "2200.00", total: "2200.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: sentQuote4.id, description: "Copper Water Lines", quantity: "1.00", unitPrice: "1800.00", total: "1800.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: sentQuote4.id, description: "Gas Rough-In", quantity: "1.00", unitPrice: "950.00", total: "950.00", sortOrder: 3 });
+      await storage.createQuoteLineItem({ quoteId: sentQuote4.id, description: "Fixtures Preparation", quantity: "1.00", unitPrice: "750.00", total: "750.00", sortOrder: 4 });
+      await storage.createQuoteLineItem({ quoteId: sentQuote4.id, description: "Installation Labour (24 hours)", quantity: "24.00", unitPrice: "120.00", total: "2880.00", sortOrder: 5 });
+
+      // ACCEPTED QUOTE 3 - Ready for work
+      const accepted3Num = await storage.generateQuoteNumber(demoUser.id);
+      const acceptedQuote3 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[10].id,
+        title: "Holiday Rental Bathroom Upgrade",
+        description: "Full bathroom renovation for holiday rental property",
+        status: "accepted" as const,
+        subtotal: "4200.00",
+        gstAmount: "420.00",
+        total: "4620.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        acceptedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+        acceptedBy: "Wendy Chang",
+        number: accepted3Num
+      });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote3.id, description: "Vanity and Basin Set", quantity: "1.00", unitPrice: "950.00", total: "950.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote3.id, description: "Toilet Suite (Close Coupled)", quantity: "1.00", unitPrice: "680.00", total: "680.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote3.id, description: "Shower Mixer and Rail", quantity: "1.00", unitPrice: "520.00", total: "520.00", sortOrder: 3 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote3.id, description: "Towel Rails and Accessories", quantity: "1.00", unitPrice: "290.00", total: "290.00", sortOrder: 4 });
+      await storage.createQuoteLineItem({ quoteId: acceptedQuote3.id, description: "Installation Labour (15 hours)", quantity: "15.00", unitPrice: "120.00", total: "1800.00", sortOrder: 5 });
+
+      // REJECTED QUOTE 3 - Too expensive for customer
+      const rejected3Num = await storage.generateQuoteNumber(demoUser.id);
+      const rejectedQuote3 = await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[3].id,
+        title: "Full Unit Complex Repiping",
+        description: "Complete copper repiping for all 6 units in complex",
+        status: "rejected" as const,
+        subtotal: "18500.00",
+        gstAmount: "1850.00",
+        total: "20350.00",
+        validUntil: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+        number: rejected3Num
+      });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote3.id, description: "Copper Piping Materials", quantity: "1.00", unitPrice: "6500.00", total: "6500.00", sortOrder: 1 });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote3.id, description: "Fittings and Valves", quantity: "1.00", unitPrice: "2800.00", total: "2800.00", sortOrder: 2 });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote3.id, description: "Access Work and Making Good", quantity: "1.00", unitPrice: "1500.00", total: "1500.00", sortOrder: 3 });
+      await storage.createQuoteLineItem({ quoteId: rejectedQuote3.id, description: "Labour (64 hours over 8 days)", quantity: "64.00", unitPrice: "120.00", total: "7680.00", sortOrder: 4 });
+
+      console.log('✅ 13 Demo quotes created (3 draft, 4 sent, 3 accepted, 3 rejected)');
 
       // ============================================
       // CREATE MULTIPLE INVOICES ACROSS ALL STATUSES
@@ -662,10 +997,148 @@ export async function createDemoUserAndData() {
       await storage.createInvoiceLineItem({ invoiceId: paidInvoice3.id, description: "Gas Safety Inspection", quantity: "1.00", unitPrice: "180.00", total: "180.00", sortOrder: 1 });
       await storage.createInvoiceLineItem({ invoiceId: paidInvoice3.id, description: "Compliance Certificate", quantity: "1.00", unitPrice: "40.00", total: "40.00", sortOrder: 2 });
 
-      console.log('✅ 7 Demo invoices created (1 draft, 2 sent, 1 overdue, 3 paid)');
+      // ============================================
+      // ADDITIONAL INVOICES (6 more for variety)
+      // ============================================
+
+      // DRAFT INVOICE 2
+      const draftInv2Num = await storage.generateInvoiceNumber(demoUser.id);
+      const draftInvoice2 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[4].id,
+        title: "Leaking Shower Head Fix",
+        description: "Replace washer and cartridge in shower mixer",
+        status: "draft" as const,
+        subtotal: "95.00",
+        gstAmount: "9.50",
+        total: "104.50",
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        number: draftInv2Num
+      });
+      await storage.createInvoiceLineItem({ invoiceId: draftInvoice2.id, description: "Shower Mixer Cartridge", quantity: "1.00", unitPrice: "35.00", total: "35.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: draftInvoice2.id, description: "Labour (30 mins)", quantity: "0.50", unitPrice: "120.00", total: "60.00", sortOrder: 2 });
+
+      // SENT INVOICE 3 - Recent
+      const sentInv3Num = await storage.generateInvoiceNumber(demoUser.id);
+      const sentInvoice3 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[12].id,
+        title: "Toilet Replacement - Catherine Murray",
+        description: "Supply and install new dual-flush toilet",
+        status: "sent" as const,
+        subtotal: "580.00",
+        gstAmount: "58.00",
+        total: "638.00",
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        number: sentInv3Num
+      });
+      await storage.createInvoiceLineItem({ invoiceId: sentInvoice3.id, description: "Caroma Dual-Flush Toilet", quantity: "1.00", unitPrice: "420.00", total: "420.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: sentInvoice3.id, description: "Installation and Old Removal", quantity: "1.00", unitPrice: "160.00", total: "160.00", sortOrder: 2 });
+
+      // SENT INVOICE 4 - Linked to job
+      const sentInv4Num = await storage.generateInvoiceNumber(demoUser.id);
+      const sentInvoice4 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[13].id,
+        jobId: createdJobs[14].id,
+        title: "Rural Bore Pump Service",
+        description: "Annual bore pump service and pressure test",
+        status: "sent" as const,
+        subtotal: "450.00",
+        gstAmount: "45.00",
+        total: "495.00",
+        dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        number: sentInv4Num
+      });
+      await storage.createInvoiceLineItem({ invoiceId: sentInvoice4.id, description: "Bore Pump Service", quantity: "1.00", unitPrice: "280.00", total: "280.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: sentInvoice4.id, description: "Pressure Test", quantity: "1.00", unitPrice: "90.00", total: "90.00", sortOrder: 2 });
+      await storage.createInvoiceLineItem({ invoiceId: sentInvoice4.id, description: "Travel to Gordonvale", quantity: "1.00", unitPrice: "80.00", total: "80.00", sortOrder: 3 });
+
+      // OVERDUE INVOICE 2 - Significantly overdue
+      const overdueInv2Num = await storage.generateInvoiceNumber(demoUser.id);
+      const overdueInvoice2 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[5].id,
+        jobId: createdJobs[15].id,
+        title: "Pool Filter Replacement",
+        description: "Replace pool filter cartridge and service pump",
+        status: "sent" as const,
+        subtotal: "380.00",
+        gstAmount: "38.00",
+        total: "418.00",
+        dueDate: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+        number: overdueInv2Num
+      });
+      await storage.createInvoiceLineItem({ invoiceId: overdueInvoice2.id, description: "Pool Filter Cartridge", quantity: "1.00", unitPrice: "220.00", total: "220.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: overdueInvoice2.id, description: "Pump Service", quantity: "1.00", unitPrice: "160.00", total: "160.00", sortOrder: 2 });
+
+      // PAID INVOICES (3 more)
+      const paid4InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice4 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[6].id,
+        jobId: createdJobs[16].id,
+        title: "Rough-In Plumbing Stage 1",
+        description: "First fix plumbing for new build - progress payment",
+        status: "paid" as const,
+        subtotal: "2800.00",
+        gstAmount: "280.00",
+        total: "3080.00",
+        dueDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+        number: paid4InvNum
+      });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice4.id, description: "Rough-In Plumbing - Bathroom", quantity: "1.00", unitPrice: "1200.00", total: "1200.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice4.id, description: "Rough-In Plumbing - Kitchen", quantity: "1.00", unitPrice: "950.00", total: "950.00", sortOrder: 2 });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice4.id, description: "Drainage Connection", quantity: "1.00", unitPrice: "650.00", total: "650.00", sortOrder: 3 });
+
+      const paid5InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice5 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[8].id,
+        jobId: createdJobs[17].id,
+        title: "Rental Property Maintenance",
+        description: "Multi-property maintenance - Melissa Torres portfolio",
+        status: "paid" as const,
+        subtotal: "520.00",
+        gstAmount: "52.00",
+        total: "572.00",
+        dueDate: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 19 * 24 * 60 * 60 * 1000),
+        number: paid5InvNum
+      });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice5.id, description: "Kitchen Tap Repair", quantity: "1.00", unitPrice: "150.00", total: "150.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice5.id, description: "Bathroom Drain Clearing", quantity: "1.00", unitPrice: "180.00", total: "180.00", sortOrder: 2 });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice5.id, description: "Toilet Cistern Repair", quantity: "1.00", unitPrice: "190.00", total: "190.00", sortOrder: 3 });
+
+      const paid6InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice6 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[14].id,
+        title: "Body Corporate Emergency Repair",
+        description: "After-hours burst pipe repair at Lake Street apartments",
+        status: "paid" as const,
+        subtotal: "680.00",
+        gstAmount: "68.00",
+        total: "748.00",
+        dueDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        number: paid6InvNum
+      });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice6.id, description: "Emergency Call-Out (After Hours)", quantity: "1.00", unitPrice: "200.00", total: "200.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice6.id, description: "Burst Pipe Repair", quantity: "1.00", unitPrice: "280.00", total: "280.00", sortOrder: 2 });
+      await storage.createInvoiceLineItem({ invoiceId: paidInvoice6.id, description: "Water Damage Mitigation", quantity: "1.00", unitPrice: "200.00", total: "200.00", sortOrder: 3 });
+
+      console.log('✅ 13 Demo invoices created (2 draft, 4 sent, 2 overdue, 6 paid)');
 
       // ============================================
-      // CREATE RECEIPTS FOR ALL PAID INVOICES
+      // CREATE RECEIPTS FOR ALL PAID INVOICES (6 total)
       // ============================================
 
       const receipt1 = await storage.createReceipt({
@@ -707,10 +1180,52 @@ export async function createDemoUserAndData() {
         paidAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
       });
 
-      console.log('✅ 3 Demo receipts created for paid invoices');
+      const receipt4 = await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice4.id,
+        clientId: createdClients[6].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-004`,
+        amount: "3080.00",
+        gstAmount: "280.00",
+        subtotal: "2800.00",
+        description: "Payment for rough-in plumbing stage 1",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000)
+      });
+
+      const receipt5 = await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice5.id,
+        clientId: createdClients[8].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-005`,
+        amount: "572.00",
+        gstAmount: "52.00",
+        subtotal: "520.00",
+        description: "Payment for rental property maintenance",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 19 * 24 * 60 * 60 * 1000)
+      });
+
+      const receipt6 = await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice6.id,
+        clientId: createdClients[14].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-006`,
+        amount: "748.00",
+        gstAmount: "68.00",
+        subtotal: "680.00",
+        description: "Payment for emergency burst pipe repair",
+        paymentMethod: 'card',
+        paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+      });
+
+      console.log('✅ 6 Demo receipts created for paid invoices');
       console.log(`   Receipt ${receipt1.receiptNumber} → Invoice ${paid1InvNum}`);
       console.log(`   Receipt ${receipt2.receiptNumber} → Invoice ${paid2InvNum}`);
       console.log(`   Receipt ${receipt3.receiptNumber} → Invoice ${paid3InvNum}`);
+      console.log(`   Receipt ${receipt4.receiptNumber} → Invoice ${paid4InvNum}`);
+      console.log(`   Receipt ${receipt5.receiptNumber} → Invoice ${paid5InvNum}`);
+      console.log(`   Receipt ${receipt6.receiptNumber} → Invoice ${paid6InvNum}`);
     
     // Check if demo user has SMS conversations (separate from client check)
     const existingSmsConversations = await storage.getSmsConversationsByBusiness(demoUser.id);
