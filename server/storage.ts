@@ -481,6 +481,7 @@ export interface IStorage {
   // Digital Signatures
   createDigitalSignature(signature: Omit<InsertDigitalSignature, 'id' | 'createdAt'>): Promise<DigitalSignature>;
   getDigitalSignatureByQuoteId(quoteId: string): Promise<DigitalSignature | undefined>;
+  getClientMostRecentSignature(clientId: string): Promise<DigitalSignature | undefined>;
 
   // Job Chat
   getJobChatMessages(jobId: string): Promise<JobChat[]>;
@@ -2863,6 +2864,33 @@ export class PostgresStorage implements IStorage {
       .orderBy(desc(digitalSignatures.signedAt))
       .limit(1);
     return result[0];
+  }
+
+  async getClientMostRecentSignature(clientId: string): Promise<DigitalSignature | undefined> {
+    // Get the most recent signature from any quote accepted by this client
+    const result = await db.select({
+      id: digitalSignatures.id,
+      formSubmissionId: digitalSignatures.formSubmissionId,
+      quoteId: digitalSignatures.quoteId,
+      invoiceId: digitalSignatures.invoiceId,
+      jobId: digitalSignatures.jobId,
+      signerName: digitalSignatures.signerName,
+      signerEmail: digitalSignatures.signerEmail,
+      signerRole: digitalSignatures.signerRole,
+      signatureData: digitalSignatures.signatureData,
+      signedAt: digitalSignatures.signedAt,
+      ipAddress: digitalSignatures.ipAddress,
+      userAgent: digitalSignatures.userAgent,
+      documentType: digitalSignatures.documentType,
+      isValid: digitalSignatures.isValid,
+      createdAt: digitalSignatures.createdAt,
+    })
+    .from(digitalSignatures)
+    .innerJoin(quotes, eq(digitalSignatures.quoteId, quotes.id))
+    .where(eq(quotes.clientId, clientId))
+    .orderBy(desc(digitalSignatures.signedAt))
+    .limit(1);
+    return result[0] as DigitalSignature | undefined;
   }
 
   // Job Chat

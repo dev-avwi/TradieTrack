@@ -165,6 +165,7 @@ interface QuoteWithDetails {
   client: Client;
   business: BusinessSettings;
   signature?: DigitalSignature; // Quote acceptance signature (captured when client accepts)
+  previousSignature?: DigitalSignature; // Client's most recent signature from previous quotes (for pre-fill)
   token?: string; // For payment API calls
   canAcceptPayments?: boolean; // Whether business has Stripe Connect set up
   job?: Job; // Linked job for address/details
@@ -1236,7 +1237,7 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
 };
 
 export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUrl: string): string => {
-  const { quote, lineItems, client, business, signature, token, canAcceptPayments } = data;
+  const { quote, lineItems, client, business, signature, previousSignature, token, canAcceptPayments } = data;
   const brandColor = business.brandColor || '#2563eb';
   
   const subtotal = parseFloat(quote.subtotal as unknown as string);
@@ -1982,17 +1983,36 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
               
               <div class="signature-pad-container">
                 <label>Your Signature *</label>
-                <div class="signature-pad-wrapper" id="signature-wrapper">
-                  <canvas id="signature-canvas" class="signature-canvas"></canvas>
-                  <div class="signature-placeholder" id="signature-placeholder">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                ${previousSignature ? `
+                <div id="saved-signature-section" style="margin-bottom: 16px; padding: 16px; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0;">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                      <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
-                    <span>Draw your signature here</span>
+                    <span style="color: #166534; font-weight: 500;">Your saved signature</span>
+                  </div>
+                  <img id="saved-signature-img" src="${previousSignature.signatureData}" alt="Saved signature" style="max-height: 80px; max-width: 100%; display: block; margin-bottom: 12px; background: white; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;" />
+                  <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-accept" style="flex: 1; padding: 10px 16px; font-size: 14px;" onclick="useSavedSignature()">Use This Signature</button>
+                    <button type="button" class="signature-btn" style="flex-shrink: 0;" onclick="drawNewSignature()">Draw New</button>
                   </div>
                 </div>
-                <div class="signature-actions">
-                  <button type="button" class="signature-btn" onclick="clearSignature()">Clear</button>
+                ` : ''}
+                <div id="signature-draw-section" ${previousSignature ? 'class="hidden"' : ''}>
+                  <div class="signature-pad-wrapper" id="signature-wrapper">
+                    <canvas id="signature-canvas" class="signature-canvas"></canvas>
+                    <div class="signature-placeholder" id="signature-placeholder">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                      </svg>
+                      <span>Draw your signature here</span>
+                    </div>
+                  </div>
+                  <div class="signature-actions">
+                    <button type="button" class="signature-btn" onclick="clearSignature()">Clear</button>
+                    ${previousSignature ? '<button type="button" class="signature-btn" onclick="showSavedSignature()">Use Saved</button>' : ''}
+                  </div>
                 </div>
                 <div class="signature-error hidden" id="signature-error">Please provide your signature</div>
                 <input type="hidden" id="signature_data" name="signature_data" />
@@ -2196,6 +2216,59 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
               document.getElementById('confirm-accept').classList.add('hidden');
               document.getElementById('confirm-decline').classList.add('hidden');
               clearSignature();
+              // Show saved signature section if it exists
+              const savedSection = document.getElementById('saved-signature-section');
+              if (savedSection) {
+                savedSection.classList.remove('hidden');
+                document.getElementById('signature-draw-section').classList.add('hidden');
+              }
+            }
+            
+            // Use saved signature from previous quote
+            function useSavedSignature() {
+              const savedImg = document.getElementById('saved-signature-img');
+              if (savedImg) {
+                document.getElementById('signature_data').value = savedImg.src;
+                hasSignature = true;
+                document.getElementById('signature-error').classList.add('hidden');
+              }
+            }
+            
+            // Draw a new signature instead of using saved
+            function drawNewSignature() {
+              const savedSection = document.getElementById('saved-signature-section');
+              if (savedSection) {
+                savedSection.classList.add('hidden');
+              }
+              document.getElementById('signature-draw-section').classList.remove('hidden');
+              clearSignature();
+              
+              // Resize canvas after showing
+              setTimeout(function() {
+                if (canvas && canvas.parentElement) {
+                  const rect = canvas.parentElement.getBoundingClientRect();
+                  const dpr = window.devicePixelRatio || 1;
+                  canvas.width = rect.width * dpr;
+                  canvas.height = 150 * dpr;
+                  canvas.style.width = rect.width + 'px';
+                  canvas.style.height = '150px';
+                  ctx.scale(dpr, dpr);
+                  ctx.lineWidth = 2;
+                  ctx.lineCap = 'round';
+                  ctx.lineJoin = 'round';
+                  ctx.strokeStyle = '#1f2937';
+                }
+              }, 50);
+            }
+            
+            // Show saved signature section again
+            function showSavedSignature() {
+              const savedSection = document.getElementById('saved-signature-section');
+              if (savedSection) {
+                savedSection.classList.remove('hidden');
+                document.getElementById('signature-draw-section').classList.add('hidden');
+                clearSignature();
+              }
             }
           </script>
         ` : ''}

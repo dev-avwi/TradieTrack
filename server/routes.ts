@@ -431,6 +431,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         signature = await storage.getDigitalSignatureByQuoteId(quoteWithItems.id);
       }
       
+      // Fetch client's previous signature for pre-fill (if quote not yet actioned)
+      let previousSignature = null;
+      if (quoteWithItems.status !== 'accepted' && quoteWithItems.status !== 'declined') {
+        previousSignature = await storage.getClientMostRecentSignature(quoteWithItems.clientId);
+      }
+      
       // Check if business can accept payments (has Stripe Connect)
       const canAcceptPayments = !!(business.stripeConnectAccountId && business.connectChargesEnabled);
       
@@ -441,6 +447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         client,
         business,
         signature: signature || undefined,
+        previousSignature: previousSignature || undefined,
         token: req.params.token,
         canAcceptPayments
       }, acceptanceUrl);
@@ -8225,6 +8232,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/invoices/:id/mark-paid", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     const { handleInvoiceMarkPaid } = await import('./emailRoutes');
     return handleInvoiceMarkPaid(req, res, storage);
+  });
+
+  // Send receipt email for paid invoice
+  app.post("/api/invoices/:id/send-receipt", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const invoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
+      
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      
+      if (invoice.status !== 'paid') {
+        return res.status(400).json({ error: "Can only send receipts for paid invoices" });
+      }
+      
+      const client = await storage.getClient(invoice.clientId, userContext.effectiveUserId);
+      if (!client?.email) {
+        return res.status(400).json({ error: "Client email required to send receipt" });
+      }
+      
+      const businessSettings = await storage.getBusinessSettings(req.userId);
+      
+      // Import and use the receipt email function
+      const { sendReceiptEmail } = await import('./emailService');
+      await sendReceiptEmail(invoice, client, businessSettings);
+      
+      res.json({ success: true, message: `Receipt sent to ${client.email}` });
+    } catch (error: any) {
+      console.error("Error sending receipt:", error);
+      res.status(500).json({ error: error.message || "Failed to send receipt" });
+    }
   });
 
   // Record payment - shared handler for both endpoint aliases

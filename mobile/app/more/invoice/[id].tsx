@@ -67,6 +67,7 @@ export default function InvoiceDetailScreen() {
   const [isTogglingPayment, setIsTogglingPayment] = useState(false);
   const [isGeneratingPaymentLink, setIsGeneratingPaymentLink] = useState(false);
   const [isRecordingOnSitePayment, setIsRecordingOnSitePayment] = useState(false);
+  const [isSendingReceipt, setIsSendingReceipt] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(businessSettings?.documentTemplate || 'professional');
@@ -472,6 +473,35 @@ export default function InvoiceDetailScreen() {
         }
       ]
     );
+  };
+
+  const handleSendReceipt = async () => {
+    if (!invoice || !client?.email || isSendingReceipt) return;
+    
+    setIsSendingReceipt(true);
+    try {
+      const authToken = await api.getToken();
+      const response = await fetch(`${API_URL}/api/invoices/${id}/send-receipt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ email: client.email }),
+      });
+
+      if (response.ok) {
+        Alert.alert('Receipt Sent', `Receipt emailed to ${client.email}`);
+      } else {
+        const error = await response.json();
+        Alert.alert('Error', error.error || 'Failed to send receipt');
+      }
+    } catch (error) {
+      console.log('Error sending receipt:', error);
+      Alert.alert('Error', 'Failed to send receipt. Please try again.');
+    } finally {
+      setIsSendingReceipt(false);
+    }
   };
 
   const generatePaymentLink = async () => {
@@ -1271,7 +1301,7 @@ export default function InvoiceDetailScreen() {
           )}
 
           {/* Payment Info - Show when already paid */}
-          {invoice.status === 'paid' && invoice.paidAt && (
+          {invoice.status === 'paid' && (
             <>
               <Text style={styles.sectionTitle}>Payment Received</Text>
               <View style={[styles.card, styles.paidCard]}>
@@ -1279,14 +1309,53 @@ export default function InvoiceDetailScreen() {
                   <Feather name="check-circle" size={24} color={colors.success} />
                   <View style={styles.paidInfoText}>
                     <Text style={styles.paidAmount}>{formatCurrency(invoice.amountPaid || invoice.total)}</Text>
-                    <Text style={styles.paidDate}>Paid on {formatDate(invoice.paidAt)}</Text>
+                    {invoice.paidAt && (
+                      <Text style={styles.paidDate}>
+                        {new Date(invoice.paidAt).toLocaleDateString('en-AU', { 
+                          weekday: 'short', 
+                          day: 'numeric', 
+                          month: 'short', 
+                          year: 'numeric' 
+                        })} at {new Date(invoice.paidAt).toLocaleTimeString('en-AU', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </Text>
+                    )}
                     {invoice.paymentMethod && (
                       <Text style={styles.paidMethod}>
-                        Method: {invoice.paymentMethod === 'on_site' ? 'On-Site Payment' : invoice.paymentMethod}
+                        {invoice.paymentMethod === 'on_site' ? 'On-Site' : 
+                         invoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
+                         invoice.paymentMethod === 'stripe' ? 'Online (Stripe)' :
+                         invoice.paymentMethod === 'tap_to_pay' ? 'Tap to Pay' :
+                         invoice.paymentMethod === 'cash' ? 'Cash' :
+                         invoice.paymentMethod === 'card' ? 'Card' :
+                         invoice.paymentMethod === 'cheque' ? 'Cheque' :
+                         invoice.paymentMethod}
                       </Text>
+                    )}
+                    {invoice.paymentReference && (
+                      <Text style={styles.paidReference}>Ref: {invoice.paymentReference}</Text>
                     )}
                   </View>
                 </View>
+                {/* Send Receipt Button */}
+                {client?.email && (
+                  <TouchableOpacity 
+                    style={styles.sendReceiptButton}
+                    onPress={handleSendReceipt}
+                    disabled={isSendingReceipt}
+                  >
+                    {isSendingReceipt ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Feather name="mail" size={16} color={colors.primary} />
+                    )}
+                    <Text style={styles.sendReceiptButtonText}>
+                      {isSendingReceipt ? 'Sending...' : 'Send Receipt'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </>
           )}
@@ -2044,6 +2113,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 13,
     color: colors.mutedForeground,
     marginTop: 2,
+  },
+  paidReference: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  sendReceiptButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.card,
+  },
+  sendReceiptButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primary,
   },
   signatureLabelRow: {
     flexDirection: 'row',

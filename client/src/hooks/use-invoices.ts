@@ -117,6 +117,39 @@ export function useMarkInvoicePaid() {
   return useMutation({
     mutationFn: async (invoiceId: string) => {
       const response = await apiRequest("POST", `/api/invoices/${invoiceId}/mark-paid`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to mark invoice as paid');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+    },
+  });
+}
+
+export interface RecordPaymentData {
+  invoiceId: string;
+  amount: number;
+  paymentMethod: 'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other';
+  reference?: string;
+  notes?: string;
+}
+
+export function useRecordPayment() {
+  return useMutation({
+    mutationFn: async (data: RecordPaymentData) => {
+      const response = await apiRequest("POST", `/api/invoices/${data.invoiceId}/record-payment`, {
+        amount: data.amount,
+        paymentMethod: data.paymentMethod,
+        reference: data.reference,
+        notes: data.notes,
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to record payment');
+      }
       return response.json();
     },
     onSuccess: () => {

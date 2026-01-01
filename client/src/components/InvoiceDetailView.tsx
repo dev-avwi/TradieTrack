@@ -10,7 +10,10 @@ import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, Externa
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
-import { useMarkInvoicePaid } from "@/hooks/use-invoices";
+import { useMarkInvoicePaid, useRecordPayment } from "@/hooks/use-invoices";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient, getSessionToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -47,8 +50,13 @@ export default function InvoiceDetailView({
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other'>('cash');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [sendingReceipt, setSendingReceipt] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
   const markPaidMutation = useMarkInvoicePaid();
+  const recordPaymentMutation = useRecordPayment();
   const { data: integrationHealth } = useIntegrationHealth();
   const stripeConnected = isStripeReady(integrationHealth);
   const [, navigate] = useLocation();
@@ -262,18 +270,63 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
     });
   };
 
+  // Send receipt email for paid invoice
+  const handleSendReceipt = async () => {
+    if (!invoice || !client?.email) return;
+    
+    setSendingReceipt(true);
+    try {
+      const response = await apiRequest("POST", `/api/invoices/${invoice.id}/send-receipt`, {
+        email: client.email
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to send receipt');
+      }
+      toast({
+        title: "Receipt sent",
+        description: `Receipt emailed to ${client.email}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send receipt",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingReceipt(false);
+    }
+  };
+
   // Record payment and mark invoice as paid
   const handleRecordPayment = async () => {
     if (!invoice) return;
     
     try {
-      await markPaidMutation.mutateAsync(invoice.id);
+      await recordPaymentMutation.mutateAsync({
+        invoiceId: invoice.id,
+        amount: parseFloat(invoice.total || '0'),
+        paymentMethod,
+        reference: paymentReference || undefined,
+        notes: paymentNotes || undefined,
+      });
       const amount = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0'));
+      const methodLabels: Record<string, string> = {
+        cash: 'Cash',
+        bank_transfer: 'Bank Transfer',
+        cheque: 'Cheque',
+        card: 'Card',
+        other: 'Other'
+      };
       toast({
         title: "Payment recorded",
-        description: `${invoice.number} - ${amount} has been marked as paid`,
+        description: `${invoice.number} - ${amount} received via ${methodLabels[paymentMethod]}`,
       });
       setShowRecordPaymentDialog(false);
+      // Reset form
+      setPaymentMethod('cash');
+      setPaymentReference('');
+      setPaymentNotes('');
       // Refetch invoice to update status
       refetchInvoice();
       // Call legacy callback if provided
@@ -760,6 +813,12 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 Record Payment
               </Button>
             )}
+            {invoice.status === 'paid' && client?.email && (
+              <Button onClick={handleSendReceipt} disabled={sendingReceipt} className="w-full sm:w-auto" data-testid="button-send-receipt">
+                {sendingReceipt ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+                Send Receipt
+              </Button>
+            )}
             {xeroStatus?.connected && invoice.status === 'sent' && !invoice.xeroInvoiceId && (
               <Button 
                 variant="outline" 
@@ -1144,11 +1203,53 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 </div>
               )}
 
-              {invoice.status === 'paid' && invoice.paidAt && (
-                <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm font-medium text-green-800">
-                    <strong>Paid:</strong> This invoice was paid on {formatDate(invoice.paidAt)}
-                  </p>
+              {invoice.status === 'paid' && (
+                <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-lg" data-testid="payment-details-paid">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Check className="h-5 w-5 text-green-600" />
+                    <h3 className="text-sm font-semibold text-green-800">Payment Received</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-green-700">Amount</span>
+                      <div className="font-semibold text-green-900">
+                        {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0'))}
+                      </div>
+                    </div>
+                    {invoice.paidAt && (
+                      <div>
+                        <span className="text-green-700">Date & Time</span>
+                        <div className="font-medium text-green-900">
+                          {new Date(invoice.paidAt).toLocaleDateString('en-AU', { 
+                            weekday: 'short', 
+                            day: 'numeric', 
+                            month: 'short', 
+                            year: 'numeric' 
+                          })} at {new Date(invoice.paidAt).toLocaleTimeString('en-AU', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {invoice.paymentMethod && (
+                      <div>
+                        <span className="text-green-700">Method</span>
+                        <div className="font-medium text-green-900 capitalize">
+                          {invoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 
+                           invoice.paymentMethod === 'stripe' ? 'Online (Stripe)' :
+                           invoice.paymentMethod === 'tap_to_pay' ? 'Tap to Pay' :
+                           invoice.paymentMethod}
+                        </div>
+                      </div>
+                    )}
+                    {invoice.paymentReference && (
+                      <div>
+                        <span className="text-green-700">Reference</span>
+                        <div className="font-medium text-green-900">{invoice.paymentReference}</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1208,45 +1309,93 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
 
       {/* Record Payment Confirmation Dialog */}
       {invoice && (
-        <Dialog open={showRecordPaymentDialog} onOpenChange={setShowRecordPaymentDialog}>
-          <DialogContent>
+        <Dialog open={showRecordPaymentDialog} onOpenChange={(open) => {
+          setShowRecordPaymentDialog(open);
+          if (!open) {
+            setPaymentMethod('cash');
+            setPaymentReference('');
+            setPaymentNotes('');
+          }
+        }}>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Record Payment</DialogTitle>
               <DialogDescription>
-                Confirm that you've received payment for this invoice.
+                Record a payment received in person for this invoice.
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Invoice</span>
-                <span className="font-medium">{invoice.number}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Client</span>
-                <span className="font-medium">{client?.name || 'Unknown'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Amount</span>
-                <span className="font-bold text-lg">
+            <div className="py-4 space-y-4">
+              <div className="flex justify-between items-center pb-3 border-b">
+                <div>
+                  <div className="text-sm text-muted-foreground">Invoice {invoice.number}</div>
+                  <div className="font-medium">{client?.name || 'Unknown'}</div>
+                </div>
+                <div className="text-xl font-bold text-primary">
                   {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0'))}
-                </span>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="payment-method" className="text-sm font-medium">Payment Method</Label>
+                  <Select 
+                    value={paymentMethod} 
+                    onValueChange={(value: 'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other') => setPaymentMethod(value)}
+                  >
+                    <SelectTrigger id="payment-method" className="mt-1" data-testid="select-payment-method">
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="card">Card (EFTPOS/Credit)</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="payment-reference" className="text-sm font-medium">Reference (optional)</Label>
+                  <Input 
+                    id="payment-reference"
+                    placeholder="e.g. Receipt #, Transfer ref"
+                    value={paymentReference}
+                    onChange={(e) => setPaymentReference(e.target.value)}
+                    className="mt-1"
+                    data-testid="input-payment-reference"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="payment-notes" className="text-sm font-medium">Notes (optional)</Label>
+                  <Textarea 
+                    id="payment-notes"
+                    placeholder="Any additional payment notes..."
+                    value={paymentNotes}
+                    onChange={(e) => setPaymentNotes(e.target.value)}
+                    className="mt-1 resize-none"
+                    rows={2}
+                    data-testid="input-payment-notes"
+                  />
+                </div>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button variant="outline" onClick={() => setShowRecordPaymentDialog(false)}>
                 Cancel
               </Button>
               <Button 
                 onClick={handleRecordPayment} 
-                disabled={markPaidMutation.isPending}
+                disabled={recordPaymentMutation.isPending}
                 data-testid="button-confirm-payment"
               >
-                {markPaidMutation.isPending ? (
+                {recordPaymentMutation.isPending ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <DollarSign className="h-4 w-4 mr-2" />
                 )}
-                Confirm Payment
+                Record Payment
               </Button>
             </DialogFooter>
           </DialogContent>
