@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -498,6 +499,30 @@ export default function CollectPaymentScreen() {
     }
   };
 
+  // Open receipt PDF in browser for printing
+  const handlePrintReceipt = async (receiptId: string) => {
+    try {
+      const pdfUrl = `${API_URL}/api/receipts/${receiptId}/pdf`;
+      await WebBrowser.openBrowserAsync(pdfUrl, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to open receipt');
+    }
+  };
+
+  // Open invoice PDF in browser for printing
+  const handlePrintInvoice = async (invoiceId: string) => {
+    try {
+      const pdfUrl = `${API_URL}/api/invoices/${invoiceId}/pdf`;
+      await WebBrowser.openBrowserAsync(pdfUrl, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to open invoice');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const configs: Record<string, { bg: string; text: string; label: string }> = {
       pending: { bg: `${colors.warning}20`, text: colors.warning, label: 'Pending' },
@@ -812,7 +837,18 @@ export default function CollectPaymentScreen() {
             </Text>
           )}
         </View>
-        <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
+        <View style={styles.receiptActions}>
+          <TouchableOpacity 
+            style={styles.receiptActionButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              handlePrintReceipt(receipt.id);
+            }}
+          >
+            <Feather name="printer" size={iconSizes.md} color={colors.primary} />
+          </TouchableOpacity>
+          <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
+        </View>
       </TouchableOpacity>
     );
   };
@@ -1939,6 +1975,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  receiptActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginLeft: spacing.md,
+  },
+  receiptActionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
   },
   badge: {
     paddingHorizontal: spacing.sm,
