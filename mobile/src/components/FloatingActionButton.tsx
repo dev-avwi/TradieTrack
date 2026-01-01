@@ -197,12 +197,25 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
       },
     },
     {
-      icon: 'user-plus',
-      label: 'New Client',
+      icon: 'users',
+      label: 'Assign Job',
       color: colors.warning,
       onPress: () => {
         setIsOpen(false);
-        router.push('/more/client/new');
+        if (onAssignPress) {
+          onAssignPress();
+        } else {
+          router.push('/more/team-management');
+        }
+      },
+    },
+    {
+      icon: 'zap',
+      label: 'AI Assistant',
+      color: colors.accent || '#8B5CF6',
+      onPress: () => {
+        setIsOpen(false);
+        router.push('/more/ai-assistant');
       },
     },
   ];
@@ -264,45 +277,6 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
               ))}
             </View>
 
-            <View style={styles.quickActionsRow}>
-              <TouchableOpacity 
-                style={styles.quickAction}
-                onPress={() => {
-                  setIsOpen(false);
-                  router.push('/more/ai-assistant');
-                }}
-              >
-                <Feather name="zap" size={14} color={colors.primary} />
-                <Text style={styles.quickActionText}>AI Assistant</Text>
-              </TouchableOpacity>
-              {isTeamOwner ? (
-                <TouchableOpacity 
-                  style={styles.quickAction}
-                  onPress={() => {
-                    setIsOpen(false);
-                    if (onAssignPress) {
-                      onAssignPress();
-                    } else {
-                      router.push('/more/team-management');
-                    }
-                  }}
-                >
-                  <Feather name="users" size={14} color={colors.info} />
-                  <Text style={styles.quickActionText}>Assign Job</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity 
-                  style={styles.quickAction}
-                  onPress={() => {
-                    setIsOpen(false);
-                    router.push('/(tabs)/collect');
-                  }}
-                >
-                  <Feather name="credit-card" size={14} color={colors.success} />
-                  <Text style={styles.quickActionText}>Collect Payment</Text>
-                </TouchableOpacity>
-              )}
-            </View>
           </View>
         </Pressable>
       </Modal>
