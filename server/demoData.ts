@@ -2,13 +2,23 @@ import { storage, db } from './storage';
 import { AuthService } from './auth';
 import { teamMemberSkills } from '@shared/schema';
 
-// Demo user data
+// Demo user data - Business Owner
 const DEMO_USER = {
   email: 'demo@tradietrack.com.au',
   username: 'demo_tradie',
   password: 'demo123456',
   firstName: 'Mike',
   lastName: 'Thompson',
+  tradeType: 'plumbing'
+};
+
+// Demo worker account - belongs to demo team
+const DEMO_WORKER = {
+  email: 'worker@tradietrack.com.au',
+  username: 'demo_worker',
+  password: 'worker123456',
+  firstName: 'Jake',
+  lastName: 'Morrison',
   tradeType: 'plumbing'
 };
 
@@ -157,7 +167,7 @@ export async function createDemoUserAndData() {
       await storage.deleteReceipt(receipt.id, demoUser.id);
     }
 
-    // Create demo clients
+    // Create demo clients - expanded list for realistic testing
     const demoClients = [
         {
           userId: demoUser.id,
@@ -182,6 +192,54 @@ export async function createDemoUserAndData() {
           phone: "(07) 4555 1234",
           address: "22 Beach Road, Port Douglas QLD 4877",
           notes: "New customer - kitchen renovation"
+        },
+        {
+          userId: demoUser.id,
+          name: "Marcus Chen",
+          email: "marcus.chen@gmail.com",
+          phone: "(07) 4111 2233",
+          address: "45 Reef Street, Palm Cove QLD 4879",
+          notes: "Commercial property manager - multiple units"
+        },
+        {
+          userId: demoUser.id,
+          name: "Lisa Nakamura",
+          email: "lisa.n@outlook.com",
+          phone: "(07) 4333 4455",
+          address: "78 Sunset Drive, Edge Hill QLD 4870",
+          notes: "Referred by Sarah Johnson"
+        },
+        {
+          userId: demoUser.id,
+          name: "Robert O'Brien",
+          email: "rob.obrien@yahoo.com.au",
+          phone: "(07) 4222 5566",
+          address: "12 Mango Court, Whitfield QLD 4870",
+          notes: "Pool and spa maintenance"
+        },
+        {
+          userId: demoUser.id,
+          name: "Jennifer Walsh",
+          email: "jen.walsh@bigpond.com",
+          phone: "(07) 4444 7788",
+          address: "33 Hibiscus Street, Smithfield QLD 4878",
+          notes: "New build - plumbing rough-in"
+        },
+        {
+          userId: demoUser.id,
+          name: "Ahmed Hassan",
+          email: "a.hassan@email.com",
+          phone: "(07) 4555 9900",
+          address: "99 Coral Way, Machans Beach QLD 4878",
+          notes: "Restaurant owner - commercial account"
+        },
+        {
+          userId: demoUser.id,
+          name: "Melissa Torres",
+          email: "mel.torres@icloud.com",
+          phone: "(07) 4666 1122",
+          address: "5 Banyan Close, Holloways Beach QLD 4878",
+          notes: "Rental property investor - 3 properties"
         }
       ];
 
@@ -956,17 +1014,30 @@ export async function createDemoTeamMembers() {
       return;
     }
     
-    // Check if team members already exist - we want at least 5 demo members
+    // Check if demo worker account needs to be updated (indicates config change)
     const existingTeamMembers = await storage.getTeamMembers(demoUser.id);
-    if (existingTeamMembers.length >= 5) {
+    const hasWorkerDemoAccount = existingTeamMembers.some(m => m.email === DEMO_WORKER.email);
+    const hasInvitedMembers = existingTeamMembers.some(m => m.inviteStatus === 'invited');
+    
+    // Force reset if: team config changed (no worker account or no invited members)
+    const needsReset = existingTeamMembers.length > 0 && (!hasWorkerDemoAccount || !hasInvitedMembers);
+    
+    if (needsReset) {
+      console.log('🔄 Resetting team members for updated configuration...');
+      // Delete existing team members to recreate with proper config
+      for (const member of existingTeamMembers) {
+        await storage.deleteTeamMember(member.id, demoUser.id);
+      }
+    } else if (existingTeamMembers.length >= 5 && hasWorkerDemoAccount && hasInvitedMembers) {
       console.log(`✅ Demo team already has ${existingTeamMembers.length} members`);
       // Ensure existing team members have tradieStatus records for map visibility
       await ensureTeamMemberLocations(demoUser.id, existingTeamMembers);
       return;
     }
     
-    // Get emails of existing team members to avoid duplicates
-    const existingEmails = new Set(existingTeamMembers.map(m => m.email));
+    // Get emails of existing team members to avoid duplicates (after potential reset)
+    const currentTeamMembers = await storage.getTeamMembers(demoUser.id);
+    const existingEmails = new Set(currentTeamMembers.map(m => m.email));
     
     // Create roles if they don't exist
     const existingRoles = await storage.getUserRoles();
@@ -989,16 +1060,18 @@ export async function createDemoTeamMembers() {
     }
     
     // Demo team members - realistic Australian names with Cairns area locations
+    // Some are accepted (can login and work), some are invited (pending acceptance)
     const teamMemberData = [
       {
         firstName: 'Jake',
         lastName: 'Morrison',
-        email: 'jake.morrison@mikesplumbing.com.au',
+        email: DEMO_WORKER.email, // Use demo worker email so user can login as this team member
         role: workerRole.id,
         status: 'online',
         lat: -16.9203, // Cairns CBD
         lng: 145.7710,
         statusMessage: 'On-site at client',
+        inviteStatus: 'accepted' as const, // Can login as worker@tradietrack.com.au
       },
       {
         firstName: 'Sarah',
@@ -1009,6 +1082,7 @@ export async function createDemoTeamMembers() {
         lat: -16.9282, // Parramatta Park
         lng: 145.7571,
         statusMessage: 'Managing afternoon schedule',
+        inviteStatus: 'accepted' as const,
       },
       {
         firstName: 'Liam',
@@ -1019,6 +1093,7 @@ export async function createDemoTeamMembers() {
         lat: -16.8853, // Edge Hill
         lng: 145.7321,
         statusMessage: 'Hot water install - 42 Smith St',
+        inviteStatus: 'accepted' as const,
       },
       {
         firstName: 'Brodie',
@@ -1029,6 +1104,7 @@ export async function createDemoTeamMembers() {
         lat: -16.8513, // Whitfield
         lng: 145.7109,
         statusMessage: 'Emergency callout',
+        inviteStatus: 'invited' as const, // Pending invite - for testing invite flow
       },
       {
         firstName: 'Emma',
@@ -1039,6 +1115,7 @@ export async function createDemoTeamMembers() {
         lat: -16.9187, // Cairns Esplanade
         lng: 145.7788,
         statusMessage: 'Lunch break',
+        inviteStatus: 'invited' as const, // Pending invite - for testing invite flow
       },
       {
         firstName: 'Trent',
@@ -1049,6 +1126,7 @@ export async function createDemoTeamMembers() {
         lat: -16.9475, // Earlville
         lng: 145.7401,
         statusMessage: 'Blocked drain - residential',
+        inviteStatus: 'accepted' as const,
       },
     ];
     
@@ -1092,67 +1170,76 @@ export async function createDemoTeamMembers() {
         continue;
       }
       
-      // Create user account for team member
-      const hashedPassword = await AuthService.hashPassword('TeamMember123!');
+      // Use demo worker password for the worker demo account, otherwise use default
+      const isWorkerDemoAccount = member.email === DEMO_WORKER.email;
+      const password = isWorkerDemoAccount ? DEMO_WORKER.password : 'TeamMember123!';
+      const hashedPassword = await AuthService.hashPassword(password);
       let memberUser = await storage.getUserByEmail(member.email);
       
       if (!memberUser) {
         memberUser = await storage.createUser({
           email: member.email,
-          username: member.email.split('@')[0],
+          username: isWorkerDemoAccount ? DEMO_WORKER.username : member.email.split('@')[0],
           password: hashedPassword,
           firstName: member.firstName,
           lastName: member.lastName,
         });
         // Mark email as verified
         await storage.updateUser(memberUser.id, { emailVerified: true });
+      } else if (isWorkerDemoAccount) {
+        // Update password for worker demo account if user already exists
+        await storage.updateUser(memberUser.id, { password: hashedPassword, emailVerified: true });
       }
       
-      // Create team member record
+      // Create team member record with proper invite status
+      const isAccepted = member.inviteStatus === 'accepted';
       const teamMember = await storage.createTeamMember({
         businessOwnerId: demoUser.id,
-        memberId: memberUser.id,
+        memberId: isAccepted ? memberUser.id : undefined, // Only link user if accepted
         roleId: member.role,
         email: member.email,
         firstName: member.firstName,
         lastName: member.lastName,
-        inviteStatus: 'accepted',
-        inviteAcceptedAt: new Date(),
-        allowLocationSharing: true,
-        locationEnabledByOwner: true,
+        inviteStatus: member.inviteStatus,
+        inviteAcceptedAt: isAccepted ? new Date() : undefined,
+        allowLocationSharing: isAccepted,
+        locationEnabledByOwner: isAccepted,
         hourlyRate: '55.00',
-        startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 90 days ago
-        isActive: true,
+        startDate: isAccepted ? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) : undefined,
+        isActive: isAccepted,
       });
       
-      // Create presence record with location
-      const lastSeenOffset = Math.floor(Math.random() * 30) * 60 * 1000; // 0-30 mins ago
-      await storage.updatePresence(memberUser.id, demoUser.id, {
-        status: member.status,
-        statusMessage: member.statusMessage,
-        lastLocationLat: member.lat,
-        lastLocationLng: member.lng,
-        lastLocationUpdatedAt: new Date(Date.now() - lastSeenOffset),
-      });
+      // Only create presence/location data for accepted team members
+      if (isAccepted) {
+        // Create presence record with location
+        const lastSeenOffset = Math.floor(Math.random() * 30) * 60 * 1000; // 0-30 mins ago
+        await storage.updatePresence(memberUser.id, demoUser.id, {
+          status: member.status,
+          statusMessage: member.statusMessage,
+          lastLocationLat: member.lat,
+          lastLocationLng: member.lng,
+          lastLocationUpdatedAt: new Date(Date.now() - lastSeenOffset),
+        });
+        
+        // Create tradieStatus record for map visibility (used by /api/map/team-locations)
+        const activityStatus = member.status === 'on_job' ? 'working' : 
+                              member.status === 'busy' ? 'working' :
+                              member.status === 'break' ? 'offline' : 'online';
+        await storage.upsertTradieStatus({
+          userId: memberUser.id,
+          businessOwnerId: demoUser.id,
+          currentLatitude: member.lat.toString(),
+          currentLongitude: member.lng.toString(),
+          activityStatus: activityStatus,
+          lastSeenAt: new Date(Date.now() - lastSeenOffset),
+          lastLocationUpdate: new Date(Date.now() - lastSeenOffset),
+          batteryLevel: Math.floor(Math.random() * 60) + 40, // 40-100%
+          isCharging: Math.random() > 0.7, // 30% chance charging
+          speed: activityStatus === 'working' ? '0' : String(Math.floor(Math.random() * 40)), // 0-40 km/h if not working
+        });
+      }
       
-      // Create tradieStatus record for map visibility (used by /api/map/team-locations)
-      const activityStatus = member.status === 'on_job' ? 'working' : 
-                            member.status === 'busy' ? 'working' :
-                            member.status === 'break' ? 'offline' : 'online';
-      await storage.upsertTradieStatus({
-        userId: memberUser.id,
-        businessOwnerId: demoUser.id,
-        currentLatitude: member.lat.toString(),
-        currentLongitude: member.lng.toString(),
-        activityStatus: activityStatus,
-        lastSeenAt: new Date(Date.now() - lastSeenOffset),
-        lastLocationUpdate: new Date(Date.now() - lastSeenOffset),
-        batteryLevel: Math.floor(Math.random() * 60) + 40, // 40-100%
-        isCharging: Math.random() > 0.7, // 30% chance charging
-        speed: activityStatus === 'working' ? '0' : String(Math.floor(Math.random() * 40)), // 0-40 km/h if not working
-      });
-      
-      // Add skills for this member
+      // Add skills for this member (even for invited members - they have qualifications)
       const memberSkills = skillsData[`${member.firstName} ${member.lastName}`] || [];
       for (const skill of memberSkills) {
         await db.insert(teamMemberSkills).values({
@@ -1165,7 +1252,8 @@ export async function createDemoTeamMembers() {
         });
       }
       
-      console.log(`  ✅ Created team member: ${member.firstName} ${member.lastName} (${member.status})`);
+      const statusLabel = isAccepted ? member.status : 'invited';
+      console.log(`  ✅ Created team member: ${member.firstName} ${member.lastName} (${statusLabel})`);
     }
     
     console.log('✅ Demo team members created successfully');
@@ -1174,4 +1262,4 @@ export async function createDemoTeamMembers() {
   }
 }
 
-export { DEMO_USER };
+export { DEMO_USER, DEMO_WORKER };
