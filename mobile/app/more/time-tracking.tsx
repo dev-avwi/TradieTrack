@@ -6,8 +6,12 @@ import {
   TouchableOpacity,
   RefreshControl,
   StyleSheet,
-  Alert
+  Alert,
+  Modal,
+  TextInput,
+  Platform
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useTimeTrackingStore } from '../../src/lib/store';
@@ -314,6 +318,92 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.sm,
   },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalCloseButton: {
+    padding: spacing.xs,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  modalSaveButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+  },
+  modalSaveButtonDisabled: {
+    backgroundColor: colors.muted,
+  },
+  modalSaveText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+  modalSaveTextDisabled: {
+    color: colors.mutedForeground,
+  },
+  modalContent: {
+    flex: 1,
+    padding: spacing.lg,
+  },
+  formGroup: {
+    marginBottom: spacing.lg,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  formInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+  },
+  formInputText: {
+    fontSize: 15,
+    color: colors.foreground,
+  },
+  formTextArea: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    fontSize: 15,
+    color: colors.foreground,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  durationPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    marginBottom: spacing.lg,
+  },
+  durationPreviewText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary,
+  },
 });
 
 function StatCard({ 
@@ -357,7 +447,19 @@ export default function TimeTrackingScreen() {
   const [timeStats, setTimeStats] = useState<TimeStats>({ todayHours: 0, weekHours: 0, avgRate: 0 });
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Add Entry Modal State
+  const [showAddEntryModal, setShowAddEntryModal] = useState(false);
+  const [entryDate, setEntryDate] = useState(new Date());
+  const [entryStartTime, setEntryStartTime] = useState(new Date());
+  const [entryEndTime, setEntryEndTime] = useState(new Date());
+  const [entryDescription, setEntryDescription] = useState('');
+  const [entryJobId, setEntryJobId] = useState<string | null>(null);
+  const [showEntryDatePicker, setShowEntryDatePicker] = useState(false);
+  const [showEntryStartPicker, setShowEntryStartPicker] = useState(false);
+  const [showEntryEndPicker, setShowEntryEndPicker] = useState(false);
+  const [isAddingEntry, setIsAddingEntry] = useState(false);
 
   const isLoading = isLoadingJobs || isTimerLoading;
   const isTimerRunning = !!activeTimer;
@@ -406,7 +508,7 @@ export default function TimeTrackingScreen() {
 
   useEffect(() => {
     if (activeTimer) {
-      setSelectedJob(activeTimer.jobId);
+      setSelectedJob(activeTimer.jobId ?? null);
       const startTime = new Date(activeTimer.startTime).getTime();
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
       setTimerSeconds(Math.max(0, elapsed));
@@ -495,6 +597,57 @@ export default function TimeTrackingScreen() {
         },
       ]
     );
+  };
+
+  const handleOpenAddEntry = () => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0, 0);
+    setEntryDate(now);
+    setEntryStartTime(startOfToday);
+    setEntryEndTime(endOfToday);
+    setEntryDescription('');
+    setEntryJobId(null);
+    setShowAddEntryModal(true);
+  };
+
+  const handleAddEntry = async () => {
+    if (!entryJobId) {
+      Alert.alert('Select a Job', 'Please select a job for this time entry.');
+      return;
+    }
+    
+    const startDateTime = new Date(entryDate);
+    startDateTime.setHours(entryStartTime.getHours(), entryStartTime.getMinutes(), 0, 0);
+    
+    const endDateTime = new Date(entryDate);
+    endDateTime.setHours(entryEndTime.getHours(), entryEndTime.getMinutes(), 0, 0);
+    
+    if (endDateTime <= startDateTime) {
+      Alert.alert('Invalid Time', 'End time must be after start time.');
+      return;
+    }
+    
+    const durationMinutes = Math.round((endDateTime.getTime() - startDateTime.getTime()) / 60000);
+    
+    setIsAddingEntry(true);
+    try {
+      await api.post('/api/time-entries', {
+        jobId: entryJobId,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
+        duration: durationMinutes,
+        description: entryDescription || undefined,
+      });
+      
+      setShowAddEntryModal(false);
+      await fetchTimeStats();
+      Alert.alert('Success', 'Time entry added successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add time entry. Please try again.');
+    } finally {
+      setIsAddingEntry(false);
+    }
   };
 
   const activeJobs = jobs.filter(j => j.status === 'in_progress').length;
@@ -636,11 +789,20 @@ export default function TimeTrackingScreen() {
               <View style={styles.quickActionsSection}>
                 <Text style={styles.sectionTitle}>Quick Actions</Text>
                 <View style={styles.quickActionsGrid}>
-                  <TouchableOpacity style={styles.quickActionCard} activeOpacity={0.7}>
+                  <TouchableOpacity 
+                    style={styles.quickActionCard} 
+                    activeOpacity={0.7}
+                    onPress={handleOpenAddEntry}
+                    data-testid="button-add-time-entry"
+                  >
                     <Feather name="calendar" size={20} color={colors.primary} />
                     <Text style={styles.quickActionText}>Add Entry</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.quickActionCard} activeOpacity={0.7}>
+                  <TouchableOpacity 
+                    style={styles.quickActionCard} 
+                    activeOpacity={0.7}
+                    onPress={() => setActiveTab('sheet')}
+                  >
                     <Feather name="file-text" size={20} color={colors.primary} />
                     <Text style={styles.quickActionText}>View Sheet</Text>
                   </TouchableOpacity>
@@ -709,6 +871,170 @@ export default function TimeTrackingScreen() {
           )}
         </ScrollView>
       </View>
+      
+      {/* Add Entry Modal */}
+      <Modal
+        visible={showAddEntryModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAddEntryModal(false)}
+      >
+        <View style={[styles.container, { paddingTop: spacing.lg }]}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity 
+              onPress={() => setShowAddEntryModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Add Time Entry</Text>
+            <TouchableOpacity 
+              onPress={handleAddEntry}
+              disabled={isAddingEntry || !entryJobId}
+              style={[styles.modalSaveButton, (!entryJobId || isAddingEntry) && styles.modalSaveButtonDisabled]}
+            >
+              <Text style={[styles.modalSaveText, (!entryJobId || isAddingEntry) && styles.modalSaveTextDisabled]}>
+                {isAddingEntry ? 'Saving...' : 'Save'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 100 }}>
+            {/* Date Picker */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Date</Text>
+              <TouchableOpacity 
+                style={styles.formInput}
+                onPress={() => setShowEntryDatePicker(true)}
+              >
+                <Feather name="calendar" size={18} color={colors.mutedForeground} />
+                <Text style={styles.formInputText}>
+                  {entryDate.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                </Text>
+              </TouchableOpacity>
+              {showEntryDatePicker && (
+                <DateTimePicker
+                  value={entryDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, date) => {
+                    setShowEntryDatePicker(Platform.OS === 'ios');
+                    if (date) setEntryDate(date);
+                  }}
+                />
+              )}
+            </View>
+            
+            {/* Start Time */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Start Time</Text>
+              <TouchableOpacity 
+                style={styles.formInput}
+                onPress={() => setShowEntryStartPicker(true)}
+              >
+                <Feather name="clock" size={18} color={colors.mutedForeground} />
+                <Text style={styles.formInputText}>
+                  {entryStartTime.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                </Text>
+              </TouchableOpacity>
+              {showEntryStartPicker && (
+                <DateTimePicker
+                  value={entryStartTime}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, time) => {
+                    setShowEntryStartPicker(Platform.OS === 'ios');
+                    if (time) setEntryStartTime(time);
+                  }}
+                />
+              )}
+            </View>
+            
+            {/* End Time */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>End Time</Text>
+              <TouchableOpacity 
+                style={styles.formInput}
+                onPress={() => setShowEntryEndPicker(true)}
+              >
+                <Feather name="clock" size={18} color={colors.mutedForeground} />
+                <Text style={styles.formInputText}>
+                  {entryEndTime.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                </Text>
+              </TouchableOpacity>
+              {showEntryEndPicker && (
+                <DateTimePicker
+                  value={entryEndTime}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, time) => {
+                    setShowEntryEndPicker(Platform.OS === 'ios');
+                    if (time) setEntryEndTime(time);
+                  }}
+                />
+              )}
+            </View>
+            
+            {/* Duration Preview */}
+            <View style={styles.durationPreview}>
+              <Feather name="trending-up" size={16} color={colors.primary} />
+              <Text style={styles.durationPreviewText}>
+                Duration: {(() => {
+                  const diffMs = entryEndTime.getTime() - entryStartTime.getTime();
+                  if (diffMs <= 0) return '--:--';
+                  const hours = Math.floor(diffMs / 3600000);
+                  const mins = Math.floor((diffMs % 3600000) / 60000);
+                  return `${hours}h ${mins}m`;
+                })()}
+              </Text>
+            </View>
+            
+            {/* Job Selection */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Job</Text>
+              {inProgressJobs.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No active jobs available</Text>
+                </View>
+              ) : (
+                inProgressJobs.map(job => (
+                  <TouchableOpacity
+                    key={job.id}
+                    style={[
+                      styles.jobSelectCard,
+                      entryJobId === job.id && styles.jobSelectCardActive
+                    ]}
+                    onPress={() => setEntryJobId(job.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.jobSelectRadio}>
+                      {entryJobId === job.id && <View style={styles.jobSelectRadioInner} />}
+                    </View>
+                    <View style={styles.jobSelectContent}>
+                      <Text style={styles.jobSelectTitle}>{job.title}</Text>
+                      <Text style={styles.jobSelectStatus}>{job.status.replace('_', ' ')}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+            
+            {/* Description */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Notes (optional)</Text>
+              <TextInput
+                style={styles.formTextArea}
+                placeholder="What did you work on?"
+                placeholderTextColor={colors.mutedForeground}
+                value={entryDescription}
+                onChangeText={setEntryDescription}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </>
   );
 }
