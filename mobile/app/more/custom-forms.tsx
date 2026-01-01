@@ -635,21 +635,6 @@ export default function CustomFormsScreen() {
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
         }
       >
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.pageTitle}>Custom Forms</Text>
-            <Text style={styles.pageSubtitle}>Create and manage form templates</Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.createButton}
-            onPress={handleCreateNew}
-            data-testid="button-create-form"
-          >
-            <Feather name="plus" size={iconSizes.sm} color={colors.primaryForeground} />
-            <Text style={styles.createButtonText}>Create</Text>
-          </TouchableOpacity>
-        </View>
-
         {isLoading ? (
           <View style={styles.emptyState}>
             <ActivityIndicator size="large" color={colors.primary} />

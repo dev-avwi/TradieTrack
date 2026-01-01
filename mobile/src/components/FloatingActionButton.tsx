@@ -188,6 +188,15 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
       },
     },
     {
+      icon: 'check-square',
+      label: 'Receipts',
+      color: colors.done || '#22C55E',
+      onPress: () => {
+        setIsOpen(false);
+        router.push('/more/receipts');
+      },
+    },
+    {
       icon: 'user-plus',
       label: 'New Client',
       color: colors.warning,
@@ -214,7 +223,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
           ]}
         >
           <Feather 
-            name={isOpen ? 'x' : 'star'} 
+            name={isOpen ? 'x' : 'plus'} 
             size={24} 
             color={isOpen ? colors.background : colors.primaryForeground} 
           />
