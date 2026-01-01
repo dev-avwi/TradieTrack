@@ -3150,7 +3150,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!settings) {
         return res.status(404).json({ error: "Business settings not found" });
       }
-      res.json(settings);
+      // Include user's subscription tier in business settings response
+      const user = await storage.getUser(req.userId);
+      res.json({
+        ...settings,
+        subscriptionTier: user?.subscriptionTier || 'free',
+      });
     } catch (error) {
       console.error("Error fetching business settings:", error);
       res.status(500).json({ error: "Failed to fetch business settings" });

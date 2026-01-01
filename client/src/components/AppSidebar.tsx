@@ -192,7 +192,9 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
                 {businessName}
               </p>
               <p className="text-xs text-muted-foreground truncate">
-                {businessSettings?.subscriptionTier === 'pro' ? 'Pro Plan' : 'Free Plan'}
+                {businessSettings?.subscriptionTier === 'team' ? 'Team Plan' : 
+                 businessSettings?.subscriptionTier === 'pro' ? 'Pro Plan' : 
+                 businessSettings?.subscriptionTier === 'trial' ? 'Trial' : 'Free Plan'}
               </p>
             </div>
           </div>
