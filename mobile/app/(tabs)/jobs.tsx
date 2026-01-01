@@ -39,6 +39,49 @@ const STATUS_FILTERS: { key: string; label: string; icon: string }[] = [
   { key: 'invoiced', label: 'Invoiced', icon: 'file-text' },
 ];
 
+function JobListRow({ 
+  job, 
+  onPress,
+}: { 
+  job: any;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-AU', { 
+      day: 'numeric', 
+      month: 'short',
+    });
+  };
+
+  return (
+    <AnimatedCardPressable
+      onPress={onPress}
+      style={styles.jobListRow}
+    >
+      <View style={styles.jobListRowContent}>
+        <View style={styles.jobListRowLeft}>
+          <Text style={styles.jobListRowTitle} numberOfLines={1}>{job.title || 'Untitled Job'}</Text>
+          <Text style={styles.jobListRowAddress} numberOfLines={1}>{job.address?.split(',')[0] || 'No address'}</Text>
+        </View>
+        <View style={styles.jobListRowCenter}>
+          <StatusBadge status={job.status} size="sm" />
+        </View>
+        <Text style={styles.jobListRowDate}>
+          {formatDate(job.scheduledAt)}
+        </Text>
+        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Feather name="more-vertical" size={iconSizes.md} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      </View>
+    </AnimatedCardPressable>
+  );
+}
+
 function JobCard({ 
   job, 
   onPress,
@@ -212,6 +255,7 @@ export default function JobsScreen() {
   const { clients, fetchClients } = useClientsStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const refreshData = useCallback(async () => {
     await Promise.all([fetchJobs(), fetchClients()]);
@@ -363,14 +407,31 @@ export default function JobsScreen() {
             <Text style={styles.pageTitle}>Work</Text>
             <Text style={styles.pageSubtitle}>{jobs.length} jobs total</Text>
           </View>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.newJobButton}
-            onPress={navigateToCreateJob}
-          >
-            <Feather name="plus" size={iconSizes.lg} color={colors.white} />
-            <Text style={styles.newJobButtonText}>New Job</Text>
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <View style={styles.viewToggle}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.viewToggleBtn, viewMode === 'grid' && styles.viewToggleBtnActive]}
+                onPress={() => setViewMode('grid')}
+              >
+                <Feather name="grid" size={iconSizes.md} color={viewMode === 'grid' ? colors.primary : colors.mutedForeground} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
+                onPress={() => setViewMode('list')}
+              >
+                <Feather name="list" size={iconSizes.md} color={viewMode === 'list' ? colors.primary : colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.newJobButton}
+              onPress={navigateToCreateJob}
+            >
+              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Search Bar */}
@@ -510,7 +571,7 @@ export default function JobsScreen() {
                   : 'Create your first job to get started'}
               </Text>
             </View>
-          ) : (
+          ) : viewMode === 'grid' ? (
             <View style={styles.jobsGrid}>
               {sortedJobs.map((job) => (
                 <JobCard
@@ -518,6 +579,21 @@ export default function JobsScreen() {
                   job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
                   onPress={() => router.push(`/job/${job.id}`)}
                   onQuickAction={handleQuickAction}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.jobsList}>
+              <View style={styles.listHeader}>
+                <Text style={styles.listHeaderCol}>Job</Text>
+                <Text style={[styles.listHeaderCol, styles.listHeaderColStatus]}>Status</Text>
+                <Text style={[styles.listHeaderCol, styles.listHeaderColDate]}>Scheduled</Text>
+              </View>
+              {sortedJobs.map((job) => (
+                <JobListRow
+                  key={job.id}
+                  job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
+                  onPress={() => router.push(`/job/${job.id}`)}
                 />
               ))}
             </View>
@@ -552,6 +628,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+    padding: 2,
+  },
+  viewToggleBtn: {
+    padding: spacing.sm,
+    borderRadius: radius.sm,
+  },
+  viewToggleBtnActive: {
+    backgroundColor: colors.card,
+  },
   pageTitle: {
     ...typography.pageTitle,
     color: colors.foreground,
@@ -565,7 +659,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderRadius: radius.lg,
     gap: spacing.xs,
@@ -692,6 +786,72 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  jobsList: {
+    gap: spacing.sm,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
+    marginBottom: spacing.sm,
+  },
+  listHeaderCol: {
+    flex: 1,
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    fontWeight: '600',
+  },
+  listHeaderColStatus: {
+    textAlign: 'center',
+    flex: 0,
+    width: 80,
+  },
+  listHeaderColDate: {
+    textAlign: 'right',
+    flex: 0,
+    width: 70,
+  },
+  jobListRow: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  jobListRowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+  },
+  jobListRowLeft: {
+    flex: 1,
+    minWidth: 0,
+  },
+  jobListRowCenter: {
+    width: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  jobListRowTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  jobListRowAddress: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  jobListRowDate: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    width: 70,
+    textAlign: 'right',
   },
   jobCard: {
     width: (SCREEN_WIDTH - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,

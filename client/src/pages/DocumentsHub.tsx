@@ -407,6 +407,175 @@ function CompactReceiptCard({ receipt, onView, onViewInvoice }: {
   );
 }
 
+function QuoteListRow({ 
+  quote, 
+  onView, 
+  onSend, 
+  onConvert, 
+  linkedInvoice,
+  onViewInvoice 
+}: { 
+  quote: any; 
+  onView: () => void;
+  onSend: () => void;
+  onConvert: () => void;
+  linkedInvoice?: any;
+  onViewInvoice?: () => void;
+}) {
+  const statusConfig = getQuoteStatusConfig(quote.status);
+  const amount = normalizeToDollars(quote.total);
+  
+  return (
+    <div 
+      className="flex items-center gap-4 p-3 hover-elevate active-elevate-2 cursor-pointer rounded-lg border bg-card"
+      onClick={onView}
+      data-testid={`quote-row-${quote.id}`}
+    >
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm truncate">{quote.title || quote.number}</p>
+      </div>
+      <Badge className={cn("text-xs px-2 shrink-0", statusConfig.className)}>
+        {statusConfig.label}
+      </Badge>
+      <div className="w-24 text-right text-xs text-muted-foreground hidden sm:block">
+        {quote.createdAt ? new Date(quote.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '-'}
+      </div>
+      <div className="w-32 text-sm font-semibold text-right shrink-0">{formatCurrency(amount)}</div>
+      <div className="w-8 shrink-0">
+        {(quote.status === 'draft' || quote.status === 'accepted') && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {quote.status === 'draft' && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSend(); }}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Mark Sent
+                </DropdownMenuItem>
+              )}
+              {quote.status === 'accepted' && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onConvert(); }}>
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Convert to Invoice
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InvoiceListRow({ 
+  invoice, 
+  onView, 
+  onSend, 
+  onMarkPaid, 
+  onCreateLink, 
+  linkedReceipt, 
+  onViewReceipt,
+  onViewJob 
+}: { 
+  invoice: any; 
+  onView: () => void;
+  onSend: () => void;
+  onMarkPaid: () => void;
+  onCreateLink: () => void;
+  linkedReceipt?: any;
+  onViewReceipt?: () => void;
+  onViewJob?: () => void;
+}) {
+  const statusConfig = getInvoiceStatusConfig(invoice.status);
+  const amount = normalizeToDollars(invoice.total);
+  
+  return (
+    <div 
+      className="flex items-center gap-4 p-3 hover-elevate active-elevate-2 cursor-pointer rounded-lg border bg-card"
+      onClick={onView}
+      data-testid={`invoice-row-${invoice.id}`}
+    >
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm truncate">{invoice.title || invoice.number}</p>
+      </div>
+      <Badge className={cn("text-xs px-2 shrink-0", statusConfig.className)}>
+        {statusConfig.label}
+      </Badge>
+      <div className="w-24 text-right text-xs text-muted-foreground hidden sm:block">
+        {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '-'}
+      </div>
+      <div className="w-32 text-sm font-semibold text-right shrink-0">{formatCurrency(amount)}</div>
+      <div className="w-8 shrink-0">
+        {(invoice.status === 'draft' || invoice.status === 'sent' || invoice.status === 'overdue') && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {invoice.status === 'draft' && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSend(); }}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Mark Sent
+                </DropdownMenuItem>
+              )}
+              {(invoice.status === 'sent' || invoice.status === 'overdue') && (
+                <>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkPaid(); }}>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Mark Paid
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onCreateLink(); }}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Payment Link
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ReceiptListRow({ receipt, onView, onViewInvoice }: { 
+  receipt: any; 
+  onView: () => void;
+  onViewInvoice?: () => void;
+}) {
+  const amount = normalizeToDollars(receipt.amount);
+  const paymentMethodLabel = receipt.paymentMethod === 'bank_transfer' ? 'Bank' 
+    : receipt.paymentMethod === 'card' ? 'Card' 
+    : receipt.paymentMethod === 'tap_to_pay' ? 'Tap'
+    : receipt.paymentMethod === 'cash' ? 'Cash' 
+    : receipt.paymentMethod || 'Unknown';
+  
+  return (
+    <div 
+      className="flex items-center gap-4 p-3 hover-elevate active-elevate-2 cursor-pointer rounded-lg border bg-card"
+      onClick={onView}
+      data-testid={`receipt-row-${receipt.id}`}
+    >
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm truncate">{receipt.receiptNumber || receipt.description || 'Receipt'}</p>
+      </div>
+      <Badge className="text-xs px-2 shrink-0 bg-green-500/10 text-green-600 dark:text-green-400">
+        {paymentMethodLabel}
+      </Badge>
+      <div className="w-24 text-right text-xs text-muted-foreground hidden sm:block">
+        {receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '-'}
+      </div>
+      <div className="w-32 text-sm font-semibold text-right shrink-0 text-green-600 dark:text-green-400">+{formatCurrency(amount)}</div>
+      <div className="w-8 shrink-0" />
+    </div>
+  );
+}
+
 function DocumentSkeleton() {
   return (
     <Card>
@@ -423,6 +592,17 @@ function DocumentSkeleton() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ListSkeleton() {
+  return (
+    <div className="flex items-center gap-4 p-3 rounded-lg border bg-card">
+      <Skeleton className="h-4 w-40 flex-1" />
+      <Skeleton className="h-5 w-16" />
+      <Skeleton className="h-4 w-24 hidden sm:block" />
+      <Skeleton className="h-4 w-20" />
+    </div>
   );
 }
 
@@ -900,11 +1080,19 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
         <TabsContent value="quotes" className="mt-0 h-full">
           <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" : "space-y-2")}>
             {quotesLoading ? (
-              <>
-                <DocumentSkeleton />
-                <DocumentSkeleton />
-                <DocumentSkeleton />
-              </>
+              viewMode === 'grid' ? (
+                <>
+                  <DocumentSkeleton />
+                  <DocumentSkeleton />
+                  <DocumentSkeleton />
+                </>
+              ) : (
+                <>
+                  <ListSkeleton />
+                  <ListSkeleton />
+                  <ListSkeleton />
+                </>
+              )
             ) : filteredQuotes.length === 0 ? (
               searchTerm || quoteFilter !== 'all' ? (
                 <div className="text-center py-8 text-muted-foreground col-span-full">
@@ -916,10 +1104,20 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                 </div>
               )
             ) : (
-              filteredQuotes.map((quote: any) => {
-                const linkedInvoice = invoicesByQuoteId.get(quote.id);
-                return (
-                  <CompactQuoteCard
+              <>
+                {viewMode === 'list' && (
+                  <div className="flex items-center gap-4 px-3 py-2 text-xs font-medium text-muted-foreground border-b mb-2">
+                    <div className="flex-1">Quote</div>
+                    <div className="w-16 text-center">Status</div>
+                    <div className="w-24 text-right hidden sm:block">Created</div>
+                    <div className="w-32 text-right">Amount</div>
+                    <div className="w-8" />
+                  </div>
+                )}
+                {filteredQuotes.map((quote: any) => {
+                  const linkedInvoice = invoicesByQuoteId.get(quote.id);
+                  return viewMode === 'grid' ? (
+                    <CompactQuoteCard
                     key={quote.id}
                     quote={quote}
                     onView={() => navigate(`/quotes/${quote.id}`)}
@@ -928,8 +1126,19 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                     linkedInvoice={linkedInvoice}
                     onViewInvoice={linkedInvoice ? () => navigate(`/invoices/${linkedInvoice.id}`) : undefined}
                   />
-                );
-              })
+                  ) : (
+                    <QuoteListRow
+                      key={quote.id}
+                      quote={quote}
+                      onView={() => navigate(`/quotes/${quote.id}`)}
+                      onSend={() => handleSendQuote(quote)}
+                      onConvert={() => handleConvertToInvoice(quote)}
+                      linkedInvoice={linkedInvoice}
+                      onViewInvoice={linkedInvoice ? () => navigate(`/invoices/${linkedInvoice.id}`) : undefined}
+                    />
+                  );
+                })}
+              </>
             )}
           </div>
         </TabsContent>
@@ -937,11 +1146,19 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
         <TabsContent value="invoices" className="mt-0 h-full">
           <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" : "space-y-2")}>
             {invoicesLoading ? (
-              <>
-                <DocumentSkeleton />
-                <DocumentSkeleton />
-                <DocumentSkeleton />
-              </>
+              viewMode === 'grid' ? (
+                <>
+                  <DocumentSkeleton />
+                  <DocumentSkeleton />
+                  <DocumentSkeleton />
+                </>
+              ) : (
+                <>
+                  <ListSkeleton />
+                  <ListSkeleton />
+                  <ListSkeleton />
+                </>
+              )
             ) : filteredInvoices.length === 0 ? (
               searchTerm || invoiceFilter !== 'all' ? (
                 <div className="text-center py-8 text-muted-foreground col-span-full">
@@ -953,22 +1170,45 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                 </div>
               )
             ) : (
-              filteredInvoices.map((invoice: any) => {
-                const linkedReceipt = receiptsByInvoiceId.get(invoice.id);
-                return (
-                  <CompactInvoiceCard
-                    key={invoice.id}
-                    invoice={invoice}
-                    onView={() => navigate(`/invoices/${invoice.id}`)}
-                    onSend={() => handleSendInvoice(invoice)}
-                    onMarkPaid={() => handleMarkPaid(invoice)}
-                    onCreateLink={() => handleCreatePaymentLink(invoice)}
-                    linkedReceipt={linkedReceipt}
-                    onViewReceipt={linkedReceipt ? () => navigate(`/receipts/${linkedReceipt.id}`) : undefined}
-                    onViewJob={invoice.jobId ? () => navigate(`/jobs/${invoice.jobId}`) : undefined}
-                  />
-                );
-              })
+              <>
+                {viewMode === 'list' && (
+                  <div className="flex items-center gap-4 px-3 py-2 text-xs font-medium text-muted-foreground border-b mb-2">
+                    <div className="flex-1">Invoice</div>
+                    <div className="w-16 text-center">Status</div>
+                    <div className="w-24 text-right hidden sm:block">Due</div>
+                    <div className="w-32 text-right">Amount</div>
+                    <div className="w-8" />
+                  </div>
+                )}
+                {filteredInvoices.map((invoice: any) => {
+                  const linkedReceipt = receiptsByInvoiceId.get(invoice.id);
+                  return viewMode === 'grid' ? (
+                    <CompactInvoiceCard
+                      key={invoice.id}
+                      invoice={invoice}
+                      onView={() => navigate(`/invoices/${invoice.id}`)}
+                      onSend={() => handleSendInvoice(invoice)}
+                      onMarkPaid={() => handleMarkPaid(invoice)}
+                      onCreateLink={() => handleCreatePaymentLink(invoice)}
+                      linkedReceipt={linkedReceipt}
+                      onViewReceipt={linkedReceipt ? () => navigate(`/receipts/${linkedReceipt.id}`) : undefined}
+                      onViewJob={invoice.jobId ? () => navigate(`/jobs/${invoice.jobId}`) : undefined}
+                    />
+                  ) : (
+                    <InvoiceListRow
+                      key={invoice.id}
+                      invoice={invoice}
+                      onView={() => navigate(`/invoices/${invoice.id}`)}
+                      onSend={() => handleSendInvoice(invoice)}
+                      onMarkPaid={() => handleMarkPaid(invoice)}
+                      onCreateLink={() => handleCreatePaymentLink(invoice)}
+                      linkedReceipt={linkedReceipt}
+                      onViewReceipt={linkedReceipt ? () => navigate(`/receipts/${linkedReceipt.id}`) : undefined}
+                      onViewJob={invoice.jobId ? () => navigate(`/jobs/${invoice.jobId}`) : undefined}
+                    />
+                  );
+                })}
+              </>
             )}
           </div>
         </TabsContent>
@@ -976,11 +1216,19 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
         <TabsContent value="receipts" className="mt-0 h-full">
           <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" : "space-y-2")}>
             {receiptsLoading ? (
-              <>
-                <DocumentSkeleton />
-                <DocumentSkeleton />
-                <DocumentSkeleton />
-              </>
+              viewMode === 'grid' ? (
+                <>
+                  <DocumentSkeleton />
+                  <DocumentSkeleton />
+                  <DocumentSkeleton />
+                </>
+              ) : (
+                <>
+                  <ListSkeleton />
+                  <ListSkeleton />
+                  <ListSkeleton />
+                </>
+              )
             ) : filteredReceipts.length === 0 ? (
               searchTerm || receiptFilter !== 'all' ? (
                 <div className="text-center py-8 text-muted-foreground col-span-full">
@@ -992,14 +1240,34 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                 </div>
               )
             ) : (
-              filteredReceipts.map((receipt: any) => (
-                <CompactReceiptCard
-                  key={receipt.id}
-                  receipt={receipt}
-                  onView={() => navigate(`/receipts/${receipt.id}`)}
-                  onViewInvoice={receipt.invoiceId ? () => navigate(`/invoices/${receipt.invoiceId}`) : undefined}
-                />
-              ))
+              <>
+                {viewMode === 'list' && (
+                  <div className="flex items-center gap-4 px-3 py-2 text-xs font-medium text-muted-foreground border-b mb-2">
+                    <div className="flex-1">Receipt</div>
+                    <div className="w-16 text-center">Method</div>
+                    <div className="w-24 text-right hidden sm:block">Date</div>
+                    <div className="w-32 text-right">Amount</div>
+                    <div className="w-8" />
+                  </div>
+                )}
+                {filteredReceipts.map((receipt: any) => (
+                  viewMode === 'grid' ? (
+                    <CompactReceiptCard
+                      key={receipt.id}
+                      receipt={receipt}
+                      onView={() => navigate(`/receipts/${receipt.id}`)}
+                      onViewInvoice={receipt.invoiceId ? () => navigate(`/invoices/${receipt.invoiceId}`) : undefined}
+                    />
+                  ) : (
+                    <ReceiptListRow
+                      key={receipt.id}
+                      receipt={receipt}
+                      onView={() => navigate(`/receipts/${receipt.id}`)}
+                      onViewInvoice={receipt.invoiceId ? () => navigate(`/invoices/${receipt.invoiceId}`) : undefined}
+                    />
+                  )
+                ))}
+              </>
             )}
           </div>
         </TabsContent>
