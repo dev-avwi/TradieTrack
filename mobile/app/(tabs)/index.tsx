@@ -1211,8 +1211,16 @@ export default function DashboardScreen() {
               }
               
               if (clientId) {
-                await api.post(`/api/jobs/${jobId}/on-my-way`);
-                Alert.alert('Sent!', 'Client has been notified.');
+                const response = await api.post(`/api/jobs/${jobId}/on-my-way`);
+                if (response.demoMode) {
+                  Alert.alert(
+                    'SMS Not Configured',
+                    'Twilio SMS is not set up. The "On My Way" action was logged but no message was sent to the client.\n\nSet up Twilio in Settings > Integrations to enable real SMS notifications.',
+                    [{ text: 'OK' }]
+                  );
+                } else {
+                  Alert.alert('Sent!', 'Client has been notified via SMS.');
+                }
               }
               router.push(`/job/${jobId}`);
             } catch (error: any) {
