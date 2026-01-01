@@ -93,22 +93,22 @@ export async function createDemoUserAndData() {
         return null;
       }
       demoUser = await storage.getUserByEmail(DEMO_USER.email);
-      // Set platform admin access on new user
+      // Verify email for new demo user (NOT platform admin - that's only for admin@avwebinnovation.com)
       if (demoUser) {
         await storage.updateUser(demoUser.id, { 
-          isPlatformAdmin: true,
+          isPlatformAdmin: false,
           emailVerified: true,
         });
         demoUser = await storage.getUserByEmail(DEMO_USER.email);
       }
-      console.log('✅ Demo user created with admin access:', DEMO_USER.email);
+      console.log('✅ Demo user created as business owner:', DEMO_USER.email);
     } else {
-      // Demo user exists - ensure password is correct and platform admin access
+      // Demo user exists - ensure password is correct (NOT platform admin - that's only for admin@avwebinnovation.com)
       const hashedPassword = await AuthService.hashPassword(DEMO_USER.password);
       await storage.updateUser(demoUser.id, { 
         password: hashedPassword,
         emailVerified: true,
-        isPlatformAdmin: true, // Enable admin dashboard access for demo
+        isPlatformAdmin: false, // Business owner, NOT platform admin
       });
       console.log('✅ Demo user already exists, password updated:', DEMO_USER.email);
     }
