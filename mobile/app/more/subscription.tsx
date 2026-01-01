@@ -79,7 +79,7 @@ const tiers: Tier[] = [
   {
     id: 'pro',
     name: 'Pro',
-    price: 39,
+    price: 49,
     description: 'For growing trade businesses',
     features: [
       { text: 'Unlimited jobs', included: true },
