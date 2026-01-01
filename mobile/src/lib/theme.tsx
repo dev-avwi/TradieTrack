@@ -242,10 +242,14 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
 /**
  * Safely converts a color (hex or hsl) to rgba with specified opacity.
  * Handles both hex colors (#RRGGBB) and HSL strings (hsl(...)).
+ * If conversion fails, uses the provided fallbackColor or defaults to primary blue.
  */
 export function colorWithOpacity(color: string, opacity: number, fallbackColor?: string): string {
+  // Default fallback is theme primary blue
+  const defaultFallback = `rgba(59, 89, 152, ${opacity})`;
+  
   if (!color || typeof color !== 'string') {
-    return fallbackColor ? `rgba(128, 128, 128, ${opacity})` : `rgba(128, 128, 128, ${opacity})`;
+    return fallbackColor || defaultFallback;
   }
   
   const cleanColor = color.trim();
@@ -285,8 +289,8 @@ export function colorWithOpacity(color: string, opacity: number, fallbackColor?:
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   }
   
-  // For unknown formats, use primary blue as fallback
-  return `rgba(59, 89, 152, ${opacity})`;
+  // For unknown formats, use provided fallback or default primary blue
+  return fallbackColor || defaultFallback;
 }
 
 function generateBrandPalette(brandColor: string, isDark: boolean): Partial<ThemeColors> {
