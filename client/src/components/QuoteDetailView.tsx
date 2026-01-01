@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt } from "lucide-react";
+import { useConvertQuoteToInvoice } from "@/hooks/use-quotes";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, getSessionToken } from "@/lib/queryClient";
@@ -38,6 +39,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const { toast } = useToast();
 
   const emailConnected = isEmailReady(integrationHealth);
+  const convertToInvoiceMutation = useConvertQuoteToInvoice();
   const brandColor = businessSettings?.brandColor || '#2563eb';
   const templateId = (businessSettings?.documentTemplate as TemplateId) || DEFAULT_TEMPLATE;
   const templateStyles = getTemplateStyles(templateId, brandColor);
@@ -460,6 +462,29 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
       : undefined;
   };
 
+  // Convert quote to invoice
+  const handleConvertToInvoice = async () => {
+    if (!quote) return;
+    try {
+      const result = await convertToInvoiceMutation.mutateAsync(quote.id);
+      toast({
+        title: "Invoice Created",
+        description: `Quote ${quote.number} has been converted to invoice ${result?.number || ''}`,
+      });
+      // Navigate to the new invoice
+      if (result?.id) {
+        setLocation(`/invoices/${result.id}`);
+      }
+    } catch (error) {
+      console.error('Error converting quote to invoice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to convert quote to invoice. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading || !quote) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -595,6 +620,19 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
               >
                 <Briefcase className="h-4 w-4 mr-2" />
                 Create Job
+              </Button>
+            )}
+            {/* Convert to Invoice - for accepted quotes */}
+            {quote.status === 'accepted' && (
+              <Button 
+                onClick={handleConvertToInvoice}
+                variant="outline"
+                disabled={convertToInvoiceMutation.isPending}
+                className="w-full sm:w-auto"
+                data-testid="button-convert-to-invoice"
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                {convertToInvoiceMutation.isPending ? 'Converting...' : 'Convert to Invoice'}
               </Button>
             )}
             {/* View linked job if exists */}
