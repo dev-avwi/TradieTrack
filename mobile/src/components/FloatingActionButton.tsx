@@ -26,15 +26,15 @@ interface FABAction {
   color?: string;
 }
 
-// Theme-aware action color generator
-const getActionColors = (colors: ThemeColors) => ({
-  job: colors.primary,                    // Primary blue
-  quote: colors.accent || colors.primary, // Accent or primary
-  invoice: colors.success || '#10B981',   // Success green
-  payment: colors.warning || '#F59E0B',   // Warning amber
-  client: colors.secondary || colors.mutedForeground,
-  ai: colors.primary,                     // Primary for AI
-});
+// Distinct action colors for visibility
+const ACTION_COLORS = {
+  job: '#3B82F6',      // Blue - highly visible
+  quote: '#8B5CF6',    // Purple - distinct
+  invoice: '#10B981',  // Green
+  payment: '#F59E0B',  // Amber
+  client: '#EC4899',   // Pink
+  assign: '#6366F1',   // Indigo
+};
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   fabButton: {
@@ -170,11 +170,8 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     }).start();
   };
 
-  // Get theme-aware action colors
-  const actionColors = getActionColors(colors);
-
-  // Main grid actions - all roles get these 4 core actions
-  type ColorKey = keyof ReturnType<typeof getActionColors>;
+  // Main grid actions - 4 core create actions
+  type ColorKey = keyof typeof ACTION_COLORS;
   const gridActions: (FABAction & { colorKey: ColorKey })[] = [
     {
       icon: 'briefcase',
@@ -204,38 +201,15 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
       },
     },
     {
-      icon: 'credit-card',
-      label: 'Collect Payment',
-      colorKey: 'payment',
+      icon: 'user-plus',
+      label: 'New Client',
+      colorKey: 'client',
       onPress: () => {
         setIsOpen(false);
-        router.push('/more/collect-payment');
+        router.push('/more/client/new');
       },
     },
   ];
-
-  // Role-based right action: Assign Job for owners/managers, New Client for others
-  const rightBarAction = isTeamOwner ? {
-    icon: 'users' as const,
-    label: 'Assign Job',
-    colorKey: 'client' as ColorKey,
-    onPress: () => {
-      setIsOpen(false);
-      if (onAssignPress) {
-        onAssignPress();
-      } else {
-        router.push('/more/team-management');
-      }
-    },
-  } : {
-    icon: 'user-plus' as const,
-    label: 'New Client',
-    colorKey: 'client' as ColorKey,
-    onPress: () => {
-      setIsOpen(false);
-      router.push('/more/client/new');
-    },
-  };
 
   return (
     <>
@@ -274,10 +248,10 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
             <View style={styles.menuHandle} />
             <Text style={styles.menuTitle}>Quick Create</Text>
             
-            {/* Main grid with themed colored icons */}
+            {/* Main grid with distinct colored icons */}
             <View style={styles.menuGrid}>
               {gridActions.map((action, index) => {
-                const actionColor = actionColors[action.colorKey];
+                const actionColor = ACTION_COLORS[action.colorKey];
                 return (
                   <TouchableOpacity
                     key={index}
@@ -285,7 +259,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                     onPress={action.onPress}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.menuItemIcon, { backgroundColor: colorWithOpacity(actionColor, 0.12) }]}>
+                    <View style={[styles.menuItemIcon, { backgroundColor: colorWithOpacity(actionColor, 0.15) }]}>
                       <Feather 
                         name={action.icon} 
                         size={22} 
@@ -298,27 +272,48 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
               })}
             </View>
 
-            {/* Bottom bar: AI Assistant (left) + Role-based action (right) */}
+            {/* Bottom bar: AI Assistant, Assign Job, Collect Payment */}
             <View style={styles.quickActionsBar}>
               <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: colorWithOpacity(actionColors.ai, 0.1) }]}
+                style={[styles.quickActionButton, { backgroundColor: colorWithOpacity(ACTION_COLORS.job, 0.12) }]}
                 onPress={() => {
                   setIsOpen(false);
                   router.push('/more/ai-assistant');
                 }}
                 activeOpacity={0.7}
               >
-                <Feather name="zap" size={18} color={actionColors.ai} />
-                <Text style={[styles.quickActionText, { color: actionColors.ai }]}>AI Assistant</Text>
+                <Feather name="zap" size={16} color={ACTION_COLORS.job} />
+                <Text style={[styles.quickActionText, { color: ACTION_COLORS.job, fontSize: 11 }]}>AI</Text>
               </TouchableOpacity>
 
+              {isTeamOwner && (
+                <TouchableOpacity
+                  style={[styles.quickActionButton, { backgroundColor: colorWithOpacity(ACTION_COLORS.assign, 0.12) }]}
+                  onPress={() => {
+                    setIsOpen(false);
+                    if (onAssignPress) {
+                      onAssignPress();
+                    } else {
+                      router.push('/more/team-management');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="users" size={16} color={ACTION_COLORS.assign} />
+                  <Text style={[styles.quickActionText, { color: ACTION_COLORS.assign, fontSize: 11 }]}>Assign</Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: colorWithOpacity(actionColors[rightBarAction.colorKey], 0.1) }]}
-                onPress={rightBarAction.onPress}
+                style={[styles.quickActionButton, { backgroundColor: colorWithOpacity(ACTION_COLORS.payment, 0.12) }]}
+                onPress={() => {
+                  setIsOpen(false);
+                  router.push('/more/collect-payment');
+                }}
                 activeOpacity={0.7}
               >
-                <Feather name={rightBarAction.icon} size={18} color={actionColors[rightBarAction.colorKey]} />
-                <Text style={[styles.quickActionText, { color: actionColors[rightBarAction.colorKey] }]}>{rightBarAction.label}</Text>
+                <Feather name="credit-card" size={16} color={ACTION_COLORS.payment} />
+                <Text style={[styles.quickActionText, { color: ACTION_COLORS.payment, fontSize: 11 }]}>Collect</Text>
               </TouchableOpacity>
             </View>
 
