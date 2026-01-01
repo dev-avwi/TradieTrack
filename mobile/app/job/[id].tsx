@@ -1606,11 +1606,11 @@ export default function JobDetailScreen() {
   const { businessSettings, roleInfo, user } = useAuthStore();
   
   // Check if user can delete jobs (owner, admin, or manager only)
-  // - If roleInfo exists: check if they're OWNER/ADMIN/MANAGER
+  // - If roleInfo.isOwner is true: they're the business owner
+  // - If roleInfo exists with OWNER/ADMIN/MANAGER role: they have delete permission
   // - If roleInfo is null and user exists with their own business: they're a solo owner
-  // - Staff/tradie roles (STAFF, TECHNICIAN, etc.) will have roleInfo but not be in the allowed list
   const isOwnerOrManager = roleInfo 
-    ? ['OWNER', 'ADMIN', 'MANAGER'].includes(roleInfo.roleName?.toUpperCase() || '')
+    ? (roleInfo.isOwner || ['OWNER', 'ADMIN', 'MANAGER'].includes(roleInfo.roleName?.toUpperCase() || ''))
     : false;
   const isSoloOwner = user && businessSettings && !roleInfo;
   const canDeleteJobs = isOwnerOrManager || isSoloOwner;
@@ -4509,24 +4509,20 @@ export default function JobDetailScreen() {
           title: '',
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
-          headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-              {canDeleteJobs && (
-                <TouchableOpacity
-                  onPress={handleDeleteJob}
-                  disabled={isDeletingJob}
-                  style={{ padding: spacing.sm, marginRight: spacing.sm }}
-                  data-testid="button-delete-job"
-                >
-                  {isDeletingJob ? (
-                    <ActivityIndicator size="small" color={colors.destructive} />
-                  ) : (
-                    <Feather name="trash-2" size={iconSizes.md} color={colors.destructive} />
-                  )}
-                </TouchableOpacity>
+          headerRight: () => canDeleteJobs ? (
+            <TouchableOpacity
+              onPress={handleDeleteJob}
+              disabled={isDeletingJob}
+              style={{ padding: spacing.sm, marginRight: spacing.sm }}
+              data-testid="button-delete-job"
+            >
+              {isDeletingJob ? (
+                <ActivityIndicator size="small" color={colors.destructive} />
+              ) : (
+                <Feather name="trash-2" size={iconSizes.md} color={colors.destructive} />
               )}
-            </View>
-          ),
+            </TouchableOpacity>
+          ) : undefined,
           headerStyle: {
             backgroundColor: colors.background,
           },
