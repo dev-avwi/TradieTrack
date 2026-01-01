@@ -223,7 +223,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
           ]}
         >
           <Feather 
-            name={isOpen ? 'x' : 'plus'} 
+            name={isOpen ? 'x' : 'star'} 
             size={24} 
             color={isOpen ? colors.background : colors.primaryForeground} 
           />
