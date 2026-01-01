@@ -239,6 +239,56 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
     : null;
 }
 
+/**
+ * Safely converts a color (hex or hsl) to rgba with specified opacity.
+ * Handles both hex colors (#RRGGBB) and HSL strings (hsl(...)).
+ */
+export function colorWithOpacity(color: string, opacity: number, fallbackColor?: string): string {
+  if (!color || typeof color !== 'string') {
+    return fallbackColor ? `rgba(128, 128, 128, ${opacity})` : `rgba(128, 128, 128, ${opacity})`;
+  }
+  
+  const cleanColor = color.trim();
+  
+  // Handle hex colors
+  if (cleanColor.startsWith('#')) {
+    const rgb = hexToRgb(cleanColor);
+    if (rgb) {
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+    }
+  }
+  
+  // Handle HSL colors: hsl(h s% l%) or hsl(h, s%, l%)
+  const hslMatch = cleanColor.match(/hsl\(\s*(\d+)\s*[,\s]\s*(\d+(?:\.\d+)?)\s*%?\s*[,\s]\s*(\d+(?:\.\d+)?)\s*%?\s*\)/i);
+  if (hslMatch) {
+    const h = parseFloat(hslMatch[1]);
+    const s = parseFloat(hslMatch[2]) / 100;
+    const l = parseFloat(hslMatch[3]) / 100;
+    
+    // Convert HSL to RGB
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    const m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    
+    r = Math.round((r + m) * 255);
+    g = Math.round((g + m) * 255);
+    b = Math.round((b + m) * 255);
+    
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  }
+  
+  // For unknown formats, use primary blue as fallback
+  return `rgba(59, 89, 152, ${opacity})`;
+}
+
 function generateBrandPalette(brandColor: string, isDark: boolean): Partial<ThemeColors> {
   if (!brandColor || !/^#[0-9A-Fa-f]{6}$/.test(brandColor)) {
     return {};

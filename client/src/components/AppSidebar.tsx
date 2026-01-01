@@ -188,9 +188,18 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
               <AvatarFallback>{initials || <User className="h-4 w-4" />}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate" data-testid="text-footer-business-name">
-                {businessName}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium truncate" data-testid="text-footer-business-name">
+                  {businessName}
+                </p>
+                <Badge 
+                  variant="outline" 
+                  className="text-[10px] h-5 px-1.5"
+                  data-testid="badge-user-role"
+                >
+                  {isOwner ? 'Owner' : userRole || 'Team'}
+                </Badge>
+              </div>
               <p className="text-xs text-muted-foreground truncate">
                 {businessSettings?.subscriptionTier === 'team' ? 'Team Plan' : 
                  businessSettings?.subscriptionTier === 'pro' ? 'Pro Plan' : 

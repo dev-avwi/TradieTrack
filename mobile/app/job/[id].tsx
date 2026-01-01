@@ -33,7 +33,7 @@ import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/
 import { Button } from '../../src/components/ui/Button';
 import { AIPhotoAnalysisModal } from '../../src/components/AIPhotoAnalysis';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
@@ -4513,13 +4513,21 @@ export default function JobDetailScreen() {
             <TouchableOpacity
               onPress={handleDeleteJob}
               disabled={isDeletingJob}
-              style={{ padding: spacing.sm, marginRight: spacing.sm }}
+              style={{ 
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: colorWithOpacity(colors.destructive, 0.1),
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: spacing.sm,
+              }}
               data-testid="button-delete-job"
             >
               {isDeletingJob ? (
                 <ActivityIndicator size="small" color={colors.destructive} />
               ) : (
-                <Feather name="trash-2" size={iconSizes.md} color={colors.destructive} />
+                <Feather name="trash-2" size={18} color={colors.destructive} />
               )}
             </TouchableOpacity>
           ) : undefined,

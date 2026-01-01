@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useTheme, ThemeColors } from '../lib/theme';
+import { useTheme, ThemeColors, colorWithOpacity } from '../lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../lib/design-tokens';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -29,12 +29,12 @@ interface FABAction {
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   fabButton: {
     position: 'absolute',
-    bottom: 110,
+    bottom: 24,
     right: 20,
-    // iOS: True pill shape (wider, shorter), Android: Material circular FAB
-    width: isIOS ? 64 : 56,
-    height: isIOS ? 48 : 56,
-    borderRadius: isIOS ? 24 : 28, // iOS: half of height for true pill, Android: half of size for circle
+    // iOS: True pill shape (wider, shorter), Android: Material circular FAB (56x56 minimum)
+    width: isIOS ? 56 : 56,
+    height: isIOS ? 44 : 56,
+    borderRadius: isIOS ? 22 : 28,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -57,36 +57,37 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   menuContainer: {
     backgroundColor: colors.card,
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
-    paddingTop: spacing.lg,
-    paddingBottom: 40,
-    paddingHorizontal: spacing.lg,
+    borderTopLeftRadius: radius['xl'],
+    borderTopRightRadius: radius['xl'],
+    paddingTop: spacing.md,
+    paddingBottom: 24,
+    paddingHorizontal: spacing.md,
   },
   menuHandle: {
-    width: 36,
+    width: 32,
     height: 4,
     backgroundColor: colors.border,
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   menuTitle: {
-    ...typography.subtitle,
+    ...typography.body,
+    fontWeight: '600',
     color: colors.foreground,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     textAlign: 'center',
   },
   menuGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: spacing.lg,
+    gap: spacing.sm,
   },
   menuItem: {
     alignItems: 'center',
-    width: 80,
-    paddingVertical: spacing.md,
+    width: 72,
+    paddingVertical: spacing.xs,
   },
   menuItemIcon: {
     width: 56,
@@ -94,11 +95,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
-    ...shadows.sm,
+    marginBottom: spacing.xs,
   },
   menuItemLabel: {
-    ...typography.caption,
+    ...typography.captionSmall,
     color: colors.foreground,
     textAlign: 'center',
     fontWeight: '500',
@@ -163,7 +163,6 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     {
       icon: 'briefcase',
       label: 'New Job',
-      color: colors.primary,
       onPress: () => {
         setIsOpen(false);
         router.push('/job/create');
@@ -172,7 +171,6 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     {
       icon: 'file-text',
       label: 'New Quote',
-      color: colors.info,
       onPress: () => {
         setIsOpen(false);
         router.push('/more/quote/new');
@@ -181,7 +179,6 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     {
       icon: 'dollar-sign',
       label: 'New Invoice',
-      color: colors.success,
       onPress: () => {
         setIsOpen(false);
         router.push('/more/invoice/new');
@@ -190,7 +187,6 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     {
       icon: 'credit-card',
       label: 'Collect Payment',
-      color: colors.done || '#22C55E',
       onPress: () => {
         setIsOpen(false);
         router.push('/more/collect-payment');
@@ -199,7 +195,6 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     {
       icon: 'users',
       label: 'Assign Job',
-      color: colors.warning,
       onPress: () => {
         setIsOpen(false);
         if (onAssignPress) {
@@ -212,7 +207,6 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     {
       icon: 'zap',
       label: 'AI Assistant',
-      color: colors.accent || '#8B5CF6',
       onPress: () => {
         setIsOpen(false);
         router.push('/more/ai-assistant');
@@ -265,11 +259,11 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                   onPress={action.onPress}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.menuItemIcon, { backgroundColor: `${action.color}15` }]}>
+                  <View style={[styles.menuItemIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
                     <Feather 
                       name={action.icon} 
                       size={24} 
-                      color={action.color} 
+                      color={colors.primary} 
                     />
                   </View>
                   <Text style={styles.menuItemLabel}>{action.label}</Text>

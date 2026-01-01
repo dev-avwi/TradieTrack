@@ -18,7 +18,7 @@ import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore } from '
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
@@ -1303,7 +1303,14 @@ export default function DashboardScreen() {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>{getGreeting()}, {userName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Text style={styles.headerTitle}>{getGreeting()}, {userName}</Text>
+              <View style={[styles.roleBadge, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
+                <Text style={[styles.roleBadgeText, { color: colors.primary }]}>
+                  {isOwner() ? 'Owner' : roleInfo?.roleName || 'Team'}
+                </Text>
+              </View>
+            </View>
             <Text style={styles.headerSubtitle}>
               {todaysJobs.length > 0 
                 ? `You have ${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} scheduled today`
@@ -1766,6 +1773,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
     marginTop: spacing.xs,
+  },
+  roleBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.md,
+  },
+  roleBadgeText: {
+    ...typography.captionSmall,
+    fontWeight: '600',
   },
   headerRight: {
     flexDirection: 'row',
