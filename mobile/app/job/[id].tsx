@@ -84,6 +84,14 @@ interface Quote {
   status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired';
 }
 
+interface LinkedReceipt {
+  id: string;
+  receiptNumber?: string;
+  amount: number;
+  paymentMethod?: string;
+  createdAt?: string;
+}
+
 interface Client {
   id: string;
   name: string;
@@ -1518,6 +1526,7 @@ export default function JobDetailScreen() {
   const [client, setClient] = useState<Client | null>(null);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [linkedReceipt, setLinkedReceipt] = useState<LinkedReceipt | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -2174,17 +2183,42 @@ export default function JobDetailScreen() {
         }
         
         if (response.data.linkedInvoice) {
+          const linkedInv = response.data.linkedInvoice;
           setInvoice({
-            id: response.data.linkedInvoice.id,
-            number: response.data.linkedInvoice.number,
-            title: response.data.linkedInvoice.title,
-            total: parseFloat(response.data.linkedInvoice.total) || 0,
-            status: response.data.linkedInvoice.status,
-            dueDate: response.data.linkedInvoice.dueDate,
-            paidAmount: 0, // Not in the response, default to 0
+            id: linkedInv.id,
+            number: linkedInv.number,
+            title: linkedInv.title,
+            total: parseFloat(linkedInv.total) || 0,
+            status: linkedInv.status,
+            dueDate: linkedInv.dueDate,
+            paidAmount: 0,
           });
+          
+          // If invoice is paid, try to fetch related receipt
+          if (linkedInv.status?.toLowerCase() === 'paid') {
+            try {
+              const receiptsResponse = await api.get<any[]>(`/api/receipts?invoiceId=${linkedInv.id}`);
+              if (receiptsResponse.data && receiptsResponse.data.length > 0) {
+                const receipt = receiptsResponse.data[0];
+                setLinkedReceipt({
+                  id: receipt.id,
+                  receiptNumber: receipt.receiptNumber,
+                  amount: parseFloat(receipt.amount) || 0,
+                  paymentMethod: receipt.paymentMethod,
+                  createdAt: receipt.createdAt,
+                });
+              } else {
+                setLinkedReceipt(null);
+              }
+            } catch {
+              setLinkedReceipt(null);
+            }
+          } else {
+            setLinkedReceipt(null);
+          }
         } else {
           setInvoice(null);
+          setLinkedReceipt(null);
         }
       }
     } catch (error) {
@@ -2192,6 +2226,7 @@ export default function JobDetailScreen() {
       // Clear the state on error
       setQuote(null);
       setInvoice(null);
+      setLinkedReceipt(null);
     }
   };
 
@@ -3388,9 +3423,11 @@ export default function JobDetailScreen() {
           total: invoice.total,
           invoiceNumber: invoice.number,
         } : null}
+        linkedReceipt={linkedReceipt}
         jobStatus={job.status}
         onViewQuote={handleViewQuote}
         onViewInvoice={handleViewInvoice}
+        onViewReceipt={(receiptId) => router.push(`/more/receipt/${receiptId}`)}
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />
@@ -3667,9 +3704,11 @@ export default function JobDetailScreen() {
           total: invoice.total,
           invoiceNumber: invoice.number,
         } : null}
+        linkedReceipt={linkedReceipt}
         jobStatus={job.status}
         onViewQuote={handleViewQuote}
         onViewInvoice={handleViewInvoice}
+        onViewReceipt={(receiptId) => router.push(`/more/receipt/${receiptId}`)}
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />

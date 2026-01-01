@@ -429,11 +429,13 @@ export default function QuoteDetailScreen() {
   const downloadPdfToCache = useCallback(async (): Promise<string | null> => {
     if (!quote) return null;
     
+    const PDF_TIMEOUT_MS = 60000;
+    
     try {
       const fileUri = `${FileSystem.cacheDirectory}${quote.quoteNumber || 'quote'}.pdf`;
       const authToken = await api.getToken();
       
-      const downloadResult = await FileSystem.downloadAsync(
+      const downloadPromise = FileSystem.downloadAsync(
         `${API_URL}/api/quotes/${id}/pdf`,
         fileUri,
         {
@@ -442,13 +444,19 @@ export default function QuoteDetailScreen() {
           },
         }
       );
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('PDF generation timed out. Please try again.')), PDF_TIMEOUT_MS);
+      });
+      
+      const downloadResult = await Promise.race([downloadPromise, timeoutPromise]);
 
       if (downloadResult.status !== 200) {
         throw new Error('Failed to download PDF');
       }
 
       return downloadResult.uri;
-    } catch (error) {
+    } catch (error: any) {
       console.log('PDF download error:', error);
       throw error;
     }
@@ -465,9 +473,12 @@ export default function QuoteDetailScreen() {
       }
       setPdfUri(uri);
       setShowShareSheet(true);
-    } catch (error) {
+    } catch (error: any) {
       console.log('PDF download error:', error);
-      Alert.alert('Error', 'Failed to download PDF. Please try again.');
+      const message = error?.message?.includes('timed out') 
+        ? 'PDF generation timed out. This may happen with complex quotes. Please try again.'
+        : 'Failed to download PDF. Please try again.';
+      Alert.alert('Error', message);
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -653,7 +664,7 @@ export default function QuoteDetailScreen() {
               ) : (
                 <Feather name="download" size={20} color={colors.primary} />
               )}
-              <Text style={styles.quickActionText}>PDF</Text>
+              <Text style={styles.quickActionText}>{isDownloadingPdf ? 'Generating...' : 'PDF'}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.quickAction}

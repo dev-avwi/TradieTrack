@@ -511,52 +511,94 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
       Alert.alert('No Data', 'Please wait for the report to load');
       return;
     }
-
-    let reportData = '';
+    
+    Alert.alert(
+      'Export Format',
+      'Choose export format for your report',
+      [
+        {
+          text: 'Spreadsheet (CSV)',
+          onPress: () => shareReportAsCSV(reportType),
+        },
+        {
+          text: 'Text Report',
+          onPress: () => shareReportAsText(reportType),
+        },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+  
+  const shareReportAsCSV = (reportType: string) => {
+    if (!summary) return;
+    
+    let csvData = '';
+    const periodLabel = PERIODS.find(p => p.key === period)?.label;
     
     switch (reportType) {
       case 'income':
-        reportData = `Income Report - ${PERIODS.find(p => p.key === period)?.label}
-
-Total Revenue: ${formatCurrency(summary.revenue.total)}
-Pending Revenue: ${formatCurrency(summary.revenue.pending)}
-Overdue Revenue: ${formatCurrency(summary.revenue.overdue)}
-
-Invoices Paid: ${summary.invoices.paid}
-Invoices Outstanding: ${summary.invoices.unpaid + summary.invoices.overdue}
-
-Generated: ${new Date().toLocaleDateString('en-AU')}`;
+        csvData = `TradieTrack Income Report - ${periodLabel}\n\n`;
+        csvData += `Metric,Amount\n`;
+        csvData += `Total Revenue,$${summary.revenue.total.toFixed(2)}\n`;
+        csvData += `Pending Revenue,$${summary.revenue.pending.toFixed(2)}\n`;
+        csvData += `Overdue Revenue,$${summary.revenue.overdue.toFixed(2)}\n`;
+        csvData += `GST Collected,$${summary.revenue.gstCollected.toFixed(2)}\n`;
+        csvData += `Invoices Paid,${summary.invoices.paid}\n`;
+        csvData += `Invoices Outstanding,${summary.invoices.unpaid + summary.invoices.overdue}\n`;
+        csvData += `\nGenerated,${new Date().toLocaleDateString('en-AU')}`;
         break;
       case 'jobs':
-        reportData = `Jobs Report - ${PERIODS.find(p => p.key === period)?.label}
-
-Total Jobs: ${summary.jobs.total}
-Completed: ${summary.jobs.completed}
-In Progress: ${summary.jobs.inProgress}
-Completion Rate: ${summary.jobs.total > 0 ? ((summary.jobs.completed / summary.jobs.total) * 100).toFixed(1) : 0}%
-
-Generated: ${new Date().toLocaleDateString('en-AU')}`;
+        csvData = `TradieTrack Jobs Report - ${periodLabel}\n\n`;
+        csvData += `Metric,Value\n`;
+        csvData += `Total Jobs,${summary.jobs.total}\n`;
+        csvData += `Completed,${summary.jobs.completed}\n`;
+        csvData += `In Progress,${summary.jobs.inProgress}\n`;
+        csvData += `Completion Rate,${summary.jobs.total > 0 ? ((summary.jobs.completed / summary.jobs.total) * 100).toFixed(1) : 0}%\n`;
+        csvData += `\nGenerated,${new Date().toLocaleDateString('en-AU')}`;
         break;
       case 'quotes':
-        reportData = `Quotes Report - ${PERIODS.find(p => p.key === period)?.label}
-
-Total Quotes: ${summary.quotes.total}
-Accepted: ${summary.quotes.accepted}
-Pending: ${summary.quotes.pending}
-Conversion Rate: ${summary.quotes.conversionRate.toFixed(1)}%
-
-Generated: ${new Date().toLocaleDateString('en-AU')}`;
+        csvData = `TradieTrack Quotes Report - ${periodLabel}\n\n`;
+        csvData += `Metric,Value\n`;
+        csvData += `Total Quotes,${summary.quotes.total}\n`;
+        csvData += `Accepted,${summary.quotes.accepted}\n`;
+        csvData += `Pending,${summary.quotes.pending}\n`;
+        csvData += `Conversion Rate,${summary.quotes.conversionRate.toFixed(1)}%\n`;
+        csvData += `\nGenerated,${new Date().toLocaleDateString('en-AU')}`;
         break;
       case 'tax':
-        reportData = `Tax Summary - ${PERIODS.find(p => p.key === period)?.label}
-
-GST Collected: ${formatCurrency(summary.revenue.gstCollected)}
-Total Revenue (incl GST): ${formatCurrency(summary.revenue.total)}
-
-Note: GST calculations are estimates based on 10% GST.
-Consult your accountant for accurate tax reporting.
-
-Generated: ${new Date().toLocaleDateString('en-AU')}`;
+        csvData = `TradieTrack Tax Summary - ${periodLabel}\n\n`;
+        csvData += `Metric,Amount\n`;
+        csvData += `GST Collected,$${summary.revenue.gstCollected.toFixed(2)}\n`;
+        csvData += `Total Revenue (incl GST),$${summary.revenue.total.toFixed(2)}\n`;
+        csvData += `\nNote: GST calculations are estimates based on 10% GST.\n`;
+        csvData += `Generated,${new Date().toLocaleDateString('en-AU')}`;
+        break;
+    }
+    
+    Share.share({
+      message: csvData,
+      title: `${reportType}_report_${period}.csv`
+    }).catch(() => Alert.alert('Error', 'Failed to export CSV'));
+  };
+  
+  const shareReportAsText = (reportType: string) => {
+    if (!summary) return;
+    
+    let reportData = '';
+    const periodLabel = PERIODS.find(p => p.key === period)?.label;
+    
+    switch (reportType) {
+      case 'income':
+        reportData = `Income Report - ${periodLabel}\n\nTotal Revenue: ${formatCurrency(summary.revenue.total)}\nPending Revenue: ${formatCurrency(summary.revenue.pending)}\nOverdue Revenue: ${formatCurrency(summary.revenue.overdue)}\n\nInvoices Paid: ${summary.invoices.paid}\nInvoices Outstanding: ${summary.invoices.unpaid + summary.invoices.overdue}\n\nGenerated: ${new Date().toLocaleDateString('en-AU')}`;
+        break;
+      case 'jobs':
+        reportData = `Jobs Report - ${periodLabel}\n\nTotal Jobs: ${summary.jobs.total}\nCompleted: ${summary.jobs.completed}\nIn Progress: ${summary.jobs.inProgress}\nCompletion Rate: ${summary.jobs.total > 0 ? ((summary.jobs.completed / summary.jobs.total) * 100).toFixed(1) : 0}%\n\nGenerated: ${new Date().toLocaleDateString('en-AU')}`;
+        break;
+      case 'quotes':
+        reportData = `Quotes Report - ${periodLabel}\n\nTotal Quotes: ${summary.quotes.total}\nAccepted: ${summary.quotes.accepted}\nPending: ${summary.quotes.pending}\nConversion Rate: ${summary.quotes.conversionRate.toFixed(1)}%\n\nGenerated: ${new Date().toLocaleDateString('en-AU')}`;
+        break;
+      case 'tax':
+        reportData = `Tax Summary - ${periodLabel}\n\nGST Collected: ${formatCurrency(summary.revenue.gstCollected)}\nTotal Revenue (incl GST): ${formatCurrency(summary.revenue.total)}\n\nNote: GST calculations are estimates based on 10% GST.\nConsult your accountant for accurate tax reporting.\n\nGenerated: ${new Date().toLocaleDateString('en-AU')}`;
         break;
     }
 

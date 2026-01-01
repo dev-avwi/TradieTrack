@@ -179,12 +179,22 @@ const createProgressStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 });
 
+interface LinkedReceipt {
+  id: string;
+  receiptNumber?: string;
+  amount: number;
+  paymentMethod?: string;
+  createdAt?: string;
+}
+
 interface LinkedDocumentsCardProps {
   linkedQuote?: LinkedDocument | null;
   linkedInvoice?: LinkedDocument | null;
+  linkedReceipt?: LinkedReceipt | null;
   jobStatus: JobStatus;
   onViewQuote?: (id: string) => void;
   onViewInvoice?: (id: string) => void;
+  onViewReceipt?: (id: string) => void;
   onCreateQuote?: () => void;
   onCreateInvoice?: () => void;
 }
@@ -192,9 +202,11 @@ interface LinkedDocumentsCardProps {
 export function LinkedDocumentsCard({
   linkedQuote,
   linkedInvoice,
+  linkedReceipt,
   jobStatus,
   onViewQuote,
   onViewInvoice,
+  onViewReceipt,
   onCreateQuote,
   onCreateInvoice,
 }: LinkedDocumentsCardProps) {
@@ -300,6 +312,39 @@ export function LinkedDocumentsCard({
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         ) : null}
       </TouchableOpacity>
+
+      {/* Receipt Row - only show if invoice is paid and receipt exists */}
+      {linkedInvoice?.status?.toLowerCase() === 'paid' && (
+        <TouchableOpacity 
+          style={[styles.documentRow, linkedReceipt && styles.documentRowClickable]}
+          onPress={() => linkedReceipt && onViewReceipt?.(linkedReceipt.id)}
+          activeOpacity={linkedReceipt ? 0.7 : 1}
+        >
+          <View style={[styles.documentIcon, { backgroundColor: linkedReceipt ? `${colors.success}15` : colors.muted }]}>
+            <Feather name="check-circle" size={16} color={linkedReceipt ? colors.success : colors.mutedForeground} />
+          </View>
+          <View style={styles.documentContent}>
+            <Text style={styles.documentTitle}>
+              {linkedReceipt ? (linkedReceipt.receiptNumber || 'Receipt') : 'No Receipt'}
+            </Text>
+            {linkedReceipt ? (
+              <View style={styles.documentMeta}>
+                <Text style={styles.documentAmount}>{formatCurrency(linkedReceipt.amount)}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: `${colors.success}15` }]}>
+                  <Text style={[styles.statusText, { color: colors.success }]}>
+                    {linkedReceipt.paymentMethod || 'Paid'}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.documentSubtitle}>Payment received - no receipt created</Text>
+            )}
+          </View>
+          {linkedReceipt ? (
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          ) : null}
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
