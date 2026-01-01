@@ -127,13 +127,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     minHeight: 48, // Apple HIG minimum
     paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: radius.lg,
   },
   quickActionText: {
-    fontSize: 13,
+    fontSize: 13, // Minimum for Dynamic Type accessibility
     fontWeight: '600',
   },
 });
@@ -282,8 +283,8 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                 }}
                 activeOpacity={0.7}
               >
-                <Feather name="zap" size={16} color={ACTION_COLORS.job} />
-                <Text style={[styles.quickActionText, { color: ACTION_COLORS.job, fontSize: 11 }]}>AI</Text>
+                <Feather name="zap" size={18} color={ACTION_COLORS.job} />
+                <Text style={[styles.quickActionText, { color: ACTION_COLORS.job }]}>AI</Text>
               </TouchableOpacity>
 
               {isTeamOwner && (
@@ -299,8 +300,8 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                   }}
                   activeOpacity={0.7}
                 >
-                  <Feather name="users" size={16} color={ACTION_COLORS.assign} />
-                  <Text style={[styles.quickActionText, { color: ACTION_COLORS.assign, fontSize: 11 }]}>Assign</Text>
+                  <Feather name="users" size={18} color={ACTION_COLORS.assign} />
+                  <Text style={[styles.quickActionText, { color: ACTION_COLORS.assign }]}>Assign</Text>
                 </TouchableOpacity>
               )}
 
@@ -312,8 +313,8 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                 }}
                 activeOpacity={0.7}
               >
-                <Feather name="credit-card" size={16} color={ACTION_COLORS.payment} />
-                <Text style={[styles.quickActionText, { color: ACTION_COLORS.payment, fontSize: 11 }]}>Collect</Text>
+                <Feather name="credit-card" size={18} color={ACTION_COLORS.payment} />
+                <Text style={[styles.quickActionText, { color: ACTION_COLORS.payment }]}>Collect</Text>
               </TouchableOpacity>
             </View>
 
