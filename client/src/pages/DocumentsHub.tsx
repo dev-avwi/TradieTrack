@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { 
   FileText, 
   Receipt, 
@@ -37,7 +38,7 @@ import { useInvoices, useSendInvoice, useMarkInvoicePaid, useCreatePaymentLink }
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { SendConfirmationDialog } from "@/components/SendConfirmationDialog";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 
@@ -407,174 +408,6 @@ function CompactReceiptCard({ receipt, onView, onViewInvoice }: {
   );
 }
 
-function QuoteListRow({ 
-  quote, 
-  onView, 
-  onSend, 
-  onConvert, 
-  linkedInvoice,
-  onViewInvoice 
-}: { 
-  quote: any; 
-  onView: () => void;
-  onSend: () => void;
-  onConvert: () => void;
-  linkedInvoice?: any;
-  onViewInvoice?: () => void;
-}) {
-  const statusConfig = getQuoteStatusConfig(quote.status);
-  const amount = normalizeToDollars(quote.total);
-  
-  return (
-    <div 
-      className="flex items-center gap-4 p-3 hover-elevate active-elevate-2 cursor-pointer rounded-lg border bg-card"
-      onClick={onView}
-      data-testid={`quote-row-${quote.id}`}
-    >
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{quote.title || quote.number}</p>
-      </div>
-      <Badge className={cn("text-xs px-2 shrink-0", statusConfig.className)}>
-        {statusConfig.label}
-      </Badge>
-      <div className="w-24 text-right text-xs text-muted-foreground hidden sm:block">
-        {quote.createdAt ? new Date(quote.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '-'}
-      </div>
-      <div className="w-32 text-sm font-semibold text-right shrink-0">{formatCurrency(amount)}</div>
-      <div className="w-8 shrink-0">
-        {(quote.status === 'draft' || quote.status === 'accepted') && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {quote.status === 'draft' && (
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSend(); }}>
-                  <Send className="h-4 w-4 mr-2" />
-                  Mark Sent
-                </DropdownMenuItem>
-              )}
-              {quote.status === 'accepted' && (
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onConvert(); }}>
-                  <Receipt className="h-4 w-4 mr-2" />
-                  Convert to Invoice
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function InvoiceListRow({ 
-  invoice, 
-  onView, 
-  onSend, 
-  onMarkPaid, 
-  onCreateLink, 
-  linkedReceipt, 
-  onViewReceipt,
-  onViewJob 
-}: { 
-  invoice: any; 
-  onView: () => void;
-  onSend: () => void;
-  onMarkPaid: () => void;
-  onCreateLink: () => void;
-  linkedReceipt?: any;
-  onViewReceipt?: () => void;
-  onViewJob?: () => void;
-}) {
-  const statusConfig = getInvoiceStatusConfig(invoice.status);
-  const amount = normalizeToDollars(invoice.total);
-  
-  return (
-    <div 
-      className="flex items-center gap-4 p-3 hover-elevate active-elevate-2 cursor-pointer rounded-lg border bg-card"
-      onClick={onView}
-      data-testid={`invoice-row-${invoice.id}`}
-    >
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{invoice.title || invoice.number}</p>
-      </div>
-      <Badge className={cn("text-xs px-2 shrink-0", statusConfig.className)}>
-        {statusConfig.label}
-      </Badge>
-      <div className="w-24 text-right text-xs text-muted-foreground hidden sm:block">
-        {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '-'}
-      </div>
-      <div className="w-32 text-sm font-semibold text-right shrink-0">{formatCurrency(amount)}</div>
-      <div className="w-8 shrink-0">
-        {(invoice.status === 'draft' || invoice.status === 'sent' || invoice.status === 'overdue') && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {invoice.status === 'draft' && (
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSend(); }}>
-                  <Send className="h-4 w-4 mr-2" />
-                  Mark Sent
-                </DropdownMenuItem>
-              )}
-              {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-                <>
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkPaid(); }}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Mark Paid
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onCreateLink(); }}>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Payment Link
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ReceiptListRow({ receipt, onView, onViewInvoice }: { 
-  receipt: any; 
-  onView: () => void;
-  onViewInvoice?: () => void;
-}) {
-  const amount = normalizeToDollars(receipt.amount);
-  const paymentMethodLabel = receipt.paymentMethod === 'bank_transfer' ? 'Bank' 
-    : receipt.paymentMethod === 'card' ? 'Card' 
-    : receipt.paymentMethod === 'tap_to_pay' ? 'Tap'
-    : receipt.paymentMethod === 'cash' ? 'Cash' 
-    : receipt.paymentMethod || 'Unknown';
-  
-  return (
-    <div 
-      className="flex items-center gap-4 p-3 hover-elevate active-elevate-2 cursor-pointer rounded-lg border bg-card"
-      onClick={onView}
-      data-testid={`receipt-row-${receipt.id}`}
-    >
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{receipt.receiptNumber || receipt.description || 'Receipt'}</p>
-      </div>
-      <Badge className="text-xs px-2 shrink-0 bg-green-500/10 text-green-600 dark:text-green-400">
-        {paymentMethodLabel}
-      </Badge>
-      <div className="w-24 text-right text-xs text-muted-foreground hidden sm:block">
-        {receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '-'}
-      </div>
-      <div className="w-32 text-sm font-semibold text-right shrink-0 text-green-600 dark:text-green-400">+{formatCurrency(amount)}</div>
-      <div className="w-8 shrink-0" />
-    </div>
-  );
-}
 
 function DocumentSkeleton() {
   return (
@@ -595,16 +428,6 @@ function DocumentSkeleton() {
   );
 }
 
-function ListSkeleton() {
-  return (
-    <div className="flex items-center gap-4 p-3 rounded-lg border bg-card">
-      <Skeleton className="h-4 w-40 flex-1" />
-      <Skeleton className="h-5 w-16" />
-      <Skeleton className="h-4 w-24 hidden sm:block" />
-      <Skeleton className="h-4 w-20" />
-    </div>
-  );
-}
 
 function EmptyState({ type, onCreate }: { type: DocumentTab; onCreate: () => void }) {
   const config = {
@@ -917,6 +740,256 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
     }
   };
 
+  const quoteColumns: ColumnDef<any>[] = [
+    {
+      id: "title",
+      header: "Quote",
+      accessorFn: (row) => row.title || row.number,
+      sortable: true,
+      cell: (row) => (
+        <div className="min-w-0">
+          <span className="font-medium block truncate">{row.title || row.number}</span>
+          {row.clientName && (
+            <span className="text-xs text-muted-foreground truncate block">{row.clientName}</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      accessorKey: "status",
+      sortable: true,
+      cell: (row) => {
+        const config = getQuoteStatusConfig(row.status);
+        return <Badge className={cn("text-xs", config.className)}>{config.label}</Badge>;
+      },
+    },
+    {
+      id: "createdAt",
+      header: "Created",
+      accessorKey: "createdAt",
+      sortable: true,
+      hideOnMobile: true,
+      cell: (row) => row.createdAt ? format(new Date(row.createdAt), 'dd MMM yyyy') : '—',
+    },
+    {
+      id: "total",
+      header: "Amount",
+      accessorFn: (row) => normalizeToDollars(row.total),
+      sortable: true,
+      cell: (row) => (
+        <span className="font-semibold">{formatCurrency(normalizeToDollars(row.total))}</span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      className: "w-10",
+      cell: (row) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={(e) => e.stopPropagation()}
+              data-testid={`button-quote-table-actions-${row.id}`}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => navigate(`/quotes/${row.id}`)}>
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </DropdownMenuItem>
+            {row.status === 'draft' && (
+              <DropdownMenuItem onClick={() => handleSendQuote(row)}>
+                <Send className="h-4 w-4 mr-2" />
+                Mark Sent
+              </DropdownMenuItem>
+            )}
+            {row.status === 'accepted' && (
+              <DropdownMenuItem onClick={() => handleConvertToInvoice(row)}>
+                <Receipt className="h-4 w-4 mr-2" />
+                Convert to Invoice
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
+  const invoiceColumns: ColumnDef<any>[] = [
+    {
+      id: "title",
+      header: "Invoice",
+      accessorFn: (row) => row.title || row.number,
+      sortable: true,
+      cell: (row) => (
+        <div className="min-w-0">
+          <span className="font-medium block truncate">{row.title || row.number}</span>
+          {(row.clientName || row.client) && (
+            <span className="text-xs text-muted-foreground truncate block">{row.clientName || row.client}</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      accessorKey: "status",
+      sortable: true,
+      cell: (row) => {
+        const config = getInvoiceStatusConfig(row.status);
+        return <Badge className={cn("text-xs", config.className)}>{config.label}</Badge>;
+      },
+    },
+    {
+      id: "dueDate",
+      header: "Due Date",
+      accessorKey: "dueDate",
+      sortable: true,
+      hideOnMobile: true,
+      cell: (row) => row.dueDate ? format(new Date(row.dueDate), 'dd MMM yyyy') : '—',
+    },
+    {
+      id: "total",
+      header: "Amount",
+      accessorFn: (row) => normalizeToDollars(row.total),
+      sortable: true,
+      cell: (row) => (
+        <span className="font-semibold">{formatCurrency(normalizeToDollars(row.total))}</span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      className: "w-10",
+      cell: (row) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={(e) => e.stopPropagation()}
+              data-testid={`button-invoice-table-actions-${row.id}`}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => navigate(`/invoices/${row.id}`)}>
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </DropdownMenuItem>
+            {row.status === 'draft' && (
+              <DropdownMenuItem onClick={() => handleSendInvoice(row)}>
+                <Send className="h-4 w-4 mr-2" />
+                Mark Sent
+              </DropdownMenuItem>
+            )}
+            {(row.status === 'sent' || row.status === 'overdue') && (
+              <>
+                <DropdownMenuItem onClick={() => handleMarkPaid(row)}>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Mark Paid
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCreatePaymentLink(row)}>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Payment Link
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
+  const receiptColumns: ColumnDef<any>[] = [
+    {
+      id: "receiptNumber",
+      header: "Receipt",
+      accessorFn: (row) => row.receiptNumber || row.description || 'Receipt',
+      sortable: true,
+      cell: (row) => (
+        <div className="min-w-0">
+          <span className="font-medium block truncate">{row.receiptNumber || row.description || 'Receipt'}</span>
+          {row.clientName && (
+            <span className="text-xs text-muted-foreground truncate block">{row.clientName}</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "paymentMethod",
+      header: "Method",
+      accessorKey: "paymentMethod",
+      sortable: true,
+      cell: (row) => {
+        const label = row.paymentMethod === 'bank_transfer' ? 'Bank' 
+          : row.paymentMethod === 'card' ? 'Card' 
+          : row.paymentMethod === 'tap_to_pay' ? 'Tap'
+          : row.paymentMethod === 'cash' ? 'Cash' 
+          : row.paymentMethod || 'Unknown';
+        return <Badge className="text-xs bg-green-500/10 text-green-600 dark:text-green-400">{label}</Badge>;
+      },
+    },
+    {
+      id: "paidAt",
+      header: "Date",
+      accessorKey: "paidAt",
+      sortable: true,
+      hideOnMobile: true,
+      cell: (row) => row.paidAt ? format(new Date(row.paidAt), 'dd MMM yyyy') : '—',
+    },
+    {
+      id: "amount",
+      header: "Amount",
+      accessorFn: (row) => normalizeToDollars(row.amount),
+      sortable: true,
+      cell: (row) => (
+        <span className="font-semibold text-green-600 dark:text-green-400">+{formatCurrency(normalizeToDollars(row.amount))}</span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      className: "w-10",
+      cell: (row) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={(e) => e.stopPropagation()}
+              data-testid={`button-receipt-table-actions-${row.id}`}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => navigate(`/receipts/${row.id}`)}>
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </DropdownMenuItem>
+            {row.invoiceId && (
+              <DropdownMenuItem onClick={() => navigate(`/invoices/${row.invoiceId}`)}>
+                <Receipt className="h-4 w-4 mr-2" />
+                View Invoice
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
   const totalDocuments = activeTab === 'quotes' ? quotes.length 
     : activeTab === 'invoices' ? invoices.length 
     : receipts.length;
@@ -1078,56 +1151,27 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
       
       <div className="flex-1 overflow-auto pb-20">
         <TabsContent value="quotes" className="mt-0 h-full">
-          <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" : "space-y-2")}>
+          <div className="p-4">
             {quotesLoading ? (
-              viewMode === 'grid' ? (
-                <>
-                  <DocumentSkeleton />
-                  <DocumentSkeleton />
-                  <DocumentSkeleton />
-                </>
-              ) : (
-                <>
-                  <ListSkeleton />
-                  <ListSkeleton />
-                  <ListSkeleton />
-                </>
-              )
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                <DocumentSkeleton />
+                <DocumentSkeleton />
+                <DocumentSkeleton />
+              </div>
             ) : filteredQuotes.length === 0 ? (
               searchTerm || quoteFilter !== 'all' ? (
-                <div className="text-center py-8 text-muted-foreground col-span-full">
+                <div className="text-center py-8 text-muted-foreground">
                   No quotes found
                 </div>
               ) : (
-                <div className="col-span-full">
-                  <EmptyState type="quotes" onCreate={handleCreate} />
-                </div>
+                <EmptyState type="quotes" onCreate={handleCreate} />
               )
-            ) : (
-              <>
-                {viewMode === 'list' && (
-                  <div className="flex items-center gap-4 px-3 py-2 text-xs font-medium text-muted-foreground border-b mb-2">
-                    <div className="flex-1">Quote</div>
-                    <div className="w-16 text-center">Status</div>
-                    <div className="w-24 text-right hidden sm:block">Created</div>
-                    <div className="w-32 text-right">Amount</div>
-                    <div className="w-8" />
-                  </div>
-                )}
+            ) : viewMode === 'grid' ? (
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {filteredQuotes.map((quote: any) => {
                   const linkedInvoice = invoicesByQuoteId.get(quote.id);
-                  return viewMode === 'grid' ? (
+                  return (
                     <CompactQuoteCard
-                    key={quote.id}
-                    quote={quote}
-                    onView={() => navigate(`/quotes/${quote.id}`)}
-                    onSend={() => handleSendQuote(quote)}
-                    onConvert={() => handleConvertToInvoice(quote)}
-                    linkedInvoice={linkedInvoice}
-                    onViewInvoice={linkedInvoice ? () => navigate(`/invoices/${linkedInvoice.id}`) : undefined}
-                  />
-                  ) : (
-                    <QuoteListRow
                       key={quote.id}
                       quote={quote}
                       onView={() => navigate(`/quotes/${quote.id}`)}
@@ -1138,51 +1182,43 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                     />
                   );
                 })}
-              </>
+              </div>
+            ) : (
+              <DataTable
+                data={filteredQuotes}
+                columns={quoteColumns}
+                onRowClick={(quote) => navigate(`/quotes/${quote.id}`)}
+                showViewToggle={false}
+                defaultView="table"
+                getRowId={(row) => row.id}
+                emptyMessage="No quotes found"
+                emptyIcon={<FileText className="h-8 w-8" />}
+              />
             )}
           </div>
         </TabsContent>
           
         <TabsContent value="invoices" className="mt-0 h-full">
-          <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" : "space-y-2")}>
+          <div className="p-4">
             {invoicesLoading ? (
-              viewMode === 'grid' ? (
-                <>
-                  <DocumentSkeleton />
-                  <DocumentSkeleton />
-                  <DocumentSkeleton />
-                </>
-              ) : (
-                <>
-                  <ListSkeleton />
-                  <ListSkeleton />
-                  <ListSkeleton />
-                </>
-              )
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                <DocumentSkeleton />
+                <DocumentSkeleton />
+                <DocumentSkeleton />
+              </div>
             ) : filteredInvoices.length === 0 ? (
               searchTerm || invoiceFilter !== 'all' ? (
-                <div className="text-center py-8 text-muted-foreground col-span-full">
+                <div className="text-center py-8 text-muted-foreground">
                   No invoices found
                 </div>
               ) : (
-                <div className="col-span-full">
-                  <EmptyState type="invoices" onCreate={handleCreate} />
-                </div>
+                <EmptyState type="invoices" onCreate={handleCreate} />
               )
-            ) : (
-              <>
-                {viewMode === 'list' && (
-                  <div className="flex items-center gap-4 px-3 py-2 text-xs font-medium text-muted-foreground border-b mb-2">
-                    <div className="flex-1">Invoice</div>
-                    <div className="w-16 text-center">Status</div>
-                    <div className="w-24 text-right hidden sm:block">Due</div>
-                    <div className="w-32 text-right">Amount</div>
-                    <div className="w-8" />
-                  </div>
-                )}
+            ) : viewMode === 'grid' ? (
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {filteredInvoices.map((invoice: any) => {
                   const linkedReceipt = receiptsByInvoiceId.get(invoice.id);
-                  return viewMode === 'grid' ? (
+                  return (
                     <CompactInvoiceCard
                       key={invoice.id}
                       invoice={invoice}
@@ -1194,80 +1230,62 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                       onViewReceipt={linkedReceipt ? () => navigate(`/receipts/${linkedReceipt.id}`) : undefined}
                       onViewJob={invoice.jobId ? () => navigate(`/jobs/${invoice.jobId}`) : undefined}
                     />
-                  ) : (
-                    <InvoiceListRow
-                      key={invoice.id}
-                      invoice={invoice}
-                      onView={() => navigate(`/invoices/${invoice.id}`)}
-                      onSend={() => handleSendInvoice(invoice)}
-                      onMarkPaid={() => handleMarkPaid(invoice)}
-                      onCreateLink={() => handleCreatePaymentLink(invoice)}
-                      linkedReceipt={linkedReceipt}
-                      onViewReceipt={linkedReceipt ? () => navigate(`/receipts/${linkedReceipt.id}`) : undefined}
-                      onViewJob={invoice.jobId ? () => navigate(`/jobs/${invoice.jobId}`) : undefined}
-                    />
                   );
                 })}
-              </>
+              </div>
+            ) : (
+              <DataTable
+                data={filteredInvoices}
+                columns={invoiceColumns}
+                onRowClick={(invoice) => navigate(`/invoices/${invoice.id}`)}
+                showViewToggle={false}
+                defaultView="table"
+                getRowId={(row) => row.id}
+                emptyMessage="No invoices found"
+                emptyIcon={<Receipt className="h-8 w-8" />}
+              />
             )}
           </div>
         </TabsContent>
           
         <TabsContent value="receipts" className="mt-0 h-full">
-          <div className={cn("p-4", viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" : "space-y-2")}>
+          <div className="p-4">
             {receiptsLoading ? (
-              viewMode === 'grid' ? (
-                <>
-                  <DocumentSkeleton />
-                  <DocumentSkeleton />
-                  <DocumentSkeleton />
-                </>
-              ) : (
-                <>
-                  <ListSkeleton />
-                  <ListSkeleton />
-                  <ListSkeleton />
-                </>
-              )
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                <DocumentSkeleton />
+                <DocumentSkeleton />
+                <DocumentSkeleton />
+              </div>
             ) : filteredReceipts.length === 0 ? (
               searchTerm || receiptFilter !== 'all' ? (
-                <div className="text-center py-8 text-muted-foreground col-span-full">
+                <div className="text-center py-8 text-muted-foreground">
                   No receipts found
                 </div>
               ) : (
-                <div className="col-span-full">
-                  <EmptyState type="receipts" onCreate={handleCreate} />
-                </div>
+                <EmptyState type="receipts" onCreate={handleCreate} />
               )
-            ) : (
-              <>
-                {viewMode === 'list' && (
-                  <div className="flex items-center gap-4 px-3 py-2 text-xs font-medium text-muted-foreground border-b mb-2">
-                    <div className="flex-1">Receipt</div>
-                    <div className="w-16 text-center">Method</div>
-                    <div className="w-24 text-right hidden sm:block">Date</div>
-                    <div className="w-32 text-right">Amount</div>
-                    <div className="w-8" />
-                  </div>
-                )}
+            ) : viewMode === 'grid' ? (
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {filteredReceipts.map((receipt: any) => (
-                  viewMode === 'grid' ? (
-                    <CompactReceiptCard
-                      key={receipt.id}
-                      receipt={receipt}
-                      onView={() => navigate(`/receipts/${receipt.id}`)}
-                      onViewInvoice={receipt.invoiceId ? () => navigate(`/invoices/${receipt.invoiceId}`) : undefined}
-                    />
-                  ) : (
-                    <ReceiptListRow
-                      key={receipt.id}
-                      receipt={receipt}
-                      onView={() => navigate(`/receipts/${receipt.id}`)}
-                      onViewInvoice={receipt.invoiceId ? () => navigate(`/invoices/${receipt.invoiceId}`) : undefined}
-                    />
-                  )
+                  <CompactReceiptCard
+                    key={receipt.id}
+                    receipt={receipt}
+                    onView={() => navigate(`/receipts/${receipt.id}`)}
+                    onViewInvoice={receipt.invoiceId ? () => navigate(`/invoices/${receipt.invoiceId}`) : undefined}
+                  />
                 ))}
-              </>
+              </div>
+            ) : (
+              <DataTable
+                data={filteredReceipts}
+                columns={receiptColumns}
+                onRowClick={(receipt) => navigate(`/receipts/${receipt.id}`)}
+                showViewToggle={false}
+                defaultView="table"
+                getRowId={(row) => row.id}
+                emptyMessage="No receipts found"
+                emptyIcon={<CreditCard className="h-8 w-8" />}
+              />
             )}
           </div>
         </TabsContent>

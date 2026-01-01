@@ -240,8 +240,10 @@ export function DataTable<T>({
                 {paginatedData.map((row, rowIndex) => (
                   <TableRow
                     key={getRowId ? getRowId(row) : rowIndex}
-                    className={cn(onRowClick && "cursor-pointer")}
-                    onClick={() => onRowClick?.(row)}
+                    className={cn(
+                      onRowClick && "cursor-pointer hover:bg-muted/50 active:bg-muted"
+                    )}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
                     data-testid={`table-row-${getRowId ? getRowId(row) : rowIndex}`}
                   >
                     {columns.map((column) => (
