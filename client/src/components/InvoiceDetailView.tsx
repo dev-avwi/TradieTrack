@@ -1297,7 +1297,6 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/receipts/${relatedReceipt.id}`)}
-                        className="text-green-700 border-green-300 hover:bg-green-100"
                         data-testid="link-invoice-receipt"
                       >
                         <Receipt className="h-4 w-4 mr-2" />

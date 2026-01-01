@@ -9770,10 +9770,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/invoices/:id/receipt", requireAuth, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
-      const allReceipts = await storage.getReceipts(effectiveUserId);
-      const receipt = allReceipts.find((r: any) => r.invoiceId === req.params.id);
+      const invoiceId = req.params.id;
+      
+      // First verify the invoice belongs to this user
+      const invoice = await storage.getInvoice(invoiceId, effectiveUserId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      
+      // Query receipts with proper tenant isolation
+      const userReceipts = await storage.getReceipts(effectiveUserId);
+      const receipt = userReceipts.find((r: any) => r.invoiceId === invoiceId);
       if (!receipt) {
-        return res.status(404).json({ error: "Receipt not found" });
+        return res.status(404).json({ error: "Receipt not found for this invoice" });
       }
       res.json(receipt);
     } catch (error) {
