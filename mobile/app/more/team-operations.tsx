@@ -2098,36 +2098,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginLeft: 24,
     marginTop: 2,
   },
-  selectContainer: {
-    marginBottom: spacing.md,
-  },
-  selectLabel: {
-    ...typography.label,
-    color: colors.foreground,
-    marginBottom: spacing.sm,
-  },
-  memberChips: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  memberChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.xl,
-    backgroundColor: colors.muted,
-  },
-  memberChipActive: {
-    backgroundColor: colors.primary,
-  },
-  memberChipText: {
-    ...typography.caption,
-    color: colors.foreground,
-  },
-  memberChipTextActive: {
-    color: '#ffffff',
-    fontWeight: '600',
-  },
   skillsList: {
     gap: spacing.sm,
   },

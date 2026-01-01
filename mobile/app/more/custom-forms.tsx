@@ -611,11 +611,26 @@ export default function CustomFormsScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen 
+        options={{ 
+          headerShown: true,
+          title: 'Custom Forms',
+          headerStyle: { backgroundColor: colors.card },
+          headerTintColor: colors.foreground,
+          headerRight: () => (
+            <TouchableOpacity 
+              onPress={() => setShowFormBuilder(true)}
+              style={{ marginRight: spacing.md }}
+            >
+              <Feather name="plus" size={22} color={colors.primary} />
+            </TouchableOpacity>
+          ),
+        }} 
+      />
       
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 8 }]}
+        contentContainerStyle={styles.contentContainer}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
         }

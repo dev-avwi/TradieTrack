@@ -1709,14 +1709,14 @@ export default function DashboardScreen() {
       <View style={{ height: spacing['4xl'] + 80 }} />
     </ScrollView>
     
-    {/* Floating Action Button */}
+    {/* Floating Action Button - Quick Actions */}
     <TouchableOpacity
       style={styles.fab}
       onPress={() => router.push('/more/create-job')}
       activeOpacity={0.85}
       data-testid="fab-create-job"
     >
-      <Feather name="plus" size={24} color={colors.primaryForeground} />
+      <Feather name="star" size={22} color={colors.primaryForeground} />
     </TouchableOpacity>
   </>
   );
@@ -1736,12 +1736,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 14,
     backgroundColor: colors.primary,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
