@@ -1709,15 +1709,6 @@ export default function DashboardScreen() {
       <View style={{ height: spacing['4xl'] + 80 }} />
     </ScrollView>
     
-    {/* Floating Action Button - Quick Actions */}
-    <TouchableOpacity
-      style={styles.fab}
-      onPress={() => router.push('/more/create-job')}
-      activeOpacity={0.85}
-      data-testid="fab-create-job"
-    >
-      <Feather name="star" size={22} color={colors.primaryForeground} />
-    </TouchableOpacity>
   </>
   );
 }
