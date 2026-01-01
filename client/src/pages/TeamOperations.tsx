@@ -98,6 +98,7 @@ import {
   ClipboardCheck,
   Timer,
   DollarSign,
+  User,
 } from "lucide-react";
 import {
   Sheet,
@@ -119,6 +120,7 @@ interface TeamPresenceData {
   lastSeenAt?: string;
   lastLocationLat?: number;
   lastLocationLng?: number;
+  lastLocationUpdatedAt?: string;
   user?: {
     id: string;
     firstName?: string;
@@ -493,6 +495,12 @@ function LiveOpsTab() {
                             const member = acceptedMembers.find(m => m.userId === p.userId);
                             const statusDisplay = getStatusDisplay(p.status);
                             const initials = getInitials(member?.firstName, member?.lastName, member?.email);
+                            const memberJobs = allJobs.filter(j => j.assignedTo === p.userId);
+                            const currentJob = memberJobs.find(j => j.status === 'in_progress');
+                            const nextJob = memberJobs.find(j => j.status === 'scheduled');
+                            const lastSeenTime = p.lastLocationUpdatedAt 
+                              ? new Date(p.lastLocationUpdatedAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })
+                              : null;
                             return (
                               <Marker
                                 key={p.userId}
@@ -510,6 +518,7 @@ function LiveOpsTab() {
                                     border: 3px solid white;
                                     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                                     font-family: system-ui, -apple-system, sans-serif;
+                                    cursor: pointer;
                                   ">
                                     <span style="
                                       color: ${statusDisplay.markerText};
@@ -521,14 +530,80 @@ function LiveOpsTab() {
                                   iconSize: [40, 40],
                                   iconAnchor: [20, 20],
                                 })}
+                                eventHandlers={{
+                                  click: () => {
+                                    if (member) {
+                                      handleMemberClick(member);
+                                    }
+                                  }
+                                }}
                               >
                                 <Popup>
-                                  <div style="font-size: 14px; min-width: 120px;">
-                                    <p style="font-weight: 600; margin: 0 0 4px 0;">{member?.firstName} {member?.lastName}</p>
-                                    <p style="color: #666; margin: 0;">{statusDisplay.label}</p>
+                                  <div className="min-w-[200px] max-w-[280px]" data-testid={`map-popup-${member?.id}`}>
+                                    <div className="flex items-center gap-2 mb-2 pb-2 border-b">
+                                      <div 
+                                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                        style={{ background: statusDisplay.markerBg }}
+                                      >
+                                        {initials}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-sm truncate">{member?.firstName} {member?.lastName}</p>
+                                        <div className="flex items-center gap-1">
+                                          <span className={`w-2 h-2 rounded-full ${
+                                            p.status === 'online' || p.status === 'on_job' ? 'bg-green-500' : 
+                                            p.status === 'away' || p.status === 'break' ? 'bg-yellow-500' : 'bg-gray-400'
+                                          }`} />
+                                          <span className="text-xs text-muted-foreground">{statusDisplay.label}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
                                     {p.statusMessage && (
-                                      <p style="font-size: 12px; margin: 8px 0 0 0; color: #888;">{p.statusMessage}</p>
+                                      <p className="text-xs text-muted-foreground mb-2 italic">"{p.statusMessage}"</p>
                                     )}
+                                    
+                                    {currentJob && (
+                                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-2 mb-2">
+                                        <p className="text-xs font-medium text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                                          <Briefcase className="h-3 w-3" />
+                                          Working on:
+                                        </p>
+                                        <p className="text-xs truncate mt-0.5">{currentJob.title}</p>
+                                        {currentJob.clientName && (
+                                          <p className="text-xs text-muted-foreground truncate">{currentJob.clientName}</p>
+                                        )}
+                                      </div>
+                                    )}
+                                    
+                                    {!currentJob && nextJob && (
+                                      <div className="bg-amber-50 dark:bg-amber-900/20 rounded p-2 mb-2">
+                                        <p className="text-xs font-medium text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                                          <Clock className="h-3 w-3" />
+                                          Next job:
+                                        </p>
+                                        <p className="text-xs truncate mt-0.5">{nextJob.title}</p>
+                                      </div>
+                                    )}
+                                    
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span>{member?.roleName || 'Team Member'}</span>
+                                      {lastSeenTime && <span>Updated {lastSeenTime}</span>}
+                                    </div>
+                                    
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      className="w-full mt-2"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (member) handleMemberClick(member);
+                                      }}
+                                      data-testid={`button-view-profile-${member?.id}`}
+                                    >
+                                      <User className="h-3 w-3 mr-1" />
+                                      View Full Profile
+                                    </Button>
                                   </div>
                                 </Popup>
                               </Marker>
