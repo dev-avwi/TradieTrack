@@ -101,9 +101,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   menuItemIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
@@ -127,19 +127,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    minHeight: 36, // Reduced from 48 for more compact look
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: radius.md,
+    gap: 3,
+    minHeight: 32, // Compact size
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: 'transparent', // No background color - outline style
   },
   quickActionText: {
-    fontSize: 12, // Slightly smaller
+    fontSize: 11, // Smaller text
     fontWeight: '500',
-    color: colors.foreground, // Neutral text color
+    color: colors.mutedForeground, // More subtle text color
   },
 });
 
@@ -253,10 +253,9 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
             <View style={styles.menuHandle} />
             <Text style={styles.menuTitle}>Quick Create</Text>
             
-            {/* Main grid with distinct colored icons */}
+            {/* Main grid with subtle neutral icons */}
             <View style={styles.menuGrid}>
               {gridActions.map((action, index) => {
-                const actionColor = ACTION_COLORS[action.colorKey];
                 return (
                   <TouchableOpacity
                     key={index}
@@ -264,11 +263,11 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                     onPress={action.onPress}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.menuItemIcon, { backgroundColor: colorWithOpacity(actionColor, 0.15) }]}>
+                    <View style={[styles.menuItemIcon, { backgroundColor: colors.muted }]}>
                       <Feather 
                         name={action.icon} 
-                        size={22} 
-                        color={actionColor} 
+                        size={20} 
+                        color={colors.foreground} 
                       />
                     </View>
                     <Text style={styles.menuItemLabel}>{action.label}</Text>

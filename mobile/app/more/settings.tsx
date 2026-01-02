@@ -1315,7 +1315,7 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     refreshData();
-  }, []);
+  }, [refreshData]);
 
   useEffect(() => {
     if (activeTab === 'templates') {

@@ -9460,7 +9460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getQuotes(effectiveUserId),
         storage.getInvoices(effectiveUserId),
         storage.getClients(effectiveUserId),
-        canManageTeam ? storage.getTeamMembersForBusiness(effectiveUserId) : Promise.resolve([]),
+        canManageTeam ? storage.getTeamMembers(effectiveUserId) : Promise.resolve([]),
         storage.getActivityLogs(effectiveUserId, 5)
       ]);
       
@@ -9523,11 +9523,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }),
         teamMembers: activeTeamMembers.map(m => ({
           id: m.id,
-          userId: m.userId,
-          name: m.name,
+          userId: m.memberId, // Mobile expects userId, database stores memberId
+          name: m.firstName && m.lastName ? `${m.firstName} ${m.lastName}` : m.email,
+          firstName: m.firstName,
+          lastName: m.lastName,
           email: m.email,
-          role: m.role,
-          status: m.status,
+          role: m.roleId,
+          status: m.inviteStatus,
         })),
         activities,
         isOwner,
@@ -12156,10 +12158,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const roleMap = new Map(allRoles.map(role => [role.id, role]));
       
       // Enrich team members with role name without additional queries
+      // Also add userId alias for mobile compatibility (mobile expects userId, DB has memberId)
       const enrichedMembers = teamMembers.map(member => {
         const role = roleMap.get(member.roleId);
         return {
           ...member,
+          userId: member.memberId, // Mobile app expects userId, database stores memberId
           roleName: role?.name || 'Team Member',
           roleDescription: role?.description || '',
         };
@@ -19335,7 +19339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get team membership to find business owner
       const teamMembership = await storage.getTeamMembershipByMemberId(userId);
-      const businessOwnerId = teamMembership?.ownerId || userId;
+      const businessOwnerId = teamMembership?.businessOwnerId || userId;
       
       // Get all presence records for this business
       const presenceRecords = await storage.getTeamPresence(businessOwnerId);
@@ -19379,7 +19383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get team membership to find business owner
       const teamMembership = await storage.getTeamMembershipByMemberId(userId);
-      const businessOwnerId = teamMembership?.ownerId || userId;
+      const businessOwnerId = teamMembership?.businessOwnerId || userId;
       
       const updateData: any = {};
       if (status) updateData.status = status;
@@ -19407,7 +19411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get team membership to find business owner
       const teamMembership = await storage.getTeamMembershipByMemberId(userId);
-      const businessOwnerId = teamMembership?.ownerId || userId;
+      const businessOwnerId = teamMembership?.businessOwnerId || userId;
       
       const updateData: any = {
         status: 'online',
@@ -19450,7 +19454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       const teamMembership = await storage.getTeamMembershipByMemberId(userId);
-      const businessOwnerId = teamMembership?.ownerId || userId;
+      const businessOwnerId = teamMembership?.businessOwnerId || userId;
       
       const skills = await db.select().from(teamMemberSkills)
         .innerJoin(teamMembers, eq(teamMemberSkills.teamMemberId, teamMembers.id))
@@ -19656,7 +19660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       const teamMembership = await storage.getTeamMembershipByMemberId(userId);
-      const businessOwnerId = teamMembership?.ownerId || userId;
+      const businessOwnerId = teamMembership?.businessOwnerId || userId;
       
       const timeOff = await db.select().from(teamMemberTimeOff)
         .innerJoin(teamMembers, eq(teamMemberTimeOff.teamMemberId, teamMembers.id))
@@ -19784,7 +19788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get team membership to find business owner
       const teamMembership = await storage.getTeamMembershipByMemberId(userId);
-      const businessOwnerId = teamMembership?.ownerId || userId;
+      const businessOwnerId = teamMembership?.businessOwnerId || userId;
       
       const activities = await storage.getActivityFeed(businessOwnerId, limit, before);
       res.json(activities);
@@ -19810,7 +19814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get team membership to find business owner
       const teamMembership = await storage.getTeamMembershipByMemberId(userId);
-      const businessOwnerId = teamMembership?.ownerId || userId;
+      const businessOwnerId = teamMembership?.businessOwnerId || userId;
       
       const activity = await storage.createActivity({
         businessOwnerId,

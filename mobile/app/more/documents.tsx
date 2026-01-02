@@ -66,6 +66,8 @@ type QuoteFilterType = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected';
 type InvoiceFilterType = 'all' | 'draft' | 'sent' | 'paid' | 'overdue';
 type ReceiptFilterType = 'all' | 'bank_transfer' | 'card' | 'cash';
 type ViewMode = 'grid' | 'list';
+type SortField = 'date' | 'amount' | 'status' | 'client';
+type SortDirection = 'asc' | 'desc';
 
 const formatCurrency = (amount: number) => {
   const normalizedAmount = amount > 1000 ? amount / 100 : amount;
@@ -146,6 +148,8 @@ export default function DocumentsScreen() {
   const [receiptFilter, setReceiptFilter] = useState<ReceiptFilterType>(
     initialTab === 'receipts' ? (initialFilter as ReceiptFilterType) : 'all'
   );
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const clientMap = useMemo(() => {
     return new Map(clients.map(c => [c.id, c]));
@@ -185,6 +189,33 @@ export default function DocumentsScreen() {
     return clientMap.get(clientId)?.name || 'Unknown Client';
   };
 
+  const sortItems = useCallback(<T extends { total?: number; amount?: number; status?: string; clientId?: string; createdAt?: string; paidAt?: string }>(items: T[]): T[] => {
+    return [...items].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'date':
+          const dateA = new Date(a.createdAt || a.paidAt || 0).getTime();
+          const dateB = new Date(b.createdAt || b.paidAt || 0).getTime();
+          comparison = dateA - dateB;
+          break;
+        case 'amount':
+          const amountA = a.total ?? a.amount ?? 0;
+          const amountB = b.total ?? b.amount ?? 0;
+          comparison = amountA - amountB;
+          break;
+        case 'status':
+          comparison = (a.status || '').localeCompare(b.status || '');
+          break;
+        case 'client':
+          const clientNameA = getClientName(a.clientId || '');
+          const clientNameB = getClientName(b.clientId || '');
+          comparison = clientNameA.localeCompare(clientNameB);
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [sortField, sortDirection, clientMap]);
+
   const filteredQuotes = useMemo(() => {
     let filtered = quotes;
     if (quoteFilter !== 'all') {
@@ -198,8 +229,8 @@ export default function DocumentsScreen() {
         getClientName(q.clientId).toLowerCase().includes(query)
       );
     }
-    return filtered;
-  }, [quotes, quoteFilter, searchQuery, clientMap]);
+    return viewMode === 'list' ? sortItems(filtered) : filtered;
+  }, [quotes, quoteFilter, searchQuery, clientMap, viewMode, sortItems]);
 
   const filteredInvoices = useMemo(() => {
     let filtered = invoices;
@@ -214,8 +245,8 @@ export default function DocumentsScreen() {
         getClientName(inv.clientId).toLowerCase().includes(query)
       );
     }
-    return filtered;
-  }, [invoices, invoiceFilter, searchQuery, clientMap]);
+    return viewMode === 'list' ? sortItems(filtered) : filtered;
+  }, [invoices, invoiceFilter, searchQuery, clientMap, viewMode, sortItems]);
 
   const filteredReceipts = useMemo(() => {
     let filtered = receipts;
@@ -229,8 +260,8 @@ export default function DocumentsScreen() {
         getClientName(r.clientId).toLowerCase().includes(query)
       );
     }
-    return filtered;
-  }, [receipts, receiptFilter, searchQuery, clientMap]);
+    return viewMode === 'list' ? sortItems(filtered) : filtered;
+  }, [receipts, receiptFilter, searchQuery, clientMap, viewMode, sortItems]);
 
   const stats = useMemo(() => {
     const parseAmount = (val: any): number => {
@@ -507,6 +538,60 @@ export default function DocumentsScreen() {
     </ScrollView>
   );
 
+  const handleSortChange = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const renderSortHeader = () => (
+    <View style={styles.sortHeader}>
+      <TouchableOpacity 
+        style={[styles.sortButton, sortField === 'date' && styles.sortButtonActive]}
+        onPress={() => handleSortChange('date')}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.sortButtonText, sortField === 'date' && styles.sortButtonTextActive]}>Date</Text>
+        {sortField === 'date' && (
+          <Feather name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
+        )}
+      </TouchableOpacity>
+      <TouchableOpacity 
+        style={[styles.sortButton, sortField === 'client' && styles.sortButtonActive]}
+        onPress={() => handleSortChange('client')}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.sortButtonText, sortField === 'client' && styles.sortButtonTextActive]}>Client</Text>
+        {sortField === 'client' && (
+          <Feather name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
+        )}
+      </TouchableOpacity>
+      <TouchableOpacity 
+        style={[styles.sortButton, sortField === 'amount' && styles.sortButtonActive]}
+        onPress={() => handleSortChange('amount')}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.sortButtonText, sortField === 'amount' && styles.sortButtonTextActive]}>Amount</Text>
+        {sortField === 'amount' && (
+          <Feather name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
+        )}
+      </TouchableOpacity>
+      <TouchableOpacity 
+        style={[styles.sortButton, sortField === 'status' && styles.sortButtonActive]}
+        onPress={() => handleSortChange('status')}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.sortButtonText, sortField === 'status' && styles.sortButtonTextActive]}>Status</Text>
+        {sortField === 'status' && (
+          <Feather name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
   const renderQuoteGridCard = (quote: Quote) => {
     const statusConfig = getQuoteStatusConfig(quote.status);
     const client = clientMap.get(quote.clientId);
@@ -539,41 +624,42 @@ export default function DocumentsScreen() {
     );
   };
 
-  const renderQuoteListCard = (quote: Quote) => {
+  const renderQuoteListRow = (quote: Quote) => {
     const statusConfig = getQuoteStatusConfig(quote.status);
     const client = clientMap.get(quote.clientId);
     
     return (
       <TouchableOpacity
         key={quote.id}
-        style={[styles.listCard, { borderLeftColor: statusConfig.color }]}
+        style={styles.listRow}
         onPress={() => router.push(`/more/quote/${quote.id}`)}
         activeOpacity={0.7}
       >
-        <View style={styles.listCardContent}>
-          <View style={styles.listCardHeader}>
-            <Text style={styles.listCardTitle} numberOfLines={1}>
-              {quote.title || quote.number || `Q-${quote.id.slice(0, 6)}`}
-            </Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-              <Feather name={statusConfig.icon} size={12} color={statusConfig.color} />
-              <Text style={[styles.statusText, { color: statusConfig.color }]}>
+        <View style={[styles.statusIndicator, { backgroundColor: statusConfig.color }]} />
+        <View style={styles.listRowContent}>
+          <View style={styles.listRowMain}>
+            <View style={styles.listRowInfo}>
+              <Text style={styles.listRowTitle} numberOfLines={1}>
+                {quote.title || quote.number || `Q-${quote.id.slice(0, 6)}`}
+              </Text>
+              <Text style={styles.listRowClient} numberOfLines={1}>
+                {client?.name || 'Unknown'}
+              </Text>
+            </View>
+            <Text style={styles.listRowAmount}>{formatCurrency(quote.total)}</Text>
+          </View>
+          <View style={styles.listRowMeta}>
+            <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
+              <Text style={[styles.listRowStatusText, { color: statusConfig.color }]}>
                 {statusConfig.label}
               </Text>
             </View>
+            <Text style={styles.listRowDate}>
+              {quote.createdAt ? format(new Date(quote.createdAt), 'dd MMM') : ''}
+            </Text>
           </View>
-          <View style={styles.listCardMeta}>
-            <View style={styles.metaRow}>
-              <Feather name="user" size={14} color={colors.mutedForeground} />
-              <Text style={styles.metaText}>{client?.name || 'Unknown Client'}</Text>
-            </View>
-            <Text style={styles.listCardAmount}>{formatCurrency(quote.total)}</Text>
-          </View>
-          <Text style={styles.listCardDate}>
-            {quote.createdAt ? formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true }) : ''}
-          </Text>
         </View>
-        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </TouchableOpacity>
     );
   };
@@ -617,7 +703,7 @@ export default function DocumentsScreen() {
     );
   };
 
-  const renderInvoiceListCard = (invoice: Invoice) => {
+  const renderInvoiceListRow = (invoice: Invoice) => {
     const statusConfig = getInvoiceStatusConfig(invoice.status);
     const client = clientMap.get(invoice.clientId);
     const linkedReceipt = receipts.find(r => r.invoiceId === invoice.id);
@@ -625,42 +711,42 @@ export default function DocumentsScreen() {
     return (
       <TouchableOpacity
         key={invoice.id}
-        style={[styles.listCard, { borderLeftColor: statusConfig.color }]}
+        style={styles.listRow}
         onPress={() => router.push(`/more/invoice/${invoice.id}`)}
         activeOpacity={0.7}
       >
-        <View style={styles.listCardContent}>
-          <View style={styles.listCardHeader}>
-            <Text style={styles.listCardTitle} numberOfLines={1}>
-              {invoice.title || invoice.number || `INV-${invoice.id.slice(0, 6)}`}
-            </Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-              <Feather name={statusConfig.icon} size={12} color={statusConfig.color} />
-              <Text style={[styles.statusText, { color: statusConfig.color }]}>
-                {statusConfig.label}
+        <View style={[styles.statusIndicator, { backgroundColor: statusConfig.color }]} />
+        <View style={styles.listRowContent}>
+          <View style={styles.listRowMain}>
+            <View style={styles.listRowInfo}>
+              <Text style={styles.listRowTitle} numberOfLines={1}>
+                {invoice.title || invoice.number || `INV-${invoice.id.slice(0, 6)}`}
+              </Text>
+              <Text style={styles.listRowClient} numberOfLines={1}>
+                {client?.name || 'Unknown'}
               </Text>
             </View>
+            <Text style={styles.listRowAmount}>{formatCurrency(invoice.total)}</Text>
           </View>
-          <View style={styles.listCardMeta}>
-            <View style={styles.metaRow}>
-              <Feather name="user" size={14} color={colors.mutedForeground} />
-              <Text style={styles.metaText}>{client?.name || 'Unknown Client'}</Text>
-            </View>
-            <Text style={styles.listCardAmount}>{formatCurrency(invoice.total)}</Text>
-          </View>
-          <View style={styles.listCardBottomRow}>
-            <Text style={styles.listCardDate}>
-              {invoice.createdAt ? formatDistanceToNow(new Date(invoice.createdAt), { addSuffix: true }) : ''}
-            </Text>
-            {linkedReceipt && (
-              <View style={styles.linkedBadgeInline}>
-                <Feather name="link-2" size={12} color="#22c55e" />
-                <Text style={styles.linkedBadgeTextInline}>Receipt</Text>
+          <View style={styles.listRowMeta}>
+            <View style={styles.listRowMetaLeft}>
+              <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
+                <Text style={[styles.listRowStatusText, { color: statusConfig.color }]}>
+                  {statusConfig.label}
+                </Text>
               </View>
-            )}
+              {linkedReceipt && (
+                <View style={styles.listRowLinkedBadge}>
+                  <Feather name="link-2" size={10} color="#22c55e" />
+                </View>
+              )}
+            </View>
+            <Text style={styles.listRowDate}>
+              {invoice.createdAt ? format(new Date(invoice.createdAt), 'dd MMM') : ''}
+            </Text>
           </View>
         </View>
-        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </TouchableOpacity>
     );
   };
@@ -694,44 +780,41 @@ export default function DocumentsScreen() {
     );
   };
 
-  const renderReceiptListCard = (receipt: Receipt) => {
+  const renderReceiptListRow = (receipt: Receipt) => {
     const client = clientMap.get(receipt.clientId);
     
     return (
       <TouchableOpacity
         key={receipt.id}
-        style={[styles.listCard, { borderLeftColor: '#22c55e' }]}
+        style={styles.listRow}
         onPress={() => router.push(`/more/receipt/${receipt.id}`)}
         activeOpacity={0.7}
       >
-        <View style={styles.listCardContent}>
-          <View style={styles.listCardHeader}>
-            <Text style={styles.listCardTitle} numberOfLines={1}>
-              {receipt.receiptNumber}
-            </Text>
-            <View style={[styles.statusBadge, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-              <Feather name="check-circle" size={12} color="#22c55e" />
-              <Text style={[styles.statusText, { color: '#22c55e' }]}>Paid</Text>
+        <View style={[styles.statusIndicator, { backgroundColor: '#22c55e' }]} />
+        <View style={styles.listRowContent}>
+          <View style={styles.listRowMain}>
+            <View style={styles.listRowInfo}>
+              <Text style={styles.listRowTitle} numberOfLines={1}>
+                {receipt.receiptNumber}
+              </Text>
+              <Text style={styles.listRowClient} numberOfLines={1}>
+                {client?.name || 'Unknown'}
+              </Text>
             </View>
+            <Text style={styles.listRowAmount}>{formatCurrency(receipt.amount)}</Text>
           </View>
-          <View style={styles.listCardMeta}>
-            <View style={styles.metaRow}>
-              <Feather name="user" size={14} color={colors.mutedForeground} />
-              <Text style={styles.metaText}>{client?.name || 'Unknown Client'}</Text>
+          <View style={styles.listRowMeta}>
+            <View style={[styles.listRowStatusBadge, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+              <Text style={[styles.listRowStatusText, { color: '#22c55e' }]}>
+                {getPaymentMethodLabel(receipt.paymentMethod)}
+              </Text>
             </View>
-            <Text style={styles.listCardAmount}>{formatCurrency(receipt.amount)}</Text>
-          </View>
-          <View style={styles.listCardBottomRow}>
-            <View style={styles.metaRow}>
-              <Feather name="credit-card" size={12} color={colors.mutedForeground} />
-              <Text style={styles.metaTextSmall}>{getPaymentMethodLabel(receipt.paymentMethod)}</Text>
-            </View>
-            <Text style={styles.listCardDate}>
-              {format(new Date(receipt.paidAt), 'dd MMM yyyy')}
+            <Text style={styles.listRowDate}>
+              {format(new Date(receipt.paidAt), 'dd MMM')}
             </Text>
           </View>
         </View>
-        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </TouchableOpacity>
     );
   };
@@ -775,11 +858,14 @@ export default function DocumentsScreen() {
           <>
             {renderQuoteFilters()}
             {filteredQuotes.length === 0 ? renderEmptyState('quotes') : (
-              <View style={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}>
-                {filteredQuotes.map(quote => 
-                  viewMode === 'grid' ? renderQuoteGridCard(quote) : renderQuoteListCard(quote)
-                )}
-              </View>
+              <>
+                {viewMode === 'list' && renderSortHeader()}
+                <View style={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}>
+                  {filteredQuotes.map(quote => 
+                    viewMode === 'grid' ? renderQuoteGridCard(quote) : renderQuoteListRow(quote)
+                  )}
+                </View>
+              </>
             )}
           </>
         );
@@ -789,11 +875,14 @@ export default function DocumentsScreen() {
           <>
             {renderInvoiceFilters()}
             {filteredInvoices.length === 0 ? renderEmptyState('invoices') : (
-              <View style={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}>
-                {filteredInvoices.map(invoice => 
-                  viewMode === 'grid' ? renderInvoiceGridCard(invoice) : renderInvoiceListCard(invoice)
-                )}
-              </View>
+              <>
+                {viewMode === 'list' && renderSortHeader()}
+                <View style={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}>
+                  {filteredInvoices.map(invoice => 
+                    viewMode === 'grid' ? renderInvoiceGridCard(invoice) : renderInvoiceListRow(invoice)
+                  )}
+                </View>
+              </>
             )}
           </>
         );
@@ -803,11 +892,14 @@ export default function DocumentsScreen() {
           <>
             {renderReceiptFilters()}
             {filteredReceipts.length === 0 ? renderEmptyState('receipts') : (
-              <View style={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}>
-                {filteredReceipts.map(receipt => 
-                  viewMode === 'grid' ? renderReceiptGridCard(receipt) : renderReceiptListCard(receipt)
-                )}
-              </View>
+              <>
+                {viewMode === 'list' && renderSortHeader()}
+                <View style={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}>
+                  {filteredReceipts.map(receipt => 
+                    viewMode === 'grid' ? renderReceiptGridCard(receipt) : renderReceiptListRow(receipt)
+                  )}
+                </View>
+              </>
             )}
           </>
         );
@@ -1243,5 +1335,118 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.body,
     fontWeight: '600',
     color: colors.primary,
+  },
+  sortHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+    padding: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+    gap: 2,
+  },
+  sortButtonActive: {
+    backgroundColor: colors.card,
+  },
+  sortButtonText: {
+    ...typography.captionSmall,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+    fontSize: 11,
+  },
+  sortButtonTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingRight: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    minHeight: 64,
+  },
+  statusIndicator: {
+    width: 3,
+    height: '100%',
+    minHeight: 48,
+    borderTopLeftRadius: radius.md,
+    borderBottomLeftRadius: radius.md,
+  },
+  listRowContent: {
+    flex: 1,
+    paddingLeft: spacing.sm,
+    paddingRight: spacing.xs,
+  },
+  listRowMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  listRowInfo: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  listRowTitle: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.foreground,
+    fontSize: 13,
+  },
+  listRowClient: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    fontSize: 11,
+  },
+  listRowAmount: {
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.foreground,
+    fontSize: 14,
+  },
+  listRowMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  listRowMetaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  listRowStatusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+  },
+  listRowStatusText: {
+    ...typography.captionSmall,
+    fontWeight: '600',
+    fontSize: 9,
+  },
+  listRowDate: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    fontSize: 10,
+  },
+  listRowLinkedBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(34,197,94,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

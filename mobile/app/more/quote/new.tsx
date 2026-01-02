@@ -1104,10 +1104,10 @@ export default function NewQuoteScreen() {
                     <View style={styles.selectedClient}>
                       <View style={styles.clientAvatar}>
                         <Text style={styles.clientAvatarText}>
-                          {form.clientName.charAt(0).toUpperCase()}
+                          {(selectedClient?.name || form.clientName || '?').charAt(0).toUpperCase()}
                         </Text>
                       </View>
-                      <Text style={styles.selectedClientText}>{form.clientName}</Text>
+                      <Text style={styles.selectedClientText}>{selectedClient?.name || form.clientName}</Text>
                     </View>
                   ) : (
                     <Text style={styles.selectPlaceholder}>Tap to select a client...</Text>

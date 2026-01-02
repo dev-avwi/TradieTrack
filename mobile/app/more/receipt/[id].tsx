@@ -45,7 +45,8 @@ interface ClientData {
 
 interface InvoiceData {
   id: string;
-  invoiceNumber: string;
+  number: string | null;
+  invoiceNumber?: string | null;
   title: string | null;
   jobId: string | null;
 }
@@ -487,7 +488,7 @@ export default function ReceiptDetailScreen() {
               <Text style={styles.referenceLabel}>INVOICE REFERENCE</Text>
               <View style={styles.referenceRow}>
                 <Text style={[styles.referenceLink, { color: brandColor }]}>
-                  Invoice #{invoice.invoiceNumber}
+                  Invoice #{invoice.number || invoice.invoiceNumber || invoice.id.substring(0, 8).toUpperCase()}
                 </Text>
                 <Feather name="chevron-right" size={18} color={brandColor} />
               </View>

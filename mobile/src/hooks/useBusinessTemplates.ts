@@ -115,29 +115,51 @@ export function useBusinessTemplates() {
   }, [isAuthenticated]);
 
   const fetchTemplates = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      setError('Please sign in to view templates');
+      return;
+    }
     
     setIsLoading(true);
     setError(null);
+    setLoadingTimedOut(false);
+    
+    // Create AbortController for fetch timeout
+    const controller = new AbortController();
+    const fetchTimeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
     
     try {
       const [templatesRes, familiesRes] = await Promise.all([
         fetch(`${API_URL}/api/business-templates`, {
           credentials: 'include',
+          signal: controller.signal,
         }),
         fetch(`${API_URL}/api/business-templates/families`, {
           credentials: 'include',
+          signal: controller.signal,
         }),
       ]);
+      
+      clearTimeout(fetchTimeout);
+
+      // Check for non-OK responses
+      if (!templatesRes.ok && !familiesRes.ok) {
+        throw new Error(`Failed to load templates: ${templatesRes.status}`);
+      }
 
       if (templatesRes.ok) {
         const data = await templatesRes.json();
         setTemplates(data || []);
+      } else {
+        console.warn('Templates fetch returned non-OK status:', templatesRes.status);
       }
 
       if (familiesRes.ok) {
         const data = await familiesRes.json();
         setFamiliesMeta(data || []);
+      } else {
+        console.warn('Families fetch returned non-OK status:', familiesRes.status);
       }
 
       // Prefetch purposes for all families - use fallback if API fails
@@ -169,8 +191,16 @@ export function useBusinessTemplates() {
       if (usedFallback) {
         console.warn('Some purposes loaded from fallback - API fetch failed for some families');
       }
-    } catch (err) {
-      setError('Failed to load templates. Please try again.');
+    } catch (err: any) {
+      clearTimeout(fetchTimeout);
+      
+      // Check if it was an abort (timeout)
+      if (err?.name === 'AbortError') {
+        setError('Request timed out. Please check your connection and try again.');
+        setLoadingTimedOut(true);
+      } else {
+        setError('Failed to load templates. Please try again.');
+      }
       console.error('Failed to fetch business templates:', err);
       
       // Still try to set fallback purposes so page can render
@@ -181,10 +211,9 @@ export function useBusinessTemplates() {
       });
       setPurposesCache(fallbackCache);
       setPurposesLoaded(true);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
-    setLoadingTimedOut(false);
   }, [isAuthenticated, fetchPurposesForFamily, getFallbackPurposes]);
 
   const seedTemplates = useCallback(async () => {
@@ -316,10 +345,11 @@ export function useBusinessTemplates() {
   }, [isLoading]);
 
   useEffect(() => {
-    if (!isLoading && templates.length === 0 && familiesMeta.length === 0) {
+    // Only seed if loading completed successfully (no error) and there are no templates
+    if (!isLoading && !error && templates.length === 0 && familiesMeta.length === 0 && isAuthenticated) {
       seedTemplates();
     }
-  }, [isLoading, templates.length, familiesMeta.length, seedTemplates]);
+  }, [isLoading, error, templates.length, familiesMeta.length, seedTemplates, isAuthenticated]);
 
   const getPurposesForFamilyFromCache = useCallback((family: BusinessTemplateFamily): PurposeOption[] => {
     // Only return from cache - no fallback to ensure server enforcement
