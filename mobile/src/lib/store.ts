@@ -322,10 +322,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       if (cachedAuth && cachedAuth.userData) {
         // Use cached data for offline access
+        // Normalize permissions to array to prevent runtime errors from old cache data
+        const normalizedRoleInfo = cachedAuth.roleInfo ? {
+          ...cachedAuth.roleInfo,
+          permissions: Array.isArray(cachedAuth.roleInfo.permissions) ? cachedAuth.roleInfo.permissions : []
+        } : null;
         set({ 
           user: cachedAuth.userData, 
           businessSettings: cachedAuth.businessSettings,
-          roleInfo: cachedAuth.roleInfo,
+          roleInfo: normalizedRoleInfo,
           isAuthenticated: true, 
           isLoading: false,
           isInitialized: true 
@@ -359,10 +364,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       if (cachedAuth && cachedAuth.userData) {
         console.log('[Auth] Server auth failed, using cached auth data');
+        // Normalize permissions to array to prevent runtime errors from old cache data
+        const normalizedRoleInfo = cachedAuth.roleInfo ? {
+          ...cachedAuth.roleInfo,
+          permissions: Array.isArray(cachedAuth.roleInfo.permissions) ? cachedAuth.roleInfo.permissions : []
+        } : null;
         set({ 
           user: cachedAuth.userData, 
           businessSettings: cachedAuth.businessSettings,
-          roleInfo: cachedAuth.roleInfo,
+          roleInfo: normalizedRoleInfo,
           isAuthenticated: true, 
           isLoading: false,
           isInitialized: true 
@@ -436,11 +446,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     if (roleResponse.data) {
       // User is a team member with specific role
+      // Normalize permissions to array to prevent runtime errors
+      const permissions = Array.isArray(roleResponse.data.permissions) ? roleResponse.data.permissions : [];
       set({
         roleInfo: {
           roleId: roleResponse.data.roleId,
           roleName: roleResponse.data.roleName,
-          permissions: roleResponse.data.permissions,
+          permissions,
           hasCustomPermissions: roleResponse.data.hasCustomPermissions,
           isOwner: false,
         }
@@ -517,16 +529,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { roleInfo } = get();
     if (!roleInfo) return false;
     if (roleInfo.isOwner) return true;
-    if (roleInfo.permissions.includes('*')) return true;
-    return roleInfo.permissions.includes(permission);
+    // Guard against undefined permissions array
+    const permissions = Array.isArray(roleInfo.permissions) ? roleInfo.permissions : [];
+    if (permissions.includes('*')) return true;
+    return permissions.includes(permission);
   },
   
   hasWorkerPermission: (permission: string) => {
     const { workerPermissions, roleInfo } = get();
     // Owners have all permissions
     if (roleInfo?.isOwner) return true;
-    // Check worker permissions array from /api/auth/me
-    return workerPermissions.includes(permission);
+    // Guard against undefined workerPermissions array
+    const perms = Array.isArray(workerPermissions) ? workerPermissions : [];
+    return perms.includes(permission);
   },
   
   isOwner: () => {
