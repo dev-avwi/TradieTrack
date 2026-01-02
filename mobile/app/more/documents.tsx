@@ -573,12 +573,47 @@ export default function DocumentsScreen() {
     );
   };
 
+  // Fixed column widths for proper alignment
+  const COLUMN_WIDTHS = {
+    status: 100,
+    amount: 90,
+    menu: 40,
+  };
+
   const renderSortHeader = () => (
     <View style={styles.sortHeaderRow}>
-      <View style={styles.sortHeaderSpacer} />
-      {renderSortableHeaderColumn('status', 'Status', 0, 'center')}
-      {renderSortableHeaderColumn('amount', 'Amount', 0, 'flex-end')}
-      <View style={styles.sortHeaderMenuSpacer} />
+      <View style={styles.listRowTitleColumn}>
+        <Text style={styles.sortableColumnText}>Quote</Text>
+      </View>
+      <View style={{ width: COLUMN_WIDTHS.status, alignItems: 'center' }}>
+        <TouchableOpacity
+          style={styles.sortableColumnContent}
+          onPress={() => handleSortChange('status')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.sortableColumnText, sortField === 'status' && styles.sortableColumnTextActive]}>
+            Status
+          </Text>
+          <Text style={[styles.sortArrow, sortField === 'status' && styles.sortArrowActive]}>
+            {' '}↕
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <View style={{ width: COLUMN_WIDTHS.amount, alignItems: 'flex-end' }}>
+        <TouchableOpacity
+          style={styles.sortableColumnContent}
+          onPress={() => handleSortChange('amount')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.sortableColumnText, sortField === 'amount' && styles.sortableColumnTextActive]}>
+            Amount
+          </Text>
+          <Text style={[styles.sortArrow, sortField === 'amount' && styles.sortArrowActive]}>
+            {' '}↕
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <View style={{ width: COLUMN_WIDTHS.menu }} />
     </View>
   );
 
@@ -627,24 +662,32 @@ export default function DocumentsScreen() {
         data-testid={`row-quote-${quote.id}`}
       >
         <View style={styles.listRowContent}>
-          <View style={styles.listRowLeft}>
+          <View style={styles.listRowTitleColumn}>
             <Text style={styles.listRowTitle} numberOfLines={1}>
               {quote.title || quote.number || `Q-${quote.id.slice(0, 6)}`}
             </Text>
-          </View>
-          <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
-            <Text style={[styles.listRowStatusText, { color: statusConfig.color }]}>
-              {statusConfig.label}
+            <Text style={styles.listRowClient} numberOfLines={1}>
+              {client?.name || 'Unknown'}
             </Text>
           </View>
-          <Text style={styles.listRowAmount}>{formatCurrency(quote.total)}</Text>
-          <TouchableOpacity 
-            style={styles.listRowMenuButton}
-            onPress={() => router.push(`/more/quote/${quote.id}`)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          <View style={{ width: COLUMN_WIDTHS.status, alignItems: 'center' }}>
+            <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
+              <Text style={[styles.listRowStatusText, { color: statusConfig.color }]}>
+                {statusConfig.label}
+              </Text>
+            </View>
+          </View>
+          <View style={{ width: COLUMN_WIDTHS.amount, alignItems: 'flex-end' }}>
+            <Text style={styles.listRowAmount}>{formatCurrency(quote.total)}</Text>
+          </View>
+          <View style={{ width: COLUMN_WIDTHS.menu, alignItems: 'center' }}>
+            <TouchableOpacity 
+              onPress={() => router.push(`/more/quote/${quote.id}`)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -702,24 +745,32 @@ export default function DocumentsScreen() {
         data-testid={`row-invoice-${invoice.id}`}
       >
         <View style={styles.listRowContent}>
-          <View style={styles.listRowLeft}>
+          <View style={styles.listRowTitleColumn}>
             <Text style={styles.listRowTitle} numberOfLines={1}>
               {invoice.title || invoice.number || `INV-${invoice.id.slice(0, 6)}`}
             </Text>
-          </View>
-          <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
-            <Text style={[styles.listRowStatusText, { color: statusConfig.color }]}>
-              {statusConfig.label}
+            <Text style={styles.listRowClient} numberOfLines={1}>
+              {client?.name || 'Unknown'}
             </Text>
           </View>
-          <Text style={styles.listRowAmount}>{formatCurrency(invoice.total)}</Text>
-          <TouchableOpacity 
-            style={styles.listRowMenuButton}
-            onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          <View style={{ width: COLUMN_WIDTHS.status, alignItems: 'center' }}>
+            <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
+              <Text style={[styles.listRowStatusText, { color: statusConfig.color }]}>
+                {statusConfig.label}
+              </Text>
+            </View>
+          </View>
+          <View style={{ width: COLUMN_WIDTHS.amount, alignItems: 'flex-end' }}>
+            <Text style={styles.listRowAmount}>{formatCurrency(invoice.total)}</Text>
+          </View>
+          <View style={{ width: COLUMN_WIDTHS.menu, alignItems: 'center' }}>
+            <TouchableOpacity 
+              onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -766,24 +817,32 @@ export default function DocumentsScreen() {
         data-testid={`row-receipt-${receipt.id}`}
       >
         <View style={styles.listRowContent}>
-          <View style={styles.listRowLeft}>
+          <View style={styles.listRowTitleColumn}>
             <Text style={styles.listRowTitle} numberOfLines={1}>
               {receipt.receiptNumber}
             </Text>
-          </View>
-          <View style={[styles.listRowStatusBadge, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-            <Text style={[styles.listRowStatusText, { color: '#22c55e' }]}>
-              {getPaymentMethodLabel(receipt.paymentMethod)}
+            <Text style={styles.listRowClient} numberOfLines={1}>
+              {client?.name || 'Unknown'}
             </Text>
           </View>
-          <Text style={styles.listRowAmount}>{formatCurrency(receipt.amount)}</Text>
-          <TouchableOpacity 
-            style={styles.listRowMenuButton}
-            onPress={() => router.push(`/more/receipt/${receipt.id}`)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          <View style={{ width: COLUMN_WIDTHS.status, alignItems: 'center' }}>
+            <View style={[styles.listRowStatusBadge, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+              <Text style={[styles.listRowStatusText, { color: '#22c55e' }]}>
+                {getPaymentMethodLabel(receipt.paymentMethod)}
+              </Text>
+            </View>
+          </View>
+          <View style={{ width: COLUMN_WIDTHS.amount, alignItems: 'flex-end' }}>
+            <Text style={styles.listRowAmount}>{formatCurrency(receipt.amount)}</Text>
+          </View>
+          <View style={{ width: COLUMN_WIDTHS.menu, alignItems: 'center' }}>
+            <TouchableOpacity 
+              onPress={() => router.push(`/more/receipt/${receipt.id}`)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -1376,6 +1435,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   listRowLeft: {
     flex: 1,
     minWidth: 0,
+  },
+  listRowTitleColumn: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: spacing.sm,
   },
   listRowTitle: {
     ...typography.caption,
