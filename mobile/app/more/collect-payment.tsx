@@ -258,11 +258,11 @@ export default function CollectPaymentScreen() {
     fetchData();
   }, [fetchData]);
 
-  // Track if URL params have been processed
+  // Track URL param processing state
   const [paramsProcessed, setParamsProcessed] = useState(false);
+  const [pendingModalType, setPendingModalType] = useState<'qr' | 'link' | 'tap' | null>(null);
 
-  // Handle URL parameters for pre-selecting invoice/job from job detail page
-  // Simplified approach: just pre-select invoice/job, let user choose action
+  // Step 1: Process URL parameters and pre-fill data, set pending modal type
   useEffect(() => {
     const processParams = async () => {
       // Skip if no params or already processed
@@ -286,12 +286,10 @@ export default function CollectPaymentScreen() {
       setReceiptInvoiceId(params.invoiceId);
       
       // Also pre-fill job if provided
-      if (params.jobId && jobs.length > 0) {
-        setSelectedJobId(params.jobId);
-        setReceiptJobId(params.jobId);
-      } else if (selectedInvoice.jobId) {
-        setSelectedJobId(selectedInvoice.jobId);
-        setReceiptJobId(selectedInvoice.jobId);
+      const jobId = params.jobId || selectedInvoice.jobId;
+      if (jobId) {
+        setSelectedJobId(jobId);
+        setReceiptJobId(jobId);
       }
       
       // Pre-fill amounts and details from invoice
@@ -299,14 +297,28 @@ export default function CollectPaymentScreen() {
         ? selectedInvoice.total.toFixed(2) 
         : String(selectedInvoice.total || '0.00');
       
+      // Pre-fill receipt modal fields
       setReceiptAmount(invoiceTotal);
       setReceiptDescription(`Payment for ${selectedInvoice.number}: ${selectedInvoice.title}`);
       setReceiptReference(selectedInvoice.number);
       setReceiptClientId(selectedInvoice.clientId);
       
-      // Set payment method based on tab param
-      if (params.tab === 'tap') {
+      // Pre-fill create modal fields
+      setNewAmount(invoiceTotal);
+      setNewDescription(`Payment for ${selectedInvoice.number}: ${selectedInvoice.title}`);
+      setNewReference(selectedInvoice.number);
+      setSelectedClientId(selectedInvoice.clientId);
+      
+      // Set pending modal type (modal will open in next effect after state is applied)
+      if (params.tab === 'qr') {
+        setShareTab('qr');
+        setPendingModalType('qr');
+      } else if (params.tab === 'link') {
+        setShareTab('link');
+        setPendingModalType('link');
+      } else if (params.tab === 'tap') {
         setReceiptPaymentMethod('card');
+        setPendingModalType('tap');
       }
       
       setParamsProcessed(true);
@@ -314,6 +326,26 @@ export default function CollectPaymentScreen() {
     
     processParams();
   }, [params.invoiceId, params.jobId, params.tab, secondaryDataLoaded, loadingSecondary, invoices.length, jobs.length, paramsProcessed]);
+
+  // Step 2: Open modal after data is fully hydrated (separate effect for proper timing)
+  useEffect(() => {
+    if (!pendingModalType || !paramsProcessed) return;
+    
+    // Verify ALL required fields are hydrated before opening modal
+    if (pendingModalType === 'tap') {
+      // For tap-to-pay, verify receipt modal fields are ready
+      if (receiptInvoiceId && receiptAmount && receiptClientId && receiptDescription) {
+        setShowReceiptModal(true);
+        setPendingModalType(null);
+      }
+    } else if (pendingModalType === 'qr' || pendingModalType === 'link') {
+      // For QR/Link, verify create modal fields are ready
+      if (selectedInvoiceId && newAmount && selectedClientId && newDescription) {
+        setShowCreateModal(true);
+        setPendingModalType(null);
+      }
+    }
+  }, [pendingModalType, paramsProcessed, receiptInvoiceId, receiptAmount, receiptClientId, receiptDescription, selectedInvoiceId, newAmount, selectedClientId, newDescription]);
 
   useEffect(() => {
     if (selectedInvoiceId && invoices.length > 0) {
