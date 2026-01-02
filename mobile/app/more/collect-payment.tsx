@@ -22,7 +22,9 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { api, API_URL } from '../../src/lib/api';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, isToday, isYesterday, isThisWeek, parseISO } from 'date-fns';
+
+const isIOS = Platform.OS === 'ios';
 
 interface StripeConnectStatus {
   connected: boolean;
@@ -102,6 +104,14 @@ const formatCurrency = (amount: number | string) => {
   }).format(num);
 };
 
+const getDateGroup = (dateString: string): string => {
+  const date = parseISO(dateString);
+  if (isToday(date)) return 'Today';
+  if (isYesterday(date)) return 'Yesterday';
+  if (isThisWeek(date)) return 'This Week';
+  return format(date, 'MMMM yyyy');
+};
+
 export default function CollectPaymentScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -178,6 +188,9 @@ export default function CollectPaymentScreen() {
     return receipts.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
   }, [receipts]);
 
+  const paidRequestsCount = useMemo(() => 
+    paymentRequests.filter(r => r.status === 'paid').length, [paymentRequests]);
+
   const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
   const invoiceMap = useMemo(() => new Map(invoices.map(i => [i.id, i])), [invoices]);
   const jobMap = useMemo(() => new Map(jobs.map(j => [j.id, j])), [jobs]);
@@ -185,7 +198,16 @@ export default function CollectPaymentScreen() {
   const [secondaryDataLoaded, setSecondaryDataLoaded] = useState(false);
   const [loadingSecondary, setLoadingSecondary] = useState(false);
 
-  // Fast initial load - only essential data for display
+  const groupedReceipts = useMemo(() => {
+    const groups: { [key: string]: Receipt[] } = {};
+    receipts.forEach(receipt => {
+      const group = getDateGroup(receipt.createdAt);
+      if (!groups[group]) groups[group] = [];
+      groups[group].push(receipt);
+    });
+    return groups;
+  }, [receipts]);
+
   const fetchEssentialData = useCallback(async () => {
     try {
       const [requestsRes, stripeRes, receiptsRes] = await Promise.all([
@@ -205,7 +227,6 @@ export default function CollectPaymentScreen() {
     }
   }, []);
 
-  // Deferred load - for modals and history tab (receipts already loaded in essential)
   const fetchSecondaryData = useCallback(async () => {
     if (secondaryDataLoaded || loadingSecondary) return;
     setLoadingSecondary(true);
@@ -227,7 +248,6 @@ export default function CollectPaymentScreen() {
     }
   }, [secondaryDataLoaded, loadingSecondary]);
 
-  // Full refresh for pull-to-refresh
   const fetchData = useCallback(async () => {
     setSecondaryDataLoaded(false);
     await fetchEssentialData();
@@ -299,14 +319,12 @@ export default function CollectPaymentScreen() {
     fetchData();
   }, [fetchData]);
 
-  // Trigger secondary data load when history tab is tapped
   useEffect(() => {
     if (activeTab === 'history') {
       fetchSecondaryData();
     }
   }, [activeTab, fetchSecondaryData]);
 
-  // Trigger secondary data load when modals open
   useEffect(() => {
     if (showCreateModal || showRecordPaymentModal || showReceiptModal) {
       fetchSecondaryData();
@@ -589,189 +607,132 @@ export default function CollectPaymentScreen() {
     }
   };
 
-  // KPI Stats Header - Compact Horizontal
-  const renderStatsHeader = () => (
-    <View style={styles.statsContainer}>
-      <View style={styles.statCard}>
-        <Text style={styles.statLabel}>OUTSTANDING</Text>
-        <View style={styles.statRight}>
-          <Text style={[styles.statValue, { color: colors.warning }]}>
-            {formatCurrency(totalPendingAmount)}
-          </Text>
-          <Text style={styles.statSubtext}>({pendingRequests.length})</Text>
+  const renderHeroSection = () => (
+    <View style={styles.heroSection}>
+      {!stripeStatus?.connected && (
+        <TouchableOpacity 
+          style={styles.stripeConnectBanner}
+          onPress={() => router.push('/more/money-hub')}
+          activeOpacity={0.8}
+          data-testid="button-connect-stripe"
+        >
+          <View style={styles.stripeBannerLeft}>
+            <View style={styles.stripeBannerIcon}>
+              <Feather name="zap" size={16} color={colors.warning} />
+            </View>
+            <View>
+              <Text style={styles.stripeBannerTitle}>Enable Card Payments</Text>
+              <Text style={styles.stripeBannerSubtitle}>Connect Stripe to accept cards</Text>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      )}
+
+      <View style={styles.heroCard}>
+        <View style={styles.heroStats}>
+          <View style={styles.heroStatMain}>
+            <Text style={styles.heroStatLabel}>Outstanding</Text>
+            <Text style={[styles.heroStatValue, totalPendingAmount > 0 && { color: colors.warning }]}>
+              {formatCurrency(totalPendingAmount)}
+            </Text>
+          </View>
+          <View style={styles.heroStatDivider} />
+          <View style={styles.heroStatSecondary}>
+            <View style={styles.miniStat}>
+              <View style={[styles.miniStatDot, { backgroundColor: colors.warning }]} />
+              <Text style={styles.miniStatLabel}>{pendingRequests.length} pending</Text>
+            </View>
+            <View style={styles.miniStat}>
+              <View style={[styles.miniStatDot, { backgroundColor: colors.success }]} />
+              <Text style={styles.miniStatLabel}>{paidRequestsCount} paid</Text>
+            </View>
+          </View>
         </View>
       </View>
-      <View style={styles.statCard}>
-        <Text style={styles.statLabel}>RECEIVED</Text>
-        <View style={styles.statRight}>
-          <Text style={[styles.statValue, { color: colors.success }]}>
-            {formatCurrency(totalReceived)}
-          </Text>
-          <Text style={styles.statSubtext}>({receipts.length})</Text>
-        </View>
-      </View>
+
+      <TouchableOpacity 
+        style={styles.primaryCta}
+        onPress={() => setShowCreateModal(true)}
+        activeOpacity={0.8}
+        data-testid="button-create-payment-request"
+      >
+        <Feather name="plus" size={22} color={colors.primaryForeground} />
+        <Text style={styles.primaryCtaText}>Create Payment Request</Text>
+      </TouchableOpacity>
     </View>
   );
 
-  // Professional Tab Bar
-  const renderTabs = () => (
-    <View style={styles.tabBar}>
+  const renderSegmentedControl = () => (
+    <View style={styles.segmentedControl}>
       <TouchableOpacity
-        style={[styles.tabItem, activeTab === 'collect' && styles.tabItemActive]}
+        style={[styles.segmentItem, activeTab === 'collect' && styles.segmentItemActive]}
         onPress={() => setActiveTab('collect')}
         activeOpacity={0.7}
         data-testid="tab-collect"
       >
-        <Feather 
-          name="credit-card" 
-          size={18} 
-          color={activeTab === 'collect' ? colors.primary : colors.mutedForeground} 
-        />
-        <Text style={[styles.tabText, activeTab === 'collect' && styles.tabTextActive]}>
+        <Text style={[styles.segmentText, activeTab === 'collect' && styles.segmentTextActive]}>
           Collect
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.tabItem, activeTab === 'history' && styles.tabItemActive]}
+        style={[styles.segmentItem, activeTab === 'history' && styles.segmentItemActive]}
         onPress={() => setActiveTab('history')}
         activeOpacity={0.7}
         data-testid="tab-history"
       >
-        <Feather 
-          name="clock" 
-          size={18} 
-          color={activeTab === 'history' ? colors.primary : colors.mutedForeground} 
-        />
-        <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>
+        <Text style={[styles.segmentText, activeTab === 'history' && styles.segmentTextActive]}>
           History
         </Text>
-        {(pendingRequests.length + receipts.length) > 0 && (
-          <View style={styles.tabBadge}>
-            <Text style={styles.tabBadgeText}>{pendingRequests.length + receipts.length}</Text>
+        {receipts.length > 0 && (
+          <View style={styles.segmentBadge}>
+            <Text style={styles.segmentBadgeText}>{receipts.length}</Text>
           </View>
         )}
       </TouchableOpacity>
     </View>
   );
 
-  // Payment Method Cards - Professional Grid Layout
   const renderCollectTab = () => (
     <View style={styles.tabContent}>
-      {/* Minimal Stripe Notice */}
-      {!stripeStatus?.connected && (
-        <TouchableOpacity 
-          style={styles.stripeNotice}
-          onPress={() => router.push('/more/money-hub')}
-          activeOpacity={0.7}
-          data-testid="button-connect-stripe"
-        >
-          <Feather name="zap" size={14} color={colors.warning} />
-          <Text style={styles.stripeNoticeText}>Connect Stripe for card payments</Text>
-          <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
-        </TouchableOpacity>
-      )}
-
-      {/* Quick Actions - Clean Grid */}
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
-      <View style={styles.actionGrid}>
-        <TouchableOpacity 
-          style={styles.actionCard}
-          onPress={() => setShowCreateModal(true)}
-          activeOpacity={0.7}
-          data-testid="button-new-request"
-        >
-          <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
-            <Feather name="link" size={20} color={colors.primary} />
-          </View>
-          <Text style={styles.actionTitle}>Payment Link</Text>
-          <Text style={styles.actionSubtitle}>QR code or URL</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.actionCard}
-          onPress={() => setShowRecordPaymentModal(true)}
-          activeOpacity={0.7}
-          data-testid="button-record-payment"
-        >
-          <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
-            <Feather name="check-circle" size={20} color={colors.success} />
-          </View>
-          <Text style={styles.actionTitle}>Record Payment</Text>
-          <Text style={styles.actionSubtitle}>Cash or transfer</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.actionCard}
-          onPress={() => setShowReceiptModal(true)}
-          activeOpacity={0.7}
-          data-testid="button-create-receipt"
-        >
-          <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.warning, 0.1) }]}>
-            <Feather name="file-text" size={20} color={colors.warning} />
-          </View>
-          <Text style={styles.actionTitle}>Issue Receipt</Text>
-          <Text style={styles.actionSubtitle}>Generate PDF</Text>
-        </TouchableOpacity>
-
-        {stripeStatus?.connected && (
-          <TouchableOpacity 
-            style={styles.actionCard}
-            onPress={() => Alert.alert('Tap to Pay', 'Position phone near customer card to collect payment')}
-            activeOpacity={0.7}
-            data-testid="button-tap-to-pay"
-          >
-            <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.info || colors.primary, 0.1) }]}>
-              <Feather name="smartphone" size={20} color={colors.info || colors.primary} />
-            </View>
-            <Text style={styles.actionTitle}>Tap to Pay</Text>
-            <Text style={styles.actionSubtitle}>Contactless</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-    </View>
-  );
-
-  // History Tab - Requests and Receipts
-  const renderHistoryTab = () => (
-    <View style={styles.tabContent}>
-      {/* Pending Requests Section */}
       {pendingRequests.length > 0 && (
-        <View style={styles.historySection}>
-          <Text style={styles.sectionTitle}>Active Requests</Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Active Requests</Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{pendingRequests.length}</Text>
+            </View>
+          </View>
           {pendingRequests.map((request) => {
             const statusConfig = getStatusConfig(request.status);
             const clientName = request.clientId ? clientMap.get(request.clientId)?.name : null;
             return (
-              <View key={request.id} style={styles.historyCard}>
-                <View style={styles.historyCardHeader}>
-                  <Text style={styles.historyAmount}>{formatCurrency(request.amount)}</Text>
+              <View key={request.id} style={styles.requestCard}>
+                <View style={styles.requestCardMain}>
+                  <View style={styles.requestCardLeft}>
+                    <Text style={styles.requestAmount}>{formatCurrency(request.amount)}</Text>
+                    <Text style={styles.requestDescription} numberOfLines={1}>
+                      {request.description}
+                    </Text>
+                    <View style={styles.requestMeta}>
+                      {clientName && (
+                        <Text style={styles.requestMetaText}>{clientName}</Text>
+                      )}
+                      {clientName && <Text style={styles.requestMetaDot}>·</Text>}
+                      <Text style={styles.requestMetaText}>
+                        {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                      </Text>
+                    </View>
+                  </View>
                   <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
                     <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
                       {statusConfig.label}
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.historyDescription} numberOfLines={1}>
-                  {request.description}
-                </Text>
-                <View style={styles.historyMeta}>
-                  {clientName && (
-                    <View style={styles.metaItem}>
-                      <Feather name="user" size={12} color={colors.mutedForeground} />
-                      <Text style={styles.metaText}>{clientName}</Text>
-                    </View>
-                  )}
-                  <View style={styles.metaItem}>
-                    <Feather name="clock" size={12} color={colors.mutedForeground} />
-                    <Text style={styles.metaText}>
-                      {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.historyActions}>
+                <View style={styles.requestCardActions}>
                   <TouchableOpacity 
-                    style={styles.historyActionBtn}
+                    style={styles.requestActionBtn}
                     onPress={() => {
                       setSelectedRequest(request);
                       setShowShareModal(true);
@@ -780,16 +741,17 @@ export default function CollectPaymentScreen() {
                     data-testid={`button-share-${request.id}`}
                   >
                     <Feather name="share-2" size={16} color={colors.primary} />
-                    <Text style={[styles.historyActionText, { color: colors.primary }]}>Share</Text>
+                    <Text style={[styles.requestActionText, { color: colors.primary }]}>Share</Text>
                   </TouchableOpacity>
+                  <View style={styles.actionDivider} />
                   <TouchableOpacity 
-                    style={styles.historyActionBtn}
+                    style={styles.requestActionBtn}
                     onPress={() => handleCancelRequest(request.id)}
                     activeOpacity={0.7}
                     data-testid={`button-cancel-${request.id}`}
                   >
-                    <Feather name="x" size={16} color={colors.destructive} />
-                    <Text style={[styles.historyActionText, { color: colors.destructive }]}>Cancel</Text>
+                    <Feather name="x-circle" size={16} color={colors.destructive} />
+                    <Text style={[styles.requestActionText, { color: colors.destructive }]}>Cancel</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -798,99 +760,153 @@ export default function CollectPaymentScreen() {
         </View>
       )}
 
-      {/* Receipts Section */}
-      {receipts.length > 0 && (
-        <View style={styles.historySection}>
-          <Text style={styles.sectionTitle}>Recent Receipts</Text>
-          {receipts.slice(0, 10).map((receipt) => {
-            const clientName = receipt.clientId ? clientMap.get(receipt.clientId)?.name : null;
-            return (
-              <TouchableOpacity 
-                key={receipt.id}
-                style={styles.historyCard}
-                onPress={() => router.push(`/more/receipt/${receipt.id}`)}
-                activeOpacity={0.7}
-                data-testid={`receipt-card-${receipt.id}`}
-              >
-                <View style={styles.historyCardHeader}>
-                  <Text style={styles.historyAmount}>{formatCurrency(receipt.amount)}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
-                    <Text style={[styles.statusBadgeText, { color: colors.success }]}>Paid</Text>
-                  </View>
-                </View>
-                <Text style={styles.historyDescription}>{receipt.receiptNumber}</Text>
-                <View style={styles.historyMeta}>
-                  {clientName && (
-                    <View style={styles.metaItem}>
-                      <Feather name="user" size={12} color={colors.mutedForeground} />
-                      <Text style={styles.metaText}>{clientName}</Text>
-                    </View>
-                  )}
-                  {receipt.paidAt && (
-                    <View style={styles.metaItem}>
-                      <Feather name="check-circle" size={12} color={colors.success} />
-                      <Text style={[styles.metaText, { color: colors.success }]}>
-                        {format(new Date(receipt.paidAt), 'dd MMM yyyy')}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
-
-      {/* Completed Requests */}
-      {completedRequests.length > 0 && (
-        <View style={styles.historySection}>
-          <Text style={styles.sectionTitle}>Past Requests</Text>
-          {completedRequests.slice(0, 5).map((request) => {
-            const statusConfig = getStatusConfig(request.status);
-            return (
-              <View key={request.id} style={[styles.historyCard, styles.historyCardFaded]}>
-                <View style={styles.historyCardHeader}>
-                  <Text style={[styles.historyAmount, { color: colors.mutedForeground }]}>
-                    {formatCurrency(request.amount)}
-                  </Text>
-                  <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-                    <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
-                      {statusConfig.label}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={[styles.historyDescription, { color: colors.mutedForeground }]} numberOfLines={1}>
-                  {request.description}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-      )}
-
-      {/* Empty State */}
-      {pendingRequests.length === 0 && receipts.length === 0 && completedRequests.length === 0 && (
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIcon}>
-            <Feather name="inbox" size={40} color={colors.mutedForeground} />
-          </View>
-          <Text style={styles.emptyTitle}>No Payment History</Text>
-          <Text style={styles.emptySubtitle}>
-            Create a payment request or record a payment to get started.
-          </Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.quickActionsRow}>
           <TouchableOpacity 
-            style={styles.emptyButton}
-            onPress={() => setActiveTab('collect')}
+            style={styles.quickActionCard}
+            onPress={() => setShowRecordPaymentModal(true)}
             activeOpacity={0.7}
+            data-testid="button-record-payment"
           >
-            <Text style={styles.emptyButtonText}>Collect Payment</Text>
+            <View style={[styles.quickActionIcon, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
+              <Feather name="check-circle" size={20} color={colors.success} />
+            </View>
+            <Text style={styles.quickActionTitle}>Record Payment</Text>
+            <Text style={styles.quickActionSubtitle}>Cash/Transfer</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => setShowReceiptModal(true)}
+            activeOpacity={0.7}
+            data-testid="button-create-receipt"
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: colorWithOpacity(colors.info || colors.primary, 0.12) }]}>
+              <Feather name="file-text" size={20} color={colors.info || colors.primary} />
+            </View>
+            <Text style={styles.quickActionTitle}>Issue Receipt</Text>
+            <Text style={styles.quickActionSubtitle}>Generate PDF</Text>
+          </TouchableOpacity>
+
+          {stripeStatus?.connected && (
+            <TouchableOpacity 
+              style={styles.quickActionCard}
+              onPress={() => Alert.alert('Tap to Pay', 'Position phone near customer card to collect payment')}
+              activeOpacity={0.7}
+              data-testid="button-tap-to-pay"
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
+                <Feather name="smartphone" size={20} color={colors.primary} />
+              </View>
+              <Text style={styles.quickActionTitle}>Tap to Pay</Text>
+              <Text style={styles.quickActionSubtitle}>Contactless</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {pendingRequests.length === 0 && (
+        <View style={styles.emptyStateInline}>
+          <View style={styles.emptyIcon}>
+            <Feather name="credit-card" size={32} color={colors.mutedForeground} />
+          </View>
+          <Text style={styles.emptyTitle}>No pending requests</Text>
+          <Text style={styles.emptySubtitle}>
+            Create a payment request to get started
+          </Text>
         </View>
       )}
     </View>
   );
 
-  // Picker Modal Component
+  const renderHistoryTab = () => (
+    <View style={styles.tabContent}>
+      {receipts.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Receipts</Text>
+            <Text style={styles.sectionSubtitle}>{formatCurrency(totalReceived)} total</Text>
+          </View>
+          {Object.entries(groupedReceipts).map(([group, groupReceipts]) => (
+            <View key={group}>
+              <Text style={styles.dateGroupHeader}>{group}</Text>
+              {groupReceipts.map((receipt) => {
+                const clientName = receipt.clientId ? clientMap.get(receipt.clientId)?.name : null;
+                return (
+                  <TouchableOpacity 
+                    key={receipt.id}
+                    style={styles.receiptCard}
+                    onPress={() => router.push(`/more/receipt/${receipt.id}`)}
+                    activeOpacity={0.7}
+                    data-testid={`receipt-card-${receipt.id}`}
+                  >
+                    <View style={styles.receiptIconContainer}>
+                      <Feather name="file-text" size={18} color={colors.success} />
+                    </View>
+                    <View style={styles.receiptContent}>
+                      <View style={styles.receiptTop}>
+                        <Text style={styles.receiptNumber}>{receipt.receiptNumber}</Text>
+                        <Text style={styles.receiptAmount}>{formatCurrency(receipt.amount)}</Text>
+                      </View>
+                      <View style={styles.receiptBottom}>
+                        <Text style={styles.receiptMeta}>
+                          {clientName || 'No client'} · {paymentMethods.find(m => m.value === receipt.paymentMethod)?.label || receipt.paymentMethod}
+                        </Text>
+                        {receipt.paidAt && (
+                          <Text style={[styles.receiptMeta, { color: colors.success }]}>
+                            {format(new Date(receipt.paidAt), 'h:mm a')}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {completedRequests.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Past Requests</Text>
+          {completedRequests.slice(0, 10).map((request) => {
+            const statusConfig = getStatusConfig(request.status);
+            return (
+              <View key={request.id} style={styles.pastRequestCard}>
+                <View style={styles.pastRequestLeft}>
+                  <Text style={styles.pastRequestAmount}>{formatCurrency(request.amount)}</Text>
+                  <Text style={styles.pastRequestDescription} numberOfLines={1}>
+                    {request.description}
+                  </Text>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+                  <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
+                    {statusConfig.label}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {receipts.length === 0 && completedRequests.length === 0 && (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIcon}>
+            <Feather name="inbox" size={40} color={colors.mutedForeground} />
+          </View>
+          <Text style={styles.emptyTitle}>No History Yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Your completed payments and receipts will appear here.
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
   const renderPickerModal = (
     visible: boolean,
     onClose: () => void,
@@ -935,7 +951,6 @@ export default function CollectPaymentScreen() {
     </Modal>
   );
 
-  // Create Payment Request Modal
   const renderCreateModal = () => (
     <Modal visible={showCreateModal} transparent animationType="slide">
       <KeyboardAvoidingView 
@@ -1071,7 +1086,6 @@ export default function CollectPaymentScreen() {
     </Modal>
   );
 
-  // Record Payment Modal
   const renderRecordPaymentModal = () => (
     <Modal visible={showRecordPaymentModal} transparent animationType="slide">
       <KeyboardAvoidingView 
@@ -1189,7 +1203,6 @@ export default function CollectPaymentScreen() {
     </Modal>
   );
 
-  // Create Receipt Modal
   const renderReceiptModal = () => (
     <Modal visible={showReceiptModal} transparent animationType="slide">
       <KeyboardAvoidingView 
@@ -1325,7 +1338,6 @@ export default function CollectPaymentScreen() {
     </Modal>
   );
 
-  // Share Payment Link Modal
   const renderShareModal = () => (
     <Modal visible={showShareModal} transparent animationType="slide">
       <View style={styles.modalOverlay}>
@@ -1509,16 +1521,15 @@ export default function CollectPaymentScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Stack.Screen options={{ headerShown: false }} />
+        <Stack.Screen options={{ title: 'Collect Payment' }} />
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading payments...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={{ title: 'Collect Payment' }} />
       
       <ScrollView
         style={styles.scrollView}
@@ -1528,51 +1539,23 @@ export default function CollectPaymentScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Page Header */}
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.pageTitle}>Collect Payment</Text>
-              {totalPendingAmount > 0 && (
-                <View style={styles.pendingBadge}>
-                  <Text style={styles.pendingBadgeText}>{formatCurrency(totalPendingAmount)} pending</Text>
-                </View>
-              )}
-            </View>
-            {stripeStatus?.connected && (
-              <View style={styles.stripeConnectedBadge}>
-                <Feather name="check-circle" size={14} color={colors.success} />
-                <Text style={styles.stripeConnectedText}>Stripe</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.pageSubtitle}>Accept payments via QR code, link, or record manually</Text>
-        </View>
-        
-        {/* KPI Stats */}
-        {renderStatsHeader()}
-        
-        {/* Tab Bar */}
-        {renderTabs()}
-        
-        {/* Tab Content */}
+        {renderHeroSection()}
+        {renderSegmentedControl()}
         {activeTab === 'collect' ? renderCollectTab() : renderHistoryTab()}
       </ScrollView>
-      
-      {/* Modals */}
+
       {renderCreateModal()}
       {renderRecordPaymentModal()}
       {renderReceiptModal()}
       {renderShareModal()}
       
-      {/* Picker Modals */}
       {renderPickerModal(
         showInvoicePicker,
         () => setShowInvoicePicker(false),
         'Select Invoice',
-        unpaidInvoices.map(inv => ({ 
-          value: inv.id, 
-          label: `${inv.number} - ${formatCurrency(inv.total)}` 
+        unpaidInvoices.map(inv => ({
+          value: inv.id,
+          label: `${inv.number} - ${formatCurrency(inv.total)} - ${inv.title}`,
         })),
         pickerContext === 'create' ? selectedInvoiceId : pickerContext === 'record' ? recordInvoiceId : receiptInvoiceId,
         (value) => {
@@ -1599,7 +1582,7 @@ export default function CollectPaymentScreen() {
       {renderPickerModal(
         showExpiryPicker,
         () => setShowExpiryPicker(false),
-        'Link Expires In',
+        'Link Expiry',
         expiryOptions,
         expiresInHours,
         setExpiresInHours
@@ -1621,8 +1604,6 @@ export default function CollectPaymentScreen() {
 }
 
 const createStyles = (colors: ThemeColors) => {
-  const isIOS = Platform.OS === 'ios';
-  
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -1633,188 +1614,161 @@ const createStyles = (colors: ThemeColors) => {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.background,
-      gap: spacing.md,
-    },
-    loadingText: {
-      ...typography.body,
-      color: colors.mutedForeground,
     },
     scrollView: {
       flex: 1,
     },
     scrollContent: {
-      paddingTop: isIOS ? 60 : spacing.xl,
       paddingBottom: spacing['3xl'],
     },
-    
-    // Header
-    header: {
-      paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.lg,
+
+    heroSection: {
+      padding: spacing.lg,
+      gap: spacing.md,
     },
-    headerRow: {
+    stripeConnectBanner: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: spacing.xs,
+      backgroundColor: colorWithOpacity(colors.warning, 0.08),
+      borderWidth: 1,
+      borderColor: colorWithOpacity(colors.warning, 0.2),
+      borderRadius: radius.lg,
+      padding: spacing.md,
     },
-    headerTitleContainer: {
+    stripeBannerLeft: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.sm,
-      flexWrap: 'wrap',
+      gap: spacing.md,
     },
-    pageTitle: {
-      ...typography.title,
+    stripeBannerIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colorWithOpacity(colors.warning, 0.15),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stripeBannerTitle: {
+      ...typography.bodySemibold,
       color: colors.foreground,
     },
-    pageSubtitle: {
-      ...typography.body,
+    stripeBannerSubtitle: {
+      ...typography.caption,
       color: colors.mutedForeground,
     },
-    pendingBadge: {
-      backgroundColor: colorWithOpacity(colors.warning, 0.12),
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 4,
-      borderRadius: radius.sm,
-    },
-    pendingBadgeText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.warning,
-    },
-    stripeConnectedBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      backgroundColor: colorWithOpacity(colors.success, 0.12),
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 4,
-      borderRadius: radius.sm,
-    },
-    stripeConnectedText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.success,
-    },
-    
-    // Stats Cards - Compact
-    statsContainer: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      paddingHorizontal: spacing.lg,
-      marginBottom: spacing.md,
-    },
-    statCard: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+    heroCard: {
       backgroundColor: colors.card,
-      borderRadius: radius.md,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
+      borderRadius: radius.xl,
       borderWidth: 1,
       borderColor: colors.cardBorder,
+      padding: spacing.lg,
     },
-    statLabel: {
-      fontSize: 10,
-      fontWeight: '700',
-      letterSpacing: 0.5,
-      color: colors.mutedForeground,
-      textTransform: 'uppercase',
-    },
-    statValue: {
-      fontSize: 16,
-      fontWeight: '700',
-    },
-    statRight: {
+    heroStats: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.xs,
     },
-    statSubtext: {
-      fontSize: 11,
+    heroStatMain: {
+      flex: 1,
+    },
+    heroStatLabel: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: spacing.xs,
+    },
+    heroStatValue: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: colors.foreground,
+      letterSpacing: -0.5,
+    },
+    heroStatDivider: {
+      width: 1,
+      height: 48,
+      backgroundColor: colors.cardBorder,
+      marginHorizontal: spacing.lg,
+    },
+    heroStatSecondary: {
+      gap: spacing.sm,
+    },
+    miniStat: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    miniStatDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    miniStatLabel: {
+      ...typography.caption,
       color: colors.mutedForeground,
     },
-    
-    // Tab Bar
-    tabBar: {
+    primaryCta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.primary,
+      paddingVertical: spacing.lg,
+      borderRadius: radius.lg,
+      ...shadows.sm,
+    },
+    primaryCtaText: {
+      ...typography.bodySemibold,
+      color: colors.primaryForeground,
+    },
+
+    segmentedControl: {
       flexDirection: 'row',
       marginHorizontal: spacing.lg,
       backgroundColor: colors.muted,
-      borderRadius: radius.lg,
+      borderRadius: radius.md,
       padding: 4,
-      marginBottom: spacing.lg,
     },
-    tabItem: {
+    segmentItem: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: spacing.xs,
-      paddingVertical: spacing.md,
-      borderRadius: radius.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.sm,
     },
-    tabItemActive: {
+    segmentItemActive: {
       backgroundColor: colors.card,
-      ...(isIOS ? {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 2,
-      } : shadows.sm),
+      ...shadows.xs,
     },
-    tabText: {
+    segmentText: {
       ...typography.button,
       color: colors.mutedForeground,
     },
-    tabTextActive: {
-      color: colors.primary,
-      fontWeight: '600',
+    segmentTextActive: {
+      color: colors.foreground,
     },
-    tabBadge: {
+    segmentBadge: {
       backgroundColor: colors.primary,
-      borderRadius: 10,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+      borderRadius: radius.pill,
       minWidth: 20,
-      height: 20,
       alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 6,
     },
-    tabBadgeText: {
+    segmentBadgeText: {
       fontSize: 11,
       fontWeight: '600',
       color: colors.primaryForeground,
     },
-    
-    // Tab Content
+
     tabContent: {
       paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
     },
-    
-    // Minimal Stripe Notice
-    stripeNotice: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      backgroundColor: colorWithOpacity(colors.warning, 0.06),
-      borderRadius: radius.md,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
-      marginBottom: spacing.md,
-    },
-    stripeNoticeText: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      flex: 1,
-    },
-    
-    // Section Headers
-    sectionTitle: {
-      ...typography.bodySemibold,
-      color: colors.foreground,
-      marginBottom: spacing.md,
+    section: {
+      marginBottom: spacing.xl,
     },
     sectionHeader: {
       flexDirection: 'row',
@@ -1822,151 +1776,89 @@ const createStyles = (colors: ThemeColors) => {
       justifyContent: 'space-between',
       marginBottom: spacing.md,
     },
-    viewAllText: {
-      ...typography.button,
-      color: colors.primary,
-    },
-    
-    // Action Grid - Compact
-    actionGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.sm,
-      marginBottom: spacing.lg,
-    },
-    actionCard: {
-      width: '48%',
-      backgroundColor: colors.card,
-      borderRadius: radius.md,
-      padding: spacing.md,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      alignItems: 'center',
-    },
-    actionIconContainer: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing.xs,
-    },
-    actionTitle: {
-      ...typography.caption,
-      fontWeight: '600',
+    sectionTitle: {
+      ...typography.subtitle,
       color: colors.foreground,
-      textAlign: 'center',
-      marginBottom: 1,
     },
-    actionSubtitle: {
-      fontSize: 11,
+    sectionSubtitle: {
+      ...typography.caption,
+      color: colors.success,
+      fontWeight: '600',
+    },
+    countBadge: {
+      backgroundColor: colors.muted,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+      borderRadius: radius.sm,
+    },
+    countBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
       color: colors.mutedForeground,
-      textAlign: 'center',
     },
-    
-    // Invoices Section
-    invoicesSection: {
-      marginBottom: spacing.lg,
-    },
-    invoiceRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+
+    requestCard: {
       backgroundColor: colors.card,
       borderRadius: radius.lg,
-      padding: spacing.md,
-      marginBottom: spacing.sm,
       borderWidth: 1,
       borderColor: colors.cardBorder,
-    },
-    invoiceInfo: {
-      flex: 1,
-    },
-    invoiceNumber: {
-      ...typography.bodySemibold,
-      color: colors.foreground,
-    },
-    invoiceClient: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    invoiceRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-    },
-    invoiceAmount: {
-      ...typography.bodySemibold,
-      color: colors.primary,
-    },
-    
-    // History Section
-    historySection: {
-      marginBottom: spacing.xl,
-    },
-    historyCard: {
-      backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      padding: spacing.lg,
       marginBottom: spacing.md,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
+      overflow: 'hidden',
     },
-    historyCardFaded: {
-      opacity: 0.7,
-    },
-    historyCardHeader: {
+    requestCardMain: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
-      marginBottom: spacing.sm,
+      padding: spacing.md,
     },
-    historyAmount: {
+    requestCardLeft: {
+      flex: 1,
+      marginRight: spacing.md,
+    },
+    requestAmount: {
       fontSize: 20,
       fontWeight: '700',
       color: colors.foreground,
+      marginBottom: 2,
     },
-    historyDescription: {
+    requestDescription: {
       ...typography.body,
-      color: colors.mutedForeground,
-      marginBottom: spacing.sm,
+      color: colors.secondaryText,
+      marginBottom: spacing.xs,
     },
-    historyMeta: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.md,
-      marginBottom: spacing.sm,
-    },
-    metaItem: {
+    requestMeta: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
     },
-    metaText: {
+    requestMetaText: {
       ...typography.caption,
       color: colors.mutedForeground,
     },
-    historyActions: {
+    requestMetaDot: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      marginHorizontal: spacing.xs,
+    },
+    requestCardActions: {
       flexDirection: 'row',
-      gap: spacing.md,
-      marginTop: spacing.sm,
-      paddingTop: spacing.sm,
       borderTopWidth: 1,
       borderTopColor: colors.cardBorder,
     },
-    historyActionBtn: {
+    requestActionBtn: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-      paddingVertical: spacing.xs,
-      paddingHorizontal: spacing.sm,
+      justifyContent: 'center',
+      gap: spacing.xs,
+      paddingVertical: spacing.md,
     },
-    historyActionText: {
+    requestActionText: {
       ...typography.button,
-      fontSize: 13,
     },
-    
-    // Status Badge
+    actionDivider: {
+      width: 1,
+      backgroundColor: colors.cardBorder,
+    },
     statusBadge: {
       paddingHorizontal: spacing.sm,
       paddingVertical: 4,
@@ -1976,17 +1868,53 @@ const createStyles = (colors: ThemeColors) => {
       fontSize: 12,
       fontWeight: '600',
     },
-    
-    // Empty State
+
+    quickActionsRow: {
+      flexDirection: 'row',
+      gap: spacing.md,
+    },
+    quickActionCard: {
+      flex: 1,
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      padding: spacing.md,
+      alignItems: 'center',
+    },
+    quickActionIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+    },
+    quickActionTitle: {
+      ...typography.caption,
+      fontWeight: '600',
+      color: colors.foreground,
+      textAlign: 'center',
+    },
+    quickActionSubtitle: {
+      fontSize: 11,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+    },
+
+    emptyStateInline: {
+      alignItems: 'center',
+      paddingVertical: spacing['2xl'],
+    },
     emptyState: {
       alignItems: 'center',
       paddingVertical: spacing['3xl'],
       paddingHorizontal: spacing.xl,
     },
     emptyIcon: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
+      width: 72,
+      height: 72,
+      borderRadius: 36,
       backgroundColor: colors.muted,
       alignItems: 'center',
       justifyContent: 'center',
@@ -2001,20 +1929,84 @@ const createStyles = (colors: ThemeColors) => {
       ...typography.body,
       color: colors.mutedForeground,
       textAlign: 'center',
-      marginBottom: spacing.xl,
     },
-    emptyButton: {
-      backgroundColor: colors.primary,
+
+    dateGroupHeader: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginTop: spacing.md,
+      marginBottom: spacing.sm,
+    },
+    receiptCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      padding: spacing.md,
+      marginBottom: spacing.sm,
+      gap: spacing.md,
+    },
+    receiptIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colorWithOpacity(colors.success, 0.12),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    receiptContent: {
+      flex: 1,
+    },
+    receiptTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 2,
+    },
+    receiptNumber: {
+      ...typography.bodySemibold,
+      color: colors.foreground,
+    },
+    receiptAmount: {
+      ...typography.bodySemibold,
+      color: colors.success,
+    },
+    receiptBottom: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    receiptMeta: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+
+    pastRequestCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       paddingVertical: spacing.md,
-      paddingHorizontal: spacing.xl,
-      borderRadius: radius.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.cardBorder,
     },
-    emptyButtonText: {
-      ...typography.button,
-      color: colors.primaryForeground,
+    pastRequestLeft: {
+      flex: 1,
+      marginRight: spacing.md,
     },
-    
-    // Modal Styles
+    pastRequestAmount: {
+      ...typography.body,
+      fontWeight: '600',
+      color: colors.mutedForeground,
+    },
+    pastRequestDescription: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',
@@ -2078,8 +2070,7 @@ const createStyles = (colors: ThemeColors) => {
     modalButtonDisabled: {
       opacity: 0.5,
     },
-    
-    // Form Styles
+
     formGroup: {
       marginBottom: spacing.lg,
     },
@@ -2144,8 +2135,7 @@ const createStyles = (colors: ThemeColors) => {
       ...typography.body,
       color: colors.foreground,
     },
-    
-    // Share Modal
+
     shareModalContainer: {
       backgroundColor: colors.card,
       borderTopLeftRadius: radius.xl,
@@ -2217,8 +2207,7 @@ const createStyles = (colors: ThemeColors) => {
       padding: spacing.lg,
       paddingBottom: spacing['3xl'],
     },
-    
-    // QR Code
+
     qrContainer: {
       alignItems: 'center',
     },
@@ -2274,8 +2263,7 @@ const createStyles = (colors: ThemeColors) => {
       ...typography.button,
       color: colors.primaryForeground,
     },
-    
-    // Link Tab
+
     linkContainer: {
       alignItems: 'center',
     },
@@ -2295,8 +2283,7 @@ const createStyles = (colors: ThemeColors) => {
       color: colors.mutedForeground,
       marginTop: spacing.md,
     },
-    
-    // Send Tab
+
     sendContainer: {
       gap: spacing.lg,
     },
@@ -2364,8 +2351,7 @@ const createStyles = (colors: ThemeColors) => {
       ...typography.button,
       color: colors.primaryForeground,
     },
-    
-    // Picker Modal
+
     pickerOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',
