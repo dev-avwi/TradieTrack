@@ -618,6 +618,12 @@ export default function MapScreen() {
       const response = await api.get('/api/team/locations');
       if (response.ok) {
         const data = await response.json();
+        // Defensive check for array response
+        if (!Array.isArray(data)) {
+          console.log('Team locations response is not an array:', data);
+          setTeamMembers([]);
+          return;
+        }
         // Transform API response to match TeamMember interface
         // API returns: { id, name, email, latitude, longitude, lastUpdated, currentJobId, currentJobTitle }
         // We need: { id, userId, role, user: { firstName, lastName }, lastLocation: { latitude, longitude, timestamp }, activityStatus }
@@ -625,6 +631,8 @@ export default function MapScreen() {
           const nameParts = (m.name || '').trim().split(' ');
           const firstName = nameParts[0] || '';
           const lastName = nameParts.slice(1).join(' ') || '';
+          // Use explicit null/undefined checks to handle coordinates at 0,0 correctly
+          const hasValidLocation = m.latitude != null && m.longitude != null;
           return {
             id: m.id,
             userId: m.id,
@@ -634,12 +642,12 @@ export default function MapScreen() {
               firstName,
               lastName,
             },
-            lastLocation: (m.latitude && m.longitude) ? {
-              latitude: m.latitude,
-              longitude: m.longitude,
+            lastLocation: hasValidLocation ? {
+              latitude: Number(m.latitude),
+              longitude: Number(m.longitude),
               timestamp: m.lastUpdated || new Date().toISOString(),
-              speed: m.speed,
-              battery: m.batteryLevel,
+              speed: m.speed != null ? Number(m.speed) : undefined,
+              battery: m.batteryLevel != null ? Number(m.batteryLevel) : undefined,
             } : undefined,
             activityStatus: m.currentJobId ? 'working' : 'online',
           };
