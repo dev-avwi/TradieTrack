@@ -135,9 +135,11 @@ export const mainMenuItems: NavItem[] = [
     description: "Team management, scheduling, and performance",
     color: "text-success",
     bgColor: "bg-success/10",
+    hideForStaff: true,
+    requiresOwnerOrManager: true,
     showInSidebar: true,
     showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
+    allowedRoles: ['owner', 'manager'],
   },
   {
     title: "Chat",

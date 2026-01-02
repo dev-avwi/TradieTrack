@@ -95,7 +95,7 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/team', label: 'Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   { path: '/team-dashboard', label: 'Team Hub', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
   { path: '/team/invite', label: 'Invite Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  { path: '/team-operations', label: 'Team Operations', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
+  { path: '/team-operations', label: 'Team Operations', allowedRoles: ['owner', 'manager'], showInNav: true },
   
   // Chat - all roles including solo owners for SMS conversations
   { path: '/chat', label: 'Chat', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
