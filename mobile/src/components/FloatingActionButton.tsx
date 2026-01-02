@@ -127,15 +127,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    minHeight: 48, // Apple HIG minimum
-    paddingVertical: 12,
+    gap: 4,
+    minHeight: 36, // Reduced from 48 for more compact look
+    paddingVertical: 8,
     paddingHorizontal: 8,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'transparent', // No background color - outline style
   },
   quickActionText: {
-    fontSize: 13, // Minimum for Dynamic Type accessibility
-    fontWeight: '600',
+    fontSize: 12, // Slightly smaller
+    fontWeight: '500',
+    color: colors.foreground, // Neutral text color
   },
 });
 
@@ -273,23 +277,23 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
               })}
             </View>
 
-            {/* Bottom bar: AI Assistant, Assign Job, Collect Payment */}
+            {/* Bottom bar: AI Assistant, Assign Job, Collect Payment - using subtle outline style */}
             <View style={styles.quickActionsBar}>
               <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: colorWithOpacity(ACTION_COLORS.job, 0.12) }]}
+                style={styles.quickActionButton}
                 onPress={() => {
                   setIsOpen(false);
                   router.push('/more/ai-assistant');
                 }}
                 activeOpacity={0.7}
               >
-                <Feather name="zap" size={18} color={ACTION_COLORS.job} />
-                <Text style={[styles.quickActionText, { color: ACTION_COLORS.job }]}>AI</Text>
+                <Feather name="zap" size={16} color={colors.mutedForeground} />
+                <Text style={styles.quickActionText}>AI</Text>
               </TouchableOpacity>
 
               {isTeamOwner && (
                 <TouchableOpacity
-                  style={[styles.quickActionButton, { backgroundColor: colorWithOpacity(ACTION_COLORS.assign, 0.12) }]}
+                  style={styles.quickActionButton}
                   onPress={() => {
                     setIsOpen(false);
                     if (onAssignPress) {
@@ -300,21 +304,21 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                   }}
                   activeOpacity={0.7}
                 >
-                  <Feather name="users" size={18} color={ACTION_COLORS.assign} />
-                  <Text style={[styles.quickActionText, { color: ACTION_COLORS.assign }]}>Assign</Text>
+                  <Feather name="users" size={16} color={colors.mutedForeground} />
+                  <Text style={styles.quickActionText}>Assign</Text>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: colorWithOpacity(ACTION_COLORS.payment, 0.12) }]}
+                style={styles.quickActionButton}
                 onPress={() => {
                   setIsOpen(false);
                   router.push('/more/collect-payment');
                 }}
                 activeOpacity={0.7}
               >
-                <Feather name="credit-card" size={18} color={ACTION_COLORS.payment} />
-                <Text style={[styles.quickActionText, { color: ACTION_COLORS.payment }]}>Collect</Text>
+                <Feather name="credit-card" size={16} color={colors.mutedForeground} />
+                <Text style={styles.quickActionText}>Collect</Text>
               </TouchableOpacity>
             </View>
 

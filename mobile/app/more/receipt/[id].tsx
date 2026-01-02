@@ -68,8 +68,38 @@ export default function ReceiptDetailScreen() {
   const [job, setJob] = useState<JobData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#22c55e';
+
+  const handleDeleteReceipt = () => {
+    if (!receipt) return;
+    
+    Alert.alert(
+      'Delete Receipt',
+      'Are you sure you want to delete this receipt? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await api.delete(`/api/receipts/${receipt.id}`);
+              Alert.alert('Success', 'Receipt deleted successfully');
+              router.back();
+            } catch (error) {
+              console.error('Error deleting receipt:', error);
+              Alert.alert('Error', 'Failed to delete receipt');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   useEffect(() => {
     loadData();
@@ -291,17 +321,31 @@ export default function ReceiptDetailScreen() {
         options={{ 
           title: receipt.receiptNumber || 'Receipt',
           headerRight: () => (
-            <TouchableOpacity 
-              onPress={handleSharePdf}
-              style={styles.headerButton}
-              disabled={isDownloadingPdf}
-            >
-              {isDownloadingPdf ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <Feather name="share" size={22} color={colors.primary} />
-              )}
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity 
+                onPress={handleSharePdf}
+                style={styles.headerButton}
+                disabled={isDownloadingPdf}
+              >
+                {isDownloadingPdf ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Feather name="share" size={22} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={handleDeleteReceipt}
+                style={styles.headerButton}
+                disabled={isDeleting}
+                data-testid="button-delete-receipt"
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color={colors.destructive} />
+                ) : (
+                  <Feather name="trash-2" size={22} color={colors.destructive} />
+                )}
+              </TouchableOpacity>
+            </View>
           )
         }} 
       />

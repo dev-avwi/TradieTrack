@@ -12,7 +12,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePicker } from '../../src/components/ui/DatePicker';
@@ -503,6 +503,7 @@ function StatusSelector({
 }
 
 export default function CreateJobScreen() {
+  const params = useLocalSearchParams<{ clientId?: string }>();
   const { clients, fetchClients } = useClientsStore();
   const { fetchJobs } = useJobsStore();
   const { colors } = useTheme();
@@ -512,7 +513,7 @@ export default function CreateJobScreen() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [clientId, setClientId] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(params.clientId || null);
   const [address, setAddress] = useState('');
   const [status, setStatus] = useState<JobStatus>('pending');
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
@@ -577,6 +578,16 @@ export default function CreateJobScreen() {
   useEffect(() => {
     fetchClients();
   }, []);
+
+  // Handle pre-filled clientId from URL params
+  useEffect(() => {
+    if (params.clientId && clients.length > 0) {
+      const client = clients.find((c) => c.id === params.clientId);
+      if (client?.address && !address) {
+        setAddress(client.address);
+      }
+    }
+  }, [params.clientId, clients]);
 
   const selectedClient = clients.find((c) => c.id === clientId);
   const selectedStatusOption = STATUS_OPTIONS.find((s) => s.value === status);

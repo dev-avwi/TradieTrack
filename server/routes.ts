@@ -11329,6 +11329,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/time-entries/:id/pause", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const existingEntry = await storage.getTimeEntry(id, userId);
+      if (!existingEntry) {
+        return res.status(404).json({ error: 'Time entry not found' });
+      }
+      
+      if (existingEntry.endTime) {
+        return res.status(400).json({ error: 'Cannot pause a completed time entry' });
+      }
+      
+      if ((existingEntry as any).isPaused) {
+        return res.status(400).json({ error: 'Time entry is already paused' });
+      }
+      
+      let canManageEntry = (existingEntry as any).userId === userId;
+      if (!canManageEntry) {
+        const teamMembers = await storage.getTeamMembers(userId);
+        const isTeamMember = teamMembers.some((member: any) => member.id === (existingEntry as any).userId);
+        canManageEntry = isTeamMember;
+      }
+      
+      if (!canManageEntry) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      const pausedEntry = await storage.updateTimeEntry(id, userId, {
+        isPaused: true,
+        pausedAt: new Date().toISOString(),
+      });
+      
+      res.json(pausedEntry);
+    } catch (error) {
+      console.error('Error pausing time entry:', error);
+      res.status(500).json({ error: 'Failed to pause time entry' });
+    }
+  });
+
+  app.post("/api/time-entries/:id/resume", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const existingEntry = await storage.getTimeEntry(id, userId);
+      if (!existingEntry) {
+        return res.status(404).json({ error: 'Time entry not found' });
+      }
+      
+      if (existingEntry.endTime) {
+        return res.status(400).json({ error: 'Cannot resume a completed time entry' });
+      }
+      
+      if (!(existingEntry as any).isPaused) {
+        return res.status(400).json({ error: 'Time entry is not paused' });
+      }
+      
+      let canManageEntry = (existingEntry as any).userId === userId;
+      if (!canManageEntry) {
+        const teamMembers = await storage.getTeamMembers(userId);
+        const isTeamMember = teamMembers.some((member: any) => member.id === (existingEntry as any).userId);
+        canManageEntry = isTeamMember;
+      }
+      
+      if (!canManageEntry) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      const pausedAt = new Date((existingEntry as any).pausedAt || Date.now());
+      const pauseDuration = Math.floor((Date.now() - pausedAt.getTime()) / 60000);
+      const currentPausedDuration = (existingEntry as any).pausedDuration || 0;
+      
+      const resumedEntry = await storage.updateTimeEntry(id, userId, {
+        isPaused: false,
+        pausedAt: null,
+        pausedDuration: currentPausedDuration + pauseDuration,
+      });
+      
+      res.json(resumedEntry);
+    } catch (error) {
+      console.error('Error resuming time entry:', error);
+      res.status(500).json({ error: 'Failed to resume time entry' });
+    }
+  });
+
   // Timesheet Routes with Enterprise Features
   app.get("/api/timesheets", requireAuth, async (req: any, res) => {
     try {

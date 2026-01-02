@@ -73,11 +73,41 @@ export default function InvoiceDetailScreen() {
   const [selectedTemplate, setSelectedTemplate] = useState(businessSettings?.documentTemplate || 'professional');
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
   
   // Computed payment status
   const isPaid = invoice?.status === 'paid';
+
+  const handleDeleteInvoice = () => {
+    if (!invoice) return;
+    
+    Alert.alert(
+      'Delete Invoice',
+      'Are you sure you want to delete this invoice? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await api.delete(`/api/invoices/${invoice.id}`);
+              Alert.alert('Success', 'Invoice deleted successfully');
+              router.back();
+            } catch (error) {
+              console.error('Error deleting invoice:', error);
+              Alert.alert('Error', 'Failed to delete invoice');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   useEffect(() => {
     loadData();
@@ -825,12 +855,26 @@ export default function InvoiceDetailScreen() {
         options={{ 
           title: invoice.invoiceNumber || 'Invoice',
           headerRight: () => (
-            <TouchableOpacity 
-              onPress={() => setShowPreview(true)}
-              style={styles.headerButton}
-            >
-              <Feather name="eye" size={22} color={colors.primary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity 
+                onPress={() => setShowPreview(true)}
+                style={styles.headerButton}
+              >
+                <Feather name="eye" size={22} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={handleDeleteInvoice}
+                style={styles.headerButton}
+                disabled={isDeleting}
+                data-testid="button-delete-invoice"
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color={colors.destructive} />
+                ) : (
+                  <Feather name="trash-2" size={22} color={colors.destructive} />
+                )}
+              </TouchableOpacity>
+            </View>
           )
         }} 
       />

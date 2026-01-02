@@ -164,7 +164,7 @@ function ActivityFeed({
   );
 }
 
-// Time Tracking Widget - matches web Staff Dashboard
+// Time Tracking Widget - Enhanced with job info and manual controls
 function TimeTrackingWidget() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -173,6 +173,8 @@ function TimeTrackingWidget() {
   const [totalMinutesToday, setTotalMinutesToday] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isStopping, setIsStopping] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     loadTimeData();
@@ -182,10 +184,11 @@ function TimeTrackingWidget() {
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (activeTimer) {
+    if (activeTimer && !activeTimer.isPaused) {
       timer = setInterval(() => {
         const startTime = new Date(activeTimer.startTime).getTime();
-        const elapsed = Date.now() - startTime;
+        const pausedDuration = activeTimer.pausedDuration || 0;
+        const elapsed = Date.now() - startTime - (pausedDuration * 60000);
         const hours = Math.floor(elapsed / 3600000);
         const minutes = Math.floor((elapsed % 3600000) / 60000);
         const seconds = Math.floor((elapsed % 60000) / 1000);
@@ -232,6 +235,76 @@ function TimeTrackingWidget() {
     }
   };
 
+  const handlePauseResume = async () => {
+    if (!activeTimer) return;
+    setIsPausing(true);
+    try {
+      const { isOnline } = useOfflineStore.getState();
+      
+      if (!isOnline) {
+        Alert.alert('Offline', 'Cannot pause/resume timer while offline');
+        setIsPausing(false);
+        return;
+      }
+      
+      const { default: api } = await import('../../src/lib/api');
+      const endpoint = activeTimer.isPaused 
+        ? `/api/time-entries/${activeTimer.id}/resume`
+        : `/api/time-entries/${activeTimer.id}/pause`;
+      
+      const response = await api.post(endpoint, {});
+      
+      if (response.data) {
+        setActiveTimer(response.data);
+      } else {
+        loadTimeData();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', `Failed to ${activeTimer.isPaused ? 'resume' : 'pause'} timer`);
+    } finally {
+      setIsPausing(false);
+    }
+  };
+
+  const handleCancelTimer = async () => {
+    if (!activeTimer) return;
+    
+    Alert.alert(
+      'Cancel Timer',
+      'Are you sure you want to cancel this timer? Time will not be saved.',
+      [
+        { text: 'Keep Tracking', style: 'cancel' },
+        { 
+          text: 'Cancel Timer', 
+          style: 'destructive',
+          onPress: async () => {
+            setIsCancelling(true);
+            try {
+              const { isOnline } = useOfflineStore.getState();
+              
+              if (!isOnline) {
+                Alert.alert('Offline', 'Cannot cancel timer while offline');
+                setIsCancelling(false);
+                return;
+              }
+              
+              const { default: api } = await import('../../src/lib/api');
+              await api.delete(`/api/time-entries/${activeTimer.id}`);
+              
+              setActiveTimer(null);
+              Alert.alert('Timer Cancelled', 'Time was not recorded');
+              loadTimeData();
+            } catch (error: any) {
+              Alert.alert('Error', 'Failed to cancel timer');
+            } finally {
+              setIsCancelling(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleStopTimer = async () => {
     if (!activeTimer) return;
     setIsStopping(true);
@@ -270,6 +343,12 @@ function TimeTrackingWidget() {
     }
   };
 
+  const handleViewJob = () => {
+    if (activeTimer?.jobId) {
+      router.push(`/job/${activeTimer.jobId}`);
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.timeTrackingWidget, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -280,50 +359,112 @@ function TimeTrackingWidget() {
 
   const hours = Math.floor(totalMinutesToday / 60);
   const mins = totalMinutesToday % 60;
+  const isPaused = activeTimer?.isPaused;
 
-  return (
-    <View style={[styles.timeTrackingWidget, activeTimer && styles.timeTrackingWidgetActive]}>
-      <View style={styles.timeTrackingContent}>
-        <View style={[styles.timerIconContainer, activeTimer && styles.timerIconContainerActive]}>
-          <Feather 
-            name="clock" 
-            size={24} 
-            color={activeTimer ? colors.primary : colors.mutedForeground} 
-          />
-        </View>
-        <View style={styles.timerTextContent}>
-          {activeTimer ? (
-            <>
-              <Text style={styles.elapsedTime}>{elapsedTime}</Text>
-              <Text style={styles.timerSubtext} numberOfLines={1}>
-                Working on: {activeTimer.jobTitle || 'Current job'}
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.totalTimeToday}>{hours}h {mins}m today</Text>
-              <Text style={styles.timerSubtext}>No active timer</Text>
-            </>
-          )}
+  if (!activeTimer) {
+    return (
+      <View style={styles.timeTrackingWidget}>
+        <View style={styles.timeTrackingContent}>
+          <View style={styles.timerIconContainer}>
+            <Feather name="clock" size={24} color={colors.mutedForeground} />
+          </View>
+          <View style={styles.timerTextContent}>
+            <Text style={styles.totalTimeToday}>{hours}h {mins}m today</Text>
+            <Text style={styles.timerSubtext}>No active timer</Text>
+          </View>
         </View>
       </View>
-      {activeTimer && (
+    );
+  }
+
+  return (
+    <View style={[styles.timerActiveContainer]}>
+      <View style={[styles.timeTrackingWidget, styles.timeTrackingWidgetActive]}>
+        <View style={styles.timeTrackingContent}>
+          <View style={[styles.timerIconContainer, styles.timerIconContainerActive, isPaused && styles.timerIconContainerPaused]}>
+            {isPaused ? (
+              <Feather name="pause" size={24} color={colors.warning} />
+            ) : (
+              <View style={styles.pulsingDot} />
+            )}
+          </View>
+          <View style={styles.timerTextContent}>
+            <View style={styles.timerTimeRow}>
+              <Text style={[styles.elapsedTime, isPaused && styles.elapsedTimePaused]}>{elapsedTime}</Text>
+              {isPaused && (
+                <View style={styles.pausedBadge}>
+                  <Text style={styles.pausedBadgeText}>PAUSED</Text>
+                </View>
+              )}
+            </View>
+            <TouchableOpacity 
+              onPress={handleViewJob}
+              disabled={!activeTimer.jobId}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.timerJobTitle, activeTimer.jobId && styles.timerJobTitleLink]} numberOfLines={1}>
+                {activeTimer.jobTitle || 'General time'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+      
+      <View style={styles.timerControlsRow}>
         <TouchableOpacity
-          style={styles.stopTimerButton}
+          style={[styles.timerControlButton, styles.pauseResumeButton, isPaused && styles.resumeButton]}
+          onPress={handlePauseResume}
+          disabled={isPausing}
+          activeOpacity={0.8}
+          data-testid="button-pause-resume-timer"
+        >
+          {isPausing ? (
+            <ActivityIndicator size="small" color={isPaused ? colors.white : colors.foreground} />
+          ) : (
+            <>
+              <Feather 
+                name={isPaused ? 'play' : 'pause'} 
+                size={16} 
+                color={isPaused ? colors.white : colors.foreground} 
+              />
+              <Text style={[styles.timerControlText, isPaused && styles.resumeButtonText]}>
+                {isPaused ? 'Resume' : 'Pause'}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.timerControlButton, styles.stopButton]}
           onPress={handleStopTimer}
           disabled={isStopping}
           activeOpacity={0.8}
+          data-testid="button-stop-timer"
         >
           {isStopping ? (
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <>
-              <Feather name="square" size={16} color={colors.white} />
-              <Text style={styles.stopTimerText}>Stop</Text>
+              <Feather name="check-circle" size={16} color={colors.white} />
+              <Text style={styles.stopButtonText}>Save</Text>
             </>
           )}
         </TouchableOpacity>
-      )}
+        
+        <TouchableOpacity
+          style={[styles.timerControlButton, styles.cancelButton]}
+          onPress={handleCancelTimer}
+          disabled={isCancelling}
+          activeOpacity={0.8}
+          data-testid="button-cancel-timer"
+        >
+          {isCancelling ? (
+            <ActivityIndicator size="small" color={colors.destructive} />
+          ) : (
+            <Feather name="x" size={18} color={colors.destructive} />
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -2545,6 +2686,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   timeTrackingWidgetActive: {
     borderColor: colors.primary,
+    backgroundColor: `${colors.primary}05`,
   },
   timeTrackingContent: {
     flexDirection: 'row',
@@ -2563,14 +2705,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   timerIconContainerActive: {
     backgroundColor: `${colors.primary}15`,
   },
+  timerIconContainerPaused: {
+    backgroundColor: `${colors.warning}15`,
+  },
   timerTextContent: {
     flex: 1,
+  },
+  timerTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   elapsedTime: {
     fontSize: 24,
     fontWeight: '700',
     fontFamily: 'monospace',
     color: colors.primary,
+  },
+  elapsedTimePaused: {
+    color: colors.warning,
   },
   totalTimeToday: {
     fontSize: 18,
@@ -2581,6 +2734,81 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
     marginTop: 2,
+  },
+  timerJobTitle: {
+    ...typography.body,
+    fontWeight: '500',
+    color: colors.foreground,
+    marginTop: 2,
+  },
+  timerJobTitleLink: {
+    color: colors.primary,
+  },
+  pausedBadge: {
+    backgroundColor: `${colors.warning}20`,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  pausedBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.warning,
+    letterSpacing: 0.5,
+  },
+  pulsingDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+  },
+  timerActiveContainer: {
+    gap: spacing.sm,
+  },
+  timerControlsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  timerControlButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
+    minHeight: 44,
+  },
+  timerControlText: {
+    ...typography.button,
+    color: colors.foreground,
+  },
+  pauseResumeButton: {
+    flex: 1,
+    backgroundColor: colors.muted,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  resumeButton: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  resumeButtonText: {
+    color: colors.white,
+  },
+  stopButton: {
+    flex: 1,
+    backgroundColor: colors.primary,
+  },
+  stopButtonText: {
+    ...typography.button,
+    color: colors.white,
+  },
+  cancelButton: {
+    backgroundColor: `${colors.destructive}10`,
+    borderWidth: 1,
+    borderColor: `${colors.destructive}30`,
+    paddingHorizontal: spacing.md,
   },
   stopTimerButton: {
     flexDirection: 'row',

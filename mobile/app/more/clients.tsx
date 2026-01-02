@@ -234,7 +234,7 @@ export default function ClientsScreen() {
   };
 
   const handleCreateJob = (clientId: string) => {
-    router.push(`/job/new?clientId=${clientId}`);
+    router.push(`/more/create-job?clientId=${clientId}`);
   };
 
   const renderClientList = () => {

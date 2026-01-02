@@ -82,8 +82,38 @@ export default function QuoteDetailScreen() {
   const [depositPercent, setDepositPercent] = useState('');
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
+
+  const handleDeleteQuote = () => {
+    if (!quote) return;
+    
+    Alert.alert(
+      'Delete Quote',
+      'Are you sure you want to delete this quote? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await api.delete(`/api/quotes/${quote.id}`);
+              Alert.alert('Success', 'Quote deleted successfully');
+              router.back();
+            } catch (error) {
+              console.error('Error deleting quote:', error);
+              Alert.alert('Error', 'Failed to delete quote');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   useEffect(() => {
     loadData();
@@ -662,12 +692,26 @@ export default function QuoteDetailScreen() {
         options={{ 
           title: quote.quoteNumber || 'Quote',
           headerRight: () => (
-            <TouchableOpacity 
-              onPress={() => setShowPreview(true)}
-              style={styles.headerButton}
-            >
-              <Feather name="eye" size={22} color={colors.primary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity 
+                onPress={() => setShowPreview(true)}
+                style={styles.headerButton}
+              >
+                <Feather name="eye" size={22} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={handleDeleteQuote}
+                style={styles.headerButton}
+                disabled={isDeleting}
+                data-testid="button-delete-quote"
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color={colors.destructive} />
+                ) : (
+                  <Feather name="trash-2" size={22} color={colors.destructive} />
+                )}
+              </TouchableOpacity>
+            </View>
           )
         }} 
       />
