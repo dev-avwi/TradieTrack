@@ -319,6 +319,39 @@ export default function JobsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Sort state matching Documents page pattern
+  type SortField = 'title' | 'status' | 'date';
+  type SortDirection = 'asc' | 'desc';
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSortChange = useCallback((field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  }, [sortField]);
+
+  // Sort indicator with stacked up/down chevrons (matching Documents page)
+  const SortIndicator = ({ field, isActive }: { field: SortField; isActive: boolean }) => (
+    <View style={styles.sortIndicator}>
+      <Feather 
+        name="chevron-up" 
+        size={10} 
+        color={isActive ? colors.primary : colors.mutedForeground} 
+        style={{ marginBottom: -3 }}
+      />
+      <Feather 
+        name="chevron-down" 
+        size={10} 
+        color={isActive ? colors.primary : colors.mutedForeground} 
+        style={{ marginTop: -3 }}
+      />
+    </View>
+  );
 
   const refreshData = useCallback(async () => {
     await Promise.all([fetchJobs(), fetchClients()]);
@@ -429,38 +462,66 @@ export default function JobsScreen() {
     return isNaN(date.getTime()) ? null : date;
   };
 
-  // Get start of today for comparison
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Split jobs into upcoming/today and past
-  const upcomingJobs: typeof filteredJobs = [];
-  const pastJobs: typeof filteredJobs = [];
-
-  filteredJobs.forEach(job => {
-    const jobDate = getJobDate(job);
-    if (!jobDate || jobDate < today) {
-      pastJobs.push(job);
-    } else {
-      upcomingJobs.push(job);
+  // Sort jobs based on current sort field and direction
+  const sortedJobs = useMemo(() => {
+    const jobsCopy = [...filteredJobs];
+    
+    // For grid view, use the original upcoming/past date-based sorting
+    if (viewMode === 'grid') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const upcomingJobs: typeof jobsCopy = [];
+      const pastJobs: typeof jobsCopy = [];
+      
+      jobsCopy.forEach(job => {
+        const jobDate = getJobDate(job);
+        if (!jobDate || jobDate < today) {
+          pastJobs.push(job);
+        } else {
+          upcomingJobs.push(job);
+        }
+      });
+      
+      const sortAscending = (a: any, b: any) => {
+        const dateA = getJobDate(a);
+        const dateB = getJobDate(b);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateA.getTime() - dateB.getTime();
+      };
+      
+      upcomingJobs.sort(sortAscending);
+      pastJobs.sort(sortAscending);
+      
+      return [...upcomingJobs, ...pastJobs];
     }
-  });
-
-  // Sort each group ascending (earliest first)
-  const sortAscending = (a: any, b: any) => {
-    const dateA = getJobDate(a);
-    const dateB = getJobDate(b);
-    if (!dateA && !dateB) return 0;
-    if (!dateA) return 1;
-    if (!dateB) return -1;
-    return dateA.getTime() - dateB.getTime();
-  };
-
-  upcomingJobs.sort(sortAscending);
-  pastJobs.sort(sortAscending);
-
-  // Upcoming/today jobs first, then past jobs at the bottom
-  const sortedJobs = [...upcomingJobs, ...pastJobs];
+    
+    // For list view, use the selected sort field and direction
+    return jobsCopy.sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortField) {
+        case 'title':
+          comparison = (a.title || '').localeCompare(b.title || '');
+          break;
+        case 'status':
+          comparison = (a.status || '').localeCompare(b.status || '');
+          break;
+        case 'date':
+          const dateA = getJobDate(a);
+          const dateB = getJobDate(b);
+          if (!dateA && !dateB) comparison = 0;
+          else if (!dateA) comparison = 1;
+          else if (!dateB) comparison = -1;
+          else comparison = dateA.getTime() - dateB.getTime();
+          break;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [filteredJobs, viewMode, sortField, sortDirection]);
 
   return (
     <View style={styles.container}>
@@ -661,9 +722,30 @@ export default function JobsScreen() {
           ) : (
             <View style={styles.jobsList}>
               <View style={styles.listHeader}>
-                <Text style={[styles.listHeaderCol, { flex: 1 }]}>Job</Text>
-                <Text style={[styles.listHeaderCol, styles.listHeaderColStatus]}>Status</Text>
-                <Text style={[styles.listHeaderCol, styles.listHeaderColDate]}>Date</Text>
+                <TouchableOpacity
+                  style={styles.sortHeaderTitleColumn}
+                  onPress={() => handleSortChange('title')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.listHeaderCol, sortField === 'title' && styles.listHeaderColActive]}>Job</Text>
+                  <SortIndicator field="title" isActive={sortField === 'title'} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.sortHeaderStatusColumn, { width: 80 }]}
+                  onPress={() => handleSortChange('status')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.listHeaderCol, styles.listHeaderColStatus, sortField === 'status' && styles.listHeaderColActive]}>Status</Text>
+                  <SortIndicator field="status" isActive={sortField === 'status'} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.sortHeaderDateColumn, { width: 70 }]}
+                  onPress={() => handleSortChange('date')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.listHeaderCol, styles.listHeaderColDate, sortField === 'date' && styles.listHeaderColActive]}>Date</Text>
+                  <SortIndicator field="date" isActive={sortField === 'date'} />
+                </TouchableOpacity>
               </View>
               {sortedJobs.map((job) => (
                 <JobListRow
@@ -892,6 +974,31 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'right',
     flex: 0,
     width: 70,
+  },
+  listHeaderColActive: {
+    color: colors.primary,
+  },
+  sortIndicator: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+  sortHeaderTitleColumn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  sortHeaderStatusColumn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sortHeaderDateColumn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   jobListRow: {
     backgroundColor: colors.card,

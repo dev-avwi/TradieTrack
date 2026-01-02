@@ -181,6 +181,17 @@ export default function DocumentsScreen() {
     fetchData();
   }, [fetchData]);
 
+  // Reset viewMode to list when switching to invoices/receipts (grid only works for quotes)
+  // Also reset sort state to prevent stale data combinations
+  useEffect(() => {
+    if (activeTab !== 'quotes') {
+      setViewMode('list');
+    }
+    // Reset to default sort when switching tabs
+    setSortField('status');
+    setSortDirection('desc');
+  }, [activeTab]);
+
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
@@ -603,11 +614,11 @@ export default function DocumentsScreen() {
     <View style={styles.sortHeaderRow}>
       <TouchableOpacity
         style={styles.sortHeaderTitleColumn}
-        onPress={() => handleSortChange('status')}
+        onPress={() => handleSortChange('client')}
         activeOpacity={0.7}
       >
-        <Text style={styles.sortableColumnText}>Quote</Text>
-        <SortIndicator field="status" isActive={false} />
+        <Text style={[styles.sortableColumnText, sortField === 'client' && styles.sortableColumnTextActive]}>Quote</Text>
+        <SortIndicator field="client" isActive={sortField === 'client'} />
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.sortHeaderStatusColumn, { width: COLUMN_WIDTHS.status }]}
@@ -622,10 +633,19 @@ export default function DocumentsScreen() {
     </View>
   );
 
-  // Invoice/Receipt header (4 columns: Title | Status | Amount | Menu)
+  // Invoice/Receipt header (4 columns: Client | Status | Amount | Menu)
   const renderInvoiceSortHeader = () => (
     <View style={styles.sortHeaderRow}>
-      <View style={styles.sortHeaderTitleColumn} />
+      <TouchableOpacity
+        style={styles.sortHeaderTitleColumn}
+        onPress={() => handleSortChange('client')}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.sortableColumnText, sortField === 'client' && styles.sortableColumnTextActive]}>
+          {activeTab === 'invoices' ? 'Invoice' : 'Receipt'}
+        </Text>
+        <SortIndicator field="client" isActive={sortField === 'client'} />
+      </TouchableOpacity>
       <TouchableOpacity
         style={[styles.sortHeaderStatusColumn, { width: COLUMN_WIDTHS.status }]}
         onPress={() => handleSortChange('status')}
