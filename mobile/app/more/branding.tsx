@@ -9,7 +9,6 @@ import {
   Alert,
   Image,
   ActivityIndicator,
-  Modal
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -17,8 +16,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useAuthStore } from '../../src/lib/store';
-import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
-import { AdvancedThemeControls } from '../../src/components/AdvancedThemeControls';
+import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
+import { Slider } from '../../src/components/ui/Slider';
+import {
+  useAdvancedThemeStore,
+  PRESET_THEMES,
+  AppearanceSettings,
+  TypographySettings,
+} from '../../src/lib/advanced-theme-store';
 import api from '../../src/lib/api';
 
 const PRESET_COLORS = [
@@ -32,6 +37,36 @@ const PRESET_COLORS = [
   { name: 'Indigo', hex: '#6366f1' },
   { name: 'Yellow', hex: '#eab308' },
   { name: 'Cyan', hex: '#06b6d4' },
+  { name: 'Gray', hex: '#64748b' },
+  { name: 'Slate', hex: '#475569' },
+];
+
+const BORDER_RADIUS_OPTIONS: { value: AppearanceSettings['borderRadius']; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'sm', label: 'Small' },
+  { value: 'md', label: 'Medium' },
+  { value: 'lg', label: 'Large' },
+  { value: 'xl', label: 'Extra Large' },
+];
+
+const SHADOW_OPTIONS: { value: AppearanceSettings['shadowIntensity']; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'subtle', label: 'Subtle' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'strong', label: 'Strong' },
+];
+
+const ANIMATION_OPTIONS: { value: AppearanceSettings['animationSpeed']; label: string }[] = [
+  { value: 'reduced', label: 'Reduced' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'fast', label: 'Fast' },
+];
+
+const HEADING_WEIGHT_OPTIONS: { value: TypographySettings['headingWeight']; label: string }[] = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'semibold', label: 'Semibold' },
+  { value: 'bold', label: 'Bold' },
 ];
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
@@ -41,13 +76,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   sectionTitle: {
     ...typography.label,
     color: colors.mutedForeground,
     marginBottom: spacing.sm,
-    marginTop: spacing.md,
+    marginTop: spacing.xl,
     marginLeft: spacing.xs,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -56,40 +91,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     padding: spacing.lg,
-    marginBottom: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    ...shadows.sm,
-  },
-  cardTitle: {
-    ...typography.subtitle,
-    color: colors.foreground,
-    marginBottom: spacing.xs,
-  },
-  cardSubtitle: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginBottom: spacing.lg,
   },
   logoSection: {
     alignItems: 'center',
     paddingVertical: spacing.md,
   },
   logoPreview: {
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 80,
     borderRadius: radius.xl,
     backgroundColor: colors.muted,
-    marginBottom: spacing.md,
   },
   logoPlaceholder: {
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 80,
     borderRadius: radius.xl,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: colors.border,
@@ -97,6 +118,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   logoActions: {
     flexDirection: 'row',
     gap: spacing.sm,
+    marginTop: spacing.md,
   },
   logoButton: {
     flexDirection: 'row',
@@ -114,6 +136,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.body,
     color: colors.foreground,
     fontWeight: '500',
+    fontSize: 14,
   },
   logoButtonTextPrimary: {
     color: colors.primaryForeground,
@@ -121,22 +144,83 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   logoRemoveButton: {
     backgroundColor: colors.destructiveLight,
   },
-  logoRemoveButtonText: {
-    color: colors.destructive,
+  uploadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modeSelector: {
+    flexDirection: 'row',
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: 4,
+    marginTop: spacing.sm,
+  },
+  modeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  modeOptionActive: {
+    backgroundColor: colors.primary,
+  },
+  modeOptionText: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  modeOptionTextActive: {
+    color: colors.primaryForeground,
+  },
+  themePresetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    marginTop: spacing.sm,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+  },
+  themePresetInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  themePresetDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  themePresetName: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '600',
+  },
+  themePresetDesc: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
   },
   colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
-    justifyContent: 'flex-start',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   colorSwatch: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.sm,
   },
   colorSwatchSelected: {
     borderWidth: 3,
@@ -148,22 +232,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  customColorLabel: {
+  inputLabel: {
     ...typography.body,
     color: colors.foreground,
     fontWeight: '500',
     marginBottom: spacing.sm,
+    fontSize: 14,
   },
   customColorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   customColorInput: {
     flex: 1,
-    height: 48,
+    height: 44,
     backgroundColor: colors.muted,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     ...typography.body,
     color: colors.foreground,
@@ -171,23 +256,69 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.border,
   },
   customColorPreview: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
-    borderWidth: 2,
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    borderWidth: 1,
     borderColor: colors.border,
   },
   applyButton: {
     backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
     alignItems: 'center',
-    marginTop: spacing.md,
   },
   applyButtonText: {
     color: colors.primaryForeground,
     fontWeight: '600',
-    fontSize: 15,
+    fontSize: 14,
+  },
+  sliderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  sliderLabel: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  sliderValue: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  optionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  optionChip: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.muted,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  optionChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  optionChipText: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '500',
+    fontSize: 13,
+  },
+  optionChipTextActive: {
+    color: colors.primaryForeground,
   },
   previewSection: {
     marginTop: spacing.lg,
@@ -198,7 +329,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    ...shadows.sm,
   },
   previewHeader: {
     flexDirection: 'row',
@@ -258,88 +388,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     flex: 1,
   },
-  currentColorRow: {
+  resetButton: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  currentColorSwatch: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.xl,
-    ...shadows.md,
-  },
-  currentColorInfo: {
-    flex: 1,
-  },
-  currentColorLabel: {
-    ...typography.body,
-    color: colors.foreground,
-    fontWeight: '600',
-  },
-  currentColorHex: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  uploadOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  uploadText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.primaryForeground,
-    marginTop: 12,
-  },
-  advancedButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  advancedButtonIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  advancedButtonContent: {
-    flex: 1,
-  },
-  advancedButtonTitle: {
-    ...typography.body,
-    color: colors.foreground,
-    fontWeight: '600',
-  },
-  advancedButtonDesc: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  advancedModalContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  advancedModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
     paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.muted,
+    marginTop: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  advancedModalTitle: {
-    ...typography.subtitle,
-    color: colors.foreground,
-    fontWeight: '600',
+  resetButtonText: {
+    ...typography.body,
+    color: colors.destructive,
+    fontWeight: '500',
   },
 });
 
@@ -349,42 +414,63 @@ export default function BrandingScreen() {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
-  const [customColor, setCustomColor] = useState(brandColor || businessSettings?.brandColor || '#3b82f6');
-  const [isSaving, setIsSaving] = useState(false);
+  const [customColor, setCustomColor] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [logoUrl, setLogoUrl] = useState(businessSettings?.logoUrl || '');
-  const [showAdvancedTheme, setShowAdvancedTheme] = useState(false);
 
-  const currentColor = brandColor || businessSettings?.brandColor || '#3b82f6';
+  const {
+    mode,
+    activePresetId,
+    setMode,
+    setActivePreset,
+    setCustomPrimaryColor,
+    setTypography,
+    setAppearance,
+    getActivePalette,
+    getActiveTypography,
+    getActiveAppearance,
+    resetToDefaults,
+  } = useAdvancedThemeStore();
+
+  const activePalette = getActivePalette();
+  const activeTypography = getActiveTypography();
+  const activeAppearance = getActiveAppearance();
 
   const isValidHex = (hex: string) => /^#[0-9A-Fa-f]{6}$/.test(hex);
 
-  const handlePresetSelect = useCallback((hex: string) => {
-    setCustomColor(hex);
-  }, []);
-
-  const handleApplyColor = useCallback(async () => {
+  const handleCustomColorApply = useCallback(async () => {
     if (!isValidHex(customColor)) {
       Alert.alert('Invalid Color', 'Please enter a valid hex color (e.g., #3b82f6)');
       return;
     }
+    setCustomPrimaryColor(customColor);
+    await updateBusinessSettings({ brandColor: customColor });
+    setCustomColor('');
+    Alert.alert('Success', 'Brand color updated!');
+  }, [customColor, setCustomPrimaryColor, updateBusinessSettings]);
 
-    setIsSaving(true);
-    try {
-      const success = await updateBusinessSettings({ brandColor: customColor });
-      
-      if (success) {
-        Alert.alert('Success', 'Brand color updated! The new color will appear throughout the app.');
-      } else {
-        Alert.alert('Error', 'Failed to save brand color. Please try again.');
-      }
-    } catch (error) {
-      console.error('Failed to save brand color:', error);
-      Alert.alert('Error', 'Failed to save brand color. Please check your connection.');
-    } finally {
-      setIsSaving(false);
-    }
-  }, [customColor, updateBusinessSettings]);
+  const handleColorSelect = useCallback(async (hex: string) => {
+    setCustomPrimaryColor(hex);
+    await updateBusinessSettings({ brandColor: hex });
+  }, [setCustomPrimaryColor, updateBusinessSettings]);
+
+  const handleResetTheme = useCallback(() => {
+    Alert.alert(
+      'Reset Theme',
+      'This will reset all theme settings to defaults. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            resetToDefaults();
+            Alert.alert('Success', 'Theme reset to defaults');
+          },
+        },
+      ]
+    );
+  }, [resetToDefaults]);
 
   const pickImage = async (useCamera: boolean) => {
     try {
@@ -443,7 +529,7 @@ export default function BrandingScreen() {
         body: JSON.stringify({
           filename,
           contentType: mimeType,
-          directory: 'public/logos',
+          isPublic: true,
         }),
       });
 
@@ -451,25 +537,21 @@ export default function BrandingScreen() {
         throw new Error('Failed to get upload URL');
       }
 
-      const { url, method, publicUrl } = await paramsResponse.json();
+      const { signedUrl, publicUrl } = await paramsResponse.json();
 
-      const fileResponse = await fetch(asset.uri);
-      const blob = await fileResponse.blob();
+      const imageResponse = await fetch(asset.uri);
+      const imageBlob = await imageResponse.blob();
 
-      const uploadResponse = await fetch(url, {
-        method: method || 'PUT',
-        headers: {
-          'Content-Type': mimeType,
-        },
-        body: blob,
+      await fetch(signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': mimeType },
+        body: imageBlob,
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file');
-      }
-
-      const logoResponse = await fetch(`${API_BASE}/api/logo`, {
-        method: 'PUT',
+      setLogoUrl(publicUrl);
+      
+      await fetch(`${API_BASE}/api/business-settings/logo`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -478,24 +560,11 @@ export default function BrandingScreen() {
         body: JSON.stringify({ logoUrl: publicUrl }),
       });
 
-      if (logoResponse.ok) {
-        const logoData = await logoResponse.json();
-        setLogoUrl(publicUrl);
-        
-        if (logoData.extractedColor) {
-          setCustomColor(logoData.extractedColor);
-        }
-        
-        await updateBusinessSettings({ logoUrl: publicUrl });
-        Alert.alert('Success', 'Logo uploaded successfully!');
-      } else {
-        setLogoUrl(publicUrl);
-        await updateBusinessSettings({ logoUrl: publicUrl });
-        Alert.alert('Success', 'Logo uploaded successfully!');
-      }
+      await updateBusinessSettings({ logoUrl: publicUrl });
+      Alert.alert('Success', 'Logo uploaded successfully!');
     } catch (error) {
-      console.error('Upload error:', error);
-      Alert.alert('Upload Failed', 'Could not upload your logo. Please try again.');
+      console.error('Error uploading logo:', error);
+      Alert.alert('Error', 'Failed to upload logo. Please try again.');
     } finally {
       setIsUploadingLogo(false);
     }
@@ -519,35 +588,38 @@ export default function BrandingScreen() {
     );
   };
 
+  const activePreset = PRESET_THEMES.find((p) => p.id === activePresetId);
+
   return (
     <>
       <Stack.Screen 
         options={{ 
-          title: 'Branding',
+          title: 'Theme & Branding',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
         }} 
       />
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <Text style={styles.sectionTitle}>Business Logo</Text>
+          {/* Business Logo */}
+          <Text style={[styles.sectionTitle, { marginTop: 0 }]}>Business Logo</Text>
           <View style={styles.card}>
             <View style={styles.logoSection}>
               {logoUrl ? (
                 <View>
                   <Image source={{ uri: logoUrl }} style={styles.logoPreview} />
                   {isUploadingLogo && (
-                    <View style={[styles.uploadOverlay, { width: 100, height: 100 }]}>
-                      <ActivityIndicator size="large" color={colors.primaryForeground} />
+                    <View style={[styles.uploadOverlay, { width: 80, height: 80 }]}>
+                      <ActivityIndicator size="small" color={colors.primaryForeground} />
                     </View>
                   )}
                 </View>
               ) : (
                 <View style={styles.logoPlaceholder}>
                   {isUploadingLogo ? (
-                    <ActivityIndicator size="large" color={colors.primary} />
+                    <ActivityIndicator size="small" color={colors.primary} />
                   ) : (
-                    <Feather name="image" size={32} color={colors.mutedForeground} />
+                    <Feather name="image" size={28} color={colors.mutedForeground} />
                   )}
                 </View>
               )}
@@ -557,8 +629,9 @@ export default function BrandingScreen() {
                   style={[styles.logoButton, styles.logoButtonPrimary]}
                   onPress={() => pickImage(false)}
                   disabled={isUploadingLogo}
+                  data-testid="button-upload-logo"
                 >
-                  <Feather name="upload" size={16} color={colors.primaryForeground} />
+                  <Feather name="upload" size={14} color={colors.primaryForeground} />
                   <Text style={[styles.logoButtonText, styles.logoButtonTextPrimary]}>
                     {logoUrl ? 'Change' : 'Upload'}
                   </Text>
@@ -568,8 +641,9 @@ export default function BrandingScreen() {
                   style={styles.logoButton}
                   onPress={() => pickImage(true)}
                   disabled={isUploadingLogo}
+                  data-testid="button-camera-logo"
                 >
-                  <Feather name="camera" size={16} color={colors.foreground} />
+                  <Feather name="camera" size={14} color={colors.foreground} />
                   <Text style={styles.logoButtonText}>Camera</Text>
                 </TouchableOpacity>
                 
@@ -578,39 +652,75 @@ export default function BrandingScreen() {
                     style={[styles.logoButton, styles.logoRemoveButton]}
                     onPress={handleRemoveLogo}
                     disabled={isUploadingLogo}
+                    data-testid="button-remove-logo"
                   >
-                    <Feather name="trash-2" size={16} color={colors.destructive} />
+                    <Feather name="trash-2" size={14} color={colors.destructive} />
                   </TouchableOpacity>
                 )}
               </View>
             </View>
-            
-            <View style={styles.infoRow}>
-              <Feather name="info" size={14} color={colors.mutedForeground} />
-              <Text style={styles.infoText}>
-                Upload a square logo for best results. Appears on quotes, invoices, and documents.
-              </Text>
+          </View>
+
+          {/* Appearance Mode */}
+          <Text style={styles.sectionTitle}>Appearance</Text>
+          <View style={styles.card}>
+            <View style={styles.modeSelector}>
+              {(['light', 'dark', 'system'] as const).map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  style={[styles.modeOption, mode === m && styles.modeOptionActive]}
+                  onPress={() => setMode(m)}
+                  data-testid={`mode-${m}`}
+                >
+                  <Feather
+                    name={m === 'light' ? 'sun' : m === 'dark' ? 'moon' : 'smartphone'}
+                    size={16}
+                    color={mode === m ? colors.primaryForeground : colors.foreground}
+                  />
+                  <Text
+                    style={[styles.modeOptionText, mode === m && styles.modeOptionTextActive]}
+                  >
+                    {m.charAt(0).toUpperCase() + m.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
-          <Text style={styles.sectionTitle}>Current Brand Color</Text>
+          {/* Theme Preset */}
+          <Text style={styles.sectionTitle}>Theme Preset</Text>
           <View style={styles.card}>
-            <View style={styles.currentColorRow}>
-              <View style={[styles.currentColorSwatch, { backgroundColor: currentColor }]} />
-              <View style={styles.currentColorInfo}>
-                <Text style={styles.currentColorLabel}>Your Brand Color</Text>
-                <Text style={styles.currentColorHex}>{currentColor.toUpperCase()}</Text>
-              </View>
-            </View>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: spacing.sm }}
+            >
+              {PRESET_THEMES.map((preset) => (
+                <TouchableOpacity
+                  key={preset.id}
+                  style={[
+                    styles.themePresetRow,
+                    { width: 200 },
+                    activePresetId === preset.id && { borderWidth: 2, borderColor: colors.primary }
+                  ]}
+                  onPress={() => setActivePreset(preset.id)}
+                  data-testid={`preset-${preset.id}`}
+                >
+                  <View style={styles.themePresetInfo}>
+                    <View style={[styles.themePresetDot, { backgroundColor: preset.palette.primary }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.themePresetName} numberOfLines={1}>{preset.name}</Text>
+                      <Text style={styles.themePresetDesc} numberOfLines={1}>{preset.description}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
 
-          <Text style={styles.sectionTitle}>Choose a Color</Text>
+          {/* Primary Color */}
+          <Text style={styles.sectionTitle}>Primary Color</Text>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Preset Colors</Text>
-            <Text style={styles.cardSubtitle}>
-              Select a color that represents your business
-            </Text>
-            
             <View style={styles.colorGrid}>
               {PRESET_COLORS.map((color) => (
                 <TouchableOpacity
@@ -618,20 +728,20 @@ export default function BrandingScreen() {
                   style={[
                     styles.colorSwatch,
                     { backgroundColor: color.hex },
-                    customColor === color.hex && styles.colorSwatchSelected,
+                    activePalette.primary === color.hex && styles.colorSwatchSelected,
                   ]}
-                  onPress={() => handlePresetSelect(color.hex)}
-                  activeOpacity={0.8}
+                  onPress={() => handleColorSelect(color.hex)}
+                  data-testid={`color-${color.name.toLowerCase()}`}
                 >
-                  {customColor === color.hex && (
-                    <Feather name="check" size={20} color={colors.primaryForeground} />
+                  {activePalette.primary === color.hex && (
+                    <Feather name="check" size={16} color="#ffffff" />
                   )}
                 </TouchableOpacity>
               ))}
             </View>
 
             <View style={styles.customColorSection}>
-              <Text style={styles.customColorLabel}>Custom Color</Text>
+              <Text style={styles.inputLabel}>Custom Color (Hex)</Text>
               <View style={styles.customColorRow}>
                 <TextInput
                   style={styles.customColorInput}
@@ -641,44 +751,171 @@ export default function BrandingScreen() {
                   placeholderTextColor={colors.mutedForeground}
                   autoCapitalize="none"
                   maxLength={7}
+                  data-testid="input-custom-color"
                 />
-                <View 
+                <View
                   style={[
-                    styles.customColorPreview, 
-                    { backgroundColor: isValidHex(customColor) ? customColor : colors.muted }
-                  ]} 
+                    styles.customColorPreview,
+                    { backgroundColor: isValidHex(customColor) ? customColor : activePalette.primary },
+                  ]}
                 />
+                <TouchableOpacity
+                  style={[styles.applyButton, !isValidHex(customColor) && { opacity: 0.5 }]}
+                  onPress={handleCustomColorApply}
+                  disabled={!isValidHex(customColor)}
+                  data-testid="button-apply-color"
+                >
+                  <Text style={styles.applyButtonText}>Apply</Text>
+                </TouchableOpacity>
               </View>
-              
-              <TouchableOpacity
-                style={[styles.applyButton, isSaving && { opacity: 0.7 }]}
-                onPress={handleApplyColor}
-                disabled={isSaving}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.applyButtonText}>
-                  {isSaving ? 'Saving...' : 'Apply Color'}
-                </Text>
-              </TouchableOpacity>
             </View>
           </View>
 
+          {/* Typography */}
+          <Text style={styles.sectionTitle}>Typography</Text>
+          <View style={styles.card}>
+            <View style={styles.sliderRow}>
+              <Text style={styles.sliderLabel}>Font Scale</Text>
+              <Text style={styles.sliderValue}>{(activeTypography.fontScale * 100).toFixed(0)}%</Text>
+            </View>
+            <Slider
+              value={activeTypography.fontScale}
+              minimumValue={0.8}
+              maximumValue={1.2}
+              step={0.05}
+              onValueChange={(value) => setTypography({ fontScale: value })}
+            />
+
+            <View style={styles.sliderRow}>
+              <Text style={styles.sliderLabel}>Line Height</Text>
+              <Text style={styles.sliderValue}>{activeTypography.lineHeight.toFixed(1)}</Text>
+            </View>
+            <Slider
+              value={activeTypography.lineHeight}
+              minimumValue={1.2}
+              maximumValue={2.0}
+              step={0.1}
+              onValueChange={(value) => setTypography({ lineHeight: value })}
+            />
+
+            <Text style={[styles.inputLabel, { marginTop: spacing.lg }]}>Heading Weight</Text>
+            <View style={styles.optionGrid}>
+              {HEADING_WEIGHT_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.optionChip,
+                    activeTypography.headingWeight === opt.value && styles.optionChipActive,
+                  ]}
+                  onPress={() => setTypography({ headingWeight: opt.value })}
+                  data-testid={`heading-${opt.value}`}
+                >
+                  <Text
+                    style={[
+                      styles.optionChipText,
+                      activeTypography.headingWeight === opt.value && styles.optionChipTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Appearance Settings */}
+          <Text style={styles.sectionTitle}>Style</Text>
+          <View style={styles.card}>
+            <Text style={styles.inputLabel}>Corner Radius</Text>
+            <View style={styles.optionGrid}>
+              {BORDER_RADIUS_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.optionChip,
+                    activeAppearance.borderRadius === opt.value && styles.optionChipActive,
+                  ]}
+                  onPress={() => setAppearance({ borderRadius: opt.value })}
+                  data-testid={`radius-${opt.value}`}
+                >
+                  <Text
+                    style={[
+                      styles.optionChipText,
+                      activeAppearance.borderRadius === opt.value && styles.optionChipTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.inputLabel, { marginTop: spacing.lg }]}>Shadow Intensity</Text>
+            <View style={styles.optionGrid}>
+              {SHADOW_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.optionChip,
+                    activeAppearance.shadowIntensity === opt.value && styles.optionChipActive,
+                  ]}
+                  onPress={() => setAppearance({ shadowIntensity: opt.value })}
+                  data-testid={`shadow-${opt.value}`}
+                >
+                  <Text
+                    style={[
+                      styles.optionChipText,
+                      activeAppearance.shadowIntensity === opt.value && styles.optionChipTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.inputLabel, { marginTop: spacing.lg }]}>Animation Speed</Text>
+            <View style={styles.optionGrid}>
+              {ANIMATION_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.optionChip,
+                    activeAppearance.animationSpeed === opt.value && styles.optionChipActive,
+                  ]}
+                  onPress={() => setAppearance({ animationSpeed: opt.value })}
+                  data-testid={`animation-${opt.value}`}
+                >
+                  <Text
+                    style={[
+                      styles.optionChipText,
+                      activeAppearance.animationSpeed === opt.value && styles.optionChipTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Live Preview */}
           <Text style={styles.sectionTitle}>Live Preview</Text>
           <View style={styles.previewCard}>
             <View style={styles.previewHeader}>
-              <View style={[styles.previewIcon, { backgroundColor: `${customColor}20` }]}>
-                <Feather name="briefcase" size={20} color={customColor} />
+              <View style={[styles.previewIcon, { backgroundColor: `${activePalette.primary}20` }]}>
+                <Feather name="briefcase" size={20} color={activePalette.primary} />
               </View>
               <View>
                 <Text style={styles.previewTitle}>Sample Job Card</Text>
                 <Text style={styles.previewSubtitle}>This is how your brand looks</Text>
               </View>
             </View>
-            <View style={[styles.previewBadge, { backgroundColor: `${customColor}20` }]}>
-              <Text style={[styles.previewBadgeText, { color: customColor }]}>In Progress</Text>
+            <View style={[styles.previewBadge, { backgroundColor: `${activePalette.primary}20` }]}>
+              <Text style={[styles.previewBadgeText, { color: activePalette.primary }]}>In Progress</Text>
             </View>
             <TouchableOpacity 
-              style={[styles.previewButton, { backgroundColor: customColor }]}
+              style={[styles.previewButton, { backgroundColor: activePalette.primary }]}
               activeOpacity={0.8}
             >
               <Text style={styles.previewButtonText}>Primary Button</Text>
@@ -686,55 +923,23 @@ export default function BrandingScreen() {
           </View>
 
           <View style={styles.infoRow}>
-            <Feather name="info" size={16} color={colors.mutedForeground} />
+            <Feather name="info" size={14} color={colors.mutedForeground} />
             <Text style={styles.infoText}>
               Your brand color will be applied throughout the app including buttons, badges, and accent elements.
             </Text>
           </View>
 
-          <Text style={styles.sectionTitle}>Advanced Settings</Text>
-          <View style={styles.card}>
-            <TouchableOpacity
-              style={styles.advancedButton}
-              onPress={() => setShowAdvancedTheme(true)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.advancedButtonIcon}>
-                <Feather name="sliders" size={20} color={colors.primary} />
-              </View>
-              <View style={styles.advancedButtonContent}>
-                <Text style={styles.advancedButtonTitle}>Advanced Theme Controls</Text>
-                <Text style={styles.advancedButtonDesc}>
-                  Typography, corner radius, shadows, and more
-                </Text>
-              </View>
-              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
+          {/* Reset Button */}
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={handleResetTheme}
+            data-testid="button-reset-theme"
+          >
+            <Feather name="refresh-cw" size={16} color={colors.destructive} />
+            <Text style={styles.resetButtonText}>Reset to Defaults</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Advanced Theme Controls Modal */}
-      {showAdvancedTheme && (
-        <Modal 
-          visible={showAdvancedTheme} 
-          animationType="slide" 
-          presentationStyle="pageSheet"
-        >
-          <View style={[styles.advancedModalContainer, { paddingTop: insets.top }]}>
-            <View style={styles.advancedModalHeader}>
-              <TouchableOpacity onPress={() => setShowAdvancedTheme(false)}>
-                <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
-              <Text style={styles.advancedModalTitle}>Advanced Theme</Text>
-              <View style={{ width: 24 }} />
-            </View>
-            <View style={{ flex: 1, paddingBottom: insets.bottom }}>
-              <AdvancedThemeControls onClose={() => setShowAdvancedTheme(false)} />
-            </View>
-          </View>
-        </Modal>
-      )}
     </>
   );
 }
