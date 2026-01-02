@@ -19,8 +19,8 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
+import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
+import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { api, API_URL } from '../../src/lib/api';
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -29,8 +29,6 @@ interface StripeConnectStatus {
   chargesEnabled?: boolean;
   payoutsEnabled?: boolean;
 }
-// QR code display - using fallback visual since react-native-qrcode-svg has peer dependency conflicts
-// The customer can still use the link/send options which work perfectly
 
 interface PaymentRequest {
   id: string;
@@ -92,6 +90,8 @@ interface Receipt {
   createdAt: string;
 }
 
+type TabType = 'requests' | 'record' | 'receipts';
+
 const formatCurrency = (amount: number | string) => {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
   return new Intl.NumberFormat('en-AU', {
@@ -106,6 +106,7 @@ export default function CollectPaymentScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
+  const [activeTab, setActiveTab] = useState<TabType>('requests');
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -148,7 +149,6 @@ export default function CollectPaymentScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   
-  // QR Code state
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
 
@@ -169,6 +169,10 @@ export default function CollectPaymentScreen() {
     paymentRequests.filter(r => r.status === 'pending'), [paymentRequests]);
   const completedRequests = useMemo(() => 
     paymentRequests.filter(r => r.status !== 'pending'), [paymentRequests]);
+
+  const totalPendingAmount = useMemo(() => {
+    return pendingRequests.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
+  }, [pendingRequests]);
 
   const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
   const invoiceMap = useMemo(() => new Map(invoices.map(i => [i.id, i])), [invoices]);
@@ -239,7 +243,6 @@ export default function CollectPaymentScreen() {
     }
   }, [receiptInvoiceId, invoices]);
 
-  // Fetch QR code when share modal opens
   useEffect(() => {
     const fetchQrCode = async () => {
       if (showShareModal && selectedRequest) {
@@ -499,7 +502,6 @@ export default function CollectPaymentScreen() {
     }
   };
 
-  // Open receipt PDF in browser for printing
   const handlePrintReceipt = async (receiptId: string) => {
     try {
       const pdfUrl = `${API_URL}/api/receipts/${receiptId}/pdf`;
@@ -509,33 +511,6 @@ export default function CollectPaymentScreen() {
     } catch (error) {
       Alert.alert('Error', 'Failed to open receipt');
     }
-  };
-
-  // Open invoice PDF in browser for printing
-  const handlePrintInvoice = async (invoiceId: string) => {
-    try {
-      const pdfUrl = `${API_URL}/api/invoices/${invoiceId}/pdf`;
-      await WebBrowser.openBrowserAsync(pdfUrl, {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to open invoice');
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const configs: Record<string, { bg: string; text: string; label: string }> = {
-      pending: { bg: `${colors.warning}20`, text: colors.warning, label: 'Pending' },
-      paid: { bg: `${colors.success}20`, text: colors.success, label: 'Paid' },
-      cancelled: { bg: `${colors.destructive}20`, text: colors.destructive, label: 'Cancelled' },
-      expired: { bg: colors.muted, text: colors.mutedForeground, label: 'Expired' },
-    };
-    const config = configs[status] || configs.pending;
-    return (
-      <View style={[styles.badge, { backgroundColor: config.bg }]}>
-        <Text style={[styles.badgeText, { color: config.text }]}>{config.label}</Text>
-      </View>
-    );
   };
 
   const paymentMethods = [
@@ -554,241 +529,142 @@ export default function CollectPaymentScreen() {
     { value: '168', label: '1 week' },
   ];
 
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return { label: 'Pending', color: colors.warning, bgColor: colorWithOpacity(colors.warning, 0.12) };
+      case 'paid':
+        return { label: 'Paid', color: colors.success, bgColor: colorWithOpacity(colors.success, 0.12) };
+      case 'cancelled':
+        return { label: 'Cancelled', color: colors.destructive, bgColor: colorWithOpacity(colors.destructive, 0.12) };
+      case 'expired':
+        return { label: 'Expired', color: colors.mutedForeground, bgColor: colors.muted };
+      default:
+        return { label: status, color: colors.mutedForeground, bgColor: colors.muted };
+    }
+  };
+
+  const tabs: { key: TabType; label: string; icon: keyof typeof Feather.glyphMap; count?: number }[] = [
+    { key: 'requests', label: 'Requests', icon: 'credit-card', count: pendingRequests.length },
+    { key: 'record', label: 'Record', icon: 'dollar-sign' },
+    { key: 'receipts', label: 'Receipts', icon: 'file-text', count: receipts.length },
+  ];
+
   const renderHeader = () => (
-    <View style={styles.headerActions}>
-      <TouchableOpacity 
-        style={styles.headerButton}
-        onPress={() => setShowReceiptModal(true)}
-        activeOpacity={0.7}
-      >
-        <Feather name="file-text" size={iconSizes.md} color={colors.primary} />
-        <Text style={styles.headerButtonText}>Receipt</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={styles.headerButton}
-        onPress={() => setShowRecordPaymentModal(true)}
-        activeOpacity={0.7}
-      >
-        <Feather name="dollar-sign" size={iconSizes.md} color={colors.primary} />
-        <Text style={styles.headerButtonText}>Record</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={[styles.headerButton, styles.headerButtonPrimary]}
-        onPress={() => setShowCreateModal(true)}
-        activeOpacity={0.7}
-      >
-        <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground} />
-        <Text style={[styles.headerButtonText, { color: colors.primaryForeground }]}>New Request</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderContactlessInfo = () => (
-    <View style={styles.contactlessCard}>
-      <View style={styles.contactlessIcon}>
-        <Feather name="wifi" size={iconSizes.xl} color={colors.white} />
-      </View>
-      <View style={styles.contactlessContent}>
-        <View style={styles.contactlessHeader}>
-          <Text style={styles.contactlessTitle}>Contactless Payments</Text>
-          <View style={[styles.badge, { backgroundColor: colors.muted }]}>
-            <Text style={[styles.badgeText, { color: colors.mutedForeground }]}>Works Now</Text>
+    <View style={styles.header}>
+      <View style={styles.headerTop}>
+        <Text style={styles.headerTitle}>Collect Payment</Text>
+        {totalPendingAmount > 0 && (
+          <View style={styles.headerBadge}>
+            <Text style={styles.headerBadgeText}>{formatCurrency(totalPendingAmount)} pending</Text>
           </View>
-        </View>
-        <Text style={styles.contactlessDescription}>
-          Customer scans the QR code and pays with Apple Pay, Google Pay, or card.
-        </Text>
-        <View style={styles.contactlessCards}>
-          <Feather name="credit-card" size={iconSizes.sm} color={colors.mutedForeground} />
-          <Text style={styles.contactlessCardsText}>Visa, Mastercard, Amex</Text>
-        </View>
+        )}
       </View>
+      
+      {!stripeStatus?.connected && (
+        <TouchableOpacity 
+          style={styles.stripeWarning}
+          onPress={() => router.push('/more/money-hub')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.stripeWarningIcon}>
+            <Feather name="alert-circle" size={iconSizes.md} color={colors.warning} />
+          </View>
+          <View style={styles.stripeWarningContent}>
+            <Text style={styles.stripeWarningTitle}>Connect Stripe</Text>
+            <Text style={styles.stripeWarningText}>Accept card payments online</Text>
+          </View>
+          <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 
-  const renderTapToPaySection = () => (
-    <View style={styles.tapToPaySection}>
-      <Text style={styles.sectionTitle}>Accept Card Payment</Text>
-      <TouchableOpacity
-        style={styles.applePayButton}
-        onPress={() => {
-          Alert.alert(
-            'Tap to Pay Ready',
-            'Tap to Pay on iPhone requires Stripe Terminal setup in production. Contact support to enable.',
-            [{ text: 'OK' }]
-          );
-        }}
-        activeOpacity={0.8}
-      >
-        <View style={styles.applePayButtonContent}>
-          <Feather name="smartphone" size={24} color="#FFFFFF" />
-          <Text style={styles.applePayButtonText}>Tap to Pay on iPhone</Text>
-        </View>
-      </TouchableOpacity>
-      <Text style={styles.tapToPayHint}>Accept contactless cards, Apple Pay, and Google Pay</Text>
-    </View>
-  );
-
-  const renderStripeWarning = () => {
-    if (stripeStatus?.connected) return null;
-    
-    return (
-      <TouchableOpacity 
-        style={styles.stripeWarningCard}
-        onPress={() => router.push('/more/money-hub')}
-        activeOpacity={0.7}
-      >
-        <View style={styles.stripeWarningIcon}>
-          <Feather name="alert-triangle" size={iconSizes.lg} color={colors.warning} />
-        </View>
-        <View style={styles.stripeWarningContent}>
-          <Text style={styles.stripeWarningTitle}>Connect Stripe to Accept Payments</Text>
-          <Text style={styles.stripeWarningDescription}>
-            Set up Stripe to accept card payments and receive funds directly to your bank account.
+  const renderTabs = () => (
+    <View style={styles.tabContainer}>
+      {tabs.map((tab) => (
+        <TouchableOpacity
+          key={tab.key}
+          style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+          onPress={() => setActiveTab(tab.key)}
+          activeOpacity={0.7}
+        >
+          <Feather 
+            name={tab.icon} 
+            size={iconSizes.md} 
+            color={activeTab === tab.key ? colors.primary : colors.mutedForeground} 
+          />
+          <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+            {tab.label}
           </Text>
-        </View>
-        <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
-      </TouchableOpacity>
-    );
-  };
-
-  const renderQuickLinks = () => {
-    const unpaidCount = invoices.filter(inv => inv.status !== 'paid').length;
-    const activeJobsCount = jobs.filter(job => job.status !== 'invoiced').length;
-    const clientsCount = clients.length;
-    
-    const links = [
-      { 
-        icon: 'file-text' as const, 
-        label: 'Invoices', 
-        count: unpaidCount > 0 ? `${unpaidCount} unpaid` : null,
-        route: '/more/invoices',
-        color: colors.primary,
-      },
-      { 
-        icon: 'briefcase' as const, 
-        label: 'Jobs', 
-        count: activeJobsCount > 0 ? `${activeJobsCount} active` : null,
-        route: '/(tabs)/jobs',
-        color: colors.info,
-      },
-      { 
-        icon: 'users' as const, 
-        label: 'Clients', 
-        count: clientsCount > 0 ? `${clientsCount} total` : null,
-        route: '/more/clients',
-        color: colors.success,
-      },
-      { 
-        icon: 'bar-chart-2' as const, 
-        label: 'Reports', 
-        count: null,
-        route: '/more/reports',
-        color: colors.warning,
-      },
-    ];
-    
-    return (
-      <View style={styles.quickLinksContainer}>
-        <Text style={styles.quickLinksTitle}>Quick Links</Text>
-        <View style={styles.quickLinksGrid}>
-          {links.map((link, index) => (
-            <TouchableOpacity 
-              key={index}
-              style={styles.quickLinkCard}
-              onPress={() => router.push(link.route as any)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.quickLinkIconContainer, { backgroundColor: link.color + '20' }]}>
-                <Feather name={link.icon} size={iconSizes.lg} color={link.color} />
-              </View>
-              <Text style={styles.quickLinkLabel}>{link.label}</Text>
-              {link.count && (
-                <Text style={styles.quickLinkCount}>{link.count}</Text>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-    );
-  };
-
-  const renderRequestCard = (request: PaymentRequest, isPending: boolean) => {
-    const clientName = request.clientId ? clientMap.get(request.clientId)?.name : null;
-    const invoiceNumber = request.invoiceId ? invoiceMap.get(request.invoiceId)?.number : null;
-    const jobTitle = request.jobId ? jobMap.get(request.jobId)?.title : null;
-
-    return (
-      <View 
-        key={request.id} 
-        style={[styles.requestCard, !isPending && styles.requestCardCompleted]}
-      >
-        <View style={styles.requestCardContent}>
-          <View style={styles.requestCardHeader}>
-            <Text style={styles.requestAmount}>{formatCurrency(request.amount)}</Text>
-            {getStatusBadge(request.status)}
-          </View>
-          <Text style={styles.requestDescription} numberOfLines={1}>{request.description}</Text>
-          
-          <View style={styles.requestLinks}>
-            {invoiceNumber && (
-              <TouchableOpacity 
-                style={styles.linkBadge}
-                onPress={() => router.push(`/more/invoice/${request.invoiceId}`)}
-              >
-                <Feather name="file-text" size={12} color={colors.primary} />
-                <Text style={styles.linkBadgeText}>{invoiceNumber}</Text>
-              </TouchableOpacity>
-            )}
-            {jobTitle && (
-              <TouchableOpacity 
-                style={styles.linkBadge}
-                onPress={() => router.push(`/job/${request.jobId}`)}
-              >
-                <Feather name="briefcase" size={12} color={colors.primary} />
-                <Text style={styles.linkBadgeText} numberOfLines={1}>{jobTitle}</Text>
-              </TouchableOpacity>
-            )}
-            {clientName && (
-              <TouchableOpacity 
-                style={styles.linkBadge}
-                onPress={() => router.push(`/more/client/${request.clientId}`)}
-              >
-                <Feather name="user" size={12} color={colors.primary} />
-                <Text style={styles.linkBadgeText}>{clientName}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          
-          {request.reference && (
-            <Text style={styles.requestReference}>Ref: {request.reference}</Text>
+          {tab.count !== undefined && tab.count > 0 && (
+            <View style={[styles.tabBadge, activeTab === tab.key && styles.tabBadgeActive]}>
+              <Text style={[styles.tabBadgeText, activeTab === tab.key && styles.tabBadgeTextActive]}>
+                {tab.count}
+              </Text>
+            </View>
           )}
-          <Text style={styles.requestTime}>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderRequestCard = (request: PaymentRequest) => {
+    const statusConfig = getStatusConfig(request.status);
+    const clientName = request.clientId ? clientMap.get(request.clientId)?.name : null;
+    const isPending = request.status === 'pending';
+
+    return (
+      <View key={request.id} style={[styles.card, !isPending && styles.cardFaded]}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardHeaderLeft}>
+            <Text style={styles.cardAmount}>{formatCurrency(request.amount)}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+              <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
+                {statusConfig.label}
+              </Text>
+            </View>
+          </View>
+        </View>
+        
+        <Text style={styles.cardDescription} numberOfLines={2}>{request.description}</Text>
+        
+        {clientName && (
+          <View style={styles.cardMeta}>
+            <Feather name="user" size={iconSizes.sm} color={colors.mutedForeground} />
+            <Text style={styles.cardMetaText}>{clientName}</Text>
+          </View>
+        )}
+        
+        <View style={styles.cardMeta}>
+          <Feather name="clock" size={iconSizes.sm} color={colors.mutedForeground} />
+          <Text style={styles.cardMetaText}>
             {request.paidAt 
-              ? `Paid ${format(new Date(request.paidAt), 'dd MMM yyyy, h:mm a')}`
-              : `Created ${formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}`
+              ? `Paid ${format(new Date(request.paidAt), 'dd MMM yyyy')}`
+              : formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })
             }
           </Text>
         </View>
         
         {isPending && (
-          <View style={styles.requestActions}>
+          <View style={styles.cardActions}>
             <TouchableOpacity 
-              style={styles.requestActionButton}
+              style={styles.cardActionPrimary}
               onPress={() => {
                 setSelectedRequest(request);
                 setShowShareModal(true);
               }}
+              activeOpacity={0.7}
             >
-              <Feather name="share-2" size={iconSizes.md} color={colors.primary} />
+              <Feather name="share-2" size={iconSizes.md} color={colors.primaryForeground} />
+              <Text style={styles.cardActionPrimaryText}>Share</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={styles.requestActionButton}
+              style={styles.cardActionSecondary}
               onPress={() => handleCancelRequest(request.id)}
+              activeOpacity={0.7}
             >
-              <Feather name="x-circle" size={iconSizes.md} color={colors.mutedForeground} />
+              <Feather name="x" size={iconSizes.md} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
         )}
@@ -798,60 +674,213 @@ export default function CollectPaymentScreen() {
 
   const renderReceiptCard = (receipt: Receipt) => {
     const clientName = receipt.clientId ? clientMap.get(receipt.clientId)?.name : null;
-    const invoiceNumber = receipt.invoiceId ? invoiceMap.get(receipt.invoiceId)?.number : null;
 
     return (
       <TouchableOpacity 
         key={receipt.id} 
-        style={styles.requestCard}
+        style={styles.card}
         onPress={() => router.push(`/more/receipt/${receipt.id}`)}
         activeOpacity={0.7}
       >
-        <View style={styles.requestCardContent}>
-          <View style={styles.requestCardHeader}>
-            <Text style={styles.requestAmount}>{formatCurrency(receipt.amount)}</Text>
-            <View style={[styles.badge, { backgroundColor: `${colors.success}20` }]}>
-              <Text style={[styles.badgeText, { color: colors.success }]}>Paid</Text>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardHeaderLeft}>
+            <Text style={styles.cardAmount}>{formatCurrency(receipt.amount)}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
+              <Text style={[styles.statusBadgeText, { color: colors.success }]}>Paid</Text>
             </View>
           </View>
-          <Text style={styles.requestDescription}>{receipt.receiptNumber}</Text>
-          
-          <View style={styles.requestLinks}>
-            {clientName && (
-              <View style={styles.linkBadge}>
-                <Feather name="user" size={12} color={colors.primary} />
-                <Text style={styles.linkBadgeText}>{clientName}</Text>
-              </View>
-            )}
-            {invoiceNumber && (
-              <View style={styles.linkBadge}>
-                <Feather name="file-text" size={12} color={colors.primary} />
-                <Text style={styles.linkBadgeText}>{invoiceNumber}</Text>
-              </View>
-            )}
-          </View>
-          
-          {receipt.paidAt && (
-            <Text style={[styles.requestTime, { color: colors.success }]}>
-              Paid {format(new Date(receipt.paidAt), 'dd MMM yyyy, h:mm a')}
-            </Text>
-          )}
-        </View>
-        <View style={styles.receiptActions}>
           <TouchableOpacity 
-            style={styles.receiptActionButton}
+            style={styles.cardIconButton}
             onPress={(e) => {
               e.stopPropagation();
               handlePrintReceipt(receipt.id);
             }}
+            activeOpacity={0.7}
           >
             <Feather name="printer" size={iconSizes.md} color={colors.primary} />
           </TouchableOpacity>
-          <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
         </View>
+        
+        <Text style={styles.cardDescription}>{receipt.receiptNumber}</Text>
+        
+        {clientName && (
+          <View style={styles.cardMeta}>
+            <Feather name="user" size={iconSizes.sm} color={colors.mutedForeground} />
+            <Text style={styles.cardMetaText}>{clientName}</Text>
+          </View>
+        )}
+        
+        {receipt.paidAt && (
+          <View style={styles.cardMeta}>
+            <Feather name="check-circle" size={iconSizes.sm} color={colors.success} />
+            <Text style={[styles.cardMetaText, { color: colors.success }]}>
+              {format(new Date(receipt.paidAt), 'dd MMM yyyy, h:mm a')}
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
+
+  const renderEmptyState = (type: 'requests' | 'receipts') => {
+    const config = {
+      requests: {
+        icon: 'credit-card' as const,
+        title: 'No Payment Requests',
+        description: 'Create a payment request to collect payments via QR code or link.',
+        action: () => setShowCreateModal(true),
+        actionLabel: 'Create Request',
+      },
+      receipts: {
+        icon: 'file-text' as const,
+        title: 'No Receipts Yet',
+        description: 'Generate receipts when you receive payments.',
+        action: () => setShowReceiptModal(true),
+        actionLabel: 'Create Receipt',
+      },
+    };
+    const { icon, title, description, action, actionLabel } = config[type];
+
+    return (
+      <View style={styles.emptyState}>
+        <View style={styles.emptyStateIcon}>
+          <Feather name={icon} size={sizes.emptyIcon} color={colors.mutedForeground} />
+        </View>
+        <Text style={styles.emptyStateTitle}>{title}</Text>
+        <Text style={styles.emptyStateDescription}>{description}</Text>
+        <TouchableOpacity style={styles.emptyStateButton} onPress={action} activeOpacity={0.7}>
+          <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground} />
+          <Text style={styles.emptyStateButtonText}>{actionLabel}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderRequestsTab = () => (
+    <View style={styles.tabContent}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Payment Requests</Text>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => setShowCreateModal(true)}
+          activeOpacity={0.7}
+        >
+          <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground} />
+          <Text style={styles.addButtonText}>New</Text>
+        </TouchableOpacity>
+      </View>
+
+      {pendingRequests.length === 0 && completedRequests.length === 0 ? (
+        renderEmptyState('requests')
+      ) : (
+        <>
+          {pendingRequests.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionSubtitle}>Active ({pendingRequests.length})</Text>
+              {pendingRequests.map(renderRequestCard)}
+            </View>
+          )}
+          
+          {completedRequests.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionSubtitle}>History</Text>
+              {completedRequests.slice(0, 5).map(renderRequestCard)}
+            </View>
+          )}
+        </>
+      )}
+    </View>
+  );
+
+  const renderRecordTab = () => (
+    <View style={styles.tabContent}>
+      <View style={styles.actionCard}>
+        <View style={styles.actionCardIcon}>
+          <Feather name="dollar-sign" size={iconSizes.xl} color={colors.primary} />
+        </View>
+        <Text style={styles.actionCardTitle}>Record Manual Payment</Text>
+        <Text style={styles.actionCardDescription}>
+          Record cash, bank transfer, or other offline payments against an invoice.
+        </Text>
+        <TouchableOpacity 
+          style={styles.actionCardButton}
+          onPress={() => setShowRecordPaymentModal(true)}
+          activeOpacity={0.7}
+        >
+          <Feather name="plus-circle" size={iconSizes.md} color={colors.primaryForeground} />
+          <Text style={styles.actionCardButtonText}>Record Payment</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.actionCard}>
+        <View style={[styles.actionCardIcon, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
+          <Feather name="file-text" size={iconSizes.xl} color={colors.success} />
+        </View>
+        <Text style={styles.actionCardTitle}>Generate Receipt</Text>
+        <Text style={styles.actionCardDescription}>
+          Create a receipt for any payment received to share with your customer.
+        </Text>
+        <TouchableOpacity 
+          style={[styles.actionCardButton, { backgroundColor: colors.success }]}
+          onPress={() => setShowReceiptModal(true)}
+          activeOpacity={0.7}
+        >
+          <Feather name="file-plus" size={iconSizes.md} color={colors.white} />
+          <Text style={styles.actionCardButtonText}>Create Receipt</Text>
+        </TouchableOpacity>
+      </View>
+
+      {unpaidInvoices.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionSubtitle}>Unpaid Invoices ({unpaidInvoices.length})</Text>
+          {unpaidInvoices.slice(0, 3).map((invoice) => (
+            <TouchableOpacity 
+              key={invoice.id}
+              style={styles.invoiceCard}
+              onPress={() => {
+                setRecordInvoiceId(invoice.id);
+                setShowRecordPaymentModal(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.invoiceCardContent}>
+                <Text style={styles.invoiceNumber}>{invoice.number}</Text>
+                <Text style={styles.invoiceTitle} numberOfLines={1}>{invoice.title}</Text>
+              </View>
+              <View style={styles.invoiceCardRight}>
+                <Text style={styles.invoiceAmount}>{formatCurrency(invoice.total)}</Text>
+                <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+
+  const renderReceiptsTab = () => (
+    <View style={styles.tabContent}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Receipts</Text>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => setShowReceiptModal(true)}
+          activeOpacity={0.7}
+        >
+          <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground} />
+          <Text style={styles.addButtonText}>New</Text>
+        </TouchableOpacity>
+      </View>
+
+      {receipts.length === 0 ? (
+        renderEmptyState('receipts')
+      ) : (
+        <View style={styles.section}>
+          {receipts.map(renderReceiptCard)}
+        </View>
+      )}
+    </View>
+  );
 
   const renderPickerModal = (
     visible: boolean,
@@ -868,7 +897,7 @@ export default function CollectPaymentScreen() {
           <View style={styles.pickerHeader}>
             <Text style={styles.pickerTitle}>{title}</Text>
             <TouchableOpacity onPress={onClose}>
-              <Feather name="x" size={iconSizes.lg} color={colors.foreground} />
+              <Feather name="x" size={iconSizes.xl} color={colors.foreground} />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.pickerScroll}>
@@ -906,14 +935,15 @@ export default function CollectPaymentScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <View style={styles.modalTitleRow}>
-              <Feather name="maximize-2" size={iconSizes.lg} color={colors.primary} />
+              <View style={styles.modalIcon}>
+                <Feather name="credit-card" size={iconSizes.lg} color={colors.primary} />
+              </View>
               <Text style={styles.modalTitle}>New Payment Request</Text>
             </View>
             <TouchableOpacity onPress={() => { setShowCreateModal(false); resetCreateForm(); }}>
-              <Feather name="x" size={iconSizes.xl} color={colors.foreground} />
+              <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.modalSubtitle}>Create a QR code or link for on-site payments</Text>
           
           <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
             {unpaidInvoices.length > 0 && (
@@ -930,7 +960,6 @@ export default function CollectPaymentScreen() {
                   </Text>
                   <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
                 </TouchableOpacity>
-                <Text style={styles.formHint}>Selecting an invoice will auto-fill the amount and description</Text>
               </View>
             )}
             
@@ -947,9 +976,6 @@ export default function CollectPaymentScreen() {
                   keyboardType="decimal-pad"
                 />
               </View>
-              {newAmount && parseFloat(newAmount) > 0 && (
-                <Text style={styles.formHint}>Includes ${(parseFloat(newAmount) / 11).toFixed(2)} GST</Text>
-              )}
             </View>
             
             <View style={styles.formGroup}>
@@ -991,21 +1017,6 @@ export default function CollectPaymentScreen() {
               </View>
             )}
             
-            {activeJobs.length > 0 && (
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Link to Job (optional)</Text>
-                <TouchableOpacity 
-                  style={styles.formSelect}
-                  onPress={() => { setPickerContext('create'); setShowJobPicker(true); }}
-                >
-                  <Text style={[styles.formSelectText, !selectedJobId && styles.formSelectPlaceholder]}>
-                    {selectedJobId ? jobMap.get(selectedJobId)?.title : 'Select a job'}
-                  </Text>
-                  <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              </View>
-            )}
-            
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Link expires in</Text>
               <TouchableOpacity 
@@ -1035,10 +1046,7 @@ export default function CollectPaymentScreen() {
               {isSubmitting ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
-                <>
-                  <Feather name="maximize-2" size={iconSizes.md} color={colors.primaryForeground} />
-                  <Text style={styles.modalButtonPrimaryText}>Create Request</Text>
-                </>
+                <Text style={styles.modalButtonPrimaryText}>Create Request</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1056,14 +1064,15 @@ export default function CollectPaymentScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <View style={styles.modalTitleRow}>
-              <Feather name="dollar-sign" size={iconSizes.lg} color={colors.primary} />
+              <View style={styles.modalIcon}>
+                <Feather name="dollar-sign" size={iconSizes.lg} color={colors.primary} />
+              </View>
               <Text style={styles.modalTitle}>Record Payment</Text>
             </View>
             <TouchableOpacity onPress={() => { setShowRecordPaymentModal(false); resetRecordForm(); }}>
-              <Feather name="x" size={iconSizes.xl} color={colors.foreground} />
+              <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.modalSubtitle}>Record a cash, bank transfer, or other offline payment</Text>
           
           <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
             <View style={styles.formGroup}>
@@ -1110,10 +1119,10 @@ export default function CollectPaymentScreen() {
             </View>
             
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Payment Reference (optional)</Text>
+              <Text style={styles.formLabel}>Reference (optional)</Text>
               <TextInput
                 style={styles.formInput}
-                placeholder="e.g., Bank transfer ref or cheque number"
+                placeholder="e.g., Bank transfer ref"
                 placeholderTextColor={colors.mutedForeground}
                 value={recordReference}
                 onChangeText={setRecordReference}
@@ -1124,7 +1133,7 @@ export default function CollectPaymentScreen() {
               <Text style={styles.formLabel}>Notes (optional)</Text>
               <TextInput
                 style={[styles.formInput, styles.formTextarea]}
-                placeholder="Any additional notes about this payment"
+                placeholder="Any additional notes"
                 placeholderTextColor={colors.mutedForeground}
                 value={recordNotes}
                 onChangeText={setRecordNotes}
@@ -1149,10 +1158,7 @@ export default function CollectPaymentScreen() {
               {isSubmitting ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
-                <>
-                  <Feather name="check-circle" size={iconSizes.md} color={colors.primaryForeground} />
-                  <Text style={styles.modalButtonPrimaryText}>Record Payment</Text>
-                </>
+                <Text style={styles.modalButtonPrimaryText}>Record Payment</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1170,14 +1176,15 @@ export default function CollectPaymentScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <View style={styles.modalTitleRow}>
-              <Feather name="file-text" size={iconSizes.lg} color={colors.primary} />
+              <View style={[styles.modalIcon, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
+                <Feather name="file-text" size={iconSizes.lg} color={colors.success} />
+              </View>
               <Text style={styles.modalTitle}>Generate Receipt</Text>
             </View>
             <TouchableOpacity onPress={() => { setShowReceiptModal(false); resetReceiptForm(); }}>
-              <Feather name="x" size={iconSizes.xl} color={colors.foreground} />
+              <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.modalSubtitle}>Create a receipt for a payment received</Text>
           
           <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
             <View style={styles.formGroup}>
@@ -1234,17 +1241,6 @@ export default function CollectPaymentScreen() {
               </TouchableOpacity>
             </View>
             
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Payment Reference (optional)</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g., Bank transfer ref or cheque number"
-                placeholderTextColor={colors.mutedForeground}
-                value={receiptReference}
-                onChangeText={setReceiptReference}
-              />
-            </View>
-            
             {clients.length > 0 && (
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Client (optional)</Text>
@@ -1253,7 +1249,7 @@ export default function CollectPaymentScreen() {
                   onPress={() => { setPickerContext('receipt'); setShowClientPicker(true); }}
                 >
                   <Text style={[styles.formSelectText, !receiptClientId && styles.formSelectPlaceholder]}>
-                    {receiptClientId ? clientMap.get(receiptClientId)?.name : 'Select a client (optional)'}
+                    {receiptClientId ? clientMap.get(receiptClientId)?.name : 'Select a client'}
                   </Text>
                   <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
                 </TouchableOpacity>
@@ -1269,17 +1265,14 @@ export default function CollectPaymentScreen() {
               <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.modalButtonPrimary, (isSubmitting || !receiptAmount) && styles.modalButtonDisabled]}
+              style={[styles.modalButtonPrimary, { backgroundColor: colors.success }, (isSubmitting || !receiptAmount) && styles.modalButtonDisabled]}
               onPress={handleCreateReceipt}
               disabled={isSubmitting || !receiptAmount}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color={colors.primaryForeground} />
+                <ActivityIndicator size="small" color={colors.white} />
               ) : (
-                <>
-                  <Feather name="file-text" size={iconSizes.md} color={colors.primaryForeground} />
-                  <Text style={styles.modalButtonPrimaryText}>Generate Receipt</Text>
-                </>
+                <Text style={styles.modalButtonPrimaryText}>Generate Receipt</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1291,44 +1284,47 @@ export default function CollectPaymentScreen() {
   const renderShareModal = () => (
     <Modal visible={showShareModal} transparent animationType="slide">
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <View style={styles.shareModalContainer}>
           <View style={styles.modalHeader}>
             <View style={styles.modalTitleRow}>
-              <Feather name="share-2" size={iconSizes.lg} color={colors.primary} />
-              <Text style={styles.modalTitle}>Share Payment Request</Text>
+              <View style={styles.modalIcon}>
+                <Feather name="share-2" size={iconSizes.lg} color={colors.primary} />
+              </View>
+              <Text style={styles.modalTitle}>Share Request</Text>
             </View>
             <TouchableOpacity onPress={() => setShowShareModal(false)}>
-              <Feather name="x" size={iconSizes.xl} color={colors.foreground} />
+              <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
+          
           {selectedRequest && (
-            <Text style={styles.modalSubtitle}>
-              {formatCurrency(selectedRequest.amount)} - {selectedRequest.description}
-            </Text>
+            <View style={styles.shareAmountBanner}>
+              <Text style={styles.shareAmountLabel}>Amount</Text>
+              <Text style={styles.shareAmountValue}>{formatCurrency(selectedRequest.amount)}</Text>
+            </View>
           )}
           
-          <View style={styles.shareTabs}>
-            <TouchableOpacity 
-              style={[styles.shareTab, shareTab === 'qr' && styles.shareTabActive]}
-              onPress={() => setShareTab('qr')}
-            >
-              <Feather name="maximize-2" size={iconSizes.md} color={shareTab === 'qr' ? colors.primary : colors.mutedForeground} />
-              <Text style={[styles.shareTabText, shareTab === 'qr' && styles.shareTabTextActive]}>QR Code</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.shareTab, shareTab === 'link' && styles.shareTabActive]}
-              onPress={() => setShareTab('link')}
-            >
-              <Feather name="link-2" size={iconSizes.md} color={shareTab === 'link' ? colors.primary : colors.mutedForeground} />
-              <Text style={[styles.shareTabText, shareTab === 'link' && styles.shareTabTextActive]}>Link</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.shareTab, shareTab === 'send' && styles.shareTabActive]}
-              onPress={() => setShareTab('send')}
-            >
-              <Feather name="send" size={iconSizes.md} color={shareTab === 'send' ? colors.primary : colors.mutedForeground} />
-              <Text style={[styles.shareTabText, shareTab === 'send' && styles.shareTabTextActive]}>Send</Text>
-            </TouchableOpacity>
+          <View style={styles.shareTabContainer}>
+            {[
+              { key: 'qr', label: 'QR Code', icon: 'maximize-2' },
+              { key: 'link', label: 'Link', icon: 'link-2' },
+              { key: 'send', label: 'Send', icon: 'send' },
+            ].map((tab) => (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.shareTabItem, shareTab === tab.key && styles.shareTabItemActive]}
+                onPress={() => setShareTab(tab.key as 'qr' | 'link' | 'send')}
+              >
+                <Feather 
+                  name={tab.icon as any} 
+                  size={iconSizes.md} 
+                  color={shareTab === tab.key ? colors.primary : colors.mutedForeground} 
+                />
+                <Text style={[styles.shareTabText, shareTab === tab.key && styles.shareTabTextActive]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
           
           {selectedRequest && (
@@ -1339,7 +1335,7 @@ export default function CollectPaymentScreen() {
                     {qrLoading ? (
                       <View style={styles.qrLoading}>
                         <ActivityIndicator size="large" color={colors.primary} />
-                        <Text style={styles.qrLoadingText}>Generating QR Code...</Text>
+                        <Text style={styles.qrLoadingText}>Generating...</Text>
                       </View>
                     ) : qrCodeDataUrl ? (
                       <Image 
@@ -1349,66 +1345,46 @@ export default function CollectPaymentScreen() {
                       />
                     ) : (
                       <View style={styles.qrFallback}>
-                        <Feather name="maximize-2" size={80} color={colors.primary} />
-                        <Text style={styles.qrFallbackTitle}>Payment QR Code</Text>
-                        <Text style={styles.qrFallbackAmount}>{formatCurrency(selectedRequest.amount)}</Text>
+                        <Feather name="maximize-2" size={64} color={colors.primary} />
                       </View>
                     )}
                   </View>
-                  <Text style={styles.qrHint}>Customer can scan this code to pay</Text>
-                  <TouchableOpacity 
-                    style={styles.qrCopyButton}
-                    onPress={handleCopyLink}
-                  >
+                  <Text style={styles.qrHint}>Customer scans to pay</Text>
+                  <TouchableOpacity style={styles.copyLinkButton} onPress={handleCopyLink}>
                     <Feather name={copied ? 'check' : 'copy'} size={iconSizes.md} color={colors.primaryForeground} />
-                    <Text style={styles.qrCopyButtonText}>{copied ? 'Copied!' : 'Copy Payment Link'}</Text>
+                    <Text style={styles.copyLinkButtonText}>{copied ? 'Copied!' : 'Copy Link'}</Text>
                   </TouchableOpacity>
                 </View>
               )}
               
               {shareTab === 'link' && (
                 <View style={styles.linkContainer}>
-                  <View style={styles.linkInputRow}>
-                    <TextInput
-                      style={styles.linkInput}
-                      value={getPaymentUrl(selectedRequest)}
-                      editable={false}
-                      selectTextOnFocus
-                    />
-                    <TouchableOpacity style={styles.copyButton} onPress={handleCopyLink}>
-                      <Feather 
-                        name={copied ? 'check' : 'copy'} 
-                        size={iconSizes.md} 
-                        color={copied ? colors.success : colors.primary} 
-                      />
-                    </TouchableOpacity>
+                  <View style={styles.linkBox}>
+                    <Text style={styles.linkText} numberOfLines={2}>{getPaymentUrl(selectedRequest)}</Text>
                   </View>
-                  <Text style={styles.linkHint}>Share this link with your customer via any messaging app</Text>
+                  <TouchableOpacity style={styles.copyLinkButton} onPress={handleCopyLink}>
+                    <Feather name={copied ? 'check' : 'copy'} size={iconSizes.md} color={colors.primaryForeground} />
+                    <Text style={styles.copyLinkButtonText}>{copied ? 'Copied!' : 'Copy to Clipboard'}</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.linkHint}>Share this link via any messaging app</Text>
                 </View>
               )}
               
               {shareTab === 'send' && (
                 <View style={styles.sendContainer}>
-                  <TouchableOpacity
-                    style={styles.composeEmailButton}
-                    onPress={handleComposeEmail}
-                    activeOpacity={0.8}
-                  >
-                    <Feather name="mail" size={iconSizes.md} color={colors.primaryForeground} />
-                    <Text style={styles.composeEmailButtonText}>Open in Email App</Text>
+                  <TouchableOpacity style={styles.emailAppButton} onPress={handleComposeEmail}>
+                    <Feather name="mail" size={iconSizes.lg} color={colors.primaryForeground} />
+                    <Text style={styles.emailAppButtonText}>Open Email App</Text>
                   </TouchableOpacity>
                   
-                  <View style={styles.sendDivider}>
-                    <View style={styles.sendDividerLine} />
-                    <Text style={styles.sendDividerText}>or send directly</Text>
-                    <View style={styles.sendDividerLine} />
+                  <View style={styles.divider}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>or send directly</Text>
+                    <View style={styles.dividerLine} />
                   </View>
                   
-                  <View style={styles.formGroup}>
-                    <View style={styles.sendLabelRow}>
-                      <Feather name="mail" size={iconSizes.md} color={colors.primary} />
-                      <Text style={styles.formLabel}>Send via Email</Text>
-                    </View>
+                  <View style={styles.sendInputGroup}>
+                    <Text style={styles.sendInputLabel}>Email</Text>
                     <View style={styles.sendInputRow}>
                       <TextInput
                         style={styles.sendInput}
@@ -1424,20 +1400,13 @@ export default function CollectPaymentScreen() {
                         onPress={handleSendEmail}
                         disabled={!shareEmail || isSubmitting}
                       >
-                        {isSubmitting ? (
-                          <ActivityIndicator size="small" color={colors.primaryForeground} />
-                        ) : (
-                          <Text style={styles.sendButtonText}>Send</Text>
-                        )}
+                        <Text style={styles.sendButtonText}>Send</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                   
-                  <View style={styles.formGroup}>
-                    <View style={styles.sendLabelRow}>
-                      <Feather name="smartphone" size={iconSizes.md} color={colors.primary} />
-                      <Text style={styles.formLabel}>Send via SMS</Text>
-                    </View>
+                  <View style={styles.sendInputGroup}>
+                    <Text style={styles.sendInputLabel}>SMS</Text>
                     <View style={styles.sendInputRow}>
                       <TextInput
                         style={styles.sendInput}
@@ -1452,11 +1421,7 @@ export default function CollectPaymentScreen() {
                         onPress={handleSendSms}
                         disabled={!sharePhone || isSubmitting}
                       >
-                        {isSubmitting ? (
-                          <ActivityIndicator size="small" color={colors.primaryForeground} />
-                        ) : (
-                          <Text style={styles.sendButtonText}>Send</Text>
-                        )}
+                        <Text style={styles.sendButtonText}>Send</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1478,7 +1443,6 @@ export default function CollectPaymentScreen() {
   };
 
   const getClientOptions = () => clients.map(c => ({ value: c.id, label: c.name }));
-  const getJobOptions = () => activeJobs.map(j => ({ value: j.id, label: j.title }));
 
   const handleInvoiceSelect = (value: string) => {
     if (pickerContext === 'create') setSelectedInvoiceId(value);
@@ -1491,46 +1455,25 @@ export default function CollectPaymentScreen() {
     else setReceiptClientId(value);
   };
 
-  const handleJobSelect = (value: string) => {
-    if (pickerContext === 'create') setSelectedJobId(value);
-    else setReceiptJobId(value);
-  };
-
   const handleMethodSelect = (value: string) => {
     if (pickerContext === 'record') setRecordPaymentMethod(value);
     else setReceiptPaymentMethod(value);
   };
 
-  const getSelectedInvoiceId = () => {
-    if (pickerContext === 'create') return selectedInvoiceId;
-    if (pickerContext === 'record') return recordInvoiceId;
-    return receiptInvoiceId;
-  };
-
-  const getSelectedClientId = () => {
-    if (pickerContext === 'create') return selectedClientId;
-    return receiptClientId;
-  };
-
-  const getSelectedJobId = () => {
-    if (pickerContext === 'create') return selectedJobId;
-    return receiptJobId;
-  };
-
-  const getSelectedMethod = () => {
-    if (pickerContext === 'record') return recordPaymentMethod;
-    return receiptPaymentMethod;
-  };
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Collect Payment', headerShown: false }} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <Stack.Screen 
-        options={{
-          title: 'Collect Payment',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.foreground,
-        }}
-      />
+      <Stack.Screen options={{ title: 'Collect Payment', headerShown: false }} />
       
       <ScrollView
         style={styles.scrollView}
@@ -1541,74 +1484,11 @@ export default function CollectPaymentScreen() {
         showsVerticalScrollIndicator={false}
       >
         {renderHeader()}
-        {renderStripeWarning()}
-        {renderContactlessInfo()}
-        {renderTapToPaySection()}
-        {renderQuickLinks()}
+        {renderTabs()}
         
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        ) : paymentRequests.length === 0 && receipts.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIcon}>
-              <Feather name="maximize-2" size={32} color={colors.mutedForeground} />
-            </View>
-            <Text style={styles.emptyTitle}>No payment requests yet</Text>
-            <Text style={styles.emptyDescription}>
-              Create a payment request to get a QR code or shareable link that customers can use to pay you on-site.
-            </Text>
-            <View style={styles.emptyActions}>
-              <TouchableOpacity 
-                style={styles.emptyButtonSecondary}
-                onPress={() => setShowRecordPaymentModal(true)}
-              >
-                <Feather name="dollar-sign" size={iconSizes.md} color={colors.primary} />
-                <Text style={styles.emptyButtonSecondaryText}>Record Payment</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.emptyButtonPrimary}
-                onPress={() => setShowCreateModal(true)}
-              >
-                <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground} />
-                <Text style={styles.emptyButtonPrimaryText}>Create Request</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <>
-            {pendingRequests.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Feather name="clock" size={iconSizes.lg} color={colors.warning} />
-                  <Text style={styles.sectionTitle}>Pending Payments ({pendingRequests.length})</Text>
-                </View>
-                {pendingRequests.map(r => renderRequestCard(r, true))}
-              </View>
-            )}
-            
-            {receipts.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Feather name="file-text" size={iconSizes.lg} color={colors.mutedForeground} />
-                  <Text style={styles.sectionTitle}>Receipts ({receipts.length})</Text>
-                </View>
-                {receipts.slice(0, 10).map(r => renderReceiptCard(r))}
-              </View>
-            )}
-            
-            {completedRequests.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Feather name="check-circle" size={iconSizes.lg} color={colors.mutedForeground} />
-                  <Text style={styles.sectionTitle}>Completed Requests ({completedRequests.length})</Text>
-                </View>
-                {completedRequests.slice(0, 10).map(r => renderRequestCard(r, false))}
-              </View>
-            )}
-          </>
-        )}
+        {activeTab === 'requests' && renderRequestsTab()}
+        {activeTab === 'record' && renderRecordTab()}
+        {activeTab === 'receipts' && renderReceiptsTab()}
       </ScrollView>
       
       {renderCreateModal()}
@@ -1621,798 +1501,785 @@ export default function CollectPaymentScreen() {
         () => setShowInvoicePicker(false),
         'Select Invoice',
         getInvoiceOptions(),
-        getSelectedInvoiceId(),
+        pickerContext === 'create' ? selectedInvoiceId : pickerContext === 'record' ? recordInvoiceId : receiptInvoiceId,
         handleInvoiceSelect,
-        pickerContext !== 'record'
+        true
       )}
-      
       {renderPickerModal(
         showClientPicker,
         () => setShowClientPicker(false),
         'Select Client',
         getClientOptions(),
-        getSelectedClientId(),
+        pickerContext === 'create' ? selectedClientId : receiptClientId,
         handleClientSelect,
         true
       )}
-      
       {renderPickerModal(
-        showJobPicker,
-        () => setShowJobPicker(false),
-        'Select Job',
-        getJobOptions(),
-        getSelectedJobId(),
-        handleJobSelect,
-        true
+        showMethodPicker,
+        () => setShowMethodPicker(false),
+        'Payment Method',
+        paymentMethods,
+        pickerContext === 'record' ? recordPaymentMethod : receiptPaymentMethod,
+        handleMethodSelect
       )}
-      
       {renderPickerModal(
         showExpiryPicker,
         () => setShowExpiryPicker(false),
         'Link Expires In',
         expiryOptions,
         expiresInHours,
-        setExpiresInHours,
-        false
-      )}
-      
-      {renderPickerModal(
-        showMethodPicker,
-        () => setShowMethodPicker(false),
-        'Payment Method',
-        paymentMethods,
-        getSelectedMethod(),
-        handleMethodSelect,
-        false
+        setExpiresInHours
       )}
     </View>
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.lg,
-    paddingBottom: spacing['4xl'],
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  headerButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.lg,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  headerButtonPrimary: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  headerButtonText: {
-    ...typography.button,
-    color: colors.primary,
-  },
-  contactlessCard: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-    padding: spacing.lg,
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.info + '30',
-    marginBottom: spacing.lg,
-  },
-  contactlessIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
-    backgroundColor: colors.info,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.md,
-  },
-  contactlessContent: {
-    flex: 1,
-  },
-  contactlessHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  contactlessTitle: {
-    ...typography.cardTitle,
-    color: colors.foreground,
-  },
-  contactlessDescription: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginBottom: spacing.sm,
-  },
-  contactlessCards: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  contactlessCardsText: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-  },
-  stripeWarningCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.lg,
-    backgroundColor: `${colors.warning}15`,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: `${colors.warning}40`,
-    marginBottom: spacing.lg,
-  },
-  stripeWarningIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    backgroundColor: `${colors.warning}20`,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stripeWarningContent: {
-    flex: 1,
-  },
-  stripeWarningTitle: {
-    ...typography.cardTitle,
-    color: colors.foreground,
-    marginBottom: spacing.xs,
-  },
-  stripeWarningDescription: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-  },
-  quickLinksContainer: {
-    marginBottom: spacing.lg,
-  },
-  quickLinksTitle: {
-    ...typography.subtitle,
-    color: colors.foreground,
-    marginBottom: spacing.md,
-  },
-  quickLinksGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  quickLinkCard: {
-    width: '48%',
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  quickLinkIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  quickLinkLabel: {
-    ...typography.button,
-    color: colors.foreground,
-    marginBottom: 2,
-  },
-  quickLinkCount: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-  },
-  loadingContainer: {
-    padding: spacing['4xl'],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: spacing['3xl'],
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-  },
-  emptyTitle: {
-    ...typography.cardTitle,
-    color: colors.foreground,
-    marginBottom: spacing.sm,
-  },
-  emptyDescription: {
-    ...typography.body,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-  },
-  emptyActions: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  emptyButtonSecondary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  emptyButtonSecondaryText: {
-    ...typography.button,
-    color: colors.primary,
-  },
-  emptyButtonPrimary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-  },
-  emptyButtonPrimaryText: {
-    ...typography.button,
-    color: colors.primaryForeground,
-  },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.cardTitle,
-    color: colors.foreground,
-  },
-  requestCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  requestCardCompleted: {
-    opacity: 0.7,
-  },
-  requestCardContent: {
-    flex: 1,
-  },
-  requestCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  requestAmount: {
-    ...typography.headline,
-    color: colors.foreground,
-  },
-  requestDescription: {
-    ...typography.body,
-    color: colors.mutedForeground,
-    marginBottom: spacing.sm,
-  },
-  requestLinks: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
-  },
-  linkBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    backgroundColor: colors.background,
-  },
-  linkBadgeText: {
-    ...typography.captionSmall,
-    color: colors.foreground,
-    maxWidth: 100,
-  },
-  requestReference: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-    marginBottom: 2,
-  },
-  requestTime: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-  },
-  requestActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginLeft: spacing.md,
-  },
-  requestActionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  receiptActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginLeft: spacing.md,
-  },
-  receiptActionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-  },
-  badgeText: {
-    ...typography.badge,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    maxHeight: '90%',
-    paddingBottom: spacing['2xl'],
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
-  },
-  modalTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  modalTitle: {
-    ...typography.cardTitle,
-    color: colors.foreground,
-  },
-  modalSubtitle: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-  },
-  modalScroll: {
-    padding: spacing.lg,
-    maxHeight: 400,
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    padding: spacing.lg,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.cardBorder,
-  },
-  modalButtonSecondary: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  modalButtonSecondaryText: {
-    ...typography.button,
-    color: colors.foreground,
-  },
-  modalButtonPrimary: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-  },
-  modalButtonPrimaryText: {
-    ...typography.button,
-    color: colors.primaryForeground,
-  },
-  modalButtonDisabled: {
-    opacity: 0.5,
-  },
-  formGroup: {
-    marginBottom: spacing.lg,
-  },
-  formLabel: {
-    ...typography.subtitle,
-    color: colors.foreground,
-    marginBottom: spacing.sm,
-  },
-  formInput: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    ...typography.body,
-    color: colors.foreground,
-  },
-  formTextarea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  formSelect: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    minHeight: 48,
-  },
-  formSelectText: {
-    ...typography.body,
-    color: colors.foreground,
-    flex: 1,
-  },
-  formSelectPlaceholder: {
-    color: colors.mutedForeground,
-  },
-  formHint: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-    marginTop: spacing.xs,
-  },
-  amountInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-  },
-  amountPrefix: {
-    ...typography.body,
-    color: colors.mutedForeground,
-    paddingLeft: spacing.md,
-  },
-  amountInputField: {
-    flex: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.md,
-    ...typography.body,
-    color: colors.foreground,
-  },
-  shareTabs: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
-    marginTop: spacing.md,
-  },
-  shareTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  shareTabActive: {
-    borderBottomColor: colors.primary,
-  },
-  shareTabText: {
-    ...typography.button,
-    color: colors.mutedForeground,
-  },
-  shareTabTextActive: {
-    color: colors.primary,
-  },
-  shareContent: {
-    padding: spacing.lg,
-  },
-  qrContainer: {
-    alignItems: 'center',
-  },
-  qrWrapper: {
-    padding: spacing.lg,
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    ...shadows.md,
-  },
-  qrFallback: {
-    width: 200,
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  qrFallbackTitle: {
-    ...typography.subtitle,
-    color: colors.foreground,
-    marginTop: spacing.md,
-  },
-  qrFallbackAmount: {
-    ...typography.headline,
-    color: colors.primary,
-  },
-  qrImage: {
-    width: 200,
-    height: 200,
-  },
-  qrLoading: {
-    width: 200,
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-  },
-  qrLoadingText: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-  },
-  qrHint: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    marginTop: spacing.lg,
-  },
-  qrCopyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-  },
-  qrCopyButtonText: {
-    ...typography.button,
-    color: colors.primaryForeground,
-  },
-  linkContainer: {
-    gap: spacing.md,
-  },
-  linkInputRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  linkInput: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    ...typography.captionSmall,
-    color: colors.foreground,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  copyButton: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  linkHint: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-  },
-  sendContainer: {
-    gap: spacing.lg,
-  },
-  sendLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  sendInputRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  sendInput: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    ...typography.body,
-    color: colors.foreground,
-  },
-  sendButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  sendButtonText: {
-    ...typography.button,
-    color: colors.primaryForeground,
-  },
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  pickerContainer: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    maxHeight: '60%',
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
-  },
-  pickerTitle: {
-    ...typography.cardTitle,
-    color: colors.foreground,
-  },
-  pickerScroll: {
-    padding: spacing.lg,
-  },
-  pickerOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    marginBottom: spacing.xs,
-  },
-  pickerOptionSelected: {
-    backgroundColor: colors.muted,
-  },
-  pickerOptionText: {
-    ...typography.body,
-    color: colors.foreground,
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  tapToPaySection: {
-    marginTop: spacing.lg,
-    padding: spacing.lg,
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  applePayButton: {
-    backgroundColor: '#000000',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    marginTop: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  applePayButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  applePayButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  tapToPayHint: {
-    fontSize: 13,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-  },
-  composeEmailButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-  },
-  composeEmailButtonText: {
-    ...typography.button,
-    color: colors.primaryForeground,
-  },
-  sendDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  sendDividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.cardBorder,
-  },
-  sendDividerText: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: pageShell.paddingHorizontal,
+      paddingTop: pageShell.paddingTop,
+      paddingBottom: 100,
+    },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    
+    header: {
+      marginBottom: spacing.lg,
+    },
+    headerTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.md,
+    },
+    headerTitle: {
+      ...typography.sectionTitle,
+      color: colors.foreground,
+    },
+    headerBadge: {
+      backgroundColor: colorWithOpacity(colors.warning, 0.12),
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.pill,
+    },
+    headerBadgeText: {
+      ...typography.caption,
+      fontWeight: '600',
+      color: colors.warning,
+    },
+    
+    stripeWarning: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colorWithOpacity(colors.warning, 0.08),
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      gap: spacing.md,
+      borderWidth: 1,
+      borderColor: colorWithOpacity(colors.warning, 0.2),
+    },
+    stripeWarningIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.md,
+      backgroundColor: colorWithOpacity(colors.warning, 0.12),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stripeWarningContent: {
+      flex: 1,
+    },
+    stripeWarningTitle: {
+      ...typography.bodySemibold,
+      color: colors.foreground,
+    },
+    stripeWarningText: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+    
+    tabContainer: {
+      flexDirection: 'row',
+      backgroundColor: colors.muted,
+      borderRadius: radius.lg,
+      padding: spacing.xs,
+      marginBottom: spacing.lg,
+    },
+    tab: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+      paddingVertical: spacing.md,
+      borderRadius: radius.md,
+    },
+    tabActive: {
+      backgroundColor: colors.card,
+      ...shadows.sm,
+    },
+    tabText: {
+      ...typography.button,
+      color: colors.mutedForeground,
+    },
+    tabTextActive: {
+      color: colors.primary,
+    },
+    tabBadge: {
+      backgroundColor: colors.muted,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+      borderRadius: radius.pill,
+      minWidth: 20,
+      alignItems: 'center',
+    },
+    tabBadgeActive: {
+      backgroundColor: colorWithOpacity(colors.primary, 0.12),
+    },
+    tabBadgeText: {
+      ...typography.badge,
+      color: colors.mutedForeground,
+    },
+    tabBadgeTextActive: {
+      color: colors.primary,
+    },
+    
+    tabContent: {
+      flex: 1,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.md,
+    },
+    sectionTitle: {
+      ...typography.cardTitle,
+      color: colors.foreground,
+    },
+    sectionSubtitle: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      marginBottom: spacing.sm,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    section: {
+      marginBottom: spacing.lg,
+    },
+    addButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      backgroundColor: colors.primary,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.md,
+    },
+    addButtonText: {
+      ...typography.button,
+      color: colors.primaryForeground,
+    },
+    
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: radius.xl,
+      padding: spacing.lg,
+      marginBottom: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    cardFaded: {
+      opacity: 0.7,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      marginBottom: spacing.sm,
+    },
+    cardHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      flex: 1,
+    },
+    cardAmount: {
+      ...typography.headline,
+      color: colors.foreground,
+    },
+    statusBadge: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+      borderRadius: radius.sm,
+    },
+    statusBadgeText: {
+      ...typography.badge,
+    },
+    cardDescription: {
+      ...typography.body,
+      color: colors.mutedForeground,
+      marginBottom: spacing.sm,
+    },
+    cardMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginBottom: spacing.xs,
+    },
+    cardMetaText: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+    cardActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginTop: spacing.md,
+      paddingTop: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.cardBorder,
+    },
+    cardActionPrimary: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.primary,
+      paddingVertical: spacing.md,
+      borderRadius: radius.md,
+    },
+    cardActionPrimaryText: {
+      ...typography.button,
+      color: colors.primaryForeground,
+    },
+    cardActionSecondary: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    cardIconButton: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.md,
+      backgroundColor: colors.muted,
+    },
+    
+    actionCard: {
+      backgroundColor: colors.card,
+      borderRadius: radius.xl,
+      padding: spacing.xl,
+      marginBottom: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      alignItems: 'center',
+    },
+    actionCardIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: radius.lg,
+      backgroundColor: colorWithOpacity(colors.primary, 0.12),
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.md,
+    },
+    actionCardTitle: {
+      ...typography.cardTitle,
+      color: colors.foreground,
+      marginBottom: spacing.xs,
+      textAlign: 'center',
+    },
+    actionCardDescription: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      marginBottom: spacing.lg,
+    },
+    actionCardButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.primary,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xl,
+      borderRadius: radius.md,
+    },
+    actionCardButtonText: {
+      ...typography.button,
+      color: colors.primaryForeground,
+    },
+    
+    invoiceCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      marginBottom: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    invoiceCardContent: {
+      flex: 1,
+    },
+    invoiceNumber: {
+      ...typography.bodySemibold,
+      color: colors.foreground,
+    },
+    invoiceTitle: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+    invoiceCardRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    invoiceAmount: {
+      ...typography.bodySemibold,
+      color: colors.primary,
+    },
+    
+    emptyState: {
+      alignItems: 'center',
+      paddingVertical: spacing['3xl'],
+      paddingHorizontal: spacing.xl,
+      backgroundColor: colors.card,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    emptyStateIcon: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.muted,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.lg,
+    },
+    emptyStateTitle: {
+      ...typography.cardTitle,
+      color: colors.foreground,
+      marginBottom: spacing.sm,
+      textAlign: 'center',
+    },
+    emptyStateDescription: {
+      ...typography.body,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      marginBottom: spacing.xl,
+    },
+    emptyStateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.primary,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xl,
+      borderRadius: radius.md,
+    },
+    emptyStateButtonText: {
+      ...typography.button,
+      color: colors.primaryForeground,
+    },
+    
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalContainer: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      maxHeight: '85%',
+    },
+    shareModalContainer: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      maxHeight: '90%',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.cardBorder,
+    },
+    modalTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    modalIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.md,
+      backgroundColor: colorWithOpacity(colors.primary, 0.12),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalTitle: {
+      ...typography.cardTitle,
+      color: colors.foreground,
+    },
+    modalScroll: {
+      padding: spacing.lg,
+      maxHeight: 400,
+    },
+    modalFooter: {
+      flexDirection: 'row',
+      gap: spacing.md,
+      padding: spacing.lg,
+      paddingTop: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.cardBorder,
+      paddingBottom: spacing['3xl'],
+    },
+    modalButtonSecondary: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    modalButtonSecondaryText: {
+      ...typography.button,
+      color: colors.foreground,
+    },
+    modalButtonPrimary: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.md,
+      borderRadius: radius.md,
+      backgroundColor: colors.primary,
+    },
+    modalButtonPrimaryText: {
+      ...typography.button,
+      color: colors.primaryForeground,
+    },
+    modalButtonDisabled: {
+      opacity: 0.5,
+    },
+    
+    formGroup: {
+      marginBottom: spacing.lg,
+    },
+    formLabel: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      marginBottom: spacing.sm,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    formInput: {
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      ...typography.body,
+      color: colors.foreground,
+    },
+    formTextarea: {
+      minHeight: 80,
+      textAlignVertical: 'top',
+    },
+    formSelect: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      minHeight: 48,
+    },
+    formSelectText: {
+      ...typography.body,
+      color: colors.foreground,
+      flex: 1,
+    },
+    formSelectPlaceholder: {
+      color: colors.mutedForeground,
+    },
+    amountInput: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      borderRadius: radius.md,
+    },
+    amountPrefix: {
+      ...typography.body,
+      color: colors.mutedForeground,
+      paddingLeft: spacing.md,
+    },
+    amountInputField: {
+      flex: 1,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.md,
+      ...typography.body,
+      color: colors.foreground,
+    },
+    
+    shareAmountBanner: {
+      backgroundColor: colors.muted,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
+      alignItems: 'center',
+    },
+    shareAmountLabel: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+    shareAmountValue: {
+      ...typography.headline,
+      color: colors.foreground,
+    },
+    shareTabContainer: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.cardBorder,
+    },
+    shareTabItem: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+      paddingVertical: spacing.md,
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
+    },
+    shareTabItemActive: {
+      borderBottomColor: colors.primary,
+    },
+    shareTabText: {
+      ...typography.button,
+      color: colors.mutedForeground,
+    },
+    shareTabTextActive: {
+      color: colors.primary,
+    },
+    shareContent: {
+      padding: spacing.lg,
+      paddingBottom: spacing['3xl'],
+    },
+    
+    qrContainer: {
+      alignItems: 'center',
+    },
+    qrWrapper: {
+      padding: spacing.lg,
+      backgroundColor: colors.white,
+      borderRadius: radius.lg,
+      ...shadows.md,
+    },
+    qrImage: {
+      width: 180,
+      height: 180,
+    },
+    qrFallback: {
+      width: 180,
+      height: 180,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    qrLoading: {
+      width: 180,
+      height: 180,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.md,
+    },
+    qrLoadingText: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+    qrHint: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      marginTop: spacing.lg,
+    },
+    copyLinkButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      marginTop: spacing.lg,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xl,
+      borderRadius: radius.md,
+      backgroundColor: colors.primary,
+    },
+    copyLinkButtonText: {
+      ...typography.button,
+      color: colors.primaryForeground,
+    },
+    
+    linkContainer: {
+      alignItems: 'center',
+    },
+    linkBox: {
+      backgroundColor: colors.muted,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      width: '100%',
+    },
+    linkText: {
+      ...typography.caption,
+      color: colors.foreground,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    },
+    linkHint: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      marginTop: spacing.md,
+    },
+    
+    sendContainer: {
+      gap: spacing.lg,
+    },
+    emailAppButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.md,
+      paddingVertical: spacing.lg,
+      borderRadius: radius.md,
+      backgroundColor: colors.primary,
+    },
+    emailAppButtonText: {
+      ...typography.button,
+      color: colors.primaryForeground,
+    },
+    divider: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.cardBorder,
+    },
+    dividerText: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+    sendInputGroup: {
+      gap: spacing.sm,
+    },
+    sendInputLabel: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+    sendInputRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    sendInput: {
+      flex: 1,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      ...typography.body,
+      color: colors.foreground,
+    },
+    sendButton: {
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      borderRadius: radius.md,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sendButtonDisabled: {
+      opacity: 0.5,
+    },
+    sendButtonText: {
+      ...typography.button,
+      color: colors.primaryForeground,
+    },
+    
+    pickerOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    pickerContainer: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      maxHeight: '60%',
+    },
+    pickerHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.cardBorder,
+    },
+    pickerTitle: {
+      ...typography.cardTitle,
+      color: colors.foreground,
+    },
+    pickerScroll: {
+      padding: spacing.lg,
+      paddingBottom: spacing['3xl'],
+    },
+    pickerOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.md,
+      marginBottom: spacing.xs,
+    },
+    pickerOptionSelected: {
+      backgroundColor: colors.muted,
+    },
+    pickerOptionText: {
+      ...typography.body,
+      color: colors.foreground,
+      flex: 1,
+      marginRight: spacing.md,
+    },
+  });
+}

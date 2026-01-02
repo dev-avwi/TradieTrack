@@ -649,6 +649,19 @@ export default function NewQuoteScreen() {
     fetchJobAndSetClient();
   }, [params.jobId, params.clientId]);
 
+  // Auto-fill client name when clientId is provided via URL params or clients are loaded
+  useEffect(() => {
+    if (form.clientId && clients.length > 0 && !form.clientName) {
+      const client = clients.find(c => c.id === form.clientId);
+      if (client) {
+        setForm(prev => ({
+          ...prev,
+          clientName: client.name,
+        }));
+      }
+    }
+  }, [form.clientId, clients, form.clientName]);
+
   const handleAddLineItem = () => {
     setEditForm({ description: '', quantity: '1', unitPrice: '' });
     setEditingItemIndex(-1);
