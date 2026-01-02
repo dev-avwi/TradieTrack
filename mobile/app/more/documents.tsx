@@ -66,7 +66,7 @@ type QuoteFilterType = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected';
 type InvoiceFilterType = 'all' | 'draft' | 'sent' | 'paid' | 'overdue';
 type ReceiptFilterType = 'all' | 'bank_transfer' | 'card' | 'cash';
 type ViewMode = 'grid' | 'list';
-type SortField = 'date' | 'amount' | 'status' | 'client';
+type SortField = 'client' | 'status';
 type SortDirection = 'asc' | 'desc';
 
 const formatCurrency = (amount: number) => {
@@ -149,7 +149,7 @@ export default function DocumentsScreen() {
   const [receiptFilter, setReceiptFilter] = useState<ReceiptFilterType>(
     initialTab === 'receipts' ? (initialFilter as ReceiptFilterType) : 'all'
   );
-  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortField, setSortField] = useState<SortField>('client');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const clientMap = useMemo(() => {
@@ -190,20 +190,10 @@ export default function DocumentsScreen() {
     return clientMap.get(clientId)?.name || 'Unknown Client';
   };
 
-  const sortItems = useCallback(<T extends { total?: number; amount?: number; status?: string; clientId?: string; createdAt?: string; paidAt?: string }>(items: T[]): T[] => {
+  const sortItems = useCallback(<T extends { status?: string; clientId?: string }>(items: T[]): T[] => {
     return [...items].sort((a, b) => {
       let comparison = 0;
       switch (sortField) {
-        case 'date':
-          const dateA = new Date(a.createdAt || a.paidAt || 0).getTime();
-          const dateB = new Date(b.createdAt || b.paidAt || 0).getTime();
-          comparison = dateA - dateB;
-          break;
-        case 'amount':
-          const amountA = a.total ?? a.amount ?? 0;
-          const amountB = b.total ?? b.amount ?? 0;
-          comparison = amountA - amountB;
-          break;
         case 'status':
           comparison = (a.status || '').localeCompare(b.status || '');
           break;
@@ -569,14 +559,10 @@ export default function DocumentsScreen() {
           ]}>
             {label}
           </Text>
-          {isActive && (
-            <Feather 
-              name="chevron-down" 
-              size={12} 
-              color={colors.primary}
-              style={{ transform: [{ rotate: sortDirection === 'asc' ? '180deg' : '0deg' }] }}
-            />
-          )}
+          <Text style={[
+            styles.sortArrow,
+            isActive && styles.sortArrowActive
+          ]}>↕</Text>
         </View>
       </TouchableOpacity>
     );
@@ -584,9 +570,8 @@ export default function DocumentsScreen() {
 
   const renderSortHeader = () => (
     <View style={styles.sortHeaderRow}>
-      {renderSortableHeaderColumn('client', activeTab === 'quotes' ? 'Quote' : activeTab === 'invoices' ? 'Invoice' : 'Receipt', 1.5)}
-      {renderSortableHeaderColumn('status', 'Status', 0.8, 'center')}
-      {renderSortableHeaderColumn('amount', 'Amount', 0.9, 'flex-end')}
+      {renderSortableHeaderColumn('client', activeTab === 'quotes' ? 'Quote' : activeTab === 'invoices' ? 'Invoice' : 'Receipt', 1)}
+      {renderSortableHeaderColumn('status', 'Status', 1, 'flex-end')}
     </View>
   );
 
@@ -622,14 +607,14 @@ export default function DocumentsScreen() {
     );
   };
 
-  const renderQuoteListRow = (quote: Quote) => {
+  const renderQuoteListRow = (quote: Quote, isLast: boolean = false) => {
     const statusConfig = getQuoteStatusConfig(quote.status);
     const client = clientMap.get(quote.clientId);
     
     return (
       <TouchableOpacity
         key={quote.id}
-        style={styles.listRow}
+        style={[styles.listRow, !isLast && styles.listRowWithDivider]}
         onPress={() => router.push(`/more/quote/${quote.id}`)}
         activeOpacity={0.7}
       >
@@ -647,13 +632,6 @@ export default function DocumentsScreen() {
               {statusConfig.label}
             </Text>
           </View>
-          <Text style={styles.listRowAmount}>{formatCurrency(quote.total)}</Text>
-          <TouchableOpacity 
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            onPress={() => router.push(`/more/quote/${quote.id}`)}
-          >
-            <Feather name="more-vertical" size={iconSizes.md} color={colors.mutedForeground} />
-          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -698,14 +676,14 @@ export default function DocumentsScreen() {
     );
   };
 
-  const renderInvoiceListRow = (invoice: Invoice) => {
+  const renderInvoiceListRow = (invoice: Invoice, isLast: boolean = false) => {
     const statusConfig = getInvoiceStatusConfig(invoice.status);
     const client = clientMap.get(invoice.clientId);
     
     return (
       <TouchableOpacity
         key={invoice.id}
-        style={styles.listRow}
+        style={[styles.listRow, !isLast && styles.listRowWithDivider]}
         onPress={() => router.push(`/more/invoice/${invoice.id}`)}
         activeOpacity={0.7}
       >
@@ -723,13 +701,6 @@ export default function DocumentsScreen() {
               {statusConfig.label}
             </Text>
           </View>
-          <Text style={styles.listRowAmount}>{formatCurrency(invoice.total)}</Text>
-          <TouchableOpacity 
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-          >
-            <Feather name="more-vertical" size={iconSizes.md} color={colors.mutedForeground} />
-          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -764,13 +735,13 @@ export default function DocumentsScreen() {
     );
   };
 
-  const renderReceiptListRow = (receipt: Receipt) => {
+  const renderReceiptListRow = (receipt: Receipt, isLast: boolean = false) => {
     const client = clientMap.get(receipt.clientId);
     
     return (
       <TouchableOpacity
         key={receipt.id}
-        style={styles.listRow}
+        style={[styles.listRow, !isLast && styles.listRowWithDivider]}
         onPress={() => router.push(`/more/receipt/${receipt.id}`)}
         activeOpacity={0.7}
       >
@@ -788,13 +759,6 @@ export default function DocumentsScreen() {
               {getPaymentMethodLabel(receipt.paymentMethod)}
             </Text>
           </View>
-          <Text style={styles.listRowAmount}>{formatCurrency(receipt.amount)}</Text>
-          <TouchableOpacity 
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            onPress={() => router.push(`/more/receipt/${receipt.id}`)}
-          >
-            <Feather name="more-vertical" size={iconSizes.md} color={colors.mutedForeground} />
-          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -842,8 +806,10 @@ export default function DocumentsScreen() {
               <>
                 {viewMode === 'list' && renderSortHeader()}
                 <View style={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}>
-                  {filteredQuotes.map(quote => 
-                    viewMode === 'grid' ? renderQuoteGridCard(quote) : renderQuoteListRow(quote)
+                  {filteredQuotes.map((quote, index) => 
+                    viewMode === 'grid' 
+                      ? renderQuoteGridCard(quote) 
+                      : renderQuoteListRow(quote, index === filteredQuotes.length - 1)
                   )}
                 </View>
               </>
@@ -859,8 +825,10 @@ export default function DocumentsScreen() {
               <>
                 {viewMode === 'list' && renderSortHeader()}
                 <View style={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}>
-                  {filteredInvoices.map(invoice => 
-                    viewMode === 'grid' ? renderInvoiceGridCard(invoice) : renderInvoiceListRow(invoice)
+                  {filteredInvoices.map((invoice, index) => 
+                    viewMode === 'grid' 
+                      ? renderInvoiceGridCard(invoice) 
+                      : renderInvoiceListRow(invoice, index === filteredInvoices.length - 1)
                   )}
                 </View>
               </>
@@ -876,8 +844,10 @@ export default function DocumentsScreen() {
               <>
                 {viewMode === 'list' && renderSortHeader()}
                 <View style={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}>
-                  {filteredReceipts.map(receipt => 
-                    viewMode === 'grid' ? renderReceiptGridCard(receipt) : renderReceiptListRow(receipt)
+                  {filteredReceipts.map((receipt, index) => 
+                    viewMode === 'grid' 
+                      ? renderReceiptGridCard(receipt) 
+                      : renderReceiptListRow(receipt, index === filteredReceipts.length - 1)
                   )}
                 </View>
               </>
@@ -930,7 +900,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.lg,
   },
   pageTitle: {
-    ...typography.title,
+    ...typography.sectionTitle,
     color: colors.foreground,
     marginBottom: spacing.xs,
   },
@@ -1125,7 +1095,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: CARD_GAP,
   },
   listContainer: {
-    gap: spacing.sm,
   },
   gridCard: {
     width: GRID_CARD_WIDTH,
@@ -1346,24 +1315,31 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
+  sortArrow: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+    marginLeft: 2,
+  },
+  sortArrowActive: {
+    color: colors.primary,
+  },
   sortHeaderDivider: {
     width: 1,
     height: 16,
     backgroundColor: colors.cardBorder,
   },
   listRow: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    minHeight: 64,
+    minHeight: 56,
+  },
+  listRowWithDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
   },
   listRowContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    gap: spacing.md,
   },
   listRowLeft: {
     flex: 1,
