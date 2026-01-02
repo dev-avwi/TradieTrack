@@ -7,6 +7,7 @@ import TrustBanner from "./TrustBanner";
 import ActivityFeed from "./ActivityFeed";
 import AIAssistant from "./AIAssistant";
 import FloatingActionButton from "./FloatingActionButton";
+import AIScheduleOptimizer from "./AIScheduleOptimizer";
 import { useDashboardKPIs, useTodaysJobs } from "@/hooks/use-dashboard-data";
 import { useUpdateJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
@@ -569,6 +570,19 @@ export default function OwnerManagerDashboard({
             ))}
           </div>
         )}
+      </section>
+
+      {/* AI SCHEDULE OPTIMIZER - Hero Card */}
+      <section className="animate-fade-up" style={{ animationDelay: '200ms' }}>
+        <AIScheduleOptimizer 
+          className="shadow-lg"
+          onApplySchedule={(schedule) => {
+            toast({
+              title: "Schedule Applied",
+              description: `Optimised route with ${schedule.optimizedOrder.length} jobs saved`,
+            });
+          }}
+        />
       </section>
 
       <GettingStartedChecklist 

@@ -7,6 +7,7 @@ import GettingStartedChecklist from "./GettingStartedChecklist";
 import TrustBanner from "./TrustBanner";
 import ActivityFeed from "./ActivityFeed";
 import FloatingActionButton from "./FloatingActionButton";
+import AIScheduleOptimizer from "./AIScheduleOptimizer";
 import { useDashboardKPIs, useTodaysJobs } from "@/hooks/use-dashboard-data";
 import { useUpdateJob } from "@/hooks/use-jobs";
 import { useAppMode } from "@/hooks/use-app-mode";
@@ -38,7 +39,8 @@ import {
   Map,
   Loader2,
   X,
-  Zap
+  Zap,
+  Sparkles
 } from "lucide-react";
 
 interface TeamOwnerDashboardProps {
@@ -890,6 +892,19 @@ export default function TeamOwnerDashboard({
             ))}
           </div>
         )}
+      </section>
+
+      {/* AI SCHEDULE OPTIMIZER - Hero Card for Team Owners */}
+      <section className="animate-fade-up" style={{ animationDelay: '200ms' }}>
+        <AIScheduleOptimizer 
+          className="shadow-lg"
+          onApplySchedule={(schedule) => {
+            toast({
+              title: "Schedule Applied",
+              description: `Optimised route with ${schedule.optimizedOrder.length} jobs saved`,
+            });
+          }}
+        />
       </section>
 
       <GettingStartedChecklist 

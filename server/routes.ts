@@ -1804,13 +1804,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const jobs = await storage.getJobs(effectiveUserId);
       const clients = await storage.getClients(effectiveUserId);
       
-      // Filter jobs scheduled for the target date
+      console.log(`[AI Schedule] Optimizing for date: ${targetDate.toDateString()}, total jobs: ${jobs.length}`);
+      
+      // Filter jobs scheduled for the target date (use scheduledAt field - jobs use this, not scheduledDate)
       const scheduledJobs = jobs.filter(job => {
-        if (!job.scheduledDate) return false;
-        const jobDate = new Date(job.scheduledDate);
-        return jobDate.toDateString() === targetDate.toDateString() && 
-               ['pending', 'scheduled', 'in_progress'].includes(job.status);
+        // Use scheduledAt (timestamp) not scheduledDate
+        const jobScheduledTime = job.scheduledAt || job.scheduledDate;
+        if (!jobScheduledTime) return false;
+        const jobDate = new Date(jobScheduledTime);
+        const isTargetDate = jobDate.toDateString() === targetDate.toDateString();
+        const isValidStatus = ['pending', 'scheduled', 'in_progress'].includes(job.status);
+        return isTargetDate && isValidStatus;
       });
+      
+      console.log(`[AI Schedule] Found ${scheduledJobs.length} jobs for ${targetDate.toDateString()}`);
 
       // Map jobs to the format expected by the optimizer
       const scheduleJobs = scheduledJobs.map(job => {
