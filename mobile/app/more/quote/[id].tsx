@@ -429,35 +429,79 @@ export default function QuoteDetailScreen() {
   const downloadPdfToCache = useCallback(async (): Promise<string | null> => {
     if (!quote) return null;
     
-    const PDF_TIMEOUT_MS = 60000;
+    const PDF_TIMEOUT_MS = 90000; // 90 seconds for complex quotes
+    
+    const authToken = await api.getToken();
+    if (!authToken) {
+      throw new Error('Not authenticated. Please log in again.');
+    }
+    
+    const fileUri = `${FileSystem.cacheDirectory}${quote.quoteNumber || 'quote'}_${Date.now()}.pdf`;
+    const pdfUrl = `${API_URL}/api/quotes/${id}/pdf`;
+    
+    console.log('[PDF] Downloading from:', pdfUrl);
+    
+    // Use createDownloadResumable for cancellation support
+    const downloadResumable = FileSystem.createDownloadResumable(
+      pdfUrl,
+      fileUri,
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      }
+    );
+    
+    let timeoutId: NodeJS.Timeout | null = null;
+    let didTimeout = false;
     
     try {
-      const fileUri = `${FileSystem.cacheDirectory}${quote.quoteNumber || 'quote'}.pdf`;
-      const authToken = await api.getToken();
-      
-      const downloadPromise = FileSystem.downloadAsync(
-        `${API_URL}/api/quotes/${id}/pdf`,
-        fileUri,
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
+      const downloadPromise = downloadResumable.downloadAsync();
       
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('PDF generation timed out. Please try again.')), PDF_TIMEOUT_MS);
+        timeoutId = setTimeout(async () => {
+          didTimeout = true;
+          try {
+            await downloadResumable.pauseAsync();
+          } catch (e) {
+            // Ignore pause errors
+          }
+          reject(new Error('PDF generation timed out. This may happen with complex quotes. Please try again.'));
+        }, PDF_TIMEOUT_MS);
       });
       
       const downloadResult = await Promise.race([downloadPromise, timeoutPromise]);
+      
+      if (timeoutId) clearTimeout(timeoutId);
+      
+      if (!downloadResult) {
+        throw new Error('Download failed. Please try again.');
+      }
+      
+      console.log('[PDF] Download result status:', downloadResult.status);
 
+      if (downloadResult.status === 401) {
+        throw new Error('Session expired. Please log in again.');
+      }
+      
+      if (downloadResult.status === 404) {
+        throw new Error('Quote not found. It may have been deleted.');
+      }
+      
       if (downloadResult.status !== 200) {
-        throw new Error('Failed to download PDF');
+        throw new Error(`Server error (${downloadResult.status}). Please try again.`);
+      }
+      
+      // Verify the file was downloaded
+      const fileInfo = await FileSystem.getInfoAsync(downloadResult.uri);
+      if (!fileInfo.exists || (fileInfo.size !== undefined && fileInfo.size < 100)) {
+        throw new Error('PDF file is empty or corrupted. Please try again.');
       }
 
       return downloadResult.uri;
     } catch (error: any) {
-      console.log('PDF download error:', error);
+      if (timeoutId) clearTimeout(timeoutId);
+      console.log('[PDF] Download error:', error);
       throw error;
     }
   }, [quote, id]);
@@ -475,10 +519,8 @@ export default function QuoteDetailScreen() {
       setShowShareSheet(true);
     } catch (error: any) {
       console.log('PDF download error:', error);
-      const message = error?.message?.includes('timed out') 
-        ? 'PDF generation timed out. This may happen with complex quotes. Please try again.'
-        : 'Failed to download PDF. Please try again.';
-      Alert.alert('Error', message);
+      const message = error?.message || 'Failed to download PDF. Please try again.';
+      Alert.alert('PDF Download', message);
     } finally {
       setIsDownloadingPdf(false);
     }

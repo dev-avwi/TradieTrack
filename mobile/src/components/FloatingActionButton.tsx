@@ -26,14 +26,14 @@ interface FABAction {
   color?: string;
 }
 
-// Distinct action colors for visibility
+// Subtle, professional action colors - matching iOS design language
 const ACTION_COLORS = {
-  job: '#3B82F6',      // Blue - highly visible
-  quote: '#8B5CF6',    // Purple - distinct
-  invoice: '#10B981',  // Green
-  payment: '#F59E0B',  // Amber
-  client: '#EC4899',   // Pink
-  assign: '#6366F1',   // Indigo
+  job: '#007AFF',      // iOS system blue
+  quote: '#5856D6',    // iOS system purple
+  invoice: '#34C759',  // iOS system green
+  payment: '#FF9500',  // iOS system orange
+  client: '#FF3B30',   // iOS system red (for visibility)
+  assign: '#5856D6',   // iOS system purple
 };
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({

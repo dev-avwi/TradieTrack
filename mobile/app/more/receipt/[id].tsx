@@ -134,27 +134,79 @@ export default function ReceiptDetailScreen() {
   const downloadPdfToCache = useCallback(async (): Promise<string | null> => {
     if (!receipt) return null;
     
+    const PDF_TIMEOUT_MS = 60000; // 60 seconds for receipts
+    
+    const authToken = await api.getToken();
+    if (!authToken) {
+      throw new Error('Not authenticated. Please log in again.');
+    }
+    
+    const fileUri = `${FileSystem.cacheDirectory}Receipt-${receipt.receiptNumber || id}_${Date.now()}.pdf`;
+    const pdfUrl = `${API_URL}/api/receipts/${id}/pdf`;
+    
+    console.log('[PDF] Downloading from:', pdfUrl);
+    
+    // Use createDownloadResumable for cancellation support
+    const downloadResumable = FileSystem.createDownloadResumable(
+      pdfUrl,
+      fileUri,
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      }
+    );
+    
+    let timeoutId: NodeJS.Timeout | null = null;
+    let didTimeout = false;
+    
     try {
-      const authToken = await api.getToken();
-      const fileUri = `${FileSystem.cacheDirectory}Receipt-${receipt.receiptNumber || id}.pdf`;
+      const downloadPromise = downloadResumable.downloadAsync();
       
-      const downloadResult = await FileSystem.downloadAsync(
-        `${API_URL}/api/receipts/${id}/pdf`,
-        fileUri,
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(async () => {
+          didTimeout = true;
+          try {
+            await downloadResumable.pauseAsync();
+          } catch (e) {
+            // Ignore pause errors
+          }
+          reject(new Error('PDF generation timed out. Please try again.'));
+        }, PDF_TIMEOUT_MS);
+      });
+      
+      const downloadResult = await Promise.race([downloadPromise, timeoutPromise]);
+      
+      if (timeoutId) clearTimeout(timeoutId);
+      
+      if (!downloadResult) {
+        throw new Error('Download failed. Please try again.');
+      }
+      
+      console.log('[PDF] Download result status:', downloadResult.status);
 
+      if (downloadResult.status === 401) {
+        throw new Error('Session expired. Please log in again.');
+      }
+      
+      if (downloadResult.status === 404) {
+        throw new Error('Receipt not found. It may have been deleted.');
+      }
+      
       if (downloadResult.status !== 200) {
-        throw new Error('Failed to download PDF');
+        throw new Error(`Server error (${downloadResult.status}). Please try again.`);
+      }
+      
+      // Verify the file was downloaded
+      const fileInfo = await FileSystem.getInfoAsync(downloadResult.uri);
+      if (!fileInfo.exists || (fileInfo.size !== undefined && fileInfo.size < 100)) {
+        throw new Error('PDF file is empty or corrupted. Please try again.');
       }
 
       return downloadResult.uri;
-    } catch (error) {
-      console.log('PDF download error:', error);
+    } catch (error: any) {
+      if (timeoutId) clearTimeout(timeoutId);
+      console.log('[PDF] Download error:', error);
       throw error;
     }
   }, [receipt, id]);
@@ -179,9 +231,10 @@ export default function ReceiptDetailScreen() {
       } else {
         Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('Share PDF error:', error);
-      Alert.alert('Error', 'Failed to share PDF. Please try again.');
+      const message = error?.message || 'Failed to share PDF. Please try again.';
+      Alert.alert('PDF Download', message);
     } finally {
       setIsDownloadingPdf(false);
     }
