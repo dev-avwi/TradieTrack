@@ -90,7 +90,7 @@ interface Receipt {
   createdAt: string;
 }
 
-type TabType = 'requests' | 'record' | 'receipts';
+type TabType = 'collect' | 'history';
 
 const formatCurrency = (amount: number | string) => {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -106,7 +106,7 @@ export default function CollectPaymentScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
-  const [activeTab, setActiveTab] = useState<TabType>('requests');
+  const [activeTab, setActiveTab] = useState<TabType>('collect');
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -173,6 +173,10 @@ export default function CollectPaymentScreen() {
   const totalPendingAmount = useMemo(() => {
     return pendingRequests.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
   }, [pendingRequests]);
+
+  const totalReceived = useMemo(() => {
+    return receipts.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
+  }, [receipts]);
 
   const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
   const invoiceMap = useMemo(() => new Map(invoices.map(i => [i.id, i])), [invoices]);
@@ -514,11 +518,11 @@ export default function CollectPaymentScreen() {
   };
 
   const paymentMethods = [
-    { value: 'cash', label: 'Cash' },
-    { value: 'bank_transfer', label: 'Bank Transfer' },
-    { value: 'card', label: 'Card (in person)' },
-    { value: 'cheque', label: 'Cheque' },
-    { value: 'other', label: 'Other' },
+    { value: 'cash', label: 'Cash', icon: 'dollar-sign' as const },
+    { value: 'bank_transfer', label: 'Bank Transfer', icon: 'send' as const },
+    { value: 'card', label: 'Card', icon: 'credit-card' as const },
+    { value: 'cheque', label: 'Cheque', icon: 'file-text' as const },
+    { value: 'other', label: 'Other', icon: 'more-horizontal' as const },
   ];
 
   const expiryOptions = [
@@ -544,344 +548,349 @@ export default function CollectPaymentScreen() {
     }
   };
 
-  const tabs: { key: TabType; label: string; icon: keyof typeof Feather.glyphMap; count?: number }[] = [
-    { key: 'requests', label: 'Requests', icon: 'credit-card', count: pendingRequests.length },
-    { key: 'record', label: 'Record', icon: 'dollar-sign' },
-    { key: 'receipts', label: 'Receipts', icon: 'file-text', count: receipts.length },
-  ];
-
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.headerTop}>
-        <Text style={styles.headerTitle}>Collect Payment</Text>
-        {totalPendingAmount > 0 && (
-          <View style={styles.headerBadge}>
-            <Text style={styles.headerBadgeText}>{formatCurrency(totalPendingAmount)} pending</Text>
-          </View>
-        )}
+  // KPI Stats Header
+  const renderStatsHeader = () => (
+    <View style={styles.statsContainer}>
+      <View style={styles.statCard}>
+        <Text style={styles.statLabel}>OUTSTANDING</Text>
+        <Text style={[styles.statValue, { color: colors.warning }]}>
+          {formatCurrency(totalPendingAmount)}
+        </Text>
+        <Text style={styles.statSubtext}>{pendingRequests.length} pending</Text>
       </View>
-      
-      {!stripeStatus?.connected && (
-        <TouchableOpacity 
-          style={styles.stripeWarning}
-          onPress={() => router.push('/more/money-hub')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.stripeWarningIcon}>
-            <Feather name="alert-circle" size={iconSizes.md} color={colors.warning} />
-          </View>
-          <View style={styles.stripeWarningContent}>
-            <Text style={styles.stripeWarningTitle}>Connect Stripe</Text>
-            <Text style={styles.stripeWarningText}>Accept card payments online</Text>
-          </View>
-          <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
-        </TouchableOpacity>
-      )}
+      <View style={styles.statCard}>
+        <Text style={styles.statLabel}>RECEIVED</Text>
+        <Text style={[styles.statValue, { color: colors.success }]}>
+          {formatCurrency(totalReceived)}
+        </Text>
+        <Text style={styles.statSubtext}>{receipts.length} receipts</Text>
+      </View>
     </View>
   );
 
+  // Professional Tab Bar
   const renderTabs = () => (
-    <View style={styles.tabContainer}>
-      {tabs.map((tab) => (
-        <TouchableOpacity
-          key={tab.key}
-          style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-          onPress={() => setActiveTab(tab.key)}
-          activeOpacity={0.7}
-        >
-          <Feather 
-            name={tab.icon} 
-            size={iconSizes.md} 
-            color={activeTab === tab.key ? colors.primary : colors.mutedForeground} 
-          />
-          <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
-            {tab.label}
-          </Text>
-          {tab.count !== undefined && tab.count > 0 && (
-            <View style={[styles.tabBadge, activeTab === tab.key && styles.tabBadgeActive]}>
-              <Text style={[styles.tabBadgeText, activeTab === tab.key && styles.tabBadgeTextActive]}>
-                {tab.count}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
-  const renderRequestCard = (request: PaymentRequest) => {
-    const statusConfig = getStatusConfig(request.status);
-    const clientName = request.clientId ? clientMap.get(request.clientId)?.name : null;
-    const isPending = request.status === 'pending';
-
-    return (
-      <View key={request.id} style={[styles.card, !isPending && styles.cardFaded]}>
-        <View style={styles.cardHeader}>
-          <View style={styles.cardHeaderLeft}>
-            <Text style={styles.cardAmount}>{formatCurrency(request.amount)}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-              <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
-                {statusConfig.label}
-              </Text>
-            </View>
-          </View>
-        </View>
-        
-        <Text style={styles.cardDescription} numberOfLines={2}>{request.description}</Text>
-        
-        {clientName && (
-          <View style={styles.cardMeta}>
-            <Feather name="user" size={iconSizes.sm} color={colors.mutedForeground} />
-            <Text style={styles.cardMetaText}>{clientName}</Text>
-          </View>
-        )}
-        
-        <View style={styles.cardMeta}>
-          <Feather name="clock" size={iconSizes.sm} color={colors.mutedForeground} />
-          <Text style={styles.cardMetaText}>
-            {request.paidAt 
-              ? `Paid ${format(new Date(request.paidAt), 'dd MMM yyyy')}`
-              : formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })
-            }
-          </Text>
-        </View>
-        
-        {isPending && (
-          <View style={styles.cardActions}>
-            <TouchableOpacity 
-              style={styles.cardActionPrimary}
-              onPress={() => {
-                setSelectedRequest(request);
-                setShowShareModal(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <Feather name="share-2" size={iconSizes.md} color={colors.primaryForeground} />
-              <Text style={styles.cardActionPrimaryText}>Share</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.cardActionSecondary}
-              onPress={() => handleCancelRequest(request.id)}
-              activeOpacity={0.7}
-            >
-              <Feather name="x" size={iconSizes.md} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    );
-  };
-
-  const renderReceiptCard = (receipt: Receipt) => {
-    const clientName = receipt.clientId ? clientMap.get(receipt.clientId)?.name : null;
-
-    return (
-      <TouchableOpacity 
-        key={receipt.id} 
-        style={styles.card}
-        onPress={() => router.push(`/more/receipt/${receipt.id}`)}
+    <View style={styles.tabBar}>
+      <TouchableOpacity
+        style={[styles.tabItem, activeTab === 'collect' && styles.tabItemActive]}
+        onPress={() => setActiveTab('collect')}
         activeOpacity={0.7}
+        data-testid="tab-collect"
       >
-        <View style={styles.cardHeader}>
-          <View style={styles.cardHeaderLeft}>
-            <Text style={styles.cardAmount}>{formatCurrency(receipt.amount)}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
-              <Text style={[styles.statusBadgeText, { color: colors.success }]}>Paid</Text>
-            </View>
-          </View>
-          <TouchableOpacity 
-            style={styles.cardIconButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              handlePrintReceipt(receipt.id);
-            }}
-            activeOpacity={0.7}
-          >
-            <Feather name="printer" size={iconSizes.md} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-        
-        <Text style={styles.cardDescription}>{receipt.receiptNumber}</Text>
-        
-        {clientName && (
-          <View style={styles.cardMeta}>
-            <Feather name="user" size={iconSizes.sm} color={colors.mutedForeground} />
-            <Text style={styles.cardMetaText}>{clientName}</Text>
-          </View>
-        )}
-        
-        {receipt.paidAt && (
-          <View style={styles.cardMeta}>
-            <Feather name="check-circle" size={iconSizes.sm} color={colors.success} />
-            <Text style={[styles.cardMetaText, { color: colors.success }]}>
-              {format(new Date(receipt.paidAt), 'dd MMM yyyy, h:mm a')}
-            </Text>
+        <Feather 
+          name="credit-card" 
+          size={18} 
+          color={activeTab === 'collect' ? colors.primary : colors.mutedForeground} 
+        />
+        <Text style={[styles.tabText, activeTab === 'collect' && styles.tabTextActive]}>
+          Collect
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.tabItem, activeTab === 'history' && styles.tabItemActive]}
+        onPress={() => setActiveTab('history')}
+        activeOpacity={0.7}
+        data-testid="tab-history"
+      >
+        <Feather 
+          name="clock" 
+          size={18} 
+          color={activeTab === 'history' ? colors.primary : colors.mutedForeground} 
+        />
+        <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>
+          History
+        </Text>
+        {(pendingRequests.length + receipts.length) > 0 && (
+          <View style={styles.tabBadge}>
+            <Text style={styles.tabBadgeText}>{pendingRequests.length + receipts.length}</Text>
           </View>
         )}
       </TouchableOpacity>
-    );
-  };
+    </View>
+  );
 
-  const renderEmptyState = (type: 'requests' | 'receipts') => {
-    const config = {
-      requests: {
-        icon: 'credit-card' as const,
-        title: 'No Payment Requests',
-        description: 'Create a payment request to collect payments via QR code or link.',
-        action: () => setShowCreateModal(true),
-        actionLabel: 'Create Request',
-      },
-      receipts: {
-        icon: 'file-text' as const,
-        title: 'No Receipts Yet',
-        description: 'Generate receipts when you receive payments.',
-        action: () => setShowReceiptModal(true),
-        actionLabel: 'Create Receipt',
-      },
-    };
-    const { icon, title, description, action, actionLabel } = config[type];
-
-    return (
-      <View style={styles.emptyState}>
-        <View style={styles.emptyStateIcon}>
-          <Feather name={icon} size={sizes.emptyIcon} color={colors.mutedForeground} />
-        </View>
-        <Text style={styles.emptyStateTitle}>{title}</Text>
-        <Text style={styles.emptyStateDescription}>{description}</Text>
-        <TouchableOpacity style={styles.emptyStateButton} onPress={action} activeOpacity={0.7}>
-          <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground} />
-          <Text style={styles.emptyStateButtonText}>{actionLabel}</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  const renderRequestsTab = () => (
+  // Payment Method Cards - Professional Grid Layout
+  const renderCollectTab = () => (
     <View style={styles.tabContent}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Payment Requests</Text>
+      {/* Stripe Connection Status */}
+      {!stripeStatus?.connected && (
         <TouchableOpacity 
-          style={styles.addButton}
+          style={styles.stripeCard}
+          onPress={() => router.push('/more/money-hub')}
+          activeOpacity={0.7}
+          data-testid="button-connect-stripe"
+        >
+          <View style={styles.stripeIconContainer}>
+            <Feather name="zap" size={24} color={colors.warning} />
+          </View>
+          <View style={styles.stripeContent}>
+            <Text style={styles.stripeTitle}>Connect Stripe</Text>
+            <Text style={styles.stripeSubtitle}>Accept card payments online</Text>
+          </View>
+          <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      )}
+
+      {/* Quick Actions - Clean Grid */}
+      <Text style={styles.sectionTitle}>Quick Actions</Text>
+      <View style={styles.actionGrid}>
+        <TouchableOpacity 
+          style={styles.actionCard}
           onPress={() => setShowCreateModal(true)}
           activeOpacity={0.7}
+          data-testid="button-new-request"
         >
-          <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground} />
-          <Text style={styles.addButtonText}>New</Text>
+          <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
+            <Feather name="link" size={24} color={colors.primary} />
+          </View>
+          <Text style={styles.actionTitle}>Payment Link</Text>
+          <Text style={styles.actionSubtitle}>QR code or URL</Text>
         </TouchableOpacity>
-      </View>
 
-      {pendingRequests.length === 0 && completedRequests.length === 0 ? (
-        renderEmptyState('requests')
-      ) : (
-        <>
-          {pendingRequests.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionSubtitle}>Active ({pendingRequests.length})</Text>
-              {pendingRequests.map(renderRequestCard)}
-            </View>
-          )}
-          
-          {completedRequests.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionSubtitle}>History</Text>
-              {completedRequests.slice(0, 5).map(renderRequestCard)}
-            </View>
-          )}
-        </>
-      )}
-    </View>
-  );
-
-  const renderRecordTab = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.actionCard}>
-        <View style={styles.actionCardIcon}>
-          <Feather name="dollar-sign" size={iconSizes.xl} color={colors.primary} />
-        </View>
-        <Text style={styles.actionCardTitle}>Record Manual Payment</Text>
-        <Text style={styles.actionCardDescription}>
-          Record cash, bank transfer, or other offline payments against an invoice.
-        </Text>
         <TouchableOpacity 
-          style={styles.actionCardButton}
+          style={styles.actionCard}
           onPress={() => setShowRecordPaymentModal(true)}
           activeOpacity={0.7}
+          data-testid="button-record-payment"
         >
-          <Feather name="plus-circle" size={iconSizes.md} color={colors.primaryForeground} />
-          <Text style={styles.actionCardButtonText}>Record Payment</Text>
+          <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
+            <Feather name="check-circle" size={24} color={colors.success} />
+          </View>
+          <Text style={styles.actionTitle}>Record Payment</Text>
+          <Text style={styles.actionSubtitle}>Cash or transfer</Text>
         </TouchableOpacity>
-      </View>
 
-      <View style={styles.actionCard}>
-        <View style={[styles.actionCardIcon, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
-          <Feather name="file-text" size={iconSizes.xl} color={colors.success} />
-        </View>
-        <Text style={styles.actionCardTitle}>Generate Receipt</Text>
-        <Text style={styles.actionCardDescription}>
-          Create a receipt for any payment received to share with your customer.
-        </Text>
         <TouchableOpacity 
-          style={[styles.actionCardButton, { backgroundColor: colors.success }]}
+          style={styles.actionCard}
           onPress={() => setShowReceiptModal(true)}
           activeOpacity={0.7}
+          data-testid="button-create-receipt"
         >
-          <Feather name="file-plus" size={iconSizes.md} color={colors.white} />
-          <Text style={styles.actionCardButtonText}>Create Receipt</Text>
+          <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.warning, 0.1) }]}>
+            <Feather name="file-text" size={24} color={colors.warning} />
+          </View>
+          <Text style={styles.actionTitle}>Issue Receipt</Text>
+          <Text style={styles.actionSubtitle}>Generate PDF</Text>
         </TouchableOpacity>
+
+        {stripeStatus?.connected && (
+          <TouchableOpacity 
+            style={styles.actionCard}
+            onPress={() => Alert.alert('Tap to Pay', 'Position phone near customer card to collect payment')}
+            activeOpacity={0.7}
+            data-testid="button-tap-to-pay"
+          >
+            <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.info || colors.primary, 0.1) }]}>
+              <Feather name="smartphone" size={24} color={colors.info || colors.primary} />
+            </View>
+            <Text style={styles.actionTitle}>Tap to Pay</Text>
+            <Text style={styles.actionSubtitle}>Contactless</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
+      {/* Unpaid Invoices Quick List */}
       {unpaidInvoices.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionSubtitle}>Unpaid Invoices ({unpaidInvoices.length})</Text>
-          {unpaidInvoices.slice(0, 3).map((invoice) => (
+        <View style={styles.invoicesSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Unpaid Invoices</Text>
             <TouchableOpacity 
-              key={invoice.id}
-              style={styles.invoiceCard}
-              onPress={() => {
-                setRecordInvoiceId(invoice.id);
-                setShowRecordPaymentModal(true);
-              }}
+              onPress={() => router.push('/more/documents')}
               activeOpacity={0.7}
             >
-              <View style={styles.invoiceCardContent}>
-                <Text style={styles.invoiceNumber}>{invoice.number}</Text>
-                <Text style={styles.invoiceTitle} numberOfLines={1}>{invoice.title}</Text>
-              </View>
-              <View style={styles.invoiceCardRight}>
-                <Text style={styles.invoiceAmount}>{formatCurrency(invoice.total)}</Text>
-                <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
-              </View>
+              <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
-          ))}
+          </View>
+          {unpaidInvoices.slice(0, 3).map((invoice) => {
+            const client = clientMap.get(invoice.clientId);
+            return (
+              <TouchableOpacity 
+                key={invoice.id}
+                style={styles.invoiceRow}
+                onPress={() => {
+                  setRecordInvoiceId(invoice.id);
+                  setShowRecordPaymentModal(true);
+                }}
+                activeOpacity={0.7}
+                data-testid={`invoice-row-${invoice.id}`}
+              >
+                <View style={styles.invoiceInfo}>
+                  <Text style={styles.invoiceNumber}>{invoice.number}</Text>
+                  <Text style={styles.invoiceClient} numberOfLines={1}>
+                    {client?.name || 'Unknown client'}
+                  </Text>
+                </View>
+                <View style={styles.invoiceRight}>
+                  <Text style={styles.invoiceAmount}>{formatCurrency(invoice.total)}</Text>
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       )}
     </View>
   );
 
-  const renderReceiptsTab = () => (
+  // History Tab - Requests and Receipts
+  const renderHistoryTab = () => (
     <View style={styles.tabContent}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Receipts</Text>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => setShowReceiptModal(true)}
-          activeOpacity={0.7}
-        >
-          <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground} />
-          <Text style={styles.addButtonText}>New</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Pending Requests Section */}
+      {pendingRequests.length > 0 && (
+        <View style={styles.historySection}>
+          <Text style={styles.sectionTitle}>Active Requests</Text>
+          {pendingRequests.map((request) => {
+            const statusConfig = getStatusConfig(request.status);
+            const clientName = request.clientId ? clientMap.get(request.clientId)?.name : null;
+            return (
+              <View key={request.id} style={styles.historyCard}>
+                <View style={styles.historyCardHeader}>
+                  <Text style={styles.historyAmount}>{formatCurrency(request.amount)}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+                    <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
+                      {statusConfig.label}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.historyDescription} numberOfLines={1}>
+                  {request.description}
+                </Text>
+                <View style={styles.historyMeta}>
+                  {clientName && (
+                    <View style={styles.metaItem}>
+                      <Feather name="user" size={12} color={colors.mutedForeground} />
+                      <Text style={styles.metaText}>{clientName}</Text>
+                    </View>
+                  )}
+                  <View style={styles.metaItem}>
+                    <Feather name="clock" size={12} color={colors.mutedForeground} />
+                    <Text style={styles.metaText}>
+                      {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.historyActions}>
+                  <TouchableOpacity 
+                    style={styles.historyActionBtn}
+                    onPress={() => {
+                      setSelectedRequest(request);
+                      setShowShareModal(true);
+                    }}
+                    activeOpacity={0.7}
+                    data-testid={`button-share-${request.id}`}
+                  >
+                    <Feather name="share-2" size={16} color={colors.primary} />
+                    <Text style={[styles.historyActionText, { color: colors.primary }]}>Share</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.historyActionBtn}
+                    onPress={() => handleCancelRequest(request.id)}
+                    activeOpacity={0.7}
+                    data-testid={`button-cancel-${request.id}`}
+                  >
+                    <Feather name="x" size={16} color={colors.destructive} />
+                    <Text style={[styles.historyActionText, { color: colors.destructive }]}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
-      {receipts.length === 0 ? (
-        renderEmptyState('receipts')
-      ) : (
-        <View style={styles.section}>
-          {receipts.map(renderReceiptCard)}
+      {/* Receipts Section */}
+      {receipts.length > 0 && (
+        <View style={styles.historySection}>
+          <Text style={styles.sectionTitle}>Recent Receipts</Text>
+          {receipts.slice(0, 10).map((receipt) => {
+            const clientName = receipt.clientId ? clientMap.get(receipt.clientId)?.name : null;
+            return (
+              <TouchableOpacity 
+                key={receipt.id}
+                style={styles.historyCard}
+                onPress={() => router.push(`/more/receipt/${receipt.id}`)}
+                activeOpacity={0.7}
+                data-testid={`receipt-card-${receipt.id}`}
+              >
+                <View style={styles.historyCardHeader}>
+                  <Text style={styles.historyAmount}>{formatCurrency(receipt.amount)}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
+                    <Text style={[styles.statusBadgeText, { color: colors.success }]}>Paid</Text>
+                  </View>
+                </View>
+                <Text style={styles.historyDescription}>{receipt.receiptNumber}</Text>
+                <View style={styles.historyMeta}>
+                  {clientName && (
+                    <View style={styles.metaItem}>
+                      <Feather name="user" size={12} color={colors.mutedForeground} />
+                      <Text style={styles.metaText}>{clientName}</Text>
+                    </View>
+                  )}
+                  {receipt.paidAt && (
+                    <View style={styles.metaItem}>
+                      <Feather name="check-circle" size={12} color={colors.success} />
+                      <Text style={[styles.metaText, { color: colors.success }]}>
+                        {format(new Date(receipt.paidAt), 'dd MMM yyyy')}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Completed Requests */}
+      {completedRequests.length > 0 && (
+        <View style={styles.historySection}>
+          <Text style={styles.sectionTitle}>Past Requests</Text>
+          {completedRequests.slice(0, 5).map((request) => {
+            const statusConfig = getStatusConfig(request.status);
+            return (
+              <View key={request.id} style={[styles.historyCard, styles.historyCardFaded]}>
+                <View style={styles.historyCardHeader}>
+                  <Text style={[styles.historyAmount, { color: colors.mutedForeground }]}>
+                    {formatCurrency(request.amount)}
+                  </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+                    <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
+                      {statusConfig.label}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.historyDescription, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {request.description}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Empty State */}
+      {pendingRequests.length === 0 && receipts.length === 0 && completedRequests.length === 0 && (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIcon}>
+            <Feather name="inbox" size={40} color={colors.mutedForeground} />
+          </View>
+          <Text style={styles.emptyTitle}>No Payment History</Text>
+          <Text style={styles.emptySubtitle}>
+            Create a payment request or record a payment to get started.
+          </Text>
+          <TouchableOpacity 
+            style={styles.emptyButton}
+            onPress={() => setActiveTab('collect')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.emptyButtonText}>Collect Payment</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
   );
 
+  // Picker Modal Component
   const renderPickerModal = (
     visible: boolean,
     onClose: () => void,
@@ -896,8 +905,8 @@ export default function CollectPaymentScreen() {
         <View style={styles.pickerContainer}>
           <View style={styles.pickerHeader}>
             <Text style={styles.pickerTitle}>{title}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Feather name="x" size={iconSizes.xl} color={colors.foreground} />
+            <TouchableOpacity onPress={onClose} data-testid="button-close-picker">
+              <Feather name="x" size={24} color={colors.foreground} />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.pickerScroll}>
@@ -907,7 +916,7 @@ export default function CollectPaymentScreen() {
                 onPress={() => { onSelect(''); onClose(); }}
               >
                 <Text style={styles.pickerOptionText}>None</Text>
-                {selectedValue === '' && <Feather name="check" size={iconSizes.md} color={colors.primary} />}
+                {selectedValue === '' && <Feather name="check" size={20} color={colors.primary} />}
               </TouchableOpacity>
             )}
             {options.map(option => (
@@ -917,7 +926,7 @@ export default function CollectPaymentScreen() {
                 onPress={() => { onSelect(option.value); onClose(); }}
               >
                 <Text style={styles.pickerOptionText} numberOfLines={2}>{option.label}</Text>
-                {selectedValue === option.value && <Feather name="check" size={iconSizes.md} color={colors.primary} />}
+                {selectedValue === option.value && <Feather name="check" size={20} color={colors.primary} />}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -926,6 +935,7 @@ export default function CollectPaymentScreen() {
     </Modal>
   );
 
+  // Create Payment Request Modal
   const renderCreateModal = () => (
     <Modal visible={showCreateModal} transparent animationType="slide">
       <KeyboardAvoidingView 
@@ -934,14 +944,12 @@ export default function CollectPaymentScreen() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <View style={styles.modalTitleRow}>
-              <View style={styles.modalIcon}>
-                <Feather name="credit-card" size={iconSizes.lg} color={colors.primary} />
-              </View>
-              <Text style={styles.modalTitle}>New Payment Request</Text>
-            </View>
-            <TouchableOpacity onPress={() => { setShowCreateModal(false); resetCreateForm(); }}>
-              <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
+            <Text style={styles.modalTitle}>New Payment Request</Text>
+            <TouchableOpacity 
+              onPress={() => { setShowCreateModal(false); resetCreateForm(); }}
+              data-testid="button-close-create-modal"
+            >
+              <Feather name="x" size={24} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
           
@@ -952,13 +960,14 @@ export default function CollectPaymentScreen() {
                 <TouchableOpacity 
                   style={styles.formSelect}
                   onPress={() => { setPickerContext('create'); setShowInvoicePicker(true); }}
+                  data-testid="select-invoice"
                 >
                   <Text style={[styles.formSelectText, !selectedInvoiceId && styles.formSelectPlaceholder]}>
                     {selectedInvoiceId 
                       ? `${invoiceMap.get(selectedInvoiceId)?.number} - ${formatCurrency(invoiceMap.get(selectedInvoiceId)?.total || 0)}`
                       : 'Select an invoice (optional)'}
                   </Text>
-                  <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
+                  <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
                 </TouchableOpacity>
               </View>
             )}
@@ -974,6 +983,7 @@ export default function CollectPaymentScreen() {
                   value={newAmount}
                   onChangeText={setNewAmount}
                   keyboardType="decimal-pad"
+                  data-testid="input-amount"
                 />
               </View>
             </View>
@@ -988,6 +998,7 @@ export default function CollectPaymentScreen() {
                 onChangeText={setNewDescription}
                 multiline
                 numberOfLines={2}
+                data-testid="input-description"
               />
             </View>
             
@@ -999,6 +1010,7 @@ export default function CollectPaymentScreen() {
                 placeholderTextColor={colors.mutedForeground}
                 value={newReference}
                 onChangeText={setNewReference}
+                data-testid="input-reference"
               />
             </View>
             
@@ -1008,11 +1020,12 @@ export default function CollectPaymentScreen() {
                 <TouchableOpacity 
                   style={styles.formSelect}
                   onPress={() => { setPickerContext('create'); setShowClientPicker(true); }}
+                  data-testid="select-client"
                 >
                   <Text style={[styles.formSelectText, !selectedClientId && styles.formSelectPlaceholder]}>
                     {selectedClientId ? clientMap.get(selectedClientId)?.name : 'Select a client'}
                   </Text>
-                  <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
+                  <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
                 </TouchableOpacity>
               </View>
             )}
@@ -1022,11 +1035,12 @@ export default function CollectPaymentScreen() {
               <TouchableOpacity 
                 style={styles.formSelect}
                 onPress={() => setShowExpiryPicker(true)}
+                data-testid="select-expiry"
               >
                 <Text style={styles.formSelectText}>
                   {expiryOptions.find(o => o.value === expiresInHours)?.label || '24 hours'}
                 </Text>
-                <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
+                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -1035,6 +1049,7 @@ export default function CollectPaymentScreen() {
             <TouchableOpacity 
               style={styles.modalButtonSecondary}
               onPress={() => { setShowCreateModal(false); resetCreateForm(); }}
+              data-testid="button-cancel"
             >
               <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
             </TouchableOpacity>
@@ -1042,6 +1057,7 @@ export default function CollectPaymentScreen() {
               style={[styles.modalButtonPrimary, isSubmitting && styles.modalButtonDisabled]}
               onPress={handleCreateRequest}
               disabled={isSubmitting}
+              data-testid="button-create-request"
             >
               {isSubmitting ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
@@ -1055,6 +1071,7 @@ export default function CollectPaymentScreen() {
     </Modal>
   );
 
+  // Record Payment Modal
   const renderRecordPaymentModal = () => (
     <Modal visible={showRecordPaymentModal} transparent animationType="slide">
       <KeyboardAvoidingView 
@@ -1063,14 +1080,12 @@ export default function CollectPaymentScreen() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <View style={styles.modalTitleRow}>
-              <View style={styles.modalIcon}>
-                <Feather name="dollar-sign" size={iconSizes.lg} color={colors.primary} />
-              </View>
-              <Text style={styles.modalTitle}>Record Payment</Text>
-            </View>
-            <TouchableOpacity onPress={() => { setShowRecordPaymentModal(false); resetRecordForm(); }}>
-              <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
+            <Text style={styles.modalTitle}>Record Payment</Text>
+            <TouchableOpacity 
+              onPress={() => { setShowRecordPaymentModal(false); resetRecordForm(); }}
+              data-testid="button-close-record-modal"
+            >
+              <Feather name="x" size={24} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
           
@@ -1080,18 +1095,19 @@ export default function CollectPaymentScreen() {
               <TouchableOpacity 
                 style={styles.formSelect}
                 onPress={() => { setPickerContext('record'); setShowInvoicePicker(true); }}
+                data-testid="select-invoice-record"
               >
                 <Text style={[styles.formSelectText, !recordInvoiceId && styles.formSelectPlaceholder]}>
                   {recordInvoiceId 
                     ? `${invoiceMap.get(recordInvoiceId)?.number} - ${formatCurrency(invoiceMap.get(recordInvoiceId)?.total || 0)}`
                     : 'Select an invoice'}
                 </Text>
-                <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
+                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
               </TouchableOpacity>
             </View>
             
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Amount Received (AUD) *</Text>
+              <Text style={styles.formLabel}>Amount (AUD) *</Text>
               <View style={styles.amountInput}>
                 <Text style={styles.amountPrefix}>$</Text>
                 <TextInput
@@ -1101,20 +1117,22 @@ export default function CollectPaymentScreen() {
                   value={recordAmount}
                   onChangeText={setRecordAmount}
                   keyboardType="decimal-pad"
+                  data-testid="input-record-amount"
                 />
               </View>
             </View>
             
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Payment Method *</Text>
+              <Text style={styles.formLabel}>Payment Method</Text>
               <TouchableOpacity 
                 style={styles.formSelect}
                 onPress={() => { setPickerContext('record'); setShowMethodPicker(true); }}
+                data-testid="select-payment-method"
               >
                 <Text style={styles.formSelectText}>
                   {paymentMethods.find(m => m.value === recordPaymentMethod)?.label || 'Cash'}
                 </Text>
-                <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
+                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
               </TouchableOpacity>
             </View>
             
@@ -1122,10 +1140,11 @@ export default function CollectPaymentScreen() {
               <Text style={styles.formLabel}>Reference (optional)</Text>
               <TextInput
                 style={styles.formInput}
-                placeholder="e.g., Bank transfer ref"
+                placeholder="e.g., Transaction ID"
                 placeholderTextColor={colors.mutedForeground}
                 value={recordReference}
                 onChangeText={setRecordReference}
+                data-testid="input-record-reference"
               />
             </View>
             
@@ -1133,12 +1152,13 @@ export default function CollectPaymentScreen() {
               <Text style={styles.formLabel}>Notes (optional)</Text>
               <TextInput
                 style={[styles.formInput, styles.formTextarea]}
-                placeholder="Any additional notes"
+                placeholder="Any additional notes..."
                 placeholderTextColor={colors.mutedForeground}
                 value={recordNotes}
                 onChangeText={setRecordNotes}
                 multiline
                 numberOfLines={2}
+                data-testid="input-record-notes"
               />
             </View>
           </ScrollView>
@@ -1147,13 +1167,15 @@ export default function CollectPaymentScreen() {
             <TouchableOpacity 
               style={styles.modalButtonSecondary}
               onPress={() => { setShowRecordPaymentModal(false); resetRecordForm(); }}
+              data-testid="button-cancel-record"
             >
               <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.modalButtonPrimary, (isSubmitting || !recordInvoiceId) && styles.modalButtonDisabled]}
+              style={[styles.modalButtonPrimary, isSubmitting && styles.modalButtonDisabled]}
               onPress={handleRecordPayment}
-              disabled={isSubmitting || !recordInvoiceId}
+              disabled={isSubmitting}
+              data-testid="button-record"
             >
               {isSubmitting ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
@@ -1167,6 +1189,7 @@ export default function CollectPaymentScreen() {
     </Modal>
   );
 
+  // Create Receipt Modal
   const renderReceiptModal = () => (
     <Modal visible={showReceiptModal} transparent animationType="slide">
       <KeyboardAvoidingView 
@@ -1175,35 +1198,36 @@ export default function CollectPaymentScreen() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <View style={styles.modalTitleRow}>
-              <View style={[styles.modalIcon, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
-                <Feather name="file-text" size={iconSizes.lg} color={colors.success} />
-              </View>
-              <Text style={styles.modalTitle}>Generate Receipt</Text>
-            </View>
-            <TouchableOpacity onPress={() => { setShowReceiptModal(false); resetReceiptForm(); }}>
-              <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
+            <Text style={styles.modalTitle}>Issue Receipt</Text>
+            <TouchableOpacity 
+              onPress={() => { setShowReceiptModal(false); resetReceiptForm(); }}
+              data-testid="button-close-receipt-modal"
+            >
+              <Feather name="x" size={24} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
           
           <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Link to Invoice (optional)</Text>
-              <TouchableOpacity 
-                style={styles.formSelect}
-                onPress={() => { setPickerContext('receipt'); setShowInvoicePicker(true); }}
-              >
-                <Text style={[styles.formSelectText, !receiptInvoiceId && styles.formSelectPlaceholder]}>
-                  {receiptInvoiceId 
-                    ? `${invoiceMap.get(receiptInvoiceId)?.number} - ${formatCurrency(invoiceMap.get(receiptInvoiceId)?.total || 0)}`
-                    : 'Select an invoice (optional)'}
-                </Text>
-                <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
+            {unpaidInvoices.length > 0 && (
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Link to Invoice</Text>
+                <TouchableOpacity 
+                  style={styles.formSelect}
+                  onPress={() => { setPickerContext('receipt'); setShowInvoicePicker(true); }}
+                  data-testid="select-invoice-receipt"
+                >
+                  <Text style={[styles.formSelectText, !receiptInvoiceId && styles.formSelectPlaceholder]}>
+                    {receiptInvoiceId 
+                      ? `${invoiceMap.get(receiptInvoiceId)?.number} - ${formatCurrency(invoiceMap.get(receiptInvoiceId)?.total || 0)}`
+                      : 'Select an invoice (optional)'}
+                  </Text>
+                  <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+            )}
             
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Amount Received (AUD) *</Text>
+              <Text style={styles.formLabel}>Amount (AUD) *</Text>
               <View style={styles.amountInput}>
                 <Text style={styles.amountPrefix}>$</Text>
                 <TextInput
@@ -1213,31 +1237,36 @@ export default function CollectPaymentScreen() {
                   value={receiptAmount}
                   onChangeText={setReceiptAmount}
                   keyboardType="decimal-pad"
+                  data-testid="input-receipt-amount"
                 />
               </View>
             </View>
             
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Description</Text>
+              <Text style={styles.formLabel}>Description (optional)</Text>
               <TextInput
-                style={styles.formInput}
-                placeholder="e.g., Payment for plumbing services"
+                style={[styles.formInput, styles.formTextarea]}
+                placeholder="Payment for services"
                 placeholderTextColor={colors.mutedForeground}
                 value={receiptDescription}
                 onChangeText={setReceiptDescription}
+                multiline
+                numberOfLines={2}
+                data-testid="input-receipt-description"
               />
             </View>
             
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Payment Method *</Text>
+              <Text style={styles.formLabel}>Payment Method</Text>
               <TouchableOpacity 
                 style={styles.formSelect}
                 onPress={() => { setPickerContext('receipt'); setShowMethodPicker(true); }}
+                data-testid="select-receipt-method"
               >
                 <Text style={styles.formSelectText}>
                   {paymentMethods.find(m => m.value === receiptPaymentMethod)?.label || 'Cash'}
                 </Text>
-                <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
+                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
               </TouchableOpacity>
             </View>
             
@@ -1247,32 +1276,47 @@ export default function CollectPaymentScreen() {
                 <TouchableOpacity 
                   style={styles.formSelect}
                   onPress={() => { setPickerContext('receipt'); setShowClientPicker(true); }}
+                  data-testid="select-receipt-client"
                 >
                   <Text style={[styles.formSelectText, !receiptClientId && styles.formSelectPlaceholder]}>
                     {receiptClientId ? clientMap.get(receiptClientId)?.name : 'Select a client'}
                   </Text>
-                  <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
+                  <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
                 </TouchableOpacity>
               </View>
             )}
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Reference (optional)</Text>
+              <TextInput
+                style={styles.formInput}
+                placeholder="e.g., Transaction ID"
+                placeholderTextColor={colors.mutedForeground}
+                value={receiptReference}
+                onChangeText={setReceiptReference}
+                data-testid="input-receipt-reference"
+              />
+            </View>
           </ScrollView>
           
           <View style={styles.modalFooter}>
             <TouchableOpacity 
               style={styles.modalButtonSecondary}
               onPress={() => { setShowReceiptModal(false); resetReceiptForm(); }}
+              data-testid="button-cancel-receipt"
             >
               <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.modalButtonPrimary, { backgroundColor: colors.success }, (isSubmitting || !receiptAmount) && styles.modalButtonDisabled]}
+              style={[styles.modalButtonPrimary, { backgroundColor: colors.success }, isSubmitting && styles.modalButtonDisabled]}
               onPress={handleCreateReceipt}
-              disabled={isSubmitting || !receiptAmount}
+              disabled={isSubmitting}
+              data-testid="button-create-receipt"
             >
               {isSubmitting ? (
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
-                <Text style={styles.modalButtonPrimaryText}>Generate Receipt</Text>
+                <Text style={styles.modalButtonPrimaryText}>Issue Receipt</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1281,199 +1325,200 @@ export default function CollectPaymentScreen() {
     </Modal>
   );
 
+  // Share Payment Link Modal
   const renderShareModal = () => (
     <Modal visible={showShareModal} transparent animationType="slide">
       <View style={styles.modalOverlay}>
         <View style={styles.shareModalContainer}>
-          <View style={styles.modalHeader}>
-            <View style={styles.modalTitleRow}>
-              <View style={styles.modalIcon}>
-                <Feather name="share-2" size={iconSizes.lg} color={colors.primary} />
-              </View>
-              <Text style={styles.modalTitle}>Share Request</Text>
-            </View>
-            <TouchableOpacity onPress={() => setShowShareModal(false)}>
-              <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
+          <View style={styles.shareModalHeader}>
+            <View style={styles.shareModalHandle} />
+            <Text style={styles.shareModalTitle}>Share Payment Link</Text>
+            <TouchableOpacity 
+              onPress={() => setShowShareModal(false)}
+              style={styles.shareModalClose}
+              data-testid="button-close-share-modal"
+            >
+              <Feather name="x" size={24} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
           
           {selectedRequest && (
-            <View style={styles.shareAmountBanner}>
-              <Text style={styles.shareAmountLabel}>Amount</Text>
-              <Text style={styles.shareAmountValue}>{formatCurrency(selectedRequest.amount)}</Text>
-            </View>
-          )}
-          
-          <View style={styles.shareTabContainer}>
-            {[
-              { key: 'qr', label: 'QR Code', icon: 'maximize-2' },
-              { key: 'link', label: 'Link', icon: 'link-2' },
-              { key: 'send', label: 'Send', icon: 'send' },
-            ].map((tab) => (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.shareTabItem, shareTab === tab.key && styles.shareTabItemActive]}
-                onPress={() => setShareTab(tab.key as 'qr' | 'link' | 'send')}
-              >
-                <Feather 
-                  name={tab.icon as any} 
-                  size={iconSizes.md} 
-                  color={shareTab === tab.key ? colors.primary : colors.mutedForeground} 
-                />
-                <Text style={[styles.shareTabText, shareTab === tab.key && styles.shareTabTextActive]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          
-          {selectedRequest && (
-            <View style={styles.shareContent}>
-              {shareTab === 'qr' && (
-                <View style={styles.qrContainer}>
-                  <View style={styles.qrWrapper}>
-                    {qrLoading ? (
-                      <View style={styles.qrLoading}>
-                        <ActivityIndicator size="large" color={colors.primary} />
-                        <Text style={styles.qrLoadingText}>Generating...</Text>
-                      </View>
-                    ) : qrCodeDataUrl ? (
-                      <Image 
-                        source={{ uri: qrCodeDataUrl }} 
-                        style={styles.qrImage} 
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <View style={styles.qrFallback}>
-                        <Feather name="maximize-2" size={64} color={colors.primary} />
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.qrHint}>Customer scans to pay</Text>
-                  <TouchableOpacity style={styles.copyLinkButton} onPress={handleCopyLink}>
-                    <Feather name={copied ? 'check' : 'copy'} size={iconSizes.md} color={colors.primaryForeground} />
-                    <Text style={styles.copyLinkButtonText}>{copied ? 'Copied!' : 'Copy Link'}</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+            <>
+              <View style={styles.shareAmountBanner}>
+                <Text style={styles.shareAmountLabel}>Amount Due</Text>
+                <Text style={styles.shareAmountValue}>{formatCurrency(selectedRequest.amount)}</Text>
+              </View>
               
-              {shareTab === 'link' && (
-                <View style={styles.linkContainer}>
-                  <View style={styles.linkBox}>
-                    <Text style={styles.linkText} numberOfLines={2}>{getPaymentUrl(selectedRequest)}</Text>
-                  </View>
-                  <TouchableOpacity style={styles.copyLinkButton} onPress={handleCopyLink}>
-                    <Feather name={copied ? 'check' : 'copy'} size={iconSizes.md} color={colors.primaryForeground} />
-                    <Text style={styles.copyLinkButtonText}>{copied ? 'Copied!' : 'Copy to Clipboard'}</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.linkHint}>Share this link via any messaging app</Text>
-                </View>
-              )}
+              <View style={styles.shareTabsContainer}>
+                <TouchableOpacity
+                  style={[styles.shareTabItem, shareTab === 'qr' && styles.shareTabItemActive]}
+                  onPress={() => setShareTab('qr')}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="maximize" size={16} color={shareTab === 'qr' ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.shareTabText, shareTab === 'qr' && styles.shareTabTextActive]}>QR Code</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.shareTabItem, shareTab === 'link' && styles.shareTabItemActive]}
+                  onPress={() => setShareTab('link')}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="link" size={16} color={shareTab === 'link' ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.shareTabText, shareTab === 'link' && styles.shareTabTextActive]}>Link</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.shareTabItem, shareTab === 'send' && styles.shareTabItemActive]}
+                  onPress={() => setShareTab('send')}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="send" size={16} color={shareTab === 'send' ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.shareTabText, shareTab === 'send' && styles.shareTabTextActive]}>Send</Text>
+                </TouchableOpacity>
+              </View>
               
-              {shareTab === 'send' && (
-                <View style={styles.sendContainer}>
-                  <TouchableOpacity style={styles.emailAppButton} onPress={handleComposeEmail}>
-                    <Feather name="mail" size={iconSizes.lg} color={colors.primaryForeground} />
-                    <Text style={styles.emailAppButtonText}>Open Email App</Text>
-                  </TouchableOpacity>
-                  
-                  <View style={styles.divider}>
-                    <View style={styles.dividerLine} />
-                    <Text style={styles.dividerText}>or send directly</Text>
-                    <View style={styles.dividerLine} />
+              <ScrollView style={styles.shareContent} showsVerticalScrollIndicator={false}>
+                {shareTab === 'qr' && (
+                  <View style={styles.qrContainer}>
+                    <View style={styles.qrWrapper}>
+                      {qrLoading ? (
+                        <View style={styles.qrLoading}>
+                          <ActivityIndicator size="large" color={colors.primary} />
+                          <Text style={styles.qrLoadingText}>Generating QR...</Text>
+                        </View>
+                      ) : qrCodeDataUrl ? (
+                        <Image source={{ uri: qrCodeDataUrl }} style={styles.qrImage} resizeMode="contain" />
+                      ) : (
+                        <View style={styles.qrFallback}>
+                          <Feather name="maximize" size={48} color={colors.mutedForeground} />
+                          <Text style={styles.qrFallbackText}>QR Code</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.qrHint}>Customer scans to pay</Text>
+                    <TouchableOpacity 
+                      style={styles.copyLinkButton}
+                      onPress={handleCopyLink}
+                      activeOpacity={0.7}
+                      data-testid="button-copy-link"
+                    >
+                      <Feather name={copied ? 'check' : 'copy'} size={18} color={colors.primaryForeground} />
+                      <Text style={styles.copyLinkButtonText}>{copied ? 'Copied!' : 'Copy Link'}</Text>
+                    </TouchableOpacity>
                   </View>
-                  
-                  <View style={styles.sendInputGroup}>
-                    <Text style={styles.sendInputLabel}>Email</Text>
-                    <View style={styles.sendInputRow}>
-                      <TextInput
-                        style={styles.sendInput}
-                        placeholder="customer@email.com"
-                        placeholderTextColor={colors.mutedForeground}
-                        value={shareEmail}
-                        onChangeText={setShareEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                      />
-                      <TouchableOpacity 
-                        style={[styles.sendButton, (!shareEmail || isSubmitting) && styles.sendButtonDisabled]}
-                        onPress={handleSendEmail}
-                        disabled={!shareEmail || isSubmitting}
-                      >
-                        <Text style={styles.sendButtonText}>Send</Text>
-                      </TouchableOpacity>
+                )}
+                
+                {shareTab === 'link' && (
+                  <View style={styles.linkContainer}>
+                    <View style={styles.linkBox}>
+                      <Text style={styles.linkText} selectable>{getPaymentUrl(selectedRequest)}</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.copyLinkButton}
+                      onPress={handleCopyLink}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name={copied ? 'check' : 'copy'} size={18} color={colors.primaryForeground} />
+                      <Text style={styles.copyLinkButtonText}>{copied ? 'Copied!' : 'Copy Link'}</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.linkHint}>Share this link with your customer</Text>
+                  </View>
+                )}
+                
+                {shareTab === 'send' && (
+                  <View style={styles.sendContainer}>
+                    <TouchableOpacity 
+                      style={styles.emailAppButton}
+                      onPress={handleComposeEmail}
+                      activeOpacity={0.7}
+                      data-testid="button-open-email"
+                    >
+                      <Feather name="mail" size={20} color={colors.primaryForeground} />
+                      <Text style={styles.emailAppButtonText}>Open Email App</Text>
+                    </TouchableOpacity>
+                    
+                    <View style={styles.divider}>
+                      <View style={styles.dividerLine} />
+                      <Text style={styles.dividerText}>or send directly</Text>
+                      <View style={styles.dividerLine} />
+                    </View>
+                    
+                    <View style={styles.sendInputGroup}>
+                      <Text style={styles.sendInputLabel}>Send via SMS</Text>
+                      <View style={styles.sendInputRow}>
+                        <TextInput
+                          style={styles.sendInput}
+                          placeholder="Phone number"
+                          placeholderTextColor={colors.mutedForeground}
+                          value={sharePhone}
+                          onChangeText={setSharePhone}
+                          keyboardType="phone-pad"
+                          data-testid="input-share-phone"
+                        />
+                        <TouchableOpacity 
+                          style={[styles.sendButton, (!sharePhone || isSubmitting) && styles.sendButtonDisabled]}
+                          onPress={handleSendSms}
+                          disabled={!sharePhone || isSubmitting}
+                          data-testid="button-send-sms"
+                        >
+                          {isSubmitting ? (
+                            <ActivityIndicator size="small" color={colors.primaryForeground} />
+                          ) : (
+                            <Text style={styles.sendButtonText}>Send</Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.sendInputGroup}>
+                      <Text style={styles.sendInputLabel}>Send via Email</Text>
+                      <View style={styles.sendInputRow}>
+                        <TextInput
+                          style={styles.sendInput}
+                          placeholder="Email address"
+                          placeholderTextColor={colors.mutedForeground}
+                          value={shareEmail}
+                          onChangeText={setShareEmail}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          data-testid="input-share-email"
+                        />
+                        <TouchableOpacity 
+                          style={[styles.sendButton, (!shareEmail || isSubmitting) && styles.sendButtonDisabled]}
+                          onPress={handleSendEmail}
+                          disabled={!shareEmail || isSubmitting}
+                          data-testid="button-send-email"
+                        >
+                          {isSubmitting ? (
+                            <ActivityIndicator size="small" color={colors.primaryForeground} />
+                          ) : (
+                            <Text style={styles.sendButtonText}>Send</Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
-                  
-                  <View style={styles.sendInputGroup}>
-                    <Text style={styles.sendInputLabel}>SMS</Text>
-                    <View style={styles.sendInputRow}>
-                      <TextInput
-                        style={styles.sendInput}
-                        placeholder="+61 400 000 000"
-                        placeholderTextColor={colors.mutedForeground}
-                        value={sharePhone}
-                        onChangeText={setSharePhone}
-                        keyboardType="phone-pad"
-                      />
-                      <TouchableOpacity 
-                        style={[styles.sendButton, (!sharePhone || isSubmitting) && styles.sendButtonDisabled]}
-                        onPress={handleSendSms}
-                        disabled={!sharePhone || isSubmitting}
-                      >
-                        <Text style={styles.sendButtonText}>Send</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              )}
-            </View>
+                )}
+              </ScrollView>
+            </>
           )}
         </View>
       </View>
     </Modal>
   );
 
-  const getInvoiceOptions = () => {
-    const list = pickerContext === 'record' ? unpaidInvoices : invoices;
-    return list.map(inv => ({
-      value: inv.id,
-      label: `${inv.number} - ${formatCurrency(inv.total)} (${inv.title})`,
-    }));
-  };
-
-  const getClientOptions = () => clients.map(c => ({ value: c.id, label: c.name }));
-
-  const handleInvoiceSelect = (value: string) => {
-    if (pickerContext === 'create') setSelectedInvoiceId(value);
-    else if (pickerContext === 'record') setRecordInvoiceId(value);
-    else setReceiptInvoiceId(value);
-  };
-
-  const handleClientSelect = (value: string) => {
-    if (pickerContext === 'create') setSelectedClientId(value);
-    else setReceiptClientId(value);
-  };
-
-  const handleMethodSelect = (value: string) => {
-    if (pickerContext === 'record') setRecordPaymentMethod(value);
-    else setReceiptPaymentMethod(value);
-  };
-
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Collect Payment', headerShown: false }} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+      <View style={styles.loadingContainer}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading payments...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Collect Payment', headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false }} />
       
       <ScrollView
         style={styles.scrollView}
@@ -1483,45 +1528,74 @@ export default function CollectPaymentScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {renderHeader()}
+        {/* Page Header */}
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.pageTitle}>Collect Payment</Text>
+              {totalPendingAmount > 0 && (
+                <View style={styles.pendingBadge}>
+                  <Text style={styles.pendingBadgeText}>{formatCurrency(totalPendingAmount)} pending</Text>
+                </View>
+              )}
+            </View>
+            {stripeStatus?.connected && (
+              <View style={styles.stripeConnectedBadge}>
+                <Feather name="check-circle" size={14} color={colors.success} />
+                <Text style={styles.stripeConnectedText}>Stripe</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.pageSubtitle}>Accept payments via QR code, link, or record manually</Text>
+        </View>
+        
+        {/* KPI Stats */}
+        {renderStatsHeader()}
+        
+        {/* Tab Bar */}
         {renderTabs()}
         
-        {activeTab === 'requests' && renderRequestsTab()}
-        {activeTab === 'record' && renderRecordTab()}
-        {activeTab === 'receipts' && renderReceiptsTab()}
+        {/* Tab Content */}
+        {activeTab === 'collect' ? renderCollectTab() : renderHistoryTab()}
       </ScrollView>
       
+      {/* Modals */}
       {renderCreateModal()}
       {renderRecordPaymentModal()}
       {renderReceiptModal()}
       {renderShareModal()}
       
+      {/* Picker Modals */}
       {renderPickerModal(
         showInvoicePicker,
         () => setShowInvoicePicker(false),
         'Select Invoice',
-        getInvoiceOptions(),
+        unpaidInvoices.map(inv => ({ 
+          value: inv.id, 
+          label: `${inv.number} - ${formatCurrency(inv.total)}` 
+        })),
         pickerContext === 'create' ? selectedInvoiceId : pickerContext === 'record' ? recordInvoiceId : receiptInvoiceId,
-        handleInvoiceSelect,
+        (value) => {
+          if (pickerContext === 'create') setSelectedInvoiceId(value);
+          else if (pickerContext === 'record') setRecordInvoiceId(value);
+          else setReceiptInvoiceId(value);
+        },
         true
       )}
+      
       {renderPickerModal(
         showClientPicker,
         () => setShowClientPicker(false),
         'Select Client',
-        getClientOptions(),
+        clients.map(c => ({ value: c.id, label: c.name })),
         pickerContext === 'create' ? selectedClientId : receiptClientId,
-        handleClientSelect,
+        (value) => {
+          if (pickerContext === 'create') setSelectedClientId(value);
+          else setReceiptClientId(value);
+        },
         true
       )}
-      {renderPickerModal(
-        showMethodPicker,
-        () => setShowMethodPicker(false),
-        'Payment Method',
-        paymentMethods,
-        pickerContext === 'record' ? recordPaymentMethod : receiptPaymentMethod,
-        handleMethodSelect
-      )}
+      
       {renderPickerModal(
         showExpiryPicker,
         () => setShowExpiryPicker(false),
@@ -1530,93 +1604,142 @@ export default function CollectPaymentScreen() {
         expiresInHours,
         setExpiresInHours
       )}
+      
+      {renderPickerModal(
+        showMethodPicker,
+        () => setShowMethodPicker(false),
+        'Payment Method',
+        paymentMethods.map(m => ({ value: m.value, label: m.label })),
+        pickerContext === 'record' ? recordPaymentMethod : receiptPaymentMethod,
+        (value) => {
+          if (pickerContext === 'record') setRecordPaymentMethod(value);
+          else setReceiptPaymentMethod(value);
+        }
+      )}
     </View>
   );
 }
 
-function createStyles(colors: ThemeColors) {
+const createStyles = (colors: ThemeColors) => {
+  const isIOS = Platform.OS === 'ios';
+  
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
-    scrollView: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: pageShell.paddingHorizontal,
-      paddingTop: pageShell.paddingTop,
-      paddingBottom: 100,
-    },
     loadingContainer: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: colors.background,
+      gap: spacing.md,
+    },
+    loadingText: {
+      ...typography.body,
+      color: colors.mutedForeground,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingTop: isIOS ? 60 : spacing.xl,
+      paddingBottom: spacing['3xl'],
     },
     
+    // Header
     header: {
-      marginBottom: spacing.lg,
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.lg,
     },
-    headerTop: {
+    headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: spacing.md,
+      marginBottom: spacing.xs,
     },
-    headerTitle: {
-      ...typography.sectionTitle,
+    headerTitleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      flexWrap: 'wrap',
+    },
+    pageTitle: {
+      ...typography.title,
       color: colors.foreground,
     },
-    headerBadge: {
-      backgroundColor: colorWithOpacity(colors.warning, 0.12),
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs,
-      borderRadius: radius.pill,
+    pageSubtitle: {
+      ...typography.body,
+      color: colors.mutedForeground,
     },
-    headerBadgeText: {
-      ...typography.caption,
+    pendingBadge: {
+      backgroundColor: colorWithOpacity(colors.warning, 0.12),
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: radius.sm,
+    },
+    pendingBadgeText: {
+      fontSize: 12,
       fontWeight: '600',
       color: colors.warning,
     },
-    
-    stripeWarning: {
+    stripeConnectedBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colorWithOpacity(colors.warning, 0.08),
-      borderRadius: radius.lg,
-      padding: spacing.md,
+      gap: 4,
+      backgroundColor: colorWithOpacity(colors.success, 0.12),
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: radius.sm,
+    },
+    stripeConnectedText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.success,
+    },
+    
+    // Stats Cards
+    statsContainer: {
+      flexDirection: 'row',
       gap: spacing.md,
-      borderWidth: 1,
-      borderColor: colorWithOpacity(colors.warning, 0.2),
+      paddingHorizontal: spacing.lg,
+      marginBottom: spacing.lg,
     },
-    stripeWarningIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.md,
-      backgroundColor: colorWithOpacity(colors.warning, 0.12),
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    stripeWarningContent: {
+    statCard: {
       flex: 1,
+      backgroundColor: colors.card,
+      borderRadius: radius.xl,
+      padding: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
     },
-    stripeWarningTitle: {
-      ...typography.bodySemibold,
-      color: colors.foreground,
+    statLabel: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      fontWeight: '600',
+      letterSpacing: 0.5,
+      marginBottom: spacing.xs,
     },
-    stripeWarningText: {
+    statValue: {
+      fontSize: 22,
+      fontWeight: '700',
+      marginBottom: 2,
+    },
+    statSubtext: {
       ...typography.caption,
       color: colors.mutedForeground,
     },
     
-    tabContainer: {
+    // Tab Bar
+    tabBar: {
       flexDirection: 'row',
+      marginHorizontal: spacing.lg,
       backgroundColor: colors.muted,
       borderRadius: radius.lg,
-      padding: spacing.xs,
+      padding: 4,
       marginBottom: spacing.lg,
     },
-    tab: {
+    tabItem: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
@@ -1625,9 +1748,14 @@ function createStyles(colors: ThemeColors) {
       paddingVertical: spacing.md,
       borderRadius: radius.md,
     },
-    tabActive: {
+    tabItemActive: {
       backgroundColor: colors.card,
-      ...shadows.sm,
+      ...(isIOS ? {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 2,
+      } : shadows.sm),
     },
     tabText: {
       ...typography.button,
@@ -1635,28 +1763,66 @@ function createStyles(colors: ThemeColors) {
     },
     tabTextActive: {
       color: colors.primary,
+      fontWeight: '600',
     },
     tabBadge: {
-      backgroundColor: colors.muted,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 2,
-      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+      borderRadius: 10,
       minWidth: 20,
+      height: 20,
       alignItems: 'center',
-    },
-    tabBadgeActive: {
-      backgroundColor: colorWithOpacity(colors.primary, 0.12),
+      justifyContent: 'center',
+      paddingHorizontal: 6,
     },
     tabBadgeText: {
-      ...typography.badge,
-      color: colors.mutedForeground,
-    },
-    tabBadgeTextActive: {
-      color: colors.primary,
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.primaryForeground,
     },
     
+    // Tab Content
     tabContent: {
+      paddingHorizontal: spacing.lg,
+    },
+    
+    // Stripe Card
+    stripeCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colorWithOpacity(colors.warning, 0.08),
+      borderRadius: radius.xl,
+      padding: spacing.lg,
+      marginBottom: spacing.lg,
+      borderWidth: 1,
+      borderColor: colorWithOpacity(colors.warning, 0.2),
+    },
+    stripeIconContainer: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.lg,
+      backgroundColor: colorWithOpacity(colors.warning, 0.15),
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: spacing.md,
+    },
+    stripeContent: {
       flex: 1,
+    },
+    stripeTitle: {
+      ...typography.bodySemibold,
+      color: colors.foreground,
+      marginBottom: 2,
+    },
+    stripeSubtitle: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+    
+    // Section Headers
+    sectionTitle: {
+      ...typography.bodySemibold,
+      color: colors.foreground,
+      marginBottom: spacing.md,
     },
     sectionHeader: {
       flexDirection: 'row',
@@ -1664,170 +1830,52 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'space-between',
       marginBottom: spacing.md,
     },
-    sectionTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-    },
-    sectionSubtitle: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      marginBottom: spacing.sm,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    section: {
-      marginBottom: spacing.lg,
-    },
-    addButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      backgroundColor: colors.primary,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
-      borderRadius: radius.md,
-    },
-    addButtonText: {
+    viewAllText: {
       ...typography.button,
-      color: colors.primaryForeground,
+      color: colors.primary,
     },
     
-    card: {
+    // Action Grid
+    actionGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.md,
+      marginBottom: spacing.xl,
+    },
+    actionCard: {
+      width: '47%',
       backgroundColor: colors.card,
       borderRadius: radius.xl,
       padding: spacing.lg,
-      marginBottom: spacing.sm,
       borderWidth: 1,
       borderColor: colors.cardBorder,
+      alignItems: 'center',
     },
-    cardFaded: {
-      opacity: 0.7,
-    },
-    cardHeader: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
+    actionIconContainer: {
+      width: 52,
+      height: 52,
+      borderRadius: radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: spacing.sm,
     },
-    cardHeaderLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      flex: 1,
-    },
-    cardAmount: {
-      ...typography.headline,
+    actionTitle: {
+      ...typography.bodySemibold,
       color: colors.foreground,
+      textAlign: 'center',
+      marginBottom: 2,
     },
-    statusBadge: {
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 2,
-      borderRadius: radius.sm,
-    },
-    statusBadgeText: {
-      ...typography.badge,
-    },
-    cardDescription: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      marginBottom: spacing.sm,
-    },
-    cardMeta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      marginBottom: spacing.xs,
-    },
-    cardMetaText: {
+    actionSubtitle: {
       ...typography.caption,
       color: colors.mutedForeground,
-    },
-    cardActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      marginTop: spacing.md,
-      paddingTop: spacing.md,
-      borderTopWidth: 1,
-      borderTopColor: colors.cardBorder,
-    },
-    cardActionPrimary: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.sm,
-      backgroundColor: colors.primary,
-      paddingVertical: spacing.md,
-      borderRadius: radius.md,
-    },
-    cardActionPrimaryText: {
-      ...typography.button,
-      color: colors.primaryForeground,
-    },
-    cardActionSecondary: {
-      width: 44,
-      height: 44,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-    },
-    cardIconButton: {
-      width: 40,
-      height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: radius.md,
-      backgroundColor: colors.muted,
+      textAlign: 'center',
     },
     
-    actionCard: {
-      backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      padding: spacing.xl,
-      marginBottom: spacing.md,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      alignItems: 'center',
-    },
-    actionCardIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: radius.lg,
-      backgroundColor: colorWithOpacity(colors.primary, 0.12),
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing.md,
-    },
-    actionCardTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-      marginBottom: spacing.xs,
-      textAlign: 'center',
-    },
-    actionCardDescription: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      textAlign: 'center',
+    // Invoices Section
+    invoicesSection: {
       marginBottom: spacing.lg,
     },
-    actionCardButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      backgroundColor: colors.primary,
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.xl,
-      borderRadius: radius.md,
-    },
-    actionCardButtonText: {
-      ...typography.button,
-      color: colors.primaryForeground,
-    },
-    
-    invoiceCard: {
+    invoiceRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -1838,18 +1886,18 @@ function createStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.cardBorder,
     },
-    invoiceCardContent: {
+    invoiceInfo: {
       flex: 1,
     },
     invoiceNumber: {
       ...typography.bodySemibold,
       color: colors.foreground,
     },
-    invoiceTitle: {
+    invoiceClient: {
       ...typography.caption,
       color: colors.mutedForeground,
     },
-    invoiceCardRight: {
+    invoiceRight: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
@@ -1859,16 +1907,90 @@ function createStyles(colors: ThemeColors) {
       color: colors.primary,
     },
     
+    // History Section
+    historySection: {
+      marginBottom: spacing.xl,
+    },
+    historyCard: {
+      backgroundColor: colors.card,
+      borderRadius: radius.xl,
+      padding: spacing.lg,
+      marginBottom: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    historyCardFaded: {
+      opacity: 0.7,
+    },
+    historyCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.sm,
+    },
+    historyAmount: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.foreground,
+    },
+    historyDescription: {
+      ...typography.body,
+      color: colors.mutedForeground,
+      marginBottom: spacing.sm,
+    },
+    historyMeta: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.md,
+      marginBottom: spacing.sm,
+    },
+    metaItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    metaText: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+    historyActions: {
+      flexDirection: 'row',
+      gap: spacing.md,
+      marginTop: spacing.sm,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.cardBorder,
+    },
+    historyActionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+    },
+    historyActionText: {
+      ...typography.button,
+      fontSize: 13,
+    },
+    
+    // Status Badge
+    statusBadge: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: radius.sm,
+    },
+    statusBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    
+    // Empty State
     emptyState: {
       alignItems: 'center',
       paddingVertical: spacing['3xl'],
       paddingHorizontal: spacing.xl,
-      backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
     },
-    emptyStateIcon: {
+    emptyIcon: {
       width: 80,
       height: 80,
       borderRadius: 40,
@@ -1877,32 +1999,29 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'center',
       marginBottom: spacing.lg,
     },
-    emptyStateTitle: {
+    emptyTitle: {
       ...typography.cardTitle,
       color: colors.foreground,
       marginBottom: spacing.sm,
-      textAlign: 'center',
     },
-    emptyStateDescription: {
+    emptySubtitle: {
       ...typography.body,
       color: colors.mutedForeground,
       textAlign: 'center',
       marginBottom: spacing.xl,
     },
-    emptyStateButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
+    emptyButton: {
       backgroundColor: colors.primary,
       paddingVertical: spacing.md,
       paddingHorizontal: spacing.xl,
       borderRadius: radius.md,
     },
-    emptyStateButtonText: {
+    emptyButtonText: {
       ...typography.button,
       color: colors.primaryForeground,
     },
     
+    // Modal Styles
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1914,12 +2033,6 @@ function createStyles(colors: ThemeColors) {
       borderTopRightRadius: radius.xl,
       maxHeight: '85%',
     },
-    shareModalContainer: {
-      backgroundColor: colors.card,
-      borderTopLeftRadius: radius.xl,
-      borderTopRightRadius: radius.xl,
-      maxHeight: '90%',
-    },
     modalHeader: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1927,19 +2040,6 @@ function createStyles(colors: ThemeColors) {
       padding: spacing.lg,
       borderBottomWidth: 1,
       borderBottomColor: colors.cardBorder,
-    },
-    modalTitleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-    },
-    modalIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.md,
-      backgroundColor: colorWithOpacity(colors.primary, 0.12),
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     modalTitle: {
       ...typography.cardTitle,
@@ -1953,10 +2053,9 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       gap: spacing.md,
       padding: spacing.lg,
-      paddingTop: spacing.md,
+      paddingBottom: spacing['3xl'],
       borderTopWidth: 1,
       borderTopColor: colors.cardBorder,
-      paddingBottom: spacing['3xl'],
     },
     modalButtonSecondary: {
       flex: 1,
@@ -1987,6 +2086,7 @@ function createStyles(colors: ThemeColors) {
       opacity: 0.5,
     },
     
+    // Form Styles
     formGroup: {
       marginBottom: spacing.lg,
     },
@@ -1994,8 +2094,7 @@ function createStyles(colors: ThemeColors) {
       ...typography.caption,
       color: colors.mutedForeground,
       marginBottom: spacing.sm,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      fontWeight: '600',
     },
     formInput: {
       backgroundColor: colors.background,
@@ -2043,6 +2142,7 @@ function createStyles(colors: ThemeColors) {
       ...typography.body,
       color: colors.mutedForeground,
       paddingLeft: spacing.md,
+      fontWeight: '600',
     },
     amountInputField: {
       flex: 1,
@@ -2052,10 +2152,38 @@ function createStyles(colors: ThemeColors) {
       color: colors.foreground,
     },
     
+    // Share Modal
+    shareModalContainer: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      maxHeight: '90%',
+    },
+    shareModalHeader: {
+      alignItems: 'center',
+      paddingTop: spacing.md,
+      paddingBottom: spacing.lg,
+      paddingHorizontal: spacing.lg,
+    },
+    shareModalHandle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+      marginBottom: spacing.md,
+    },
+    shareModalTitle: {
+      ...typography.cardTitle,
+      color: colors.foreground,
+    },
+    shareModalClose: {
+      position: 'absolute',
+      right: spacing.lg,
+      top: spacing.lg,
+    },
     shareAmountBanner: {
       backgroundColor: colors.muted,
       paddingVertical: spacing.md,
-      paddingHorizontal: spacing.lg,
       alignItems: 'center',
     },
     shareAmountLabel: {
@@ -2063,10 +2191,11 @@ function createStyles(colors: ThemeColors) {
       color: colors.mutedForeground,
     },
     shareAmountValue: {
-      ...typography.headline,
+      fontSize: 28,
+      fontWeight: '700',
       color: colors.foreground,
     },
-    shareTabContainer: {
+    shareTabsContainer: {
       flexDirection: 'row',
       borderBottomWidth: 1,
       borderBottomColor: colors.cardBorder,
@@ -2096,6 +2225,7 @@ function createStyles(colors: ThemeColors) {
       paddingBottom: spacing['3xl'],
     },
     
+    // QR Code
     qrContainer: {
       alignItems: 'center',
     },
@@ -2109,12 +2239,6 @@ function createStyles(colors: ThemeColors) {
       width: 180,
       height: 180,
     },
-    qrFallback: {
-      width: 180,
-      height: 180,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     qrLoading: {
       width: 180,
       height: 180,
@@ -2126,10 +2250,20 @@ function createStyles(colors: ThemeColors) {
       ...typography.caption,
       color: colors.mutedForeground,
     },
-    qrHint: {
+    qrFallback: {
+      width: 180,
+      height: 180,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+    },
+    qrFallbackText: {
       ...typography.caption,
       color: colors.mutedForeground,
-      textAlign: 'center',
+    },
+    qrHint: {
+      ...typography.body,
+      color: colors.mutedForeground,
       marginTop: spacing.lg,
     },
     copyLinkButton: {
@@ -2148,6 +2282,7 @@ function createStyles(colors: ThemeColors) {
       color: colors.primaryForeground,
     },
     
+    // Link Tab
     linkContainer: {
       alignItems: 'center',
     },
@@ -2160,7 +2295,7 @@ function createStyles(colors: ThemeColors) {
     linkText: {
       ...typography.caption,
       color: colors.foreground,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontFamily: isIOS ? 'Menlo' : 'monospace',
     },
     linkHint: {
       ...typography.caption,
@@ -2168,6 +2303,7 @@ function createStyles(colors: ThemeColors) {
       marginTop: spacing.md,
     },
     
+    // Send Tab
     sendContainer: {
       gap: spacing.lg,
     },
@@ -2236,6 +2372,7 @@ function createStyles(colors: ThemeColors) {
       color: colors.primaryForeground,
     },
     
+    // Picker Modal
     pickerOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',
@@ -2282,4 +2419,4 @@ function createStyles(colors: ThemeColors) {
       marginRight: spacing.md,
     },
   });
-}
+};
