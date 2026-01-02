@@ -26,14 +26,14 @@ interface FABAction {
   color?: string;
 }
 
-// Subtle, professional action colors - matching iOS design language
+// Subtle, muted action colors - professional iOS aesthetic (not too colorful)
 const ACTION_COLORS = {
-  job: '#007AFF',      // iOS system blue
-  quote: '#5856D6',    // iOS system purple
-  invoice: '#34C759',  // iOS system green
-  payment: '#FF9500',  // iOS system orange
-  client: '#FF3B30',   // iOS system red (for visibility)
-  assign: '#5856D6',   // iOS system purple
+  job: '#8E8E93',      // iOS system gray - neutral for primary action
+  quote: '#8E8E93',    // iOS system gray
+  invoice: '#8E8E93',  // iOS system gray
+  client: '#8E8E93',   // iOS system gray
+  payment: '#8E8E93',  // iOS system gray
+  assign: '#8E8E93',   // iOS system gray
 };
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
@@ -116,28 +116,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   quickActionsBar: {
     flexDirection: 'row',
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    gap: spacing.sm,
+    gap: spacing.xs,
+    justifyContent: 'center',
   },
   quickActionButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    minHeight: 28,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    borderRadius: radius.sm,
-    borderWidth: 0,
-    backgroundColor: colors.muted,
+    gap: 2,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: radius.full,
+    backgroundColor: 'transparent',
   },
   quickActionText: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '400',
     color: colors.mutedForeground,
   },
 });
@@ -252,10 +250,9 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
             <View style={styles.menuHandle} />
             <Text style={styles.menuTitle}>Quick Create</Text>
             
-            {/* Main grid with colorful iOS-style icons */}
+            {/* Main grid with clean, neutral icons */}
             <View style={styles.menuGrid}>
               {gridActions.map((action, index) => {
-                const actionColor = ACTION_COLORS[action.colorKey];
                 return (
                   <TouchableOpacity
                     key={index}
@@ -263,11 +260,11 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                     onPress={action.onPress}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.menuItemIcon, { backgroundColor: `${actionColor}15` }]}>
+                    <View style={[styles.menuItemIcon, { backgroundColor: colors.muted }]}>
                       <Feather 
                         name={action.icon} 
                         size={20} 
-                        color={actionColor} 
+                        color={colors.foreground} 
                       />
                     </View>
                     <Text style={styles.menuItemLabel}>{action.label}</Text>
@@ -276,7 +273,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
               })}
             </View>
 
-            {/* Bottom bar: AI Assistant, Assign Job, Collect Payment - using subtle outline style */}
+            {/* Bottom bar: AI Assistant, Collect Payment - compact text links */}
             <View style={styles.quickActionsBar}>
               <TouchableOpacity
                 style={styles.quickActionButton}
@@ -286,27 +283,9 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                 }}
                 activeOpacity={0.7}
               >
-                <Feather name="zap" size={16} color={colors.mutedForeground} />
+                <Feather name="zap" size={12} color={colors.mutedForeground} />
                 <Text style={styles.quickActionText}>AI</Text>
               </TouchableOpacity>
-
-              {isTeamOwner && (
-                <TouchableOpacity
-                  style={styles.quickActionButton}
-                  onPress={() => {
-                    setIsOpen(false);
-                    if (onAssignPress) {
-                      onAssignPress();
-                    } else {
-                      router.push('/more/team-management');
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="users" size={16} color={colors.mutedForeground} />
-                  <Text style={styles.quickActionText}>Assign</Text>
-                </TouchableOpacity>
-              )}
 
               <TouchableOpacity
                 style={styles.quickActionButton}
@@ -316,7 +295,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                 }}
                 activeOpacity={0.7}
               >
-                <Feather name="credit-card" size={16} color={colors.mutedForeground} />
+                <Feather name="credit-card" size={12} color={colors.mutedForeground} />
                 <Text style={styles.quickActionText}>Collect</Text>
               </TouchableOpacity>
             </View>
