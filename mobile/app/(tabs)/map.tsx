@@ -618,7 +618,33 @@ export default function MapScreen() {
       const response = await api.get('/api/team/locations');
       if (response.ok) {
         const data = await response.json();
-        setTeamMembers(data);
+        // Transform API response to match TeamMember interface
+        // API returns: { id, name, email, latitude, longitude, lastUpdated, currentJobId, currentJobTitle }
+        // We need: { id, userId, role, user: { firstName, lastName }, lastLocation: { latitude, longitude, timestamp }, activityStatus }
+        const transformedMembers: TeamMember[] = data.map((m: any) => {
+          const nameParts = (m.name || '').trim().split(' ');
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.slice(1).join(' ') || '';
+          return {
+            id: m.id,
+            userId: m.id,
+            role: 'worker',
+            themeColor: m.themeColor || null,
+            user: {
+              firstName,
+              lastName,
+            },
+            lastLocation: (m.latitude && m.longitude) ? {
+              latitude: m.latitude,
+              longitude: m.longitude,
+              timestamp: m.lastUpdated || new Date().toISOString(),
+              speed: m.speed,
+              battery: m.batteryLevel,
+            } : undefined,
+            activityStatus: m.currentJobId ? 'working' : 'online',
+          };
+        });
+        setTeamMembers(transformedMembers);
       }
     } catch (error) {
       console.log('Failed to fetch team locations:', error);
