@@ -827,9 +827,12 @@ function TodayJobCard({
   };
 
   const handleNavigate = () => {
-    if (job.address) {
-      const encodedAddress = encodeURIComponent(job.address);
-      Linking.openURL(`https://maps.google.com/maps?q=${encodedAddress}`);
+    if (job.latitude && job.longitude) {
+      const { openMapsWithPreference } = require('../../src/lib/maps-store');
+      openMapsWithPreference(job.latitude, job.longitude, job.address);
+    } else if (job.address) {
+      const { openMapsWithAddress } = require('../../src/lib/maps-store');
+      openMapsWithAddress(job.address);
     }
   };
 
@@ -1200,28 +1203,16 @@ export default function DashboardScreen() {
   const openDirections = (job: any) => {
     if (!job.latitude || !job.longitude) {
       if (job.address) {
-        const encodedAddress = encodeURIComponent(job.address);
-        Linking.openURL(`https://maps.google.com/maps?daddr=${encodedAddress}`);
+        const { openMapsWithAddress } = require('../../src/lib/maps-store');
+        openMapsWithAddress(job.address);
       } else {
         Alert.alert('No Address', 'This job has no address to navigate to.');
       }
       return;
     }
 
-    const lat = job.latitude;
-    const lng = job.longitude;
-    
-    if (Platform.OS === 'ios') {
-      Linking.openURL(`maps://app?daddr=${lat},${lng}`);
-    } else {
-      Linking.canOpenURL('google.navigation:q=0,0').then((supported) => {
-        if (supported) {
-          Linking.openURL(`google.navigation:q=${lat},${lng}`);
-        } else {
-          Linking.openURL(`https://maps.google.com/maps?daddr=${lat},${lng}`);
-        }
-      });
-    }
+    const { openMapsWithPreference } = require('../../src/lib/maps-store');
+    openMapsWithPreference(job.latitude, job.longitude, job.address);
   };
 
   // Start multi-stop route

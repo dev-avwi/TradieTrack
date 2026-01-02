@@ -287,6 +287,35 @@ export default function TeamOperationsScreen() {
     });
   }, [acceptedMembers, teamPresence, jobs]);
 
+  // Animate map to center on team members when they have locations
+  useEffect(() => {
+    if (liveViewMode !== 'map') return;
+    
+    const membersWithLocations = membersWithDetails.filter(
+      m => m.presence?.lastLocationLat && m.presence?.lastLocationLng
+    );
+    
+    if (membersWithLocations.length > 0 && mapRef.current) {
+      const lats = membersWithLocations.map(m => m.presence!.lastLocationLat!);
+      const lngs = membersWithLocations.map(m => m.presence!.lastLocationLng!);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      const centerLat = (minLat + maxLat) / 2;
+      const centerLng = (minLng + maxLng) / 2;
+      const latDelta = Math.max(0.05, (maxLat - minLat) * 1.5);
+      const lngDelta = Math.max(0.05, (maxLng - minLng) * 1.5);
+      
+      mapRef.current.animateToRegion({
+        latitude: centerLat,
+        longitude: centerLng,
+        latitudeDelta: latDelta,
+        longitudeDelta: lngDelta,
+      }, 500);
+    }
+  }, [membersWithDetails, liveViewMode]);
+
   const memberStats = useMemo(() => {
     return acceptedMembers.map(member => {
       const memberJobs = jobs.filter(j => j.assignedTo === member.userId);
@@ -718,6 +747,17 @@ export default function TeamOperationsScreen() {
           <View style={[styles.mapOverlay, { top: insets.top + spacing.md }]}>
             {renderLiveViewToggle()}
           </View>
+          {membersWithLocations.length === 0 && (
+            <View style={styles.mapEmptyState}>
+              <View style={styles.mapEmptyIcon}>
+                <Feather name="map-pin" size={32} color={colors.mutedForeground} />
+              </View>
+              <Text style={styles.mapEmptyTitle}>No Team Locations</Text>
+              <Text style={styles.mapEmptyText}>
+                Team members will appear here when they share their location
+              </Text>
+            </View>
+          )}
         </View>
       );
     }
@@ -1706,6 +1746,37 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     position: 'absolute',
     left: spacing.md,
     right: spacing.md,
+  },
+  mapEmptyState: {
+    position: 'absolute',
+    top: '40%',
+    left: spacing.xl,
+    right: spacing.xl,
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  mapEmptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  mapEmptyTitle: {
+    ...typography.subheading,
+    color: colors.foreground,
+    marginBottom: spacing.xs,
+  },
+  mapEmptyText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    textAlign: 'center',
   },
   emptyState: {
     alignItems: 'center',

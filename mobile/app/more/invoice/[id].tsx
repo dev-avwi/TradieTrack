@@ -879,13 +879,54 @@ export default function InvoiceDetailScreen() {
     }
   };
 
+  const SkeletonBox = ({ width, height, style }: { width: number | string; height: number; style?: any }) => (
+    <View style={[{
+      width: typeof width === 'string' ? width : width,
+      height,
+      backgroundColor: colors.muted,
+      borderRadius: 8,
+    }, style]} />
+  );
+
   if (isLoading) {
     return (
       <>
         <Stack.Screen options={{ title: 'Invoice' }} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <ScrollView style={styles.container}>
+          <View style={styles.content}>
+            <View style={styles.headerCard}>
+              <View style={styles.headerTop}>
+                <SkeletonBox width={120} height={20} />
+                <SkeletonBox width={60} height={24} style={{ borderRadius: 12 }} />
+              </View>
+              <SkeletonBox width={180} height={40} style={{ marginTop: 12 }} />
+              <SkeletonBox width={100} height={16} style={{ marginTop: 8 }} />
+              <View style={{ flexDirection: 'row', gap: 16, marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border }}>
+                <View style={{ flex: 1 }}>
+                  <SkeletonBox width={60} height={12} />
+                  <SkeletonBox width="100%" height={16} style={{ marginTop: 4 }} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <SkeletonBox width={60} height={12} />
+                  <SkeletonBox width="100%" height={16} style={{ marginTop: 4 }} />
+                </View>
+              </View>
+            </View>
+            <View style={styles.quickActions}>
+              {[1, 2, 3, 4].map((i) => (
+                <SkeletonBox key={i} width={80} height={48} style={{ flex: 1, borderRadius: 10 }} />
+              ))}
+            </View>
+            <SkeletonBox width={100} height={14} style={{ marginBottom: 8, marginTop: 16 }} />
+            <View style={styles.card}>
+              <SkeletonBox width="100%" height={60} />
+            </View>
+            <SkeletonBox width={80} height={14} style={{ marginBottom: 8 }} />
+            <View style={styles.card}>
+              <SkeletonBox width="100%" height={80} />
+            </View>
+          </View>
+        </ScrollView>
       </>
     );
   }
@@ -960,7 +1001,7 @@ export default function InvoiceDetailScreen() {
       />
       <ScrollView style={styles.container}>
         <View style={styles.content}>
-          {/* Header Card */}
+          {/* Summary Card */}
           <View style={styles.headerCard}>
             <View style={styles.headerTop}>
               <Text style={styles.invoiceNumber}>{invoice.invoiceNumber}</Text>
@@ -979,7 +1020,29 @@ export default function InvoiceDetailScreen() {
                 <Text style={styles.dueAmount}>{formatCurrency(amountDue)}</Text>
               </View>
             )}
+            
+            <View style={styles.summaryDetailsRow}>
+              <View style={styles.summaryDetailItem}>
+                <Feather name="user" size={14} color={colors.mutedForeground} />
+                <View>
+                  <Text style={styles.summaryDetailLabel}>Client</Text>
+                  <Text style={styles.summaryDetailValue} numberOfLines={1}>{client?.name || 'Unknown'}</Text>
+                </View>
+              </View>
+              <View style={styles.summaryDetailItem}>
+                <Feather name="calendar" size={14} color={invoice.status === 'overdue' ? colors.destructive : colors.mutedForeground} />
+                <View>
+                  <Text style={styles.summaryDetailLabel}>Due Date</Text>
+                  <Text style={[styles.summaryDetailValue, invoice.status === 'overdue' && { color: colors.destructive }]} numberOfLines={1}>
+                    {invoice.dueDate ? formatDate(invoice.dueDate) : 'Not set'}
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
+          
+          {/* Quick Actions - Primary */}
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
 
           {/* Primary Actions - Web-like prominent buttons */}
           <View style={styles.primaryActionsRow}>
@@ -2073,6 +2136,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.warning,
+  },
+  summaryDetailsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    width: '100%',
+  },
+  summaryDetailItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  summaryDetailLabel: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  summaryDetailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginTop: 2,
   },
   primaryActionsRow: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Switch, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Switch, Alert, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeMode } from '../../src/lib/theme';
@@ -9,6 +9,7 @@ import offlineStorage from '../../src/lib/offline-storage';
 import { useAuthStore } from '../../src/lib/store';
 import api from '../../src/lib/api';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
+import { useMapsStore, MapsPreference } from '../../src/lib/maps-store';
 
 const MAP_COLORS = [
   { name: 'Blue', hex: '#3b82f6' },
@@ -337,7 +338,99 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: spacing.md,
   },
+  mapsOptionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    padding: spacing.lg,
+  },
+  mapsOption: {
+    flex: 1,
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    backgroundColor: colors.muted,
+  },
+  mapsOptionActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  mapsOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  mapsOptionLabel: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  mapsOptionLabelActive: {
+    color: colors.primary,
+  },
 });
+
+function MapsPreferenceSection() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { mapsPreference, setMapsPreference } = useMapsStore();
+
+  const options: { value: MapsPreference; icon: string; label: string; bgColor: string }[] = [
+    ...(Platform.OS === 'ios' ? [{ value: 'apple' as MapsPreference, icon: 'map', label: 'Apple Maps', bgColor: '#000' }] : []),
+    { value: 'google' as MapsPreference, icon: 'map-pin', label: 'Google Maps', bgColor: '#4285F4' },
+  ];
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={[styles.sectionIcon, { backgroundColor: colors.infoLight }]}>
+          <Feather name="navigation" size={16} color={colors.info} />
+        </View>
+        <Text style={styles.sectionTitle}>Maps Preference</Text>
+      </View>
+      <View style={styles.card}>
+        <View style={styles.mapsOptionRow}>
+          {options.map(({ value, icon, label, bgColor }) => (
+            <TouchableOpacity
+              key={value || 'none'}
+              style={[styles.mapsOption, mapsPreference === value && styles.mapsOptionActive]}
+              onPress={() => setMapsPreference(value)}
+              activeOpacity={0.7}
+              data-testid={`button-maps-pref-${value}`}
+            >
+              <View style={[
+                styles.mapsOptionIcon,
+                { backgroundColor: mapsPreference === value ? bgColor : colors.mutedForeground + '20' }
+              ]}>
+                <Feather
+                  name={icon as any}
+                  size={22}
+                  color={mapsPreference === value ? '#fff' : colors.mutedForeground}
+                />
+              </View>
+              <Text style={[
+                styles.mapsOptionLabel,
+                mapsPreference === value && styles.mapsOptionLabelActive
+              ]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {!mapsPreference && (
+          <View style={[styles.infoBox, { marginHorizontal: spacing.lg, marginBottom: spacing.lg, marginTop: 0 }]}>
+            <Feather name="info" size={14} color={colors.info} />
+            <Text style={[styles.infoText, { color: colors.info }]}>
+              Your preference will be saved when you first open directions
+            </Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
 
 export default function AppSettingsScreen() {
   const { colors, themeMode, setThemeMode, isDark, brandColor } = useTheme();
@@ -660,6 +753,9 @@ export default function AppSettingsScreen() {
               </View>
             )}
           </View>
+
+          {/* Maps Preference Section */}
+          <MapsPreferenceSection />
 
           {/* Data & Sync Section */}
           {isInitialized && (

@@ -9,11 +9,13 @@ import {
   Alert,
   Image,
   Share,
+  Linking,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as SMS from 'expo-sms';
 import { useAuthStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import { API_URL, api } from '../../../src/lib/api';
@@ -325,13 +327,72 @@ export default function ReceiptDetailScreen() {
     );
   };
 
+  const handleShareViaSMS = async () => {
+    if (!receipt || !client?.phone) {
+      if (!client?.phone) {
+        Alert.alert('No Phone Number', 'This client does not have a phone number on file.');
+      }
+      return;
+    }
+
+    const isAvailable = await SMS.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert('SMS Not Available', 'SMS is not available on this device.');
+      return;
+    }
+
+    const businessName = businessSettings?.businessName || 'Your Business';
+    const message = `Hi ${client.name || 'there'},\n\nThank you for your payment of ${formatCurrency(receipt.amount)}.\n\nReceipt: ${receipt.receiptNumber}\nDate: ${receipt.paidAt ? format(new Date(receipt.paidAt), 'd MMMM yyyy') : format(new Date(receipt.createdAt), 'd MMMM yyyy')}\nMethod: ${formatPaymentMethod(receipt.paymentMethod)}\n\nThank you for your business!\n\n${businessName}`;
+
+    try {
+      await SMS.sendSMSAsync([client.phone], message);
+    } catch (error) {
+      console.error('Error sending SMS:', error);
+    }
+  };
+
+  const SkeletonBox = ({ width, height, style }: { width: number | string; height: number; style?: any }) => (
+    <View style={[{
+      width: typeof width === 'string' ? width : width,
+      height,
+      backgroundColor: colors.muted,
+      borderRadius: 8,
+    }, style]} />
+  );
+
   if (isLoading) {
     return (
       <>
         <Stack.Screen options={{ title: 'Receipt' }} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.summaryCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <SkeletonBox width={100} height={20} />
+              <SkeletonBox width={60} height={24} style={{ borderRadius: 12 }} />
+            </View>
+            <SkeletonBox width={160} height={40} style={{ marginBottom: 8 }} />
+            <SkeletonBox width={100} height={14} style={{ marginBottom: 16 }} />
+            <View style={{ flexDirection: 'row', gap: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border }}>
+              <View style={{ flex: 1 }}>
+                <SkeletonBox width={50} height={10} />
+                <SkeletonBox width="100%" height={14} style={{ marginTop: 4 }} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <SkeletonBox width={50} height={10} />
+                <SkeletonBox width="100%" height={14} style={{ marginTop: 4 }} />
+              </View>
+            </View>
+          </View>
+          <View style={styles.actionsRow}>
+            {[1, 2, 3].map((i) => (
+              <SkeletonBox key={i} width={100} height={48} style={{ flex: 1, borderRadius: 10 }} />
+            ))}
+          </View>
+          <SkeletonBox width={120} height={14} style={{ marginBottom: 8 }} />
+          <View style={styles.card}>
+            <SkeletonBox width="100%" height={100} />
+          </View>
+        </ScrollView>
       </>
     );
   }
@@ -366,17 +427,6 @@ export default function ReceiptDetailScreen() {
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity 
-                onPress={handleSharePdf}
-                style={styles.headerButton}
-                disabled={isDownloadingPdf}
-              >
-                {isDownloadingPdf ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Feather name="share" size={22} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity 
                 onPress={handleDeleteReceipt}
                 style={styles.headerButton}
                 disabled={isDeleting}
@@ -393,6 +443,133 @@ export default function ReceiptDetailScreen() {
         }} 
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryHeader}>
+            <Text style={styles.receiptNumberLarge}>{receipt.receiptNumber}</Text>
+            <View style={styles.paidBadgeLarge}>
+              <Feather name="check-circle" size={14} color="#ffffff" />
+              <Text style={styles.paidBadgeLargeText}>PAID</Text>
+            </View>
+          </View>
+          <Text style={styles.amountLarge}>{formatCurrency(receipt.amount)}</Text>
+          <Text style={styles.amountLabel}>
+            {gst > 0 ? 'Total (inc. GST)' : 'Amount Paid'}
+          </Text>
+          
+          <View style={styles.summaryDetailsRow}>
+            <View style={styles.summaryDetailItem}>
+              <Feather name="user" size={14} color={colors.mutedForeground} />
+              <View>
+                <Text style={styles.summaryDetailLabel}>Client</Text>
+                <Text style={styles.summaryDetailValue} numberOfLines={1}>{client?.name || 'Customer'}</Text>
+              </View>
+            </View>
+            <View style={styles.summaryDetailItem}>
+              <Feather name="credit-card" size={14} color={colors.mutedForeground} />
+              <View>
+                <Text style={styles.summaryDetailLabel}>Method</Text>
+                <Text style={styles.summaryDetailValue} numberOfLines={1}>{formatPaymentMethod(receipt.paymentMethod)}</Text>
+              </View>
+            </View>
+          </View>
+          
+          {receipt.paidAt && (
+            <View style={styles.summaryDateRow}>
+              <Feather name="calendar" size={14} color={colors.mutedForeground} />
+              <Text style={styles.summaryDateText}>
+                Paid on {format(new Date(receipt.paidAt), 'd MMMM yyyy')} at {format(new Date(receipt.paidAt), 'h:mm a')}
+              </Text>
+            </View>
+          )}
+        </View>
+        
+        <View style={styles.actionsRow}>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.actionButtonPrimary]}
+            onPress={handleSharePdf}
+            disabled={isDownloadingPdf}
+            data-testid="button-download-pdf"
+          >
+            {isDownloadingPdf ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <>
+                <Feather name="download" size={18} color="#ffffff" />
+                <Text style={styles.actionButtonPrimaryText}>PDF</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.actionButton, !client?.email && styles.actionButtonDisabled]}
+            onPress={handleSendEmail}
+            disabled={isSendingEmail || !client?.email}
+            data-testid="button-send-email"
+          >
+            {isSendingEmail ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <>
+                <Feather name="mail" size={18} color={client?.email ? colors.primary : colors.mutedForeground} />
+                <Text style={[styles.actionButtonText, !client?.email && styles.actionButtonTextDisabled]}>Email</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.actionButton, !client?.phone && styles.actionButtonDisabled]}
+            onPress={handleShareViaSMS}
+            disabled={!client?.phone}
+            data-testid="button-send-sms"
+          >
+            <Feather name="message-circle" size={18} color={client?.phone ? colors.primary : colors.mutedForeground} />
+            <Text style={[styles.actionButtonText, !client?.phone && styles.actionButtonTextDisabled]}>SMS</Text>
+          </TouchableOpacity>
+        </View>
+
+        {(invoice || job) && (
+          <View style={styles.linkedSection}>
+            <Text style={styles.linkedTitle}>Linked Documents</Text>
+            {invoice && (
+              <TouchableOpacity 
+                style={styles.linkedCard}
+                onPress={handleNavigateToInvoice}
+                activeOpacity={0.7}
+                data-testid="link-invoice"
+              >
+                <View style={styles.linkedCardIcon}>
+                  <Feather name="file-text" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.linkedCardContent}>
+                  <Text style={styles.linkedCardLabel}>Invoice</Text>
+                  <Text style={styles.linkedCardValue}>
+                    {invoice.number || invoice.invoiceNumber || `#${invoice.id.substring(0, 8).toUpperCase()}`}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+            {job && (
+              <TouchableOpacity 
+                style={styles.linkedCard}
+                onPress={handleNavigateToJob}
+                activeOpacity={0.7}
+                data-testid="link-job"
+              >
+                <View style={styles.linkedCardIcon}>
+                  <Feather name="briefcase" size={20} color={colors.info} />
+                </View>
+                <View style={styles.linkedCardContent}>
+                  <Text style={styles.linkedCardLabel}>Job</Text>
+                  <Text style={styles.linkedCardValue} numberOfLines={1}>{job.title}</Text>
+                </View>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        <Text style={styles.detailsTitle}>Payment Details</Text>
         <View style={styles.card}>
           <View style={[styles.headerSection, { borderBottomColor: brandColor }]}>
             <View style={styles.businessInfo}>
@@ -409,29 +586,11 @@ export default function ReceiptDetailScreen() {
               {businessSettings?.abn && (
                 <Text style={styles.businessDetail}>ABN: {businessSettings.abn}</Text>
               )}
-              {businessSettings?.address && (
-                <Text style={styles.businessDetail}>{businessSettings.address}</Text>
-              )}
-              {businessSettings?.phone && (
-                <Text style={styles.businessDetail}>Phone: {businessSettings.phone}</Text>
-              )}
-              {businessSettings?.email && (
-                <Text style={styles.businessDetail}>Email: {businessSettings.email}</Text>
-              )}
             </View>
             
             <View style={styles.receiptHeader}>
               <Text style={styles.receiptTitle}>RECEIPT</Text>
               <Text style={styles.receiptNumber}>{receipt.receiptNumber}</Text>
-              {receipt.paidAt && (
-                <Text style={styles.receiptDate}>
-                  {format(new Date(receipt.paidAt), 'd MMMM yyyy, h:mm a')}
-                </Text>
-              )}
-              <View style={styles.paidBadge}>
-                <Feather name="check-circle" size={14} color="#ffffff" />
-                <Text style={styles.paidBadgeText}>Paid</Text>
-              </View>
             </View>
           </View>
 
@@ -521,38 +680,6 @@ export default function ReceiptDetailScreen() {
             )}
           </View>
 
-          {invoice && (
-            <TouchableOpacity 
-              style={[styles.referenceCard, { borderLeftColor: brandColor }]}
-              onPress={handleNavigateToInvoice}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.referenceLabel}>INVOICE REFERENCE</Text>
-              <View style={styles.referenceRow}>
-                <Text style={[styles.referenceLink, { color: brandColor }]}>
-                  Invoice #{invoice.number || invoice.invoiceNumber || invoice.id.substring(0, 8).toUpperCase()}
-                </Text>
-                <Feather name="chevron-right" size={18} color={brandColor} />
-              </View>
-              {invoice.title && <Text style={styles.referenceSubtext}>{invoice.title}</Text>}
-            </TouchableOpacity>
-          )}
-
-          {job && (
-            <TouchableOpacity 
-              style={[styles.referenceCard, { borderLeftColor: brandColor }]}
-              onPress={handleNavigateToJob}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.referenceLabel}>JOB REFERENCE</Text>
-              <View style={styles.referenceRow}>
-                <Text style={[styles.referenceLink, { color: brandColor }]}>{job.title}</Text>
-                <Feather name="chevron-right" size={18} color={brandColor} />
-              </View>
-              {job.address && <Text style={styles.referenceSubtext}>{job.address}</Text>}
-            </TouchableOpacity>
-          )}
-
           <View style={[styles.thankYouSection, { backgroundColor: `${brandColor}10` }]}>
             <Text style={[styles.thankYouText, { color: brandColor }]}>
               Thank you for your payment!
@@ -561,66 +688,7 @@ export default function ReceiptDetailScreen() {
               This receipt confirms your payment has been received and processed.
             </Text>
           </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Payment Receipt from {businessSettings?.businessName || 'Your Business'}
-            </Text>
-            {businessSettings?.abn && (
-              <Text style={styles.footerText}>ABN: {businessSettings.abn}</Text>
-            )}
-            <Text style={styles.footerBrand}>Generated by TradieTrack</Text>
-          </View>
         </View>
-
-        <TouchableOpacity 
-          style={styles.shareButton}
-          onPress={handleSharePdf}
-          disabled={isDownloadingPdf}
-          activeOpacity={0.7}
-          data-testid="button-download-pdf"
-        >
-          {isDownloadingPdf ? (
-            <ActivityIndicator size="small" color={colors.primaryForeground} />
-          ) : (
-            <>
-              <Feather name="download" size={18} color={colors.primaryForeground} />
-              <Text style={styles.shareButtonText}>Download / Share PDF</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.emailButton}
-          onPress={handleSendEmail}
-          disabled={isSendingEmail || !client?.email}
-          activeOpacity={0.7}
-          data-testid="button-send-email"
-        >
-          {isSendingEmail ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <>
-              <Feather name="mail" size={18} color={colors.primary} />
-              <Text style={styles.emailButtonText}>
-                {client?.email ? 'Send via Email' : 'No Email on File'}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        {invoice && (
-          <TouchableOpacity 
-            style={styles.viewInvoiceButton}
-            onPress={handleNavigateToInvoice}
-            activeOpacity={0.7}
-            data-testid="button-view-invoice"
-          >
-            <Feather name="file-text" size={18} color={colors.primary} />
-            <Text style={styles.viewInvoiceButtonText}>View Invoice</Text>
-            <Feather name="chevron-right" size={18} color={colors.primary} />
-          </TouchableOpacity>
-        )}
 
         <View style={{ height: spacing['4xl'] }} />
       </ScrollView>
@@ -641,6 +709,176 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.background,
+  },
+  summaryCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  receiptNumberLarge: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  paidBadgeLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  paidBadgeLargeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  amountLarge: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: colors.foreground,
+    textAlign: 'center',
+  },
+  amountLabel: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  summaryDetailsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  summaryDetailItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  summaryDetailLabel: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  summaryDetailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginTop: 2,
+  },
+  summaryDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  summaryDateText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  actionButtonPrimary: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  actionButtonPrimaryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  actionButtonTextDisabled: {
+    color: colors.mutedForeground,
+  },
+  linkedSection: {
+    marginBottom: 20,
+  },
+  linkedTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 10,
+  },
+  linkedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 8,
+  },
+  linkedCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  linkedCardContent: {
+    flex: 1,
+  },
+  linkedCardLabel: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  linkedCardValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginTop: 2,
+  },
+  detailsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 10,
   },
   errorContainer: {
     flex: 1,

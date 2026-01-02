@@ -939,20 +939,8 @@ export default function MapScreen() {
 
   const handleGetDirections = () => {
     if (selectedJob?.latitude && selectedJob?.longitude) {
-      const { latitude, longitude } = selectedJob;
-      const label = encodeURIComponent(selectedJob.address || selectedJob.title);
-      
-      // Platform-specific URL schemes for navigation
-      const url = Platform.select({
-        ios: `maps://app?daddr=${latitude},${longitude}&dirflg=d`,
-        android: `google.navigation:q=${latitude},${longitude}`,
-        default: `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`,
-      });
-      
-      Linking.openURL(url).catch(() => {
-        // Fallback to Google Maps URL
-        Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`);
-      });
+      const { openMapsWithPreference } = require('../../src/lib/maps-store');
+      openMapsWithPreference(selectedJob.latitude, selectedJob.longitude, selectedJob.address);
     }
     setShowJobActionSheet(false);
   };

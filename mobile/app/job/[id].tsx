@@ -2468,14 +2468,14 @@ export default function JobDetailScreen() {
   };
 
   const handleNavigate = () => {
-    if (job?.address) {
-      const encodedAddress = encodeURIComponent(job.address);
-      const url = Platform.select({
-        ios: `maps:?q=${encodedAddress}`,
-        android: `geo:0,0?q=${encodedAddress}`,
-        default: `https://maps.google.com/?q=${encodedAddress}`,
-      });
-      Linking.openURL(url);
+    if (!job) return;
+    
+    if (job.latitude && job.longitude) {
+      const { openMapsWithPreference } = require('../../src/lib/maps-store');
+      openMapsWithPreference(job.latitude, job.longitude, job.address);
+    } else if (job.address) {
+      const { openMapsWithAddress } = require('../../src/lib/maps-store');
+      openMapsWithAddress(job.address);
     }
   };
 

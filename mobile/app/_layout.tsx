@@ -24,6 +24,7 @@ import { ScrollProvider } from '../src/contexts/ScrollContext';
 import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
 import { isTablet } from '../src/lib/device';
+import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -331,6 +332,7 @@ function RootLayoutContent() {
       <DeepLinkHandler />
       <ServicesInitializer />
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      <MapPreferenceModal />
       <AuthenticatedLayout>
         <Stack
           screenOptions={{
