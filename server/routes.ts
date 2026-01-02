@@ -4682,6 +4682,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // ENHANCED XERO INTEGRATION ROUTES - Matching ServiceM8/Tradify capabilities
+  // ============================================================================
+
+  // Push a quote to Xero as draft invoice
+  app.post("/api/integrations/xero/push-quote/:quoteId", requireAuth, async (req: any, res) => {
+    try {
+      const { quoteId } = req.params;
+      const result = await xeroService.syncQuoteToXero(req.userId, quoteId);
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          xeroInvoiceId: result.xeroInvoiceId,
+          message: result.xeroInvoiceId ? "Quote pushed to Xero as draft invoice" : "No Xero connection"
+        });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
+    } catch (error: any) {
+      console.error("Error pushing quote to Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to push quote to Xero" });
+    }
+  });
+
+  // Push a client to Xero (two-way sync)
+  app.post("/api/integrations/xero/push-client/:clientId", requireAuth, async (req: any, res) => {
+    try {
+      const { clientId } = req.params;
+      const result = await xeroService.pushClientToXero(req.userId, clientId);
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          xeroContactId: result.xeroContactId,
+          message: result.xeroContactId ? "Client pushed to Xero" : "No Xero connection"
+        });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
+    } catch (error: any) {
+      console.error("Error pushing client to Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to push client to Xero" });
+    }
+  });
+
+  // Bulk sync all clients to Xero
+  app.post("/api/integrations/xero/sync-all-clients", requireAuth, async (req: any, res) => {
+    try {
+      const result = await xeroService.syncAllClientsToXero(req.userId);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("Error syncing clients to Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to sync clients to Xero" });
+    }
+  });
+
+  // Bulk sync all quotes to Xero
+  app.post("/api/integrations/xero/sync-all-quotes", requireAuth, async (req: any, res) => {
+    try {
+      const result = await xeroService.syncAllQuotesToXero(req.userId);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("Error syncing quotes to Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to sync quotes to Xero" });
+    }
+  });
+
+  // Get chart of accounts
+  app.get("/api/integrations/xero/accounts", requireAuth, async (req: any, res) => {
+    try {
+      const accounts = await xeroService.getChartOfAccounts(req.userId);
+      res.json({ accounts });
+    } catch (error: any) {
+      console.error("Error fetching Xero accounts:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch Xero accounts" });
+    }
+  });
+
+  // Get bank accounts for payment mapping
+  app.get("/api/integrations/xero/bank-accounts", requireAuth, async (req: any, res) => {
+    try {
+      const bankAccounts = await xeroService.getBankAccounts(req.userId);
+      res.json({ bankAccounts });
+    } catch (error: any) {
+      console.error("Error fetching Xero bank accounts:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch Xero bank accounts" });
+    }
+  });
+
+  // Get tax rates (for GST handling)
+  app.get("/api/integrations/xero/tax-rates", requireAuth, async (req: any, res) => {
+    try {
+      const taxRates = await xeroService.getTaxRates(req.userId);
+      res.json({ taxRates });
+    } catch (error: any) {
+      console.error("Error fetching Xero tax rates:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch Xero tax rates" });
+    }
+  });
+
+  // Get sync summary for dashboard
+  app.get("/api/integrations/xero/sync-summary", requireAuth, async (req: any, res) => {
+    try {
+      const summary = await xeroService.getSyncSummary(req.userId);
+      res.json(summary);
+    } catch (error: any) {
+      console.error("Error fetching Xero sync summary:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch Xero sync summary" });
+    }
+  });
+
   // Seed mock Xero jobs for testing (development only)
   app.post("/api/integrations/xero/seed-mock-jobs", requireAuth, async (req: any, res) => {
     // Block this endpoint in production to prevent data pollution
