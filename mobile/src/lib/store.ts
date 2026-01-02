@@ -190,6 +190,7 @@ interface AuthState {
   fetchBusinessSettings: () => Promise<void>;
   setBusinessSettings: (settings: BusinessSettings) => void;
   setUser: (user: User) => void;
+  refreshUser: () => Promise<void>;
   clearError: () => void;
   updateBusinessSettings: (settings: Partial<BusinessSettings>) => Promise<boolean>;
   hasPermission: (permission: string) => boolean;
@@ -479,6 +480,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setUser: (user: User) => {
     set({ user });
+  },
+
+  refreshUser: async () => {
+    const { isOnline } = useOfflineStore.getState();
+    if (!isOnline) {
+      return;
+    }
+    
+    const response = await api.getCurrentUser();
+    if (response.data) {
+      const workerPerms = response.data.workerPermissions || [];
+      const isWorkerUser = response.data.isWorker || false;
+      
+      set({ 
+        user: response.data,
+        workerPermissions: workerPerms,
+        isWorker: isWorkerUser,
+      });
+      
+      const state = get();
+      await offlineStorage.cacheAuthData(state.user, state.businessSettings, state.roleInfo);
+    }
   },
 
   updateBusinessSettings: async (settings: Partial<BusinessSettings>) => {

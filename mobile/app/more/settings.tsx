@@ -883,7 +883,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { businessSettings, user } = useAuthStore();
+  const { businessSettings, user, refreshUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('account');
   const [showTour, setShowTour] = useState(false);
@@ -1304,13 +1304,14 @@ export default function SettingsScreen() {
   const refreshData = useCallback(async () => {
     setIsLoading(true);
     await Promise.all([
+      refreshUser(),
       loadGeofenceSettings(), 
       loadNotificationSettings(),
       loadBrandSettings(),
       loadTemplates(),
     ]);
     setIsLoading(false);
-  }, [loadGeofenceSettings, loadNotificationSettings, loadBrandSettings, loadTemplates]);
+  }, [refreshUser, loadGeofenceSettings, loadNotificationSettings, loadBrandSettings, loadTemplates]);
 
   useEffect(() => {
     refreshData();

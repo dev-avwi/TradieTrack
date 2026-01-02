@@ -314,6 +314,49 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing['4xl'],
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing['4xl'],
+    paddingHorizontal: spacing.xl,
+  },
+  errorIcon: {
+    marginBottom: spacing.lg,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+    lineHeight: 20,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: spacing.md,
+  },
   modalContainer: {
     flex: 1,
     backgroundColor: colors.background,
@@ -556,6 +599,8 @@ export default function BusinessTemplatesScreen() {
     familiesMeta,
     purposesLoaded,
     isLoading,
+    loadingTimedOut,
+    error,
     refetch,
     createTemplate,
     updateTemplate,
@@ -1094,12 +1139,39 @@ export default function BusinessTemplatesScreen() {
     );
   };
 
-  if (isLoading) {
+  // Show error state if loading timed out or there's an error after loading completed
+  const showErrorState = loadingTimedOut || (!isLoading && error && templates.length === 0);
+  
+  if (isLoading && !loadingTimedOut) {
     return (
       <View style={styles.container}>
         <Stack.Screen options={{ title: 'Business Templates' }} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading templates...</Text>
+        </View>
+      </View>
+    );
+  }
+  
+  if (showErrorState) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Business Templates' }} />
+        <View style={styles.errorContainer}>
+          <Feather name="alert-circle" size={48} color={colors.mutedForeground} style={styles.errorIcon} />
+          <Text style={styles.errorTitle}>Unable to Load Templates</Text>
+          <Text style={styles.errorMessage}>
+            {error || 'Something went wrong while loading your templates. Please check your connection and try again.'}
+          </Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={refetch}
+            data-testid="button-retry-load"
+          >
+            <Feather name="refresh-cw" size={18} color={colors.primaryForeground} />
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );

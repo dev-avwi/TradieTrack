@@ -89,6 +89,12 @@ export function useBusinessTemplates() {
   const [purposesLoaded, setPurposesLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+
+  const getFallbackPurposes = useCallback((family: BusinessTemplateFamily): PurposeOption[] => {
+    const purposes = getPurposesForFamily(family);
+    return purposes.map(id => ({ id, label: PURPOSE_LABELS[id] || id }));
+  }, []);
 
   const fetchPurposesForFamily = useCallback(async (family: BusinessTemplateFamily): Promise<PurposeOption[] | null> => {
     if (!isAuthenticated) return null;
@@ -134,7 +140,7 @@ export function useBusinessTemplates() {
         setFamiliesMeta(data || []);
       }
 
-      // Prefetch purposes for all families - only mark loaded if ALL succeed
+      // Prefetch purposes for all families - use fallback if API fails
       const allFamilies = Object.keys(FAMILY_CONFIG) as BusinessTemplateFamily[];
       const purposeResults = await Promise.all(
         allFamilies.map(async (family) => ({
@@ -143,28 +149,43 @@ export function useBusinessTemplates() {
         }))
       );
       
-      // Check if all purposes were fetched successfully (no nulls)
-      const allFetched = purposeResults.every(r => r.purposes !== null);
+      // Build purposes cache - use fallback for any that failed
+      const newCache: Record<BusinessTemplateFamily, PurposeOption[]> = {} as any;
+      let usedFallback = false;
       
-      if (allFetched) {
-        const newCache: Record<BusinessTemplateFamily, PurposeOption[]> = {} as any;
-        purposeResults.forEach(({ family, purposes }) => {
-          newCache[family] = purposes || [];
-        });
-        setPurposesCache(newCache);
-        setPurposesLoaded(true);
-      } else {
-        // Some purposes failed to load - don't set purposesLoaded
-        setError('Failed to load template purposes. Please try again.');
-        setPurposesLoaded(false);
+      purposeResults.forEach(({ family, purposes }) => {
+        if (purposes && purposes.length > 0) {
+          newCache[family] = purposes;
+        } else {
+          // Use local fallback if API failed
+          newCache[family] = getFallbackPurposes(family);
+          usedFallback = true;
+        }
+      });
+      
+      setPurposesCache(newCache);
+      setPurposesLoaded(true);
+      
+      if (usedFallback) {
+        console.warn('Some purposes loaded from fallback - API fetch failed for some families');
       }
     } catch (err) {
-      setError('Failed to load templates');
+      setError('Failed to load templates. Please try again.');
       console.error('Failed to fetch business templates:', err);
+      
+      // Still try to set fallback purposes so page can render
+      const allFamilies = Object.keys(FAMILY_CONFIG) as BusinessTemplateFamily[];
+      const fallbackCache: Record<BusinessTemplateFamily, PurposeOption[]> = {} as any;
+      allFamilies.forEach((family) => {
+        fallbackCache[family] = getFallbackPurposes(family);
+      });
+      setPurposesCache(fallbackCache);
+      setPurposesLoaded(true);
     }
     
     setIsLoading(false);
-  }, [isAuthenticated, fetchPurposesForFamily]);
+    setLoadingTimedOut(false);
+  }, [isAuthenticated, fetchPurposesForFamily, getFallbackPurposes]);
 
   const seedTemplates = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -277,6 +298,23 @@ export function useBusinessTemplates() {
     fetchTemplates();
   }, [fetchTemplates]);
 
+  // Loading timeout - show error after 10 seconds
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingTimedOut(false);
+      return;
+    }
+    
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        setLoadingTimedOut(true);
+        setError('Loading is taking longer than expected. Please try again.');
+      }
+    }, 10000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isLoading]);
+
   useEffect(() => {
     if (!isLoading && templates.length === 0 && familiesMeta.length === 0) {
       seedTemplates();
@@ -294,6 +332,7 @@ export function useBusinessTemplates() {
     purposesCache,
     purposesLoaded,
     isLoading,
+    loadingTimedOut,
     error,
     refetch: fetchTemplates,
     createTemplate,

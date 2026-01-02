@@ -704,12 +704,55 @@ export default function TeamHubScreen() {
         api.get<JobData[]>('/api/jobs'),
       ]);
 
-      if (membersRes.data) setTeamMembers(membersRes.data);
-      if (presenceRes.data) setPresence(presenceRes.data);
-      if (activityRes.data) setActivities(activityRes.data);
-      if (jobsRes.data) setJobs(jobsRes.data);
+      // Debug logging for team members API response
+      console.log('[TeamHub] Members API response:', JSON.stringify(membersRes, null, 2));
+      
+      // Handle team members response - check for errors first
+      if (membersRes.error) {
+        console.error('[TeamHub] Error fetching team members:', membersRes.error);
+      } else if (membersRes.data) {
+        // Ensure we have an array - handle both array and object with members property
+        const membersArray = Array.isArray(membersRes.data) 
+          ? membersRes.data 
+          : (membersRes.data as any).members || [];
+        console.log('[TeamHub] Setting team members:', membersArray.length, 'members');
+        setTeamMembers(membersArray);
+      } else {
+        console.log('[TeamHub] No team members data received, setting empty array');
+        setTeamMembers([]);
+      }
+      
+      // Handle presence response
+      if (presenceRes.error) {
+        console.error('[TeamHub] Error fetching presence:', presenceRes.error);
+      } else if (presenceRes.data) {
+        const presenceArray = Array.isArray(presenceRes.data) 
+          ? presenceRes.data 
+          : [];
+        setPresence(presenceArray);
+      }
+      
+      // Handle activities response
+      if (activityRes.error) {
+        console.error('[TeamHub] Error fetching activities:', activityRes.error);
+      } else if (activityRes.data) {
+        const activitiesArray = Array.isArray(activityRes.data) 
+          ? activityRes.data 
+          : (activityRes.data as any).activities || [];
+        setActivities(activitiesArray);
+      }
+      
+      // Handle jobs response
+      if (jobsRes.error) {
+        console.error('[TeamHub] Error fetching jobs:', jobsRes.error);
+      } else if (jobsRes.data) {
+        const jobsArray = Array.isArray(jobsRes.data) 
+          ? jobsRes.data 
+          : (jobsRes.data as any).jobs || [];
+        setJobs(jobsArray);
+      }
     } catch (error) {
-      console.error('Failed to fetch team data:', error);
+      console.error('[TeamHub] Failed to fetch team data:', error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
