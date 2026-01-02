@@ -514,24 +514,24 @@ function LiveOpsTab() {
                                     display: flex;
                                     align-items: center;
                                     justify-content: center;
-                                    width: 32px;
-                                    height: 32px;
+                                    width: 24px;
+                                    height: 24px;
                                     border-radius: 50%;
                                     background: ${statusDisplay.markerBg};
                                     border: 2px solid white;
-                                    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
                                     font-family: system-ui, -apple-system, sans-serif;
                                     cursor: pointer;
                                   ">
                                     <span style="
                                       color: ${statusDisplay.markerText};
-                                      font-size: 11px;
+                                      font-size: 9px;
                                       font-weight: 700;
-                                      letter-spacing: 0.3px;
+                                      letter-spacing: 0.2px;
                                     ">${initials}</span>
                                   </div>`,
-                                  iconSize: [32, 32],
-                                  iconAnchor: [16, 16],
+                                  iconSize: [24, 24],
+                                  iconAnchor: [12, 12],
                                 })}
                                 eventHandlers={{
                                   click: () => {

@@ -156,11 +156,12 @@ interface TeamMemberSkill {
   notes?: string;
 }
 
+// Cairns-area default to match demo data, but will dynamically center on team members
 const DEFAULT_REGION: Region = {
-  latitude: -33.8688,
-  longitude: 151.2093,
-  latitudeDelta: 0.5,
-  longitudeDelta: 0.5,
+  latitude: -16.9203,
+  longitude: 145.7710,
+  latitudeDelta: 0.1,
+  longitudeDelta: 0.1,
 };
 
 function getInitials(firstName?: string, lastName?: string, email?: string): string {
@@ -663,28 +664,56 @@ export default function TeamOperationsScreen() {
 
   const renderLiveOpsTab = () => {
     if (liveViewMode === 'map') {
+      // Calculate region based on team members with locations
+      const membersWithLocations = membersWithDetails.filter(
+        m => m.presence?.lastLocationLat && m.presence?.lastLocationLng
+      );
+      
+      let mapRegion = DEFAULT_REGION;
+      if (membersWithLocations.length > 0) {
+        const lats = membersWithLocations.map(m => m.presence!.lastLocationLat!);
+        const lngs = membersWithLocations.map(m => m.presence!.lastLocationLng!);
+        const minLat = Math.min(...lats);
+        const maxLat = Math.max(...lats);
+        const minLng = Math.min(...lngs);
+        const maxLng = Math.max(...lngs);
+        const centerLat = (minLat + maxLat) / 2;
+        const centerLng = (minLng + maxLng) / 2;
+        const latDelta = Math.max(0.05, (maxLat - minLat) * 1.5);
+        const lngDelta = Math.max(0.05, (maxLng - minLng) * 1.5);
+        mapRegion = {
+          latitude: centerLat,
+          longitude: centerLng,
+          latitudeDelta: latDelta,
+          longitudeDelta: lngDelta,
+        };
+      }
+      
       return (
         <View style={styles.mapContainer}>
           <MapView
             ref={mapRef}
             style={styles.map}
             provider={PROVIDER_DEFAULT}
-            initialRegion={DEFAULT_REGION}
+            initialRegion={mapRegion}
+            region={mapRegion}
             customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
           >
-            {membersWithDetails
-              .filter(m => m.presence?.lastLocationLat && m.presence?.lastLocationLng)
-              .map(member => (
+            {membersWithLocations.map(member => {
+              const statusConfig = STATUS_CONFIG[member.presence?.status || 'offline'];
+              return (
                 <Marker
                   key={member.id}
                   coordinate={{
                     latitude: member.presence!.lastLocationLat!,
                     longitude: member.presence!.lastLocationLng!,
                   }}
-                  title={`${member.firstName} ${member.lastName}`}
-                  description={STATUS_CONFIG[member.presence?.status || 'offline']?.label}
+                  title={`${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email}
+                  description={statusConfig?.label}
+                  pinColor={statusConfig?.color}
                 />
-              ))}
+              );
+            })}
           </MapView>
           <View style={[styles.mapOverlay, { top: insets.top + spacing.md }]}>
             {renderLiveViewToggle()}

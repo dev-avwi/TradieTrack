@@ -211,25 +211,6 @@ export default function BusinessSettingsScreen() {
       />
       <ScrollView style={styles.container}>
         <View style={styles.content}>
-          <Text style={styles.sectionTitle}>Branding</Text>
-          <TouchableOpacity 
-            style={styles.brandingLink}
-            onPress={() => router.push('/more/branding')}
-          >
-            <View style={styles.brandingLinkContent}>
-              <View style={styles.brandingIconContainer}>
-                <Feather name="droplet" size={22} color={colors.primary} />
-              </View>
-              <View style={styles.brandingLinkText}>
-                <Text style={styles.brandingLinkTitle}>Logo & Brand Color</Text>
-                <Text style={styles.brandingLinkSubtitle}>
-                  Customise your business appearance
-                </Text>
-              </View>
-            </View>
-            <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-          </TouchableOpacity>
-
           <Text style={styles.sectionTitle}>Business Details</Text>
           
           <View style={styles.inputGroup}>
