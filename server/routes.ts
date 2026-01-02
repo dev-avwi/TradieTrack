@@ -3329,6 +3329,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const businessLogoUpload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+  });
+
+  app.post("/api/business-settings/logo", requireAuth, ownerOnly(), businessLogoUpload.single('logo'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      // In a real app, we'd upload to S3/GCS. For now, we'll use a data URL or mock it.
+      // Given the environment, we might have object storage setup.
+      const logoUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      
+      const settings = await storage.updateBusinessSettings(req.userId, { logoUrl });
+      if (!settings) {
+        return res.status(404).json({ error: "Business settings not found" });
+      }
+      
+      res.json({ logoUrl });
+    } catch (error) {
+      console.error("Error uploading business logo:", error);
+      res.status(500).json({ error: "Failed to upload logo" });
+    }
+  });
+
   // ===== SMS BRANDING SETTINGS ROUTES =====
   
   // Get current SMS branding settings

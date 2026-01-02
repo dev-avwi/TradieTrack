@@ -1007,12 +1007,20 @@ export default function SettingsScreen() {
     try {
       // Save locally first for immediate feedback
       await AsyncStorage.setItem(BRAND_SETTINGS_KEY, JSON.stringify({ color, logoUrl: logo }));
-      // Note: Syncing to server would require PATCH /api/business-settings with brandColor
-      // This is handled when the user explicitly saves settings or navigates to business settings page
+      
+      // Sync to server
+      const success = await updateBusinessSettings({ 
+        brandColor: color, 
+        logoUrl: logo || undefined 
+      });
+      
+      if (!success) {
+        console.error('Failed to sync brand settings to server');
+      }
     } catch (error) {
       console.error('Failed to save brand settings:', error);
     }
-  }, []);
+  }, [updateBusinessSettings]);
 
   const handleColorSelect = useCallback((color: string) => {
     setSelectedColor(color);
@@ -1036,8 +1044,21 @@ export default function SettingsScreen() {
 
       if (!result.canceled && result.assets[0]) {
         setIsUploadingLogo(true);
-        setLogoUrl(result.assets[0].uri);
-        await saveBrandSettings(selectedColor, result.assets[0].uri);
+        const localUri = result.assets[0].uri;
+        
+        // Upload to server
+        const response = await api.uploadBusinessLogo(localUri);
+        
+        if (response.data?.logoUrl) {
+          const serverLogoUrl = response.data.logoUrl;
+          setLogoUrl(serverLogoUrl);
+          await saveBrandSettings(selectedColor, serverLogoUrl);
+        } else {
+          Alert.alert('Upload Failed', response.error || 'Failed to upload logo to server.');
+          // Fallback to local URI for preview if server fails? 
+          // Better to keep it consistent and only use server URLs if possible
+        }
+        
         setIsUploadingLogo(false);
       }
     } catch (error) {

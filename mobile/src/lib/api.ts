@@ -270,8 +270,24 @@ class ApiClient {
     defaultHourlyRate?: number;
     calloutFee?: number;
     brandColor?: string;
+    logoUrl?: string;
   }): Promise<ApiResponse<any>> {
     return this.patch<any>('/api/business-settings', data);
+  }
+
+  async uploadBusinessLogo(uri: string): Promise<ApiResponse<{ logoUrl: string }>> {
+    const formData = new FormData();
+    const filename = uri.split('/').pop() || 'logo.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+    formData.append('logo', {
+      uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+      name: filename,
+      type,
+    } as any);
+
+    return this.uploadFile<{ logoUrl: string }>('/api/business-settings/logo', formData);
   }
 
   async forgotPassword(email: string): Promise<{ success: boolean; error?: string; message?: string }> {
