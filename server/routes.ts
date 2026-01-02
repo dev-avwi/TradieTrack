@@ -15885,8 +15885,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const user = await storage.getUser(member.memberId);
         if (!user) continue;
         
-        // Get most recent location for this team member
+        // Get most recent location for this team member - check both locationTracking and tradieStatus
         const recentLocation = await storage.getLatestLocationForUser(member.memberId);
+        const tradieStatusData = await storage.getTradieStatus(member.memberId);
         
         // Get current active job if any
         const activeTimeEntry = await storage.getActiveTimeEntry(member.memberId);
@@ -15895,6 +15896,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentJob = await storage.getJob(activeTimeEntry.jobId, effectiveUserId);
         }
         
+        // Use locationTracking first, fall back to tradieStatus for demo data
         if (recentLocation) {
           locations.push({
             id: member.memberId,
@@ -15905,6 +15907,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lastUpdated: recentLocation.timestamp,
             currentJobId: currentJob?.id || null,
             currentJobTitle: currentJob?.title || null,
+            activityStatus: tradieStatusData?.activityStatus || 'online',
+          });
+        } else if (tradieStatusData?.currentLatitude && tradieStatusData?.currentLongitude) {
+          // Fallback to tradieStatus data (used by demo data)
+          locations.push({
+            id: member.memberId,
+            name: `${member.firstName || user.firstName || ''} ${member.lastName || user.lastName || ''}`.trim() || user.email,
+            email: user.email,
+            latitude: parseFloat(tradieStatusData.currentLatitude),
+            longitude: parseFloat(tradieStatusData.currentLongitude),
+            lastUpdated: tradieStatusData.lastLocationUpdate || tradieStatusData.lastSeenAt,
+            currentJobId: currentJob?.id || null,
+            currentJobTitle: currentJob?.title || null,
+            activityStatus: tradieStatusData.activityStatus || 'online',
           });
         }
       }

@@ -883,7 +883,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { businessSettings, user, refreshUser } = useAuthStore();
+  const { businessSettings, user, refreshUser, updateBusinessSettings } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('account');
   const [showTour, setShowTour] = useState(false);
