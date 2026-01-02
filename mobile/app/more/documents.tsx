@@ -66,7 +66,7 @@ type QuoteFilterType = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected';
 type InvoiceFilterType = 'all' | 'draft' | 'sent' | 'paid' | 'overdue';
 type ReceiptFilterType = 'all' | 'bank_transfer' | 'card' | 'cash';
 type ViewMode = 'grid' | 'list';
-type SortField = 'client' | 'status';
+type SortField = 'client' | 'status' | 'amount';
 type SortDirection = 'asc' | 'desc';
 
 const formatCurrency = (amount: number) => {
@@ -190,7 +190,7 @@ export default function DocumentsScreen() {
     return clientMap.get(clientId)?.name || 'Unknown Client';
   };
 
-  const sortItems = useCallback(<T extends { status?: string; clientId?: string }>(items: T[]): T[] => {
+  const sortItems = useCallback(<T extends { status?: string; clientId?: string; total?: number; amount?: number }>(items: T[]): T[] => {
     return [...items].sort((a, b) => {
       let comparison = 0;
       switch (sortField) {
@@ -201,6 +201,11 @@ export default function DocumentsScreen() {
           const clientNameA = getClientName(a.clientId || '');
           const clientNameB = getClientName(b.clientId || '');
           comparison = clientNameA.localeCompare(clientNameB);
+          break;
+        case 'amount':
+          const amountA = a.total ?? a.amount ?? 0;
+          const amountB = b.total ?? b.amount ?? 0;
+          comparison = amountA - amountB;
           break;
       }
       return sortDirection === 'asc' ? comparison : -comparison;
@@ -570,8 +575,10 @@ export default function DocumentsScreen() {
 
   const renderSortHeader = () => (
     <View style={styles.sortHeaderRow}>
-      {renderSortableHeaderColumn('client', activeTab === 'quotes' ? 'Quote' : activeTab === 'invoices' ? 'Invoice' : 'Receipt', 1)}
-      {renderSortableHeaderColumn('status', 'Status', 1, 'flex-end')}
+      <View style={styles.sortHeaderSpacer} />
+      {renderSortableHeaderColumn('status', 'Status', 0, 'center')}
+      {renderSortableHeaderColumn('amount', 'Amount', 0, 'flex-end')}
+      <View style={styles.sortHeaderMenuSpacer} />
     </View>
   );
 
@@ -617,14 +624,12 @@ export default function DocumentsScreen() {
         style={[styles.listRow, !isLast && styles.listRowWithDivider]}
         onPress={() => router.push(`/more/quote/${quote.id}`)}
         activeOpacity={0.7}
+        data-testid={`row-quote-${quote.id}`}
       >
         <View style={styles.listRowContent}>
           <View style={styles.listRowLeft}>
             <Text style={styles.listRowTitle} numberOfLines={1}>
               {quote.title || quote.number || `Q-${quote.id.slice(0, 6)}`}
-            </Text>
-            <Text style={styles.listRowClient} numberOfLines={1}>
-              {client?.name || 'Unknown'}
             </Text>
           </View>
           <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
@@ -632,6 +637,14 @@ export default function DocumentsScreen() {
               {statusConfig.label}
             </Text>
           </View>
+          <Text style={styles.listRowAmount}>{formatCurrency(quote.total)}</Text>
+          <TouchableOpacity 
+            style={styles.listRowMenuButton}
+            onPress={() => router.push(`/more/quote/${quote.id}`)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -686,14 +699,12 @@ export default function DocumentsScreen() {
         style={[styles.listRow, !isLast && styles.listRowWithDivider]}
         onPress={() => router.push(`/more/invoice/${invoice.id}`)}
         activeOpacity={0.7}
+        data-testid={`row-invoice-${invoice.id}`}
       >
         <View style={styles.listRowContent}>
           <View style={styles.listRowLeft}>
             <Text style={styles.listRowTitle} numberOfLines={1}>
               {invoice.title || invoice.number || `INV-${invoice.id.slice(0, 6)}`}
-            </Text>
-            <Text style={styles.listRowClient} numberOfLines={1}>
-              {client?.name || 'Unknown'}
             </Text>
           </View>
           <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
@@ -701,6 +712,14 @@ export default function DocumentsScreen() {
               {statusConfig.label}
             </Text>
           </View>
+          <Text style={styles.listRowAmount}>{formatCurrency(invoice.total)}</Text>
+          <TouchableOpacity 
+            style={styles.listRowMenuButton}
+            onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -744,14 +763,12 @@ export default function DocumentsScreen() {
         style={[styles.listRow, !isLast && styles.listRowWithDivider]}
         onPress={() => router.push(`/more/receipt/${receipt.id}`)}
         activeOpacity={0.7}
+        data-testid={`row-receipt-${receipt.id}`}
       >
         <View style={styles.listRowContent}>
           <View style={styles.listRowLeft}>
             <Text style={styles.listRowTitle} numberOfLines={1}>
               {receipt.receiptNumber}
-            </Text>
-            <Text style={styles.listRowClient} numberOfLines={1}>
-              {client?.name || 'Unknown'}
             </Text>
           </View>
           <View style={[styles.listRowStatusBadge, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
@@ -759,6 +776,14 @@ export default function DocumentsScreen() {
               {getPaymentMethodLabel(receipt.paymentMethod)}
             </Text>
           </View>
+          <Text style={styles.listRowAmount}>{formatCurrency(receipt.amount)}</Text>
+          <TouchableOpacity 
+            style={styles.listRowMenuButton}
+            onPress={() => router.push(`/more/receipt/${receipt.id}`)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -1295,6 +1320,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
   },
+  sortHeaderSpacer: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sortHeaderMenuSpacer: {
+    width: 34,
+  },
   sortableColumn: {
     flexDirection: 'row',
     paddingHorizontal: spacing.xs,
@@ -1361,6 +1393,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '700',
     color: colors.foreground,
     fontSize: 14,
+    minWidth: 70,
+    textAlign: 'right',
+  },
+  listRowMenuButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.xs,
   },
   listRowMeta: {
     flexDirection: 'row',
