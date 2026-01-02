@@ -571,9 +571,10 @@ export default function DocumentsScreen() {
           </Text>
           {isActive && (
             <Feather 
-              name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'} 
+              name="chevron-down" 
               size={12} 
-              color={colors.primary} 
+              color={colors.primary}
+              style={{ transform: [{ rotate: sortDirection === 'asc' ? '180deg' : '0deg' }] }}
             />
           )}
         </View>
@@ -584,9 +585,7 @@ export default function DocumentsScreen() {
   const renderSortHeader = () => (
     <View style={styles.sortHeaderRow}>
       {renderSortableHeaderColumn('client', activeTab === 'quotes' ? 'Quote' : activeTab === 'invoices' ? 'Invoice' : 'Receipt', 1.5)}
-      <View style={styles.sortHeaderDivider} />
       {renderSortableHeaderColumn('status', 'Status', 0.8, 'center')}
-      <View style={styles.sortHeaderDivider} />
       {renderSortableHeaderColumn('amount', 'Amount', 0.9, 'flex-end')}
     </View>
   );
@@ -1322,12 +1321,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.muted,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
   },
   sortableColumn: {
     flexDirection: 'row',
