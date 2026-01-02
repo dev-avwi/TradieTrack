@@ -265,15 +265,16 @@ export default function DocumentsScreen() {
 
   const stats = useMemo(() => {
     const parseAmount = (val: any): number => {
-      const num = typeof val === 'string' ? parseFloat(val) : (val || 0);
-      return isNaN(num) ? 0 : (num > 1000 ? num / 100 : num);
+      if (val === null || val === undefined) return 0;
+      const num = typeof val === 'string' ? parseFloat(val) : (typeof val === 'number' ? val : 0);
+      return isNaN(num) ? 0 : num;
     };
     const totalQuotes = quotes.reduce((sum, q) => sum + parseAmount(q.total), 0);
     const pendingQuotes = quotes.filter(q => q.status === 'sent').length;
     const wonQuotes = quotes.filter(q => q.status === 'accepted').reduce((sum, q) => sum + parseAmount(q.total), 0);
     const outstandingInvoices = invoices.filter(i => i.status === 'sent' || i.status === 'overdue');
     const outstandingAmount = outstandingInvoices.reduce((sum, i) => sum + parseAmount(i.total), 0);
-    const totalReceived = receipts.reduce((sum, r) => sum + (parseFloat(String(r.amount)) || 0), 0);
+    const totalReceived = receipts.reduce((sum, r) => sum + parseAmount(r.amount), 0);
     
     return {
       totalQuotes,
@@ -548,47 +549,31 @@ export default function DocumentsScreen() {
   };
 
   const renderSortHeader = () => (
-    <View style={styles.sortHeader}>
-      <TouchableOpacity 
-        style={[styles.sortButton, sortField === 'date' && styles.sortButtonActive]}
-        onPress={() => handleSortChange('date')}
-        activeOpacity={0.7}
-      >
-        <Text style={[styles.sortButtonText, sortField === 'date' && styles.sortButtonTextActive]}>Date</Text>
-        {sortField === 'date' && (
-          <Feather name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
-        )}
-      </TouchableOpacity>
-      <TouchableOpacity 
-        style={[styles.sortButton, sortField === 'client' && styles.sortButtonActive]}
-        onPress={() => handleSortChange('client')}
-        activeOpacity={0.7}
-      >
-        <Text style={[styles.sortButtonText, sortField === 'client' && styles.sortButtonTextActive]}>Client</Text>
-        {sortField === 'client' && (
-          <Feather name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
-        )}
-      </TouchableOpacity>
-      <TouchableOpacity 
-        style={[styles.sortButton, sortField === 'amount' && styles.sortButtonActive]}
-        onPress={() => handleSortChange('amount')}
-        activeOpacity={0.7}
-      >
-        <Text style={[styles.sortButtonText, sortField === 'amount' && styles.sortButtonTextActive]}>Amount</Text>
-        {sortField === 'amount' && (
-          <Feather name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
-        )}
-      </TouchableOpacity>
-      <TouchableOpacity 
-        style={[styles.sortButton, sortField === 'status' && styles.sortButtonActive]}
-        onPress={() => handleSortChange('status')}
-        activeOpacity={0.7}
-      >
-        <Text style={[styles.sortButtonText, sortField === 'status' && styles.sortButtonTextActive]}>Status</Text>
-        {sortField === 'status' && (
-          <Feather name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
-        )}
-      </TouchableOpacity>
+    <View style={styles.sortHeaderBar}>
+      <Text style={styles.sortByLabel}>Sort by:</Text>
+      <View style={styles.sortOptions}>
+        <TouchableOpacity 
+          style={[styles.sortOption, sortField === 'date' && styles.sortOptionActive]}
+          onPress={() => handleSortChange('date')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.sortOptionText, sortField === 'date' && styles.sortOptionTextActive]}>Date</Text>
+          {sortField === 'date' && (
+            <Feather name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={12} color={colors.primary} />
+          )}
+        </TouchableOpacity>
+        <Text style={styles.sortDivider}>|</Text>
+        <TouchableOpacity 
+          style={[styles.sortOption, sortField === 'amount' && styles.sortOptionActive]}
+          onPress={() => handleSortChange('amount')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.sortOptionText, sortField === 'amount' && styles.sortOptionTextActive]}>Amount</Text>
+          {sortField === 'amount' && (
+            <Feather name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={12} color={colors.primary} />
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -1336,35 +1321,49 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
   },
-  sortHeader: {
+  sortHeaderBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.muted,
-    borderRadius: radius.md,
-    padding: spacing.xs,
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
     marginBottom: spacing.sm,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    gap: spacing.sm,
   },
-  sortButton: {
+  sortByLabel: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    fontWeight: '600',
+  },
+  sortOptions: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
-    gap: 2,
+    gap: spacing.xs,
   },
-  sortButtonActive: {
-    backgroundColor: colors.card,
+  sortOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  sortButtonText: {
+  sortOptionActive: {
+    // No specific background needed for highlighted sort in this design
+  },
+  sortOptionText: {
     ...typography.captionSmall,
-    fontWeight: '500',
     color: colors.mutedForeground,
-    fontSize: 11,
+    fontWeight: '500',
   },
-  sortButtonTextActive: {
+  sortOptionTextActive: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  sortDivider: {
+    color: colors.cardBorder,
+    marginHorizontal: 2,
+    fontSize: 12,
   },
   listRow: {
     flexDirection: 'row',

@@ -182,6 +182,10 @@ export default function ClientDetailScreen() {
     router.push(`/more/create-job?clientId=${id}`);
   };
 
+  const handleEdit = () => {
+    router.push(`/more/client/new?id=${id}`);
+  };
+
   const handleDelete = () => {
     Alert.alert(
       'Delete Client',
@@ -539,7 +543,7 @@ export default function ClientDetailScreen() {
           title: 'Client Details',
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity onPress={() => router.push(`/more/client/new?clientId=${id}`)} style={styles.headerButton}>
+              <TouchableOpacity onPress={handleEdit} style={styles.headerButton}>
                 <Feather name="edit-2" size={20} color={colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity onPress={handleDelete} style={styles.headerButton} data-testid="button-delete-client">

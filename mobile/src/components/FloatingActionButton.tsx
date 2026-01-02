@@ -184,7 +184,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
       colorKey: 'job',
       onPress: () => {
         setIsOpen(false);
-        router.push('/job/create');
+        router.push('/more/create-job');
       },
     },
     {

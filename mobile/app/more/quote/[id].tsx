@@ -459,7 +459,8 @@ export default function QuoteDetailScreen() {
   const downloadPdfToCache = useCallback(async (): Promise<string | null> => {
     if (!quote) return null;
     
-    const PDF_TIMEOUT_MS = 90000; // 90 seconds for complex quotes
+    // REQUIRED FIX: 15 second timeout as per requirements
+    const PDF_TIMEOUT_MS = 15000; 
     
     const authToken = await api.getToken();
     if (!authToken) {
@@ -478,25 +479,24 @@ export default function QuoteDetailScreen() {
       {
         headers: {
           Authorization: `Bearer ${authToken}`,
+          'Accept': 'application/pdf',
         },
       }
     );
     
     let timeoutId: NodeJS.Timeout | null = null;
-    let didTimeout = false;
     
     try {
       const downloadPromise = downloadResumable.downloadAsync();
       
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(async () => {
-          didTimeout = true;
           try {
             await downloadResumable.pauseAsync();
           } catch (e) {
             // Ignore pause errors
           }
-          reject(new Error('PDF generation timed out. This may happen with complex quotes. Please try again.'));
+          reject(new Error('PDF download timed out (15s limit). Please check your connection and try again.'));
         }, PDF_TIMEOUT_MS);
       });
       
@@ -505,7 +505,7 @@ export default function QuoteDetailScreen() {
       if (timeoutId) clearTimeout(timeoutId);
       
       if (!downloadResult) {
-        throw new Error('Download failed. Please try again.');
+        throw new Error('Download failed: No response from server.');
       }
       
       console.log('[PDF] Download result status:', downloadResult.status);
@@ -514,24 +514,34 @@ export default function QuoteDetailScreen() {
         throw new Error('Session expired. Please log in again.');
       }
       
+      if (downloadResult.status === 403) {
+        throw new Error('You do not have permission to download this quote.');
+      }
+
       if (downloadResult.status === 404) {
         throw new Error('Quote not found. It may have been deleted.');
       }
       
       if (downloadResult.status !== 200) {
-        throw new Error(`Server error (${downloadResult.status}). Please try again.`);
+        throw new Error(`Server returned error ${downloadResult.status}. Please try again later.`);
       }
       
-      // Verify the file was downloaded
+      // Verify the file was downloaded and has content
       const fileInfo = await FileSystem.getInfoAsync(downloadResult.uri);
       if (!fileInfo.exists || (fileInfo.size !== undefined && fileInfo.size < 100)) {
-        throw new Error('PDF file is empty or corrupted. Please try again.');
+        throw new Error('Downloaded PDF is invalid or too small. Please try again.');
       }
 
       return downloadResult.uri;
     } catch (error: any) {
       if (timeoutId) clearTimeout(timeoutId);
-      console.log('[PDF] Download error:', error);
+      
+      // Handle network errors gracefully
+      if (error.message?.includes('Network request failed') || error.message?.includes('Network Error')) {
+        throw new Error('Network error: Please check your internet connection and try again.');
+      }
+
+      console.log('[PDF] Download error details:', error);
       throw error;
     }
   }, [quote, id]);
