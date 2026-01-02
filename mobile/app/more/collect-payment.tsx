@@ -17,7 +17,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
@@ -115,6 +115,7 @@ const getDateGroup = (dateString: string): string => {
 export default function CollectPaymentScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const params = useLocalSearchParams<{ tab?: string; invoiceId?: string; jobId?: string }>();
   
   const [activeTab, setActiveTab] = useState<TabType>('collect');
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
@@ -256,6 +257,63 @@ export default function CollectPaymentScreen() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Track if URL params have been processed
+  const [paramsProcessed, setParamsProcessed] = useState(false);
+
+  // Handle URL parameters for pre-selecting invoice/job from job detail page
+  // Simplified approach: just pre-select invoice/job, let user choose action
+  useEffect(() => {
+    const processParams = async () => {
+      // Skip if no params or already processed
+      if (!params.invoiceId || paramsProcessed) return;
+      
+      // Ensure secondary data is loaded first
+      if (!secondaryDataLoaded && !loadingSecondary) {
+        await fetchSecondaryData();
+        return; // Will re-run when secondaryDataLoaded becomes true
+      }
+      
+      // Wait for invoices to be loaded
+      if (invoices.length === 0) return;
+      
+      // Find the invoice to pre-fill data
+      const selectedInvoice = invoices.find(inv => inv.id === params.invoiceId);
+      if (!selectedInvoice) return;
+      
+      // Pre-select invoice and job for all form contexts
+      setSelectedInvoiceId(params.invoiceId);
+      setReceiptInvoiceId(params.invoiceId);
+      
+      // Also pre-fill job if provided
+      if (params.jobId && jobs.length > 0) {
+        setSelectedJobId(params.jobId);
+        setReceiptJobId(params.jobId);
+      } else if (selectedInvoice.jobId) {
+        setSelectedJobId(selectedInvoice.jobId);
+        setReceiptJobId(selectedInvoice.jobId);
+      }
+      
+      // Pre-fill amounts and details from invoice
+      const invoiceTotal = typeof selectedInvoice.total === 'number' 
+        ? selectedInvoice.total.toFixed(2) 
+        : String(selectedInvoice.total || '0.00');
+      
+      setReceiptAmount(invoiceTotal);
+      setReceiptDescription(`Payment for ${selectedInvoice.number}: ${selectedInvoice.title}`);
+      setReceiptReference(selectedInvoice.number);
+      setReceiptClientId(selectedInvoice.clientId);
+      
+      // Set payment method based on tab param
+      if (params.tab === 'tap') {
+        setReceiptPaymentMethod('card');
+      }
+      
+      setParamsProcessed(true);
+    };
+    
+    processParams();
+  }, [params.invoiceId, params.jobId, params.tab, secondaryDataLoaded, loadingSecondary, invoices.length, jobs.length, paramsProcessed]);
 
   useEffect(() => {
     if (selectedInvoiceId && invoices.length > 0) {

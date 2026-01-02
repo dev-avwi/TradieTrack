@@ -39,7 +39,7 @@ import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecord
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
 import { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
-import { JobProgressBar, LinkedDocumentsCard, NextActionCard } from '../../src/components/JobWorkflowComponents';
+import { JobProgressBar, LinkedDocumentsCard, NextActionCard, PaymentCollectionCard } from '../../src/components/JobWorkflowComponents';
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { getJobUrgency } from '../../src/lib/jobUrgency';
@@ -1605,7 +1605,7 @@ export default function JobDetailScreen() {
   const [isSendingOnMyWay, setIsSendingOnMyWay] = useState(false);
   
   const { updateJobStatus, updateJobNotes } = useJobsStore();
-  const { businessSettings, roleInfo, user } = useAuthStore();
+  const { businessSettings, roleInfo, user, hasPermission } = useAuthStore();
   const { isSmsReady } = useIntegrationHealth();
   
   // Check if user can delete jobs (owner, admin, or manager only)
@@ -1617,6 +1617,10 @@ export default function JobDetailScreen() {
     : false;
   const isSoloOwner = user && businessSettings && !roleInfo;
   const canDeleteJobs = isOwnerOrManager || isSoloOwner;
+  
+  // Check if user can collect payments (owners always can, workers need permission)
+  // Guard against hasPermission being undefined during auth hydration
+  const canCollectPayments = isOwnerOrManager || isSoloOwner || (typeof hasPermission === 'function' && hasPermission('collect_payments'));
   const { 
     activeTimer, 
     fetchActiveTimer, 
@@ -2347,6 +2351,74 @@ export default function JobDetailScreen() {
     if (quote?.id) {
       router.push(`/more/quote/${quote.id}`);
     }
+  };
+
+  // Payment collection handlers
+  const handleTapToPay = () => {
+    if (invoice?.id) {
+      router.push(`/more/collect-payment?tab=tap&invoiceId=${invoice.id}&jobId=${job?.id}`);
+    }
+  };
+
+  const handleQRCode = () => {
+    if (invoice?.id) {
+      router.push(`/more/collect-payment?tab=qr&invoiceId=${invoice.id}&jobId=${job?.id}`);
+    }
+  };
+
+  const handlePaymentLink = () => {
+    if (invoice?.id) {
+      router.push(`/more/collect-payment?tab=link&invoiceId=${invoice.id}&jobId=${job?.id}`);
+    }
+  };
+
+  const handleRecordCash = async () => {
+    if (!invoice || !job) return;
+    
+    // Parse amounts as numbers to handle string values from API
+    const total = typeof invoice.total === 'number' ? invoice.total : parseFloat(String(invoice.total) || '0');
+    const paidAmount = typeof invoice.paidAmount === 'number' ? invoice.paidAmount : parseFloat(String(invoice.paidAmount) || '0');
+    const outstanding = total - paidAmount;
+    
+    const formatAmount = (amount: number) => 
+      new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
+    
+    Alert.alert(
+      'Record Cash Payment',
+      `Record ${formatAmount(outstanding)} cash payment for ${invoice.number}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Record Payment',
+          onPress: async () => {
+            try {
+              // Create receipt with cash payment (no timestamp for cash)
+              await api.post('/api/receipts', {
+                invoiceId: invoice.id,
+                jobId: job.id,
+                clientId: client?.id,
+                amount: String(outstanding.toFixed(2)),
+                paymentMethod: 'cash',
+                reference: invoice.number,
+                description: `Cash payment for ${invoice.number}`,
+                // Note: paidAt is intentionally not set for cash payments
+              });
+              
+              // Mark invoice as paid
+              await api.patch(`/api/invoices/${invoice.id}`, {
+                status: 'paid',
+                paidAmount: total,
+              });
+              
+              Alert.alert('Success', 'Cash payment recorded successfully');
+              handleRefresh();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to record payment');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const formatCurrency = (amount: number) => {
@@ -3479,6 +3551,23 @@ export default function JobDetailScreen() {
         onViewReceipt={(receiptId) => router.push(`/more/receipt/${receiptId}`)}
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+      />
+
+      {/* Payment Collection Card - for collecting payment on invoiced jobs */}
+      <PaymentCollectionCard
+        invoice={invoice ? {
+          id: invoice.id,
+          number: invoice.number,
+          status: invoice.status,
+          total: invoice.total,
+          paidAmount: invoice.paidAmount,
+        } : null}
+        jobId={job.id}
+        canCollectPayments={canCollectPayments}
+        onTapToPay={handleTapToPay}
+        onQRCode={handleQRCode}
+        onPaymentLink={handlePaymentLink}
+        onRecordCash={handleRecordCash}
       />
 
       {/* Job Costing Section */}

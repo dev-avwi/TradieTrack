@@ -549,3 +549,170 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
 });
+
+// Payment Collection Card - shows when invoice exists and needs payment
+interface PaymentCollectionCardProps {
+  invoice: {
+    id: string;
+    number: string;
+    status: string;
+    total: number;
+    paidAmount?: number;
+  } | null;
+  jobId: string;
+  canCollectPayments: boolean;
+  onTapToPay: () => void;
+  onQRCode: () => void;
+  onPaymentLink: () => void;
+  onRecordCash: () => void;
+}
+
+export function PaymentCollectionCard({
+  invoice,
+  jobId,
+  canCollectPayments,
+  onTapToPay,
+  onQRCode,
+  onPaymentLink,
+  onRecordCash,
+}: PaymentCollectionCardProps) {
+  const { colors } = useTheme();
+  const styles = createPaymentStyles(colors);
+
+  // Only show if there's an unpaid invoice
+  if (!invoice || invoice.status === 'paid' || invoice.status === 'draft' || !canCollectPayments) {
+    return null;
+  }
+
+  // Parse amounts as numbers to handle string values from API
+  const total = typeof invoice.total === 'number' ? invoice.total : parseFloat(String(invoice.total) || '0');
+  const paidAmount = typeof invoice.paidAmount === 'number' ? invoice.paidAmount : parseFloat(String(invoice.paidAmount) || '0');
+  const outstanding = total - paidAmount;
+  const formatCurrency = (amount: number) => 
+    new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={[styles.iconContainer, { backgroundColor: `${colors.success}15` }]}>
+          <Feather name="credit-card" size={iconSizes.lg} color={colors.success} />
+        </View>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>Collect Payment</Text>
+          <Text style={styles.subtitle}>
+            {invoice.number} • {formatCurrency(outstanding)} outstanding
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.buttonGrid}>
+        <TouchableOpacity 
+          style={[styles.paymentButton, { backgroundColor: `${colors.primary}12` }]}
+          onPress={onTapToPay}
+          data-testid="button-tap-to-pay"
+        >
+          <View style={[styles.paymentIcon, { backgroundColor: colors.primary }]}>
+            <Feather name="smartphone" size={18} color={colors.primaryForeground} />
+          </View>
+          <Text style={[styles.paymentLabel, { color: colors.primary }]}>Tap to Pay</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.paymentButton, { backgroundColor: `${colors.secondary}40` }]}
+          onPress={onQRCode}
+          data-testid="button-qr-code"
+        >
+          <View style={[styles.paymentIcon, { backgroundColor: colors.secondary }]}>
+            <Feather name="grid" size={18} color={colors.secondaryForeground} />
+          </View>
+          <Text style={[styles.paymentLabel, { color: colors.secondaryForeground }]}>QR Code</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.paymentButton, { backgroundColor: `${colors.warning}12` }]}
+          onPress={onPaymentLink}
+          data-testid="button-payment-link"
+        >
+          <View style={[styles.paymentIcon, { backgroundColor: colors.warning }]}>
+            <Feather name="link" size={18} color="#FFFFFF" />
+          </View>
+          <Text style={[styles.paymentLabel, { color: colors.warning }]}>Send Link</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.paymentButton, { backgroundColor: `${colors.success}12` }]}
+          onPress={onRecordCash}
+          data-testid="button-record-cash"
+        >
+          <View style={[styles.paymentIcon, { backgroundColor: colors.success }]}>
+            <Feather name="dollar-sign" size={18} color="#FFFFFF" />
+          </View>
+          <Text style={[styles.paymentLabel, { color: colors.success }]}>Record Cash</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const createPaymentStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  headerText: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  buttonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  paymentButton: {
+    flex: 1,
+    minWidth: '45%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
+  },
+  paymentIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paymentLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+});
