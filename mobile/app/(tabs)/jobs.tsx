@@ -16,6 +16,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 import { router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
+import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -42,9 +43,13 @@ const STATUS_FILTERS: { key: string; label: string; icon: string }[] = [
 function JobListRow({ 
   job, 
   onPress,
+  onDelete,
+  onQuickAction,
 }: { 
   job: any;
   onPress: () => void;
+  onDelete: (jobId: string) => void;
+  onQuickAction?: (action: string, jobId: string) => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -56,6 +61,53 @@ function JobListRow({
       day: 'numeric', 
       month: 'short',
     });
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Job',
+      `Are you sure you want to delete "${job.title || 'Untitled Job'}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => onDelete(job.id)
+        }
+      ]
+    );
+  };
+
+  const handleMorePress = () => {
+    const actions: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' }[] = [];
+    
+    actions.push({ text: 'View Details', onPress: () => router.push(`/job/${job.id}`) });
+    
+    if (job.status === 'pending') {
+      actions.push({ text: 'Schedule Job', onPress: () => onQuickAction?.('schedule', job.id) });
+    }
+    if (job.status === 'scheduled') {
+      actions.push({ text: 'Start Job', onPress: () => onQuickAction?.('start', job.id) });
+    }
+    if (job.status === 'in_progress') {
+      actions.push({ text: 'Complete Job', onPress: () => onQuickAction?.('complete', job.id) });
+    }
+    if (job.status !== 'invoiced') {
+      actions.push({ text: 'Create Quote', onPress: () => router.push(`/more/quote/new?jobId=${job.id}`) });
+    }
+    if (job.status === 'done') {
+      actions.push({ text: 'Create Invoice', onPress: () => router.push(`/more/invoice/new?jobId=${job.id}`) });
+    }
+    
+    actions.push({ 
+      text: 'Delete Job', 
+      style: 'destructive',
+      onPress: handleDelete
+    });
+    
+    actions.push({ text: 'Cancel', style: 'cancel' });
+    
+    Alert.alert('Job Actions', job.title || 'Untitled Job', actions);
   };
 
   return (
@@ -74,7 +126,18 @@ function JobListRow({
         <Text style={styles.jobListRowDate}>
           {formatDate(job.scheduledAt)}
         </Text>
-        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity 
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={handleDelete}
+          style={styles.jobListRowAction}
+        >
+          <Feather name="trash-2" size={iconSizes.sm} color={colors.destructive} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={handleMorePress}
+          style={styles.jobListRowAction}
+        >
           <Feather name="more-vertical" size={iconSizes.md} color={colors.mutedForeground} />
         </TouchableOpacity>
       </View>
@@ -283,6 +346,19 @@ export default function JobsScreen() {
       router.push(`/job/${jobId}?action=complete`);
     }
   }, [updateJobStatus, refreshData]);
+
+  const handleDeleteJob = useCallback(async (jobId: string) => {
+    try {
+      const response = await api.delete(`/api/jobs/${jobId}`);
+      if (response.error) {
+        Alert.alert('Error', 'Failed to delete job. Please try again.');
+        return;
+      }
+      refreshData();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete job. Please try again.');
+    }
+  }, [refreshData]);
 
   useEffect(() => {
     refreshData();
@@ -594,6 +670,8 @@ export default function JobsScreen() {
                   key={job.id}
                   job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
                   onPress={() => router.push(`/job/${job.id}`)}
+                  onDelete={handleDeleteJob}
+                  onQuickAction={handleQuickAction}
                 />
               ))}
             </View>
@@ -852,6 +930,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     width: 70,
     textAlign: 'right',
+  },
+  jobListRowAction: {
+    padding: spacing.xs,
   },
   jobCard: {
     width: (SCREEN_WIDTH - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,

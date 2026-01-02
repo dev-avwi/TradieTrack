@@ -128,17 +128,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    minHeight: 32, // Compact size
-    paddingVertical: 6,
-    paddingHorizontal: 6,
+    minHeight: 28,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
     borderRadius: radius.sm,
-    borderWidth: 0, // No border for cleaner look
-    backgroundColor: colors.muted, // Neutral muted background per design spec
+    borderWidth: 0,
+    backgroundColor: colors.muted,
   },
   quickActionText: {
-    fontSize: 11, // Smaller text
+    fontSize: 10,
     fontWeight: '500',
-    color: colors.mutedForeground, // More subtle text color
+    color: colors.mutedForeground,
   },
 });
 

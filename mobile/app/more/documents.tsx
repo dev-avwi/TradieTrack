@@ -583,13 +583,11 @@ export default function DocumentsScreen() {
 
   const renderSortHeader = () => (
     <View style={styles.sortHeaderRow}>
-      {renderSortableHeaderColumn('date', 'Date', 0.8)}
-      <View style={styles.sortHeaderDivider} />
-      {renderSortableHeaderColumn('client', 'Title / Client', 1.5)}
-      <View style={styles.sortHeaderDivider} />
-      {renderSortableHeaderColumn('amount', 'Amount', 0.9, 'flex-end')}
+      {renderSortableHeaderColumn('client', activeTab === 'quotes' ? 'Quote' : activeTab === 'invoices' ? 'Invoice' : 'Receipt', 1.5)}
       <View style={styles.sortHeaderDivider} />
       {renderSortableHeaderColumn('status', 'Status', 0.8, 'center')}
+      <View style={styles.sortHeaderDivider} />
+      {renderSortableHeaderColumn('amount', 'Amount', 0.9, 'flex-end')}
     </View>
   );
 
@@ -636,31 +634,28 @@ export default function DocumentsScreen() {
         onPress={() => router.push(`/more/quote/${quote.id}`)}
         activeOpacity={0.7}
       >
-        <View style={[styles.statusIndicator, { backgroundColor: statusConfig.color }]} />
         <View style={styles.listRowContent}>
-          <View style={styles.listRowMain}>
-            <View style={styles.listRowInfo}>
-              <Text style={styles.listRowTitle} numberOfLines={1}>
-                {quote.title || quote.number || `Q-${quote.id.slice(0, 6)}`}
-              </Text>
-              <Text style={styles.listRowClient} numberOfLines={1}>
-                {client?.name || 'Unknown'}
-              </Text>
-            </View>
-            <Text style={styles.listRowAmount}>{formatCurrency(quote.total)}</Text>
-          </View>
-          <View style={styles.listRowMeta}>
-            <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
-              <Text style={[styles.listRowStatusText, { color: statusConfig.color }]}>
-                {statusConfig.label}
-              </Text>
-            </View>
-            <Text style={styles.listRowDate}>
-              {quote.createdAt ? format(new Date(quote.createdAt), 'dd MMM') : ''}
+          <View style={styles.listRowLeft}>
+            <Text style={styles.listRowTitle} numberOfLines={1}>
+              {quote.title || quote.number || `Q-${quote.id.slice(0, 6)}`}
+            </Text>
+            <Text style={styles.listRowClient} numberOfLines={1}>
+              {client?.name || 'Unknown'}
             </Text>
           </View>
+          <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
+            <Text style={[styles.listRowStatusText, { color: statusConfig.color }]}>
+              {statusConfig.label}
+            </Text>
+          </View>
+          <Text style={styles.listRowAmount}>{formatCurrency(quote.total)}</Text>
+          <TouchableOpacity 
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => router.push(`/more/quote/${quote.id}`)}
+          >
+            <Feather name="more-vertical" size={iconSizes.md} color={colors.mutedForeground} />
+          </TouchableOpacity>
         </View>
-        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </TouchableOpacity>
     );
   };
@@ -707,7 +702,6 @@ export default function DocumentsScreen() {
   const renderInvoiceListRow = (invoice: Invoice) => {
     const statusConfig = getInvoiceStatusConfig(invoice.status);
     const client = clientMap.get(invoice.clientId);
-    const linkedReceipt = receipts.find(r => r.invoiceId === invoice.id);
     
     return (
       <TouchableOpacity
@@ -716,38 +710,28 @@ export default function DocumentsScreen() {
         onPress={() => router.push(`/more/invoice/${invoice.id}`)}
         activeOpacity={0.7}
       >
-        <View style={[styles.statusIndicator, { backgroundColor: statusConfig.color }]} />
         <View style={styles.listRowContent}>
-          <View style={styles.listRowMain}>
-            <View style={styles.listRowInfo}>
-              <Text style={styles.listRowTitle} numberOfLines={1}>
-                {invoice.title || invoice.number || `INV-${invoice.id.slice(0, 6)}`}
-              </Text>
-              <Text style={styles.listRowClient} numberOfLines={1}>
-                {client?.name || 'Unknown'}
-              </Text>
-            </View>
-            <Text style={styles.listRowAmount}>{formatCurrency(invoice.total)}</Text>
-          </View>
-          <View style={styles.listRowMeta}>
-            <View style={styles.listRowMetaLeft}>
-              <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
-                <Text style={[styles.listRowStatusText, { color: statusConfig.color }]}>
-                  {statusConfig.label}
-                </Text>
-              </View>
-              {linkedReceipt && (
-                <View style={styles.listRowLinkedBadge}>
-                  <Feather name="link-2" size={10} color="#22c55e" />
-                </View>
-              )}
-            </View>
-            <Text style={styles.listRowDate}>
-              {invoice.createdAt ? format(new Date(invoice.createdAt), 'dd MMM') : ''}
+          <View style={styles.listRowLeft}>
+            <Text style={styles.listRowTitle} numberOfLines={1}>
+              {invoice.title || invoice.number || `INV-${invoice.id.slice(0, 6)}`}
+            </Text>
+            <Text style={styles.listRowClient} numberOfLines={1}>
+              {client?.name || 'Unknown'}
             </Text>
           </View>
+          <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
+            <Text style={[styles.listRowStatusText, { color: statusConfig.color }]}>
+              {statusConfig.label}
+            </Text>
+          </View>
+          <Text style={styles.listRowAmount}>{formatCurrency(invoice.total)}</Text>
+          <TouchableOpacity 
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+          >
+            <Feather name="more-vertical" size={iconSizes.md} color={colors.mutedForeground} />
+          </TouchableOpacity>
         </View>
-        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </TouchableOpacity>
     );
   };
@@ -791,31 +775,28 @@ export default function DocumentsScreen() {
         onPress={() => router.push(`/more/receipt/${receipt.id}`)}
         activeOpacity={0.7}
       >
-        <View style={[styles.statusIndicator, { backgroundColor: '#22c55e' }]} />
         <View style={styles.listRowContent}>
-          <View style={styles.listRowMain}>
-            <View style={styles.listRowInfo}>
-              <Text style={styles.listRowTitle} numberOfLines={1}>
-                {receipt.receiptNumber}
-              </Text>
-              <Text style={styles.listRowClient} numberOfLines={1}>
-                {client?.name || 'Unknown'}
-              </Text>
-            </View>
-            <Text style={styles.listRowAmount}>{formatCurrency(receipt.amount)}</Text>
-          </View>
-          <View style={styles.listRowMeta}>
-            <View style={[styles.listRowStatusBadge, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-              <Text style={[styles.listRowStatusText, { color: '#22c55e' }]}>
-                {getPaymentMethodLabel(receipt.paymentMethod)}
-              </Text>
-            </View>
-            <Text style={styles.listRowDate}>
-              {format(new Date(receipt.paidAt), 'dd MMM')}
+          <View style={styles.listRowLeft}>
+            <Text style={styles.listRowTitle} numberOfLines={1}>
+              {receipt.receiptNumber}
+            </Text>
+            <Text style={styles.listRowClient} numberOfLines={1}>
+              {client?.name || 'Unknown'}
             </Text>
           </View>
+          <View style={[styles.listRowStatusBadge, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+            <Text style={[styles.listRowStatusText, { color: '#22c55e' }]}>
+              {getPaymentMethodLabel(receipt.paymentMethod)}
+            </Text>
+          </View>
+          <Text style={styles.listRowAmount}>{formatCurrency(receipt.amount)}</Text>
+          <TouchableOpacity 
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => router.push(`/more/receipt/${receipt.id}`)}
+          >
+            <Feather name="more-vertical" size={iconSizes.md} color={colors.mutedForeground} />
+          </TouchableOpacity>
         </View>
-        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </TouchableOpacity>
     );
   };
@@ -1374,37 +1355,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.cardBorder,
   },
   listRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: colors.card,
     borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingRight: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     minHeight: 64,
   },
-  statusIndicator: {
-    width: 3,
-    height: '100%',
-    minHeight: 48,
-    borderTopLeftRadius: radius.md,
-    borderBottomLeftRadius: radius.md,
-  },
   listRowContent: {
-    flex: 1,
-    paddingLeft: spacing.sm,
-    paddingRight: spacing.xs,
-  },
-  listRowMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.md,
   },
-  listRowInfo: {
+  listRowLeft: {
     flex: 1,
-    marginRight: spacing.sm,
+    minWidth: 0,
   },
   listRowTitle: {
     ...typography.caption,
@@ -1427,11 +1393,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  listRowMetaLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
   },
   listRowStatusBadge: {
     paddingHorizontal: 6,
