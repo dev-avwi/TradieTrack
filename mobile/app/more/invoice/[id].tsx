@@ -624,10 +624,16 @@ export default function InvoiceDetailScreen() {
   };
 
   const sharePaymentLink = async () => {
-    const paymentUrl = getPaymentLinkUrl();
+    let paymentUrl = getPaymentLinkUrl();
+    
+    // If no payment link exists, generate one first
     if (!paymentUrl) {
-      Alert.alert('Error', 'No payment link available. Please generate one first.');
-      return;
+      const generatedUrl = await generatePaymentLink();
+      if (!generatedUrl) {
+        // generatePaymentLink already shows an error alert
+        return;
+      }
+      paymentUrl = generatedUrl;
     }
     
     try {
@@ -975,7 +981,55 @@ export default function InvoiceDetailScreen() {
             )}
           </View>
 
-          {/* Quick Actions */}
+          {/* Primary Actions - Web-like prominent buttons */}
+          <View style={styles.primaryActionsRow}>
+            {/* Send Email - for draft/sent/overdue */}
+            {(invoice.status === 'draft' || invoice.status === 'sent' || invoice.status === 'overdue') && (
+              <TouchableOpacity 
+                style={[styles.primaryActionButton, { backgroundColor: '#007AFF' }]}
+                onPress={handleSend}
+                disabled={isSendingInvoice}
+              >
+                {isSendingInvoice ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Feather name="mail" size={20} color="#FFFFFF" />
+                )}
+                <Text style={styles.primaryActionText}>
+                  {isSendingInvoice ? 'Sending...' : 'Send Email'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            
+            {/* Payment Link - for sent/overdue */}
+            {(invoice.status === 'sent' || invoice.status === 'overdue') && (
+              <TouchableOpacity 
+                style={[styles.primaryActionButton, { backgroundColor: '#34C759' }]}
+                onPress={sharePaymentLink}
+                disabled={isGeneratingPaymentLink}
+              >
+                {isGeneratingPaymentLink ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Feather name="link" size={20} color="#FFFFFF" />
+                )}
+                <Text style={styles.primaryActionText}>Payment Link</Text>
+              </TouchableOpacity>
+            )}
+            
+            {/* Record Payment - for sent/overdue */}
+            {(invoice.status === 'sent' || invoice.status === 'overdue') && (
+              <TouchableOpacity 
+                style={[styles.primaryActionButton, { backgroundColor: '#FF9500' }]}
+                onPress={handleRecordOnSitePayment}
+              >
+                <Feather name="dollar-sign" size={20} color="#FFFFFF" />
+                <Text style={styles.primaryActionText}>Record Paid</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Secondary Quick Actions */}
           <View style={styles.quickActions}>
             <TouchableOpacity 
               style={styles.quickAction}
@@ -1010,15 +1064,6 @@ export default function InvoiceDetailScreen() {
               >
                 <Feather name="edit-2" size={20} color={colors.primary} />
                 <Text style={styles.quickActionText}>Edit</Text>
-              </TouchableOpacity>
-            )}
-            {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-              <TouchableOpacity 
-                style={[styles.quickAction, styles.quickActionPrimary]}
-                onPress={handleRecordOnSitePayment}
-              >
-                <Feather name="dollar-sign" size={20} color={colors.white} />
-                <Text style={[styles.quickActionText, { color: colors.white }]}>Paid</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -2028,6 +2073,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.warning,
+  },
+  primaryActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 12,
+  },
+  primaryActionButton: {
+    flex: 1,
+    minWidth: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  primaryActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   quickActions: {
     flexDirection: 'row',

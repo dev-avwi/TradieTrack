@@ -633,45 +633,49 @@ export default function MapScreen() {
 
   const fetchTeamLocations = useCallback(async () => {
     try {
-      const response = await api.get('/api/team/locations');
-      if (response.ok) {
-        const data = await response.json();
-        // Defensive check for array response
-        if (!Array.isArray(data)) {
-          console.log('Team locations response is not an array:', data);
-          setTeamMembers([]);
-          return;
-        }
-        // Transform API response to match TeamMember interface
-        // API returns: { id, name, email, latitude, longitude, lastUpdated, currentJobId, currentJobTitle }
-        // We need: { id, userId, role, user: { firstName, lastName }, lastLocation: { latitude, longitude, timestamp }, activityStatus }
-        const transformedMembers: TeamMember[] = data.map((m: any) => {
-          const nameParts = (m.name || '').trim().split(' ');
-          const firstName = nameParts[0] || '';
-          const lastName = nameParts.slice(1).join(' ') || '';
-          // Use explicit null/undefined checks to handle coordinates at 0,0 correctly
-          const hasValidLocation = m.latitude != null && m.longitude != null;
-          return {
-            id: m.id,
-            userId: m.id,
-            role: 'worker',
-            themeColor: m.themeColor || null,
-            user: {
-              firstName,
-              lastName,
-            },
-            lastLocation: hasValidLocation ? {
-              latitude: Number(m.latitude),
-              longitude: Number(m.longitude),
-              timestamp: m.lastUpdated || new Date().toISOString(),
-              speed: m.speed != null ? Number(m.speed) : undefined,
-              battery: m.batteryLevel != null ? Number(m.batteryLevel) : undefined,
-            } : undefined,
-            activityStatus: m.currentJobId ? 'working' : 'online',
-          };
-        });
-        setTeamMembers(transformedMembers);
+      const response = await api.get<any[]>('/api/team/locations');
+      // API returns { data, error } - not a raw fetch response
+      if (response.error) {
+        console.log('Team locations API error:', response.error);
+        setTeamMembers([]);
+        return;
       }
+      const data = response.data;
+      // Defensive check for array response
+      if (!Array.isArray(data)) {
+        console.log('Team locations response is not an array:', data);
+        setTeamMembers([]);
+        return;
+      }
+      // Transform API response to match TeamMember interface
+      // API returns: { id, name, email, latitude, longitude, lastUpdated, currentJobId, currentJobTitle }
+      // We need: { id, userId, role, user: { firstName, lastName }, lastLocation: { latitude, longitude, timestamp }, activityStatus }
+      const transformedMembers: TeamMember[] = data.map((m: any) => {
+        const nameParts = (m.name || '').trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        // Use explicit null/undefined checks to handle coordinates at 0,0 correctly
+        const hasValidLocation = m.latitude != null && m.longitude != null;
+        return {
+          id: m.id,
+          userId: m.id,
+          role: 'worker',
+          themeColor: m.themeColor || null,
+          user: {
+            firstName,
+            lastName,
+          },
+          lastLocation: hasValidLocation ? {
+            latitude: Number(m.latitude),
+            longitude: Number(m.longitude),
+            timestamp: m.lastUpdated || new Date().toISOString(),
+            speed: m.speed != null ? Number(m.speed) : undefined,
+            battery: m.batteryLevel != null ? Number(m.batteryLevel) : undefined,
+          } : undefined,
+          activityStatus: m.currentJobId ? 'working' : 'online',
+        };
+      });
+      setTeamMembers(transformedMembers);
     } catch (error) {
       console.log('Failed to fetch team locations:', error);
     }
@@ -680,15 +684,21 @@ export default function MapScreen() {
   const fetchGeofenceAlerts = useCallback(async () => {
     if (!canViewTeamMode) return;
     try {
-      const response = await api.get('/api/map/geofence-alerts');
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          setGeofenceAlerts(data);
-        }
+      const response = await api.get<GeofenceAlert[]>('/api/map/geofence-alerts');
+      // API returns { data, error } - not a raw fetch response
+      if (response.error) {
+        console.log('Geofence alerts API error:', response.error);
+        setGeofenceAlerts([]);
+        return;
+      }
+      if (response.data && Array.isArray(response.data)) {
+        setGeofenceAlerts(response.data);
+      } else {
+        setGeofenceAlerts([]);
       }
     } catch (error) {
       console.log('Failed to fetch geofence alerts:', error);
+      setGeofenceAlerts([]);
     }
   }, [canViewTeamMode]);
 
