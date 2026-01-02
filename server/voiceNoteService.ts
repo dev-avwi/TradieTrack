@@ -287,3 +287,81 @@ export async function updateVoiceNoteTitle(
     return { success: false, error: error.message };
   }
 }
+
+// AI Transcription using OpenAI Whisper
+export async function transcribeVoiceNote(
+  voiceNoteId: string,
+  userId: string
+): Promise<{ success: boolean; transcription?: string; error?: string }> {
+  try {
+    const { default: OpenAI } = await import('openai');
+    
+    const openai = new OpenAI({
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+    });
+    
+    // Get the voice note from database
+    const voiceNote = await dbStorage.getVoiceNote(voiceNoteId, userId);
+    if (!voiceNote) {
+      return { success: false, error: 'Voice note not found' };
+    }
+    
+    // Download the audio file from object storage
+    const audioBuffer = await downloadVoiceNoteFile(voiceNote.objectStorageKey);
+    if (!audioBuffer) {
+      return { success: false, error: 'Failed to download audio file' };
+    }
+    
+    // Create a File object for OpenAI
+    const file = new File([audioBuffer], voiceNote.fileName || 'audio.webm', {
+      type: voiceNote.mimeType || 'audio/webm'
+    });
+    
+    console.log('[VoiceNoteService] Transcribing audio file:', {
+      voiceNoteId,
+      fileName: voiceNote.fileName,
+      mimeType: voiceNote.mimeType,
+      size: audioBuffer.length
+    });
+    
+    // Call OpenAI Whisper for transcription
+    const transcription = await openai.audio.transcriptions.create({
+      file,
+      model: 'whisper-1',
+      language: 'en',
+      response_format: 'text'
+    });
+    
+    console.log('[VoiceNoteService] Transcription complete:', transcription.substring(0, 100) + '...');
+    
+    // Save transcription to database
+    await dbStorage.updateVoiceNote(voiceNoteId, userId, { 
+      transcription: transcription.toString() 
+    });
+    
+    return { success: true, transcription: transcription.toString() };
+  } catch (error: any) {
+    console.error('Error transcribing voice note:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Download voice note file from object storage
+async function downloadVoiceNoteFile(objectStorageKey: string): Promise<Buffer | null> {
+  if (!objectStorageKey || !BUCKET_ID) {
+    return null;
+  }
+  
+  try {
+    const { bucketName, objectName } = parseObjectPath(objectStorageKey);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
+    
+    const [contents] = await file.download();
+    return contents;
+  } catch (error) {
+    console.error('Error downloading voice note file:', error);
+    return null;
+  }
+}

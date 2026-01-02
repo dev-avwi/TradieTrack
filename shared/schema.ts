@@ -653,14 +653,36 @@ export const quotes = pgTable("quotes", {
   depositPaidAt: timestamp("deposit_paid_at"), // When deposit was paid
   depositPaymentIntentId: varchar("deposit_payment_intent_id"), // Stripe payment intent ID
   archivedAt: timestamp("archived_at"), // When the quote was archived
+  // Multi-option interactive quotes
+  isMultiOption: boolean("is_multi_option").default(false), // Whether quote has multiple options for client to choose
+  selectedOptionId: varchar("selected_option_id"), // Which option the client selected (if multi-option)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Quote Options (for multi-option interactive quotes)
+export const quoteOptions = pgTable("quote_options", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quoteId: varchar("quote_id").notNull().references(() => quotes.id, { onDelete: 'cascade' }),
+  name: text("name").notNull(), // e.g., "Option A: Basic", "Option B: Premium", "Option C: Complete"
+  description: text("description"), // Optional description explaining this option
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull().default('0.00'),
+  gstAmount: decimal("gst_amount", { precision: 10, scale: 2 }).notNull().default('0.00'),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull().default('0.00'),
+  isRecommended: boolean("is_recommended").default(false), // Mark one as recommended
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type QuoteOption = typeof quoteOptions.$inferSelect;
+export const insertQuoteOptionSchema = createInsertSchema(quoteOptions).omit({ id: true, createdAt: true });
+export type InsertQuoteOption = z.infer<typeof insertQuoteOptionSchema>;
 
 // Quote Line Items
 export const quoteLineItems = pgTable("quote_line_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   quoteId: varchar("quote_id").notNull().references(() => quotes.id, { onDelete: 'cascade' }),
+  optionId: varchar("option_id").references(() => quoteOptions.id, { onDelete: 'cascade' }), // For multi-option quotes
   description: text("description").notNull(),
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull().default('1.00'),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull().default('0.00'),

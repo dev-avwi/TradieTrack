@@ -1793,6 +1793,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI-powered schedule optimization with smart recommendations
+  app.post("/api/schedule/ai-optimize", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { date, startLocation, workdayStart, workdayEnd } = req.body;
+      
+      // Get jobs for the specified date
+      const targetDate = date ? new Date(date) : new Date();
+      const jobs = await storage.getJobs(effectiveUserId);
+      const clients = await storage.getClients(effectiveUserId);
+      
+      // Filter jobs scheduled for the target date
+      const scheduledJobs = jobs.filter(job => {
+        if (!job.scheduledDate) return false;
+        const jobDate = new Date(job.scheduledDate);
+        return jobDate.toDateString() === targetDate.toDateString() && 
+               ['pending', 'scheduled', 'in_progress'].includes(job.status);
+      });
+
+      // Map jobs to the format expected by the optimizer
+      const scheduleJobs = scheduledJobs.map(job => {
+        const client = clients.find(c => c.id === job.clientId);
+        return {
+          id: job.id,
+          title: job.title,
+          clientName: client?.name || 'Unknown',
+          address: client?.address || job.address,
+          latitude: client?.latitude ? parseFloat(String(client.latitude)) : undefined,
+          longitude: client?.longitude ? parseFloat(String(client.longitude)) : undefined,
+          estimatedDuration: job.estimatedDuration ? parseFloat(String(job.estimatedDuration)) : 1.5,
+          priority: job.priority as 'low' | 'medium' | 'high' | 'urgent' | undefined
+        };
+      });
+
+      // Import and call the AI optimizer
+      const { optimizeSchedule, getSchedulingRecommendations } = await import('./ai');
+      
+      const optimizedSchedule = await optimizeSchedule(
+        scheduleJobs,
+        startLocation,
+        workdayStart || '07:00',
+        workdayEnd || '17:00'
+      );
+
+      // Get AI recommendations
+      const businessSettings = await storage.getBusinessSettings(effectiveUserId);
+      const aiRecommendations = await getSchedulingRecommendations(
+        scheduleJobs,
+        { 
+          trade: businessSettings?.industry || undefined,
+          businessName: businessSettings?.businessName || undefined
+        }
+      );
+
+      res.json({
+        date: targetDate.toISOString().split('T')[0],
+        ...optimizedSchedule,
+        aiRecommendations
+      });
+    } catch (error: any) {
+      console.error("AI schedule optimization error:", error);
+      res.status(500).json({ error: "Failed to optimize schedule" });
+    }
+  });
+
   // Comprehensive profile endpoint - returns user info, team membership, role, and permissions
   app.get("/api/profile/me", requireAuth, async (req: any, res) => {
     try {
@@ -14676,6 +14741,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error: any) {
       console.error('Error updating voice note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // AI Transcribe voice note (converts speech to text using Whisper)
+  app.post("/api/jobs/:jobId/voice-notes/:voiceNoteId/transcribe", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { voiceNoteId } = req.params;
+      
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      
+      const { transcribeVoiceNote } = await import('./voiceNoteService');
+      const result = await transcribeVoiceNote(voiceNoteId, userContext.effectiveUserId);
+      
+      if (!result.success) {
+        return res.status(500).json({ error: result.error });
+      }
+      
+      res.json({ success: true, transcription: result.transcription });
+    } catch (error: any) {
+      console.error('Error transcribing voice note:', error);
       res.status(500).json({ error: error.message });
     }
   });

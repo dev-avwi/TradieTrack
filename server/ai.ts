@@ -1872,3 +1872,238 @@ export function calculateJobProfit(params: {
 
   return { profit, margin, status };
 }
+
+// Haversine formula to calculate distance between two coordinates
+function haversineDistance(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number
+): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+interface ScheduleJob {
+  id: string;
+  title: string;
+  clientName: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  estimatedDuration?: number; // in hours
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  preferredTimeSlot?: 'morning' | 'afternoon' | 'any';
+}
+
+interface OptimizedSchedule {
+  optimizedOrder: Array<{
+    job: ScheduleJob;
+    suggestedTime: string;
+    travelDistance?: number;
+    reason: string;
+  }>;
+  totalDistance: number;
+  totalTime: number;
+  aiSuggestions: string[];
+}
+
+/**
+ * AI-powered schedule optimization using location and time constraints
+ * Uses nearest-neighbor algorithm with AI enhancement for suggestions
+ */
+export async function optimizeSchedule(
+  jobs: ScheduleJob[],
+  startLocation?: { latitude: number; longitude: number },
+  workdayStart: string = '07:00',
+  workdayEnd: string = '17:00'
+): Promise<OptimizedSchedule> {
+  if (jobs.length === 0) {
+    return {
+      optimizedOrder: [],
+      totalDistance: 0,
+      totalTime: 0,
+      aiSuggestions: ['No jobs to schedule.']
+    };
+  }
+
+  // Filter jobs with valid coordinates
+  const jobsWithCoords = jobs.filter(j => j.latitude && j.longitude);
+  const jobsWithoutCoords = jobs.filter(j => !j.latitude || !j.longitude);
+
+  // Sort jobs by priority first
+  const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+  const sortedByPriority = [...jobsWithCoords].sort((a, b) => 
+    (priorityOrder[a.priority || 'medium'] || 2) - (priorityOrder[b.priority || 'medium'] || 2)
+  );
+
+  // Use nearest-neighbor algorithm for route optimization
+  const optimizedRoute: typeof sortedByPriority = [];
+  const remaining = [...sortedByPriority];
+  let currentLat = startLocation?.latitude || remaining[0]?.latitude || 0;
+  let currentLon = startLocation?.longitude || remaining[0]?.longitude || 0;
+  let totalDistance = 0;
+
+  while (remaining.length > 0) {
+    let nearestIndex = 0;
+    let nearestDistance = Infinity;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const job = remaining[i];
+      if (job.latitude && job.longitude) {
+        const dist = haversineDistance(currentLat, currentLon, job.latitude, job.longitude);
+        // Adjust distance by priority (urgent jobs get bonus proximity)
+        const priorityBonus = job.priority === 'urgent' ? 0.5 : job.priority === 'high' ? 0.7 : 1;
+        const adjustedDist = dist * priorityBonus;
+        if (adjustedDist < nearestDistance) {
+          nearestDistance = adjustedDist;
+          nearestIndex = i;
+        }
+      }
+    }
+
+    const nextJob = remaining.splice(nearestIndex, 1)[0];
+    if (nextJob.latitude && nextJob.longitude) {
+      totalDistance += haversineDistance(currentLat, currentLon, nextJob.latitude, nextJob.longitude);
+      currentLat = nextJob.latitude;
+      currentLon = nextJob.longitude;
+    }
+    optimizedRoute.push(nextJob);
+  }
+
+  // Calculate suggested times
+  const parseTime = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const formatTime = (mins: number) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
+  let currentTime = parseTime(workdayStart);
+  const endTime = parseTime(workdayEnd);
+  let totalWorkTime = 0;
+
+  const optimizedOrder = optimizedRoute.map((job, index) => {
+    const duration = (job.estimatedDuration || 1.5) * 60; // Default 1.5 hours
+    const travelTime = index > 0 ? 15 : 0; // 15 min travel between jobs
+    
+    currentTime += travelTime;
+    const suggestedTime = formatTime(currentTime);
+    currentTime += duration;
+    totalWorkTime += duration + travelTime;
+
+    const prevJob = index > 0 ? optimizedRoute[index - 1] : null;
+    const travelDistance = prevJob && prevJob.latitude && prevJob.longitude && job.latitude && job.longitude
+      ? haversineDistance(prevJob.latitude, prevJob.longitude, job.latitude, job.longitude)
+      : undefined;
+
+    let reason = '';
+    if (job.priority === 'urgent') {
+      reason = 'Prioritised due to urgent status';
+    } else if (travelDistance && travelDistance < 5) {
+      reason = `Close to previous job (${travelDistance.toFixed(1)}km)`;
+    } else if (index === 0) {
+      reason = 'First stop of the day';
+    } else {
+      reason = 'Optimal route position';
+    }
+
+    return { job, suggestedTime, travelDistance, reason };
+  });
+
+  // Add jobs without coordinates at the end
+  for (const job of jobsWithoutCoords) {
+    const duration = (job.estimatedDuration || 1.5) * 60;
+    currentTime += 15; // Travel time
+    const suggestedTime = formatTime(Math.min(currentTime, endTime - duration));
+    currentTime += duration;
+    totalWorkTime += duration + 15;
+    
+    optimizedOrder.push({
+      job,
+      suggestedTime,
+      reason: 'Location not available - scheduled at end'
+    });
+  }
+
+  // Generate AI suggestions
+  const aiSuggestions: string[] = [];
+  
+  if (totalDistance > 50) {
+    aiSuggestions.push(`Long travel day (${totalDistance.toFixed(1)}km) - consider grouping jobs by area in future.`);
+  }
+  
+  if (currentTime > endTime) {
+    const overtime = Math.round((currentTime - endTime) / 60 * 10) / 10;
+    aiSuggestions.push(`Schedule runs ${overtime} hours over. Consider moving low-priority jobs to another day.`);
+  }
+  
+  if (jobsWithoutCoords.length > 0) {
+    aiSuggestions.push(`${jobsWithoutCoords.length} job(s) missing address coordinates - add addresses for better optimisation.`);
+  }
+
+  const urgentJobs = jobs.filter(j => j.priority === 'urgent').length;
+  if (urgentJobs > 2) {
+    aiSuggestions.push(`${urgentJobs} urgent jobs today - consider delegating some if possible.`);
+  }
+
+  if (aiSuggestions.length === 0) {
+    aiSuggestions.push('Schedule looks well-optimised! Minimal travel between jobs.');
+  }
+
+  return {
+    optimizedOrder,
+    totalDistance: Math.round(totalDistance * 10) / 10,
+    totalTime: Math.round(totalWorkTime / 60 * 10) / 10,
+    aiSuggestions
+  };
+}
+
+/**
+ * Get AI-powered scheduling recommendations for a specific date
+ */
+export async function getSchedulingRecommendations(
+  jobs: ScheduleJob[],
+  businessContext: { trade?: string; businessName?: string }
+): Promise<string> {
+  const jobSummary = jobs.map((j, i) => 
+    `${i + 1}. ${j.title} - ${j.clientName}${j.address ? ` (${j.address})` : ''}${j.priority ? ` [${j.priority}]` : ''}`
+  ).join('\n');
+
+  const prompt = `You are an AI scheduling assistant for ${businessContext.businessName || 'a trades business'} (${businessContext.trade || 'general trades'}).
+
+Here are the jobs to schedule for today:
+${jobSummary}
+
+Provide 2-3 brief, actionable scheduling tips in Australian English. Consider:
+- Job priorities and urgency
+- Geographic clustering
+- Time efficiency
+- Client expectations
+
+Keep each tip to 1-2 sentences.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are a helpful scheduling assistant for Australian tradespeople. Be concise and practical." },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 300,
+      temperature: 0.7
+    });
+
+    return response.choices[0]?.message?.content || 'Unable to generate recommendations.';
+  } catch (error: any) {
+    console.error('[AI] Scheduling recommendations error:', error);
+    return 'Unable to generate recommendations at this time.';
+  }
+}
