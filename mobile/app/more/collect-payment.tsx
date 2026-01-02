@@ -674,7 +674,8 @@ export default function CollectPaymentScreen() {
   const paymentMethods = [
     { value: 'cash', label: 'Cash', icon: 'dollar-sign' as const },
     { value: 'bank_transfer', label: 'Bank Transfer', icon: 'send' as const },
-    { value: 'card', label: 'Card', icon: 'credit-card' as const },
+    { value: 'card', label: 'Card (in person)', icon: 'credit-card' as const },
+    { value: 'tap_to_pay', label: 'Tap to Pay', icon: 'smartphone' as const },
     { value: 'cheque', label: 'Cheque', icon: 'file-text' as const },
     { value: 'other', label: 'Other', icon: 'more-horizontal' as const },
   ];
@@ -745,6 +746,24 @@ export default function CollectPaymentScreen() {
           </View>
         </View>
       </View>
+
+      {stripeStatus?.connected && (
+        <View style={styles.contactlessInfoBanner} data-testid="card-contactless-info">
+          <View style={styles.contactlessIconContainer}>
+            <Feather name="wifi" size={20} color="#fff" />
+          </View>
+          <View style={styles.contactlessContent}>
+            <Text style={styles.contactlessTitle}>Contactless Payments</Text>
+            <Text style={styles.contactlessDescription}>
+              Customer scans QR code and pays with Apple Pay, Google Pay, or card
+            </Text>
+            <View style={styles.contactlessCards}>
+              <Feather name="credit-card" size={12} color={colors.mutedForeground} />
+              <Text style={styles.contactlessCardsText}>Visa, Mastercard, Amex</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       <TouchableOpacity 
         style={styles.primaryCta}
@@ -1817,6 +1836,48 @@ const createStyles = (colors: ThemeColors) => {
     miniStatLabel: {
       ...typography.caption,
       color: colors.mutedForeground,
+    },
+    contactlessInfoBanner: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      backgroundColor: colorWithOpacity('#3B82F6', 0.08),
+      borderWidth: 1,
+      borderColor: colorWithOpacity('#3B82F6', 0.2),
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      gap: spacing.md,
+    },
+    contactlessIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.md,
+      backgroundColor: '#3B82F6',
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...shadows.sm,
+    },
+    contactlessContent: {
+      flex: 1,
+    },
+    contactlessTitle: {
+      ...typography.bodySemibold,
+      color: colors.foreground,
+      marginBottom: spacing.xs,
+    },
+    contactlessDescription: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      marginBottom: spacing.xs,
+    },
+    contactlessCards: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    contactlessCardsText: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      fontSize: 11,
     },
     primaryCta: {
       flexDirection: 'row',
