@@ -233,12 +233,16 @@ export default function DocumentsScreen() {
   }, [receipts, receiptFilter, searchQuery, clientMap]);
 
   const stats = useMemo(() => {
-    const totalQuotes = quotes.reduce((sum, q) => sum + (q.total > 1000 ? q.total / 100 : q.total), 0);
+    const parseAmount = (val: any): number => {
+      const num = typeof val === 'string' ? parseFloat(val) : (val || 0);
+      return isNaN(num) ? 0 : (num > 1000 ? num / 100 : num);
+    };
+    const totalQuotes = quotes.reduce((sum, q) => sum + parseAmount(q.total), 0);
     const pendingQuotes = quotes.filter(q => q.status === 'sent').length;
-    const wonQuotes = quotes.filter(q => q.status === 'accepted').reduce((sum, q) => sum + (q.total > 1000 ? q.total / 100 : q.total), 0);
+    const wonQuotes = quotes.filter(q => q.status === 'accepted').reduce((sum, q) => sum + parseAmount(q.total), 0);
     const outstandingInvoices = invoices.filter(i => i.status === 'sent' || i.status === 'overdue');
-    const outstandingAmount = outstandingInvoices.reduce((sum, i) => sum + (i.total > 1000 ? i.total / 100 : i.total), 0);
-    const totalReceived = receipts.reduce((sum, r) => sum + r.amount, 0);
+    const outstandingAmount = outstandingInvoices.reduce((sum, i) => sum + parseAmount(i.total), 0);
+    const totalReceived = receipts.reduce((sum, r) => sum + (parseFloat(String(r.amount)) || 0), 0);
     
     return {
       totalQuotes,

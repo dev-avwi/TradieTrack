@@ -698,7 +698,7 @@ export default function TeamHubScreen() {
   const fetchData = useCallback(async () => {
     try {
       const [membersRes, presenceRes, activityRes, jobsRes] = await Promise.all([
-        api.get<TeamMemberData[]>('/api/team'),
+        api.get<TeamMemberData[]>('/api/team/members'),
         api.get<TeamPresenceData[]>('/api/team/presence'),
         api.get<ActivityFeedItem[]>('/api/activity-feed?limit=30'),
         api.get<JobData[]>('/api/jobs'),

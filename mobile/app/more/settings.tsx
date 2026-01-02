@@ -1998,54 +1998,57 @@ export default function SettingsScreen() {
                   <View style={styles.planBadge}>
                     <View style={styles.planIconContainer}>
                       <Feather 
-                        name={currentPlan === 'pro' ? 'star' : 'user'} 
+                        name={currentPlan === 'team' ? 'users' : currentPlan === 'pro' || currentPlan === 'trial' ? 'star' : 'user'} 
                         size={22} 
                         color={colors.primary} 
                       />
                     </View>
                     <View>
                       <Text style={styles.planName}>
-                        {currentPlan === 'pro' ? 'Pro Plan' : 'Free Plan'}
+                        {currentPlan === 'team' ? 'Team Plan' : currentPlan === 'pro' ? 'Pro Plan' : currentPlan === 'trial' ? 'Pro Trial' : 'Free Plan'}
                       </Text>
                       <Text style={styles.planDescription}>
-                        {currentPlan === 'pro' ? 'Full access to all features' : 'Basic features'}
+                        {currentPlan === 'team' ? 'Full team management features' : currentPlan === 'pro' || currentPlan === 'trial' ? 'Full access to all features' : 'Basic features'}
                       </Text>
                     </View>
                   </View>
                   <View style={styles.planPriceBadge}>
                     <Text style={styles.planPriceText}>
-                      {currentPlan === 'pro' ? '$29/mo' : 'Free'}
+                      {currentPlan === 'team' ? '$49/mo' : currentPlan === 'pro' ? '$29/mo' : currentPlan === 'trial' ? 'Trial' : 'Free'}
                     </Text>
                   </View>
                 </View>
 
                 <Text style={styles.proFeaturesTitle}>PRO FEATURES</Text>
 
-                {PLAN_FEATURES.map((feature, index) => (
-                  <View key={index} style={styles.featureRow}>
-                    <Feather 
-                      name={feature.icon as any} 
-                      size={18} 
-                      color={currentPlan === 'pro' ? colors.primary : colors.mutedForeground} 
-                    />
-                    <Text style={[
-                      styles.featureText,
-                      currentPlan !== 'pro' && { color: colors.mutedForeground }
-                    ]}>
-                      {feature.text}
-                    </Text>
-                    {feature.pro && currentPlan !== 'pro' && (
-                      <View style={styles.proBadge}>
-                        <Text style={styles.proBadgeText}>PRO</Text>
-                      </View>
-                    )}
-                    {currentPlan === 'pro' && (
-                      <Feather name="check" size={18} color={colors.primary} />
-                    )}
-                  </View>
-                ))}
+                {PLAN_FEATURES.map((feature, index) => {
+                  const isPaidPlan = currentPlan === 'pro' || currentPlan === 'team' || currentPlan === 'trial';
+                  return (
+                    <View key={index} style={styles.featureRow}>
+                      <Feather 
+                        name={feature.icon as any} 
+                        size={18} 
+                        color={isPaidPlan ? colors.primary : colors.mutedForeground} 
+                      />
+                      <Text style={[
+                        styles.featureText,
+                        !isPaidPlan && { color: colors.mutedForeground }
+                      ]}>
+                        {feature.text}
+                      </Text>
+                      {feature.pro && !isPaidPlan && (
+                        <View style={styles.proBadge}>
+                          <Text style={styles.proBadgeText}>PRO</Text>
+                        </View>
+                      )}
+                      {isPaidPlan && (
+                        <Feather name="check" size={18} color={colors.primary} />
+                      )}
+                    </View>
+                  );
+                })}
 
-                {currentPlan !== 'pro' && (
+                {currentPlan === 'free' && (
                   <TouchableOpacity 
                     style={styles.upgradeButton}
                     onPress={() => router.push('/more/subscription')}
@@ -2055,10 +2058,10 @@ export default function SettingsScreen() {
                   </TouchableOpacity>
                 )}
 
-                {currentPlan === 'pro' && (
+                {(currentPlan === 'pro' || currentPlan === 'team') && (
                   <TouchableOpacity 
                     style={styles.manageBillingButton}
-                    onPress={() => {}}
+                    onPress={() => router.push('/more/subscription')}
                   >
                     <Feather name="external-link" size={16} color={colors.foreground} />
                     <Text style={styles.manageBillingText}>Manage Billing</Text>
