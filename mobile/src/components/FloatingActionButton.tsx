@@ -288,27 +288,27 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
             {/* Bottom bar: AI Assistant, Collect Payment - larger buttons */}
             <View style={styles.quickActionsBar}>
               <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: 'rgba(88, 86, 214, 0.1)', paddingVertical: 10, paddingHorizontal: 16 }]}
+                style={[styles.quickActionButton, { backgroundColor: 'rgba(255, 59, 48, 0.1)', paddingVertical: 10, paddingHorizontal: 16 }]}
                 onPress={() => {
                   setIsOpen(false);
                   router.push('/more/ai-assistant');
                 }}
                 activeOpacity={0.7}
               >
-                <Feather name="zap" size={16} color="#5856D6" />
-                <Text style={[styles.quickActionText, { fontSize: 13, fontWeight: '500', color: '#5856D6' }]}>AI Assistant</Text>
+                <Feather name="zap" size={16} color="#FF3B30" />
+                <Text style={[styles.quickActionText, { fontSize: 13, fontWeight: '500', color: '#FF3B30' }]}>AI Assistant</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: 'rgba(52, 199, 89, 0.1)', paddingVertical: 10, paddingHorizontal: 16 }]}
+                style={[styles.quickActionButton, { backgroundColor: 'rgba(255, 204, 0, 0.15)', paddingVertical: 10, paddingHorizontal: 16 }]}
                 onPress={() => {
                   setIsOpen(false);
                   router.push('/more/collect-payment');
                 }}
                 activeOpacity={0.7}
               >
-                <Feather name="credit-card" size={16} color="#34C759" />
-                <Text style={[styles.quickActionText, { fontSize: 13, fontWeight: '500', color: '#34C759' }]}>Collect Payment</Text>
+                <Feather name="credit-card" size={16} color="#CC9900" />
+                <Text style={[styles.quickActionText, { fontSize: 13, fontWeight: '500', color: '#CC9900' }]}>Collect Payment</Text>
               </TouchableOpacity>
             </View>
 
