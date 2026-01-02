@@ -17,13 +17,17 @@ Preferred communication style: Simple, everyday language.
 - Use this account to test the worker experience within the same team
 
 **Demo Data:**
-- 16 clients (realistic Cairns QLD area addresses)
-- 19 jobs (4 pending, 5 scheduled, 3 in_progress, 4 done, 3 invoiced)
+- 16 clients (realistic Cairns QLD area addresses with GPS coordinates)
+- 23 jobs (4 pending, 9 scheduled [6 for today for AI optimizer testing], 3 in_progress, 4 done, 3 invoiced)
 - 13 quotes (3 draft, 4 sent, 3 accepted, 3 rejected)
 - 13 invoices (2 draft, 4 sent, 2 overdue, 6 paid)
 - 6 receipts (for paid invoices)
 - Team: 4 accepted members + 2 pending invites (Brodie Williams, Emma Patterson)
 - Worker assignments: Jake Morrison has 4 jobs (overdue, today, upcoming, in_progress)
+
+**AI-First Features:**
+- **AI Schedule Optimizer**: Dashboard component uses nearest-neighbor algorithm with priority weighting to optimize daily route. Shows optimized order, total distance/duration stats, and AI recommendations. Jobs with GPS coordinates are grouped efficiently.
+- **Multi-Option Quote Editor**: Toggle in quote wizard enables Good/Better/Best package selection. Customers can choose between tiered options (e.g., Basic, Standard, Premium) with different pricing.
 
 ### System Architecture
 TradieTrack utilizes an event-driven architecture with TypeScript. The frontend is built with React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile. The backend is an Express.js and TypeScript REST API with Zod validation, backed by PostgreSQL and Drizzle ORM.
