@@ -175,8 +175,10 @@ export default function CollectPayment() {
           : String(invoice.total || '0.00');
         setNewAmount(totalStr);
         setNewDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setNewReference(invoice.number); // Auto-fill reference with invoice number
         setSelectedClientId(invoice.clientId);
-        if (invoice.jobId) setSelectedJobId(invoice.jobId);
+        // Only auto-fill job if field is empty (respect manual overrides)
+        if (invoice.jobId && !selectedJobId) setSelectedJobId(invoice.jobId);
       }
     }
   }, [selectedInvoiceId, invoices]);
@@ -189,6 +191,7 @@ export default function CollectPayment() {
           ? invoice.total.toFixed(2) 
           : String(invoice.total || '0.00');
         setRecordAmount(totalStr);
+        setRecordReference(invoice.number); // Auto-fill reference with invoice number
       }
     }
   }, [recordInvoiceId, invoices]);
@@ -202,8 +205,10 @@ export default function CollectPayment() {
           : String(invoice.total || '0.00');
         setReceiptAmount(totalStr);
         setReceiptDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setReceiptReference(invoice.number); // Auto-fill reference with invoice number
         setReceiptClientId(invoice.clientId);
-        if (invoice.jobId) setReceiptJobId(invoice.jobId);
+        // Only auto-fill job if field is empty (respect manual overrides)
+        if (invoice.jobId && !receiptJobId) setReceiptJobId(invoice.jobId);
       }
     }
   }, [receiptInvoiceId, invoices]);

@@ -264,8 +264,10 @@ export default function CollectPaymentScreen() {
         const total = typeof invoice.total === 'number' ? invoice.total.toFixed(2) : String(invoice.total || '0.00');
         setNewAmount(total);
         setNewDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setNewReference(invoice.number); // Auto-fill reference with invoice number
         setSelectedClientId(invoice.clientId);
-        if (invoice.jobId) setSelectedJobId(invoice.jobId);
+        // Only auto-fill job if field is empty (respect manual overrides)
+        if (invoice.jobId && !selectedJobId) setSelectedJobId(invoice.jobId);
       }
     }
   }, [selectedInvoiceId, invoices]);
@@ -276,6 +278,7 @@ export default function CollectPaymentScreen() {
       if (invoice) {
         const total = typeof invoice.total === 'number' ? invoice.total.toFixed(2) : String(invoice.total || '0.00');
         setRecordAmount(total);
+        setRecordReference(invoice.number); // Auto-fill reference with invoice number
       }
     }
   }, [recordInvoiceId, invoices]);
@@ -287,8 +290,10 @@ export default function CollectPaymentScreen() {
         const total = typeof invoice.total === 'number' ? invoice.total.toFixed(2) : String(invoice.total || '0.00');
         setReceiptAmount(total);
         setReceiptDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setReceiptReference(invoice.number); // Auto-fill reference with invoice number
         setReceiptClientId(invoice.clientId);
-        if (invoice.jobId) setReceiptJobId(invoice.jobId);
+        // Only auto-fill job if field is empty (respect manual overrides)
+        if (invoice.jobId && !receiptJobId) setReceiptJobId(invoice.jobId);
       }
     }
   }, [receiptInvoiceId, invoices]);
@@ -1575,6 +1580,22 @@ export default function CollectPaymentScreen() {
         (value) => {
           if (pickerContext === 'create') setSelectedClientId(value);
           else setReceiptClientId(value);
+        },
+        true
+      )}
+      
+      {renderPickerModal(
+        showJobPicker,
+        () => setShowJobPicker(false),
+        'Select Job',
+        activeJobs.map(job => ({
+          value: job.id,
+          label: job.address ? `${job.title} • ${job.address}` : job.title,
+        })),
+        pickerContext === 'create' ? selectedJobId : receiptJobId,
+        (value) => {
+          if (pickerContext === 'create') setSelectedJobId(value);
+          else setReceiptJobId(value);
         },
         true
       )}
