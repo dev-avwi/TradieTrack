@@ -70,13 +70,14 @@ type SortField = 'date' | 'amount' | 'status' | 'client';
 type SortDirection = 'asc' | 'desc';
 
 const formatCurrency = (amount: number) => {
-  const normalizedAmount = amount > 1000 ? amount / 100 : amount;
+  // Use amount directly - no heuristic normalization
+  const safeAmount = isNaN(amount) ? 0 : amount;
   return new Intl.NumberFormat('en-AU', {
     style: 'currency',
     currency: 'AUD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(normalizedAmount);
+  }).format(safeAmount);
 };
 
 const getQuoteStatusConfig = (status: string) => {

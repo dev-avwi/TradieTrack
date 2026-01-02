@@ -132,9 +132,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 6,
     borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: 'transparent', // No background color - outline style
+    borderWidth: 0, // No border for cleaner look
+    backgroundColor: colors.muted, // Neutral muted background per design spec
   },
   quickActionText: {
     fontSize: 11, // Smaller text
