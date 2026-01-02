@@ -661,9 +661,9 @@ export default function JobsScreen() {
           ) : (
             <View style={styles.jobsList}>
               <View style={styles.listHeader}>
-                <Text style={styles.listHeaderCol}>Job</Text>
+                <Text style={[styles.listHeaderCol, { flex: 1 }]}>Job</Text>
                 <Text style={[styles.listHeaderCol, styles.listHeaderColStatus]}>Status</Text>
-                <Text style={[styles.listHeaderCol, styles.listHeaderColDate]}>Scheduled</Text>
+                <Text style={[styles.listHeaderCol, styles.listHeaderColDate]}>Date</Text>
               </View>
               {sortedJobs.map((job) => (
                 <JobListRow
@@ -871,10 +871,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   listHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
     marginBottom: spacing.sm,
   },
   listHeaderCol: {
