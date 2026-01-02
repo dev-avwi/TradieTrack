@@ -549,32 +549,47 @@ export default function DocumentsScreen() {
     }
   };
 
+  const renderSortableHeaderColumn = (
+    field: SortField,
+    label: string,
+    flex: number = 1,
+    align: 'flex-start' | 'flex-end' | 'center' = 'flex-start'
+  ) => {
+    const isActive = sortField === field;
+    return (
+      <TouchableOpacity
+        style={[styles.sortableColumn, { flex, justifyContent: 'center', alignItems: align }]}
+        onPress={() => handleSortChange(field)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.sortableColumnContent}>
+          <Text style={[
+            styles.sortableColumnText,
+            isActive && styles.sortableColumnTextActive
+          ]}>
+            {label}
+          </Text>
+          {isActive && (
+            <Feather 
+              name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'} 
+              size={12} 
+              color={colors.primary} 
+            />
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   const renderSortHeader = () => (
-    <View style={styles.sortHeaderBar}>
-      <Text style={styles.sortByLabel}>Sort by:</Text>
-      <View style={styles.sortOptions}>
-        <TouchableOpacity 
-          style={[styles.sortOption, sortField === 'date' && styles.sortOptionActive]}
-          onPress={() => handleSortChange('date')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.sortOptionText, sortField === 'date' && styles.sortOptionTextActive]}>Date</Text>
-          {sortField === 'date' && (
-            <Feather name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={12} color={colors.primary} />
-          )}
-        </TouchableOpacity>
-        <Text style={styles.sortDivider}>|</Text>
-        <TouchableOpacity 
-          style={[styles.sortOption, sortField === 'amount' && styles.sortOptionActive]}
-          onPress={() => handleSortChange('amount')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.sortOptionText, sortField === 'amount' && styles.sortOptionTextActive]}>Amount</Text>
-          {sortField === 'amount' && (
-            <Feather name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={12} color={colors.primary} />
-          )}
-        </TouchableOpacity>
-      </View>
+    <View style={styles.sortHeaderRow}>
+      {renderSortableHeaderColumn('date', 'Date', 0.8)}
+      <View style={styles.sortHeaderDivider} />
+      {renderSortableHeaderColumn('client', 'Title / Client', 1.5)}
+      <View style={styles.sortHeaderDivider} />
+      {renderSortableHeaderColumn('amount', 'Amount', 0.9, 'flex-end')}
+      <View style={styles.sortHeaderDivider} />
+      {renderSortableHeaderColumn('status', 'Status', 0.8, 'center')}
     </View>
   );
 
@@ -1322,49 +1337,41 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
   },
-  sortHeaderBar: {
+  sortHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.card,
+    backgroundColor: colors.muted,
     borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    gap: spacing.sm,
   },
-  sortByLabel: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-    fontWeight: '600',
+  sortableColumn: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.xs,
+    minHeight: 28,
   },
-  sortOptions: {
+  sortableColumnContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 2,
   },
-  sortOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  sortOptionActive: {
-    // No specific background needed for highlighted sort in this design
-  },
-  sortOptionText: {
+  sortableColumnText: {
     ...typography.captionSmall,
     color: colors.mutedForeground,
     fontWeight: '500',
+    fontSize: 11,
   },
-  sortOptionTextActive: {
+  sortableColumnTextActive: {
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  sortDivider: {
-    color: colors.cardBorder,
-    marginHorizontal: 2,
-    fontSize: 12,
+  sortHeaderDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: colors.cardBorder,
   },
   listRow: {
     flexDirection: 'row',

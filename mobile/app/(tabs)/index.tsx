@@ -172,16 +172,70 @@ function TimeTrackingWidget() {
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [totalMinutesToday, setTotalMinutesToday] = useState(0);
   const [todayEntries, setTodayEntries] = useState<any[]>([]);
+  const [todaysJobs, setTodaysJobs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isStopping, setIsStopping] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isStartingTimer, setIsStartingTimer] = useState<string | null>(null);
 
   useEffect(() => {
     loadTimeData();
+    loadTodaysJobs();
     const interval = setInterval(loadTimeData, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const loadTodaysJobs = async () => {
+    try {
+      const { default: api } = await import('../../src/lib/api');
+      const response = await api.get('/api/jobs/today');
+      if (response.data) {
+        // Filter to scheduled and in_progress jobs only
+        const activeJobs = (response.data as any[]).filter(
+          (job: any) => job.status === 'scheduled' || job.status === 'in_progress' || job.status === 'pending'
+        );
+        setTodaysJobs(activeJobs);
+      }
+    } catch (error) {
+      console.log('Error loading todays jobs for timer:', error);
+      setTodaysJobs([]);
+    }
+  };
+
+  const handleStartTimerForJob = async (job: any) => {
+    setIsStartingTimer(job.id);
+    try {
+      const { isOnline } = useOfflineStore.getState();
+      
+      if (!isOnline) {
+        Alert.alert('Offline', 'Cannot start timer while offline');
+        setIsStartingTimer(null);
+        return;
+      }
+      
+      const { default: api } = await import('../../src/lib/api');
+      const response = await api.post('/api/time-entries', {
+        jobId: job.id,
+        startTime: new Date().toISOString(),
+        description: job.title,
+      });
+      
+      if (response.data) {
+        setActiveTimer({
+          ...response.data,
+          jobTitle: job.title,
+          jobId: job.id,
+        });
+        Alert.alert('Timer Started', `Tracking time for "${job.title}"`);
+        loadTimeData();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to start timer');
+    } finally {
+      setIsStartingTimer(null);
+    }
+  };
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -407,6 +461,9 @@ function TimeTrackingWidget() {
     );
   };
 
+  // Jobs available to start a timer for (not already being tracked)
+  const availableJobs = todaysJobs.filter((job: any) => !activeTimer || activeTimer.jobId !== job.id);
+
   if (!activeTimer) {
     return (
       <View style={styles.timerWidgetContainer}>
@@ -421,6 +478,51 @@ function TimeTrackingWidget() {
             </View>
           </View>
         </View>
+        
+        {/* Job list to start timer */}
+        {availableJobs.length > 0 && (
+          <View style={styles.timerJobListContainer}>
+            <Text style={styles.timerJobListLabel}>Start Timer</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.timerJobListScroll}
+            >
+              {availableJobs.map((job: any) => (
+                <TouchableOpacity
+                  key={job.id}
+                  style={styles.timerJobItem}
+                  onPress={() => handleStartTimerForJob(job)}
+                  disabled={isStartingTimer !== null}
+                  activeOpacity={0.8}
+                  data-testid={`button-start-timer-${job.id}`}
+                >
+                  {isStartingTimer === job.id ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <>
+                      <View style={styles.timerJobItemHeader}>
+                        <View style={[
+                          styles.timerJobStatusDot, 
+                          { backgroundColor: job.status === 'in_progress' ? colors.warning : colors.info }
+                        ]} />
+                        <Text style={styles.timerJobItemTitle} numberOfLines={1}>{job.title}</Text>
+                      </View>
+                      {job.clientName && (
+                        <Text style={styles.timerJobItemMeta} numberOfLines={1}>{job.clientName}</Text>
+                      )}
+                      <View style={styles.timerJobItemAction}>
+                        <Feather name="play-circle" size={14} color={colors.primary} />
+                        <Text style={styles.timerJobItemActionText}>Start</Text>
+                      </View>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+        
         {renderTodayEntries()}
       </View>
     );
@@ -2817,6 +2919,68 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   timerActiveContainer: {
     gap: spacing.sm,
+  },
+  timerJobListContainer: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.md,
+    ...shadows.sm,
+  },
+  timerJobListLabel: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  timerJobListScroll: {
+    gap: spacing.sm,
+    paddingRight: spacing.sm,
+  },
+  timerJobItem: {
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    minWidth: 140,
+    maxWidth: 180,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  timerJobItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  timerJobStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  timerJobItemTitle: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.foreground,
+    flex: 1,
+  },
+  timerJobItemMeta: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginBottom: spacing.sm,
+  },
+  timerJobItemAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  timerJobItemActionText: {
+    ...typography.captionSmall,
+    fontWeight: '600',
+    color: colors.primary,
   },
   todayEntriesContainer: {
     backgroundColor: colors.muted,
