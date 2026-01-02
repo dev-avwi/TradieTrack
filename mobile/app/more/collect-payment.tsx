@@ -182,30 +182,56 @@ export default function CollectPaymentScreen() {
   const invoiceMap = useMemo(() => new Map(invoices.map(i => [i.id, i])), [invoices]);
   const jobMap = useMemo(() => new Map(jobs.map(j => [j.id, j])), [jobs]);
 
-  const fetchData = useCallback(async () => {
+  const [secondaryDataLoaded, setSecondaryDataLoaded] = useState(false);
+  const [loadingSecondary, setLoadingSecondary] = useState(false);
+
+  // Fast initial load - only essential data for display
+  const fetchEssentialData = useCallback(async () => {
     try {
-      const [requestsRes, clientsRes, invoicesRes, jobsRes, receiptsRes, stripeRes] = await Promise.all([
+      const [requestsRes, stripeRes, receiptsRes] = await Promise.all([
         api.get<PaymentRequest[]>('/api/payment-requests').catch(() => ({ data: [] as PaymentRequest[] })),
-        api.get<Client[]>('/api/clients').catch(() => ({ data: [] as Client[] })),
-        api.get<Invoice[]>('/api/invoices').catch(() => ({ data: [] as Invoice[] })),
-        api.get<Job[]>('/api/jobs').catch(() => ({ data: [] as Job[] })),
-        api.get<Receipt[]>('/api/receipts').catch(() => ({ data: [] as Receipt[] })),
         api.get<StripeConnectStatus>('/api/stripe/connect/status').catch(() => ({ data: { connected: false } as StripeConnectStatus })),
+        api.get<Receipt[]>('/api/receipts').catch(() => ({ data: [] as Receipt[] })),
       ]);
       
       if (requestsRes.data) setPaymentRequests(Array.isArray(requestsRes.data) ? requestsRes.data : []);
-      if (clientsRes.data) setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
-      if (invoicesRes.data) setInvoices(Array.isArray(invoicesRes.data) ? invoicesRes.data : []);
-      if (jobsRes.data) setJobs(Array.isArray(jobsRes.data) ? jobsRes.data : []);
-      if (receiptsRes.data) setReceipts(Array.isArray(receiptsRes.data) ? receiptsRes.data : []);
       if (stripeRes.data) setStripeStatus(stripeRes.data);
+      if (receiptsRes.data) setReceipts(Array.isArray(receiptsRes.data) ? receiptsRes.data : []);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching essential data:', error);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
   }, []);
+
+  // Deferred load - for modals and history tab (receipts already loaded in essential)
+  const fetchSecondaryData = useCallback(async () => {
+    if (secondaryDataLoaded || loadingSecondary) return;
+    setLoadingSecondary(true);
+    try {
+      const [clientsRes, invoicesRes, jobsRes] = await Promise.all([
+        api.get<Client[]>('/api/clients').catch(() => ({ data: [] as Client[] })),
+        api.get<Invoice[]>('/api/invoices').catch(() => ({ data: [] as Invoice[] })),
+        api.get<Job[]>('/api/jobs').catch(() => ({ data: [] as Job[] })),
+      ]);
+      
+      if (clientsRes.data) setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
+      if (invoicesRes.data) setInvoices(Array.isArray(invoicesRes.data) ? invoicesRes.data : []);
+      if (jobsRes.data) setJobs(Array.isArray(jobsRes.data) ? jobsRes.data : []);
+      setSecondaryDataLoaded(true);
+    } catch (error) {
+      console.error('Error fetching secondary data:', error);
+    } finally {
+      setLoadingSecondary(false);
+    }
+  }, [secondaryDataLoaded, loadingSecondary]);
+
+  // Full refresh for pull-to-refresh
+  const fetchData = useCallback(async () => {
+    setSecondaryDataLoaded(false);
+    await fetchEssentialData();
+  }, [fetchEssentialData]);
 
   useEffect(() => {
     fetchData();
@@ -269,8 +295,23 @@ export default function CollectPaymentScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    setSecondaryDataLoaded(false);
     fetchData();
   }, [fetchData]);
+
+  // Trigger secondary data load when history tab is tapped
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchSecondaryData();
+    }
+  }, [activeTab, fetchSecondaryData]);
+
+  // Trigger secondary data load when modals open
+  useEffect(() => {
+    if (showCreateModal || showRecordPaymentModal || showReceiptModal) {
+      fetchSecondaryData();
+    }
+  }, [showCreateModal, showRecordPaymentModal, showReceiptModal, fetchSecondaryData]);
 
   const resetCreateForm = () => {
     setNewAmount('');
@@ -548,22 +589,26 @@ export default function CollectPaymentScreen() {
     }
   };
 
-  // KPI Stats Header
+  // KPI Stats Header - Compact Horizontal
   const renderStatsHeader = () => (
     <View style={styles.statsContainer}>
       <View style={styles.statCard}>
         <Text style={styles.statLabel}>OUTSTANDING</Text>
-        <Text style={[styles.statValue, { color: colors.warning }]}>
-          {formatCurrency(totalPendingAmount)}
-        </Text>
-        <Text style={styles.statSubtext}>{pendingRequests.length} pending</Text>
+        <View style={styles.statRight}>
+          <Text style={[styles.statValue, { color: colors.warning }]}>
+            {formatCurrency(totalPendingAmount)}
+          </Text>
+          <Text style={styles.statSubtext}>({pendingRequests.length})</Text>
+        </View>
       </View>
       <View style={styles.statCard}>
         <Text style={styles.statLabel}>RECEIVED</Text>
-        <Text style={[styles.statValue, { color: colors.success }]}>
-          {formatCurrency(totalReceived)}
-        </Text>
-        <Text style={styles.statSubtext}>{receipts.length} receipts</Text>
+        <View style={styles.statRight}>
+          <Text style={[styles.statValue, { color: colors.success }]}>
+            {formatCurrency(totalReceived)}
+          </Text>
+          <Text style={styles.statSubtext}>({receipts.length})</Text>
+        </View>
       </View>
     </View>
   );
@@ -612,22 +657,17 @@ export default function CollectPaymentScreen() {
   // Payment Method Cards - Professional Grid Layout
   const renderCollectTab = () => (
     <View style={styles.tabContent}>
-      {/* Stripe Connection Status */}
+      {/* Minimal Stripe Notice */}
       {!stripeStatus?.connected && (
         <TouchableOpacity 
-          style={styles.stripeCard}
+          style={styles.stripeNotice}
           onPress={() => router.push('/more/money-hub')}
           activeOpacity={0.7}
           data-testid="button-connect-stripe"
         >
-          <View style={styles.stripeIconContainer}>
-            <Feather name="zap" size={24} color={colors.warning} />
-          </View>
-          <View style={styles.stripeContent}>
-            <Text style={styles.stripeTitle}>Connect Stripe</Text>
-            <Text style={styles.stripeSubtitle}>Accept card payments online</Text>
-          </View>
-          <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+          <Feather name="zap" size={14} color={colors.warning} />
+          <Text style={styles.stripeNoticeText}>Connect Stripe for card payments</Text>
+          <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
         </TouchableOpacity>
       )}
 
@@ -641,7 +681,7 @@ export default function CollectPaymentScreen() {
           data-testid="button-new-request"
         >
           <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
-            <Feather name="link" size={24} color={colors.primary} />
+            <Feather name="link" size={20} color={colors.primary} />
           </View>
           <Text style={styles.actionTitle}>Payment Link</Text>
           <Text style={styles.actionSubtitle}>QR code or URL</Text>
@@ -654,7 +694,7 @@ export default function CollectPaymentScreen() {
           data-testid="button-record-payment"
         >
           <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
-            <Feather name="check-circle" size={24} color={colors.success} />
+            <Feather name="check-circle" size={20} color={colors.success} />
           </View>
           <Text style={styles.actionTitle}>Record Payment</Text>
           <Text style={styles.actionSubtitle}>Cash or transfer</Text>
@@ -667,7 +707,7 @@ export default function CollectPaymentScreen() {
           data-testid="button-create-receipt"
         >
           <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.warning, 0.1) }]}>
-            <Feather name="file-text" size={24} color={colors.warning} />
+            <Feather name="file-text" size={20} color={colors.warning} />
           </View>
           <Text style={styles.actionTitle}>Issue Receipt</Text>
           <Text style={styles.actionSubtitle}>Generate PDF</Text>
@@ -681,7 +721,7 @@ export default function CollectPaymentScreen() {
             data-testid="button-tap-to-pay"
           >
             <View style={[styles.actionIconContainer, { backgroundColor: colorWithOpacity(colors.info || colors.primary, 0.1) }]}>
-              <Feather name="smartphone" size={24} color={colors.info || colors.primary} />
+              <Feather name="smartphone" size={20} color={colors.info || colors.primary} />
             </View>
             <Text style={styles.actionTitle}>Tap to Pay</Text>
             <Text style={styles.actionSubtitle}>Contactless</Text>
@@ -689,46 +729,6 @@ export default function CollectPaymentScreen() {
         )}
       </View>
 
-      {/* Unpaid Invoices Quick List */}
-      {unpaidInvoices.length > 0 && (
-        <View style={styles.invoicesSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Unpaid Invoices</Text>
-            <TouchableOpacity 
-              onPress={() => router.push('/more/documents')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          {unpaidInvoices.slice(0, 3).map((invoice) => {
-            const client = clientMap.get(invoice.clientId);
-            return (
-              <TouchableOpacity 
-                key={invoice.id}
-                style={styles.invoiceRow}
-                onPress={() => {
-                  setRecordInvoiceId(invoice.id);
-                  setShowRecordPaymentModal(true);
-                }}
-                activeOpacity={0.7}
-                data-testid={`invoice-row-${invoice.id}`}
-              >
-                <View style={styles.invoiceInfo}>
-                  <Text style={styles.invoiceNumber}>{invoice.number}</Text>
-                  <Text style={styles.invoiceClient} numberOfLines={1}>
-                    {client?.name || 'Unknown client'}
-                  </Text>
-                </View>
-                <View style={styles.invoiceRight}>
-                  <Text style={styles.invoiceAmount}>{formatCurrency(invoice.total)}</Text>
-                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
     </View>
   );
 
@@ -1698,35 +1698,43 @@ const createStyles = (colors: ThemeColors) => {
       color: colors.success,
     },
     
-    // Stats Cards
+    // Stats Cards - Compact
     statsContainer: {
       flexDirection: 'row',
-      gap: spacing.md,
+      gap: spacing.sm,
       paddingHorizontal: spacing.lg,
-      marginBottom: spacing.lg,
+      marginBottom: spacing.md,
     },
     statCard: {
       flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      padding: spacing.lg,
+      borderRadius: radius.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
       borderWidth: 1,
       borderColor: colors.cardBorder,
     },
     statLabel: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      fontWeight: '600',
+      fontSize: 10,
+      fontWeight: '700',
       letterSpacing: 0.5,
-      marginBottom: spacing.xs,
+      color: colors.mutedForeground,
+      textTransform: 'uppercase',
     },
     statValue: {
-      fontSize: 22,
+      fontSize: 16,
       fontWeight: '700',
-      marginBottom: 2,
+    },
+    statRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
     },
     statSubtext: {
-      ...typography.caption,
+      fontSize: 11,
       color: colors.mutedForeground,
     },
     
@@ -1785,37 +1793,21 @@ const createStyles = (colors: ThemeColors) => {
       paddingHorizontal: spacing.lg,
     },
     
-    // Stripe Card
-    stripeCard: {
+    // Minimal Stripe Notice
+    stripeNotice: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colorWithOpacity(colors.warning, 0.08),
-      borderRadius: radius.xl,
-      padding: spacing.lg,
-      marginBottom: spacing.lg,
-      borderWidth: 1,
-      borderColor: colorWithOpacity(colors.warning, 0.2),
+      gap: spacing.xs,
+      backgroundColor: colorWithOpacity(colors.warning, 0.06),
+      borderRadius: radius.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      marginBottom: spacing.md,
     },
-    stripeIconContainer: {
-      width: 44,
-      height: 44,
-      borderRadius: radius.lg,
-      backgroundColor: colorWithOpacity(colors.warning, 0.15),
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: spacing.md,
-    },
-    stripeContent: {
-      flex: 1,
-    },
-    stripeTitle: {
-      ...typography.bodySemibold,
-      color: colors.foreground,
-      marginBottom: 2,
-    },
-    stripeSubtitle: {
+    stripeNoticeText: {
       ...typography.caption,
       color: colors.mutedForeground,
+      flex: 1,
     },
     
     // Section Headers
@@ -1835,38 +1827,39 @@ const createStyles = (colors: ThemeColors) => {
       color: colors.primary,
     },
     
-    // Action Grid
+    // Action Grid - Compact
     actionGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.md,
-      marginBottom: spacing.xl,
+      gap: spacing.sm,
+      marginBottom: spacing.lg,
     },
     actionCard: {
-      width: '47%',
+      width: '48%',
       backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      padding: spacing.lg,
+      borderRadius: radius.md,
+      padding: spacing.md,
       borderWidth: 1,
       borderColor: colors.cardBorder,
       alignItems: 'center',
     },
     actionIconContainer: {
-      width: 52,
-      height: 52,
-      borderRadius: radius.lg,
+      width: 40,
+      height: 40,
+      borderRadius: radius.md,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: spacing.sm,
+      marginBottom: spacing.xs,
     },
     actionTitle: {
-      ...typography.bodySemibold,
+      ...typography.caption,
+      fontWeight: '600',
       color: colors.foreground,
       textAlign: 'center',
-      marginBottom: 2,
+      marginBottom: 1,
     },
     actionSubtitle: {
-      ...typography.caption,
+      fontSize: 11,
       color: colors.mutedForeground,
       textAlign: 'center',
     },
