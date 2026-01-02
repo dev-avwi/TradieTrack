@@ -575,47 +575,88 @@ export default function DocumentsScreen() {
 
   // Fixed column widths for proper alignment
   const COLUMN_WIDTHS = {
-    status: 100,
-    amount: 90,
-    menu: 40,
+    status: 90,
+    amount: 100,
+    menu: 36,
   };
 
-  const renderSortHeader = () => (
+  // Sort indicator with stacked up/down chevrons
+  const SortIndicator = ({ field, isActive }: { field: SortField; isActive: boolean }) => (
+    <View style={styles.sortIndicator}>
+      <Feather 
+        name="chevron-up" 
+        size={10} 
+        color={isActive && sortField === field ? colors.primary : colors.mutedForeground} 
+        style={{ marginBottom: -3 }}
+      />
+      <Feather 
+        name="chevron-down" 
+        size={10} 
+        color={isActive && sortField === field ? colors.primary : colors.mutedForeground} 
+        style={{ marginTop: -3 }}
+      />
+    </View>
+  );
+
+  // Quote-specific header (2 columns: Quote | Status)
+  const renderQuoteSortHeader = () => (
     <View style={styles.sortHeaderRow}>
-      <View style={styles.listRowTitleColumn}>
+      <TouchableOpacity
+        style={styles.sortHeaderTitleColumn}
+        onPress={() => handleSortChange('status')}
+        activeOpacity={0.7}
+      >
         <Text style={styles.sortableColumnText}>Quote</Text>
-      </View>
-      <View style={{ width: COLUMN_WIDTHS.status, alignItems: 'center' }}>
-        <TouchableOpacity
-          style={styles.sortableColumnContent}
-          onPress={() => handleSortChange('status')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.sortableColumnText, sortField === 'status' && styles.sortableColumnTextActive]}>
-            Status
-          </Text>
-          <Text style={[styles.sortArrow, sortField === 'status' && styles.sortArrowActive]}>
-            {' '}↕
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <View style={{ width: COLUMN_WIDTHS.amount, alignItems: 'flex-end' }}>
-        <TouchableOpacity
-          style={styles.sortableColumnContent}
-          onPress={() => handleSortChange('amount')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.sortableColumnText, sortField === 'amount' && styles.sortableColumnTextActive]}>
-            Amount
-          </Text>
-          <Text style={[styles.sortArrow, sortField === 'amount' && styles.sortArrowActive]}>
-            {' '}↕
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <SortIndicator field="status" isActive={false} />
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.sortHeaderStatusColumn, { width: COLUMN_WIDTHS.status }]}
+        onPress={() => handleSortChange('status')}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.sortableColumnText, sortField === 'status' && styles.sortableColumnTextActive]}>
+          Status
+        </Text>
+        <SortIndicator field="status" isActive={sortField === 'status'} />
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Invoice/Receipt header (4 columns: Title | Status | Amount | Menu)
+  const renderInvoiceSortHeader = () => (
+    <View style={styles.sortHeaderRow}>
+      <View style={styles.sortHeaderTitleColumn} />
+      <TouchableOpacity
+        style={[styles.sortHeaderStatusColumn, { width: COLUMN_WIDTHS.status }]}
+        onPress={() => handleSortChange('status')}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.sortableColumnText, sortField === 'status' && styles.sortableColumnTextActive]}>
+          Status
+        </Text>
+        <SortIndicator field="status" isActive={sortField === 'status'} />
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.sortHeaderAmountColumn, { width: COLUMN_WIDTHS.amount }]}
+        onPress={() => handleSortChange('amount')}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.sortableColumnText, sortField === 'amount' && styles.sortableColumnTextActive]}>
+          Amount
+        </Text>
+        <SortIndicator field="amount" isActive={sortField === 'amount'} />
+      </TouchableOpacity>
       <View style={{ width: COLUMN_WIDTHS.menu }} />
     </View>
   );
+
+  // Dynamic header based on active tab
+  const renderSortHeader = () => {
+    if (activeTab === 'quotes') {
+      return renderQuoteSortHeader();
+    }
+    return renderInvoiceSortHeader();
+  };
 
   const renderQuoteGridCard = (quote: Quote) => {
     const statusConfig = getQuoteStatusConfig(quote.status);
@@ -670,23 +711,12 @@ export default function DocumentsScreen() {
               {client?.name || 'Unknown'}
             </Text>
           </View>
-          <View style={{ width: COLUMN_WIDTHS.status, alignItems: 'center' }}>
+          <View style={{ width: COLUMN_WIDTHS.status, alignItems: 'flex-end' }}>
             <View style={[styles.listRowStatusBadge, { backgroundColor: statusConfig.bgColor }]}>
               <Text style={[styles.listRowStatusText, { color: statusConfig.color }]}>
                 {statusConfig.label}
               </Text>
             </View>
-          </View>
-          <View style={{ width: COLUMN_WIDTHS.amount, alignItems: 'flex-end' }}>
-            <Text style={styles.listRowAmount}>{formatCurrency(quote.total)}</Text>
-          </View>
-          <View style={{ width: COLUMN_WIDTHS.menu, alignItems: 'center' }}>
-            <TouchableOpacity 
-              onPress={() => router.push(`/more/quote/${quote.id}`)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
           </View>
         </View>
       </TouchableOpacity>
@@ -1413,6 +1443,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   sortArrowActive: {
     color: colors.primary,
+  },
+  sortIndicator: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+  sortHeaderTitleColumn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  sortHeaderStatusColumn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sortHeaderAmountColumn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   sortHeaderDivider: {
     width: 1,
