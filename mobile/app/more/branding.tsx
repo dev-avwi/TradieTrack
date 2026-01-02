@@ -707,7 +707,7 @@ export default function BrandingScreen() {
                   data-testid={`preset-${preset.id}`}
                 >
                   <View style={styles.themePresetInfo}>
-                    <View style={[styles.themePresetDot, { backgroundColor: preset.palette.primary }]} />
+                    <View style={[styles.themePresetDot, { backgroundColor: colors.isDark ? preset.darkPalette.primary : preset.lightPalette.primary }]} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.themePresetName} numberOfLines={1}>{preset.name}</Text>
                       <Text style={styles.themePresetDesc} numberOfLines={1}>{preset.description}</Text>

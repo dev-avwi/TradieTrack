@@ -83,6 +83,9 @@ export default function QuoteDetailScreen() {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
+  const [isCreatingJob, setIsCreatingJob] = useState(false);
+  const [isMarkingSent, setIsMarkingSent] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
 
@@ -412,47 +415,137 @@ export default function QuoteDetailScreen() {
   };
 
   const handleConvertToInvoice = () => {
-    router.push({
-      pathname: '/more/invoice/new',
-      params: { quoteId: id }
-    });
+    if (!quote || isCreatingInvoice) return;
+    
+    Alert.alert(
+      'Create Invoice',
+      'This will create an invoice from this quote. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Create Invoice',
+          onPress: async () => {
+            setIsCreatingInvoice(true);
+            try {
+              const authToken = await api.getToken();
+              const client = getClient(quote.clientId);
+              
+              const response = await fetch(`${API_URL}/api/invoices`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({
+                  clientId: quote.clientId,
+                  quoteId: quote.id,
+                  lineItems: quote.lineItems || [],
+                  subtotal: quote.subtotal,
+                  gstAmount: quote.gstAmount,
+                  total: quote.total,
+                  notes: quote.notes,
+                  includesGst: quote.includesGst,
+                  status: 'draft',
+                }),
+              });
+
+              if (response.ok) {
+                const newInvoice = await response.json();
+                await fetchInvoices();
+                await loadData();
+                Alert.alert('Success', 'Invoice created from quote!', [
+                  { text: 'View Invoice', onPress: () => router.push(`/more/invoice/${newInvoice.id}`) },
+                  { text: 'OK' }
+                ]);
+              } else {
+                const error = await response.json();
+                Alert.alert('Error', error.error || 'Failed to create invoice');
+              }
+            } catch (error) {
+              console.log('Error creating invoice from quote:', error);
+              Alert.alert('Error', 'Failed to create invoice. Please try again.');
+            } finally {
+              setIsCreatingInvoice(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleConvertToJob = async () => {
-    const { fetchJobs } = useJobsStore.getState();
+    if (!quote || isCreatingJob) return;
     
-    try {
-      const authToken = await api.getToken();
-      const response = await fetch(`${API_URL}/api/jobs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          title: `Job from Quote #${quote?.quoteNumber || id?.slice(0, 6)}`,
-          description: quote?.notes || '',
-          clientId: quote?.clientId,
-          quoteId: id,
-          status: 'pending',
-          address: getClient(quote?.clientId)?.address || '',
-        }),
-      });
+    Alert.alert(
+      'Create Job',
+      'This will create a job from this quote. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Create Job',
+          onPress: async () => {
+            setIsCreatingJob(true);
+            const { fetchJobs } = useJobsStore.getState();
+            
+            try {
+              const authToken = await api.getToken();
+              const response = await fetch(`${API_URL}/api/jobs`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({
+                  title: `Job from Quote #${quote?.quoteNumber || id?.slice(0, 6)}`,
+                  description: quote?.notes || '',
+                  clientId: quote?.clientId,
+                  quoteId: id,
+                  status: 'pending',
+                  address: getClient(quote?.clientId)?.address || '',
+                }),
+              });
 
-      if (response.ok) {
-        const newJob = await response.json();
-        await fetchJobs();
-        Alert.alert('Success', 'Job created from quote!', [
-          { text: 'View Job', onPress: () => router.push(`/job/${newJob.id}`) },
-          { text: 'OK' }
-        ]);
+              if (response.ok) {
+                const newJob = await response.json();
+                await fetchJobs();
+                await loadData();
+                Alert.alert('Success', 'Job created from quote!', [
+                  { text: 'View Job', onPress: () => router.push(`/job/${newJob.id}`) },
+                  { text: 'OK' }
+                ]);
+              } else {
+                const error = await response.json();
+                Alert.alert('Error', error.error || 'Failed to create job');
+              }
+            } catch (error) {
+              console.log('Error creating job from quote:', error);
+              Alert.alert('Error', 'Failed to create job. Please try again.');
+            } finally {
+              setIsCreatingJob(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+  
+  const handleMarkAsSent = async () => {
+    if (!quote || isMarkingSent) return;
+    
+    setIsMarkingSent(true);
+    try {
+      const success = await updateQuoteStatus(id!, 'sent');
+      if (success) {
+        await loadData();
+        Alert.alert('Success', 'Quote marked as sent');
       } else {
-        const error = await response.json();
-        Alert.alert('Error', error.error || 'Failed to create job');
+        Alert.alert('Error', 'Failed to update quote status');
       }
     } catch (error) {
-      console.log('Error creating job from quote:', error);
-      Alert.alert('Error', 'Failed to create job. Please try again.');
+      console.log('Error marking quote as sent:', error);
+      Alert.alert('Error', 'Failed to update quote status');
+    } finally {
+      setIsMarkingSent(false);
     }
   };
 
@@ -778,23 +871,109 @@ export default function QuoteDetailScreen() {
             </TouchableOpacity>
           </View>
           
-          {/* Quick Actions Row 2 - Status-dependent */}
-          {quote.status === 'accepted' && (
+          {/* Quick Actions Row 2 - Draft status: Mark as Sent */}
+          {quote.status === 'draft' && (
+            <View style={[styles.quickActions, { marginTop: 8 }]}>
+              <TouchableOpacity 
+                style={[styles.quickAction, styles.quickActionPrimary]}
+                onPress={handleSend}
+                disabled={isMarkingSent}
+                data-testid="button-send-to-client"
+              >
+                <Feather name="send" size={20} color={colors.white} />
+                <Text style={[styles.quickActionText, { color: colors.white }]}>Send to Client</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.quickAction, { backgroundColor: colors.info }]}
+                onPress={handleMarkAsSent}
+                disabled={isMarkingSent}
+                data-testid="button-mark-as-sent"
+              >
+                {isMarkingSent ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Feather name="check" size={20} color={colors.white} />
+                )}
+                <Text style={[styles.quickActionText, { color: colors.white }]}>
+                  {isMarkingSent ? 'Updating...' : 'Mark as Sent'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {/* Quick Actions Row 2 - Accepted status: Create Invoice/Job */}
+          {quote.status === 'accepted' && !linkedInvoice && !linkedJob && (
             <View style={[styles.quickActions, { marginTop: 8 }]}>
               <TouchableOpacity 
                 style={[styles.quickAction, styles.quickActionPrimary]}
                 onPress={handleConvertToInvoice}
+                disabled={isCreatingInvoice}
+                data-testid="button-create-invoice"
               >
-                <Feather name="file-text" size={20} color={colors.white} />
-                <Text style={[styles.quickActionText, { color: colors.white }]}>Create Invoice</Text>
+                {isCreatingInvoice ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Feather name="file-text" size={20} color={colors.white} />
+                )}
+                <Text style={[styles.quickActionText, { color: colors.white }]}>
+                  {isCreatingInvoice ? 'Creating...' : 'Create Invoice'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.quickAction, { backgroundColor: colors.success }]}
                 onPress={handleConvertToJob}
+                disabled={isCreatingJob}
+                data-testid="button-create-job"
               >
-                <Feather name="briefcase" size={20} color={colors.white} />
-                <Text style={[styles.quickActionText, { color: colors.white }]}>Create Job</Text>
+                {isCreatingJob ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Feather name="briefcase" size={20} color={colors.white} />
+                )}
+                <Text style={[styles.quickActionText, { color: colors.white }]}>
+                  {isCreatingJob ? 'Creating...' : 'Create Job'}
+                </Text>
               </TouchableOpacity>
+            </View>
+          )}
+          
+          {/* If accepted but has one linked doc, show option to create the other */}
+          {quote.status === 'accepted' && (linkedInvoice || linkedJob) && (!linkedInvoice || !linkedJob) && (
+            <View style={[styles.quickActions, { marginTop: 8 }]}>
+              {!linkedInvoice && (
+                <TouchableOpacity 
+                  style={[styles.quickAction, styles.quickActionPrimary, { flex: 1 }]}
+                  onPress={handleConvertToInvoice}
+                  disabled={isCreatingInvoice}
+                  data-testid="button-create-invoice"
+                >
+                  {isCreatingInvoice ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <Feather name="file-text" size={20} color={colors.white} />
+                  )}
+                  <Text style={[styles.quickActionText, { color: colors.white }]}>
+                    {isCreatingInvoice ? 'Creating...' : 'Create Invoice'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {!linkedJob && (
+                <TouchableOpacity 
+                  style={[styles.quickAction, { backgroundColor: colors.success, flex: 1 }]}
+                  onPress={handleConvertToJob}
+                  disabled={isCreatingJob}
+                  data-testid="button-create-job"
+                >
+                  {isCreatingJob ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <Feather name="briefcase" size={20} color={colors.white} />
+                  )}
+                  <Text style={[styles.quickActionText, { color: colors.white }]}>
+                    {isCreatingJob ? 'Creating...' : 'Create Job'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
@@ -1031,10 +1210,32 @@ export default function QuoteDetailScreen() {
 
           {/* Actions */}
           {quote.status === 'draft' && (
-            <TouchableOpacity style={styles.primaryButton} onPress={handleSend}>
-              <Feather name="send" size={20} color={colors.white} />
-              <Text style={styles.primaryButtonText}>Send to Client</Text>
-            </TouchableOpacity>
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity 
+                style={styles.primaryButton} 
+                onPress={handleSend}
+                disabled={isMarkingSent}
+                data-testid="button-send-quote-bottom"
+              >
+                <Feather name="send" size={20} color={colors.white} />
+                <Text style={styles.primaryButtonText}>Send to Client</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.secondaryButton, { marginTop: 12 }]} 
+                onPress={handleMarkAsSent}
+                disabled={isMarkingSent}
+                data-testid="button-mark-sent-bottom"
+              >
+                {isMarkingSent ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Feather name="check" size={20} color={colors.primary} />
+                )}
+                <Text style={styles.secondaryButtonText}>
+                  {isMarkingSent ? 'Updating...' : 'Mark as Sent'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
           
           {quote.status === 'sent' && (
@@ -1044,17 +1245,40 @@ export default function QuoteDetailScreen() {
             </TouchableOpacity>
           )}
 
-          {quote.status === 'accepted' && (
-            <>
-              <TouchableOpacity style={styles.primaryButton} onPress={handleConvertToJob}>
+          {quote.status === 'accepted' && !linkedJob && (
+            <TouchableOpacity 
+              style={[styles.primaryButton, linkedInvoice && { marginBottom: 0 }]} 
+              onPress={handleConvertToJob}
+              disabled={isCreatingJob}
+              data-testid="button-create-job-bottom"
+            >
+              {isCreatingJob ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
                 <Feather name="briefcase" size={20} color={colors.white} />
-                <Text style={styles.primaryButtonText}>Create Job from Quote</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.primaryButton, { marginTop: 12 }]} onPress={handleConvertToInvoice}>
-                <Feather name="arrow-right" size={20} color={colors.white} />
-                <Text style={styles.primaryButtonText}>Convert to Invoice</Text>
-              </TouchableOpacity>
-            </>
+              )}
+              <Text style={styles.primaryButtonText}>
+                {isCreatingJob ? 'Creating Job...' : 'Create Job from Quote'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          
+          {quote.status === 'accepted' && !linkedInvoice && (
+            <TouchableOpacity 
+              style={[styles.primaryButton, { marginTop: linkedJob ? 0 : 12 }]} 
+              onPress={handleConvertToInvoice}
+              disabled={isCreatingInvoice}
+              data-testid="button-create-invoice-bottom"
+            >
+              {isCreatingInvoice ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Feather name="file-text" size={20} color={colors.white} />
+              )}
+              <Text style={styles.primaryButtonText}>
+                {isCreatingInvoice ? 'Creating Invoice...' : 'Convert to Invoice'}
+              </Text>
+            </TouchableOpacity>
           )}
 
           <View style={{ height: 40 }} />
@@ -1567,6 +1791,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.white,
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingVertical: 16,
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  actionButtonsContainer: {
+    marginTop: 8,
   },
   // Modal styles
   modalContainer: {

@@ -12,6 +12,7 @@ import {
   Modal,
   Share,
   Linking,
+  TextInput,
 } from 'react-native';
 // Note: expo-clipboard requires a native build - using Share API as fallback for Expo Go
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -74,8 +75,21 @@ export default function InvoiceDetailScreen() {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other'>('cash');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [isRecordingPayment, setIsRecordingPayment] = useState(false);
+  const [isSendingInvoice, setIsSendingInvoice] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
+  
+  const PAYMENT_METHODS = [
+    { id: 'cash', label: 'Cash', icon: 'dollar-sign' },
+    { id: 'bank_transfer', label: 'Bank Transfer', icon: 'briefcase' },
+    { id: 'card', label: 'Card', icon: 'credit-card' },
+    { id: 'cheque', label: 'Cheque', icon: 'file-text' },
+    { id: 'other', label: 'Other', icon: 'more-horizontal' },
+  ] as const;
   
   // Computed payment status
   const isPaid = invoice?.status === 'paid';
@@ -438,24 +452,55 @@ export default function InvoiceDetailScreen() {
     }
   };
 
-  const handleMarkPaid = async () => {
-    Alert.alert(
-      'Mark as Paid',
-      'Confirm that payment has been received for this invoice?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Confirm',
-          onPress: async () => {
-            const success = await updateInvoiceStatus(id!, 'paid');
-            if (success) {
-              await loadData();
-              Alert.alert('Success', 'Invoice marked as paid');
-            }
-          }
-        }
-      ]
-    );
+  const handleMarkPaid = () => {
+    setShowPaymentMethodModal(true);
+  };
+
+  const handleRecordPayment = async () => {
+    if (!invoice || isRecordingPayment) return;
+    
+    setIsRecordingPayment(true);
+    try {
+      const authToken = await api.getToken();
+      const response = await fetch(`${API_URL}/api/invoices/${id}/record-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          amount: Number(invoice.total) || 0,
+          paymentMethod: selectedPaymentMethod,
+          reference: paymentReference || undefined,
+        }),
+      });
+
+      if (response.ok) {
+        setShowPaymentMethodModal(false);
+        setPaymentReference('');
+        setSelectedPaymentMethod('cash');
+        await loadData();
+        const methodLabels: Record<string, string> = {
+          cash: 'Cash',
+          bank_transfer: 'Bank Transfer',
+          cheque: 'Cheque',
+          card: 'Card',
+          other: 'Other'
+        };
+        Alert.alert(
+          'Payment Recorded',
+          `${formatCurrency(invoice.total)} received via ${methodLabels[selectedPaymentMethod]}`
+        );
+      } else {
+        const error = await response.json();
+        Alert.alert('Error', error.error || 'Failed to record payment');
+      }
+    } catch (error) {
+      console.log('Error recording payment:', error);
+      Alert.alert('Error', 'Failed to record payment. Please try again.');
+    } finally {
+      setIsRecordingPayment(false);
+    }
   };
 
   const handleRecordOnSitePayment = async () => {
@@ -730,6 +775,7 @@ export default function InvoiceDetailScreen() {
 
   const handleSharePdf = async () => {
     setShowShareSheet(false);
+    setIsDownloadingPdf(true);
     
     try {
       const uri = pdfUri || await downloadPdfToCache();
@@ -747,9 +793,19 @@ export default function InvoiceDetailScreen() {
       } else {
         Alert.alert('Sharing Not Available', 'Sharing is not available on this device. Try saving to device instead.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('Share PDF error:', error);
-      Alert.alert('Error', 'Failed to share PDF. Please try again.');
+      const errorMessage = error?.message || 'Failed to share PDF.';
+      Alert.alert(
+        'PDF Share Failed',
+        errorMessage,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Try Again', onPress: () => handleSharePdf() },
+        ]
+      );
+    } finally {
+      setIsDownloadingPdf(false);
     }
   };
 
@@ -778,9 +834,17 @@ export default function InvoiceDetailScreen() {
         await FileSystem.copyAsync({ from: uri, to: destUri });
         Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('Save to device error:', error);
-      Alert.alert('Error', 'Failed to save PDF. Please try again.');
+      const errorMessage = error?.message || 'Failed to save PDF.';
+      Alert.alert(
+        'Save Failed',
+        errorMessage,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Try Again', onPress: () => handleSaveToDevice() },
+        ]
+      );
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -1531,9 +1595,19 @@ export default function InvoiceDetailScreen() {
 
           {/* Actions */}
           {invoice.status === 'draft' && (
-            <TouchableOpacity style={styles.primaryButton} onPress={handleSend}>
-              <Feather name="send" size={20} color={colors.white} />
-              <Text style={styles.primaryButtonText}>Send to Client</Text>
+            <TouchableOpacity 
+              style={[styles.primaryButton, isSendingInvoice && styles.buttonDisabled]} 
+              onPress={handleSend}
+              disabled={isSendingInvoice}
+            >
+              {isSendingInvoice ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Feather name="send" size={20} color={colors.white} />
+              )}
+              <Text style={styles.primaryButtonText}>
+                {isSendingInvoice ? 'Sending...' : 'Send to Client'}
+              </Text>
             </TouchableOpacity>
           )}
           
@@ -1543,9 +1617,17 @@ export default function InvoiceDetailScreen() {
                 <Feather name="credit-card" size={20} color={colors.white} />
                 <Text style={styles.primaryButtonText}>Collect Payment</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={handleMarkPaid}>
-                <Feather name="check-circle" size={20} color={colors.primary} />
-                <Text style={styles.secondaryButtonText}>Mark as Paid</Text>
+              <TouchableOpacity 
+                style={[styles.secondaryButton, isRecordingPayment && styles.buttonDisabled]} 
+                onPress={handleMarkPaid}
+                disabled={isRecordingPayment}
+              >
+                {isRecordingPayment ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Feather name="dollar-sign" size={20} color={colors.primary} />
+                )}
+                <Text style={styles.secondaryButtonText}>Record Payment</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -1769,6 +1851,94 @@ export default function InvoiceDetailScreen() {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Payment Method Selection Modal */}
+      <Modal
+        visible={showPaymentMethodModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPaymentMethodModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.paymentMethodModalContent}>
+            <View style={styles.shareSheetHandle} />
+            <Text style={styles.shareSheetTitle}>Record Payment</Text>
+            <Text style={styles.shareSheetSubtitle}>
+              {formatCurrency(invoice?.total || 0)}
+            </Text>
+            
+            <Text style={styles.paymentMethodSectionTitle}>Payment Method</Text>
+            <View style={styles.paymentMethodOptions}>
+              {PAYMENT_METHODS.map((method) => (
+                <TouchableOpacity
+                  key={method.id}
+                  style={[
+                    styles.paymentMethodOption,
+                    selectedPaymentMethod === method.id && styles.paymentMethodOptionSelected
+                  ]}
+                  onPress={() => setSelectedPaymentMethod(method.id)}
+                >
+                  <View style={[
+                    styles.paymentMethodIcon,
+                    selectedPaymentMethod === method.id && styles.paymentMethodIconSelected
+                  ]}>
+                    <Feather 
+                      name={method.icon as any} 
+                      size={20} 
+                      color={selectedPaymentMethod === method.id ? colors.white : colors.primary} 
+                    />
+                  </View>
+                  <Text style={[
+                    styles.paymentMethodLabel,
+                    selectedPaymentMethod === method.id && styles.paymentMethodLabelSelected
+                  ]}>
+                    {method.label}
+                  </Text>
+                  {selectedPaymentMethod === method.id && (
+                    <Feather name="check" size={18} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.paymentMethodSectionTitle}>Reference (Optional)</Text>
+            <TextInput
+              style={styles.paymentReferenceInput}
+              placeholder="e.g. Check #1234 or Transfer ID"
+              placeholderTextColor={colors.mutedForeground}
+              value={paymentReference}
+              onChangeText={setPaymentReference}
+            />
+
+            <View style={styles.paymentMethodActions}>
+              <TouchableOpacity
+                style={styles.paymentMethodCancelButton}
+                onPress={() => {
+                  setShowPaymentMethodModal(false);
+                  setPaymentReference('');
+                  setSelectedPaymentMethod('cash');
+                }}
+              >
+                <Text style={styles.paymentMethodCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.paymentMethodConfirmButton, isRecordingPayment && styles.buttonDisabled]}
+                onPress={handleRecordPayment}
+                disabled={isRecordingPayment}
+              >
+                {isRecordingPayment ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <>
+                    <Feather name="check" size={18} color={colors.white} />
+                    <Text style={styles.paymentMethodConfirmText}>Record Payment</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </>
   );
@@ -2661,5 +2831,101 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.destructive,
+  },
+  paymentMethodModalContent: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+    maxHeight: '85%',
+  },
+  paymentMethodSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  paymentMethodOptions: {
+    gap: 8,
+  },
+  paymentMethodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  paymentMethodOptionSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  paymentMethodIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    backgroundColor: colors.primaryLight,
+  },
+  paymentMethodIconSelected: {
+    backgroundColor: colors.primary,
+  },
+  paymentMethodLabel: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  paymentMethodLabelSelected: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  paymentReferenceInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: colors.foreground,
+    backgroundColor: colors.background,
+  },
+  paymentMethodActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+  },
+  paymentMethodCancelButton: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  paymentMethodCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+  },
+  paymentMethodConfirmButton: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: colors.success,
+  },
+  paymentMethodConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
   },
 });

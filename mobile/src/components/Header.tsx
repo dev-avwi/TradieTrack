@@ -5,6 +5,7 @@ import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../lib/store';
 import { useTheme, ThemeColors } from '../lib/theme';
+import { useAdvancedThemeStore } from '../lib/advanced-theme-store';
 import { useNotificationsStore } from '../lib/notifications-store';
 import { useUserRole } from '../hooks/use-user-role';
 import { HEADER_HEIGHT } from '../lib/design-tokens';
@@ -163,6 +164,8 @@ export function Header({
 }: HeaderProps) {
   const { user, isOwner: isOwnerFromStore, roleInfo } = useAuthStore();
   const { colors, isDark, setThemeMode, themeMode } = useTheme();
+  const advancedSetMode = useAdvancedThemeStore(state => state.setMode);
+  const advancedMode = useAdvancedThemeStore(state => state.mode);
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const { unreadCount } = useNotificationsStore();
@@ -200,13 +203,21 @@ export function Header({
   };
 
   const toggleTheme = () => {
-    if (themeMode === 'light') {
-      setThemeMode('dark');
-    } else if (themeMode === 'dark') {
-      setThemeMode('system');
+    // Use advanced theme mode as the source of truth, fallback to themeMode
+    const currentMode = advancedMode || themeMode;
+    let newMode: 'light' | 'dark' | 'system';
+    
+    if (currentMode === 'light') {
+      newMode = 'dark';
+    } else if (currentMode === 'dark') {
+      newMode = 'system';
     } else {
-      setThemeMode('light');
+      newMode = 'light';
     }
+    
+    // Update both theme systems to stay in sync
+    setThemeMode(newMode);
+    advancedSetMode(newMode);
   };
 
   const handleAvatarPressIn = () => {

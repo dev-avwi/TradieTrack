@@ -70,6 +70,7 @@ export default function ReceiptDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#22c55e';
 
@@ -281,6 +282,47 @@ export default function ReceiptDetailScreen() {
     if (job) {
       router.push(`/job/${job.id}`);
     }
+  };
+
+  const handleSendEmail = async () => {
+    if (!receipt || isSendingEmail) return;
+    
+    const recipientEmail = client?.email;
+    
+    if (!recipientEmail) {
+      Alert.alert(
+        'No Email Address',
+        'This client does not have an email address on file. Please add an email address to the client record first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    Alert.alert(
+      'Send Receipt',
+      `Send receipt to ${recipientEmail}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          onPress: async () => {
+            setIsSendingEmail(true);
+            try {
+              await api.post(`/api/receipts/${receipt.id}/send-email`, {
+                email: recipientEmail,
+              });
+              Alert.alert('Success', `Receipt sent to ${recipientEmail}`);
+            } catch (error: any) {
+              console.error('Error sending receipt email:', error);
+              const message = error?.response?.data?.error || error?.message || 'Failed to send receipt email';
+              Alert.alert('Error', message);
+            } finally {
+              setIsSendingEmail(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (isLoading) {
@@ -536,6 +578,7 @@ export default function ReceiptDetailScreen() {
           onPress={handleSharePdf}
           disabled={isDownloadingPdf}
           activeOpacity={0.7}
+          data-testid="button-download-pdf"
         >
           {isDownloadingPdf ? (
             <ActivityIndicator size="small" color={colors.primaryForeground} />
@@ -546,6 +589,38 @@ export default function ReceiptDetailScreen() {
             </>
           )}
         </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.emailButton}
+          onPress={handleSendEmail}
+          disabled={isSendingEmail || !client?.email}
+          activeOpacity={0.7}
+          data-testid="button-send-email"
+        >
+          {isSendingEmail ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <>
+              <Feather name="mail" size={18} color={colors.primary} />
+              <Text style={styles.emailButtonText}>
+                {client?.email ? 'Send via Email' : 'No Email on File'}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        {invoice && (
+          <TouchableOpacity 
+            style={styles.viewInvoiceButton}
+            onPress={handleNavigateToInvoice}
+            activeOpacity={0.7}
+            data-testid="button-view-invoice"
+          >
+            <Feather name="file-text" size={18} color={colors.primary} />
+            <Text style={styles.viewInvoiceButtonText}>View Invoice</Text>
+            <Feather name="chevron-right" size={18} color={colors.primary} />
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: spacing['4xl'] }} />
       </ScrollView>
@@ -868,5 +943,41 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   shareButtonText: {
     ...typography.bodySemibold,
     color: colors.primaryForeground,
+  },
+  emailButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.lg,
+    marginTop: spacing.md,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  emailButtonText: {
+    ...typography.bodySemibold,
+    color: colors.primary,
+  },
+  viewInvoiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.lg,
+    marginTop: spacing.md,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  viewInvoiceButtonText: {
+    ...typography.bodySemibold,
+    color: colors.primary,
+    flex: 1,
+    textAlign: 'center',
   },
 });
