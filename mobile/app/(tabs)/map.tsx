@@ -96,6 +96,19 @@ interface TeamMember {
 
 type StatusFilter = 'all' | 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 
+interface GeofenceAlert {
+  id: string;
+  userId: string;
+  jobId: string;
+  userName: string;
+  userAvatar?: string | null;
+  jobTitle: string;
+  alertType: 'arrival' | 'departure' | 'late' | 'speed_warning';
+  address?: string | null;
+  createdAt: string;
+  isRead: boolean;
+}
+
 const DEFAULT_REGION: Region = {
   latitude: -16.9186,
   longitude: 145.7781,
@@ -585,6 +598,10 @@ export default function MapScreen() {
   const [routeJobs, setRouteJobs] = useState<JobWithLocation[]>([]);
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  
+  // Geofence alerts state
+  const [geofenceAlerts, setGeofenceAlerts] = useState<GeofenceAlert[]>([]);
+  const [showAlerts, setShowAlerts] = useState(false);
 
   const getClientName = useCallback((clientId?: string) => {
     if (!clientId) return undefined;
@@ -659,6 +676,36 @@ export default function MapScreen() {
     }
   }, []);
 
+  const fetchGeofenceAlerts = useCallback(async () => {
+    if (!canViewTeamMode) return;
+    try {
+      const response = await api.get('/api/map/geofence-alerts');
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setGeofenceAlerts(data);
+        }
+      }
+    } catch (error) {
+      console.log('Failed to fetch geofence alerts:', error);
+    }
+  }, [canViewTeamMode]);
+
+  const markAlertRead = async (alertId: string) => {
+    try {
+      await api.post(`/api/map/geofence-alerts/${alertId}/read`);
+      setGeofenceAlerts(prev => prev.map(a => 
+        a.id === alertId ? { ...a, isRead: true } : a
+      ));
+    } catch (error) {
+      console.log('Failed to mark alert read:', error);
+    }
+  };
+
+  const unreadAlerts = useMemo(() => {
+    return geofenceAlerts.filter(a => !a.isRead);
+  }, [geofenceAlerts]);
+
   const requestLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -678,7 +725,7 @@ export default function MapScreen() {
     setIsRefreshing(true);
     await Promise.all([fetchJobs(), fetchClients()]);
     if (showTeamMembers && canViewTeamMode) {
-      await fetchTeamLocations();
+      await Promise.all([fetchTeamLocations(), fetchGeofenceAlerts()]);
     }
     setIsRefreshing(false);
   };
@@ -743,6 +790,15 @@ export default function MapScreen() {
       return () => clearInterval(interval);
     }
   }, [showTeamMembers, fetchTeamLocations, canViewTeamMode]);
+
+  // Fetch geofence alerts for owners/managers
+  useEffect(() => {
+    if (canViewTeamMode) {
+      fetchGeofenceAlerts();
+      const interval = setInterval(fetchGeofenceAlerts, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [canViewTeamMode, fetchGeofenceAlerts]);
 
   useEffect(() => {
     const hasData = (showJobs && filteredJobs.length > 0) || (showTeamMembers && teamMembers.length > 0);
@@ -1299,6 +1355,42 @@ export default function MapScreen() {
                 color={colors.mutedForeground} 
               />
             </TouchableOpacity>
+
+            {/* Alerts Button - Owners/Managers only */}
+            {canViewTeamMode && (
+              <TouchableOpacity 
+                style={[
+                  styles.legendButton,
+                  unreadAlerts.length > 0 && { backgroundColor: `${colors.destructive}15` }
+                ]}
+                onPress={() => setShowAlerts(!showAlerts)}
+                activeOpacity={0.7}
+              >
+                <Feather 
+                  name="bell" 
+                  size={14} 
+                  color={unreadAlerts.length > 0 ? colors.destructive : colors.mutedForeground} 
+                />
+                {unreadAlerts.length > 0 && (
+                  <View style={{
+                    position: 'absolute',
+                    top: 2,
+                    right: 2,
+                    backgroundColor: colors.destructive,
+                    borderRadius: 8,
+                    minWidth: 16,
+                    height: 16,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 4,
+                  }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>
+                      {unreadAlerts.length}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -1359,6 +1451,94 @@ export default function MapScreen() {
         </View>
       )}
 
+      {/* Geofence Alerts Panel */}
+      {showAlerts && unreadAlerts.length > 0 && (
+        <View style={[styles.legendCard, { top: insets.top + (headerCollapsed ? 80 : 180), maxHeight: 280 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Feather name="bell" size={16} color={colors.destructive} />
+              <Text style={styles.legendTitle}>Recent Alerts</Text>
+            </View>
+            <TouchableOpacity 
+              onPress={() => setShowAlerts(false)}
+              style={{ padding: spacing.xs }}
+              activeOpacity={0.7}
+            >
+              <Feather name="x" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+            {unreadAlerts.slice(0, 5).map((alert) => {
+              const initials = alert.userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+              const alertColor = alert.alertType === 'arrival' ? colors.success :
+                                alert.alertType === 'departure' ? colors.destructive :
+                                alert.alertType === 'late' ? colors.warning : colors.info;
+              
+              const formatAlertTime = (dateStr: string) => {
+                const date = new Date(dateStr);
+                const now = new Date();
+                const diffMs = now.getTime() - date.getTime();
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins}m ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+              };
+              
+              return (
+                <TouchableOpacity
+                  key={alert.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    gap: spacing.sm,
+                    padding: spacing.sm,
+                    backgroundColor: colors.muted,
+                    borderRadius: radius.lg,
+                    marginBottom: spacing.xs,
+                  }}
+                  onPress={() => markAlertRead(alert.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: alertColor,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    {alert.userAvatar ? (
+                      <View style={{ width: 36, height: 36, borderRadius: 18, overflow: 'hidden' }}>
+                        {/* Avatar image would go here */}
+                      </View>
+                    ) : (
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#fff' }}>{initials}</Text>
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, color: colors.foreground }}>
+                      <Text style={{ fontWeight: '600' }}>{alert.userName}</Text>
+                      <Text style={{ color: colors.mutedForeground }}>
+                        {alert.alertType === 'arrival' ? ' arrived at ' :
+                         alert.alertType === 'departure' ? ' left ' :
+                         alert.alertType === 'late' ? ' is late for ' : ' alert for '}
+                      </Text>
+                      <Text style={{ fontWeight: '500' }}>{alert.jobTitle}</Text>
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>
+                      {formatAlertTime(alert.createdAt)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Selected Worker Banner */}
       {selectedWorker && (
         <View style={[styles.assignModeBanner, { bottom: bottomNavHeight + spacing.lg + 70 }]}>
@@ -1400,6 +1580,79 @@ export default function MapScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Team Member Chips (horizontal scroll) - Owners/Managers only */}
+      {canViewTeamMode && showTeamMembers && teamMembers.length > 0 && !selectedWorker && routeJobs.length === 0 && (
+        <View style={{
+          position: 'absolute',
+          bottom: bottomNavHeight + spacing.lg,
+          left: 0,
+          right: 0,
+          paddingHorizontal: spacing.md,
+        }}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: spacing.sm }}
+          >
+            {teamMembers.map((member) => {
+              const memberColor = member.themeColor || getActivityColor(member.activityStatus);
+              const initials = `${member.user?.firstName?.[0] || '?'}${member.user?.lastName?.[0] || '?'}`;
+              const firstName = member.user?.firstName || '';
+              const isWorking = member.activityStatus === 'working';
+              const isDriving = member.activityStatus === 'driving';
+              const speed = member.lastLocation?.speed;
+              
+              return (
+                <TouchableOpacity
+                  key={member.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.sm,
+                    paddingHorizontal: spacing.sm,
+                    paddingVertical: spacing.xs + 2,
+                    backgroundColor: colors.card,
+                    borderRadius: radius['2xl'],
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    ...shadows.md,
+                  }}
+                  onPress={() => handleWorkerTap(member)}
+                  activeOpacity={0.7}
+                >
+                  <View style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: memberColor,
+                    borderWidth: 2,
+                    borderColor: memberColor,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>{initials}</Text>
+                  </View>
+                  <View>
+                    <Text style={{ fontSize: 13, fontWeight: '500', color: colors.foreground }} numberOfLines={1}>
+                      {firstName}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                      {isDriving && speed && speed > 0
+                        ? `${Math.round(speed * 3.6)} km/h`
+                        : isWorking 
+                          ? 'Working' 
+                          : member.activityStatus === 'online' 
+                            ? 'Online' 
+                            : 'Offline'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Loading Overlay */}
       {jobsLoading && !filteredJobs.length && (
