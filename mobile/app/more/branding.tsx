@@ -776,10 +776,10 @@ export default function BrandingScreen() {
           <View style={styles.card}>
             <View style={styles.sliderRow}>
               <Text style={styles.sliderLabel}>Font Scale</Text>
-              <Text style={styles.sliderValue}>{(activeTypography.fontScale * 100).toFixed(0)}%</Text>
+              <Text style={styles.sliderValue}>{((activeTypography.fontScale ?? 1) * 100).toFixed(0)}%</Text>
             </View>
             <Slider
-              value={activeTypography.fontScale}
+              value={activeTypography.fontScale ?? 1}
               minimumValue={0.8}
               maximumValue={1.2}
               step={0.05}
@@ -788,14 +788,14 @@ export default function BrandingScreen() {
 
             <View style={styles.sliderRow}>
               <Text style={styles.sliderLabel}>Line Height</Text>
-              <Text style={styles.sliderValue}>{activeTypography.lineHeight.toFixed(1)}</Text>
+              <Text style={styles.sliderValue}>{(activeTypography.bodyLineHeight ?? 1.5).toFixed(1)}</Text>
             </View>
             <Slider
-              value={activeTypography.lineHeight}
+              value={activeTypography.bodyLineHeight ?? 1.5}
               minimumValue={1.2}
               maximumValue={2.0}
               step={0.1}
-              onValueChange={(value) => setTypography({ lineHeight: value })}
+              onValueChange={(value) => setTypography({ bodyLineHeight: value })}
             />
 
             <Text style={[styles.inputLabel, { marginTop: spacing.lg }]}>Heading Weight</Text>
