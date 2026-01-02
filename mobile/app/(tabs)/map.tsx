@@ -572,7 +572,8 @@ export default function MapScreen() {
   
   const isAuthenticated = !!user;
   const hasMapAccess = isAuthenticated;
-  const showTeamToggle = isAuthenticated && !isSolo && (isOwner || isManager || canAccessMap);
+  // Show Team toggle for owners/managers - they should always be able to view team members
+  const showTeamToggle = isAuthenticated && (isOwner || isManager || canAccessMap);
   const canViewTeamMode = isAuthenticated && (isOwner || isManager || canAccessMap);
   const canAssignJobs = isOwner || isManager;
   
@@ -1581,7 +1582,7 @@ export default function MapScreen() {
         )}
       </View>
 
-      {/* Team Member Chips (horizontal scroll) - Owners/Managers only */}
+      {/* Team Member Chips (horizontal scroll) - Owners/Managers only, hide when route panel visible */}
       {canViewTeamMode && showTeamMembers && teamMembers.length > 0 && !selectedWorker && routeJobs.length === 0 && (
         <View style={{
           position: 'absolute',

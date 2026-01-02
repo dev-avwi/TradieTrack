@@ -252,9 +252,10 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
             <View style={styles.menuHandle} />
             <Text style={styles.menuTitle}>Quick Create</Text>
             
-            {/* Main grid with subtle neutral icons */}
+            {/* Main grid with colorful iOS-style icons */}
             <View style={styles.menuGrid}>
               {gridActions.map((action, index) => {
+                const actionColor = ACTION_COLORS[action.colorKey];
                 return (
                   <TouchableOpacity
                     key={index}
@@ -262,11 +263,11 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                     onPress={action.onPress}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.menuItemIcon, { backgroundColor: colors.muted }]}>
+                    <View style={[styles.menuItemIcon, { backgroundColor: `${actionColor}15` }]}>
                       <Feather 
                         name={action.icon} 
                         size={20} 
-                        color={colors.foreground} 
+                        color={actionColor} 
                       />
                     </View>
                     <Text style={styles.menuItemLabel}>{action.label}</Text>
