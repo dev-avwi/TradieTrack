@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useMemo } fr
 import { useColorScheme, Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { useAuthStore } from './store';
+import { useAdvancedThemeStore } from './advanced-theme-store';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -508,8 +509,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const { businessSettings } = useAuthStore();
-  const brandColor = businessSettings?.brandColor || businessSettings?.primaryColor || null;
+  const brandColorFromSettings = businessSettings?.brandColor || businessSettings?.primaryColor || null;
 
+  // Get colors from advanced theme store
+  const advancedThemeMode = useAdvancedThemeStore(state => state.mode);
+  const getActivePalette = useAdvancedThemeStore(state => state.getActivePalette);
+  const customPalette = useAdvancedThemeStore(state => state.customPalette);
+  
   useEffect(() => {
     SecureStore.getItemAsync('theme_mode').then(stored => {
       if (stored === 'light' || stored === 'dark' || stored === 'system') {
@@ -525,13 +531,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } catch {}
   };
 
-  const isDark = themeMode === 'system' 
+  // Prefer advanced theme mode if set, otherwise use local state
+  const effectiveMode = advancedThemeMode || themeMode;
+  const isDark = effectiveMode === 'system' 
     ? systemScheme === 'dark'
-    : themeMode === 'dark';
+    : effectiveMode === 'dark';
 
   const colors = useMemo(() => {
     const baseColors = isDark ? darkColors : lightColors;
     
+    // First check for advanced theme customizations
+    if (customPalette?.primary) {
+      const brandPalette = generateBrandPalette(customPalette.primary, isDark);
+      return { ...baseColors, ...brandPalette };
+    }
+    
+    // Then fall back to business settings brand color
+    const brandColor = brandColorFromSettings;
     if (brandColor && /^#[0-9A-Fa-f]{6}$/i.test(brandColor)) {
       const isDefaultColor = brandColor.toUpperCase() === DEFAULT_BRAND_COLOR.toUpperCase();
       
@@ -542,9 +558,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     
     return baseColors;
-  }, [isDark, brandColor]);
+  }, [isDark, brandColorFromSettings, customPalette]);
 
   const shadows = useMemo(() => getShadows(isDark), [isDark]);
+  
+  // Effective brand color - prefer advanced theme, then business settings
+  const brandColor = customPalette?.primary || brandColorFromSettings;
 
   return (
     <ThemeContext.Provider value={{ themeMode, isDark, colors, shadows, brandColor, setThemeMode }}>

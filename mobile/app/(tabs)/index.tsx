@@ -171,6 +171,7 @@ function TimeTrackingWidget() {
   const [activeTimer, setActiveTimer] = useState<any>(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [totalMinutesToday, setTotalMinutesToday] = useState(0);
+  const [todayEntries, setTodayEntries] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isStopping, setIsStopping] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
@@ -216,6 +217,10 @@ function TimeTrackingWidget() {
       
       if (dashboardResponse.data) {
         const entries = (dashboardResponse.data as any).recentEntries || [];
+        // Store completed entries for display
+        const completedEntries = entries.filter((e: any) => e.endTime);
+        setTodayEntries(completedEntries.slice(0, 5)); // Show last 5 entries
+        
         const total = entries.reduce((sum: number, e: any) => {
           if (e.duration) return sum + e.duration;
           if (e.endTime) {
@@ -361,18 +366,62 @@ function TimeTrackingWidget() {
   const mins = totalMinutesToday % 60;
   const isPaused = activeTimer?.isPaused;
 
+  // Helper to format duration for entries
+  const formatEntryDuration = (entry: any) => {
+    let mins = 0;
+    if (entry.duration) {
+      mins = entry.duration;
+    } else if (entry.endTime) {
+      const start = new Date(entry.startTime).getTime();
+      const end = new Date(entry.endTime).getTime();
+      mins = Math.floor((end - start) / 60000);
+    }
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
+  // Today's entries list component
+  const renderTodayEntries = () => {
+    if (todayEntries.length === 0) return null;
+    
+    return (
+      <View style={styles.todayEntriesContainer}>
+        <Text style={styles.todayEntriesTitle}>Today's Work</Text>
+        {todayEntries.map((entry, index) => (
+          <TouchableOpacity
+            key={entry.id || index}
+            style={styles.todayEntryRow}
+            onPress={() => entry.jobId && router.push(`/job/${entry.jobId}`)}
+            disabled={!entry.jobId}
+            activeOpacity={0.7}
+          >
+            <View style={styles.todayEntryDot} />
+            <Text style={styles.todayEntryJobTitle} numberOfLines={1}>
+              {entry.jobTitle || 'General time'}
+            </Text>
+            <Text style={styles.todayEntryDuration}>{formatEntryDuration(entry)}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
   if (!activeTimer) {
     return (
-      <View style={styles.timeTrackingWidget}>
-        <View style={styles.timeTrackingContent}>
-          <View style={styles.timerIconContainer}>
-            <Feather name="clock" size={24} color={colors.mutedForeground} />
-          </View>
-          <View style={styles.timerTextContent}>
-            <Text style={styles.totalTimeToday}>{hours}h {mins}m today</Text>
-            <Text style={styles.timerSubtext}>No active timer</Text>
+      <View style={styles.timerWidgetContainer}>
+        <View style={styles.timeTrackingWidget}>
+          <View style={styles.timeTrackingContent}>
+            <View style={styles.timerIconContainer}>
+              <Feather name="clock" size={24} color={colors.mutedForeground} />
+            </View>
+            <View style={styles.timerTextContent}>
+              <Text style={styles.totalTimeToday}>{hours}h {mins}m today</Text>
+              <Text style={styles.timerSubtext}>No active timer</Text>
+            </View>
           </View>
         </View>
+        {renderTodayEntries()}
       </View>
     );
   }
@@ -465,6 +514,7 @@ function TimeTrackingWidget() {
           )}
         </TouchableOpacity>
       </View>
+      {renderTodayEntries()}
     </View>
   );
 }
@@ -2762,8 +2812,48 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: 8,
     backgroundColor: colors.primary,
   },
+  timerWidgetContainer: {
+    gap: spacing.sm,
+  },
   timerActiveContainer: {
     gap: spacing.sm,
+  },
+  todayEntriesContainer: {
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+  },
+  todayEntriesTitle: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    marginBottom: spacing.xs,
+    marginLeft: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  todayEntryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
+  },
+  todayEntryDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.success,
+    marginRight: spacing.sm,
+  },
+  todayEntryJobTitle: {
+    ...typography.caption,
+    flex: 1,
+    color: colors.foreground,
+  },
+  todayEntryDuration: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.mutedForeground,
   },
   timerControlsRow: {
     flexDirection: 'row',
