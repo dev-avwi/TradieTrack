@@ -1820,19 +1820,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[AI Schedule] Found ${scheduledJobs.length} jobs for ${targetDate.toDateString()}`);
 
       // Map jobs to the format expected by the optimizer
+      // Jobs store their own coordinates (latitude/longitude), use those for optimization
       const scheduleJobs = scheduledJobs.map(job => {
         const client = clients.find(c => c.id === job.clientId);
+        // Use job's coordinates first, fallback to client's coordinates
+        const lat = job.latitude ? parseFloat(String(job.latitude)) : 
+                    (client?.latitude ? parseFloat(String(client.latitude)) : undefined);
+        const lng = job.longitude ? parseFloat(String(job.longitude)) : 
+                    (client?.longitude ? parseFloat(String(client.longitude)) : undefined);
+        
         return {
           id: job.id,
           title: job.title,
           clientName: client?.name || 'Unknown',
-          address: client?.address || job.address,
-          latitude: client?.latitude ? parseFloat(String(client.latitude)) : undefined,
-          longitude: client?.longitude ? parseFloat(String(client.longitude)) : undefined,
-          estimatedDuration: job.estimatedDuration ? parseFloat(String(job.estimatedDuration)) : 1.5,
+          address: job.address || client?.address,
+          latitude: lat,
+          longitude: lng,
+          estimatedDuration: job.estimatedDuration ? parseFloat(String(job.estimatedDuration)) / 60 : 1.5, // Convert minutes to hours
           priority: job.priority as 'low' | 'medium' | 'high' | 'urgent' | undefined
         };
       });
+      
+      console.log(`[AI Schedule] Jobs with coordinates: ${scheduleJobs.filter(j => j.latitude && j.longitude).length}`);
 
       // Import and call the AI optimizer
       const { optimizeSchedule, getSchedulingRecommendations } = await import('./ai');

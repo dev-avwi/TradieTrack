@@ -2,6 +2,13 @@ import { storage, db } from './storage';
 import { AuthService } from './auth';
 import { teamMemberSkills, WORKER_PERMISSIONS } from '@shared/schema';
 
+// Helper function to get today's date at a specific time
+function getTodayAt(hours: number, minutes: number): Date {
+  const today = new Date();
+  today.setHours(hours, minutes, 0, 0);
+  return today;
+}
+
 // Demo user data - Business Owner
 const DEMO_USER = {
   email: 'demo@tradietrack.com.au',
@@ -377,20 +384,22 @@ export async function createDemoUserAndData() {
         },
 
         // ============================================
-        // SCHEDULED JOBS (5) - some overdue, some today, some this week
+        // SCHEDULED JOBS FOR TODAY (6) - For AI Schedule Optimizer testing
+        // All scheduled for today at different times, spread across Cairns area
+        // estimatedDuration is in MINUTES (integer)
         // ============================================
         {
           userId: demoUser.id,
           clientId: createdClients[0].id,
-          title: "Urgent Drain Blockage",
-          description: "Clear blocked drain in laundry - customer waiting",
+          title: "Morning Hot Water Service",
+          description: "Service and flush hot water system",
           address: createdClients[0].address || "",
           latitude: "-16.9186",
           longitude: "145.7781",
           status: "scheduled" as const,
-          scheduledAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago (OVERDUE)
-          assignedTo: demoWorkerId, // Assigned to Jake Morrison
-          notes: "Customer called twice - high priority"
+          scheduledAt: getTodayAt(8, 0), // 8:00 AM today
+          estimatedDuration: 90, // 1.5 hours in minutes
+          notes: "Annual service - customer home all day"
         },
         {
           userId: demoUser.id,
@@ -401,7 +410,8 @@ export async function createDemoUserAndData() {
           latitude: "-16.7889",
           longitude: "145.6967",
           status: "scheduled" as const,
-          scheduledAt: new Date(Date.now() + 45 * 60 * 1000), // 45 minutes from now
+          scheduledAt: getTodayAt(9, 30), // 9:30 AM today
+          estimatedDuration: 60, // 1 hour in minutes
           notes: "Need gas certificate for landlord"
         },
         {
@@ -413,10 +423,53 @@ export async function createDemoUserAndData() {
           latitude: "-16.4827",
           longitude: "145.4635",
           status: "scheduled" as const,
-          scheduledAt: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours from now
-          assignedTo: demoWorkerId, // Assigned to Jake Morrison
-          notes: "Customer prefers afternoon appointment"
+          scheduledAt: getTodayAt(11, 0), // 11:00 AM today
+          estimatedDuration: 60, // 1 hour in minutes
+          notes: "Customer prefers morning - has lunch appointment"
         },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[4].id,
+          title: "Blocked Toilet Repair",
+          description: "Clear blockage and check sewer line",
+          address: createdClients[4].address || "",
+          latitude: "-16.7950",
+          longitude: "145.7000",
+          status: "scheduled" as const,
+          scheduledAt: getTodayAt(13, 0), // 1:00 PM today
+          estimatedDuration: 90, // 1.5 hours in minutes
+          notes: "Urgent - only one bathroom in house"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[5].id,
+          title: "Leaking Shower Repair",
+          description: "Fix shower mixer valve and replace seals",
+          address: createdClients[5].address || "",
+          latitude: "-16.8650",
+          longitude: "145.6950",
+          status: "scheduled" as const,
+          scheduledAt: getTodayAt(14, 30), // 2:30 PM today
+          estimatedDuration: 60, // 1 hour in minutes
+          notes: "Access from front - side gate locked"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[6].id,
+          title: "Water Pressure Check",
+          description: "Diagnose low water pressure issue",
+          address: createdClients[6].address || "",
+          latitude: "-16.8200",
+          longitude: "145.7350",
+          status: "scheduled" as const,
+          scheduledAt: getTodayAt(16, 0), // 4:00 PM today
+          estimatedDuration: 60, // 1 hour in minutes
+          notes: "Customer works from home - flexible timing"
+        },
+
+        // ============================================
+        // SCHEDULED JOBS FOR FUTURE (3) - tomorrow and beyond
+        // ============================================
         {
           userId: demoUser.id,
           clientId: createdClients[0].id,
@@ -441,6 +494,18 @@ export async function createDemoUserAndData() {
           scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
           assignedTo: demoWorkerId, // Assigned to Jake Morrison
           notes: "Guest checking in at 2pm - must be done by noon"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[7].id,
+          title: "Commercial Kitchen Inspection",
+          description: "Full plumbing inspection for restaurant",
+          address: createdClients[7].address || "",
+          latitude: "-16.8450",
+          longitude: "145.7280",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+          notes: "After hours only - restaurant closes at 10pm"
         },
 
         // ============================================

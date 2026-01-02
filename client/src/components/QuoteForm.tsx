@@ -7,10 +7,15 @@ import ClientStep from "@/components/wizard-steps/ClientStep";
 import DetailsStep from "@/components/wizard-steps/DetailsStep";
 import LineItemsStep from "@/components/wizard-steps/LineItemsStep";
 import ReviewStep from "@/components/wizard-steps/ReviewStep";
+import { MultiOptionQuoteEditor } from "@/components/MultiOptionQuoteEditor";
 import { useCreateQuote } from "@/hooks/use-quotes";
 import { useToast } from "@/hooks/use-toast";
 import { type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sparkles, Layers } from "lucide-react";
 
 const quoteFormSchema = z.object({
   clientId: z.string().min(1, "Client is required"),
@@ -64,9 +69,24 @@ const WIZARD_STEPS = [
   }
 ];
 
+// Define option types for multi-option quotes
+interface QuoteOption {
+  id?: string;
+  name: string;
+  description?: string;
+  items: Array<{ description: string; quantity: number; unitPrice: number; total: number }>;
+  subtotal: number;
+  gstAmount: number;
+  total: number;
+  isRecommended: boolean;
+  sortOrder: number;
+}
+
 export default function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
   const { toast } = useToast();
   const createQuoteMutation = useCreateQuote();
+  const [isMultiOptionMode, setIsMultiOptionMode] = useState(false);
+  const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([]);
 
   const { data: userCheck } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -157,11 +177,45 @@ export default function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
     }
   };
 
+  // Handle saving multi-option quote options
+  const handleSaveOptions = (options: QuoteOption[]) => {
+    setQuoteOptions(options);
+    // Convert options to line items for the form (use recommended option or first)
+    const recommendedOption = options.find(o => o.isRecommended) || options[0];
+    if (recommendedOption && recommendedOption.items.length > 0) {
+      const lineItems = recommendedOption.items.map(item => ({
+        description: item.description,
+        quantity: String(item.quantity),
+        unitPrice: String(item.unitPrice)
+      }));
+      form.setValue("lineItems", lineItems);
+    }
+  };
+
+  // Custom steps based on mode
+  const getActiveSteps = () => {
+    if (isMultiOptionMode) {
+      return [
+        WIZARD_STEPS[0], // Client
+        WIZARD_STEPS[1], // Details
+        { 
+          id: "options",
+          title: "Quote Options",
+          description: "Create multiple pricing options",
+          icon: WIZARD_ICONS.items,
+          validationFields: []
+        },
+        WIZARD_STEPS[3] // Review
+      ];
+    }
+    return WIZARD_STEPS;
+  };
+
   return (
     <div className="w-full py-4" data-testid="page-quote-form">
       <FormProvider {...form}>
         <WizardLayout
-          steps={WIZARD_STEPS}
+          steps={getActiveSteps()}
           form={form}
           onSubmit={handleSubmit}
           onCancel={onCancel}
@@ -169,14 +223,59 @@ export default function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
         >
           <ClientStep fieldName="clientId" />
           
-          <DetailsStep 
-            type="quote"
-            userTradeType={userCheck?.user?.tradeType}
-            onApplyTemplate={handleApplyTemplate}
-            showValidUntil={true}
-          />
+          <div className="space-y-6">
+            <DetailsStep 
+              type="quote"
+              userTradeType={userCheck?.user?.tradeType}
+              onApplyTemplate={handleApplyTemplate}
+              showValidUntil={true}
+            />
+            
+            {/* AI Multi-Option Mode Toggle */}
+            <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  AI Multi-Option Quote
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="multi-option-mode" className="text-sm font-medium">
+                      Enable multiple pricing options
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Let customers choose between Good, Better, Best packages
+                    </p>
+                  </div>
+                  <Switch
+                    id="multi-option-mode"
+                    checked={isMultiOptionMode}
+                    onCheckedChange={setIsMultiOptionMode}
+                    data-testid="switch-multi-option-mode"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
           
-          <LineItemsStep tradeType={userCheck?.user?.tradeType} />
+          {/* Line Items or Multi-Option Editor based on mode */}
+          {isMultiOptionMode ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                <Layers className="h-4 w-4" />
+                <span>Create pricing tiers for your customer to choose from</span>
+              </div>
+              <MultiOptionQuoteEditor 
+                onSave={handleSaveOptions}
+                initialOptions={quoteOptions.length > 0 ? quoteOptions : undefined}
+                className="border rounded-lg"
+              />
+            </div>
+          ) : (
+            <LineItemsStep tradeType={userCheck?.user?.tradeType} />
+          )}
           
           <ReviewStep type="quote" showNotes={true} />
         </WizardLayout>
