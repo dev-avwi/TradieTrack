@@ -220,8 +220,8 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
   const pulseAnimation = member.isActive ? `
     <div style="
       position: absolute;
-      width: 60px;
-      height: 60px;
+      width: 48px;
+      height: 48px;
       top: -4px;
       left: -4px;
       border-radius: 50%;
@@ -234,10 +234,10 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
   const activityDot = `
     <div style="
       position: absolute;
-      top: -2px;
-      left: -2px;
-      width: 16px;
-      height: 16px;
+      top: -1px;
+      left: -1px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
       background: ${activityColor};
       border: 2px solid ${borderColor};
@@ -248,18 +248,18 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
   const batteryIndicator = member.batteryLevel !== null && member.batteryLevel !== undefined && member.batteryLevel <= 30 ? `
     <div style="
       position: absolute;
-      top: -6px;
-      right: -6px;
+      top: -4px;
+      right: -4px;
       background: ${member.batteryLevel <= 20 ? '#EF4444' : '#F59E0B'};
       border-radius: 50%;
-      width: 18px;
-      height: 18px;
+      width: 14px;
+      height: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
       border: 2px solid ${borderColor};
     ">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
         <rect x="2" y="7" width="18" height="10" rx="2"/>
         <line x1="22" y1="11" x2="22" y2="13"/>
       </svg>
@@ -269,15 +269,15 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
   const speedBadge = member.isDriving && member.speed > 0 ? `
     <div style="
       position: absolute;
-      bottom: -8px;
+      bottom: -6px;
       left: 50%;
       transform: translateX(-50%);
       background: ${memberColor};
       color: white;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 10px;
+      padding: 1px 5px;
+      border-radius: 8px;
       white-space: nowrap;
       border: 2px solid ${borderColor};
     ">
@@ -292,22 +292,22 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
   return L.divIcon({
     className: 'custom-team-marker',
     html: `
-      <div style="position: relative; width: 52px; height: 52px;">
+      <div style="position: relative; width: 40px; height: 40px;">
         ${pulseAnimation}
         <div style="
           position: relative;
-          width: 52px;
-          height: 52px;
+          width: 40px;
+          height: 40px;
           border-radius: 50%;
-          border: 4px solid ${memberColor};
-          box-shadow: 0 4px 20px ${shadowColor}, 0 0 25px ${memberColor}40;
+          border: 3px solid ${memberColor};
+          box-shadow: 0 3px 15px ${shadowColor}, 0 0 20px ${memberColor}40;
           ${avatarContent}
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
           font-weight: 700;
-          font-size: 16px;
+          font-size: 14px;
           text-shadow: 0 1px 2px rgba(0,0,0,0.3);
           letter-spacing: 0.5px;
         ">
@@ -318,9 +318,9 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
         ${speedBadge}
       </div>
     `,
-    iconSize: [52, 52],
-    iconAnchor: [26, 26],
-    popupAnchor: [0, -30],
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -24],
   });
 }
 
