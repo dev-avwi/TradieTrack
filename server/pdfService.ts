@@ -2424,16 +2424,33 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
             }
             
             function stopDrawing() {
-              isDrawing = false;
+              if (isDrawing) {
+                isDrawing = false;
+                // Update state when drawing ends too
+                updateSignatureState();
+              }
             }
             
             function updateSignatureState() {
-              hasSignature = true;
-              document.getElementById('signature-wrapper').classList.add('has-signature');
-              document.getElementById('signature-placeholder').classList.add('hidden');
-              document.getElementById('signature-error').classList.add('hidden');
-              // Save signature data
-              document.getElementById('signature_data').value = canvas.toDataURL('image/png');
+              // Check if canvas has any non-transparent pixels (actual drawing)
+              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              let hasContent = false;
+              for (let i = 3; i < imageData.data.length; i += 4) {
+                if (imageData.data[i] > 0) {
+                  hasContent = true;
+                  break;
+                }
+              }
+              
+              if (hasContent) {
+                hasSignature = true;
+                document.getElementById('signature-wrapper').classList.add('has-signature');
+                document.getElementById('signature-placeholder').classList.add('hidden');
+                document.getElementById('signature-error').classList.add('hidden');
+                // Save signature data
+                document.getElementById('signature_data').value = canvas.toDataURL('image/png');
+                console.log('Signature detected and saved');
+              }
             }
             
             function clearSignature() {
@@ -2445,19 +2462,79 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
               document.getElementById('signature_data').value = '';
             }
             
-            function validateAndSubmit() {
+            function validateAndSubmit(e) {
+              if (e) e.preventDefault();
+              
               const nameInput = document.getElementById('accepted_by');
               if (!nameInput.value.trim()) {
                 nameInput.focus();
                 return false;
               }
               
+              // Double-check canvas for signature content before validating
+              if (!hasSignature && canvas && ctx) {
+                try {
+                  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                  for (let i = 3; i < imageData.data.length; i += 4) {
+                    if (imageData.data[i] > 0) {
+                      hasSignature = true;
+                      document.getElementById('signature_data').value = canvas.toDataURL('image/png');
+                      console.log('Signature found during validation check');
+                      break;
+                    }
+                  }
+                } catch (e) {
+                  console.log('Error checking canvas:', e);
+                }
+              }
+              
               if (!hasSignature) {
                 document.getElementById('signature-error').classList.remove('hidden');
+                console.log('No signature detected');
                 return false;
               }
               
-              return true;
+              console.log('Form validation passed, submitting via fetch...');
+              
+              // Collect form data
+              const form = document.getElementById('acceptance-form');
+              const formData = new FormData(form);
+              // Use getAttribute to avoid shadowing by input named "action"
+              const actionUrl = form.getAttribute('action');
+              const baseUrl = actionUrl.replace('/action', '');
+              
+              // Submit via fetch with manual redirect handling
+              fetch(actionUrl, {
+                method: 'POST',
+                body: new URLSearchParams(formData),
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                redirect: 'manual' // Handle redirect ourselves
+              }).then(function(response) {
+                console.log('Fetch response:', response.status, response.type);
+                if (response.type === 'opaqueredirect' || response.status === 0) {
+                  // Server sent a redirect, navigate to success page
+                  console.log('Server redirected, navigating to success page');
+                  window.location.href = baseUrl + '?success=1';
+                } else if (response.status >= 300 && response.status < 400) {
+                  // Redirect status, go to success
+                  console.log('Redirect status received');
+                  window.location.href = baseUrl + '?success=1';
+                } else if (response.ok) {
+                  // Success, redirect to success page
+                  console.log('Success response, redirecting');
+                  window.location.href = baseUrl + '?success=1';
+                } else {
+                  console.error('Form submission failed:', response.status);
+                  alert('Error submitting form. Please try again.');
+                }
+              }).catch(function(error) {
+                console.error('Form submission error:', error);
+                alert('Error submitting form. Please try again.');
+              });
+              
+              return false;
             }
             
             function showAcceptForm() {
