@@ -2305,27 +2305,29 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
             let lastX = 0, lastY = 0;
             
             // Initialize signature pad
-            document.addEventListener('DOMContentLoaded', function() {
+            let canvasInitialized = false;
+            
+            function initializeCanvas() {
+              if (canvasInitialized) return;
               canvas = document.getElementById('signature-canvas');
+              if (!canvas) return;
+              
               ctx = canvas.getContext('2d');
               
               // Set canvas size to match display size
-              function resizeCanvas() {
-                const rect = canvas.parentElement.getBoundingClientRect();
-                const dpr = window.devicePixelRatio || 1;
-                canvas.width = rect.width * dpr;
-                canvas.height = 150 * dpr;
-                canvas.style.width = rect.width + 'px';
-                canvas.style.height = '150px';
-                ctx.scale(dpr, dpr);
-                ctx.lineWidth = 2;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.strokeStyle = '#1f2937';
-              }
+              const rect = canvas.parentElement.getBoundingClientRect();
+              if (rect.width === 0) return; // Don't initialize if hidden
               
-              resizeCanvas();
-              window.addEventListener('resize', resizeCanvas);
+              const dpr = window.devicePixelRatio || 1;
+              canvas.width = rect.width * dpr;
+              canvas.height = 150 * dpr;
+              canvas.style.width = rect.width + 'px';
+              canvas.style.height = '150px';
+              ctx.scale(dpr, dpr);
+              ctx.lineWidth = 2;
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.strokeStyle = '#1f2937';
               
               // Mouse events
               canvas.addEventListener('mousedown', startDrawing);
@@ -2337,6 +2339,32 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
               canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
               canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
               canvas.addEventListener('touchend', stopDrawing);
+              
+              canvasInitialized = true;
+            }
+            
+            document.addEventListener('DOMContentLoaded', function() {
+              // Try to initialize, but it may fail if canvas is hidden
+              initializeCanvas();
+              
+              // Re-initialize on window resize if already initialized
+              window.addEventListener('resize', function() {
+                if (canvasInitialized && canvas) {
+                  const rect = canvas.parentElement.getBoundingClientRect();
+                  if (rect.width > 0) {
+                    const dpr = window.devicePixelRatio || 1;
+                    canvas.width = rect.width * dpr;
+                    canvas.height = 150 * dpr;
+                    canvas.style.width = rect.width + 'px';
+                    canvas.style.height = '150px';
+                    ctx.scale(dpr, dpr);
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.strokeStyle = '#1f2937';
+                  }
+                }
+              });
             });
             
             function getPos(e) {
@@ -2434,19 +2462,24 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
               document.getElementById('confirm-decline').classList.add('hidden');
               document.querySelector('input[name="action"]').value = 'accept';
               
-              // Resize canvas after showing (fixes sizing issues)
+              // Initialize canvas after section is visible
               setTimeout(function() {
-                const rect = canvas.parentElement.getBoundingClientRect();
-                const dpr = window.devicePixelRatio || 1;
-                canvas.width = rect.width * dpr;
-                canvas.height = 150 * dpr;
-                canvas.style.width = rect.width + 'px';
-                canvas.style.height = '150px';
-                ctx.scale(dpr, dpr);
-                ctx.lineWidth = 2;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.strokeStyle = '#1f2937';
+                if (!canvasInitialized) {
+                  initializeCanvas();
+                } else if (canvas && ctx) {
+                  // Re-size existing canvas
+                  const rect = canvas.parentElement.getBoundingClientRect();
+                  const dpr = window.devicePixelRatio || 1;
+                  canvas.width = rect.width * dpr;
+                  canvas.height = 150 * dpr;
+                  canvas.style.width = rect.width + 'px';
+                  canvas.style.height = '150px';
+                  ctx.scale(dpr, dpr);
+                  ctx.lineWidth = 2;
+                  ctx.lineCap = 'round';
+                  ctx.lineJoin = 'round';
+                  ctx.strokeStyle = '#1f2937';
+                }
               }, 50);
             }
             
