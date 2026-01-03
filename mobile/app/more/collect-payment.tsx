@@ -586,7 +586,9 @@ export default function CollectPaymentScreen() {
   };
 
   const getPaymentUrl = (request: PaymentRequest) => {
-    return `${API_URL}/pay/${request.token}`;
+    // Use the server-provided paymentUrl if available (production-ready)
+    // Fall back to constructing from API_URL for backward compatibility
+    return request.paymentUrl || `${API_URL}/pay/${request.token}`;
   };
 
   const handleCopyLink = async () => {

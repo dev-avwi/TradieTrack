@@ -9784,8 +9784,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt,
       });
       
-      // Generate the payment URL
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      // Generate the payment URL using production-ready base URL detection
+      const baseUrl = process.env.APP_BASE_URL 
+        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : process.env.REPLIT_DEV_DOMAIN 
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : `${req.protocol}://${req.get('host')}`);
       const paymentUrl = `${baseUrl}/pay/${token}`;
       
       res.status(201).json({
@@ -9885,7 +9890,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const settings = await storage.getBusinessSettings(req.userId);
       const businessName = settings?.businessName || 'Your tradie';
       
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      // Use production-ready base URL detection
+      const baseUrl = process.env.APP_BASE_URL 
+        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : process.env.REPLIT_DEV_DOMAIN 
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : `${req.protocol}://${req.get('host')}`);
       const paymentUrl = `${baseUrl}/pay/${request.token}`;
       
       // Import and use email service
@@ -9923,7 +9934,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const QRCode = require('qrcode');
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      // Use production-ready base URL detection
+      const baseUrl = process.env.APP_BASE_URL 
+        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : process.env.REPLIT_DEV_DOMAIN 
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : `${req.protocol}://${req.get('host')}`);
       const paymentUrl = `${baseUrl}/pay/${request.token}`;
       
       // Generate QR code as data URL (base64)

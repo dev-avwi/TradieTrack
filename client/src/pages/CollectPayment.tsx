@@ -462,7 +462,9 @@ export default function CollectPayment() {
   };
 
   const getPaymentUrl = (request: PaymentRequest) => {
-    return `${window.location.origin}/pay/${request.token}`;
+    // Use the server-provided paymentUrl if available (production-ready)
+    // Fall back to constructing from origin for backward compatibility
+    return request.paymentUrl || `${window.location.origin}/pay/${request.token}`;
   };
 
   const getStatusBadge = (status: string) => {
