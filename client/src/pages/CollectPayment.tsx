@@ -149,6 +149,7 @@ export default function CollectPayment() {
   const [tapToPayDescription, setTapToPayDescription] = useState("");
   const [tapToPayClientId, setTapToPayClientId] = useState("");
   const [tapToPayJobId, setTapToPayJobId] = useState("");
+  const [tapToPayInvoiceId, setTapToPayInvoiceId] = useState("");
   const [tapToPayRequest, setTapToPayRequest] = useState<PaymentRequest | null>(null);
 
   const { data: paymentRequests, isLoading } = useQuery<PaymentRequest[]>({
@@ -219,6 +220,22 @@ export default function CollectPayment() {
     }
   }, [receiptInvoiceId, invoices]);
 
+  // Auto-fill QR Payment when invoice is selected
+  useEffect(() => {
+    if (tapToPayInvoiceId && invoices) {
+      const invoice = invoices.find(inv => inv.id === tapToPayInvoiceId);
+      if (invoice) {
+        const totalStr = typeof invoice.total === 'number' 
+          ? invoice.total.toFixed(2) 
+          : String(invoice.total || '0.00');
+        setTapToPayAmount(totalStr);
+        setTapToPayDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setTapToPayClientId(invoice.clientId);
+        if (invoice.jobId) setTapToPayJobId(invoice.jobId);
+      }
+    }
+  }, [tapToPayInvoiceId, invoices]);
+
   // Handle URL parameters from job detail navigation
   useEffect(() => {
     if (urlParamsProcessed || !invoices) return;
@@ -238,6 +255,7 @@ export default function CollectPayment() {
         // Pre-fill data for tap to pay
         setTapToPayAmount(totalStr);
         setTapToPayDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setTapToPayInvoiceId(invoiceId);
         setTapToPayClientId(invoice.clientId);
         if (jobId) setTapToPayJobId(jobId);
         else if (invoice.jobId) setTapToPayJobId(invoice.jobId);
@@ -289,7 +307,7 @@ export default function CollectPayment() {
   });
 
   const tapToPayMutation = useMutation({
-    mutationFn: async (data: { amount: string; description: string; clientId?: string; jobId?: string }) => {
+    mutationFn: async (data: { amount: string; description: string; invoiceId?: string; clientId?: string; jobId?: string }) => {
       const parsedAmount = parseFloat(data.amount);
       if (isNaN(parsedAmount) || parsedAmount <= 0) {
         throw new Error('Please enter a valid amount');
@@ -298,6 +316,7 @@ export default function CollectPayment() {
         amount: parsedAmount,
         description: data.description.trim() || 'QR Payment',
         expiresInHours: 1,
+        invoiceId: data.invoiceId || undefined,
         clientId: data.clientId || undefined,
         jobId: data.jobId || undefined,
       });
@@ -791,6 +810,7 @@ export default function CollectPayment() {
           setShowTapToPayDialog(false);
           setTapToPayAmount("");
           setTapToPayDescription("");
+          setTapToPayInvoiceId("");
           setTapToPayClientId("");
           setTapToPayJobId("");
           setTapToPayRequest(null);
@@ -838,12 +858,42 @@ export default function CollectPayment() {
               </div>
 
               <div className="space-y-2">
+                <Label>Link to Invoice (optional)</Label>
+                <Select value={tapToPayInvoiceId} onValueChange={(value) => {
+                  if (value === "_none") {
+                    setTapToPayInvoiceId("");
+                  } else {
+                    setTapToPayInvoiceId(value);
+                  }
+                }}>
+                  <SelectTrigger data-testid="select-tap-to-pay-invoice">
+                    <SelectValue placeholder="Select invoice to auto-fill" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">No invoice (quick collect)</SelectItem>
+                    {unpaidInvoices.map((invoice) => (
+                      <SelectItem key={invoice.id} value={invoice.id}>
+                        {invoice.number} - {invoice.title} (${typeof invoice.total === 'number' ? invoice.total.toFixed(2) : invoice.total})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Client (optional)</Label>
-                <Select value={tapToPayClientId} onValueChange={setTapToPayClientId}>
+                <Select value={tapToPayClientId} onValueChange={(value) => {
+                  if (value === "_none") {
+                    setTapToPayClientId("");
+                  } else {
+                    setTapToPayClientId(value);
+                  }
+                }}>
                   <SelectTrigger data-testid="select-tap-to-pay-client">
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="_none">No client</SelectItem>
                     {clients?.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.name}
@@ -855,11 +905,18 @@ export default function CollectPayment() {
 
               <div className="space-y-2">
                 <Label>Job (optional)</Label>
-                <Select value={tapToPayJobId} onValueChange={setTapToPayJobId}>
+                <Select value={tapToPayJobId} onValueChange={(value) => {
+                  if (value === "_none") {
+                    setTapToPayJobId("");
+                  } else {
+                    setTapToPayJobId(value);
+                  }
+                }}>
                   <SelectTrigger data-testid="select-tap-to-pay-job">
                     <SelectValue placeholder="Select job" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="_none">No job</SelectItem>
                     {jobs?.filter(job => !tapToPayClientId || job.clientId === tapToPayClientId).map((job) => (
                       <SelectItem key={job.id} value={job.id}>
                         {job.title}
@@ -877,6 +934,7 @@ export default function CollectPayment() {
                   onClick={() => tapToPayMutation.mutate({
                     amount: tapToPayAmount,
                     description: tapToPayDescription,
+                    invoiceId: tapToPayInvoiceId || undefined,
                     clientId: tapToPayClientId || undefined,
                     jobId: tapToPayJobId || undefined,
                   })}
@@ -928,6 +986,7 @@ export default function CollectPayment() {
                     setTapToPayRequest(null);
                     setTapToPayAmount("");
                     setTapToPayDescription("");
+                    setTapToPayInvoiceId("");
                     setTapToPayClientId("");
                     setTapToPayJobId("");
                   }}
