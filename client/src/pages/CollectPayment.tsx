@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,7 +18,6 @@ import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-hea
 import { 
   QrCode, 
   Link2, 
-  MessageSquare, 
   Mail, 
   Copy, 
   Check, 
@@ -30,19 +28,15 @@ import {
   CheckCircle,
   XCircle,
   Share2,
-  Smartphone,
-  RefreshCw,
-  Trash2,
   Wifi,
   CreditCard,
   FileText,
-  Briefcase,
   Banknote,
-  ExternalLink,
   Receipt,
   ArrowRight,
-  Building2,
-  AlertTriangle
+  AlertTriangle,
+  TrendingUp,
+  Zap
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -110,6 +104,7 @@ export default function CollectPayment() {
   const [, navigate] = useLocation();
   const { data: integrationHealth } = useIntegrationHealth();
   const stripeConnected = isStripeReady(integrationHealth);
+  
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
@@ -169,7 +164,6 @@ export default function CollectPayment() {
   });
 
   const unpaidInvoices = invoices?.filter(inv => inv.status !== 'paid') || [];
-  const activeJobs = jobs?.filter(job => job.status !== 'invoiced') || [];
 
   useEffect(() => {
     if (selectedInvoiceId && invoices) {
@@ -180,9 +174,8 @@ export default function CollectPayment() {
           : String(invoice.total || '0.00');
         setNewAmount(totalStr);
         setNewDescription(`Payment for ${invoice.number}: ${invoice.title}`);
-        setNewReference(invoice.number); // Auto-fill reference with invoice number
+        setNewReference(invoice.number);
         setSelectedClientId(invoice.clientId);
-        // Only auto-fill job if field is empty (respect manual overrides)
         if (invoice.jobId && !selectedJobId) setSelectedJobId(invoice.jobId);
       }
     }
@@ -196,7 +189,7 @@ export default function CollectPayment() {
           ? invoice.total.toFixed(2) 
           : String(invoice.total || '0.00');
         setRecordAmount(totalStr);
-        setRecordReference(invoice.number); // Auto-fill reference with invoice number
+        setRecordReference(invoice.number);
       }
     }
   }, [recordInvoiceId, invoices]);
@@ -210,9 +203,8 @@ export default function CollectPayment() {
           : String(invoice.total || '0.00');
         setReceiptAmount(totalStr);
         setReceiptDescription(`Payment for ${invoice.number}: ${invoice.title}`);
-        setReceiptReference(invoice.number); // Auto-fill reference with invoice number
+        setReceiptReference(invoice.number);
         setReceiptClientId(invoice.clientId);
-        // Only auto-fill job if field is empty (respect manual overrides)
         if (invoice.jobId && !receiptJobId) setReceiptJobId(invoice.jobId);
       }
     }
@@ -237,30 +229,6 @@ export default function CollectPayment() {
     onError: (error: any) => {
       toast({
         title: "Failed to create payment request",
-        description: error.message || "Please try again",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const recordPaymentMutation = useMutation({
-    mutationFn: async (data: { invoiceId: string; amount: string; paymentMethod: string; reference?: string; notes?: string }) => {
-      const response = await apiRequest('POST', `/api/invoices/${data.invoiceId}/record-payment`, data);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/payment-requests'] });
-      setShowRecordPaymentDialog(false);
-      resetRecordForm();
-      toast({
-        title: "Payment recorded",
-        description: "Invoice has been marked as paid",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to record payment",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -307,26 +275,29 @@ export default function CollectPayment() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/payment-requests'] });
-      toast({
-        title: "Payment request cancelled",
-      });
+      toast({ title: "Payment request cancelled" });
     },
   });
 
-  const sendSmsMutation = useMutation({
-    mutationFn: async ({ id, phoneNumber }: { id: string; phoneNumber: string }) => {
-      await apiRequest('POST', `/api/payment-requests/${id}/send-sms`, { phoneNumber });
+  const recordPaymentMutation = useMutation({
+    mutationFn: async (data: { invoiceId: string; amount: string; paymentMethod: string; reference?: string; notes?: string }) => {
+      const response = await apiRequest('POST', `/api/invoices/${data.invoiceId}/record-payment`, data);
+      return response.json();
     },
     onSuccess: () => {
-      setSharePhone("");
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/payment-requests'] });
+      setShowRecordPaymentDialog(false);
+      resetRecordForm();
       toast({
-        title: "SMS sent",
-        description: "Payment link sent via SMS",
+        title: "Payment recorded",
+        description: "Invoice has been marked as paid",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
-        title: "Failed to send SMS",
+        title: "Failed to record payment",
+        description: error.message || "Please try again",
         variant: "destructive",
       });
     },
@@ -351,27 +322,18 @@ export default function CollectPayment() {
     },
   });
 
-  const createReceiptMutation = useMutation({
-    mutationFn: async (data: { 
-      amount: number; 
-      description: string; 
-      paymentMethod: string;
-      paymentReference?: string;
-      clientId?: string;
-      invoiceId?: string;
-      jobId?: string;
-    }) => {
+  const receiptMutation = useMutation({
+    mutationFn: async (data: any) => {
       const response = await apiRequest('POST', '/api/receipts', data);
       return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/receipts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
       setShowReceiptDialog(false);
       resetReceiptForm();
       toast({
         title: "Receipt generated",
-        description: `Receipt ${data.receiptNumber} created successfully`,
+        description: `Receipt ${data.receiptNumber} created`,
       });
       navigate(`/receipts/${data.id}`);
     },
@@ -391,6 +353,7 @@ export default function CollectPayment() {
     setSelectedClientId("");
     setSelectedInvoiceId("");
     setSelectedJobId("");
+    setExpiresInHours("24");
   };
 
   const resetRecordForm = () => {
@@ -406,125 +369,37 @@ export default function CollectPayment() {
     setReceiptDescription("");
     setReceiptPaymentMethod("cash");
     setReceiptReference("");
-    setReceiptClientId("");
-    setReceiptInvoiceId("");
+    setReceiptClientId(null);
+    setReceiptInvoiceId(null);
     setReceiptJobId("");
   };
 
-  const handleCreate = () => {
-    if (!newAmount || parseFloat(newAmount) <= 0) {
-      toast({
-        title: "Please enter a valid amount",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!newDescription.trim()) {
-      toast({
-        title: "Please enter a description",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    createMutation.mutate({
-      amount: parseFloat(newAmount),
-      description: newDescription.trim(),
-      reference: newReference.trim() || undefined,
-      clientId: selectedClientId || undefined,
-      invoiceId: selectedInvoiceId || undefined,
-      jobId: selectedJobId || undefined,
-      expiresInHours: parseInt(expiresInHours),
-    });
-  };
-
-  const handleRecordPayment = () => {
-    if (!recordInvoiceId) {
-      toast({
-        title: "Please select an invoice",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!recordAmount || parseFloat(recordAmount) <= 0) {
-      toast({
-        title: "Please enter a valid amount",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    recordPaymentMutation.mutate({
-      invoiceId: recordInvoiceId,
-      amount: recordAmount,
-      paymentMethod: recordPaymentMethod,
-      reference: recordReference || undefined,
-      notes: recordNotes || undefined,
-    });
-  };
-
-  const handleCreateReceipt = () => {
-    if (!receiptAmount || parseFloat(receiptAmount) <= 0) {
-      toast({
-        title: "Please enter a valid amount",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    createReceiptMutation.mutate({
-      amount: parseFloat(receiptAmount),
-      description: receiptDescription.trim() || "Payment received",
-      paymentMethod: receiptPaymentMethod,
-      paymentReference: receiptReference || undefined,
-      clientId: receiptClientId || undefined,
-      invoiceId: receiptInvoiceId || undefined,
-      jobId: receiptJobId || undefined,
-    });
-  };
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      toast({
-        title: "Link copied",
-        description: "Payment link copied to clipboard",
-      });
-    } catch (err) {
-      toast({
-        title: "Failed to copy",
-        variant: "destructive",
-      });
-    }
-  };
-
   const getPaymentUrl = (request: PaymentRequest) => {
-    // Use the server-provided paymentUrl if available (production-ready)
-    // Fall back to constructing from origin for backward compatibility
-    return request.paymentUrl || `${window.location.origin}/pay/${request.token}`;
+    if (request.paymentUrl) return request.paymentUrl;
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/pay/${request.token}`;
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({ title: "Copied to clipboard" });
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline" className="text-yellow-600 border-yellow-600"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+        return <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">Pending</Badge>;
       case 'paid':
-        return <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" />Paid</Badge>;
+        return <Badge className="bg-emerald-500">Paid</Badge>;
       case 'cancelled':
-        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Cancelled</Badge>;
+        return <Badge variant="secondary">Cancelled</Badge>;
       case 'expired':
-        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Expired</Badge>;
+        return <Badge variant="destructive">Expired</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
-  };
-
-  const getClientName = (clientId: string | null | undefined) => {
-    if (!clientId || !clients) return null;
-    const client = clients.find(c => c.id === clientId);
-    return client?.name;
   };
 
   const getInvoiceNumber = (invoiceId: string | null | undefined) => {
@@ -533,271 +408,159 @@ export default function CollectPayment() {
     return invoice?.number;
   };
 
-  const getJobTitle = (jobId: string | null | undefined) => {
-    if (!jobId || !jobs) return null;
-    const job = jobs.find(j => j.id === jobId);
-    return job?.title;
-  };
-
   const pendingRequests = paymentRequests?.filter(r => r.status === 'pending') || [];
   const completedRequests = paymentRequests?.filter(r => r.status !== 'pending') || [];
+  
+  const totalPending = pendingRequests.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+  const totalReceived = completedRequests.filter(r => r.status === 'paid').reduce((sum, r) => sum + parseFloat(r.amount), 0);
 
   return (
     <PageShell>
       <PageHeader
         title="Collect Payment"
-        subtitle="Request payments on-site or record cash and bank transfers"
+        subtitle="Get paid on-site or send payment links"
         leading={<DollarSign className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
-        action={
-          <div className="flex gap-2 flex-wrap">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowReceiptDialog(true)} 
-              data-testid="button-generate-receipt"
-            >
-              <Receipt className="h-4 w-4 mr-2" />
-              Generate Receipt
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowRecordPaymentDialog(true)} 
-              data-testid="button-record-payment"
-            >
-              <Banknote className="h-4 w-4 mr-2" />
-              Record Payment
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => setShowTapToPayDialog(true)} 
-              disabled={!stripeConnected}
-              data-testid="button-tap-to-pay"
-            >
-              <Wifi className="h-4 w-4 mr-2" />
-              Tap to Pay
-            </Button>
-            <Button 
-              onClick={() => setShowCreateDialog(true)} 
-              disabled={!stripeConnected}
-              data-testid="button-new-payment"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Request
-            </Button>
-          </div>
-        }
       />
 
-      {/* Stripe Integration Warning */}
+      {/* Stripe Warning - Compact */}
       {!stripeConnected && (
-        <div 
-          className="rounded-xl p-4 border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 mb-6"
-          data-testid="banner-stripe-warning"
-        >
-          <div className="flex items-center justify-between gap-3">
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 mb-6" data-testid="banner-stripe-warning">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-amber-200 dark:bg-amber-800">
-                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="font-semibold text-amber-700 dark:text-amber-300">Payments Not Connected</p>
-                <p className="text-sm text-muted-foreground">Connect Stripe to accept online card payments</p>
-              </div>
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Connect Stripe to accept card payments</span>
             </div>
-            <Button
-              onClick={() => navigate('/integrations')}
-              className="shrink-0"
-              variant="outline"
-              data-testid="button-setup-stripe"
-            >
-              Set Up Payments
+            <Button size="sm" variant="outline" onClick={() => navigate('/integrations')} data-testid="button-setup-stripe">
+              Connect
             </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Quick Links */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      {/* KPI Strip */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <Card data-testid="kpi-outstanding">
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold" style={{ color: 'hsl(var(--trade))' }}>${totalPending.toFixed(0)}</p>
+            <p className="text-xs text-muted-foreground">Outstanding</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="kpi-pending-count">
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold">{pendingRequests.length}</p>
+            <p className="text-xs text-muted-foreground">Pending</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="kpi-received">
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-emerald-600">${totalReceived.toFixed(0)}</p>
+            <p className="text-xs text-muted-foreground">Received</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Primary Action - Tap to Pay */}
+      <Card 
+        className="mb-4 hover-elevate cursor-pointer border-2" 
+        style={{ borderColor: 'hsl(var(--trade))' }}
+        onClick={() => stripeConnected && setShowTapToPayDialog(true)}
+        data-testid="card-tap-to-pay"
+      >
+        <CardContent className="p-5">
+          <div className="flex items-center gap-4">
+            <div className="rounded-xl p-3" style={{ backgroundColor: 'hsl(var(--trade))' }}>
+              <Wifi className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg">Tap to Pay</h3>
+              <p className="text-sm text-muted-foreground">Quick QR code for in-person payments</p>
+            </div>
+            <ArrowRight className="h-5 w-5 text-muted-foreground" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Secondary Actions */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
         <Card 
           className="hover-elevate cursor-pointer" 
-          onClick={() => navigate('/invoices')}
-          data-testid="card-link-invoices"
+          onClick={() => setShowCreateDialog(true)}
+          data-testid="card-new-request"
         >
           <CardContent className="p-4 flex items-center gap-3">
             <div className="rounded-lg p-2" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-              <FileText className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+              <Plus className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
             </div>
             <div>
-              <p className="font-medium text-sm">Invoices</p>
-              <p className="text-xs text-muted-foreground">{unpaidInvoices.length} unpaid</p>
+              <p className="font-medium text-sm">New Request</p>
+              <p className="text-xs text-muted-foreground">Send payment link</p>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card 
           className="hover-elevate cursor-pointer" 
-          onClick={() => navigate('/jobs')}
-          data-testid="card-link-jobs"
+          onClick={() => setShowRecordPaymentDialog(true)}
+          data-testid="card-record-payment"
         >
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-lg p-2" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-              <Briefcase className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+            <div className="rounded-lg p-2 bg-emerald-100 dark:bg-emerald-900/30">
+              <Banknote className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="font-medium text-sm">Jobs</p>
-              <p className="text-xs text-muted-foreground">{activeJobs.length} active</p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card 
-          className="hover-elevate cursor-pointer" 
-          onClick={() => navigate('/clients')}
-          data-testid="card-link-clients"
-        >
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-lg p-2" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-              <Building2 className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-            </div>
-            <div>
-              <p className="font-medium text-sm">Clients</p>
-              <p className="text-xs text-muted-foreground">{clients?.length || 0} total</p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card 
-          className="hover-elevate cursor-pointer" 
-          onClick={() => navigate('/reports')}
-          data-testid="card-link-reports"
-        >
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-lg p-2" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-              <Receipt className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-            </div>
-            <div>
-              <p className="font-medium text-sm">Reports</p>
-              <p className="text-xs text-muted-foreground">View payments</p>
+              <p className="font-medium text-sm">Record Payment</p>
+              <p className="text-xs text-muted-foreground">Cash or bank transfer</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tap to Pay Info Banner */}
-      <Card className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/20" data-testid="card-contactless-info">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-4">
-            <div className="rounded-xl bg-blue-500 p-3 shadow-lg" data-testid="icon-contactless">
-              <Wifi className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1 flex items-center gap-2" data-testid="text-contactless-title">
-                <span>Contactless Payments</span>
-                <Badge variant="secondary" className="text-xs" data-testid="badge-works-now">Works Now</Badge>
-              </h3>
-              <p className="text-sm text-muted-foreground mb-2" data-testid="text-contactless-description">
-                Customer scans the QR code and pays with Apple Pay, Google Pay, or card. 
-                It's just as easy as tapping a card!
-              </p>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="text-accepted-cards">
-                <CreditCard className="h-3.5 w-3.5" />
-                <span>Cards accepted: Visa, Mastercard, Amex • Apple Pay • Google Pay</span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-6">
+      {/* Active Requests */}
+      <div className="space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : paymentRequests?.length === 0 ? (
+        ) : pendingRequests.length === 0 && completedRequests.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <div className="rounded-full bg-muted p-4 mb-4">
                 <QrCode className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">No payment requests yet</h3>
-              <p className="text-muted-foreground text-center mb-4 max-w-sm">
-                Create a payment request to get a QR code or shareable link that customers can use to pay you on-site.
+              <p className="text-muted-foreground text-center mb-4 max-w-sm text-sm">
+                Create your first payment request to get started
               </p>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setShowRecordPaymentDialog(true)} data-testid="button-record-first">
-                  <Banknote className="h-4 w-4 mr-2" />
-                  Record Payment
-                </Button>
-                <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-first">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Request
-                </Button>
-              </div>
             </CardContent>
           </Card>
         ) : (
           <>
             {pendingRequests.length > 0 && (
               <div>
-                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-yellow-600" />
-                  Pending Payments ({pendingRequests.length})
-                </h2>
-                <div className="grid gap-3">
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">ACTIVE REQUESTS</h3>
+                <div className="space-y-2">
                   {pendingRequests.map((request) => (
-                    <Card key={request.id} className="hover-elevate">
+                    <Card key={request.id} className="hover-elevate" data-testid={`request-${request.id}`}>
                       <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-bold text-xl">${parseFloat(request.amount).toFixed(2)}</span>
-                              {getStatusBadge(request.status)}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <p className="font-bold text-lg">${parseFloat(request.amount).toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                              </p>
                             </div>
-                            <p className="text-sm text-muted-foreground truncate mb-1">{request.description}</p>
-                            
-                            {/* Linked items */}
-                            <div className="flex flex-wrap gap-2 mt-2">
+                            <div className="h-10 w-px bg-border" />
+                            <div>
+                              <p className="text-sm font-medium truncate max-w-[200px]">{request.description}</p>
                               {request.invoiceId && (
-                                <Badge 
-                                  variant="outline" 
-                                  className="cursor-pointer hover:bg-accent"
-                                  onClick={() => navigate(`/invoices/${request.invoiceId}`)}
-                                >
-                                  <FileText className="h-3 w-3 mr-1" />
-                                  {getInvoiceNumber(request.invoiceId)}
-                                </Badge>
-                              )}
-                              {request.jobId && (
-                                <Badge 
-                                  variant="outline" 
-                                  className="cursor-pointer hover:bg-accent"
-                                  onClick={() => navigate(`/jobs/${request.jobId}`)}
-                                >
-                                  <Briefcase className="h-3 w-3 mr-1" />
-                                  {getJobTitle(request.jobId)}
-                                </Badge>
-                              )}
-                              {request.clientId && (
-                                <Badge 
-                                  variant="outline" 
-                                  className="cursor-pointer hover:bg-accent"
-                                  onClick={() => navigate(`/clients/${request.clientId}`)}
-                                >
-                                  <Building2 className="h-3 w-3 mr-1" />
-                                  {getClientName(request.clientId)}
-                                </Badge>
+                                <p className="text-xs text-muted-foreground">{getInvoiceNumber(request.invoiceId)}</p>
                               )}
                             </div>
-                            
-                            {request.reference && (
-                              <p className="text-xs text-muted-foreground mt-2">Ref: {request.reference}</p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Created {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                            </p>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-2">
                             <Button
-                              size="icon"
+                              size="sm"
                               variant="outline"
                               onClick={() => {
                                 setSelectedRequest(request);
@@ -805,7 +568,8 @@ export default function CollectPayment() {
                               }}
                               data-testid={`button-share-${request.id}`}
                             >
-                              <Share2 className="h-4 w-4" />
+                              <Share2 className="h-4 w-4 mr-1" />
+                              Share
                             </Button>
                             <Button
                               size="icon"
@@ -813,84 +577,9 @@ export default function CollectPayment() {
                               onClick={() => cancelMutation.mutate(request.id)}
                               data-testid={`button-cancel-${request.id}`}
                             >
-                              <XCircle className="h-4 w-4" />
+                              <XCircle className="h-4 w-4 text-muted-foreground" />
                             </Button>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Receipts section */}
-            {receipts && receipts.length > 0 && (
-              <div>
-                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <Receipt className="h-5 w-5 text-muted-foreground" />
-                  Receipts ({receipts.length})
-                </h2>
-                <div className="grid gap-3">
-                  {receipts.slice(0, 10).map((receipt) => (
-                    <Card 
-                      key={receipt.id} 
-                      className="cursor-pointer hover-elevate"
-                      onClick={() => navigate(`/receipts/${receipt.id}`)}
-                      data-testid={`card-receipt-${receipt.id}`}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-bold text-lg">${parseFloat(receipt.amount).toFixed(2)}</span>
-                              <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" />Paid</Badge>
-                            </div>
-                            <p className="text-sm font-medium">{receipt.receiptNumber}</p>
-                            
-                            {/* Linked items */}
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {receipt.clientId && (
-                                <Badge variant="outline">
-                                  <Building2 className="h-3 w-3 mr-1" />
-                                  {getClientName(receipt.clientId)}
-                                </Badge>
-                              )}
-                              {receipt.invoiceId && (
-                                <Badge 
-                                  variant="outline" 
-                                  className="cursor-pointer hover:bg-accent"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/invoices/${receipt.invoiceId}`);
-                                  }}
-                                >
-                                  <FileText className="h-3 w-3 mr-1" />
-                                  {getInvoiceNumber(receipt.invoiceId)}
-                                </Badge>
-                              )}
-                              {receipt.jobId && (
-                                <Badge 
-                                  variant="outline" 
-                                  className="cursor-pointer hover:bg-accent"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/jobs/${receipt.jobId}`);
-                                  }}
-                                >
-                                  <Briefcase className="h-3 w-3 mr-1" />
-                                  {getJobTitle(receipt.jobId)}
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            {receipt.paidAt && (
-                              <p className="text-xs text-green-600 mt-2">
-                                Paid {format(new Date(receipt.paidAt), 'dd MMM yyyy, h:mm a')}
-                              </p>
-                            )}
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
                         </div>
                       </CardContent>
                     </Card>
@@ -901,300 +590,341 @@ export default function CollectPayment() {
 
             {completedRequests.length > 0 && (
               <div>
-                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-muted-foreground" />
-                  Completed Requests ({completedRequests.length})
-                </h2>
-                <div className="grid gap-3">
-                  {completedRequests.slice(0, 10).map((request) => (
-                    <Card key={request.id} className="opacity-75">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-bold text-lg">${parseFloat(request.amount).toFixed(2)}</span>
-                              {getStatusBadge(request.status)}
-                            </div>
-                            <p className="text-sm text-muted-foreground truncate">{request.description}</p>
-                            
-                            {/* Linked items */}
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {request.invoiceId && (
-                                <Badge 
-                                  variant="outline" 
-                                  className="cursor-pointer hover:bg-accent"
-                                  onClick={() => navigate(`/invoices/${request.invoiceId}`)}
-                                >
-                                  <FileText className="h-3 w-3 mr-1" />
-                                  {getInvoiceNumber(request.invoiceId)}
-                                </Badge>
-                              )}
-                              {request.jobId && (
-                                <Badge 
-                                  variant="outline" 
-                                  className="cursor-pointer hover:bg-accent"
-                                  onClick={() => navigate(`/jobs/${request.jobId}`)}
-                                >
-                                  <Briefcase className="h-3 w-3 mr-1" />
-                                  {getJobTitle(request.jobId)}
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            {request.paidAt && (
-                              <p className="text-xs text-green-600 mt-2">
-                                Paid {format(new Date(request.paidAt), 'dd MMM yyyy, h:mm a')}
-                              </p>
-                            )}
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">HISTORY</h3>
+                <Card>
+                  <CardContent className="p-0">
+                    {completedRequests.slice(0, 5).map((request, index) => (
+                      <div 
+                        key={request.id} 
+                        className={`flex items-center justify-between p-4 ${index !== completedRequests.slice(0, 5).length - 1 ? 'border-b' : ''}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {request.status === 'paid' ? (
+                            <CheckCircle className="h-5 w-5 text-emerald-500" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-muted-foreground" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">${parseFloat(request.amount).toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">{request.description}</p>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        <div className="text-right">
+                          {getStatusBadge(request.status)}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {format(new Date(request.createdAt), 'MMM d')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+                {completedRequests.length > 5 && (
+                  <Button variant="ghost" className="w-full mt-2" onClick={() => navigate('/reports')}>
+                    View all {completedRequests.length} payments
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                )}
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* Create Payment Request Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      {/* Tap to Pay Dialog */}
+      <Dialog open={showTapToPayDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowTapToPayDialog(false);
+          setTapToPayAmount("");
+          setTapToPayDescription("");
+          setTapToPayRequest(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <QrCode className="h-5 w-5" />
-              New Payment Request
+              <Wifi className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+              Tap to Pay
             </DialogTitle>
             <DialogDescription>
-              Create a QR code or link for on-site payments
+              Quick payment for in-person transactions
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Link to Invoice */}
-            {unpaidInvoices.length > 0 && (
+
+          {!tapToPayRequest ? (
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="invoice">Link to Invoice</Label>
-                <Select value={selectedInvoiceId || "none"} onValueChange={(val) => setSelectedInvoiceId(val === "none" ? "" : val)}>
-                  <SelectTrigger data-testid="select-invoice">
-                    <SelectValue placeholder="Select an invoice (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No invoice</SelectItem>
-                    {unpaidInvoices.map((invoice) => (
-                      <SelectItem key={invoice.id} value={invoice.id}>
-                        {invoice.number} - ${parseFloat(invoice.total).toFixed(2)} ({invoice.status})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Selecting an invoice will auto-fill the amount and description
+                <Label>Amount</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0.00"
+                    value={tapToPayAmount}
+                    onChange={(e) => setTapToPayAmount(e.target.value)}
+                    className="pl-8 text-2xl font-bold h-14"
+                    autoFocus
+                    data-testid="input-tap-to-pay-amount"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Description (optional)</Label>
+                <Input
+                  placeholder="What's this for?"
+                  value={tapToPayDescription}
+                  onChange={(e) => setTapToPayDescription(e.target.value)}
+                  data-testid="input-tap-to-pay-description"
+                />
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setShowTapToPayDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => tapToPayMutation.mutate({
+                    amount: tapToPayAmount,
+                    description: tapToPayDescription,
+                  })}
+                  disabled={!tapToPayAmount || parseFloat(tapToPayAmount) <= 0 || tapToPayMutation.isPending}
+                  data-testid="button-create-tap-to-pay"
+                >
+                  {tapToPayMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Show QR
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-center p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                <p className="text-3xl font-bold" style={{ color: 'hsl(var(--trade))' }}>
+                  ${parseFloat(tapToPayRequest.amount).toFixed(2)}
                 </p>
               </div>
-            )}
+
+              <div className="flex flex-col items-center">
+                <div className="bg-white p-4 rounded-lg shadow-inner">
+                  <QRCodeSVG
+                    value={getPaymentUrl(tapToPayRequest)}
+                    size={180}
+                    level="H"
+                    includeMargin={true}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground text-center mt-3">
+                  Customer scans to pay
+                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                <span>Expires in 1 hour</span>
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setTapToPayRequest(null);
+                    setTapToPayAmount("");
+                    setTapToPayDescription("");
+                  }}
+                >
+                  New Payment
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => copyToClipboard(getPaymentUrl(tapToPayRequest))}
+                >
+                  {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                  Copy Link
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Request Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>New Payment Request</DialogTitle>
+            <DialogDescription>
+              Create a payment link to send to your customer
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Link to Invoice (optional)</Label>
+              <Select value={selectedInvoiceId} onValueChange={setSelectedInvoiceId}>
+                <SelectTrigger data-testid="select-invoice">
+                  <SelectValue placeholder="Select invoice to auto-fill" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unpaidInvoices.map((invoice) => (
+                    <SelectItem key={invoice.id} value={invoice.id}>
+                      {invoice.number} - ${typeof invoice.total === 'number' ? invoice.total.toFixed(2) : invoice.total}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount (AUD) *</Label>
+              <Label>Amount</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
                 <Input
-                  id="amount"
                   type="number"
                   step="0.01"
                   min="0.01"
                   placeholder="0.00"
                   value={newAmount}
                   onChange={(e) => setNewAmount(e.target.value)}
-                  className="pl-7"
+                  className="pl-8"
                   data-testid="input-amount"
                 />
               </div>
-              {newAmount && parseFloat(newAmount) > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Includes ${(parseFloat(newAmount) / 11).toFixed(2)} GST
-                </p>
-              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
-              <Textarea
-                id="description"
-                placeholder="e.g., Kitchen tap repair"
+              <Label>Description</Label>
+              <Input
+                placeholder="Payment for services"
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
-                className="resize-none"
-                rows={2}
                 data-testid="input-description"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reference">Reference (optional)</Label>
+              <Label>Reference (optional)</Label>
               <Input
-                id="reference"
-                placeholder="e.g., Job #123"
+                placeholder="Invoice number or reference"
                 value={newReference}
                 onChange={(e) => setNewReference(e.target.value)}
                 data-testid="input-reference"
               />
             </div>
 
-            {clients && clients.length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="client">Client (optional)</Label>
-                <Select value={selectedClientId || "none"} onValueChange={(val) => setSelectedClientId(val === "none" ? "" : val)}>
-                  <SelectTrigger data-testid="select-client">
-                    <SelectValue placeholder="Select a client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No client</SelectItem>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {activeJobs.length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="job">Link to Job (optional)</Label>
-                <Select value={selectedJobId || "none"} onValueChange={(val) => setSelectedJobId(val === "none" ? "" : val)}>
-                  <SelectTrigger data-testid="select-job">
-                    <SelectValue placeholder="Select a job" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No job</SelectItem>
-                    {activeJobs.map((job) => (
-                      <SelectItem key={job.id} value={job.id}>
-                        {job.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
             <div className="space-y-2">
-              <Label htmlFor="expires">Link expires in</Label>
+              <Label>Expires in</Label>
               <Select value={expiresInHours} onValueChange={setExpiresInHours}>
-                <SelectTrigger data-testid="select-expires">
+                <SelectTrigger data-testid="select-expiry">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1">1 hour</SelectItem>
-                  <SelectItem value="4">4 hours</SelectItem>
                   <SelectItem value="24">24 hours</SelectItem>
                   <SelectItem value="72">3 days</SelectItem>
-                  <SelectItem value="168">1 week</SelectItem>
+                  <SelectItem value="168">7 days</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <DialogFooter className="flex gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => { setShowCreateDialog(false); resetCreateForm(); }}>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleCreate} 
-              disabled={createMutation.isPending}
+            <Button
+              onClick={() => createMutation.mutate({
+                amount: parseFloat(newAmount),
+                description: newDescription,
+                reference: newReference || undefined,
+                clientId: selectedClientId || undefined,
+                invoiceId: selectedInvoiceId || undefined,
+                jobId: selectedJobId || undefined,
+                expiresInHours: parseInt(expiresInHours),
+              })}
+              disabled={!newAmount || !newDescription || createMutation.isPending}
               data-testid="button-create-request"
             >
               {createMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <QrCode className="h-4 w-4 mr-2" />
-                  Create Request
-                </>
+                "Create Request"
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Record Manual Payment Dialog */}
+      {/* Record Payment Dialog */}
       <Dialog open={showRecordPaymentDialog} onOpenChange={setShowRecordPaymentDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Banknote className="h-5 w-5" />
-              Record Payment
-            </DialogTitle>
+            <DialogTitle>Record Payment</DialogTitle>
             <DialogDescription>
-              Record a cash, bank transfer, or other offline payment
+              Record a cash or bank transfer payment
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="record-invoice">Invoice *</Label>
-              <Select value={recordInvoiceId || ""} onValueChange={setRecordInvoiceId}>
+              <Label>Invoice</Label>
+              <Select value={recordInvoiceId} onValueChange={setRecordInvoiceId}>
                 <SelectTrigger data-testid="select-record-invoice">
-                  <SelectValue placeholder="Select an invoice" />
+                  <SelectValue placeholder="Select invoice" />
                 </SelectTrigger>
                 <SelectContent>
-                  {unpaidInvoices.length === 0 ? (
-                    <SelectItem value="" disabled>No unpaid invoices</SelectItem>
-                  ) : (
-                    unpaidInvoices.map((invoice) => (
-                      <SelectItem key={invoice.id} value={invoice.id}>
-                        {invoice.number} - ${parseFloat(invoice.total).toFixed(2)} ({invoice.title})
-                      </SelectItem>
-                    ))
-                  )}
+                  {unpaidInvoices.map((invoice) => (
+                    <SelectItem key={invoice.id} value={invoice.id}>
+                      {invoice.number} - ${typeof invoice.total === 'number' ? invoice.total.toFixed(2) : invoice.total}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="record-amount">Amount Received (AUD) *</Label>
+              <Label>Amount</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
                 <Input
-                  id="record-amount"
                   type="number"
                   step="0.01"
                   min="0.01"
                   placeholder="0.00"
                   value={recordAmount}
                   onChange={(e) => setRecordAmount(e.target.value)}
-                  className="pl-7"
+                  className="pl-8"
                   data-testid="input-record-amount"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="record-method">Payment Method *</Label>
+              <Label>Payment Method</Label>
               <Select value={recordPaymentMethod} onValueChange={setRecordPaymentMethod}>
-                <SelectTrigger data-testid="select-record-method">
+                <SelectTrigger data-testid="select-payment-method">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                   <SelectItem value="cheque">Cheque</SelectItem>
-                  <SelectItem value="card">Card (in person)</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="record-reference">Payment Reference (optional)</Label>
+              <Label>Reference (optional)</Label>
               <Input
-                id="record-reference"
-                placeholder="e.g., Bank transfer ref or cheque number"
+                placeholder="Transaction reference"
                 value={recordReference}
                 onChange={(e) => setRecordReference(e.target.value)}
                 data-testid="input-record-reference"
@@ -1202,169 +932,35 @@ export default function CollectPayment() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="record-notes">Notes (optional)</Label>
+              <Label>Notes (optional)</Label>
               <Textarea
-                id="record-notes"
-                placeholder="Any additional notes about this payment"
+                placeholder="Add any notes"
                 value={recordNotes}
                 onChange={(e) => setRecordNotes(e.target.value)}
-                className="resize-none"
-                rows={2}
                 data-testid="input-record-notes"
               />
             </div>
           </div>
 
-          <DialogFooter className="flex gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => { setShowRecordPaymentDialog(false); resetRecordForm(); }}>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRecordPaymentDialog(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleRecordPayment} 
-              disabled={recordPaymentMutation.isPending || !recordInvoiceId}
-              data-testid="button-record-payment-submit"
+            <Button
+              onClick={() => recordPaymentMutation.mutate({
+                invoiceId: recordInvoiceId,
+                amount: recordAmount,
+                paymentMethod: recordPaymentMethod,
+                reference: recordReference || undefined,
+                notes: recordNotes || undefined,
+              })}
+              disabled={!recordInvoiceId || !recordAmount || recordPaymentMutation.isPending}
+              data-testid="button-record-submit"
             >
               {recordPaymentMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Recording...
-                </>
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Record Payment
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Generate Manual Receipt Dialog */}
-      <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5" />
-              Generate Receipt
-            </DialogTitle>
-            <DialogDescription>
-              Create a receipt for a payment received. Optionally link to an invoice or client.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="receipt-invoice">Link to Invoice (optional)</Label>
-              <Select value={receiptInvoiceId || "none"} onValueChange={(val) => { setReceiptInvoiceId(val === "none" ? null : val); }}>
-                <SelectTrigger data-testid="select-receipt-invoice">
-                  <SelectValue placeholder="Select an invoice (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No invoice</SelectItem>
-                  {invoices?.map((invoice) => (
-                    <SelectItem key={invoice.id} value={invoice.id}>
-                      {invoice.number} - ${parseFloat(invoice.total).toFixed(2)} ({invoice.title})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="receipt-amount">Amount Received (AUD) *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                <Input
-                  id="receipt-amount"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  placeholder="0.00"
-                  value={receiptAmount}
-                  onChange={(e) => setReceiptAmount(e.target.value)}
-                  className="pl-7"
-                  data-testid="input-receipt-amount"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="receipt-description">Description</Label>
-              <Input
-                id="receipt-description"
-                placeholder="e.g., Payment for plumbing services"
-                value={receiptDescription}
-                onChange={(e) => setReceiptDescription(e.target.value)}
-                data-testid="input-receipt-description"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="receipt-method">Payment Method *</Label>
-              <Select value={receiptPaymentMethod} onValueChange={setReceiptPaymentMethod}>
-                <SelectTrigger data-testid="select-receipt-method">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="cheque">Cheque</SelectItem>
-                  <SelectItem value="card">Card (in person)</SelectItem>
-                  <SelectItem value="tap_to_pay">Tap to Pay</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="receipt-reference">Payment Reference (optional)</Label>
-              <Input
-                id="receipt-reference"
-                placeholder="e.g., Bank transfer ref or cheque number"
-                value={receiptReference}
-                onChange={(e) => setReceiptReference(e.target.value)}
-                data-testid="input-receipt-reference"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="receipt-client">Client (optional)</Label>
-              <Select value={receiptClientId || "none"} onValueChange={(val) => setReceiptClientId(val === "none" ? null : val)}>
-                <SelectTrigger data-testid="select-receipt-client">
-                  <SelectValue placeholder="Select a client (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No client</SelectItem>
-                  {clients?.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => { setShowReceiptDialog(false); resetReceiptForm(); }}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleCreateReceipt} 
-              disabled={createReceiptMutation.isPending || !receiptAmount}
-              data-testid="button-generate-receipt-submit"
-            >
-              {createReceiptMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Receipt className="h-4 w-4 mr-2" />
-                  Generate Receipt
-                </>
+                "Record Payment"
               )}
             </Button>
           </DialogFooter>
@@ -1375,10 +971,7 @@ export default function CollectPayment() {
       <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Share2 className="h-5 w-5" />
-              Share Payment Request
-            </DialogTitle>
+            <DialogTitle>Share Payment Link</DialogTitle>
             <DialogDescription>
               ${selectedRequest ? parseFloat(selectedRequest.amount).toFixed(2) : '0.00'} - {selectedRequest?.description}
             </DialogDescription>
@@ -1387,18 +980,9 @@ export default function CollectPayment() {
           {selectedRequest && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="qr" className="flex items-center gap-1">
-                  <QrCode className="h-4 w-4" />
-                  QR Code
-                </TabsTrigger>
-                <TabsTrigger value="link" className="flex items-center gap-1">
-                  <Link2 className="h-4 w-4" />
-                  Link
-                </TabsTrigger>
-                <TabsTrigger value="send" className="flex items-center gap-1">
-                  <MessageSquare className="h-4 w-4" />
-                  Send
-                </TabsTrigger>
+                <TabsTrigger value="qr">QR Code</TabsTrigger>
+                <TabsTrigger value="link">Link</TabsTrigger>
+                <TabsTrigger value="send">Send</TabsTrigger>
               </TabsList>
 
               <TabsContent value="qr" className="mt-4">
@@ -1406,7 +990,7 @@ export default function CollectPayment() {
                   <div className="bg-white p-4 rounded-lg shadow-inner">
                     <QRCodeSVG
                       value={getPaymentUrl(selectedRequest)}
-                      size={200}
+                      size={180}
                       level="H"
                       includeMargin={true}
                     />
@@ -1432,15 +1016,11 @@ export default function CollectPayment() {
                       onClick={() => copyToClipboard(getPaymentUrl(selectedRequest))}
                       data-testid="button-copy-link"
                     >
-                      {copied ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Share this link with your customer via any messaging app
+                    Share this link via any messaging app
                   </p>
                 </div>
               </TabsContent>
@@ -1448,10 +1028,7 @@ export default function CollectPayment() {
               <TabsContent value="send" className="mt-4">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
-                      Send via Email
-                    </Label>
+                    <Label>Send via Email</Label>
                     <div className="flex gap-2">
                       <Input
                         type="email"
@@ -1480,151 +1057,103 @@ export default function CollectPayment() {
         </DialogContent>
       </Dialog>
 
-      {/* Tap to Pay Dialog */}
-      <Dialog open={showTapToPayDialog} onOpenChange={(open) => {
-        if (!open) {
-          setShowTapToPayDialog(false);
-          setTapToPayAmount("");
-          setTapToPayDescription("");
-          setTapToPayRequest(null);
-        }
-      }}>
-        <DialogContent className="sm:max-w-md">
+      {/* Receipt Dialog */}
+      <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Wifi className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-              Tap to Pay
-            </DialogTitle>
+            <DialogTitle>Generate Receipt</DialogTitle>
             <DialogDescription>
-              Create a quick payment request for in-person payments
+              Create a receipt for a completed payment
             </DialogDescription>
           </DialogHeader>
 
-          {!tapToPayRequest ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Amount (AUD)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    placeholder="0.00"
-                    value={tapToPayAmount}
-                    onChange={(e) => setTapToPayAmount(e.target.value)}
-                    className="pl-8"
-                    autoFocus
-                    data-testid="input-tap-to-pay-amount"
-                  />
-                </div>
-              </div>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Link to Invoice (optional)</Label>
+              <Select value={receiptInvoiceId || ""} onValueChange={(v) => setReceiptInvoiceId(v || null)}>
+                <SelectTrigger data-testid="select-receipt-invoice">
+                  <SelectValue placeholder="Select invoice" />
+                </SelectTrigger>
+                <SelectContent>
+                  {invoices?.map((invoice) => (
+                    <SelectItem key={invoice.id} value={invoice.id}>
+                      {invoice.number} - ${typeof invoice.total === 'number' ? invoice.total.toFixed(2) : invoice.total}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div className="space-y-2">
-                <Label>Description (optional)</Label>
+            <div className="space-y-2">
+              <Label>Amount</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
                 <Input
-                  placeholder="What's this payment for?"
-                  value={tapToPayDescription}
-                  onChange={(e) => setTapToPayDescription(e.target.value)}
-                  data-testid="input-tap-to-pay-description"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0.00"
+                  value={receiptAmount}
+                  onChange={(e) => setReceiptAmount(e.target.value)}
+                  className="pl-8"
+                  data-testid="input-receipt-amount"
                 />
               </div>
-
-              <div className="p-3 rounded-lg flex items-start gap-2" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-                <Clock className="h-4 w-4 mt-0.5 shrink-0" style={{ color: 'hsl(var(--trade))' }} />
-                <p className="text-sm" style={{ color: 'hsl(var(--trade))' }}>
-                  Request expires in 1 hour, perfect for in-person payments
-                </p>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowTapToPayDialog(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => tapToPayMutation.mutate({
-                    amount: tapToPayAmount,
-                    description: tapToPayDescription,
-                  })}
-                  disabled={!tapToPayAmount || parseFloat(tapToPayAmount) <= 0 || tapToPayMutation.isPending}
-                  data-testid="button-create-tap-to-pay"
-                >
-                  {tapToPayMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <QrCode className="h-4 w-4 mr-2" />
-                      Show QR Code
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="text-center p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-                <p className="text-3xl font-bold" style={{ color: 'hsl(var(--trade))' }}>
-                  ${parseFloat(tapToPayRequest.amount).toFixed(2)}
-                </p>
-                {tapToPayRequest.description && (
-                  <p className="text-sm text-muted-foreground mt-1">{tapToPayRequest.description}</p>
-                )}
-              </div>
 
-              <div className="flex flex-col items-center">
-                <div className="bg-white p-4 rounded-lg shadow-inner">
-                  <QRCodeSVG
-                    value={getPaymentUrl(tapToPayRequest)}
-                    size={200}
-                    level="H"
-                    includeMargin={true}
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground text-center mt-4">
-                  Customer scans this code with their phone camera to pay
-                </p>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span>Expires in 1 hour</span>
-              </div>
-
-              <DialogFooter className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setTapToPayRequest(null);
-                    setTapToPayAmount("");
-                    setTapToPayDescription("");
-                  }}
-                  data-testid="button-new-tap-to-pay"
-                >
-                  New Payment
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowTapToPayDialog(false);
-                    setSelectedRequest(tapToPayRequest);
-                    setShowShareDialog(true);
-                    setTapToPayRequest(null);
-                    setTapToPayAmount("");
-                    setTapToPayDescription("");
-                  }}
-                  data-testid="button-share-tap-to-pay"
-                >
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share Link
-                </Button>
-              </DialogFooter>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                placeholder="Payment description"
+                value={receiptDescription}
+                onChange={(e) => setReceiptDescription(e.target.value)}
+                data-testid="input-receipt-description"
+              />
             </div>
-          )}
+
+            <div className="space-y-2">
+              <Label>Payment Method</Label>
+              <Select value={receiptPaymentMethod} onValueChange={setReceiptPaymentMethod}>
+                <SelectTrigger data-testid="select-receipt-method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReceiptDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => receiptMutation.mutate({
+                amount: parseFloat(receiptAmount),
+                description: receiptDescription,
+                paymentMethod: receiptPaymentMethod,
+                paymentReference: receiptReference || undefined,
+                clientId: receiptClientId || undefined,
+                invoiceId: receiptInvoiceId || undefined,
+                jobId: receiptJobId || undefined,
+              })}
+              disabled={!receiptAmount || !receiptDescription || receiptMutation.isPending}
+              data-testid="button-generate-receipt"
+            >
+              {receiptMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Generate
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </PageShell>
