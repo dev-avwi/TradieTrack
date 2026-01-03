@@ -1267,10 +1267,10 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
   const lighterBrand = brandColor + '20';
   
   // Use business logo for favicon if available, otherwise use TradieTrack logo
-  const tradieTrackLogo = '/public/tradietrack-logo.png';
+  const tradieTrackFavicon = '/public/tradietrack-favicon.png';
   const faviconHtml = business.logoUrl 
     ? `<link rel="icon" type="image/png" href="${business.logoUrl}">`
-    : `<link rel="icon" type="image/png" href="${tradieTrackLogo}">`;
+    : `<link rel="icon" type="image/png" href="${tradieTrackFavicon}">`;
   
   return `
 <!DOCTYPE html>
