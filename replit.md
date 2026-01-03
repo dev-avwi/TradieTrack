@@ -1,8 +1,46 @@
 ### Overview
-TradieTrack is a mobile-first web application for Australian tradespeople. It centralizes and streamlines business operations, covering job management, quoting, invoicing, and payment collection, including Australian GST and AUD currency handling. The project aims to boost productivity, financial management, and client communication for solo tradies and small businesses.
+TradieTrack is a mobile-first web application designed for Australian tradespeople. Its primary purpose is to centralize and streamline business operations, encompassing job management, quoting, invoicing, and payment collection. The platform specifically handles Australian GST and AUD currency. TradieTrack aims to enhance productivity, financial management, and client communication for solo tradies and small businesses, offering features like AI-driven scheduling optimization and multi-option quote generation to boost efficiency and customer choice.
 
 ### User Preferences
 Preferred communication style: Simple, everyday language.
+
+### System Architecture
+TradieTrack employs an event-driven architecture with TypeScript. The frontend is built using React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile devices. The backend is an Express.js and TypeScript REST API, utilizing Zod for validation, PostgreSQL for data storage, and Drizzle ORM.
+
+Key architectural and design decisions include:
+-   **UI/UX**: Mobile-first design featuring card-based layouts, touch-optimized components, and a "Today's Schedule" dashboard. Includes Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, Contextual Quote/Invoice Creation, and customizable theming.
+-   **Authentication**: Supports Email/password, Google OAuth, and secure password reset, with cross-platform compatibility for session tokens.
+-   **AI Integration**: Utilizes GPT-4o-mini for business suggestions, Australian English phrasing, proactive notifications, and quote generation. GPT-4o vision is used for AI Photo Analysis. Includes an AI Schedule Optimizer using a nearest-neighbor algorithm.
+-   **PDF Generation**: Server-side PDF generation for quotes and invoices via Puppeteer, incorporating customizable templates.
+-   **Adaptive Solo/Team Mode**: Features adjust (e.g., time tracking, GPS check-in) based on the business's team size.
+-   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators, professional confirmation emails, and rollback capabilities.
+-   **Live Quote/Invoice Editor**: Real-time preview with templates, catalog items, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
+-   **Payment Collection**: Features Stripe Payment Links, a dedicated "Tap to Pay Request Flow" for in-person payments, QR code support, comprehensive receipt generation, and a "Record Payment" button.
+-   **Quote Acceptance Flow**: Automates job status updates upon client acceptance, with a "Create Job" button to convert accepted quotes into jobs.
+-   **Subscription & Billing System**: Three-tier pricing (Free, Pro, Team) with trials, Stripe checkout, and automated reminders.
+-   **Email Automation**: SendGrid integration for customizable invoice/quote emails with AI suggestions.
+-   **PWA Support**: Offline capabilities via web manifest and service worker.
+-   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments. Includes two-way Twilio SMS integration with AI analysis.
+-   **Team Operations Center**: A unified, advanced team management hub with Live Ops, Team Admin, Scheduling, Skills & Certifications, and Performance tabs, replacing legacy team management pages.
+-   **Microsoft Teams-Style Chat Hub**: A unified conversation inbox for Team Chat, Customer SMS, Job Threads, and Direct Messages.
+-   **Live360-Style Interactive Map**: Displays job pins and real-time location tracking for team members.
+-   **Role-Based Access Control (RBAC)**: Granular permissions (OWNER, ADMIN, MANAGER, SUPERVISOR, STAFF) enforced by middleware, with specific worker permission configurations.
+-   **Mobile App (React Native/Expo)**: Full API integration, Zustand for state management, SQLite-based offline mode with background sync, and permission-aware navigation.
+-   **Comprehensive Offline Mode**: Offline-first support for major workflows (job, time, invoice, quote, client management) with smart sync.
+-   **Media Sync**: Photos, videos, voice notes, and text notes sync between mobile and web, including photo markup.
+-   **Route Optimization**: Haversine distance calculation with a nearest-neighbor algorithm for daily jobs.
+-   **Recurring Invoices & Jobs**: Functionality for setting up recurring invoices and jobs.
+-   **Financial Management**: Unified dashboard with KPIs.
+-   **Documents Hub**: Consolidated view of quotes, invoices, and receipts with KPI headers and document relationship links.
+-   **Client Asset Library & Smart Pre-fill**: API endpoints for reusing job photos, quote items, invoice items, and notes.
+-   **Integrations**: Enhanced Xero integration (two-way contact/quote/invoice sync, payment marking, chart of accounts, tax rates, bulk sync, summary dashboard), MYOB AccountRight, and Google Calendar integrations.
+-   **Safety Form Templates**: Australian-standard WHS compliance templates with digital signatures.
+-   **Templates Hub**: Central management for customizable content (Terms & Conditions, Warranty, Email/SMS templates, Safety Forms, Checklists, Payment Notices) with live preview.
+-   **Communications Hub**: Unified view of all sent emails and SMS messages with statistics and filtering.
+-   **Automation Settings**: Configurable job reminders, quote follow-ups, invoice reminders, photo requirements, and GPS auto check-in/out.
+-   **Job Photo Requirements**: Enforce photo uploads at specific job stages (before_start, during, after_completion) with mobile parity features.
+-   **Defect Tracking**: Management of warranty work and defects with severity levels, status workflow, and photo attachments.
+-   **Timesheet Approvals**: Workflow for crew timesheet approval with status states and reviewer notes.
 
 ### Demo Accounts
 **Business Owner:**
@@ -14,66 +52,81 @@ Preferred communication style: Simple, everyday language.
 - Email: worker@tradietrack.com.au
 - Password: worker123456
 - Role: Worker on Mike's Plumbing team (Jake Morrison)
-- Use this account to test the worker experience within the same team
 
 **Demo Data:**
 - 16 clients (realistic Cairns QLD area addresses with GPS coordinates)
-- 23 jobs (4 pending, 9 scheduled [6 for today for AI optimizer testing], 3 in_progress, 4 done, 3 invoiced)
+- 23 jobs (4 pending, 9 scheduled, 3 in_progress, 4 done, 3 invoiced)
 - 13 quotes (3 draft, 4 sent, 3 accepted, 3 rejected)
 - 13 invoices (2 draft, 4 sent, 2 overdue, 6 paid)
 - 6 receipts (for paid invoices)
-- Team: 4 accepted members + 2 pending invites (Brodie Williams, Emma Patterson)
-- Worker assignments: Jake Morrison has 4 jobs (overdue, today, upcoming, in_progress)
 
-**AI-First Features:**
-- **AI Schedule Optimizer**: Dashboard component uses nearest-neighbor algorithm with priority weighting to optimize daily route. Shows optimized order, total distance/duration stats, and AI recommendations. Jobs with GPS coordinates are grouped efficiently.
-- **Multi-Option Quote Editor**: Toggle in quote wizard enables Good/Better/Best package selection. Customers can choose between tiered options (e.g., Basic, Standard, Premium) with different pricing.
+### Complete Tradie Workflow Guide
 
-### System Architecture
-TradieTrack utilizes an event-driven architecture with TypeScript. The frontend is built with React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile. The backend is an Express.js and TypeScript REST API with Zod validation, backed by PostgreSQL and Drizzle ORM.
+This section documents the complete business workflow from initial customer contact to final payment and follow-up.
 
-Key architectural decisions and features include:
--   **Authentication**: Supports Email/password, Google OAuth, and secure password reset. iOS/Safari fallback uses localStorage session token with Authorization header alongside cookies. Custom queryFn in detail views MUST include both `credentials: 'include'` AND `headers: getAuthHeaders()` for cross-platform compatibility.
--   **AI Assistant**: Integrates GPT-4o-mini for business suggestions, Australian English phrasing, proactive notifications, and quote generation. GPT-4o vision is used for AI Photo Analysis.
--   **PDF Generation**: Server-side PDF generation for quotes and invoices using Puppeteer. Invoice PDFs (download, preview, email, public) consistently use Templates Hub terms & warranty templates with fallback chain: custom template → business.invoiceTerms → default terms.
--   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, and a "Today's Schedule" dashboard. Includes Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation. Customizable theming and branding.
--   **Adaptive Solo/Team Mode**: Adjusts UI and features (e.g., time tracking, GPS check-in) based on team size.
--   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators, professional confirmation emails, stage timestamps, and rollback capability.
--   **Live Quote/Invoice Editor**: Real-time preview with templates, catalog items, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
--   **Payment Collection**: Includes Stripe Payment Links, **Tap to Pay Request Flow** (dedicated quick-create modal that creates a payment request with 1-hour expiry for in-person payments, shows QR code immediately, available on both web and mobile with parity), PDF receipt generation, email/SMS delivery, QR code support, a comprehensive receipt system with unique numbering and activity logging, and a built-in "Record Payment" button on invoice details for sent/overdue invoices with confirmation dialog. Payment URLs use production-ready base URL detection (APP_BASE_URL → REPLIT_DOMAINS → REPLIT_DEV_DOMAIN fallback chain).
--   **Quote Acceptance Flow**: Automatically updates job status upon client acceptance. Includes **Quote→Job Conversion**: "Create Job" button on accepted quotes pre-fills JobForm with quote details (title, description, client) and bidirectionally links quote/job via PATCH after creation.
--   **Subscription & Billing System**: Three-tier pricing (Free, Pro, Team) with 14-day free trials, Stripe checkout, automated billing reminders, and cross-platform sync.
--   **Email Automation**: SendGrid integration for customizable invoice/quote emails with PDF attachments and AI suggestions.
--   **PWA Support**: Offline capabilities via web manifest and service worker.
--   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and role-based access. Includes two-way Twilio SMS integration with AI analysis, auto-creation of conversations for unknown numbers, and quick reply templates.
--   **Team Operations Center** (`/team-operations`): Unified, advanced team management with 5-tab interface: Live Ops (real-time presence, activity feed, team map), Team Admin (member management, permissions - owner/manager only), Scheduling (weekly availability, time-off requests with approval workflow), Skills & Certifications (license tracking with expiry alerts, verification status), and Performance (job completion metrics, ratings, KPIs). Consolidates former Team Hub and Team Management pages with enhanced security validation (business ownership verification on all API routes).
--   **Legacy Team Routes** (`/team`, `/team-dashboard`): Both legacy routes now redirect to `/team-operations`. The Team Operations Center consolidates all team management functionality with mobile-responsive design, 5-tab interface, member deletion confirmation dialogs, and `ownerOrManagerOnly()` middleware for proper role-based access control (both owners and managers can manage team members).
--   **Microsoft Teams-Style Chat Hub** (`/chat`): Unified conversation inbox combining Team Chat, Customer SMS, Job Threads, and Direct Messages. Features 3-column layout with filter tabs (All/Team/Customers/Jobs), type-specific icons/colors, and context panel for customer/job details.
--   **Live360-Style Interactive Map**: Displays job pins and real-time location tracking for team members with geofence alerts (Owner/Manager only).
--   **Role-Based Access Control (RBAC)**: Granular permissions (OWNER, ADMIN, MANAGER, SUPERVISOR, STAFF) enforced by middleware.
--   **Worker Permissions System**: Granular capability controls allowing owners to grant specific permissions to workers. Permission categories: Financial (collect_payments, view_invoices, view_quotes), Documents (create_quotes, create_invoices, edit_documents), Sending (send_quotes, send_invoices), Clients (view_clients, create_clients, edit_clients), Jobs (update_job_status, edit_jobs, view_all_jobs), Tracking (time_tracking, gps_checkin), Communication (team_chat, client_sms). Permissions stored in team_members.customPermissions, exposed via /api/auth/me, with permission toggles in Team Operations UI and permission-gated Quick Actions on both web and mobile worker dashboards.
--   **Team Management Hub**: Interface for owners/managers to manage team members, assignments, and permissions.
--   **Workflow-Integrated Smart Actions**: Contextual automation suggestions.
--   **Mobile App (React Native/Expo)**: Full API integration, Zustand for state management, SQLite-based offline mode with background sync, and permission-aware navigation. Features iOS Liquid Glass UI and iPad Sidebar Layout.
--   **Comprehensive Offline Mode**: Full offline-first support for major workflows including job, time, invoice, quote, and client management, with smart sync for conflict detection.
--   **Media Sync**: Photos, videos, voice notes, and text notes sync between mobile and web. Includes photo markup/annotation.
--   **Route Optimization**: Haversine distance calculation with nearest-neighbor algorithm for daily jobs.
--   **Recurring Invoices & Jobs**: Toggle for recurring invoices/jobs with frequency and end date options.
--   **Financial Management**: Unified dashboard with KPIs.
--   **Documents Hub** (`/documents`): Consolidated view of quotes, invoices, and receipts with KPI header (Total Quotes, Outstanding Invoices, Total Received). Features status-based card borders, colored tab indicators (blue/amber/green), and document relationship links showing Quote → Invoice → Receipt workflow. Complete demo data chain available for testing.
--   **Client Asset Library & Smart Pre-fill**: API endpoints for reusing job photos, quote items, invoice items, and notes.
--   **Activity Feed**: Tracks lifecycle events.
--   **Unified Dashboard API**: Single endpoint for consistent web/mobile dashboard experience.
--   **Platform Admin Dashboard**: Dedicated interface for platform administrators.
--   **Integrations**: Xero, MYOB AccountRight, and Google Calendar integrations with OAuth 2.0. **Enhanced Xero Integration** (matching ServiceM8/Tradify): Two-way contact sync (import from Xero + push to Xero), quote sync (as draft invoices), invoice sync with payment marking, chart of accounts fetching, bank account mapping, Australian GST tax rates, bulk sync operations, and sync summary dashboard. API routes at `/api/integrations/xero/*` including: push-quote, push-client, sync-all-clients, sync-all-quotes, accounts, bank-accounts, tax-rates, sync-summary. A unified API provides integration status across platforms.
--   **Safety Form Templates**: Australian-standard WHS compliance templates with digital signature support.
--   **Templates Hub**: Central management for all customizable content including Terms & Conditions, Warranty, Email/SMS templates, Safety Forms, Checklists, and Payment Notices. Features two-column live preview editor with merge field replacement, category-based navigation (Communications, Financial, Jobs & Safety), and automatic display on quotes/invoices. API at `/api/business-templates` with template families: terms_conditions, warranty, email, sms, safety_form, checklist, payment_notice. Full mobile parity via `mobile/app/more/business-templates.tsx` with hooks (`useBusinessTemplates`, `useIntegrationHealth`), native email client fallback (Gmail/Outlook/Apple Mail via Expo Linking), trigger badges showing purpose per template, and integration status warnings with quick-action buttons.
--   **Communications Hub** (`/communications`): Unified view of all sent emails and SMS messages. Features statistics cards (Total Sent, Emails, SMS, Delivered), filter tabs (All/Email/SMS), status filtering (Sent/Delivered/Pending/Failed), search by recipient/content, and clickable entity links to view related quotes/invoices/jobs. Aggregates data from activity logs and SMS conversations. Owner/Manager access only.
--   **Automation Settings**: Configurable job reminders (SMS/email before scheduled jobs), quote follow-ups, invoice reminders (before due/overdue), photo requirements (before start/after completion), and GPS auto check-in/out. API at `/api/automation-settings` with per-user settings.
--   **Job Reminders**: Automated SMS/email notifications before scheduled jobs. Configurable hours before job (default 24h), type (sms/email/both), with pending/sent/failed status tracking. API at `/api/jobs/:jobId/reminders`.
--   **Job Photo Requirements**: Require photos at specific job stages (before_start, during, after_completion). Tracks fulfillment status with photo URLs. API at `/api/jobs/:jobId/photo-requirements`. **Mobile parity**: Category prompts on all upload paths (camera, gallery, video), long-press thumbnails to recategorize, color-coded category badges (B=blue/before, A=green/after, P=orange/progress), gates filter by `category === 'before'` or `category === 'after'` for independent enforcement.
--   **Defect Tracking**: Warranty work and defect management with severity levels (low/medium/high/critical), status workflow (reported → acknowledged → in_progress → resolved → closed), photo attachments, and resolution notes. API at `/api/defects` with full CRUD.
--   **Timesheet Approvals**: Workflow for crew timesheet approval with status states (pending/approved/rejected/revision_requested), reviewer notes, and timestamp tracking. API at `/api/timesheet-approvals` with submit/approve/reject/revision actions.
+#### Phase 1: Customer Inquiry (Entry Points)
+- **Inbound SMS**: Customer texts business number → auto-creates SMS conversation → AI analysis suggests response
+- **Phone Call**: Tradie manually creates client → adds inquiry notes
+- **Website/Referral**: Create client with contact details
+
+#### Phase 2: Quote Creation
+**Quote Statuses: draft → sent → accepted/rejected**
+
+1. **Create Quote** - Select client, add line items (from catalog or manual), set validity period, add terms & conditions
+2. **Send Quote** - Email with PDF, SMS notification, client receives online viewer
+3. **Client Decision** - Accepted: auto-creates/links job | Rejected: enables follow-up workflow
+
+#### Phase 3: Job Lifecycle
+**Job Statuses: pending → scheduled → in_progress → done → invoiced**
+
+1. **Pending** - Job created, awaiting scheduling
+2. **Scheduled** - Date/time set, GPS for route optimization, automated reminders sent
+3. **In Progress** - GPS check-in, time tracking starts, upload photos
+4. **Done** - GPS check-out, time tracking stops, ready for invoicing
+5. **Invoiced** - Invoice created and sent, payment collection enabled
+
+**Alternative Paths:**
+- Job Cancelled, Job On Hold, Defect Reported
+
+#### Phase 4: Invoice & Payment
+**Invoice Statuses: draft → sent → paid (with overdue tracking)**
+
+1. **Create Invoice** - Auto-fills from job/quote, add line items, set due date
+2. **Send Invoice** - Email with PDF, SMS with payment link
+3. **Payment Collection** (from job detail or `/collect-payment`):
+   - **Tap to Pay** (Mobile only): NFC contactless via Stripe Terminal
+   - **QR Code**: Customer scans and pays via phone
+   - **Send Link**: Email/SMS payment link
+   - **Record Cash/Bank Transfer**: Manual entry
+4. **Payment Received** - Invoice marked paid, auto-generates receipt
+
+#### Phase 5: Receipt & Follow-up
+- Receipt generated with unique number
+- PDF available for download/email
+- Optional: Thank-you email, review request, maintenance reminders
+
+#### Status Transition Matrix
+
+| From | To | Trigger |
+|------|-----|---------|
+| Quote draft | Quote sent | Send button |
+| Quote sent | Quote accepted | Client accepts |
+| Quote accepted | Job pending | Auto-creates job |
+| Job pending | Job scheduled | Date/time set |
+| Job scheduled | Job in_progress | Start Job |
+| Job in_progress | Job done | Complete Job |
+| Job done | Job invoiced | Invoice sent |
+| Invoice sent | Invoice paid | Payment received |
+
+#### Payment Methods
+
+| Method | Availability | Best For |
+|--------|--------------|----------|
+| Tap to Pay (NFC) | Mobile only (iPhone XS+) | In-person after job |
+| QR Code | Web & Mobile | In-person, customer has phone |
+| Payment Link | Web & Mobile | Remote payment via SMS/email |
+| Record Cash | Web & Mobile | Cash payments |
+| Bank Transfer | Web & Mobile | Direct deposits |
 
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)

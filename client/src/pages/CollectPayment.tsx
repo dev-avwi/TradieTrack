@@ -129,6 +129,7 @@ export default function CollectPayment() {
   
   const [recordAmount, setRecordAmount] = useState("");
   const [recordInvoiceId, setRecordInvoiceId] = useState("");
+  const [recordClientId, setRecordClientId] = useState("");
   const [recordPaymentMethod, setRecordPaymentMethod] = useState("cash");
   const [recordReference, setRecordReference] = useState("");
   const [recordNotes, setRecordNotes] = useState("");
@@ -146,6 +147,8 @@ export default function CollectPayment() {
   
   const [tapToPayAmount, setTapToPayAmount] = useState("");
   const [tapToPayDescription, setTapToPayDescription] = useState("");
+  const [tapToPayClientId, setTapToPayClientId] = useState("");
+  const [tapToPayJobId, setTapToPayJobId] = useState("");
   const [tapToPayRequest, setTapToPayRequest] = useState<PaymentRequest | null>(null);
 
   const { data: paymentRequests, isLoading } = useQuery<PaymentRequest[]>({
@@ -195,6 +198,7 @@ export default function CollectPayment() {
           : String(invoice.total || '0.00');
         setRecordAmount(totalStr);
         setRecordReference(invoice.number);
+        setRecordClientId(invoice.clientId);
       }
     }
   }, [recordInvoiceId, invoices]);
@@ -234,10 +238,15 @@ export default function CollectPayment() {
         // Pre-fill data for tap to pay
         setTapToPayAmount(totalStr);
         setTapToPayDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setTapToPayClientId(invoice.clientId);
+        if (jobId) setTapToPayJobId(jobId);
+        else if (invoice.jobId) setTapToPayJobId(invoice.jobId);
         
         // Also set up create dialog data
         setSelectedInvoiceId(invoiceId);
+        setSelectedClientId(invoice.clientId);
         if (jobId) setSelectedJobId(jobId);
+        else if (invoice.jobId) setSelectedJobId(invoice.jobId);
         
         // Open the appropriate dialog based on method parameter
         if (method === 'qr') {
@@ -280,7 +289,7 @@ export default function CollectPayment() {
   });
 
   const tapToPayMutation = useMutation({
-    mutationFn: async (data: { amount: string; description: string }) => {
+    mutationFn: async (data: { amount: string; description: string; clientId?: string; jobId?: string }) => {
       const parsedAmount = parseFloat(data.amount);
       if (isNaN(parsedAmount) || parsedAmount <= 0) {
         throw new Error('Please enter a valid amount');
@@ -289,6 +298,8 @@ export default function CollectPayment() {
         amount: parsedAmount,
         description: data.description.trim() || 'QR Payment',
         expiresInHours: 1,
+        clientId: data.clientId || undefined,
+        jobId: data.jobId || undefined,
       });
       const result = await response.json();
       if (!result.paymentUrl && !result.token) {
@@ -403,6 +414,7 @@ export default function CollectPayment() {
   const resetRecordForm = () => {
     setRecordAmount("");
     setRecordInvoiceId("");
+    setRecordClientId("");
     setRecordPaymentMethod("cash");
     setRecordReference("");
     setRecordNotes("");
@@ -450,6 +462,12 @@ export default function CollectPayment() {
     if (!invoiceId || !invoices) return null;
     const invoice = invoices.find(i => i.id === invoiceId);
     return invoice?.number;
+  };
+
+  const getClientName = (clientId: string | null | undefined) => {
+    if (!clientId || !clients) return null;
+    const client = clients.find(c => c.id === clientId);
+    return client?.name;
   };
 
   const pendingRequests = paymentRequests?.filter(r => r.status === 'pending') || [];
@@ -546,9 +564,12 @@ export default function CollectPayment() {
                 <p className="text-sm text-muted-foreground max-w-xs mx-auto">
                   Customer taps their card or phone on your device to pay instantly
                 </p>
-                <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                  <span>Requires iPhone XS+ with Stripe Terminal SDK</span>
-                </div>
+              </div>
+              <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="info-tap-to-pay-web">
+                <AlertTriangle className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  Tap to Pay is only available on iPhone XS+ with iOS 16.4+. On web, use QR Code or Send Link instead.
+                </p>
               </div>
               <Button 
                 className="w-full h-12 text-base" 
@@ -670,9 +691,17 @@ export default function CollectPayment() {
                             <div className="h-10 w-px bg-border" />
                             <div>
                               <p className="text-sm font-medium truncate max-w-[200px]">{request.description}</p>
-                              {request.invoiceId && (
-                                <p className="text-xs text-muted-foreground">{getInvoiceNumber(request.invoiceId)}</p>
-                              )}
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {request.clientId && getClientName(request.clientId) && (
+                                  <span>{getClientName(request.clientId)}</span>
+                                )}
+                                {request.clientId && request.invoiceId && (
+                                  <span>•</span>
+                                )}
+                                {request.invoiceId && (
+                                  <span>{getInvoiceNumber(request.invoiceId)}</span>
+                                )}
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -723,7 +752,15 @@ export default function CollectPayment() {
                           )}
                           <div>
                             <p className="text-sm font-medium">${parseFloat(request.amount).toFixed(2)}</p>
-                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">{request.description}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="truncate max-w-[150px]">{request.description}</span>
+                              {request.clientId && getClientName(request.clientId) && (
+                                <>
+                                  <span>•</span>
+                                  <span>{getClientName(request.clientId)}</span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="text-right">
@@ -754,6 +791,8 @@ export default function CollectPayment() {
           setShowTapToPayDialog(false);
           setTapToPayAmount("");
           setTapToPayDescription("");
+          setTapToPayClientId("");
+          setTapToPayJobId("");
           setTapToPayRequest(null);
         }
       }}>
@@ -798,6 +837,38 @@ export default function CollectPayment() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label>Client (optional)</Label>
+                <Select value={tapToPayClientId} onValueChange={setTapToPayClientId}>
+                  <SelectTrigger data-testid="select-tap-to-pay-client">
+                    <SelectValue placeholder="Select client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients?.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Job (optional)</Label>
+                <Select value={tapToPayJobId} onValueChange={setTapToPayJobId}>
+                  <SelectTrigger data-testid="select-tap-to-pay-job">
+                    <SelectValue placeholder="Select job" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jobs?.filter(job => !tapToPayClientId || job.clientId === tapToPayClientId).map((job) => (
+                      <SelectItem key={job.id} value={job.id}>
+                        {job.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <DialogFooter className="gap-2">
                 <Button variant="outline" onClick={() => setShowTapToPayDialog(false)}>
                   Cancel
@@ -806,6 +877,8 @@ export default function CollectPayment() {
                   onClick={() => tapToPayMutation.mutate({
                     amount: tapToPayAmount,
                     description: tapToPayDescription,
+                    clientId: tapToPayClientId || undefined,
+                    jobId: tapToPayJobId || undefined,
                   })}
                   disabled={!tapToPayAmount || parseFloat(tapToPayAmount) <= 0 || tapToPayMutation.isPending}
                   data-testid="button-create-tap-to-pay"
@@ -855,6 +928,8 @@ export default function CollectPayment() {
                     setTapToPayRequest(null);
                     setTapToPayAmount("");
                     setTapToPayDescription("");
+                    setTapToPayClientId("");
+                    setTapToPayJobId("");
                   }}
                 >
                   New Payment
@@ -991,13 +1066,34 @@ export default function CollectPayment() {
 
           <div className="space-y-4">
             <div className="space-y-2">
+              <Label>Client</Label>
+              <Select value={recordClientId} onValueChange={(value) => {
+                setRecordClientId(value);
+                setRecordInvoiceId("");
+              }}>
+                <SelectTrigger data-testid="select-record-client">
+                  <SelectValue placeholder="Select client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients?.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label>Invoice</Label>
               <Select value={recordInvoiceId} onValueChange={setRecordInvoiceId}>
                 <SelectTrigger data-testid="select-record-invoice">
                   <SelectValue placeholder="Select invoice" />
                 </SelectTrigger>
                 <SelectContent>
-                  {unpaidInvoices.map((invoice) => (
+                  {unpaidInvoices
+                    .filter(inv => !recordClientId || inv.clientId === recordClientId)
+                    .map((invoice) => (
                     <SelectItem key={invoice.id} value={invoice.id}>
                       {invoice.number} - ${typeof invoice.total === 'number' ? invoice.total.toFixed(2) : invoice.total}
                     </SelectItem>
