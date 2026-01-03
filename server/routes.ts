@@ -600,6 +600,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public endpoint: Download quote PDF (no auth required - using acceptance token)
+  app.get("/api/public/quote/:token/pdf", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { generateQuotePDF, generatePDFBuffer } = await import('./pdfService');
+      
+      const quoteWithItems = await storage.getQuoteWithLineItemsByToken(token);
+      if (!quoteWithItems) {
+        return res.status(404).json({ error: 'Quote not found' });
+      }
+      
+      const client = await storage.getClientById(quoteWithItems.clientId);
+      const business = await storage.getBusinessSettingsByUserId(quoteWithItems.userId);
+      
+      if (!client || !business) {
+        return res.status(404).json({ error: 'Quote details not found' });
+      }
+      
+      // Get linked job for site address if available (matching authenticated route)
+      // Use getJobByIdWithContext to get full job data like the authenticated route
+      let job;
+      if (quoteWithItems.jobId) {
+        job = await storage.getJob(quoteWithItems.jobId, quoteWithItems.userId);
+      }
+      
+      // Get job signatures if quote is linked to a job (matching authenticated route)
+      // Always initialize as empty array to match authenticated route behavior
+      let jobSignatures: any[] = [];
+      if (quoteWithItems.jobId) {
+        const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, quoteWithItems.jobId));
+        jobSignatures = signatures.map(sig => ({
+          id: sig.id,
+          jobId: sig.jobId,
+          signerName: sig.signerName,
+          signatureData: sig.signatureData,
+          signedAt: sig.signedAt,
+        }));
+      }
+      
+      // Get quote acceptance signature if quote was accepted (matching authenticated route)
+      let acceptanceSignature;
+      if (quoteWithItems.status === 'accepted') {
+        const signatures = await db.select().from(digitalSignatures).where(
+          sql`${digitalSignatures.documentType} = 'quote_acceptance' AND ${digitalSignatures.quoteId} = ${quoteWithItems.id}`
+        );
+        if (signatures.length > 0) {
+          acceptanceSignature = {
+            id: signatures[0].id,
+            signerName: signatures[0].signerName,
+            signatureData: signatures[0].signatureData,
+            signedAt: signatures[0].signedAt,
+          };
+        }
+      }
+      
+      // Use the full quoteWithItems object (matching authenticated route pattern)
+      // Ensure financial fields have proper defaults
+      const safeQuote = {
+        ...quoteWithItems,
+        subtotal: quoteWithItems.subtotal || '0',
+        gstAmount: quoteWithItems.gstAmount || '0',
+        total: quoteWithItems.total || '0',
+      };
+      
+      const html = generateQuotePDF({
+        quote: safeQuote,
+        lineItems: quoteWithItems.lineItems || [],
+        client,
+        business,
+        job,
+        jobSignatures,
+        signature: acceptanceSignature,
+      });
+      
+      const pdfBuffer = await generatePDFBuffer(html);
+      
+      const filename = `Quote_${quoteWithItems.number || quoteWithItems.id.slice(0, 8)}.pdf`;
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error('Error generating public quote PDF:', error);
+      res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+  });
+
   // Create payment intent for quote deposit
   app.post("/api/public/quote/:token/pay", async (req: any, res) => {
     try {
