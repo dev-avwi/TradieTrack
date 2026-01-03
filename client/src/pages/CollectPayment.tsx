@@ -243,7 +243,7 @@ export default function CollectPayment() {
       }
       const response = await apiRequest('POST', '/api/payment-requests', {
         amount: parsedAmount,
-        description: data.description.trim() || 'Tap to Pay payment',
+        description: data.description.trim() || 'QR Payment',
         expiresInHours: 1,
       });
       const result = await response.json();
@@ -459,7 +459,7 @@ export default function CollectPayment() {
         </Card>
       </div>
 
-      {/* Primary Action - Tap to Pay */}
+      {/* Primary Action - QR Payment */}
       <Card 
         className="mb-4 hover-elevate cursor-pointer border-2" 
         style={{ borderColor: 'hsl(var(--trade))' }}
@@ -469,11 +469,11 @@ export default function CollectPayment() {
         <CardContent className="p-5">
           <div className="flex items-center gap-4">
             <div className="rounded-xl p-3" style={{ backgroundColor: 'hsl(var(--trade))' }}>
-              <Wifi className="h-6 w-6 text-white" />
+              <QrCode className="h-6 w-6 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-lg">Tap to Pay</h3>
-              <p className="text-sm text-muted-foreground">Quick QR code for in-person payments</p>
+              <h3 className="font-semibold text-lg">QR Payment</h3>
+              <p className="text-sm text-muted-foreground">Customer scans to pay instantly</p>
             </div>
             <ArrowRight className="h-5 w-5 text-muted-foreground" />
           </div>
@@ -631,7 +631,7 @@ export default function CollectPayment() {
         )}
       </div>
 
-      {/* Tap to Pay Dialog */}
+      {/* QR Payment Dialog */}
       <Dialog open={showTapToPayDialog} onOpenChange={(open) => {
         if (!open) {
           setShowTapToPayDialog(false);
@@ -643,11 +643,11 @@ export default function CollectPayment() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Wifi className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-              Tap to Pay
+              <QrCode className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+              QR Payment
             </DialogTitle>
             <DialogDescription>
-              Quick payment for in-person transactions
+              Generate a QR code for customer to scan and pay
             </DialogDescription>
           </DialogHeader>
 

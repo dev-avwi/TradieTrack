@@ -131,7 +131,7 @@ export default function CollectPaymentScreen() {
   const [selectedRequest, setSelectedRequest] = useState<PaymentRequest | null>(null);
   const [shareTab, setShareTab] = useState<'qr' | 'link' | 'send'>('qr');
   
-  // Tap to Pay specific state
+  // QR Payment specific state
   const [tapToPayAmount, setTapToPayAmount] = useState('');
   const [tapToPayDescription, setTapToPayDescription] = useState('');
   
@@ -459,7 +459,7 @@ export default function CollectPaymentScreen() {
     try {
       const response = await api.post<PaymentRequest>('/api/payment-requests', {
         amount: parsedAmount,
-        description: tapToPayDescription.trim() || 'Tap to Pay payment',
+        description: tapToPayDescription.trim() || 'QR Payment',
         expiresInHours: 1, // Short expiry for in-person payments
       });
 
@@ -709,7 +709,7 @@ export default function CollectPaymentScreen() {
     { value: 'cash', label: 'Cash', icon: 'dollar-sign' as const },
     { value: 'bank_transfer', label: 'Bank Transfer', icon: 'send' as const },
     { value: 'card', label: 'Card (in person)', icon: 'credit-card' as const },
-    { value: 'tap_to_pay', label: 'Tap to Pay', icon: 'smartphone' as const },
+    { value: 'tap_to_pay', label: 'QR Payment', icon: 'maximize' as const },
     { value: 'cheque', label: 'Cheque', icon: 'file-text' as const },
     { value: 'other', label: 'Other', icon: 'more-horizontal' as const },
   ];
@@ -794,11 +794,11 @@ export default function CollectPaymentScreen() {
     >
       <View style={styles.tapToPayContent}>
         <View style={[styles.tapToPayIconContainer, { backgroundColor: colors.primary }]}>
-          <Feather name="wifi" size={24} color="#fff" />
+          <Feather name="maximize" size={24} color="#fff" />
         </View>
         <View style={styles.tapToPayText}>
-          <Text style={styles.tapToPayTitle}>Tap to Pay</Text>
-          <Text style={styles.tapToPaySubtitle}>Quick QR code for in-person payments</Text>
+          <Text style={styles.tapToPayTitle}>QR Payment</Text>
+          <Text style={styles.tapToPaySubtitle}>Customer scans to pay instantly</Text>
         </View>
         <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
       </View>
@@ -1395,9 +1395,9 @@ export default function CollectPaymentScreen() {
             <View style={styles.modalHandle} />
             <View style={styles.modalTitleRow}>
               <View style={[styles.modalIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
-                <Feather name="smartphone" size={18} color={colors.primary} />
+                <Feather name="maximize" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.modalTitle}>Tap to Pay</Text>
+              <Text style={styles.modalTitle}>QR Payment</Text>
             </View>
             <TouchableOpacity 
               onPress={() => { setShowTapToPayModal(false); resetTapToPayForm(); }}
@@ -1779,7 +1779,7 @@ const createStyles = (colors: ThemeColors) => {
     },
     pageContent: {
       padding: spacing.lg,
-      gap: spacing.md,
+      gap: spacing.lg,
     },
 
     stripeWarningBanner: {
@@ -1820,7 +1820,7 @@ const createStyles = (colors: ThemeColors) => {
 
     kpiStrip: {
       flexDirection: 'row',
-      gap: spacing.sm,
+      gap: spacing.md,
     },
     kpiCard: {
       flex: 1,
@@ -1828,7 +1828,8 @@ const createStyles = (colors: ThemeColors) => {
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.cardBorder,
-      padding: spacing.md,
+      paddingVertical: spacing.lg,
+      paddingHorizontal: spacing.md,
       alignItems: 'center',
     },
     kpiValue: {
@@ -1875,7 +1876,7 @@ const createStyles = (colors: ThemeColors) => {
 
     secondaryActionsGrid: {
       flexDirection: 'row',
-      gap: spacing.sm,
+      gap: spacing.md,
     },
     secondaryActionCard: {
       flex: 1,
@@ -1883,10 +1884,10 @@ const createStyles = (colors: ThemeColors) => {
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.cardBorder,
-      padding: spacing.md,
+      padding: spacing.lg,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.sm,
+      gap: spacing.md,
     },
     secondaryActionIcon: {
       width: 40,
@@ -1910,13 +1911,14 @@ const createStyles = (colors: ThemeColors) => {
     },
 
     section: {
-      marginTop: spacing.md,
+      marginTop: spacing.sm,
     },
     sectionHeader: {
       ...typography.caption,
       color: colors.mutedForeground,
       fontWeight: '600',
-      marginBottom: spacing.sm,
+      marginBottom: spacing.md,
+      letterSpacing: 0.5,
     },
 
     activeRequestCard: {
@@ -1924,7 +1926,7 @@ const createStyles = (colors: ThemeColors) => {
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.cardBorder,
-      marginBottom: spacing.sm,
+      marginBottom: spacing.md,
       overflow: 'hidden',
     },
     activeRequestContent: {
