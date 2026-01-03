@@ -171,6 +171,7 @@ interface QuoteWithDetails {
   job?: Job; // Linked job for address/details
   acceptanceUrl?: string; // Public URL for client to accept quote online
   jobSignatures?: DigitalSignature[]; // Signatures from linked job (for consistency with invoices)
+  showSuccess?: boolean; // Show success confirmation overlay after accepting quote
 }
 
 interface InvoiceWithDetails {
@@ -1237,7 +1238,7 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
 };
 
 export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUrl: string): string => {
-  const { quote, lineItems, client, business, signature, previousSignature, token, canAcceptPayments } = data;
+  const { quote, lineItems, client, business, signature, previousSignature, token, canAcceptPayments, showSuccess } = data;
   const brandColor = business.brandColor || '#2563eb';
   
   const subtotal = parseFloat(quote.subtotal as unknown as string);
@@ -1262,6 +1263,9 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
   const isExpired = quote.validUntil && new Date(quote.validUntil) < new Date();
   const isAlreadyActioned = quote.status === 'accepted' || quote.status === 'declined';
   
+  // Generate lighter shade of brand color for gradient
+  const lighterBrand = brandColor + '20';
+  
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -1269,44 +1273,94 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quote ${quote.number} - ${business.businessName}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f3f4f6;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
       min-height: 100vh;
       padding: 20px;
+      color: #1e293b;
+      line-height: 1.6;
     }
     
     .container {
-      max-width: 700px;
+      max-width: 680px;
       margin: 0 auto;
+    }
+    
+    /* Trust badge at top */
+    .trust-badge-top {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(8px);
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #16a34a;
+      width: fit-content;
+      margin: 0 auto 16px;
+      border: 1px solid #bbf7d0;
+    }
+    
+    .trust-badge-top svg {
+      flex-shrink: 0;
     }
     
     .card {
       background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 10px 15px -3px rgba(0,0,0,0.1);
       overflow: hidden;
       margin-bottom: 20px;
+      border: 1px solid #e2e8f0;
     }
     
     .header {
-      background: ${brandColor};
+      background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%);
       color: white;
-      padding: 24px;
+      padding: 32px 24px;
       text-align: center;
+      position: relative;
+    }
+    
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.3) 100%);
+    }
+    
+    .header-logo {
+      max-height: 48px;
+      max-width: 180px;
+      object-fit: contain;
+      margin-bottom: 12px;
+      filter: brightness(0) invert(1);
     }
     
     .header h1 {
-      font-size: 24px;
-      margin-bottom: 4px;
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
     }
     
     .header p {
       opacity: 0.9;
       font-size: 14px;
+      font-weight: 500;
     }
     
     .content {
@@ -1316,48 +1370,65 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-bottom: 24px;
+      gap: 24px;
+      margin-bottom: 28px;
     }
     
     @media (max-width: 500px) {
-      .info-grid { grid-template-columns: 1fr; }
+      .info-grid { grid-template-columns: 1fr; gap: 20px; }
     }
     
     .info-block h3 {
-      font-size: 12px;
+      font-size: 11px;
       text-transform: uppercase;
-      color: #6b7280;
-      margin-bottom: 8px;
-      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 10px;
+      letter-spacing: 0.8px;
+      font-weight: 600;
     }
     
     .info-block p {
-      color: #1f2937;
-      line-height: 1.6;
+      color: #334155;
+      line-height: 1.7;
+      font-size: 14px;
+    }
+    
+    .info-block p strong {
+      color: #0f172a;
+      font-weight: 600;
     }
     
     .description {
-      background: #f9fafb;
-      padding: 16px;
-      border-radius: 8px;
-      margin-bottom: 24px;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 28px;
+      border: 1px solid #e2e8f0;
     }
     
     .description h4 {
       color: ${brandColor};
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .description p {
+      font-size: 14px;
+      color: #475569;
     }
     
     .line-items {
-      margin-bottom: 24px;
+      margin-bottom: 28px;
     }
     
     .line-item {
       display: flex;
       justify-content: space-between;
-      padding: 12px 0;
-      border-bottom: 1px solid #e5e7eb;
+      align-items: flex-start;
+      padding: 14px 0;
+      border-bottom: 1px solid #f1f5f9;
+      gap: 16px;
     }
     
     .line-item:last-child {
@@ -1366,60 +1437,81 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
     
     .line-item-desc {
       flex: 1;
+      font-size: 14px;
+      color: #1e293b;
     }
     
     .line-item-desc small {
-      color: #6b7280;
+      color: #64748b;
       font-size: 12px;
+      display: block;
+      margin-top: 4px;
     }
     
     .line-item-amount {
       font-weight: 600;
       text-align: right;
+      color: #0f172a;
+      font-size: 14px;
+      white-space: nowrap;
     }
     
     .totals {
-      background: #f9fafb;
-      padding: 16px;
-      border-radius: 8px;
-      margin-bottom: 24px;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 28px;
+      border: 1px solid #e2e8f0;
     }
     
     .total-row {
       display: flex;
       justify-content: space-between;
-      padding: 8px 0;
+      padding: 10px 0;
+      font-size: 14px;
+      color: #475569;
     }
     
     .total-row.final {
       border-top: 2px solid ${brandColor};
-      margin-top: 8px;
+      margin-top: 12px;
       padding-top: 16px;
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 700;
       color: ${brandColor};
     }
     
     .status-banner {
-      padding: 16px;
-      border-radius: 8px;
+      padding: 20px;
+      border-radius: 12px;
       text-align: center;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status-banner svg {
+      margin-bottom: 4px;
     }
     
     .status-accepted {
-      background: #dcfce7;
+      background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
       color: #166534;
+      border: 1px solid #86efac;
     }
     
     .status-declined {
-      background: #fee2e2;
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
       color: #991b1b;
+      border: 1px solid #fca5a5;
     }
     
     .status-expired {
-      background: #fef3c7;
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
       color: #92400e;
+      border: 1px solid #fcd34d;
     }
     
     .actions {
@@ -1433,60 +1525,76 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
     
     .btn {
       flex: 1;
-      padding: 16px 24px;
+      padding: 16px 28px;
       border: none;
-      border-radius: 8px;
-      font-size: 16px;
+      border-radius: 12px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
     
     .btn-accept {
-      background: #22c55e;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
       color: white;
+      box-shadow: 0 4px 14px -4px rgba(34, 197, 94, 0.4);
     }
     
     .btn-accept:hover {
-      background: #16a34a;
+      background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px -4px rgba(34, 197, 94, 0.5);
+    }
+    
+    .btn-accept:active {
+      transform: translateY(0);
     }
     
     .btn-decline {
-      background: #f3f4f6;
-      color: #374151;
-      border: 1px solid #d1d5db;
+      background: #f8fafc;
+      color: #475569;
+      border: 1px solid #e2e8f0;
     }
     
     .btn-decline:hover {
-      background: #e5e7eb;
+      background: #f1f5f9;
+      border-color: #cbd5e1;
     }
     
     .form-group {
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
     
     .form-group label {
       display: block;
-      font-size: 14px;
-      font-weight: 500;
-      margin-bottom: 6px;
-      color: #374151;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #334155;
     }
     
     .form-group input,
     .form-group textarea {
       width: 100%;
-      padding: 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      font-size: 16px;
+      padding: 14px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: inherit;
+      background: #f8fafc;
+      transition: all 0.2s ease;
     }
     
     .form-group input:focus,
     .form-group textarea:focus {
       outline: none;
       border-color: ${brandColor};
-      box-shadow: 0 0 0 3px ${brandColor}20;
+      background: white;
+      box-shadow: 0 0 0 3px ${brandColor}15;
     }
     
     .signature-pad-container {
@@ -1745,16 +1853,181 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
     
     .footer {
       text-align: center;
-      padding: 20px;
-      color: #9ca3af;
+      padding: 28px 20px;
+      color: #64748b;
       font-size: 12px;
+    }
+    
+    .footer-trust {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .footer-trust-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    
+    .footer-trust-item svg {
+      color: #94a3b8;
+    }
+    
+    .footer-business {
+      margin-bottom: 8px;
+      color: #475569;
+      font-weight: 500;
+    }
+    
+    .footer-powered {
+      color: #94a3b8;
+      font-size: 11px;
+    }
+    
+    /* Success confirmation overlay */
+    .success-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    
+    .success-card {
+      background: white;
+      border-radius: 20px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    }
+    
+    .success-header {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      padding: 40px 24px;
+      color: white;
+    }
+    
+    .success-icon {
+      width: 72px;
+      height: 72px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+    
+    .success-icon svg {
+      width: 40px;
+      height: 40px;
+    }
+    
+    .success-header h2 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    
+    .success-header p {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+    
+    .success-body {
+      padding: 28px;
+    }
+    
+    .success-details {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+    
+    .success-details-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 14px;
+    }
+    
+    .success-details-row:not(:last-child) {
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .success-details-label {
+      color: #64748b;
+    }
+    
+    .success-details-value {
+      color: #0f172a;
+      font-weight: 600;
+    }
+    
+    .success-btn {
+      width: 100%;
+      padding: 16px;
+      background: ${brandColor};
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      margin-bottom: 12px;
+    }
+    
+    .success-btn:hover {
+      filter: brightness(0.95);
+    }
+    
+    .success-btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+    }
+    
+    .success-btn-secondary:hover {
+      background: #e2e8f0;
     }
   </style>
 </head>
 <body>
+  <!-- Trust badge at top -->
+  <div class="trust-badge-top">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <polyline points="9 12 11 14 15 10"/>
+    </svg>
+    <span>Secure Document</span>
+  </div>
+  
   <div class="container">
     <div class="card">
       <div class="header">
+        ${business.logo ? `<img src="${business.logo}" alt="${business.businessName}" class="header-logo" />` : ''}
         <h1>${business.businessName}</h1>
         <p>Quote ${quote.number}</p>
       </div>
@@ -1762,11 +2035,40 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
       <div class="content">
         ${isAlreadyActioned ? `
           <div class="status-banner ${quote.status === 'accepted' ? 'status-accepted' : 'status-declined'}">
-            <strong>This quote has been ${quote.status}</strong>
-            ${quote.acceptedAt ? `<br><small>on ${formatDate(quote.acceptedAt)}</small>` : ''}
-            ${quote.rejectedAt ? `<br><small>on ${formatDate(quote.rejectedAt)}</small>` : ''}
-            ${quote.acceptedBy ? `<br><small>by ${quote.acceptedBy}</small>` : ''}
+            ${quote.status === 'accepted' ? `
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            ` : `
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+            `}
+            <strong style="font-size: 16px;">Quote ${quote.status === 'accepted' ? 'Accepted' : 'Declined'}</strong>
+            <span style="font-size: 13px; opacity: 0.9;">
+              ${quote.acceptedAt ? `on ${formatDate(quote.acceptedAt)}` : ''}
+              ${quote.rejectedAt ? `on ${formatDate(quote.rejectedAt)}` : ''}
+              ${quote.acceptedBy ? ` by ${quote.acceptedBy}` : ''}
+            </span>
           </div>
+          
+          ${quote.status === 'accepted' ? `
+            <!-- Download PDF button for accepted quotes -->
+            <div style="margin-bottom: 24px; text-align: center;">
+              <a href="/api/public/quote/${token}/pdf" target="_blank" class="btn btn-accept" style="text-decoration: none; display: inline-flex; max-width: 280px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download Signed Quote
+              </a>
+            </div>
+          ` : ''}
+          
           ${quote.status === 'accepted' && signature ? `
             <div class="signature-display">
               <div class="signature-display-label">Client Signature</div>
@@ -2276,10 +2578,92 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
     </div>
     
     <div class="footer">
-      <p>Quote from ${business.businessName}${business.abn ? ` • ABN ${business.abn}` : ''}</p>
-      <p style="margin-top: 4px;">Powered by TradieTrack</p>
+      <div class="footer-trust">
+        <div class="footer-trust-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span>Secure Connection</span>
+        </div>
+        <div class="footer-trust-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span>Data Protected</span>
+        </div>
+        <div class="footer-trust-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <span>Verified Business</span>
+        </div>
+      </div>
+      <p class="footer-business">${business.businessName}${business.abn ? ` <span style="color: #94a3b8;">•</span> ABN ${business.abn}` : ''}</p>
+      <p class="footer-powered">Powered by TradieTrack</p>
     </div>
   </div>
+  
+  ${showSuccess && quote.status === 'accepted' ? `
+  <!-- Success confirmation overlay -->
+  <div class="success-overlay" id="success-overlay">
+    <div class="success-card">
+      <div class="success-header">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2>Quote Accepted!</h2>
+        <p>Thank you for your confirmation</p>
+      </div>
+      <div class="success-body">
+        <div class="success-details">
+          <div class="success-details-row">
+            <span class="success-details-label">Quote</span>
+            <span class="success-details-value">${quote.number}</span>
+          </div>
+          <div class="success-details-row">
+            <span class="success-details-label">Business</span>
+            <span class="success-details-value">${business.businessName}</span>
+          </div>
+          <div class="success-details-row">
+            <span class="success-details-label">Total</span>
+            <span class="success-details-value">${formatCurrency(total)}</span>
+          </div>
+          ${signature ? `
+          <div class="success-details-row">
+            <span class="success-details-label">Signed by</span>
+            <span class="success-details-value">${signature.signerName}</span>
+          </div>
+          ` : ''}
+        </div>
+        
+        <a href="/api/public/quote/${token}/pdf" target="_blank" class="success-btn" style="text-decoration: none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download Signed Quote
+        </a>
+        
+        <button class="success-btn success-btn-secondary" onclick="closeSuccessOverlay()">
+          View Quote Details
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    function closeSuccessOverlay() {
+      document.getElementById('success-overlay').style.display = 'none';
+      // Update URL to remove success param
+      history.replaceState(null, '', window.location.pathname);
+    }
+  </script>
+  ` : ''}
 </body>
 </html>
   `;

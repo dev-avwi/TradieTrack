@@ -400,6 +400,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { generateQuoteAcceptancePage } = await import('./pdfService');
       
+      // Check if this is a success redirect after accepting
+      const showSuccess = req.query.success === '1';
+      
       const quoteWithItems = await storage.getQuoteWithLineItemsByToken(req.params.token);
       if (!quoteWithItems) {
         return res.status(404).send(`
@@ -450,7 +453,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         signature: signature || undefined,
         previousSignature: previousSignature || undefined,
         token: req.params.token,
-        canAcceptPayments
+        canAcceptPayments,
+        showSuccess
       }, acceptanceUrl);
       
       res.setHeader('Content-Type', 'text/html');
@@ -592,8 +596,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Redirect back to view the updated quote
-      res.redirect(`/public/quote/${token}`);
+      // Redirect back to view the updated quote (with success flag for accept action)
+      const successParam = action === 'accept' ? '?success=1' : '';
+      res.redirect(`/public/quote/${token}${successParam}`);
     } catch (error) {
       console.error("Error processing quote action:", error);
       res.status(500).send('Failed to process your request. Please try again.');
