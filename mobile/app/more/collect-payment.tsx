@@ -92,8 +92,6 @@ interface Receipt {
   createdAt: string;
 }
 
-type TabType = 'collect' | 'history';
-
 const formatCurrency = (amount: number | string) => {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
   return new Intl.NumberFormat('en-AU', {
@@ -117,7 +115,6 @@ export default function CollectPaymentScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const params = useLocalSearchParams<{ tab?: string; invoiceId?: string; jobId?: string }>();
   
-  const [activeTab, setActiveTab] = useState<TabType>('collect');
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -420,10 +417,8 @@ export default function CollectPaymentScreen() {
   }, [fetchData]);
 
   useEffect(() => {
-    if (activeTab === 'history') {
-      fetchSecondaryData();
-    }
-  }, [activeTab, fetchSecondaryData]);
+    fetchSecondaryData();
+  }, [fetchSecondaryData]);
 
   useEffect(() => {
     if (showCreateModal || showRecordPaymentModal || showReceiptModal) {
@@ -753,322 +748,220 @@ export default function CollectPaymentScreen() {
     }
   };
 
-  const renderHeroSection = () => (
-    <View style={styles.heroSection}>
-      {!stripeStatus?.connected && (
-        <TouchableOpacity 
-          style={styles.stripeConnectBanner}
-          onPress={() => router.push('/more/money-hub')}
-          activeOpacity={0.8}
-          data-testid="button-connect-stripe"
-        >
-          <View style={styles.stripeBannerLeft}>
-            <View style={styles.stripeBannerIcon}>
-              <Feather name="zap" size={16} color={colors.warning} />
-            </View>
-            <View>
-              <Text style={styles.stripeBannerTitle}>Enable Card Payments</Text>
-              <Text style={styles.stripeBannerSubtitle}>Connect Stripe to accept cards</Text>
-            </View>
-          </View>
-          <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-        </TouchableOpacity>
-      )}
-
-      <View style={styles.heroCard}>
-        <View style={styles.heroStats}>
-          <View style={styles.heroStatMain}>
-            <Text style={styles.heroStatLabel}>Outstanding</Text>
-            <Text style={[styles.heroStatValue, totalPendingAmount > 0 && { color: colors.warning }]}>
-              {formatCurrency(totalPendingAmount)}
-            </Text>
-          </View>
-          <View style={styles.heroStatDivider} />
-          <View style={styles.heroStatSecondary}>
-            <View style={styles.miniStat}>
-              <View style={[styles.miniStatDot, { backgroundColor: colors.warning }]} />
-              <Text style={styles.miniStatLabel}>{pendingRequests.length} pending</Text>
-            </View>
-            <View style={styles.miniStat}>
-              <View style={[styles.miniStatDot, { backgroundColor: colors.success }]} />
-              <Text style={styles.miniStatLabel}>{paidRequestsCount} paid</Text>
-            </View>
-          </View>
-        </View>
+  const renderKPIStrip = () => (
+    <View style={styles.kpiStrip}>
+      <View style={styles.kpiCard} data-testid="kpi-outstanding">
+        <Text style={[styles.kpiValue, { color: colors.primary }]}>
+          ${Math.round(totalPendingAmount)}
+        </Text>
+        <Text style={styles.kpiLabel}>Outstanding</Text>
       </View>
+      <View style={styles.kpiCard} data-testid="kpi-pending-count">
+        <Text style={styles.kpiValue}>{pendingRequests.length}</Text>
+        <Text style={styles.kpiLabel}>Pending</Text>
+      </View>
+      <View style={styles.kpiCard} data-testid="kpi-received">
+        <Text style={[styles.kpiValue, { color: colors.success }]}>
+          ${Math.round(totalReceived)}
+        </Text>
+        <Text style={styles.kpiLabel}>Received</Text>
+      </View>
+    </View>
+  );
 
-      {stripeStatus?.connected && (
-        <View style={styles.contactlessInfoBanner} data-testid="card-contactless-info">
-          <View style={styles.contactlessIconContainer}>
-            <Feather name="wifi" size={20} color="#fff" />
-          </View>
-          <View style={styles.contactlessContent}>
-            <Text style={styles.contactlessTitle}>Contactless Payments</Text>
-            <Text style={styles.contactlessDescription}>
-              Customer scans QR code and pays with Apple Pay, Google Pay, or card
-            </Text>
-            <View style={styles.contactlessCards}>
-              <Feather name="credit-card" size={12} color={colors.mutedForeground} />
-              <Text style={styles.contactlessCardsText}>Visa, Mastercard, Amex</Text>
-            </View>
-          </View>
+  const renderStripeWarning = () => (
+    !stripeStatus?.connected && (
+      <TouchableOpacity 
+        style={styles.stripeWarningBanner}
+        onPress={() => router.push('/more/money-hub')}
+        activeOpacity={0.8}
+        data-testid="banner-stripe-warning"
+      >
+        <View style={styles.stripeWarningContent}>
+          <Feather name="alert-triangle" size={18} color={colors.warning} />
+          <Text style={styles.stripeWarningText}>Connect Stripe to accept card payments</Text>
         </View>
-      )}
+        <TouchableOpacity 
+          style={styles.stripeConnectBtn}
+          onPress={() => router.push('/more/money-hub')}
+          data-testid="button-setup-stripe"
+        >
+          <Text style={styles.stripeConnectBtnText}>Connect</Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    )
+  );
+
+  const renderTapToPayCard = () => (
+    <TouchableOpacity 
+      style={[
+        styles.tapToPayCard,
+        { borderColor: colors.primary }
+      ]}
+      onPress={() => stripeStatus?.connected && setShowTapToPayModal(true)}
+      activeOpacity={stripeStatus?.connected ? 0.8 : 1}
+      disabled={!stripeStatus?.connected}
+      data-testid="card-tap-to-pay"
+    >
+      <View style={styles.tapToPayContent}>
+        <View style={[styles.tapToPayIconContainer, { backgroundColor: colors.primary }]}>
+          <Feather name="wifi" size={24} color="#fff" />
+        </View>
+        <View style={styles.tapToPayText}>
+          <Text style={styles.tapToPayTitle}>Tap to Pay</Text>
+          <Text style={styles.tapToPaySubtitle}>Quick QR code for in-person payments</Text>
+        </View>
+        <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderSecondaryActions = () => (
+    <View style={styles.secondaryActionsGrid}>
+      <TouchableOpacity 
+        style={styles.secondaryActionCard}
+        onPress={() => setShowCreateModal(true)}
+        activeOpacity={0.7}
+        data-testid="card-new-request"
+      >
+        <View style={[styles.secondaryActionIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
+          <Feather name="plus" size={20} color={colors.primary} />
+        </View>
+        <View style={styles.secondaryActionText}>
+          <Text style={styles.secondaryActionTitle}>New Request</Text>
+          <Text style={styles.secondaryActionSubtitle}>Send payment link</Text>
+        </View>
+      </TouchableOpacity>
 
       <TouchableOpacity 
-        style={styles.primaryCta}
-        onPress={() => setShowCreateModal(true)}
-        activeOpacity={0.8}
-        data-testid="button-create-payment-request"
-      >
-        <Feather name="plus" size={22} color={colors.primaryForeground} />
-        <Text style={styles.primaryCtaText}>Create Payment Request</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderSegmentedControl = () => (
-    <View style={styles.segmentedControl}>
-      <TouchableOpacity
-        style={[styles.segmentItem, activeTab === 'collect' && styles.segmentItemActive]}
-        onPress={() => setActiveTab('collect')}
+        style={styles.secondaryActionCard}
+        onPress={() => setShowRecordPaymentModal(true)}
         activeOpacity={0.7}
-        data-testid="tab-collect"
+        data-testid="card-record-payment"
       >
-        <Text style={[styles.segmentText, activeTab === 'collect' && styles.segmentTextActive]}>
-          Collect
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.segmentItem, activeTab === 'history' && styles.segmentItemActive]}
-        onPress={() => setActiveTab('history')}
-        activeOpacity={0.7}
-        data-testid="tab-history"
-      >
-        <Text style={[styles.segmentText, activeTab === 'history' && styles.segmentTextActive]}>
-          History
-        </Text>
-        {receipts.length > 0 && (
-          <View style={styles.segmentBadge}>
-            <Text style={styles.segmentBadgeText}>{receipts.length}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderCollectTab = () => (
-    <View style={styles.tabContent}>
-      {pendingRequests.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Active Requests</Text>
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{pendingRequests.length}</Text>
-            </View>
-          </View>
-          {pendingRequests.map((request) => {
-            const statusConfig = getStatusConfig(request.status);
-            const clientName = request.clientId ? clientMap.get(request.clientId)?.name : null;
-            return (
-              <View key={request.id} style={styles.requestCard}>
-                <View style={styles.requestCardMain}>
-                  <View style={styles.requestCardLeft}>
-                    <Text style={styles.requestAmount}>{formatCurrency(request.amount)}</Text>
-                    <Text style={styles.requestDescription} numberOfLines={1}>
-                      {request.description}
-                    </Text>
-                    <View style={styles.requestMeta}>
-                      {clientName && (
-                        <Text style={styles.requestMetaText}>{clientName}</Text>
-                      )}
-                      {clientName && <Text style={styles.requestMetaDot}>·</Text>}
-                      <Text style={styles.requestMetaText}>
-                        {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-                    <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
-                      {statusConfig.label}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.requestCardActions}>
-                  <TouchableOpacity 
-                    style={styles.requestActionBtn}
-                    onPress={() => {
-                      setSelectedRequest(request);
-                      setShowShareModal(true);
-                    }}
-                    activeOpacity={0.7}
-                    data-testid={`button-share-${request.id}`}
-                  >
-                    <Feather name="share-2" size={16} color={colors.primary} />
-                    <Text style={[styles.requestActionText, { color: colors.primary }]}>Share</Text>
-                  </TouchableOpacity>
-                  <View style={styles.actionDivider} />
-                  <TouchableOpacity 
-                    style={styles.requestActionBtn}
-                    onPress={() => handleCancelRequest(request.id)}
-                    activeOpacity={0.7}
-                    data-testid={`button-cancel-${request.id}`}
-                  >
-                    <Feather name="x-circle" size={16} color={colors.destructive} />
-                    <Text style={[styles.requestActionText, { color: colors.destructive }]}>Cancel</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
+        <View style={[styles.secondaryActionIcon, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
+          <Feather name="dollar-sign" size={20} color={colors.success} />
         </View>
-      )}
+        <View style={styles.secondaryActionText}>
+          <Text style={styles.secondaryActionTitle}>Record Payment</Text>
+          <Text style={styles.secondaryActionSubtitle}>Cash or bank transfer</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
 
+  const renderActiveRequests = () => (
+    pendingRequests.length > 0 && (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.quickActionsRow}>
-          <TouchableOpacity 
-            style={styles.quickActionCard}
-            onPress={() => setShowRecordPaymentModal(true)}
-            activeOpacity={0.7}
-            data-testid="button-record-payment"
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
-              <Feather name="check-circle" size={20} color={colors.success} />
-            </View>
-            <Text style={styles.quickActionTitle}>Record Payment</Text>
-            <Text style={styles.quickActionSubtitle}>Cash/Transfer</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.quickActionCard}
-            onPress={() => setShowReceiptModal(true)}
-            activeOpacity={0.7}
-            data-testid="button-create-receipt"
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: colorWithOpacity(colors.info || colors.primary, 0.12) }]}>
-              <Feather name="file-text" size={20} color={colors.info || colors.primary} />
-            </View>
-            <Text style={styles.quickActionTitle}>Issue Receipt</Text>
-            <Text style={styles.quickActionSubtitle}>Generate PDF</Text>
-          </TouchableOpacity>
-
-          {stripeStatus?.connected && (
-            <TouchableOpacity 
-              style={styles.quickActionCard}
-              onPress={() => setShowTapToPayModal(true)}
-              activeOpacity={0.7}
-              data-testid="button-tap-to-pay"
-            >
-              <View style={[styles.quickActionIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
-                <Feather name="smartphone" size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.quickActionTitle}>Tap to Pay</Text>
-              <Text style={styles.quickActionSubtitle}>QR Payment</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {pendingRequests.length === 0 && (
-        <View style={styles.emptyStateInline}>
-          <View style={styles.emptyIcon}>
-            <Feather name="credit-card" size={32} color={colors.mutedForeground} />
-          </View>
-          <Text style={styles.emptyTitle}>No pending requests</Text>
-          <Text style={styles.emptySubtitle}>
-            Create a payment request to get started
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderHistoryTab = () => (
-    <View style={styles.tabContent}>
-      {receipts.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Receipts</Text>
-            <Text style={styles.sectionSubtitle}>{formatCurrency(totalReceived)} total</Text>
-          </View>
-          {Object.entries(groupedReceipts).map(([group, groupReceipts]) => (
-            <View key={group}>
-              <Text style={styles.dateGroupHeader}>{group}</Text>
-              {groupReceipts.map((receipt) => {
-                const clientName = receipt.clientId ? clientMap.get(receipt.clientId)?.name : null;
-                return (
-                  <TouchableOpacity 
-                    key={receipt.id}
-                    style={styles.receiptCard}
-                    onPress={() => router.push(`/more/receipt/${receipt.id}`)}
-                    activeOpacity={0.7}
-                    data-testid={`receipt-card-${receipt.id}`}
-                  >
-                    <View style={styles.receiptIconContainer}>
-                      <Feather name="file-text" size={18} color={colors.success} />
-                    </View>
-                    <View style={styles.receiptContent}>
-                      <View style={styles.receiptTop}>
-                        <Text style={styles.receiptNumber}>{receipt.receiptNumber}</Text>
-                        <Text style={styles.receiptAmount}>{formatCurrency(receipt.amount)}</Text>
-                      </View>
-                      <View style={styles.receiptBottom}>
-                        <Text style={styles.receiptMeta}>
-                          {clientName || 'No client'} · {paymentMethods.find(m => m.value === receipt.paymentMethod)?.label || receipt.paymentMethod}
-                        </Text>
-                        {receipt.paidAt && (
-                          <Text style={[styles.receiptMeta, { color: colors.success }]}>
-                            {format(new Date(receipt.paidAt), 'h:mm a')}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                    <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ))}
-        </View>
-      )}
-
-      {completedRequests.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Past Requests</Text>
-          {completedRequests.slice(0, 10).map((request) => {
-            const statusConfig = getStatusConfig(request.status);
-            return (
-              <View key={request.id} style={styles.pastRequestCard}>
-                <View style={styles.pastRequestLeft}>
-                  <Text style={styles.pastRequestAmount}>{formatCurrency(request.amount)}</Text>
-                  <Text style={styles.pastRequestDescription} numberOfLines={1}>
+        <Text style={styles.sectionHeader}>ACTIVE REQUESTS</Text>
+        {pendingRequests.map((request) => {
+          const invoiceNumber = request.invoiceId ? invoiceMap.get(request.invoiceId)?.number : null;
+          return (
+            <View key={request.id} style={styles.activeRequestCard} data-testid={`request-${request.id}`}>
+              <View style={styles.activeRequestContent}>
+                <View style={styles.activeRequestLeft}>
+                  <Text style={styles.activeRequestAmount}>{formatCurrency(request.amount)}</Text>
+                  <Text style={styles.activeRequestTime}>
+                    {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                  </Text>
+                </View>
+                <View style={styles.activeRequestDivider} />
+                <View style={styles.activeRequestRight}>
+                  <Text style={styles.activeRequestDescription} numberOfLines={1}>
                     {request.description}
                   </Text>
+                  {invoiceNumber && (
+                    <Text style={styles.activeRequestInvoice}>{invoiceNumber}</Text>
+                  )}
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-                  <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
-                    {statusConfig.label}
+              </View>
+              <View style={styles.activeRequestActions}>
+                <TouchableOpacity 
+                  style={styles.activeRequestActionBtn}
+                  onPress={() => {
+                    setSelectedRequest(request);
+                    setShowShareModal(true);
+                  }}
+                  activeOpacity={0.7}
+                  data-testid={`button-share-${request.id}`}
+                >
+                  <Feather name="share-2" size={14} color={colors.primary} />
+                  <Text style={[styles.activeRequestActionText, { color: colors.primary }]}>Share</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.activeRequestCancelBtn}
+                  onPress={() => handleCancelRequest(request.id)}
+                  activeOpacity={0.7}
+                  data-testid={`button-cancel-${request.id}`}
+                >
+                  <Feather name="x" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    )
+  );
+
+  const renderHistory = () => (
+    completedRequests.length > 0 && (
+      <View style={styles.section}>
+        <Text style={styles.sectionHeader}>HISTORY</Text>
+        <View style={styles.historyCard}>
+          {completedRequests.slice(0, 5).map((request, index) => {
+            const isLast = index === Math.min(completedRequests.length, 5) - 1;
+            return (
+              <View 
+                key={request.id} 
+                style={[styles.historyItem, !isLast && styles.historyItemBorder]}
+              >
+                <View style={styles.historyItemLeft}>
+                  {request.status === 'paid' ? (
+                    <Feather name="check-circle" size={18} color={colors.success} />
+                  ) : (
+                    <Feather name="x-circle" size={18} color={colors.mutedForeground} />
+                  )}
+                  <View style={styles.historyItemContent}>
+                    <Text style={styles.historyItemAmount}>{formatCurrency(request.amount)}</Text>
+                    <Text style={styles.historyItemDescription} numberOfLines={1}>
+                      {request.description}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.historyItemRight}>
+                  <Text style={[
+                    styles.historyItemStatus,
+                    { color: request.status === 'paid' ? colors.success : colors.mutedForeground }
+                  ]}>
+                    {request.status === 'paid' ? 'Paid' : request.status === 'cancelled' ? 'Cancelled' : 'Expired'}
                   </Text>
+                  {request.paidAt && (
+                    <Text style={styles.historyItemDate}>
+                      {format(new Date(request.paidAt), 'MMM d')}
+                    </Text>
+                  )}
                 </View>
               </View>
             );
           })}
         </View>
-      )}
+      </View>
+    )
+  );
 
-      {receipts.length === 0 && completedRequests.length === 0 && (
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIcon}>
-            <Feather name="inbox" size={40} color={colors.mutedForeground} />
-          </View>
-          <Text style={styles.emptyTitle}>No History Yet</Text>
-          <Text style={styles.emptySubtitle}>
-            Your completed payments and receipts will appear here.
-          </Text>
+  const renderEmptyState = () => (
+    pendingRequests.length === 0 && completedRequests.length === 0 && (
+      <View style={styles.emptyState}>
+        <View style={styles.emptyIcon}>
+          <Feather name="credit-card" size={32} color={colors.mutedForeground} />
         </View>
-      )}
-    </View>
+        <Text style={styles.emptyTitle}>No payment requests yet</Text>
+        <Text style={styles.emptySubtitle}>
+          Create your first payment request to get started
+        </Text>
+      </View>
+    )
   );
 
   const renderPickerModal = (
@@ -1795,9 +1688,15 @@ export default function CollectPaymentScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {renderHeroSection()}
-        {renderSegmentedControl()}
-        {activeTab === 'collect' ? renderCollectTab() : renderHistoryTab()}
+        <View style={styles.pageContent}>
+          {renderStripeWarning()}
+          {renderKPIStrip()}
+          {renderTapToPayCard()}
+          {renderSecondaryActions()}
+          {renderActiveRequests()}
+          {renderHistory()}
+          {renderEmptyState()}
+        </View>
       </ScrollView>
 
       {renderCreateModal()}
@@ -1894,12 +1793,12 @@ const createStyles = (colors: ThemeColors) => {
     scrollContent: {
       paddingBottom: spacing['3xl'],
     },
-
-    heroSection: {
+    pageContent: {
       padding: spacing.lg,
       gap: spacing.md,
     },
-    stripeConnectBanner: {
+
+    stripeWarningBanner: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -1908,272 +1807,256 @@ const createStyles = (colors: ThemeColors) => {
       borderColor: colorWithOpacity(colors.warning, 0.2),
       borderRadius: radius.lg,
       padding: spacing.md,
+      gap: spacing.md,
     },
-    stripeBannerLeft: {
+    stripeWarningContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      flex: 1,
+    },
+    stripeWarningText: {
+      ...typography.caption,
+      color: colors.warning,
+      fontWeight: '500',
+      flex: 1,
+    },
+    stripeConnectBtn: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    stripeConnectBtnText: {
+      ...typography.caption,
+      fontWeight: '600',
+      color: colors.foreground,
+    },
+
+    kpiStrip: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    kpiCard: {
+      flex: 1,
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      padding: spacing.md,
+      alignItems: 'center',
+    },
+    kpiValue: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.foreground,
+    },
+    kpiLabel: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      marginTop: 2,
+    },
+
+    tapToPayCard: {
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      borderWidth: 2,
+      padding: spacing.lg,
+    },
+    tapToPayContent: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.md,
     },
-    stripeBannerIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: colorWithOpacity(colors.warning, 0.15),
+    tapToPayIconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: radius.lg,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    stripeBannerTitle: {
-      ...typography.bodySemibold,
-      color: colors.foreground,
-    },
-    stripeBannerSubtitle: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    heroCard: {
-      backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      padding: spacing.lg,
-    },
-    heroStats: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    heroStatMain: {
+    tapToPayText: {
       flex: 1,
     },
-    heroStatLabel: {
+    tapToPayTitle: {
+      ...typography.bodySemibold,
+      fontSize: 17,
+      color: colors.foreground,
+    },
+    tapToPaySubtitle: {
       ...typography.caption,
       color: colors.mutedForeground,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      marginBottom: spacing.xs,
     },
-    heroStatValue: {
-      fontSize: 32,
-      fontWeight: '700',
-      color: colors.foreground,
-      letterSpacing: -0.5,
-    },
-    heroStatDivider: {
-      width: 1,
-      height: 48,
-      backgroundColor: colors.cardBorder,
-      marginHorizontal: spacing.lg,
-    },
-    heroStatSecondary: {
+
+    secondaryActionsGrid: {
+      flexDirection: 'row',
       gap: spacing.sm,
     },
-    miniStat: {
+    secondaryActionCard: {
+      flex: 1,
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      padding: spacing.md,
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
     },
-    miniStatDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-    },
-    miniStatLabel: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    contactlessInfoBanner: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      backgroundColor: colorWithOpacity('#3B82F6', 0.08),
-      borderWidth: 1,
-      borderColor: colorWithOpacity('#3B82F6', 0.2),
-      borderRadius: radius.lg,
-      padding: spacing.md,
-      gap: spacing.md,
-    },
-    contactlessIconContainer: {
+    secondaryActionIcon: {
       width: 40,
       height: 40,
       borderRadius: radius.md,
-      backgroundColor: '#3B82F6',
       alignItems: 'center',
       justifyContent: 'center',
-      ...shadows.sm,
     },
-    contactlessContent: {
+    secondaryActionText: {
       flex: 1,
     },
-    contactlessTitle: {
-      ...typography.bodySemibold,
-      color: colors.foreground,
-      marginBottom: spacing.xs,
-    },
-    contactlessDescription: {
+    secondaryActionTitle: {
       ...typography.caption,
-      color: colors.mutedForeground,
-      marginBottom: spacing.xs,
-    },
-    contactlessCards: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-    },
-    contactlessCardsText: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      fontSize: 11,
-    },
-    primaryCta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.sm,
-      backgroundColor: colors.primary,
-      paddingVertical: spacing.lg,
-      borderRadius: radius.lg,
-      ...shadows.sm,
-    },
-    primaryCtaText: {
-      ...typography.bodySemibold,
-      color: colors.primaryForeground,
-    },
-
-    segmentedControl: {
-      flexDirection: 'row',
-      marginHorizontal: spacing.lg,
-      backgroundColor: colors.muted,
-      borderRadius: radius.md,
-      padding: 4,
-    },
-    segmentItem: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.xs,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.sm,
-    },
-    segmentItemActive: {
-      backgroundColor: colors.card,
-      ...shadows.xs,
-    },
-    segmentText: {
-      ...typography.button,
-      color: colors.mutedForeground,
-    },
-    segmentTextActive: {
-      color: colors.foreground,
-    },
-    segmentBadge: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 2,
-      borderRadius: radius.pill,
-      minWidth: 20,
-      alignItems: 'center',
-    },
-    segmentBadgeText: {
-      fontSize: 11,
       fontWeight: '600',
-      color: colors.primaryForeground,
+      color: colors.foreground,
+    },
+    secondaryActionSubtitle: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      fontSize: 11,
     },
 
-    tabContent: {
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.lg,
-    },
     section: {
-      marginBottom: spacing.xl,
+      marginTop: spacing.md,
     },
     sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: spacing.md,
-    },
-    sectionTitle: {
-      ...typography.subtitle,
-      color: colors.foreground,
-    },
-    sectionSubtitle: {
       ...typography.caption,
-      color: colors.success,
-      fontWeight: '600',
-    },
-    countBadge: {
-      backgroundColor: colors.muted,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 2,
-      borderRadius: radius.sm,
-    },
-    countBadgeText: {
-      fontSize: 12,
-      fontWeight: '600',
       color: colors.mutedForeground,
+      fontWeight: '600',
+      marginBottom: spacing.sm,
     },
 
-    requestCard: {
+    activeRequestCard: {
       backgroundColor: colors.card,
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.cardBorder,
-      marginBottom: spacing.md,
+      marginBottom: spacing.sm,
       overflow: 'hidden',
     },
-    requestCardMain: {
+    activeRequestContent: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
+      padding: spacing.md,
+    },
+    activeRequestLeft: {
+      alignItems: 'flex-end',
+    },
+    activeRequestAmount: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.foreground,
+    },
+    activeRequestTime: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      fontSize: 11,
+    },
+    activeRequestDivider: {
+      width: 1,
+      height: 32,
+      backgroundColor: colors.cardBorder,
+      marginHorizontal: spacing.md,
+    },
+    activeRequestRight: {
+      flex: 1,
+    },
+    activeRequestDescription: {
+      ...typography.body,
+      color: colors.foreground,
+      fontWeight: '500',
+    },
+    activeRequestInvoice: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+    activeRequestActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      paddingHorizontal: spacing.md,
+      paddingBottom: spacing.md,
+      gap: spacing.sm,
+    },
+    activeRequestActionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    activeRequestActionText: {
+      ...typography.caption,
+      fontWeight: '600',
+    },
+    activeRequestCancelBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    historyCard: {
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      overflow: 'hidden',
+    },
+    historyItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'space-between',
       padding: spacing.md,
     },
-    requestCardLeft: {
+    historyItemBorder: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.cardBorder,
+    },
+    historyItemLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
       flex: 1,
-      marginRight: spacing.md,
     },
-    requestAmount: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: colors.foreground,
-      marginBottom: 2,
+    historyItemContent: {
+      flex: 1,
     },
-    requestDescription: {
+    historyItemAmount: {
       ...typography.body,
-      color: colors.secondaryText,
-      marginBottom: spacing.xs,
+      fontWeight: '600',
+      color: colors.foreground,
     },
-    requestMeta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    requestMetaText: {
+    historyItemDescription: {
       ...typography.caption,
       color: colors.mutedForeground,
     },
-    requestMetaDot: {
+    historyItemRight: {
+      alignItems: 'flex-end',
+    },
+    historyItemStatus: {
+      ...typography.caption,
+      fontWeight: '600',
+    },
+    historyItemDate: {
       ...typography.caption,
       color: colors.mutedForeground,
-      marginHorizontal: spacing.xs,
+      fontSize: 11,
     },
-    requestCardActions: {
-      flexDirection: 'row',
-      borderTopWidth: 1,
-      borderTopColor: colors.cardBorder,
-    },
-    requestActionBtn: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.xs,
-      paddingVertical: spacing.md,
-    },
-    requestActionText: {
-      ...typography.button,
-    },
-    actionDivider: {
-      width: 1,
-      backgroundColor: colors.cardBorder,
-    },
+
     statusBadge: {
       paddingHorizontal: spacing.sm,
       paddingVertical: 4,
@@ -2182,44 +2065,6 @@ const createStyles = (colors: ThemeColors) => {
     statusBadgeText: {
       fontSize: 12,
       fontWeight: '600',
-    },
-
-    quickActionsRow: {
-      flexDirection: 'row',
-      gap: spacing.md,
-    },
-    quickActionCard: {
-      flex: 1,
-      backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      padding: spacing.md,
-      alignItems: 'center',
-    },
-    quickActionIcon: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing.sm,
-    },
-    quickActionTitle: {
-      ...typography.caption,
-      fontWeight: '600',
-      color: colors.foreground,
-      textAlign: 'center',
-    },
-    quickActionSubtitle: {
-      fontSize: 11,
-      color: colors.mutedForeground,
-      textAlign: 'center',
-    },
-
-    emptyStateInline: {
-      alignItems: 'center',
-      paddingVertical: spacing['2xl'],
     },
     emptyState: {
       alignItems: 'center',
