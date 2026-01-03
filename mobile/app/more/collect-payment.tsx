@@ -781,62 +781,190 @@ export default function CollectPaymentScreen() {
     )
   );
 
-  const renderTapToPayCard = () => (
-    <TouchableOpacity 
-      style={[
-        styles.tapToPayCard,
-        { borderColor: colors.primary }
-      ]}
-      onPress={() => stripeStatus?.connected && setShowTapToPayModal(true)}
-      activeOpacity={stripeStatus?.connected ? 0.8 : 1}
-      disabled={!stripeStatus?.connected}
-      data-testid="card-tap-to-pay"
-    >
-      <View style={styles.tapToPayContent}>
-        <View style={[styles.tapToPayIconContainer, { backgroundColor: colors.primary }]}>
-          <Feather name="maximize" size={24} color="#fff" />
+  const [paymentMethodTab, setPaymentMethodTab] = useState<'tap' | 'qr' | 'link'>('tap');
+
+  const renderUnifiedPaymentCard = () => (
+    <View style={[styles.unifiedPaymentCard, { borderColor: colors.primary }]} data-testid="card-collect-payment">
+      {/* Header */}
+      <View style={styles.unifiedPaymentHeader}>
+        <View style={[styles.unifiedPaymentIconContainer, { backgroundColor: colors.primary }]}>
+          <Feather name="credit-card" size={22} color="#fff" />
         </View>
-        <View style={styles.tapToPayText}>
-          <Text style={styles.tapToPayTitle}>QR Payment</Text>
-          <Text style={styles.tapToPaySubtitle}>Customer scans to pay instantly</Text>
+        <View style={styles.unifiedPaymentHeaderText}>
+          <Text style={styles.unifiedPaymentTitle}>Collect Payment</Text>
+          <Text style={styles.unifiedPaymentSubtitle}>Get paid in-person or remotely</Text>
         </View>
-        <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
       </View>
-    </TouchableOpacity>
+
+      {/* Payment Method Tabs */}
+      <View style={styles.paymentMethodTabs}>
+        <TouchableOpacity
+          style={[
+            styles.paymentMethodTab,
+            paymentMethodTab === 'tap' && styles.paymentMethodTabActive,
+            { borderColor: paymentMethodTab === 'tap' ? colors.primary : colors.border }
+          ]}
+          onPress={() => setPaymentMethodTab('tap')}
+          activeOpacity={0.8}
+          data-testid="tab-tap-to-pay"
+        >
+          <Feather name="smartphone" size={16} color={paymentMethodTab === 'tap' ? colors.primary : colors.mutedForeground} />
+          <Text style={[
+            styles.paymentMethodTabText,
+            { color: paymentMethodTab === 'tap' ? colors.primary : colors.mutedForeground }
+          ]}>Tap to Pay</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.paymentMethodTab,
+            paymentMethodTab === 'qr' && styles.paymentMethodTabActive,
+            { borderColor: paymentMethodTab === 'qr' ? colors.primary : colors.border }
+          ]}
+          onPress={() => setPaymentMethodTab('qr')}
+          activeOpacity={0.8}
+          data-testid="tab-qr-code"
+        >
+          <Feather name="maximize" size={16} color={paymentMethodTab === 'qr' ? colors.primary : colors.mutedForeground} />
+          <Text style={[
+            styles.paymentMethodTabText,
+            { color: paymentMethodTab === 'qr' ? colors.primary : colors.mutedForeground }
+          ]}>QR Code</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.paymentMethodTab,
+            paymentMethodTab === 'link' && styles.paymentMethodTabActive,
+            { borderColor: paymentMethodTab === 'link' ? colors.primary : colors.border }
+          ]}
+          onPress={() => setPaymentMethodTab('link')}
+          activeOpacity={0.8}
+          data-testid="tab-send-link"
+        >
+          <Feather name="link-2" size={16} color={paymentMethodTab === 'link' ? colors.primary : colors.mutedForeground} />
+          <Text style={[
+            styles.paymentMethodTabText,
+            { color: paymentMethodTab === 'link' ? colors.primary : colors.mutedForeground }
+          ]}>Send Link</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tab Content */}
+      <View style={styles.paymentMethodContent}>
+        {paymentMethodTab === 'tap' && (
+          <View style={styles.paymentMethodContentInner}>
+            <View style={styles.paymentMethodInfoBox}>
+              <View style={[styles.paymentMethodInfoIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
+                <Feather name="smartphone" size={32} color={colors.primary} />
+              </View>
+              <Text style={styles.paymentMethodInfoTitle}>Contactless Payment</Text>
+              <Text style={styles.paymentMethodInfoDesc}>
+                Customer taps their card or phone on your device to pay instantly
+              </Text>
+              <Text style={styles.paymentMethodInfoNote}>Requires iPhone XS+ with Stripe Terminal SDK</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.paymentMethodButton,
+                { backgroundColor: stripeStatus?.connected ? colors.primary : colors.muted }
+              ]}
+              onPress={() => setShowTapToPayModal(true)}
+              disabled={!stripeStatus?.connected}
+              activeOpacity={0.8}
+              data-testid="button-start-tap-to-pay"
+            >
+              <Feather name="smartphone" size={18} color={stripeStatus?.connected ? '#fff' : colors.mutedForeground} />
+              <Text style={[
+                styles.paymentMethodButtonText,
+                { color: stripeStatus?.connected ? '#fff' : colors.mutedForeground }
+              ]}>Start Tap to Pay</Text>
+            </TouchableOpacity>
+            {!stripeStatus?.connected && (
+              <Text style={styles.stripeDisabledNote}>Connect Stripe to enable Tap to Pay</Text>
+            )}
+          </View>
+        )}
+
+        {paymentMethodTab === 'qr' && (
+          <View style={styles.paymentMethodContentInner}>
+            <View style={styles.paymentMethodInfoBox}>
+              <View style={[styles.paymentMethodInfoIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
+                <Feather name="maximize" size={32} color={colors.primary} />
+              </View>
+              <Text style={styles.paymentMethodInfoTitle}>QR Code Payment</Text>
+              <Text style={styles.paymentMethodInfoDesc}>
+                Show a QR code for customer to scan and pay from their phone
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.paymentMethodButton,
+                { backgroundColor: stripeStatus?.connected ? colors.primary : colors.muted }
+              ]}
+              onPress={() => setShowTapToPayModal(true)}
+              disabled={!stripeStatus?.connected}
+              activeOpacity={0.8}
+              data-testid="button-show-qr"
+            >
+              <Feather name="maximize" size={18} color={stripeStatus?.connected ? '#fff' : colors.mutedForeground} />
+              <Text style={[
+                styles.paymentMethodButtonText,
+                { color: stripeStatus?.connected ? '#fff' : colors.mutedForeground }
+              ]}>Generate QR Code</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {paymentMethodTab === 'link' && (
+          <View style={styles.paymentMethodContentInner}>
+            <View style={styles.paymentMethodInfoBox}>
+              <View style={[styles.paymentMethodInfoIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
+                <Feather name="link-2" size={32} color={colors.primary} />
+              </View>
+              <Text style={styles.paymentMethodInfoTitle}>Payment Link</Text>
+              <Text style={styles.paymentMethodInfoDesc}>
+                Create a payment link to send via email, SMS, or copy to clipboard
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.paymentMethodButton,
+                { backgroundColor: stripeStatus?.connected ? colors.primary : colors.muted }
+              ]}
+              onPress={() => setShowCreateModal(true)}
+              disabled={!stripeStatus?.connected}
+              activeOpacity={0.8}
+              data-testid="button-create-link"
+            >
+              <Feather name="plus" size={18} color={stripeStatus?.connected ? '#fff' : colors.mutedForeground} />
+              <Text style={[
+                styles.paymentMethodButtonText,
+                { color: stripeStatus?.connected ? '#fff' : colors.mutedForeground }
+              ]}>Create Payment Link</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </View>
   );
 
-  const renderSecondaryActions = () => (
-    <View style={styles.secondaryActionsGrid}>
-      <TouchableOpacity 
-        style={styles.secondaryActionCard}
-        onPress={() => setShowCreateModal(true)}
-        activeOpacity={0.7}
-        data-testid="card-new-request"
-      >
-        <View style={[styles.secondaryActionIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
-          <Feather name="plus" size={20} color={colors.primary} />
-        </View>
-        <View style={styles.secondaryActionText}>
-          <Text style={styles.secondaryActionTitle}>New Request</Text>
-          <Text style={styles.secondaryActionSubtitle}>Send payment link</Text>
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.secondaryActionCard}
-        onPress={() => setShowRecordPaymentModal(true)}
-        activeOpacity={0.7}
-        data-testid="card-record-payment"
-      >
-        <View style={[styles.secondaryActionIcon, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
-          <Feather name="dollar-sign" size={20} color={colors.success} />
-        </View>
-        <View style={styles.secondaryActionText}>
-          <Text style={styles.secondaryActionTitle}>Record Payment</Text>
-          <Text style={styles.secondaryActionSubtitle}>Cash or bank transfer</Text>
-        </View>
-      </TouchableOpacity>
-    </View>
+  const renderRecordPaymentCard = () => (
+    <TouchableOpacity
+      style={styles.recordPaymentCard}
+      onPress={() => setShowRecordPaymentModal(true)}
+      activeOpacity={0.7}
+      data-testid="card-record-payment"
+    >
+      <View style={[styles.recordPaymentIcon, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
+        <Feather name="dollar-sign" size={20} color={colors.success} />
+      </View>
+      <View style={styles.recordPaymentText}>
+        <Text style={styles.recordPaymentTitle}>Record Manual Payment</Text>
+        <Text style={styles.recordPaymentSubtitle}>Cash, bank transfer, or other payment method</Text>
+      </View>
+      <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+    </TouchableOpacity>
   );
 
   const renderActiveRequests = () => (
@@ -1675,8 +1803,8 @@ export default function CollectPaymentScreen() {
         <View style={styles.pageContent}>
           {renderStripeWarning()}
           {renderKPIStrip()}
-          {renderTapToPayCard()}
-          {renderSecondaryActions()}
+          {renderUnifiedPaymentCard()}
+          {renderRecordPaymentCard()}
           {renderActiveRequests()}
           {renderHistory()}
           {renderEmptyState()}
@@ -1843,6 +1971,156 @@ const createStyles = (colors: ThemeColors) => {
       marginTop: 2,
     },
 
+    // Unified Payment Card
+    unifiedPaymentCard: {
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      borderWidth: 2,
+      padding: spacing.lg,
+      marginBottom: spacing.md,
+    },
+    unifiedPaymentHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      marginBottom: spacing.lg,
+    },
+    unifiedPaymentIconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    unifiedPaymentHeaderText: {
+      flex: 1,
+    },
+    unifiedPaymentTitle: {
+      ...typography.bodySemibold,
+      fontSize: 17,
+      color: colors.foreground,
+    },
+    unifiedPaymentSubtitle: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+    },
+    paymentMethodTabs: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    paymentMethodTab: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      backgroundColor: colors.background,
+    },
+    paymentMethodTabActive: {
+      backgroundColor: colors.card,
+    },
+    paymentMethodTabText: {
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    paymentMethodContent: {
+      marginTop: spacing.sm,
+    },
+    paymentMethodContentInner: {
+      gap: spacing.md,
+    },
+    paymentMethodInfoBox: {
+      backgroundColor: colors.muted,
+      borderRadius: radius.lg,
+      padding: spacing.xl,
+      alignItems: 'center',
+    },
+    paymentMethodInfoIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.md,
+    },
+    paymentMethodInfoTitle: {
+      ...typography.bodySemibold,
+      fontSize: 16,
+      color: colors.foreground,
+      marginBottom: 4,
+    },
+    paymentMethodInfoDesc: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      maxWidth: 260,
+    },
+    paymentMethodInfoNote: {
+      ...typography.caption,
+      fontSize: 11,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      marginTop: spacing.md,
+    },
+    paymentMethodButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.md,
+      borderRadius: radius.md,
+      height: 48,
+    },
+    paymentMethodButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    stripeDisabledNote: {
+      ...typography.caption,
+      fontSize: 11,
+      color: colors.warning,
+      textAlign: 'center',
+    },
+
+    // Record Payment Card
+    recordPaymentCard: {
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      padding: spacing.lg,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      marginBottom: spacing.lg,
+    },
+    recordPaymentIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    recordPaymentText: {
+      flex: 1,
+    },
+    recordPaymentTitle: {
+      ...typography.body,
+      fontWeight: '500',
+      color: colors.foreground,
+    },
+    recordPaymentSubtitle: {
+      ...typography.caption,
+      fontSize: 11,
+      color: colors.mutedForeground,
+    },
+
+    // Legacy styles (kept for backward compatibility)
     tapToPayCard: {
       backgroundColor: colors.card,
       borderRadius: radius.lg,

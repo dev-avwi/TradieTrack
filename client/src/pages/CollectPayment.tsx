@@ -36,7 +36,8 @@ import {
   ArrowRight,
   AlertTriangle,
   TrendingUp,
-  Zap
+  Zap,
+  Smartphone
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -459,61 +460,134 @@ export default function CollectPayment() {
         </Card>
       </div>
 
-      {/* Primary Action - QR Payment */}
-      <Card 
-        className="mb-4 hover-elevate cursor-pointer border-2" 
-        style={{ borderColor: 'hsl(var(--trade))' }}
-        onClick={() => stripeConnected && setShowTapToPayDialog(true)}
-        data-testid="card-tap-to-pay"
-      >
+      {/* Primary Action - Unified Payment Collection Card */}
+      <Card className="mb-6 border-2" style={{ borderColor: 'hsl(var(--trade))' }} data-testid="card-collect-payment">
         <CardContent className="p-5">
-          <div className="flex items-center gap-4">
-            <div className="rounded-xl p-3" style={{ backgroundColor: 'hsl(var(--trade))' }}>
-              <QrCode className="h-6 w-6 text-white" />
+          {/* Header with Payment Method Selector */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl p-3" style={{ backgroundColor: 'hsl(var(--trade))' }}>
+                <CreditCard className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Collect Payment</h3>
+                <p className="text-sm text-muted-foreground">Get paid in-person or remotely</p>
+              </div>
             </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-lg">QR Payment</h3>
-              <p className="text-sm text-muted-foreground">Customer scans to pay instantly</p>
-            </div>
-            <ArrowRight className="h-5 w-5 text-muted-foreground" />
           </div>
+
+          {/* Payment Method Toggle */}
+          <Tabs defaultValue="tap" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="tap" className="gap-2" data-testid="tab-tap-to-pay">
+                <Smartphone className="h-4 w-4" />
+                Tap to Pay
+              </TabsTrigger>
+              <TabsTrigger value="qr" className="gap-2" data-testid="tab-qr-code">
+                <QrCode className="h-4 w-4" />
+                QR Code
+              </TabsTrigger>
+              <TabsTrigger value="link" className="gap-2" data-testid="tab-send-link">
+                <Link2 className="h-4 w-4" />
+                Send Link
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Tap to Pay Content */}
+            <TabsContent value="tap" className="space-y-4">
+              <div className="text-center py-6 bg-muted/30 rounded-lg">
+                <div className="rounded-full p-4 mx-auto w-fit mb-3" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                  <Smartphone className="h-10 w-10" style={{ color: 'hsl(var(--trade))' }} />
+                </div>
+                <h4 className="font-medium mb-1">Contactless Payment</h4>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                  Customer taps their card or phone on your device to pay instantly
+                </p>
+                <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <span>Requires iPhone XS+ with Stripe Terminal SDK</span>
+                </div>
+              </div>
+              <Button 
+                className="w-full h-12 text-base" 
+                style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+                onClick={() => setShowTapToPayDialog(true)}
+                disabled={!stripeConnected}
+                data-testid="button-start-tap-to-pay"
+              >
+                <Smartphone className="h-5 w-5 mr-2" />
+                Start Tap to Pay
+              </Button>
+              {!stripeConnected && (
+                <p className="text-xs text-center text-amber-600">Connect Stripe to enable Tap to Pay</p>
+              )}
+            </TabsContent>
+
+            {/* QR Code Content */}
+            <TabsContent value="qr" className="space-y-4">
+              <div className="text-center py-6 bg-muted/30 rounded-lg">
+                <div className="rounded-full p-4 mx-auto w-fit mb-3" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                  <QrCode className="h-10 w-10" style={{ color: 'hsl(var(--trade))' }} />
+                </div>
+                <h4 className="font-medium mb-1">QR Code Payment</h4>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                  Show a QR code for customer to scan and pay from their phone
+                </p>
+              </div>
+              <Button 
+                className="w-full h-12 text-base" 
+                style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+                onClick={() => setShowTapToPayDialog(true)}
+                disabled={!stripeConnected}
+                data-testid="button-show-qr"
+              >
+                <QrCode className="h-5 w-5 mr-2" />
+                Generate QR Code
+              </Button>
+            </TabsContent>
+
+            {/* Send Link Content */}
+            <TabsContent value="link" className="space-y-4">
+              <div className="text-center py-6 bg-muted/30 rounded-lg">
+                <div className="rounded-full p-4 mx-auto w-fit mb-3" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                  <Link2 className="h-10 w-10" style={{ color: 'hsl(var(--trade))' }} />
+                </div>
+                <h4 className="font-medium mb-1">Payment Link</h4>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                  Create a payment link to send via email, SMS, or copy to clipboard
+                </p>
+              </div>
+              <Button 
+                className="w-full h-12 text-base" 
+                style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+                onClick={() => setShowCreateDialog(true)}
+                disabled={!stripeConnected}
+                data-testid="button-create-link"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Create Payment Link
+              </Button>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
-      {/* Secondary Actions */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <Card 
-          className="hover-elevate cursor-pointer" 
-          onClick={() => setShowCreateDialog(true)}
-          data-testid="card-new-request"
-        >
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-lg p-2" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-              <Plus className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-            </div>
-            <div>
-              <p className="font-medium text-sm">New Request</p>
-              <p className="text-xs text-muted-foreground">Send payment link</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="hover-elevate cursor-pointer" 
-          onClick={() => setShowRecordPaymentDialog(true)}
-          data-testid="card-record-payment"
-        >
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-lg p-2 bg-emerald-100 dark:bg-emerald-900/30">
-              <Banknote className="h-5 w-5 text-emerald-600" />
-            </div>
-            <div>
-              <p className="font-medium text-sm">Record Payment</p>
-              <p className="text-xs text-muted-foreground">Cash or bank transfer</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Secondary Action - Record Manual Payment */}
+      <Card 
+        className="mb-6 hover-elevate cursor-pointer" 
+        onClick={() => setShowRecordPaymentDialog(true)}
+        data-testid="card-record-payment"
+      >
+        <CardContent className="p-4 flex items-center gap-3">
+          <div className="rounded-lg p-2 bg-emerald-100 dark:bg-emerald-900/30">
+            <Banknote className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-medium">Record Manual Payment</p>
+            <p className="text-xs text-muted-foreground">Cash, bank transfer, or other payment method</p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </CardContent>
+      </Card>
 
       {/* Active Requests */}
       <div className="space-y-4">

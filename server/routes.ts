@@ -9964,6 +9964,247 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =========== STRIPE TERMINAL (Tap to Pay) ===========
+  
+  // Get Terminal connection token - required for SDK initialization
+  app.post("/api/terminal/connection-token", requireAuth, async (req: any, res) => {
+    try {
+      const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ 
+          error: "Payment processing not configured",
+          message: "Stripe is not configured. Please set up Stripe integration first."
+        });
+      }
+      
+      // Get or create a location for this user
+      const settings = await storage.getBusinessSettings(req.userId);
+      let locationId = settings?.stripeTerminalLocationId;
+      
+      if (!locationId) {
+        // Create a location for the user
+        const location = await stripe.terminal.locations.create({
+          display_name: settings?.businessName || 'Business Location',
+          address: {
+            line1: settings?.businessAddress || '1 Main St',
+            city: settings?.businessCity || 'Sydney',
+            state: settings?.businessState || 'NSW',
+            postal_code: settings?.businessPostcode || '2000',
+            country: 'AU',
+          },
+        });
+        locationId = location.id;
+        
+        // Save location ID to business settings
+        await storage.updateBusinessSettings(req.userId, {
+          stripeTerminalLocationId: locationId,
+        } as any);
+      }
+      
+      // Create connection token
+      const connectionToken = await stripe.terminal.connectionTokens.create({
+        location: locationId,
+      });
+      
+      res.json({ 
+        secret: connectionToken.secret,
+        locationId 
+      });
+    } catch (error: any) {
+      console.error("Error creating terminal connection token:", error);
+      res.status(500).json({ 
+        error: "Failed to create connection token",
+        message: error.message 
+      });
+    }
+  });
+
+  // Create a payment intent for terminal payment
+  app.post("/api/terminal/payment-intent", requireAuth, async (req: any, res) => {
+    try {
+      const { amount, description, clientId, invoiceId, jobId } = req.body;
+      
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ error: "Amount is required and must be positive" });
+      }
+      
+      const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ error: "Payment processing not configured" });
+      }
+      
+      const settings = await storage.getBusinessSettings(req.userId);
+      const amountInCents = Math.round(parseFloat(amount) * 100);
+      
+      // Create PaymentIntent with card_present payment method type
+      const paymentIntentParams: any = {
+        amount: amountInCents,
+        currency: 'aud',
+        payment_method_types: ['card_present'],
+        capture_method: 'automatic',
+        description: description || 'In-person payment',
+        metadata: {
+          userId: req.userId,
+          clientId: clientId || '',
+          invoiceId: invoiceId || '',
+          jobId: jobId || '',
+          source: 'tap_to_pay',
+        },
+      };
+      
+      // If using Stripe Connect, add transfer data
+      if (settings?.stripeConnectAccountId && settings.connectChargesEnabled) {
+        paymentIntentParams.transfer_data = {
+          destination: settings.stripeConnectAccountId,
+        };
+      }
+      
+      const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+      
+      // Store terminal payment record
+      await storage.createTerminalPayment({
+        userId: req.userId,
+        stripePaymentIntentId: paymentIntent.id,
+        amount: amount.toString(),
+        description: description || 'In-person payment',
+        clientId: clientId || null,
+        invoiceId: invoiceId || null,
+        jobId: jobId || null,
+        status: 'pending',
+      });
+      
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+        amount: amountInCents,
+      });
+    } catch (error: any) {
+      console.error("Error creating terminal payment intent:", error);
+      res.status(500).json({ 
+        error: "Failed to create payment intent",
+        message: error.message 
+      });
+    }
+  });
+
+  // Confirm terminal payment succeeded (webhook or client callback)
+  app.post("/api/terminal/payment-success", requireAuth, async (req: any, res) => {
+    try {
+      const { paymentIntentId, cardBrand, cardLast4 } = req.body;
+      
+      if (!paymentIntentId) {
+        return res.status(400).json({ error: "Payment intent ID is required" });
+      }
+      
+      // Update the terminal payment record
+      const updatedPayment = await storage.updateTerminalPaymentByIntent(paymentIntentId, {
+        status: 'succeeded',
+        cardBrand,
+        cardLast4,
+        completedAt: new Date(),
+        paymentMethod: 'card_present',
+      });
+      
+      if (!updatedPayment) {
+        return res.status(404).json({ error: "Terminal payment not found" });
+      }
+      
+      // If linked to an invoice, update invoice status
+      if (updatedPayment.invoiceId) {
+        await storage.updateInvoice(updatedPayment.invoiceId, req.userId, {
+          status: 'paid',
+          paidAt: new Date(),
+          paidAmount: updatedPayment.amount,
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        payment: updatedPayment 
+      });
+    } catch (error: any) {
+      console.error("Error confirming terminal payment:", error);
+      res.status(500).json({ error: "Failed to confirm payment" });
+    }
+  });
+
+  // Cancel a terminal payment
+  app.post("/api/terminal/payment-cancel", requireAuth, async (req: any, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      
+      if (!paymentIntentId) {
+        return res.status(400).json({ error: "Payment intent ID is required" });
+      }
+      
+      const stripe = await getUncachableStripeClient();
+      if (stripe) {
+        await stripe.paymentIntents.cancel(paymentIntentId);
+      }
+      
+      await storage.updateTerminalPaymentByIntent(paymentIntentId, {
+        status: 'cancelled',
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error cancelling terminal payment:", error);
+      res.status(500).json({ error: "Failed to cancel payment" });
+    }
+  });
+
+  // Get terminal payment history
+  app.get("/api/terminal/payments", requireAuth, async (req: any, res) => {
+    try {
+      const payments = await storage.getTerminalPayments(req.userId);
+      res.json(payments);
+    } catch (error: any) {
+      console.error("Error fetching terminal payments:", error);
+      res.status(500).json({ error: "Failed to fetch payments" });
+    }
+  });
+
+  // Check if Terminal/Tap to Pay is available
+  app.get("/api/terminal/availability", requireAuth, async (req: any, res) => {
+    try {
+      const stripe = await getUncachableStripeClient();
+      const stripeConfigured = !!stripe;
+      
+      // Check if Stripe account has Terminal enabled
+      let terminalEnabled = false;
+      if (stripe) {
+        try {
+          // Try to create a connection token to verify Terminal is enabled
+          const settings = await storage.getBusinessSettings(req.userId);
+          if (settings?.stripeTerminalLocationId) {
+            terminalEnabled = true;
+          } else {
+            // Try creating a test location to check capability
+            const testCheck = await stripe.terminal.locations.list({ limit: 1 });
+            terminalEnabled = true;
+          }
+        } catch (e: any) {
+          // Terminal not enabled or not available
+          terminalEnabled = false;
+        }
+      }
+      
+      res.json({
+        stripeConfigured,
+        terminalEnabled,
+        tapToPayAvailable: stripeConfigured && terminalEnabled,
+        message: !stripeConfigured 
+          ? 'Stripe is not configured' 
+          : !terminalEnabled 
+            ? 'Stripe Terminal is not enabled for this account'
+            : 'Tap to Pay is available',
+      });
+    } catch (error: any) {
+      console.error("Error checking terminal availability:", error);
+      res.status(500).json({ error: "Failed to check availability" });
+    }
+  });
+
   // ========== RECEIPT ENDPOINTS ==========
   
   // Get all receipts for user

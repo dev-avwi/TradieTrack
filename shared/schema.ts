@@ -3017,3 +3017,50 @@ export const automationSettings = pgTable("automation_settings", {
 export const insertAutomationSettingsSchema = createInsertSchema(automationSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertAutomationSettings = z.infer<typeof insertAutomationSettingsSchema>;
 export type AutomationSettings = typeof automationSettings.$inferSelect;
+
+// ========================
+// Stripe Terminal - Tap to Pay
+// ========================
+
+// Terminal Locations - Required for Stripe Terminal
+export const terminalLocations = pgTable("terminal_locations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  stripeLocationId: varchar("stripe_location_id").notNull().unique(), // Stripe's location ID
+  displayName: text("display_name").notNull(),
+  address: jsonb("address"), // { line1, city, state, postal_code, country }
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTerminalLocationSchema = createInsertSchema(terminalLocations).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTerminalLocation = z.infer<typeof insertTerminalLocationSchema>;
+export type TerminalLocation = typeof terminalLocations.$inferSelect;
+
+// Terminal Payments - Track in-person tap-to-pay transactions
+export const terminalPayments = pgTable("terminal_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id").unique(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").default('aud'),
+  status: text("status").notNull().default('pending'), // pending, processing, succeeded, failed, cancelled
+  description: text("description"),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  invoiceId: varchar("invoice_id").references(() => invoices.id, { onDelete: 'set null' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  locationId: varchar("location_id").references(() => terminalLocations.id, { onDelete: 'set null' }),
+  paymentMethod: text("payment_method"), // card_present, interac_present
+  cardBrand: varchar("card_brand"), // visa, mastercard, amex, etc.
+  cardLast4: varchar("card_last_4"),
+  receiptUrl: text("receipt_url"),
+  errorMessage: text("error_message"),
+  metadata: jsonb("metadata").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const insertTerminalPaymentSchema = createInsertSchema(terminalPayments).omit({ id: true, createdAt: true });
+export type InsertTerminalPayment = z.infer<typeof insertTerminalPaymentSchema>;
+export type TerminalPayment = typeof terminalPayments.$inferSelect;

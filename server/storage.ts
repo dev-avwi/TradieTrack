@@ -205,6 +205,12 @@ import {
   automationSettings,
   type AutomationSettings,
   type InsertAutomationSettings,
+  terminalLocations,
+  type TerminalLocation,
+  type InsertTerminalLocation,
+  terminalPayments,
+  type TerminalPayment,
+  type InsertTerminalPayment,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -356,6 +362,14 @@ export interface IStorage {
   updatePaymentRequest(id: string, userId: string, request: Partial<InsertPaymentRequest>): Promise<PaymentRequest | undefined>;
   updatePaymentRequestByToken(token: string, updates: Partial<InsertPaymentRequest>): Promise<PaymentRequest | undefined>;
   deletePaymentRequest(id: string, userId: string): Promise<boolean>;
+
+  // Terminal Payments (Tap to Pay)
+  getTerminalPayments(userId: string): Promise<TerminalPayment[]>;
+  getTerminalPayment(id: string, userId: string): Promise<TerminalPayment | undefined>;
+  getTerminalPaymentByIntent(paymentIntentId: string): Promise<TerminalPayment | undefined>;
+  createTerminalPayment(payment: InsertTerminalPayment & { userId: string }): Promise<TerminalPayment>;
+  updateTerminalPayment(id: string, userId: string, updates: Partial<InsertTerminalPayment>): Promise<TerminalPayment | undefined>;
+  updateTerminalPaymentByIntent(paymentIntentId: string, updates: Partial<InsertTerminalPayment>): Promise<TerminalPayment | undefined>;
 
   // Receipts (professional payment receipts linked to jobs)
   getReceipts(userId: string): Promise<Receipt[]>;
@@ -1808,6 +1822,52 @@ export class PostgresStorage implements IStorage {
       and(eq(paymentRequests.id, id), eq(paymentRequests.userId, userId))
     );
     return result.rowCount > 0;
+  }
+
+  // Terminal Payments (Tap to Pay)
+  async getTerminalPayments(userId: string): Promise<TerminalPayment[]> {
+    return await db.select().from(terminalPayments).where(eq(terminalPayments.userId, userId)).orderBy(desc(terminalPayments.createdAt));
+  }
+
+  async getTerminalPayment(id: string, userId: string): Promise<TerminalPayment | undefined> {
+    const result = await db
+      .select()
+      .from(terminalPayments)
+      .where(and(eq(terminalPayments.id, id), eq(terminalPayments.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getTerminalPaymentByIntent(paymentIntentId: string): Promise<TerminalPayment | undefined> {
+    const result = await db
+      .select()
+      .from(terminalPayments)
+      .where(eq(terminalPayments.stripePaymentIntentId, paymentIntentId))
+      .limit(1);
+    return result[0];
+  }
+
+  async createTerminalPayment(payment: InsertTerminalPayment & { userId: string }): Promise<TerminalPayment> {
+    const result = await db.insert(terminalPayments).values(payment).returning();
+    return result[0];
+  }
+
+  async updateTerminalPayment(id: string, userId: string, updates: Partial<InsertTerminalPayment>): Promise<TerminalPayment | undefined> {
+    const result = await db
+      .update(terminalPayments)
+      .set(updates)
+      .where(and(eq(terminalPayments.id, id), eq(terminalPayments.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async updateTerminalPaymentByIntent(paymentIntentId: string, updates: Partial<InsertTerminalPayment>): Promise<TerminalPayment | undefined> {
+    const result = await db
+      .update(terminalPayments)
+      .set(updates)
+      .where(eq(terminalPayments.stripePaymentIntentId, paymentIntentId))
+      .returning();
+    return result[0];
   }
 
   // Receipt Methods
