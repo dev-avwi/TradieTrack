@@ -172,7 +172,17 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
         : 'http://localhost:5000');
     const quoteAcceptanceUrl = acceptanceToken ? `${baseUrl}/q/${acceptanceToken}` : null;
 
-    // 7. Send email (skip if user is sending via Gmail themselves)
+    // 7. Get linked job if quote is tied to one
+    let linkedJob: any = null;
+    if (quoteWithItems.jobId) {
+      linkedJob = await storage.getJob(quoteWithItems.jobId, req.userId);
+    }
+    
+    // Define common variables used across all email branches
+    const brandColor = businessSettings.brandColor || '#2563eb';
+    const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(quoteWithItems.total || '0'));
+
+    // 8. Send email (skip if user is sending via Gmail themselves)
     let emailSentVia = 'gmail_user'; // Default for skipEmail mode
     
     if (!skipEmail) {
@@ -184,8 +194,6 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
         if (customSubject && customMessage) {
           // Use custom subject and message with professional template
           emailSubject = customSubject;
-          const brandColor = businessSettings.brandColor || '#2563eb';
-          const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(quoteWithItems.total || '0'));
           
           emailHtml = `
             <!DOCTYPE html>
@@ -476,7 +484,19 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
       paymentUrl = `${baseUrl}/pay/${invoiceWithItems.paymentToken}`;
     }
 
-    // 7. Send email (skip if user is sending via Gmail themselves)
+    // 7. Get linked job if invoice is tied to one
+    let linkedJob: any = null;
+    if (invoiceWithItems.jobId) {
+      linkedJob = await storage.getJob(invoiceWithItems.jobId, req.userId);
+    }
+    
+    // Define common variables used across all email branches
+    const brandColor = businessSettings.brandColor || '#16a34a'; // Green for invoices
+    const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoiceWithItems.total || '0'));
+    const isGstRegistered = businessSettings.gstEnabled && businessSettings.abn;
+    const documentType = isGstRegistered ? 'TAX INVOICE' : 'INVOICE';
+
+    // 8. Send email (skip if user is sending via Gmail themselves)
     let emailSentVia = 'gmail_user'; // Default for skipEmail mode
     
     if (!skipEmail) {
@@ -488,10 +508,6 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
         if (customSubject && customMessage) {
           // Use custom subject and message with professional template
           emailSubject = customSubject;
-          const brandColor = businessSettings.brandColor || '#16a34a'; // Green for invoices
-          const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoiceWithItems.total || '0'));
-          const isGstRegistered = businessSettings.gstEnabled && businessSettings.abn;
-          const documentType = isGstRegistered ? 'TAX INVOICE' : 'INVOICE';
           
           emailHtml = `
             <!DOCTYPE html>
