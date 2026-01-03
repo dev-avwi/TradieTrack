@@ -391,23 +391,12 @@ export default function CollectPaymentScreen() {
   }, [receiptInvoiceId, invoices]);
 
   useEffect(() => {
-    const fetchQrCode = async () => {
-      if (showShareModal && selectedRequest) {
-        setQrLoading(true);
-        setQrCodeDataUrl(null);
-        try {
-          const response = await api.get<QRCodeResponse>(`/api/payment-requests/${selectedRequest.id}/qrcode`);
-          if (response.data?.qrCode) {
-            setQrCodeDataUrl(response.data.qrCode);
-          }
-        } catch (error) {
-          console.error('Failed to fetch QR code:', error);
-        } finally {
-          setQrLoading(false);
-        }
-      }
-    };
-    fetchQrCode();
+    if (showShareModal && selectedRequest) {
+      const paymentUrl = getPaymentUrl(selectedRequest);
+      const encodedUrl = encodeURIComponent(paymentUrl);
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodedUrl}`;
+      setQrCodeDataUrl(qrApiUrl);
+    }
   }, [showShareModal, selectedRequest]);
 
   const onRefresh = useCallback(() => {
@@ -1541,17 +1530,12 @@ export default function CollectPaymentScreen() {
                 {shareTab === 'qr' && (
                   <View style={styles.qrContainer}>
                     <View style={styles.qrWrapper}>
-                      {qrLoading ? (
-                        <View style={styles.qrLoading}>
-                          <ActivityIndicator size="large" color={colors.primary} />
-                          <Text style={styles.qrLoadingText}>Generating QR...</Text>
-                        </View>
-                      ) : qrCodeDataUrl ? (
+                      {qrCodeDataUrl ? (
                         <Image source={{ uri: qrCodeDataUrl }} style={styles.qrImage} resizeMode="contain" />
                       ) : (
-                        <View style={styles.qrFallback}>
-                          <Feather name="maximize" size={48} color={colors.mutedForeground} />
-                          <Text style={styles.qrFallbackText}>QR Code</Text>
+                        <View style={styles.qrLoading}>
+                          <ActivityIndicator size="large" color={colors.primary} />
+                          <Text style={styles.qrLoadingText}>Loading...</Text>
                         </View>
                       )}
                     </View>
