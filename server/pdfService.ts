@@ -2306,18 +2306,33 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
             
             // Initialize signature pad
             let canvasInitialized = false;
+            let initRetryCount = 0;
+            const MAX_RETRIES = 10;
             
             function initializeCanvas() {
-              if (canvasInitialized) return;
-              canvas = document.getElementById('signature-canvas');
-              if (!canvas) return;
+              if (canvasInitialized) return true;
               
-              ctx = canvas.getContext('2d');
+              canvas = document.getElementById('signature-canvas');
+              if (!canvas) {
+                console.log('Canvas element not found');
+                return false;
+              }
+              
+              // Check if signature-draw-section is visible
+              const drawSection = document.getElementById('signature-draw-section');
+              if (drawSection && drawSection.classList.contains('hidden')) {
+                console.log('Signature draw section is hidden');
+                return false;
+              }
               
               // Set canvas size to match display size
               const rect = canvas.parentElement.getBoundingClientRect();
-              if (rect.width === 0) return; // Don't initialize if hidden
+              if (rect.width === 0) {
+                console.log('Canvas parent has 0 width, will retry');
+                return false;
+              }
               
+              ctx = canvas.getContext('2d');
               const dpr = window.devicePixelRatio || 1;
               canvas.width = rect.width * dpr;
               canvas.height = 150 * dpr;
@@ -2341,30 +2356,21 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
               canvas.addEventListener('touchend', stopDrawing);
               
               canvasInitialized = true;
+              console.log('Canvas initialized successfully, width:', rect.width);
+              return true;
+            }
+            
+            function retryInitCanvas() {
+              if (canvasInitialized || initRetryCount >= MAX_RETRIES) return;
+              initRetryCount++;
+              if (!initializeCanvas()) {
+                setTimeout(retryInitCanvas, 100);
+              }
             }
             
             document.addEventListener('DOMContentLoaded', function() {
-              // Try to initialize, but it may fail if canvas is hidden
-              initializeCanvas();
-              
-              // Re-initialize on window resize if already initialized
-              window.addEventListener('resize', function() {
-                if (canvasInitialized && canvas) {
-                  const rect = canvas.parentElement.getBoundingClientRect();
-                  if (rect.width > 0) {
-                    const dpr = window.devicePixelRatio || 1;
-                    canvas.width = rect.width * dpr;
-                    canvas.height = 150 * dpr;
-                    canvas.style.width = rect.width + 'px';
-                    canvas.style.height = '150px';
-                    ctx.scale(dpr, dpr);
-                    ctx.lineWidth = 2;
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    ctx.strokeStyle = '#1f2937';
-                  }
-                }
-              });
+              // Don't initialize on page load - canvas is hidden
+              // It will be initialized when showAcceptForm is called
             });
             
             function getPos(e) {
@@ -2462,23 +2468,18 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
               document.getElementById('confirm-decline').classList.add('hidden');
               document.querySelector('input[name="action"]').value = 'accept';
               
-              // Initialize canvas after section is visible
+              // Also make sure signature-draw-section is visible (in case it was hidden for saved signature)
+              const drawSection = document.getElementById('signature-draw-section');
+              const savedSection = document.getElementById('saved-signature-section');
+              if (!savedSection && drawSection) {
+                drawSection.classList.remove('hidden');
+              }
+              
+              // Initialize canvas with retry mechanism
+              initRetryCount = 0;
               setTimeout(function() {
-                if (!canvasInitialized) {
-                  initializeCanvas();
-                } else if (canvas && ctx) {
-                  // Re-size existing canvas
-                  const rect = canvas.parentElement.getBoundingClientRect();
-                  const dpr = window.devicePixelRatio || 1;
-                  canvas.width = rect.width * dpr;
-                  canvas.height = 150 * dpr;
-                  canvas.style.width = rect.width + 'px';
-                  canvas.style.height = '150px';
-                  ctx.scale(dpr, dpr);
-                  ctx.lineWidth = 2;
-                  ctx.lineCap = 'round';
-                  ctx.lineJoin = 'round';
-                  ctx.strokeStyle = '#1f2937';
+                if (!initializeCanvas()) {
+                  retryInitCanvas();
                 }
               }, 50);
             }
@@ -2524,22 +2525,15 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
                 savedSection.classList.add('hidden');
               }
               document.getElementById('signature-draw-section').classList.remove('hidden');
-              clearSignature();
+              hasSignature = false;
+              document.getElementById('signature_data').value = '';
               
-              // Resize canvas after showing
+              // Initialize canvas with retry mechanism
+              initRetryCount = 0;
+              canvasInitialized = false; // Force re-init
               setTimeout(function() {
-                if (canvas && canvas.parentElement) {
-                  const rect = canvas.parentElement.getBoundingClientRect();
-                  const dpr = window.devicePixelRatio || 1;
-                  canvas.width = rect.width * dpr;
-                  canvas.height = 150 * dpr;
-                  canvas.style.width = rect.width + 'px';
-                  canvas.style.height = '150px';
-                  ctx.scale(dpr, dpr);
-                  ctx.lineWidth = 2;
-                  ctx.lineCap = 'round';
-                  ctx.lineJoin = 'round';
-                  ctx.strokeStyle = '#1f2937';
+                if (!initializeCanvas()) {
+                  retryInitCanvas();
                 }
               }, 50);
             }
