@@ -1273,6 +1273,7 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quote ${quote.number} - ${business.businessName}</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='15' width='100' height='100' fill='%232563eb'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white' font-family='Arial'>T</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1291,28 +1292,6 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
     .container {
       max-width: 680px;
       margin: 0 auto;
-    }
-    
-    /* Trust badge at top */
-    .trust-badge-top {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 10px 16px;
-      background: rgba(255,255,255,0.9);
-      backdrop-filter: blur(8px);
-      border-radius: 100px;
-      font-size: 12px;
-      font-weight: 500;
-      color: #16a34a;
-      width: fit-content;
-      margin: 0 auto 16px;
-      border: 1px solid #bbf7d0;
-    }
-    
-    .trust-badge-top svg {
-      flex-shrink: 0;
     }
     
     .card {
@@ -1858,28 +1837,6 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
       font-size: 12px;
     }
     
-    .footer-trust {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-    
-    .footer-trust-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: #64748b;
-      font-size: 11px;
-      font-weight: 500;
-    }
-    
-    .footer-trust-item svg {
-      color: #94a3b8;
-    }
-    
     .footer-business {
       margin-bottom: 8px;
       color: #475569;
@@ -2015,15 +1972,6 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
   </style>
 </head>
 <body>
-  <!-- Trust badge at top -->
-  <div class="trust-badge-top">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-      <polyline points="9 12 11 14 15 10"/>
-    </svg>
-    <span>Secure Document</span>
-  </div>
-  
   <div class="container">
     <div class="card">
       <div class="header">
@@ -2578,28 +2526,6 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
     </div>
     
     <div class="footer">
-      <div class="footer-trust">
-        <div class="footer-trust-item">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-          <span>Secure Connection</span>
-        </div>
-        <div class="footer-trust-item">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-          <span>Data Protected</span>
-        </div>
-        <div class="footer-trust-item">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-          <span>Verified Business</span>
-        </div>
-      </div>
       <p class="footer-business">${business.businessName}${business.abn ? ` <span style="color: #94a3b8;">•</span> ABN ${business.abn}` : ''}</p>
       <p class="footer-powered">Powered by TradieTrack</p>
     </div>
