@@ -114,6 +114,7 @@ export default function CollectPayment() {
   const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [showTapToPayDialog, setShowTapToPayDialog] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PaymentRequest | null>(null);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("qr");
@@ -142,6 +143,10 @@ export default function CollectPayment() {
   
   const [sharePhone, setSharePhone] = useState("");
   const [shareEmail, setShareEmail] = useState("");
+  
+  const [tapToPayAmount, setTapToPayAmount] = useState("");
+  const [tapToPayDescription, setTapToPayDescription] = useState("");
+  const [tapToPayRequest, setTapToPayRequest] = useState<PaymentRequest | null>(null);
 
   const { data: paymentRequests, isLoading } = useQuery<PaymentRequest[]>({
     queryKey: ['/api/payment-requests'],
@@ -256,6 +261,40 @@ export default function CollectPayment() {
     onError: (error: any) => {
       toast({
         title: "Failed to record payment",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const tapToPayMutation = useMutation({
+    mutationFn: async (data: { amount: string; description: string }) => {
+      const parsedAmount = parseFloat(data.amount);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        throw new Error('Please enter a valid amount');
+      }
+      const response = await apiRequest('POST', '/api/payment-requests', {
+        amount: parsedAmount,
+        description: data.description.trim() || 'Tap to Pay payment',
+        expiresInHours: 1,
+      });
+      const result = await response.json();
+      if (!result.paymentUrl && !result.token) {
+        throw new Error('Payment request created but URL not available');
+      }
+      return result;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/payment-requests'] });
+      setTapToPayRequest(data);
+      toast({
+        title: "Ready for payment",
+        description: "Show the QR code to your customer",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create payment request",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -526,6 +565,15 @@ export default function CollectPayment() {
             >
               <Banknote className="h-4 w-4 mr-2" />
               Record Payment
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setShowTapToPayDialog(true)} 
+              disabled={!stripeConnected}
+              data-testid="button-tap-to-pay"
+            >
+              <Wifi className="h-4 w-4 mr-2" />
+              Tap to Pay
             </Button>
             <Button 
               onClick={() => setShowCreateDialog(true)} 
@@ -1428,6 +1476,154 @@ export default function CollectPayment() {
                 </div>
               </TabsContent>
             </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Tap to Pay Dialog */}
+      <Dialog open={showTapToPayDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowTapToPayDialog(false);
+          setTapToPayAmount("");
+          setTapToPayDescription("");
+          setTapToPayRequest(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wifi className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+              Tap to Pay
+            </DialogTitle>
+            <DialogDescription>
+              Create a quick payment request for in-person payments
+            </DialogDescription>
+          </DialogHeader>
+
+          {!tapToPayRequest ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Amount (AUD)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0.00"
+                    value={tapToPayAmount}
+                    onChange={(e) => setTapToPayAmount(e.target.value)}
+                    className="pl-8"
+                    autoFocus
+                    data-testid="input-tap-to-pay-amount"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Description (optional)</Label>
+                <Input
+                  placeholder="What's this payment for?"
+                  value={tapToPayDescription}
+                  onChange={(e) => setTapToPayDescription(e.target.value)}
+                  data-testid="input-tap-to-pay-description"
+                />
+              </div>
+
+              <div className="p-3 rounded-lg flex items-start gap-2" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                <Clock className="h-4 w-4 mt-0.5 shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+                <p className="text-sm" style={{ color: 'hsl(var(--trade))' }}>
+                  Request expires in 1 hour, perfect for in-person payments
+                </p>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTapToPayDialog(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => tapToPayMutation.mutate({
+                    amount: tapToPayAmount,
+                    description: tapToPayDescription,
+                  })}
+                  disabled={!tapToPayAmount || parseFloat(tapToPayAmount) <= 0 || tapToPayMutation.isPending}
+                  data-testid="button-create-tap-to-pay"
+                >
+                  {tapToPayMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Show QR Code
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-center p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                <p className="text-3xl font-bold" style={{ color: 'hsl(var(--trade))' }}>
+                  ${parseFloat(tapToPayRequest.amount).toFixed(2)}
+                </p>
+                {tapToPayRequest.description && (
+                  <p className="text-sm text-muted-foreground mt-1">{tapToPayRequest.description}</p>
+                )}
+              </div>
+
+              <div className="flex flex-col items-center">
+                <div className="bg-white p-4 rounded-lg shadow-inner">
+                  <QRCodeSVG
+                    value={getPaymentUrl(tapToPayRequest)}
+                    size={200}
+                    level="H"
+                    includeMargin={true}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground text-center mt-4">
+                  Customer scans this code with their phone camera to pay
+                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <span>Expires in 1 hour</span>
+              </div>
+
+              <DialogFooter className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setTapToPayRequest(null);
+                    setTapToPayAmount("");
+                    setTapToPayDescription("");
+                  }}
+                  data-testid="button-new-tap-to-pay"
+                >
+                  New Payment
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowTapToPayDialog(false);
+                    setSelectedRequest(tapToPayRequest);
+                    setShowShareDialog(true);
+                    setTapToPayRequest(null);
+                    setTapToPayAmount("");
+                    setTapToPayDescription("");
+                  }}
+                  data-testid="button-share-tap-to-pay"
+                >
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share Link
+                </Button>
+              </DialogFooter>
+            </div>
           )}
         </DialogContent>
       </Dialog>

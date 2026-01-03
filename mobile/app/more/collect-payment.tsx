@@ -130,8 +130,13 @@ export default function CollectPaymentScreen() {
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showTapToPayModal, setShowTapToPayModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PaymentRequest | null>(null);
   const [shareTab, setShareTab] = useState<'qr' | 'link' | 'send'>('qr');
+  
+  // Tap to Pay specific state
+  const [tapToPayAmount, setTapToPayAmount] = useState('');
+  const [tapToPayDescription, setTapToPayDescription] = useState('');
   
   const [newAmount, setNewAmount] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -452,6 +457,49 @@ export default function CollectPaymentScreen() {
     setReceiptClientId('');
     setReceiptInvoiceId('');
     setReceiptJobId('');
+  };
+
+  const resetTapToPayForm = () => {
+    setTapToPayAmount('');
+    setTapToPayDescription('');
+  };
+
+  const handleTapToPayRequest = async () => {
+    const parsedAmount = parseFloat(tapToPayAmount);
+    if (!tapToPayAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await api.post<PaymentRequest>('/api/payment-requests', {
+        amount: parsedAmount,
+        description: tapToPayDescription.trim() || 'Tap to Pay payment',
+        expiresInHours: 1, // Short expiry for in-person payments
+      });
+
+      if (response.data) {
+        const request = response.data as PaymentRequest;
+        // Verify payment URL is available
+        if (!request.paymentUrl && !request.token) {
+          Alert.alert('Error', 'Payment request created but URL not available');
+          return;
+        }
+        setShowTapToPayModal(false);
+        resetTapToPayForm();
+        setSelectedRequest(request);
+        setShareTab('qr'); // Always show QR code for Tap to Pay
+        setShowShareModal(true);
+        fetchData();
+      } else if (response.error) {
+        Alert.alert('Error', response.error);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to create payment request');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCreateRequest = async () => {
@@ -908,7 +956,7 @@ export default function CollectPaymentScreen() {
           {stripeStatus?.connected && (
             <TouchableOpacity 
               style={styles.quickActionCard}
-              onPress={() => Alert.alert('Tap to Pay', 'Position phone near customer card to collect payment')}
+              onPress={() => setShowTapToPayModal(true)}
               activeOpacity={0.7}
               data-testid="button-tap-to-pay"
             >
@@ -916,7 +964,7 @@ export default function CollectPaymentScreen() {
                 <Feather name="smartphone" size={20} color={colors.primary} />
               </View>
               <Text style={styles.quickActionTitle}>Tap to Pay</Text>
-              <Text style={styles.quickActionSubtitle}>Contactless</Text>
+              <Text style={styles.quickActionSubtitle}>QR Payment</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1454,6 +1502,98 @@ export default function CollectPaymentScreen() {
     </Modal>
   );
 
+  const renderTapToPayModal = () => (
+    <Modal visible={showTapToPayModal} transparent animationType="slide">
+      <KeyboardAvoidingView 
+        behavior={isIOS ? 'padding' : 'height'} 
+        style={styles.modalOverlay}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalTitleRow}>
+              <View style={[styles.modalIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
+                <Feather name="smartphone" size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.modalTitle}>Tap to Pay</Text>
+            </View>
+            <TouchableOpacity 
+              onPress={() => { setShowTapToPayModal(false); resetTapToPayForm(); }}
+              style={styles.modalCloseBtn}
+              data-testid="button-close-tap-to-pay-modal"
+            >
+              <Feather name="x" size={24} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.tapToPaySubtitle}>
+            Enter the amount and show the QR code to your customer
+          </Text>
+          
+          <View style={styles.modalContent}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Amount (AUD)</Text>
+              <View style={styles.amountInput}>
+                <Text style={styles.amountPrefix}>$</Text>
+                <TextInput
+                  style={styles.amountInputField}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="decimal-pad"
+                  value={tapToPayAmount}
+                  onChangeText={setTapToPayAmount}
+                  autoFocus
+                  data-testid="input-tap-to-pay-amount"
+                />
+              </View>
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Description (optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g., Job payment"
+                placeholderTextColor={colors.mutedForeground}
+                value={tapToPayDescription}
+                onChangeText={setTapToPayDescription}
+                data-testid="input-tap-to-pay-description"
+              />
+            </View>
+            
+            <View style={styles.tapToPayInfo}>
+              <Feather name="info" size={16} color={colors.primary} />
+              <Text style={styles.tapToPayInfoText}>
+                Customer scans QR code and pays with Apple Pay, Google Pay, or card
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.modalFooter}>
+            <TouchableOpacity 
+              style={styles.modalButtonSecondary}
+              onPress={() => { setShowTapToPayModal(false); resetTapToPayForm(); }}
+              data-testid="button-cancel-tap-to-pay"
+            >
+              <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.modalButtonPrimary, isSubmitting && styles.modalButtonDisabled]}
+              onPress={handleTapToPayRequest}
+              disabled={isSubmitting}
+              data-testid="button-create-tap-to-pay"
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.modalButtonPrimaryText}>Show QR Code</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+
   const renderShareModal = () => (
     <Modal visible={showShareModal} transparent animationType="slide">
       <View style={styles.modalOverlay}>
@@ -1663,6 +1803,7 @@ export default function CollectPaymentScreen() {
       {renderCreateModal()}
       {renderRecordPaymentModal()}
       {renderReceiptModal()}
+      {renderTapToPayModal()}
       {renderShareModal()}
       
       {renderPickerModal(
@@ -2243,6 +2384,78 @@ const createStyles = (colors: ThemeColors) => {
     },
     modalButtonDisabled: {
       opacity: 0.5,
+    },
+    modalHandle: {
+      position: 'absolute',
+      top: spacing.sm,
+      left: '50%',
+      marginLeft: -20,
+      width: 40,
+      height: 4,
+      backgroundColor: colors.muted,
+      borderRadius: radius.pill,
+    },
+    modalTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    modalIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalCloseBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.md,
+    },
+    modalContent: {
+      padding: spacing.lg,
+    },
+    tapToPaySubtitle: {
+      ...typography.body,
+      color: colors.mutedForeground,
+      paddingHorizontal: spacing.lg,
+      marginTop: -spacing.sm,
+    },
+    tapToPayInfo: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+      backgroundColor: colorWithOpacity(colors.primary, 0.08),
+      padding: spacing.md,
+      borderRadius: radius.md,
+      marginTop: spacing.sm,
+    },
+    tapToPayInfoText: {
+      ...typography.caption,
+      color: colors.primary,
+      flex: 1,
+      lineHeight: 18,
+    },
+    inputGroup: {
+      marginBottom: spacing.lg,
+    },
+    inputLabel: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      fontWeight: '600',
+      marginBottom: spacing.sm,
+    },
+    textInput: {
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      ...typography.body,
+      color: colors.foreground,
     },
 
     formGroup: {
