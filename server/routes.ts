@@ -10551,8 +10551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const settings = await storage.getBusinessSettings(request.userId);
       
       // Get Stripe client
-      const { getStripeInstance } = await import('./stripeClient');
-      const stripe = getStripeInstance();
+      const stripe = await getUncachableStripeClient();
       
       if (!stripe) {
         return res.status(503).json({ error: "Payment processing is not available" });
