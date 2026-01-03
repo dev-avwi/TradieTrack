@@ -1266,6 +1266,11 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
   // Generate lighter shade of brand color for gradient
   const lighterBrand = brandColor + '20';
   
+  // Use business logo for favicon if available, otherwise use TradieTrack default
+  const faviconHtml = business.logoUrl 
+    ? `<link rel="icon" type="image/png" href="${business.logoUrl}">`
+    : `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='15' width='100' height='100' fill='${encodeURIComponent(brandColor)}'/><text x='50' y='68' font-size='48' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'>TT</text></svg>">`;
+  
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -1273,7 +1278,7 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quote ${quote.number} - ${business.businessName}</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='15' width='100' height='100' fill='%232563eb'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white' font-family='Arial'>T</text></svg>">
+  ${faviconHtml}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
