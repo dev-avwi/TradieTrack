@@ -7874,6 +7874,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate share token for quote (creates acceptance token without sending email)
+  app.post("/api/quotes/:id/generate-share-token", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const quote = await storage.getQuote(req.params.id, userContext.effectiveUserId);
+      
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      // If quote already has an acceptance token, return it
+      if (quote.acceptanceToken) {
+        return res.json({ acceptanceToken: quote.acceptanceToken });
+      }
+      
+      // Generate a new acceptance token
+      const { nanoid } = await import('nanoid');
+      const acceptanceToken = nanoid(12);
+      
+      await storage.updateQuote(req.params.id, userContext.effectiveUserId, {
+        acceptanceToken
+      });
+      
+      res.json({ acceptanceToken });
+    } catch (error) {
+      console.error("Error generating share token:", error);
+      res.status(500).json({ error: "Failed to generate share token" });
+    }
+  });
+
   // Quote actions
   app.post("/api/quotes/:id/send", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     const { handleQuoteSend } = await import('./emailRoutes');

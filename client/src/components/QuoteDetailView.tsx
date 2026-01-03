@@ -395,9 +395,38 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   };
 
   const handleShare = async () => {
-    const publicUrl = quote?.acceptanceToken 
-      ? `${window.location.origin}/q/${quote.acceptanceToken}`
-      : `${window.location.origin}/quotes/${quoteId}`;
+    let acceptanceToken = quote?.acceptanceToken;
+    
+    // If no acceptance token exists, generate one first
+    if (!acceptanceToken) {
+      try {
+        const response = await fetch(`/api/quotes/${quoteId}/generate-share-token`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: getAuthHeaders(),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          acceptanceToken = data.acceptanceToken;
+          // Invalidate cache so UI reflects new token
+          queryClient.invalidateQueries({ queryKey: ['/api/quotes', quoteId] });
+        }
+      } catch (error) {
+        console.error('Failed to generate share token:', error);
+      }
+    }
+    
+    // Use public URL with token, or show error if we couldn't get one
+    if (!acceptanceToken) {
+      toast({
+        title: "Share Unavailable",
+        description: "Please send the quote first to generate a shareable link.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const publicUrl = `${window.location.origin}/q/${acceptanceToken}`;
     
     const shareData = {
       title: `Quote ${quote?.number || quoteId}`,

@@ -1122,7 +1122,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
         message: `Quote emailed to ${client.email} with PDF attached.`
       });
     } else {
-      // Create Gmail draft for manual review
+      // Try Gmail draft first, fallback to SendGrid if Gmail fails
       const draftResult = await createGmailDraftWithAttachment({
         to: client.email,
         subject,
@@ -1136,7 +1136,31 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       });
       
       if (!draftResult.success) {
-        throw new Error(draftResult.error || 'Failed to create Gmail draft');
+        // Gmail failed - fallback to SendGrid
+        console.log('[Email] Gmail draft failed, falling back to SendGrid:', draftResult.error);
+        
+        const { sendEmailWithAttachment } = await import('./emailService');
+        await sendEmailWithAttachment({
+          to: client.email,
+          subject,
+          html: emailHtml,
+          attachments: [{
+            filename: pdfFilename,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+          }]
+        });
+        
+        // Update quote status to sent
+        await storage.updateQuote(req.params.id, req.userId, { status: 'sent' });
+        
+        return res.json({
+          success: true,
+          sent: true,
+          usedFallback: true,
+          recipientEmail: client.email,
+          message: `Quote emailed to ${client.email} with PDF attached (sent via backup email service).`
+        });
       }
       
       // Update quote status to sent (user created the draft, we assume they'll send it)
@@ -1380,7 +1404,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
         message: `Invoice emailed to ${client.email} with PDF attached.`
       });
     } else {
-      // Create Gmail draft for manual review
+      // Try Gmail draft first, fallback to SendGrid if Gmail fails
       const draftResult = await createGmailDraftWithAttachment({
         to: client.email,
         subject,
@@ -1394,7 +1418,31 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       });
       
       if (!draftResult.success) {
-        throw new Error(draftResult.error || 'Failed to create Gmail draft');
+        // Gmail failed - fallback to SendGrid
+        console.log('[Email] Gmail draft failed for invoice, falling back to SendGrid:', draftResult.error);
+        
+        const { sendEmailWithAttachment } = await import('./emailService');
+        await sendEmailWithAttachment({
+          to: client.email,
+          subject,
+          html: emailHtml,
+          attachments: [{
+            filename: pdfFilename,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+          }]
+        });
+        
+        // Update invoice status to sent
+        await storage.updateInvoice(req.params.id, req.userId, { status: 'sent' });
+        
+        return res.json({
+          success: true,
+          sent: true,
+          usedFallback: true,
+          recipientEmail: client.email,
+          message: `Invoice emailed to ${client.email} with PDF attached (sent via backup email service).`
+        });
       }
       
       // Update invoice status to sent (user created the draft, we assume they'll send it)
