@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
 import { 
   QrCode, 
@@ -103,8 +103,12 @@ interface Receipt {
 export default function CollectPayment() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const searchString = useSearch();
   const { data: integrationHealth } = useIntegrationHealth();
   const stripeConnected = isStripeReady(integrationHealth);
+  
+  // Track if we've processed URL params to avoid re-opening dialogs
+  const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
   
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
@@ -210,6 +214,45 @@ export default function CollectPayment() {
       }
     }
   }, [receiptInvoiceId, invoices]);
+
+  // Handle URL parameters from job detail navigation
+  useEffect(() => {
+    if (urlParamsProcessed || !invoices) return;
+    
+    const params = new URLSearchParams(searchString);
+    const invoiceId = params.get('invoiceId');
+    const jobId = params.get('jobId');
+    const method = params.get('method');
+    
+    if (invoiceId) {
+      const invoice = invoices.find(inv => inv.id === invoiceId);
+      if (invoice) {
+        const totalStr = typeof invoice.total === 'number' 
+          ? invoice.total.toFixed(2) 
+          : String(invoice.total || '0.00');
+        
+        // Pre-fill data for tap to pay
+        setTapToPayAmount(totalStr);
+        setTapToPayDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        
+        // Also set up create dialog data
+        setSelectedInvoiceId(invoiceId);
+        if (jobId) setSelectedJobId(jobId);
+        
+        // Open the appropriate dialog based on method parameter
+        if (method === 'qr') {
+          setShowTapToPayDialog(true);
+        } else if (method === 'link') {
+          setShowCreateDialog(true);
+        } else {
+          // Default to tap to pay
+          setShowTapToPayDialog(true);
+        }
+        
+        setUrlParamsProcessed(true);
+      }
+    }
+  }, [searchString, invoices, urlParamsProcessed]);
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {

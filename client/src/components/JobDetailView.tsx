@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2 } from "lucide-react";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
 import { getJobUrgency, getInProgressDuration } from "@/lib/jobUrgency";
@@ -997,6 +997,106 @@ export default function JobDetailView({
             onCreateQuote={() => onCreateQuote?.(jobId)}
             onCreateInvoice={() => onCreateInvoice?.(jobId)}
           />
+        )}
+
+        {/* Collect Payment Section - Shows when invoice is unpaid */}
+        {linkedInvoice && !isTradie && (linkedInvoice.status === 'sent' || linkedInvoice.status === 'overdue' || linkedInvoice.status === 'partial') && (
+          <Card data-testid="card-collect-payment">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                  Collect Payment
+                </CardTitle>
+                <Badge variant="outline" className="text-xs">
+                  ${parseFloat(linkedInvoice.total as string || '0').toFixed(2)} outstanding
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Invoice {linkedInvoice.invoiceNumber} is ready for payment
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="default"
+                  className="flex items-center justify-center gap-2"
+                  style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+                  onClick={() => navigate(`/collect-payment?invoiceId=${linkedInvoice.id}&jobId=${jobId}`)}
+                  data-testid="button-tap-to-pay-job"
+                >
+                  <Smartphone className="h-4 w-4" />
+                  Tap to Pay
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
+                  onClick={() => navigate(`/collect-payment?invoiceId=${linkedInvoice.id}&jobId=${jobId}&method=qr`)}
+                  data-testid="button-qr-code-job"
+                >
+                  <QrCode className="h-4 w-4" />
+                  QR Code
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
+                  onClick={() => navigate(`/collect-payment?invoiceId=${linkedInvoice.id}&jobId=${jobId}&method=link`)}
+                  data-testid="button-send-link-job"
+                >
+                  <Link2 className="h-4 w-4" />
+                  Send Link
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
+                  onClick={() => navigate(`/invoices/${linkedInvoice.id}?action=recordPayment`)}
+                  data-testid="button-record-cash-job"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  Record Cash
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Receipt Display - Shows after payment received */}
+        {linkedReceipts.length > 0 && !isTradie && (
+          <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20" data-testid="card-payment-received">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" />
+                Payment Received
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {linkedReceipts.map((receipt) => (
+                  <div 
+                    key={receipt.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-card border cursor-pointer hover-elevate"
+                    onClick={() => navigate(`/receipts/${receipt.id}`)}
+                    data-testid={`receipt-item-${receipt.id}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                        <Receipt className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Receipt #{receipt.receiptNumber}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {receipt.paymentMethod || 'Payment'} • {receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString() : 'Recently'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-emerald-600">${parseFloat(receipt.amount).toFixed(2)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         <Card>

@@ -890,6 +890,56 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '700',
     color: colors.foreground,
   },
+  paymentReceivedCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  paymentReceivedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  paymentReceivedIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  paymentReceivedContent: {
+    flex: 1,
+  },
+  paymentReceivedTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  paymentReceivedSubtitle: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  paymentReceivedAmount: {
+    alignItems: 'flex-end',
+  },
+  paymentReceivedAmountText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.success,
+  },
+  paymentReceivedDate: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
   activityCard: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
@@ -3569,6 +3619,43 @@ export default function JobDetailScreen() {
         onPaymentLink={handlePaymentLink}
         onRecordCash={handleRecordCash}
       />
+
+      {/* Payment Received Section - shows when there are linked receipts */}
+      {linkedReceipt && (
+        <TouchableOpacity 
+          style={styles.paymentReceivedCard}
+          onPress={() => router.push(`/more/receipt/${linkedReceipt.id}`)}
+          activeOpacity={0.7}
+          data-testid="card-payment-received"
+        >
+          <View style={styles.paymentReceivedHeader}>
+            <View style={[styles.paymentReceivedIcon, { backgroundColor: `${colors.success}15` }]}>
+              <Feather name="check-circle" size={iconSizes.lg} color={colors.success} />
+            </View>
+            <View style={styles.paymentReceivedContent}>
+              <Text style={styles.paymentReceivedTitle}>Payment Received</Text>
+              <Text style={styles.paymentReceivedSubtitle}>
+                {linkedReceipt.receiptNumber || 'Receipt'} • {linkedReceipt.paymentMethod || 'Payment'}
+              </Text>
+            </View>
+            <View style={styles.paymentReceivedAmount}>
+              <Text style={styles.paymentReceivedAmountText}>
+                {formatCurrency(linkedReceipt.amount)}
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} style={{ marginLeft: spacing.sm }} />
+          </View>
+          {linkedReceipt.createdAt && (
+            <Text style={styles.paymentReceivedDate}>
+              Received {new Date(linkedReceipt.createdAt).toLocaleDateString('en-AU', { 
+                day: 'numeric', 
+                month: 'short', 
+                year: 'numeric' 
+              })}
+            </Text>
+          )}
+        </TouchableOpacity>
+      )}
 
       {/* Job Costing Section */}
       {(estimatedHours > 0 || estimatedCost > 0 || actualHours > 0) && (

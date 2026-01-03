@@ -1101,14 +1101,14 @@ export async function createDemoUserAndData() {
       await storage.createInvoiceLineItem({ invoiceId: sentInvoice3.id, description: "Caroma Dual-Flush Toilet", quantity: "1.00", unitPrice: "420.00", total: "420.00", sortOrder: 1 });
       await storage.createInvoiceLineItem({ invoiceId: sentInvoice3.id, description: "Installation and Old Removal", quantity: "1.00", unitPrice: "160.00", total: "160.00", sortOrder: 2 });
 
-      // SENT INVOICE 4 - Linked to job
+      // SENT INVOICE 4 - Linked to invoiced job (Pool Filter Replacement)
       const sentInv4Num = await storage.generateInvoiceNumber(demoUser.id);
       const sentInvoice4 = await storage.createInvoice({
         userId: demoUser.id,
-        clientId: createdClients[13].id,
-        jobId: createdJobs[14].id,
-        title: "Rural Bore Pump Service",
-        description: "Annual bore pump service and pressure test",
+        clientId: createdClients[5].id,
+        jobId: createdJobs[20].id, // Pool Filter Replacement - invoiced job
+        title: "Pool Filter Replacement",
+        description: "Replace pool filter cartridge and service pump",
         status: "sent" as const,
         subtotal: "450.00",
         gstAmount: "45.00",
@@ -1117,18 +1117,18 @@ export async function createDemoUserAndData() {
         sentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         number: sentInv4Num
       });
-      await storage.createInvoiceLineItem({ invoiceId: sentInvoice4.id, description: "Bore Pump Service", quantity: "1.00", unitPrice: "280.00", total: "280.00", sortOrder: 1 });
-      await storage.createInvoiceLineItem({ invoiceId: sentInvoice4.id, description: "Pressure Test", quantity: "1.00", unitPrice: "90.00", total: "90.00", sortOrder: 2 });
-      await storage.createInvoiceLineItem({ invoiceId: sentInvoice4.id, description: "Travel to Gordonvale", quantity: "1.00", unitPrice: "80.00", total: "80.00", sortOrder: 3 });
+      await storage.createInvoiceLineItem({ invoiceId: sentInvoice4.id, description: "Pool Filter Cartridge (Large)", quantity: "1.00", unitPrice: "220.00", total: "220.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: sentInvoice4.id, description: "Pump Service and Clean", quantity: "1.00", unitPrice: "150.00", total: "150.00", sortOrder: 2 });
+      await storage.createInvoiceLineItem({ invoiceId: sentInvoice4.id, description: "Labour (1 hour)", quantity: "1.00", unitPrice: "80.00", total: "80.00", sortOrder: 3 });
 
-      // OVERDUE INVOICE 2 - Significantly overdue
+      // OVERDUE INVOICE 2 - Significantly overdue (Rural Bore Pump Service)
       const overdueInv2Num = await storage.generateInvoiceNumber(demoUser.id);
       const overdueInvoice2 = await storage.createInvoice({
         userId: demoUser.id,
-        clientId: createdClients[5].id,
-        jobId: createdJobs[15].id,
-        title: "Pool Filter Replacement",
-        description: "Replace pool filter cartridge and service pump",
+        clientId: createdClients[13].id,
+        jobId: createdJobs[19].id, // Rural Bore Pump Service - done job
+        title: "Rural Bore Pump Service",
+        description: "Annual bore pump service and pressure test",
         status: "sent" as const,
         subtotal: "380.00",
         gstAmount: "38.00",
@@ -1137,15 +1137,15 @@ export async function createDemoUserAndData() {
         sentAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
         number: overdueInv2Num
       });
-      await storage.createInvoiceLineItem({ invoiceId: overdueInvoice2.id, description: "Pool Filter Cartridge", quantity: "1.00", unitPrice: "220.00", total: "220.00", sortOrder: 1 });
-      await storage.createInvoiceLineItem({ invoiceId: overdueInvoice2.id, description: "Pump Service", quantity: "1.00", unitPrice: "160.00", total: "160.00", sortOrder: 2 });
+      await storage.createInvoiceLineItem({ invoiceId: overdueInvoice2.id, description: "Bore Pump Service", quantity: "1.00", unitPrice: "220.00", total: "220.00", sortOrder: 1 });
+      await storage.createInvoiceLineItem({ invoiceId: overdueInvoice2.id, description: "Pressure Test & Travel", quantity: "1.00", unitPrice: "160.00", total: "160.00", sortOrder: 2 });
 
       // PAID INVOICES (3 more)
       const paid4InvNum = await storage.generateInvoiceNumber(demoUser.id);
       const paidInvoice4 = await storage.createInvoice({
         userId: demoUser.id,
         clientId: createdClients[6].id,
-        jobId: createdJobs[16].id,
+        jobId: createdJobs[21].id, // Rough-In Plumbing Stage 1 - invoiced job
         title: "Rough-In Plumbing Stage 1",
         description: "First fix plumbing for new build - progress payment",
         status: "paid" as const,
@@ -1165,7 +1165,7 @@ export async function createDemoUserAndData() {
       const paidInvoice5 = await storage.createInvoice({
         userId: demoUser.id,
         clientId: createdClients[8].id,
-        jobId: createdJobs[17].id,
+        jobId: createdJobs[22].id, // Rental Property Maintenance - invoiced job
         title: "Rental Property Maintenance",
         description: "Multi-property maintenance - Melissa Torres portfolio",
         status: "paid" as const,
