@@ -1,2897 +1,1792 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   View, 
   Text, 
   ScrollView, 
   TouchableOpacity,
-  RefreshControl,
-  StyleSheet,
-  ActivityIndicator,
-  Modal,
   TextInput,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Image,
+  ActivityIndicator,
+  Modal,
+  StyleSheet,
+  RefreshControl,
+  Share,
+  Image
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import * as Linking from 'expo-linking';
-import * as WebBrowser from 'expo-web-browser';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
-import { api, API_URL } from '../../src/lib/api';
-import { format, formatDistanceToNow, isToday, isYesterday, isThisWeek, parseISO } from 'date-fns';
+import { useStripeTerminal } from '../../src/hooks/useServices';
+import { isTapToPayAvailable } from '../../src/lib/stripe-terminal';
+import { useInvoicesStore, useClientsStore } from '../../src/lib/store';
+import api from '../../src/lib/api';
+import { Card, CardContent } from '../../src/components/ui/Card';
+import { Badge } from '../../src/components/ui/Badge';
+import { Button } from '../../src/components/ui/Button';
+import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { spacing, radius } from '../../src/lib/design-tokens';
 
-const isIOS = Platform.OS === 'ios';
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: spacing.lg,
+    paddingBottom: 100,
+  },
+  header: {
+    marginBottom: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  headerBanner: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.promoBorder,
+  },
+  headerBannerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  headerBannerTitle: {
+    color: colors.foreground,
+    fontWeight: '600',
+    fontSize: 18,
+    marginLeft: spacing.sm,
+  },
+  headerBannerSubtitle: {
+    color: colors.mutedForeground,
+    fontSize: 14,
+  },
+  quickLinksRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  quickLink: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.sm,
+  },
+  quickLinkIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickLinkText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  amountSection: {
+    marginBottom: spacing.xl,
+  },
+  sectionLabel: {
+    color: colors.foreground,
+    fontWeight: '600',
+    fontSize: 16,
+    marginBottom: spacing.md,
+  },
+  amountInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    height: 64,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  currencySymbol: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  amountInput: {
+    flex: 1,
+    marginLeft: spacing.sm,
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  descriptionInput: {
+    marginTop: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    height: 48,
+    color: colors.foreground,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  paymentMethodCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  paymentMethodCardDisabled: {
+    opacity: 0.5,
+  },
+  paymentMethodIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.lg,
+  },
+  paymentMethodContent: {
+    flex: 1,
+  },
+  paymentMethodHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  paymentMethodTitle: {
+    color: colors.foreground,
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  paymentMethodDescription: {
+    color: colors.mutedForeground,
+    fontSize: 14,
+    marginTop: 4,
+  },
+  pendingSection: {
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  pendingSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  pendingSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  emptyPending: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyPendingText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: spacing.sm,
+  },
+  pendingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pendingItemContent: {
+    flex: 1,
+  },
+  pendingItemTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  pendingItemClient: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  pendingItemRight: {
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  pendingItemAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  collectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    gap: 4,
+  },
+  collectButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+  infoCard: {
+    marginTop: spacing.lg,
+  },
+  infoCardTitle: {
+    color: colors.foreground,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
+  infoCardText: {
+    color: colors.mutedForeground,
+    fontSize: 14,
+  },
+  infoCardFees: {
+    color: colors.mutedForeground,
+    fontSize: 12,
+    marginTop: spacing.sm,
+  },
+  warningCard: {
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    backgroundColor: colors.warningLight,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  warningTitle: {
+    color: colors.warning,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  warningText: {
+    color: colors.mutedForeground,
+    fontSize: 14,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  modalContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  modalStepTitle: {
+    color: colors.foreground,
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: spacing.xl,
+  },
+  modalStepSubtitle: {
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  readyIcon: {
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+  },
+  amountDisplay: {
+    color: colors.foreground,
+    fontSize: 36,
+    fontWeight: 'bold',
+  },
+  acceptedMethodsCard: {
+    marginTop: 32,
+    padding: spacing.lg,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  acceptedMethodsText: {
+    color: colors.mutedForeground,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  successIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.successLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+  },
+  successTitle: {
+    color: colors.success,
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  successAmount: {
+    color: colors.foreground,
+    fontSize: 18,
+    marginTop: spacing.sm,
+  },
+  errorIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.destructiveLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+  },
+  errorTitle: {
+    color: colors.destructive,
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  modalFooter: {
+    padding: spacing.lg,
+  },
+  statsGrid: {
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  statTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  demoModeBanner: {
+    backgroundColor: colors.warningLight,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.warning,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  demoModeText: {
+    flex: 1,
+  },
+  demoModeTitle: {
+    color: colors.warning,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  demoModeDescription: {
+    color: colors.mutedForeground,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  receiptInput: {
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+    color: colors.foreground,
+    fontSize: 14,
+  },
+  qrCodeContainer: {
+    width: 220,
+    height: 220,
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.xl,
+    padding: spacing.sm,
+  },
+  qrCodeWrapper: {
+    width: 200,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrCodeImage: {
+    width: 200,
+    height: 200,
+  },
+  qrCodePlaceholder: {
+    width: 180,
+    height: 180,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrAmountDisplay: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  qrUrlContainer: {
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  qrUrlText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  qrActionButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.xl,
+    width: '100%',
+  },
+  paymentLinkInputContainer: {
+    width: '100%',
+    marginTop: spacing.lg,
+    gap: spacing.md,
+  },
+  paymentLinkLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
+    marginBottom: spacing.xs,
+  },
+});
 
-interface StripeConnectStatus {
-  connected: boolean;
-  chargesEnabled?: boolean;
-  payoutsEnabled?: boolean;
-}
-
-interface PaymentRequest {
-  id: string;
-  amount: string;
-  gstAmount: string;
+interface PaymentMethodCardProps {
+  icon: React.ReactNode;
+  title: string;
   description: string;
-  reference: string | null;
-  status: 'pending' | 'paid' | 'cancelled' | 'expired';
-  token: string;
-  expiresAt: string | null;
-  paidAt: string | null;
-  paymentMethod: string | null;
-  createdAt: string;
-  paymentUrl?: string;
-  clientId?: string | null;
-  invoiceId?: string | null;
-  jobId?: string | null;
+  badge?: string;
+  badgeVariant?: 'success' | 'warning' | 'default';
+  onPress: () => void;
+  disabled?: boolean;
+  colors: ThemeColors;
 }
 
-interface Client {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
+function PaymentMethodCard({ 
+  icon, 
+  title, 
+  description, 
+  badge, 
+  badgeVariant = 'success',
+  onPress,
+  disabled = false,
+  colors
+}: PaymentMethodCardProps) {
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.7}
+      style={[styles.paymentMethodCard, disabled && styles.paymentMethodCardDisabled]}
+    >
+      <View style={styles.paymentMethodIcon}>
+        {icon}
+      </View>
+      <View style={styles.paymentMethodContent}>
+        <View style={styles.paymentMethodHeader}>
+          <Text style={styles.paymentMethodTitle}>{title}</Text>
+          {badge && (
+            <Badge variant={badgeVariant} style={{ marginLeft: 8 }}>
+              {badge}
+            </Badge>
+          )}
+        </View>
+        <Text style={styles.paymentMethodDescription}>
+          {description}
+        </Text>
+      </View>
+      <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+    </TouchableOpacity>
+  );
 }
 
-interface Invoice {
+function StatCard({ 
+  title, 
+  value, 
+  icon,
+  colors
+}: { 
+  title: string; 
+  value: string | number; 
+  icon: React.ReactNode;
+  colors: ThemeColors;
+}) {
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  return (
+    <View style={styles.statCard}>
+      <View style={styles.statIconContainer}>
+        {icon}
+      </View>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statTitle}>{title}</Text>
+    </View>
+  );
+}
+
+interface SelectedInvoice {
   id: string;
-  number: string;
-  title: string;
-  total: string | number;
-  status: string;
+  invoiceNumber: string;
   clientId: string;
-  jobId?: string | null;
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  total: number;
+  amountPaid: number;
+  amountDue: number;
 }
 
-interface QRCodeResponse {
-  qrCode: string;
-}
-
-interface Job {
-  id: string;
-  title: string;
-  address?: string | null;
-  clientId?: string | null;
-  status: string;
-}
-
-interface Receipt {
-  id: string;
-  receiptNumber: string;
-  amount: string;
-  paymentMethod: string;
-  paymentReference?: string | null;
-  paidAt: string | null;
-  clientId?: string | null;
-  invoiceId?: string | null;
-  jobId?: string | null;
-  createdAt: string;
-}
-
-const formatCurrency = (amount: number | string) => {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat('en-AU', {
-    style: 'currency',
-    currency: 'AUD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num);
-};
-
-const getDateGroup = (dateString: string): string => {
-  const date = parseISO(dateString);
-  if (isToday(date)) return 'Today';
-  if (isYesterday(date)) return 'Yesterday';
-  if (isThisWeek(date)) return 'This Week';
-  return format(date, 'MMMM yyyy');
-};
-
-export default function CollectPaymentScreen() {
+export default function CollectScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const params = useLocalSearchParams<{ tab?: string; invoiceId?: string; jobId?: string }>();
-  
-  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
-  const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
+  const { invoiceId } = useLocalSearchParams<{ invoiceId?: string }>();
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
   const [showTapToPayModal, setShowTapToPayModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<PaymentRequest | null>(null);
-  const [shareTab, setShareTab] = useState<'qr' | 'link' | 'send'>('qr');
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<'ready' | 'connecting' | 'waiting' | 'processing' | 'success' | 'error'>('ready');
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<SelectedInvoice | null>(null);
+  const [lastPaymentAmount, setLastPaymentAmount] = useState(0);
+  const [sendingReceipt, setSendingReceipt] = useState(false);
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualPhone, setManualPhone] = useState('');
+  const hasAutoSelectedInvoice = useRef(false);
   
-  // QR Payment specific state
-  const [tapToPayAmount, setTapToPayAmount] = useState('');
-  const [tapToPayDescription, setTapToPayDescription] = useState('');
-  
-  const [newAmount, setNewAmount] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [newReference, setNewReference] = useState('');
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
-  const [selectedJobId, setSelectedJobId] = useState<string>('');
-  const [expiresInHours, setExpiresInHours] = useState('24');
-  
-  const [recordAmount, setRecordAmount] = useState('');
-  const [recordInvoiceId, setRecordInvoiceId] = useState('');
-  const [recordPaymentMethod, setRecordPaymentMethod] = useState('cash');
-  const [recordReference, setRecordReference] = useState('');
-  const [recordNotes, setRecordNotes] = useState('');
-  
-  const [receiptAmount, setReceiptAmount] = useState('');
-  const [receiptDescription, setReceiptDescription] = useState('');
-  const [receiptPaymentMethod, setReceiptPaymentMethod] = useState('cash');
-  const [receiptReference, setReceiptReference] = useState('');
-  const [receiptClientId, setReceiptClientId] = useState<string>('');
-  const [receiptInvoiceId, setReceiptInvoiceId] = useState<string>('');
-  const [receiptJobId, setReceiptJobId] = useState<string>('');
-  
-  const [sharePhone, setSharePhone] = useState('');
-  const [shareEmail, setShareEmail] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
-  
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  // QR Code Modal state
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrPaymentUrl, setQrPaymentUrl] = useState('');
+  const [qrPaymentRequest, setQrPaymentRequest] = useState<any>(null);
   const [qrLoading, setQrLoading] = useState(false);
-
-  const [showInvoicePicker, setShowInvoicePicker] = useState(false);
-  const [showClientPicker, setShowClientPicker] = useState(false);
-  const [showJobPicker, setShowJobPicker] = useState(false);
-  const [showExpiryPicker, setShowExpiryPicker] = useState(false);
-  const [showMethodPicker, setShowMethodPicker] = useState(false);
-  const [pickerContext, setPickerContext] = useState<'create' | 'record' | 'receipt'>('create');
   
-  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
+  // Payment Link Modal state
+  const [showPaymentLinkModal, setShowPaymentLinkModal] = useState(false);
+  const [paymentLinkRequest, setPaymentLinkRequest] = useState<any>(null);
+  const [linkRecipientEmail, setLinkRecipientEmail] = useState('');
+  const [linkRecipientPhone, setLinkRecipientPhone] = useState('');
+  const [sendingLink, setSendingLink] = useState(false);
+  
+  const { invoices, fetchInvoices } = useInvoicesStore();
+  const { clients, fetchClients } = useClientsStore();
+  const terminal = useStripeTerminal();
+  const tapToPaySupported = isTapToPayAvailable();
 
-  const unpaidInvoices = useMemo(() => 
-    invoices.filter(inv => inv.status !== 'paid'), [invoices]);
-  const activeJobs = useMemo(() => 
-    jobs.filter(job => job.status !== 'invoiced'), [jobs]);
-  const pendingRequests = useMemo(() => 
-    paymentRequests.filter(r => r.status === 'pending'), [paymentRequests]);
-  const completedRequests = useMemo(() => 
-    paymentRequests.filter(r => r.status !== 'pending'), [paymentRequests]);
+  const refreshData = useCallback(async () => {
+    setIsLoading(true);
+    await Promise.all([fetchInvoices(), fetchClients()]);
+    setIsLoading(false);
+  }, [fetchInvoices, fetchClients]);
 
-  const totalPendingAmount = useMemo(() => {
-    return pendingRequests.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
-  }, [pendingRequests]);
-
-  const totalReceived = useMemo(() => {
-    return receipts.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
-  }, [receipts]);
-
-  const paidRequestsCount = useMemo(() => 
-    paymentRequests.filter(r => r.status === 'paid').length, [paymentRequests]);
-
-  const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
-  const invoiceMap = useMemo(() => new Map(invoices.map(i => [i.id, i])), [invoices]);
-  const jobMap = useMemo(() => new Map(jobs.map(j => [j.id, j])), [jobs]);
-
-  const [secondaryDataLoaded, setSecondaryDataLoaded] = useState(false);
-  const [loadingSecondary, setLoadingSecondary] = useState(false);
-
-  const groupedReceipts = useMemo(() => {
-    const groups: { [key: string]: Receipt[] } = {};
-    receipts.forEach(receipt => {
-      const group = getDateGroup(receipt.createdAt);
-      if (!groups[group]) groups[group] = [];
-      groups[group].push(receipt);
-    });
-    return groups;
-  }, [receipts]);
-
-  const fetchEssentialData = useCallback(async () => {
-    try {
-      const [requestsRes, stripeRes, receiptsRes] = await Promise.all([
-        api.get<PaymentRequest[]>('/api/payment-requests').catch(() => ({ data: [] as PaymentRequest[] })),
-        api.get<StripeConnectStatus>('/api/stripe/connect/status').catch(() => ({ data: { connected: false } as StripeConnectStatus })),
-        api.get<Receipt[]>('/api/receipts').catch(() => ({ data: [] as Receipt[] })),
-      ]);
-      
-      if (requestsRes.data) setPaymentRequests(Array.isArray(requestsRes.data) ? requestsRes.data : []);
-      if (stripeRes.data) setStripeStatus(stripeRes.data);
-      if (receiptsRes.data) setReceipts(Array.isArray(receiptsRes.data) ? receiptsRes.data : []);
-    } catch (error) {
-      console.error('Error fetching essential data:', error);
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
+  useEffect(() => {
+    refreshData();
+    if (tapToPaySupported) {
+      terminal.initialize();
     }
   }, []);
 
-  const fetchSecondaryData = useCallback(async () => {
-    if (secondaryDataLoaded || loadingSecondary) return;
-    setLoadingSecondary(true);
-    try {
-      const [clientsRes, invoicesRes, jobsRes] = await Promise.all([
-        api.get<Client[]>('/api/clients').catch(() => ({ data: [] as Client[] })),
-        api.get<Invoice[]>('/api/invoices').catch(() => ({ data: [] as Invoice[] })),
-        api.get<Job[]>('/api/jobs').catch(() => ({ data: [] as Job[] })),
-      ]);
-      
-      if (clientsRes.data) setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
-      if (invoicesRes.data) setInvoices(Array.isArray(invoicesRes.data) ? invoicesRes.data : []);
-      if (jobsRes.data) setJobs(Array.isArray(jobsRes.data) ? jobsRes.data : []);
-      setSecondaryDataLoaded(true);
-    } catch (error) {
-      console.error('Error fetching secondary data:', error);
-    } finally {
-      setLoadingSecondary(false);
+  // Reset auto-selection flag when invoiceId changes (allows new invoice selection)
+  useEffect(() => {
+    hasAutoSelectedInvoice.current = false;
+  }, [invoiceId]);
+
+  // Auto-select invoice when navigated from invoice detail with invoiceId param
+  useEffect(() => {
+    if (invoiceId && invoices.length > 0 && clients.length > 0 && !hasAutoSelectedInvoice.current) {
+      const invoice = invoices.find(i => i.id === invoiceId);
+      if (invoice) {
+        const client = clients.find(c => c.id === invoice.clientId);
+        const amountDue = (invoice.total || 0) - (invoice.amountPaid || 0);
+        
+        setSelectedInvoice({
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          clientId: invoice.clientId,
+          clientName: client?.name || 'Unknown Client',
+          clientEmail: client?.email,
+          clientPhone: client?.phone,
+          total: invoice.total || 0,
+          amountPaid: invoice.amountPaid || 0,
+          amountDue,
+        });
+        
+        setAmount((amountDue / 100).toFixed(2));
+        setDescription(`Payment for ${invoice.invoiceNumber}`);
+        hasAutoSelectedInvoice.current = true;
+      }
+    } else if (!invoiceId) {
+      // Clear selection when navigating to collect without an invoice ID
+      hasAutoSelectedInvoice.current = false;
     }
-  }, [secondaryDataLoaded, loadingSecondary]);
+  }, [invoiceId, invoices, clients]);
 
-  const fetchData = useCallback(async () => {
-    setSecondaryDataLoaded(false);
-    await fetchEssentialData();
-  }, [fetchEssentialData]);
+  const getClient = (clientId: string) => {
+    return clients.find(c => c.id === clientId);
+  };
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const getClientName = (clientId: string) => {
+    const client = getClient(clientId);
+    return client?.name || 'Unknown Client';
+  };
 
-  // Track URL param processing state
-  const [paramsProcessed, setParamsProcessed] = useState(false);
-  const [pendingModalType, setPendingModalType] = useState<'qr' | 'link' | 'tap' | null>(null);
-
-  // Step 1: Process URL parameters and pre-fill data, set pending modal type
-  useEffect(() => {
-    const processParams = async () => {
-      // Skip if no params or already processed
-      if (!params.invoiceId || paramsProcessed) return;
-      
-      // Ensure secondary data is loaded first
-      if (!secondaryDataLoaded && !loadingSecondary) {
-        await fetchSecondaryData();
-        return; // Will re-run when secondaryDataLoaded becomes true
-      }
-      
-      // Wait for invoices to be loaded
-      if (invoices.length === 0) return;
-      
-      // Find the invoice to pre-fill data
-      const selectedInvoice = invoices.find(inv => inv.id === params.invoiceId);
-      if (!selectedInvoice) return;
-      
-      // Pre-select invoice and job for all form contexts
-      setSelectedInvoiceId(params.invoiceId);
-      setReceiptInvoiceId(params.invoiceId);
-      
-      // Also pre-fill job if provided
-      const jobId = params.jobId || selectedInvoice.jobId;
-      if (jobId) {
-        setSelectedJobId(jobId);
-        setReceiptJobId(jobId);
-      }
-      
-      // Pre-fill amounts and details from invoice
-      const invoiceTotal = typeof selectedInvoice.total === 'number' 
-        ? selectedInvoice.total.toFixed(2) 
-        : String(selectedInvoice.total || '0.00');
-      
-      // Pre-fill receipt modal fields
-      setReceiptAmount(invoiceTotal);
-      setReceiptDescription(`Payment for ${selectedInvoice.number}: ${selectedInvoice.title}`);
-      setReceiptReference(selectedInvoice.number);
-      setReceiptClientId(selectedInvoice.clientId);
-      
-      // Pre-fill create modal fields
-      setNewAmount(invoiceTotal);
-      setNewDescription(`Payment for ${selectedInvoice.number}: ${selectedInvoice.title}`);
-      setNewReference(selectedInvoice.number);
-      setSelectedClientId(selectedInvoice.clientId);
-      
-      // Set pending modal type (modal will open in next effect after state is applied)
-      if (params.tab === 'qr') {
-        setShareTab('qr');
-        setPendingModalType('qr');
-      } else if (params.tab === 'link') {
-        setShareTab('link');
-        setPendingModalType('link');
-      } else if (params.tab === 'tap') {
-        setReceiptPaymentMethod('card');
-        setPendingModalType('tap');
-      }
-      
-      setParamsProcessed(true);
-    };
+  // Handle collecting payment for a specific invoice
+  const handleCollectForInvoice = (invoice: any) => {
+    const client = getClient(invoice.clientId);
+    const amountDue = (invoice.total || 0) - (invoice.amountPaid || 0);
     
-    processParams();
-  }, [params.invoiceId, params.jobId, params.tab, secondaryDataLoaded, loadingSecondary, invoices.length, jobs.length, paramsProcessed]);
-
-  // Step 2: Open modal after data is fully hydrated (separate effect for proper timing)
-  useEffect(() => {
-    if (!pendingModalType || !paramsProcessed) return;
+    setSelectedInvoice({
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      clientId: invoice.clientId,
+      clientName: client?.name || 'Unknown Client',
+      clientEmail: client?.email,
+      clientPhone: client?.phone,
+      total: invoice.total || 0,
+      amountPaid: invoice.amountPaid || 0,
+      amountDue,
+    });
     
-    // Verify ALL required fields are hydrated before opening modal
-    if (pendingModalType === 'tap') {
-      // For tap-to-pay, verify receipt modal fields are ready
-      if (receiptInvoiceId && receiptAmount && receiptClientId && receiptDescription) {
-        setShowReceiptModal(true);
-        setPendingModalType(null);
-      }
-    } else if (pendingModalType === 'qr' || pendingModalType === 'link') {
-      // For QR/Link, verify create modal fields are ready
-      if (selectedInvoiceId && newAmount && selectedClientId && newDescription) {
-        setShowCreateModal(true);
-        setPendingModalType(null);
-      }
-    }
-  }, [pendingModalType, paramsProcessed, receiptInvoiceId, receiptAmount, receiptClientId, receiptDescription, selectedInvoiceId, newAmount, selectedClientId, newDescription]);
-
-  useEffect(() => {
-    if (selectedInvoiceId && invoices.length > 0) {
-      const invoice = invoices.find(inv => inv.id === selectedInvoiceId);
-      if (invoice) {
-        const total = typeof invoice.total === 'number' ? invoice.total.toFixed(2) : String(invoice.total || '0.00');
-        setNewAmount(total);
-        setNewDescription(`Payment for ${invoice.number}: ${invoice.title}`);
-        setNewReference(invoice.number); // Auto-fill reference with invoice number
-        setSelectedClientId(invoice.clientId);
-        // Only auto-fill job if field is empty (respect manual overrides)
-        if (invoice.jobId && !selectedJobId) setSelectedJobId(invoice.jobId);
-      }
-    }
-  }, [selectedInvoiceId, invoices]);
-
-  useEffect(() => {
-    if (recordInvoiceId && invoices.length > 0) {
-      const invoice = invoices.find(inv => inv.id === recordInvoiceId);
-      if (invoice) {
-        const total = typeof invoice.total === 'number' ? invoice.total.toFixed(2) : String(invoice.total || '0.00');
-        setRecordAmount(total);
-        setRecordReference(invoice.number); // Auto-fill reference with invoice number
-      }
-    }
-  }, [recordInvoiceId, invoices]);
-
-  useEffect(() => {
-    if (receiptInvoiceId && invoices.length > 0) {
-      const invoice = invoices.find(inv => inv.id === receiptInvoiceId);
-      if (invoice) {
-        const total = typeof invoice.total === 'number' ? invoice.total.toFixed(2) : String(invoice.total || '0.00');
-        setReceiptAmount(total);
-        setReceiptDescription(`Payment for ${invoice.number}: ${invoice.title}`);
-        setReceiptReference(invoice.number); // Auto-fill reference with invoice number
-        setReceiptClientId(invoice.clientId);
-        // Only auto-fill job if field is empty (respect manual overrides)
-        if (invoice.jobId && !receiptJobId) setReceiptJobId(invoice.jobId);
-      }
-    }
-  }, [receiptInvoiceId, invoices]);
-
-  useEffect(() => {
-    if (showShareModal && selectedRequest) {
-      const paymentUrl = getPaymentUrl(selectedRequest);
-      const encodedUrl = encodeURIComponent(paymentUrl);
-      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodedUrl}`;
-      setQrCodeDataUrl(qrApiUrl);
-    }
-  }, [showShareModal, selectedRequest]);
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setSecondaryDataLoaded(false);
-    fetchData();
-  }, [fetchData]);
-
-  useEffect(() => {
-    fetchSecondaryData();
-  }, [fetchSecondaryData]);
-
-  useEffect(() => {
-    if (showCreateModal || showRecordPaymentModal || showReceiptModal) {
-      fetchSecondaryData();
-    }
-  }, [showCreateModal, showRecordPaymentModal, showReceiptModal, fetchSecondaryData]);
-
-  const resetCreateForm = () => {
-    setNewAmount('');
-    setNewDescription('');
-    setNewReference('');
-    setSelectedClientId('');
-    setSelectedInvoiceId('');
-    setSelectedJobId('');
-    setExpiresInHours('24');
+    // Pre-fill the amount and description
+    setAmount((amountDue / 100).toFixed(2));
+    setDescription(`Payment for ${invoice.invoiceNumber}`);
   };
 
-  const resetRecordForm = () => {
-    setRecordAmount('');
-    setRecordInvoiceId('');
-    setRecordPaymentMethod('cash');
-    setRecordReference('');
-    setRecordNotes('');
+  // Clear invoice selection
+  const clearInvoiceSelection = () => {
+    setSelectedInvoice(null);
+    setAmount('');
+    setDescription('');
   };
 
-  const resetReceiptForm = () => {
-    setReceiptAmount('');
-    setReceiptDescription('');
-    setReceiptPaymentMethod('cash');
-    setReceiptReference('');
-    setReceiptClientId('');
-    setReceiptInvoiceId('');
-    setReceiptJobId('');
+  const formatCurrency = (amount: number) => {
+    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
   };
 
-  const resetTapToPayForm = () => {
-    setTapToPayAmount('');
-    setTapToPayDescription('');
+  const pendingInvoices = invoices.filter(i => i.status === 'sent' || i.status === 'overdue');
+  const totalPending = pendingInvoices.reduce((sum, i) => sum + ((i.total || 0) - (i.amountPaid || 0)), 0);
+  const overdueCount = invoices.filter(i => i.status === 'overdue').length;
+
+  const getAmountInCents = (): number => {
+    const parsed = parseFloat(amount);
+    return isNaN(parsed) ? 0 : Math.round(parsed * 100);
   };
 
-  const handleTapToPayRequest = async () => {
-    const parsedAmount = parseFloat(tapToPayAmount);
-    if (!tapToPayAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+  const handleTapToPay = async () => {
+    const amountCents = getAmountInCents();
+    if (amountCents < 500) {
+      Alert.alert('Minimum Amount', 'Tap to Pay requires a minimum of $5.00');
       return;
     }
 
-    setIsSubmitting(true);
+    setShowTapToPayModal(true);
+    setPaymentStep('connecting');
+
     try {
-      const response = await api.post<PaymentRequest>('/api/payment-requests', {
-        amount: parsedAmount,
-        description: tapToPayDescription.trim() || 'QR Payment',
-        expiresInHours: 1, // Short expiry for in-person payments
-      });
-
-      if (response.data) {
-        const request = response.data as PaymentRequest;
-        // Verify payment URL is available
-        if (!request.paymentUrl && !request.token) {
-          Alert.alert('Error', 'Payment request created but URL not available');
-          return;
-        }
-        setShowTapToPayModal(false);
-        resetTapToPayForm();
-        setSelectedRequest(request);
-        setShareTab('qr'); // Always show QR code for Tap to Pay
-        setShowShareModal(true);
-        fetchData();
-      } else if (response.error) {
-        Alert.alert('Error', response.error);
+      if (!terminal.isAvailable) {
+        await terminal.initialize();
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to create payment request');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
-  const handleCreateRequest = async () => {
-    if (!newAmount || parseFloat(newAmount) <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
-      return;
-    }
-    if (!newDescription.trim()) {
-      Alert.alert('Error', 'Please enter a description');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const response = await api.post<PaymentRequest>('/api/payment-requests', {
-        amount: parseFloat(newAmount),
-        description: newDescription.trim(),
-        reference: newReference.trim() || undefined,
-        clientId: selectedClientId || undefined,
-        invoiceId: selectedInvoiceId || undefined,
-        jobId: selectedJobId || undefined,
-        expiresInHours: parseInt(expiresInHours),
-      });
-
-      if (response.data) {
-        setShowCreateModal(false);
-        resetCreateForm();
-        setSelectedRequest(response.data as PaymentRequest);
-        setShowShareModal(true);
-        fetchData();
-        Alert.alert('Success', 'Payment request created');
-      } else if (response.error) {
-        Alert.alert('Error', response.error);
+      if (!terminal.reader) {
+        await terminal.connectReader();
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to create payment request');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
-  const handleRecordPayment = async () => {
-    if (!recordInvoiceId) {
-      Alert.alert('Error', 'Please select an invoice');
-      return;
-    }
-    if (!recordAmount || parseFloat(recordAmount) <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const response = await api.post(`/api/invoices/${recordInvoiceId}/record-payment`, {
-        amount: recordAmount,
-        paymentMethod: recordPaymentMethod,
-        reference: recordReference || undefined,
-        notes: recordNotes || undefined,
-      });
-
-      if (response.data || !response.error) {
-        setShowRecordPaymentModal(false);
-        resetRecordForm();
-        fetchData();
-        Alert.alert('Success', 'Payment recorded successfully');
-      } else if (response.error) {
-        Alert.alert('Error', response.error);
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to record payment');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCreateReceipt = async () => {
-    if (!receiptAmount || parseFloat(receiptAmount) <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const response = await api.post<Receipt>('/api/receipts', {
-        amount: parseFloat(receiptAmount),
-        description: receiptDescription.trim() || 'Payment received',
-        paymentMethod: receiptPaymentMethod,
-        paymentReference: receiptReference || undefined,
-        clientId: receiptClientId || undefined,
-        invoiceId: receiptInvoiceId || undefined,
-        jobId: receiptJobId || undefined,
-      });
-
-      if (response.data) {
-        setShowReceiptModal(false);
-        resetReceiptForm();
-        fetchData();
-        const receiptData = response.data as Receipt;
-        Alert.alert('Success', `Receipt ${receiptData.receiptNumber} created`);
-        router.push(`/more/receipt/${receiptData.id}`);
-      } else if (response.error) {
-        Alert.alert('Error', response.error);
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to generate receipt');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCancelRequest = async (id: string) => {
-    Alert.alert(
-      'Cancel Request',
-      'Are you sure you want to cancel this payment request?',
-      [
-        { text: 'No', style: 'cancel' },
-        { 
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.post(`/api/payment-requests/${id}/cancel`);
-              fetchData();
-              Alert.alert('Success', 'Payment request cancelled');
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to cancel request');
-            }
+      setPaymentStep('waiting');
+      
+      const result = await terminal.collectPayment(amountCents, description || undefined);
+      
+      if (result) {
+        setPaymentStep('success');
+        setLastPaymentAmount(amountCents);
+        
+        // If paying an invoice, update the invoice payment status
+        if (selectedInvoice) {
+          try {
+            await api.post(`/api/invoices/${selectedInvoice.id}/record-payment`, {
+              amount: (amountCents / 100).toFixed(2), // Server expects dollars, not cents
+              paymentMethod: 'card', // Server accepts: cash, bank_transfer, cheque, card, other
+              notes: 'Tap to Pay contactless payment',
+            });
+            // Refresh invoices
+            fetchInvoices();
+          } catch (err) {
+            console.error('Failed to record invoice payment:', err);
           }
-        },
-      ]
-    );
-  };
-
-  const getPaymentUrl = (request: PaymentRequest) => {
-    // Use the server-provided paymentUrl if available (production-ready)
-    // Fall back to constructing from API_URL for backward compatibility
-    return request.paymentUrl || `${API_URL}/pay/${request.token}`;
-  };
-
-  const handleCopyLink = async () => {
-    if (!selectedRequest) return;
-    try {
-      await Clipboard.setStringAsync(getPaymentUrl(selectedRequest));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      Alert.alert('Copied', 'Payment link copied to clipboard');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to copy link');
-    }
-  };
-
-  const handleSendSms = async () => {
-    if (!selectedRequest || !sharePhone) return;
-    setIsSubmitting(true);
-    try {
-      await api.post(`/api/payment-requests/${selectedRequest.id}/send-sms`, { 
-        phoneNumber: sharePhone 
-      });
-      setSharePhone('');
-      Alert.alert('Success', 'Payment link sent via SMS');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send SMS');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSendEmail = async () => {
-    if (!selectedRequest || !shareEmail) return;
-    setIsSubmitting(true);
-    try {
-      await api.post(`/api/payment-requests/${selectedRequest.id}/send-email`, { 
-        email: shareEmail 
-      });
-      setShareEmail('');
-      Alert.alert('Success', 'Payment link sent via email');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send email');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleComposeEmail = async () => {
-    if (!selectedRequest) return;
-    const client = selectedRequest.clientId ? clientMap.get(selectedRequest.clientId) : null;
-    const paymentUrl = getPaymentUrl(selectedRequest);
-    const subject = encodeURIComponent(`Payment Request - ${formatCurrency(selectedRequest.amount)}`);
-    const body = encodeURIComponent(
-      `Hi${client ? ` ${client.name}` : ''},\n\n` +
-      `Please find your payment request for ${formatCurrency(selectedRequest.amount)}.\n\n` +
-      `${selectedRequest.description}\n\n` +
-      `Pay securely online: ${paymentUrl}\n\n` +
-      `Thank you for your business.`
-    );
-    const email = client?.email || shareEmail || '';
-    const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
-    
-    try {
-      const canOpen = await Linking.canOpenURL(mailtoUrl);
-      if (canOpen) {
-        await Linking.openURL(mailtoUrl);
+        }
+        
+        // Show receipt modal after brief success display
+        setTimeout(() => {
+          setShowTapToPayModal(false);
+          setPaymentStep('ready');
+          setShowReceiptModal(true);
+        }, 1500);
       } else {
-        Alert.alert('Error', 'No email app available');
+        setPaymentStep('error');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to open email app');
+      console.error('Tap to Pay error:', error);
+      setPaymentStep('error');
     }
   };
 
-  const handlePrintReceipt = async (receiptId: string) => {
+  // Send receipt via email
+  const sendReceiptEmail = async () => {
+    setSendingReceipt(true);
     try {
-      const pdfUrl = `${API_URL}/api/receipts/${receiptId}/pdf`;
-      await WebBrowser.openBrowserAsync(pdfUrl, {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      const recipientEmail = manualEmail || selectedInvoice?.clientEmail;
+      if (!recipientEmail) {
+        Alert.alert('No Email', 'Please enter an email address to send the receipt.');
+        setSendingReceipt(false);
+        return;
+      }
+
+      await api.post('/api/payments/send-receipt', {
+        email: recipientEmail,
+        amount: lastPaymentAmount,
+        description: description || 'Payment received',
+        invoiceId: selectedInvoice?.id,
+        invoiceNumber: selectedInvoice?.invoiceNumber,
+        clientName: selectedInvoice?.clientName,
+        method: 'email',
       });
+
+      Alert.alert('Receipt Sent', `Receipt emailed to ${recipientEmail}`);
+      handleCloseReceiptModal();
     } catch (error) {
-      Alert.alert('Error', 'Failed to open receipt');
+      console.error('Failed to send receipt:', error);
+      Alert.alert('Error', 'Failed to send receipt. Please try again.');
+    } finally {
+      setSendingReceipt(false);
     }
   };
 
-  const paymentMethods = [
-    { value: 'cash', label: 'Cash', icon: 'dollar-sign' as const },
-    { value: 'bank_transfer', label: 'Bank Transfer', icon: 'send' as const },
-    { value: 'card', label: 'Card (in person)', icon: 'credit-card' as const },
-    { value: 'tap_to_pay', label: 'QR Payment', icon: 'maximize' as const },
-    { value: 'cheque', label: 'Cheque', icon: 'file-text' as const },
-    { value: 'other', label: 'Other', icon: 'more-horizontal' as const },
-  ];
+  // Send receipt via SMS
+  const sendReceiptSMS = async () => {
+    setSendingReceipt(true);
+    try {
+      const recipientPhone = manualPhone || selectedInvoice?.clientPhone;
+      if (!recipientPhone) {
+        Alert.alert('No Phone', 'Please enter a phone number to send the receipt.');
+        setSendingReceipt(false);
+        return;
+      }
 
-  const expiryOptions = [
-    { value: '1', label: '1 hour' },
-    { value: '4', label: '4 hours' },
-    { value: '24', label: '24 hours' },
-    { value: '72', label: '3 days' },
-    { value: '168', label: '1 week' },
-  ];
+      await api.post('/api/payments/send-receipt', {
+        phone: recipientPhone,
+        amount: lastPaymentAmount,
+        description: description || 'Payment received',
+        invoiceId: selectedInvoice?.id,
+        invoiceNumber: selectedInvoice?.invoiceNumber,
+        clientName: selectedInvoice?.clientName,
+        method: 'sms',
+      });
 
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return { label: 'Pending', color: colors.warning, bgColor: colorWithOpacity(colors.warning, 0.12) };
-      case 'paid':
-        return { label: 'Paid', color: colors.success, bgColor: colorWithOpacity(colors.success, 0.12) };
-      case 'cancelled':
-        return { label: 'Cancelled', color: colors.destructive, bgColor: colorWithOpacity(colors.destructive, 0.12) };
-      case 'expired':
-        return { label: 'Expired', color: colors.mutedForeground, bgColor: colors.muted };
-      default:
-        return { label: status, color: colors.mutedForeground, bgColor: colors.muted };
+      Alert.alert('Receipt Sent', `Receipt SMS sent to ${recipientPhone}`);
+      handleCloseReceiptModal();
+    } catch (error: any) {
+      console.error('Failed to send SMS receipt:', error);
+      if (error?.message?.includes('disabled')) {
+        Alert.alert('SMS Disabled', 'SMS is disabled during beta. Use email instead.');
+      } else {
+        Alert.alert('Error', 'Failed to send SMS. Please try again.');
+      }
+    } finally {
+      setSendingReceipt(false);
     }
   };
 
-  const renderKPIStrip = () => (
-    <View style={styles.kpiStrip}>
-      <View style={styles.kpiCard} data-testid="kpi-outstanding">
-        <Text style={[styles.kpiValue, { color: colors.primary }]}>
-          ${Math.round(totalPendingAmount)}
-        </Text>
-        <Text style={styles.kpiLabel}>Outstanding</Text>
-      </View>
-      <View style={styles.kpiCard} data-testid="kpi-pending-count">
-        <Text style={styles.kpiValue}>{pendingRequests.length}</Text>
-        <Text style={styles.kpiLabel}>Pending</Text>
-      </View>
-      <View style={styles.kpiCard} data-testid="kpi-received">
-        <Text style={[styles.kpiValue, { color: colors.success }]}>
-          ${Math.round(totalReceived)}
-        </Text>
-        <Text style={styles.kpiLabel}>Received</Text>
-      </View>
-    </View>
-  );
+  // Close receipt modal and reset state
+  const handleCloseReceiptModal = () => {
+    setShowReceiptModal(false);
+    setAmount('');
+    setDescription('');
+    setSelectedInvoice(null);
+    setLastPaymentAmount(0);
+    setManualEmail('');
+    setManualPhone('');
+  };
 
-  const renderStripeWarning = () => (
-    !stripeStatus?.connected && (
-      <TouchableOpacity 
-        style={styles.stripeWarningBanner}
-        onPress={() => router.push('/more/money-hub')}
-        activeOpacity={0.8}
-        data-testid="banner-stripe-warning"
-      >
-        <View style={styles.stripeWarningContent}>
-          <Feather name="alert-triangle" size={18} color={colors.warning} />
-          <Text style={styles.stripeWarningText}>Connect Stripe to accept card payments</Text>
-        </View>
-        <TouchableOpacity 
-          style={styles.stripeConnectBtn}
-          onPress={() => router.push('/more/money-hub')}
-          data-testid="button-setup-stripe"
-        >
-          <Text style={styles.stripeConnectBtnText}>Connect</Text>
-        </TouchableOpacity>
-      </TouchableOpacity>
-    )
-  );
+  const handleCancelPayment = async () => {
+    await terminal.cancelPayment();
+    setShowTapToPayModal(false);
+    setPaymentStep('ready');
+  };
 
-  const [paymentMethodTab, setPaymentMethodTab] = useState<'tap' | 'qr' | 'link'>('tap');
+  const handleQRCode = async () => {
+    const amountCents = getAmountInCents();
+    if (amountCents < 500) {
+      Alert.alert('Minimum Amount', 'Payments require a minimum of $5.00');
+      return;
+    }
 
-  const renderUnifiedPaymentCard = () => (
-    <View style={[styles.unifiedPaymentCard, { borderColor: colors.primary }]} data-testid="card-collect-payment">
-      {/* Header */}
-      <View style={styles.unifiedPaymentHeader}>
-        <View style={[styles.unifiedPaymentIconContainer, { backgroundColor: colors.primary }]}>
-          <Feather name="credit-card" size={22} color="#fff" />
-        </View>
-        <View style={styles.unifiedPaymentHeaderText}>
-          <Text style={styles.unifiedPaymentTitle}>Collect Payment</Text>
-          <Text style={styles.unifiedPaymentSubtitle}>Get paid in-person or remotely</Text>
-        </View>
-      </View>
+    setQrLoading(true);
+    setShowQRModal(true);
 
-      {/* Payment Method Tabs */}
-      <View style={styles.paymentMethodTabs}>
-        <TouchableOpacity
-          style={[
-            styles.paymentMethodTab,
-            paymentMethodTab === 'tap' && styles.paymentMethodTabActive,
-            { borderColor: paymentMethodTab === 'tap' ? colors.primary : colors.border }
-          ]}
-          onPress={() => setPaymentMethodTab('tap')}
-          activeOpacity={0.8}
-          data-testid="tab-tap-to-pay"
-        >
-          <Feather name="smartphone" size={16} color={paymentMethodTab === 'tap' ? colors.primary : colors.mutedForeground} />
-          <Text style={[
-            styles.paymentMethodTabText,
-            { color: paymentMethodTab === 'tap' ? colors.primary : colors.mutedForeground }
-          ]}>Tap to Pay</Text>
-        </TouchableOpacity>
+    try {
+      const response = await api.post<{ 
+        id: string; 
+        token: string; 
+        paymentUrl: string; 
+        amount: string;
+        status: string;
+      }>('/api/payment-requests', {
+        amount: amountCents / 100, // API expects dollars
+        description: description || 'Payment',
+        invoiceId: selectedInvoice?.id,
+        clientId: selectedInvoice?.clientId,
+        reference: selectedInvoice?.invoiceNumber,
+      });
 
-        <TouchableOpacity
-          style={[
-            styles.paymentMethodTab,
-            paymentMethodTab === 'qr' && styles.paymentMethodTabActive,
-            { borderColor: paymentMethodTab === 'qr' ? colors.primary : colors.border }
-          ]}
-          onPress={() => setPaymentMethodTab('qr')}
-          activeOpacity={0.8}
-          data-testid="tab-qr-code"
-        >
-          <Feather name="maximize" size={16} color={paymentMethodTab === 'qr' ? colors.primary : colors.mutedForeground} />
-          <Text style={[
-            styles.paymentMethodTabText,
-            { color: paymentMethodTab === 'qr' ? colors.primary : colors.mutedForeground }
-          ]}>QR Code</Text>
-        </TouchableOpacity>
+      if (response.data) {
+        setQrPaymentUrl(response.data.paymentUrl);
+        setQrPaymentRequest(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      Alert.alert('Error', 'Failed to generate QR code');
+      setShowQRModal(false);
+    } finally {
+      setQrLoading(false);
+    }
+  };
 
-        <TouchableOpacity
-          style={[
-            styles.paymentMethodTab,
-            paymentMethodTab === 'link' && styles.paymentMethodTabActive,
-            { borderColor: paymentMethodTab === 'link' ? colors.primary : colors.border }
-          ]}
-          onPress={() => setPaymentMethodTab('link')}
-          activeOpacity={0.8}
-          data-testid="tab-send-link"
-        >
-          <Feather name="link-2" size={16} color={paymentMethodTab === 'link' ? colors.primary : colors.mutedForeground} />
-          <Text style={[
-            styles.paymentMethodTabText,
-            { color: paymentMethodTab === 'link' ? colors.primary : colors.mutedForeground }
-          ]}>Send Link</Text>
-        </TouchableOpacity>
-      </View>
+  const handleCopyPaymentUrl = async () => {
+    if (qrPaymentUrl) {
+      try {
+        await Clipboard.setStringAsync(qrPaymentUrl);
+        Alert.alert('Copied!', 'Payment link copied to clipboard');
+      } catch (error) {
+        Alert.alert('Payment Link', qrPaymentUrl, [{ text: 'OK' }]);
+      }
+    }
+  };
 
-      {/* Tab Content */}
-      <View style={styles.paymentMethodContent}>
-        {paymentMethodTab === 'tap' && (
-          <View style={styles.paymentMethodContentInner}>
-            <View style={styles.paymentMethodInfoBox}>
-              <View style={[styles.paymentMethodInfoIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
-                <Feather name="smartphone" size={32} color={colors.primary} />
-              </View>
-              <Text style={styles.paymentMethodInfoTitle}>Contactless Payment</Text>
-              <Text style={styles.paymentMethodInfoDesc}>
-                Customer taps their card or phone on your device to pay instantly
-              </Text>
-              <Text style={styles.paymentMethodInfoNote}>Requires iPhone XS+ with Stripe Terminal SDK</Text>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.paymentMethodButton,
-                { backgroundColor: stripeStatus?.connected ? colors.primary : colors.muted }
-              ]}
-              onPress={() => setShowTapToPayModal(true)}
-              disabled={!stripeStatus?.connected}
-              activeOpacity={0.8}
-              data-testid="button-start-tap-to-pay"
-            >
-              <Feather name="smartphone" size={18} color={stripeStatus?.connected ? '#fff' : colors.mutedForeground} />
-              <Text style={[
-                styles.paymentMethodButtonText,
-                { color: stripeStatus?.connected ? '#fff' : colors.mutedForeground }
-              ]}>Start Tap to Pay</Text>
-            </TouchableOpacity>
-            {!stripeStatus?.connected && (
-              <Text style={styles.stripeDisabledNote}>Connect Stripe to enable Tap to Pay</Text>
-            )}
-          </View>
-        )}
+  const handleSharePaymentUrl = async () => {
+    if (qrPaymentUrl) {
+      try {
+        const amountDisplay = (getAmountInCents() / 100).toFixed(2);
+        await Share.share({
+          message: `Please pay $${amountDisplay} using this secure link: ${qrPaymentUrl}`,
+          url: qrPaymentUrl,
+        });
+      } catch (error) {
+        console.error('Share error:', error);
+      }
+    }
+  };
 
-        {paymentMethodTab === 'qr' && (
-          <View style={styles.paymentMethodContentInner}>
-            <View style={styles.paymentMethodInfoBox}>
-              <View style={[styles.paymentMethodInfoIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
-                <Feather name="maximize" size={32} color={colors.primary} />
-              </View>
-              <Text style={styles.paymentMethodInfoTitle}>QR Code Payment</Text>
-              <Text style={styles.paymentMethodInfoDesc}>
-                Show a QR code for customer to scan and pay from their phone
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.paymentMethodButton,
-                { backgroundColor: stripeStatus?.connected ? colors.primary : colors.muted }
-              ]}
-              onPress={() => setShowTapToPayModal(true)}
-              disabled={!stripeStatus?.connected}
-              activeOpacity={0.8}
-              data-testid="button-show-qr"
-            >
-              <Feather name="maximize" size={18} color={stripeStatus?.connected ? '#fff' : colors.mutedForeground} />
-              <Text style={[
-                styles.paymentMethodButtonText,
-                { color: stripeStatus?.connected ? '#fff' : colors.mutedForeground }
-              ]}>Generate QR Code</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+  const handleCloseQRModal = () => {
+    setShowQRModal(false);
+    setQrPaymentUrl('');
+    setQrPaymentRequest(null);
+    setAmount('');
+    setDescription('');
+    setSelectedInvoice(null);
+  };
 
-        {paymentMethodTab === 'link' && (
-          <View style={styles.paymentMethodContentInner}>
-            <View style={styles.paymentMethodInfoBox}>
-              <View style={[styles.paymentMethodInfoIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
-                <Feather name="link-2" size={32} color={colors.primary} />
-              </View>
-              <Text style={styles.paymentMethodInfoTitle}>Payment Link</Text>
-              <Text style={styles.paymentMethodInfoDesc}>
-                Create a payment link to send via email, SMS, or copy to clipboard
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.paymentMethodButton,
-                { backgroundColor: stripeStatus?.connected ? colors.primary : colors.muted }
-              ]}
-              onPress={() => setShowCreateModal(true)}
-              disabled={!stripeStatus?.connected}
-              activeOpacity={0.8}
-              data-testid="button-create-link"
-            >
-              <Feather name="plus" size={18} color={stripeStatus?.connected ? '#fff' : colors.mutedForeground} />
-              <Text style={[
-                styles.paymentMethodButtonText,
-                { color: stripeStatus?.connected ? '#fff' : colors.mutedForeground }
-              ]}>Create Payment Link</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    </View>
-  );
+  const handlePaymentLink = async () => {
+    const amountCents = getAmountInCents();
+    if (amountCents < 500) {
+      Alert.alert('Minimum Amount', 'Payments require a minimum of $5.00');
+      return;
+    }
 
-  const renderRecordPaymentCard = () => (
-    <TouchableOpacity
-      style={styles.recordPaymentCard}
-      onPress={() => setShowRecordPaymentModal(true)}
-      activeOpacity={0.7}
-      data-testid="card-record-payment"
-    >
-      <View style={[styles.recordPaymentIcon, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
-        <Feather name="dollar-sign" size={20} color={colors.success} />
-      </View>
-      <View style={styles.recordPaymentText}>
-        <Text style={styles.recordPaymentTitle}>Record Manual Payment</Text>
-        <Text style={styles.recordPaymentSubtitle}>Cash, bank transfer, or other payment method</Text>
-      </View>
-      <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-    </TouchableOpacity>
-  );
+    // Pre-fill recipient from selected invoice if available
+    setLinkRecipientEmail(selectedInvoice?.clientEmail || '');
+    setLinkRecipientPhone(selectedInvoice?.clientPhone || '');
+    
+    setSendingLink(true);
+    
+    try {
+      // Create payment request first
+      const response = await api.post<{ 
+        id: string; 
+        token: string; 
+        paymentUrl: string; 
+        amount: string;
+        status: string;
+      }>('/api/payment-requests', {
+        amount: amountCents / 100, // API expects dollars
+        description: description || 'Payment',
+        invoiceId: selectedInvoice?.id,
+        clientId: selectedInvoice?.clientId,
+        reference: selectedInvoice?.invoiceNumber,
+      });
 
-  const renderActiveRequests = () => (
-    pendingRequests.length > 0 && (
-      <View style={styles.section}>
-        <Text style={styles.sectionHeader}>ACTIVE REQUESTS</Text>
-        {pendingRequests.map((request) => {
-          const invoiceNumber = request.invoiceId ? invoiceMap.get(request.invoiceId)?.number : null;
-          return (
-            <View key={request.id} style={styles.activeRequestCard} data-testid={`request-${request.id}`}>
-              <View style={styles.activeRequestContent}>
-                <View style={styles.activeRequestLeft}>
-                  <Text style={styles.activeRequestAmount}>{formatCurrency(request.amount)}</Text>
-                  <Text style={styles.activeRequestTime}>
-                    {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                  </Text>
-                </View>
-                <View style={styles.activeRequestDivider} />
-                <View style={styles.activeRequestRight}>
-                  <Text style={styles.activeRequestDescription} numberOfLines={1}>
-                    {request.description}
-                  </Text>
-                  {invoiceNumber && (
-                    <Text style={styles.activeRequestInvoice}>{invoiceNumber}</Text>
-                  )}
-                </View>
-              </View>
-              <View style={styles.activeRequestActions}>
-                <TouchableOpacity 
-                  style={styles.activeRequestActionBtn}
-                  onPress={() => {
-                    setSelectedRequest(request);
-                    setShowShareModal(true);
-                  }}
-                  activeOpacity={0.7}
-                  data-testid={`button-share-${request.id}`}
-                >
-                  <Feather name="share-2" size={14} color={colors.primary} />
-                  <Text style={[styles.activeRequestActionText, { color: colors.primary }]}>Share</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.activeRequestCancelBtn}
-                  onPress={() => handleCancelRequest(request.id)}
-                  activeOpacity={0.7}
-                  data-testid={`button-cancel-${request.id}`}
-                >
-                  <Feather name="x" size={16} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          );
-        })}
-      </View>
-    )
-  );
+      if (response.data) {
+        setPaymentLinkRequest(response.data);
+        setShowPaymentLinkModal(true);
+      }
+    } catch (error) {
+      console.error('Failed to create payment request:', error);
+      Alert.alert('Error', 'Failed to create payment link');
+    } finally {
+      setSendingLink(false);
+    }
+  };
 
-  const renderHistory = () => (
-    completedRequests.length > 0 && (
-      <View style={styles.section}>
-        <Text style={styles.sectionHeader}>HISTORY</Text>
-        <View style={styles.historyCard}>
-          {completedRequests.slice(0, 5).map((request, index) => {
-            const isLast = index === Math.min(completedRequests.length, 5) - 1;
-            return (
-              <View 
-                key={request.id} 
-                style={[styles.historyItem, !isLast && styles.historyItemBorder]}
-              >
-                <View style={styles.historyItemLeft}>
-                  {request.status === 'paid' ? (
-                    <Feather name="check-circle" size={18} color={colors.success} />
-                  ) : (
-                    <Feather name="x-circle" size={18} color={colors.mutedForeground} />
-                  )}
-                  <View style={styles.historyItemContent}>
-                    <Text style={styles.historyItemAmount}>{formatCurrency(request.amount)}</Text>
-                    <Text style={styles.historyItemDescription} numberOfLines={1}>
-                      {request.description}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.historyItemRight}>
-                  <Text style={[
-                    styles.historyItemStatus,
-                    { color: request.status === 'paid' ? colors.success : colors.mutedForeground }
-                  ]}>
-                    {request.status === 'paid' ? 'Paid' : request.status === 'cancelled' ? 'Cancelled' : 'Expired'}
-                  </Text>
-                  {request.paidAt && (
-                    <Text style={styles.historyItemDate}>
-                      {format(new Date(request.paidAt), 'MMM d')}
-                    </Text>
-                  )}
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-    )
-  );
+  const sendPaymentLinkViaEmail = async () => {
+    if (!paymentLinkRequest?.id) return;
+    
+    const email = linkRecipientEmail.trim();
+    if (!email) {
+      Alert.alert('Email Required', 'Please enter an email address');
+      return;
+    }
+    
+    setSendingLink(true);
+    try {
+      await api.post(`/api/payment-requests/${paymentLinkRequest.id}/send-email`, {
+        email,
+      });
+      
+      Alert.alert('Success', `Payment link sent to ${email}`);
+      handleClosePaymentLinkModal();
+    } catch (error) {
+      console.error('Failed to send email:', error);
+      Alert.alert('Error', 'Failed to send payment link via email');
+    } finally {
+      setSendingLink(false);
+    }
+  };
 
-  const renderEmptyState = () => (
-    pendingRequests.length === 0 && completedRequests.length === 0 && (
-      <View style={styles.emptyState}>
-        <View style={styles.emptyIcon}>
-          <Feather name="credit-card" size={32} color={colors.mutedForeground} />
-        </View>
-        <Text style={styles.emptyTitle}>No payment requests yet</Text>
-        <Text style={styles.emptySubtitle}>
-          Create your first payment request to get started
-        </Text>
-      </View>
-    )
-  );
+  const sendPaymentLinkViaSMS = async () => {
+    if (!paymentLinkRequest?.id) return;
+    
+    const phone = linkRecipientPhone.trim();
+    if (!phone) {
+      Alert.alert('Phone Required', 'Please enter a phone number');
+      return;
+    }
+    
+    setSendingLink(true);
+    try {
+      await api.post(`/api/payment-requests/${paymentLinkRequest.id}/send-sms`, {
+        phone,
+      });
+      
+      Alert.alert('Success', `Payment link sent to ${phone}`);
+      handleClosePaymentLinkModal();
+    } catch (error: any) {
+      console.error('Failed to send SMS:', error);
+      if (error?.response?.data?.error?.includes('disabled')) {
+        Alert.alert('SMS Disabled', 'SMS is disabled during beta. Use email instead, or copy the link to share manually.');
+      } else {
+        Alert.alert('Error', 'Failed to send payment link via SMS');
+      }
+    } finally {
+      setSendingLink(false);
+    }
+  };
 
-  const renderPickerModal = (
-    visible: boolean,
-    onClose: () => void,
-    title: string,
-    options: { value: string; label: string }[],
-    selectedValue: string,
-    onSelect: (value: string) => void,
-    showNone?: boolean
-  ) => (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.pickerOverlay}>
-        <View style={styles.pickerContainer}>
-          <View style={styles.pickerHeader}>
-            <Text style={styles.pickerTitle}>{title}</Text>
-            <TouchableOpacity onPress={onClose} data-testid="button-close-picker">
-              <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.pickerScroll}>
-            {showNone && (
-              <TouchableOpacity
-                style={[styles.pickerOption, selectedValue === '' && styles.pickerOptionSelected]}
-                onPress={() => { onSelect(''); onClose(); }}
-              >
-                <Text style={styles.pickerOptionText}>None</Text>
-                {selectedValue === '' && <Feather name="check" size={20} color={colors.primary} />}
-              </TouchableOpacity>
-            )}
-            {options.map(option => (
-              <TouchableOpacity
-                key={option.value}
-                style={[styles.pickerOption, selectedValue === option.value && styles.pickerOptionSelected]}
-                onPress={() => { onSelect(option.value); onClose(); }}
-              >
-                <Text style={styles.pickerOptionText} numberOfLines={2}>{option.label}</Text>
-                {selectedValue === option.value && <Feather name="check" size={20} color={colors.primary} />}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
+  const handleCopyPaymentLink = async () => {
+    if (paymentLinkRequest?.paymentUrl) {
+      try {
+        await Clipboard.setStringAsync(paymentLinkRequest.paymentUrl);
+        Alert.alert('Copied!', 'Payment link copied to clipboard');
+      } catch (error) {
+        Alert.alert('Payment Link', paymentLinkRequest.paymentUrl, [{ text: 'OK' }]);
+      }
+    }
+  };
 
-  const renderCreateModal = () => (
-    <Modal visible={showCreateModal} transparent animationType="slide">
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.modalOverlay}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>New Payment Request</Text>
-            <TouchableOpacity 
-              onPress={() => { setShowCreateModal(false); resetCreateForm(); }}
-              data-testid="button-close-create-modal"
-            >
-              <Feather name="x" size={24} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-            {unpaidInvoices.length > 0 && (
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Link to Invoice</Text>
-                <TouchableOpacity 
-                  style={styles.formSelect}
-                  onPress={() => { setPickerContext('create'); setShowInvoicePicker(true); }}
-                  data-testid="select-invoice"
-                >
-                  <Text style={[styles.formSelectText, !selectedInvoiceId && styles.formSelectPlaceholder]}>
-                    {selectedInvoiceId 
-                      ? `${invoiceMap.get(selectedInvoiceId)?.number} - ${formatCurrency(invoiceMap.get(selectedInvoiceId)?.total || 0)}`
-                      : 'Select an invoice (optional)'}
-                  </Text>
-                  <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Amount (AUD) *</Text>
-              <View style={styles.amountInput}>
-                <Text style={styles.amountPrefix}>$</Text>
-                <TextInput
-                  style={styles.amountInputField}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={newAmount}
-                  onChangeText={setNewAmount}
-                  keyboardType="decimal-pad"
-                  data-testid="input-amount"
-                />
-              </View>
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Description *</Text>
-              <TextInput
-                style={[styles.formInput, styles.formTextarea]}
-                placeholder="e.g., Kitchen tap repair"
-                placeholderTextColor={colors.mutedForeground}
-                value={newDescription}
-                onChangeText={setNewDescription}
-                multiline
-                numberOfLines={2}
-                data-testid="input-description"
-              />
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Reference (optional)</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g., Job #123"
-                placeholderTextColor={colors.mutedForeground}
-                value={newReference}
-                onChangeText={setNewReference}
-                data-testid="input-reference"
-              />
-            </View>
-            
-            {clients.length > 0 && (
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Client (optional)</Text>
-                <TouchableOpacity 
-                  style={styles.formSelect}
-                  onPress={() => { setPickerContext('create'); setShowClientPicker(true); }}
-                  data-testid="select-client"
-                >
-                  <Text style={[styles.formSelectText, !selectedClientId && styles.formSelectPlaceholder]}>
-                    {selectedClientId ? clientMap.get(selectedClientId)?.name : 'Select a client'}
-                  </Text>
-                  <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Link expires in</Text>
-              <TouchableOpacity 
-                style={styles.formSelect}
-                onPress={() => setShowExpiryPicker(true)}
-                data-testid="select-expiry"
-              >
-                <Text style={styles.formSelectText}>
-                  {expiryOptions.find(o => o.value === expiresInHours)?.label || '24 hours'}
-                </Text>
-                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-          
-          <View style={styles.modalFooter}>
-            <TouchableOpacity 
-              style={styles.modalButtonSecondary}
-              onPress={() => { setShowCreateModal(false); resetCreateForm(); }}
-              data-testid="button-cancel"
-            >
-              <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.modalButtonPrimary, isSubmitting && styles.modalButtonDisabled]}
-              onPress={handleCreateRequest}
-              disabled={isSubmitting}
-              data-testid="button-create-request"
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color={colors.primaryForeground} />
-              ) : (
-                <Text style={styles.modalButtonPrimaryText}>Create Request</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
+  const handleSharePaymentLink = async () => {
+    if (paymentLinkRequest?.paymentUrl) {
+      try {
+        const amountDisplay = (getAmountInCents() / 100).toFixed(2);
+        await Share.share({
+          message: `Please pay $${amountDisplay} using this secure link: ${paymentLinkRequest.paymentUrl}`,
+          url: paymentLinkRequest.paymentUrl,
+        });
+      } catch (error) {
+        console.error('Share error:', error);
+      }
+    }
+  };
 
-  const renderRecordPaymentModal = () => (
-    <Modal visible={showRecordPaymentModal} transparent animationType="slide">
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.modalOverlay}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Record Payment</Text>
-            <TouchableOpacity 
-              onPress={() => { setShowRecordPaymentModal(false); resetRecordForm(); }}
-              data-testid="button-close-record-modal"
-            >
-              <Feather name="x" size={24} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Invoice *</Text>
-              <TouchableOpacity 
-                style={styles.formSelect}
-                onPress={() => { setPickerContext('record'); setShowInvoicePicker(true); }}
-                data-testid="select-invoice-record"
-              >
-                <Text style={[styles.formSelectText, !recordInvoiceId && styles.formSelectPlaceholder]}>
-                  {recordInvoiceId 
-                    ? `${invoiceMap.get(recordInvoiceId)?.number} - ${formatCurrency(invoiceMap.get(recordInvoiceId)?.total || 0)}`
-                    : 'Select an invoice'}
-                </Text>
-                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Amount (AUD) *</Text>
-              <View style={styles.amountInput}>
-                <Text style={styles.amountPrefix}>$</Text>
-                <TextInput
-                  style={styles.amountInputField}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={recordAmount}
-                  onChangeText={setRecordAmount}
-                  keyboardType="decimal-pad"
-                  data-testid="input-record-amount"
-                />
-              </View>
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Payment Method</Text>
-              <TouchableOpacity 
-                style={styles.formSelect}
-                onPress={() => { setPickerContext('record'); setShowMethodPicker(true); }}
-                data-testid="select-payment-method"
-              >
-                <Text style={styles.formSelectText}>
-                  {paymentMethods.find(m => m.value === recordPaymentMethod)?.label || 'Cash'}
-                </Text>
-                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Reference (optional)</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g., Transaction ID"
-                placeholderTextColor={colors.mutedForeground}
-                value={recordReference}
-                onChangeText={setRecordReference}
-                data-testid="input-record-reference"
-              />
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Notes (optional)</Text>
-              <TextInput
-                style={[styles.formInput, styles.formTextarea]}
-                placeholder="Any additional notes..."
-                placeholderTextColor={colors.mutedForeground}
-                value={recordNotes}
-                onChangeText={setRecordNotes}
-                multiline
-                numberOfLines={2}
-                data-testid="input-record-notes"
-              />
-            </View>
-          </ScrollView>
-          
-          <View style={styles.modalFooter}>
-            <TouchableOpacity 
-              style={styles.modalButtonSecondary}
-              onPress={() => { setShowRecordPaymentModal(false); resetRecordForm(); }}
-              data-testid="button-cancel-record"
-            >
-              <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.modalButtonPrimary, isSubmitting && styles.modalButtonDisabled]}
-              onPress={handleRecordPayment}
-              disabled={isSubmitting}
-              data-testid="button-record"
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color={colors.primaryForeground} />
-              ) : (
-                <Text style={styles.modalButtonPrimaryText}>Record Payment</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-
-  const renderReceiptModal = () => (
-    <Modal visible={showReceiptModal} transparent animationType="slide">
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.modalOverlay}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Issue Receipt</Text>
-            <TouchableOpacity 
-              onPress={() => { setShowReceiptModal(false); resetReceiptForm(); }}
-              data-testid="button-close-receipt-modal"
-            >
-              <Feather name="x" size={24} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-            {unpaidInvoices.length > 0 && (
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Link to Invoice</Text>
-                <TouchableOpacity 
-                  style={styles.formSelect}
-                  onPress={() => { setPickerContext('receipt'); setShowInvoicePicker(true); }}
-                  data-testid="select-invoice-receipt"
-                >
-                  <Text style={[styles.formSelectText, !receiptInvoiceId && styles.formSelectPlaceholder]}>
-                    {receiptInvoiceId 
-                      ? `${invoiceMap.get(receiptInvoiceId)?.number} - ${formatCurrency(invoiceMap.get(receiptInvoiceId)?.total || 0)}`
-                      : 'Select an invoice (optional)'}
-                  </Text>
-                  <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Amount (AUD) *</Text>
-              <View style={styles.amountInput}>
-                <Text style={styles.amountPrefix}>$</Text>
-                <TextInput
-                  style={styles.amountInputField}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={receiptAmount}
-                  onChangeText={setReceiptAmount}
-                  keyboardType="decimal-pad"
-                  data-testid="input-receipt-amount"
-                />
-              </View>
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Description (optional)</Text>
-              <TextInput
-                style={[styles.formInput, styles.formTextarea]}
-                placeholder="Payment for services"
-                placeholderTextColor={colors.mutedForeground}
-                value={receiptDescription}
-                onChangeText={setReceiptDescription}
-                multiline
-                numberOfLines={2}
-                data-testid="input-receipt-description"
-              />
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Payment Method</Text>
-              <TouchableOpacity 
-                style={styles.formSelect}
-                onPress={() => { setPickerContext('receipt'); setShowMethodPicker(true); }}
-                data-testid="select-receipt-method"
-              >
-                <Text style={styles.formSelectText}>
-                  {paymentMethods.find(m => m.value === receiptPaymentMethod)?.label || 'Cash'}
-                </Text>
-                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-            
-            {clients.length > 0 && (
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Client (optional)</Text>
-                <TouchableOpacity 
-                  style={styles.formSelect}
-                  onPress={() => { setPickerContext('receipt'); setShowClientPicker(true); }}
-                  data-testid="select-receipt-client"
-                >
-                  <Text style={[styles.formSelectText, !receiptClientId && styles.formSelectPlaceholder]}>
-                    {receiptClientId ? clientMap.get(receiptClientId)?.name : 'Select a client'}
-                  </Text>
-                  <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Reference (optional)</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g., Transaction ID"
-                placeholderTextColor={colors.mutedForeground}
-                value={receiptReference}
-                onChangeText={setReceiptReference}
-                data-testid="input-receipt-reference"
-              />
-            </View>
-          </ScrollView>
-          
-          <View style={styles.modalFooter}>
-            <TouchableOpacity 
-              style={styles.modalButtonSecondary}
-              onPress={() => { setShowReceiptModal(false); resetReceiptForm(); }}
-              data-testid="button-cancel-receipt"
-            >
-              <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.modalButtonPrimary, { backgroundColor: colors.success }, isSubmitting && styles.modalButtonDisabled]}
-              onPress={handleCreateReceipt}
-              disabled={isSubmitting}
-              data-testid="button-create-receipt"
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <Text style={styles.modalButtonPrimaryText}>Issue Receipt</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
+  const handleClosePaymentLinkModal = () => {
+    setShowPaymentLinkModal(false);
+    setPaymentLinkRequest(null);
+    setLinkRecipientEmail('');
+    setLinkRecipientPhone('');
+    setAmount('');
+    setDescription('');
+    setSelectedInvoice(null);
+  };
 
   const renderTapToPayModal = () => (
-    <Modal visible={showTapToPayModal} transparent animationType="slide">
-      <KeyboardAvoidingView 
-        behavior={isIOS ? 'padding' : 'height'} 
-        style={styles.modalOverlay}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalTitleRow}>
-              <View style={[styles.modalIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
-                <Feather name="maximize" size={18} color={colors.primary} />
-              </View>
-              <Text style={styles.modalTitle}>QR Payment</Text>
-            </View>
-            <TouchableOpacity 
-              onPress={() => { setShowTapToPayModal(false); resetTapToPayForm(); }}
-              style={styles.modalCloseBtn}
-              data-testid="button-close-tap-to-pay-modal"
-            >
-              <Feather name="x" size={24} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
-          
-          <Text style={styles.tapToPaySubtitle}>
-            Enter the amount and show the QR code to your customer
-          </Text>
-          
-          <View style={styles.modalContent}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Amount (AUD)</Text>
-              <View style={styles.amountInput}>
-                <Text style={styles.amountPrefix}>$</Text>
-                <TextInput
-                  style={styles.amountInputField}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.mutedForeground}
-                  keyboardType="decimal-pad"
-                  value={tapToPayAmount}
-                  onChangeText={setTapToPayAmount}
-                  autoFocus
-                  data-testid="input-tap-to-pay-amount"
-                />
-              </View>
-            </View>
-            
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Description (optional)</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="e.g., Job payment"
-                placeholderTextColor={colors.mutedForeground}
-                value={tapToPayDescription}
-                onChangeText={setTapToPayDescription}
-                data-testid="input-tap-to-pay-description"
-              />
-            </View>
-            
-            <View style={styles.tapToPayInfo}>
-              <Feather name="info" size={16} color={colors.primary} />
-              <Text style={styles.tapToPayInfoText}>
-                Customer scans QR code and pays with Apple Pay, Google Pay, or card
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.modalFooter}>
-            <TouchableOpacity 
-              style={styles.modalButtonSecondary}
-              onPress={() => { setShowTapToPayModal(false); resetTapToPayForm(); }}
-              data-testid="button-cancel-tap-to-pay"
-            >
-              <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.modalButtonPrimary, isSubmitting && styles.modalButtonDisabled]}
-              onPress={handleTapToPayRequest}
-              disabled={isSubmitting}
-              data-testid="button-create-tap-to-pay"
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <Text style={styles.modalButtonPrimaryText}>Show QR Code</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+    <Modal
+      visible={showTapToPayModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={handleCancelPayment}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Tap to Pay</Text>
+          <TouchableOpacity onPress={handleCancelPayment} activeOpacity={0.7}>
+            <Feather name="x" size={24} color={colors.mutedForeground} />
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
 
-  const renderShareModal = () => (
-    <Modal visible={showShareModal} transparent animationType="slide">
-      <View style={styles.modalOverlay}>
-        <View style={styles.shareModalContainer}>
-          <View style={styles.shareModalHeader}>
-            <View style={styles.shareModalHandle} />
-            <Text style={styles.shareModalTitle}>Share Payment Link</Text>
-            <TouchableOpacity 
-              onPress={() => setShowShareModal(false)}
-              style={styles.shareModalClose}
-              data-testid="button-close-share-modal"
-            >
-              <Feather name="x" size={24} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
-          
-          {selectedRequest && (
+        <View style={styles.modalContent}>
+          {paymentStep === 'connecting' && (
             <>
-              <View style={styles.shareAmountBanner}>
-                <Text style={styles.shareAmountLabel}>Amount Due</Text>
-                <Text style={styles.shareAmountValue}>{formatCurrency(selectedRequest.amount)}</Text>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.modalStepTitle}>Connecting...</Text>
+              <Text style={styles.modalStepSubtitle}>
+                Setting up Tap to Pay on this device
+              </Text>
+            </>
+          )}
+
+          {paymentStep === 'waiting' && (
+            <>
+              <View style={styles.readyIcon}>
+                <Feather name="smartphone" size={64} color={colors.primary} />
               </View>
-              
-              <View style={styles.shareTabsContainer}>
-                <TouchableOpacity
-                  style={[styles.shareTabItem, shareTab === 'qr' && styles.shareTabItemActive]}
-                  onPress={() => setShareTab('qr')}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="maximize" size={16} color={shareTab === 'qr' ? colors.primary : colors.mutedForeground} />
-                  <Text style={[styles.shareTabText, shareTab === 'qr' && styles.shareTabTextActive]}>QR Code</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.shareTabItem, shareTab === 'link' && styles.shareTabItemActive]}
-                  onPress={() => setShareTab('link')}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="link" size={16} color={shareTab === 'link' ? colors.primary : colors.mutedForeground} />
-                  <Text style={[styles.shareTabText, shareTab === 'link' && styles.shareTabTextActive]}>Link</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.shareTabItem, shareTab === 'send' && styles.shareTabItemActive]}
-                  onPress={() => setShareTab('send')}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="send" size={16} color={shareTab === 'send' ? colors.primary : colors.mutedForeground} />
-                  <Text style={[styles.shareTabText, shareTab === 'send' && styles.shareTabTextActive]}>Send</Text>
-                </TouchableOpacity>
+              <Text style={styles.amountDisplay}>
+                ${(getAmountInCents() / 100).toFixed(2)}
+              </Text>
+              <Text style={styles.modalStepTitle}>Ready for Payment</Text>
+              <Text style={styles.modalStepSubtitle}>
+                Ask customer to tap their card or phone on the back of your device
+              </Text>
+              <View style={styles.acceptedMethodsCard}>
+                <Text style={styles.acceptedMethodsText}>
+                  Accepts contactless cards, Apple Pay, and Google Pay
+                </Text>
               </View>
-              
-              <ScrollView style={styles.shareContent} showsVerticalScrollIndicator={false}>
-                {shareTab === 'qr' && (
-                  <View style={styles.qrContainer}>
-                    <View style={styles.qrWrapper}>
-                      {qrCodeDataUrl ? (
-                        <Image source={{ uri: qrCodeDataUrl }} style={styles.qrImage} resizeMode="contain" />
-                      ) : (
-                        <View style={styles.qrLoading}>
-                          <ActivityIndicator size="large" color={colors.primary} />
-                          <Text style={styles.qrLoadingText}>Loading...</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.qrHint}>Customer scans to pay</Text>
-                    <TouchableOpacity 
-                      style={styles.copyLinkButton}
-                      onPress={handleCopyLink}
-                      activeOpacity={0.7}
-                      data-testid="button-copy-link"
-                    >
-                      <Feather name={copied ? 'check' : 'copy'} size={18} color={colors.primaryForeground} />
-                      <Text style={styles.copyLinkButtonText}>{copied ? 'Copied!' : 'Copy Link'}</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-                
-                {shareTab === 'link' && (
-                  <View style={styles.linkContainer}>
-                    <View style={styles.linkBox}>
-                      <Text style={styles.linkText} selectable>{getPaymentUrl(selectedRequest)}</Text>
-                    </View>
-                    <TouchableOpacity 
-                      style={styles.copyLinkButton}
-                      onPress={handleCopyLink}
-                      activeOpacity={0.7}
-                    >
-                      <Feather name={copied ? 'check' : 'copy'} size={18} color={colors.primaryForeground} />
-                      <Text style={styles.copyLinkButtonText}>{copied ? 'Copied!' : 'Copy Link'}</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.linkHint}>Share this link with your customer</Text>
-                  </View>
-                )}
-                
-                {shareTab === 'send' && (
-                  <View style={styles.sendContainer}>
-                    <TouchableOpacity 
-                      style={styles.emailAppButton}
-                      onPress={handleComposeEmail}
-                      activeOpacity={0.7}
-                      data-testid="button-open-email"
-                    >
-                      <Feather name="mail" size={20} color={colors.primaryForeground} />
-                      <Text style={styles.emailAppButtonText}>Open Email App</Text>
-                    </TouchableOpacity>
-                    
-                    <View style={styles.divider}>
-                      <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>or send directly</Text>
-                      <View style={styles.dividerLine} />
-                    </View>
-                    
-                    <View style={styles.sendInputGroup}>
-                      <Text style={styles.sendInputLabel}>Send via SMS</Text>
-                      <View style={styles.sendInputRow}>
-                        <TextInput
-                          style={styles.sendInput}
-                          placeholder="Phone number"
-                          placeholderTextColor={colors.mutedForeground}
-                          value={sharePhone}
-                          onChangeText={setSharePhone}
-                          keyboardType="phone-pad"
-                          data-testid="input-share-phone"
-                        />
-                        <TouchableOpacity 
-                          style={[styles.sendButton, (!sharePhone || isSubmitting) && styles.sendButtonDisabled]}
-                          onPress={handleSendSms}
-                          disabled={!sharePhone || isSubmitting}
-                          data-testid="button-send-sms"
-                        >
-                          {isSubmitting ? (
-                            <ActivityIndicator size="small" color={colors.primaryForeground} />
-                          ) : (
-                            <Text style={styles.sendButtonText}>Send</Text>
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.sendInputGroup}>
-                      <Text style={styles.sendInputLabel}>Send via Email</Text>
-                      <View style={styles.sendInputRow}>
-                        <TextInput
-                          style={styles.sendInput}
-                          placeholder="Email address"
-                          placeholderTextColor={colors.mutedForeground}
-                          value={shareEmail}
-                          onChangeText={setShareEmail}
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                          data-testid="input-share-email"
-                        />
-                        <TouchableOpacity 
-                          style={[styles.sendButton, (!shareEmail || isSubmitting) && styles.sendButtonDisabled]}
-                          onPress={handleSendEmail}
-                          disabled={!shareEmail || isSubmitting}
-                          data-testid="button-send-email"
-                        >
-                          {isSubmitting ? (
-                            <ActivityIndicator size="small" color={colors.primaryForeground} />
-                          ) : (
-                            <Text style={styles.sendButtonText}>Send</Text>
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                )}
-              </ScrollView>
+            </>
+          )}
+
+          {paymentStep === 'processing' && (
+            <>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.modalStepTitle}>Processing Payment...</Text>
+              <Text style={styles.modalStepSubtitle}>
+                Please wait while we process the payment
+              </Text>
+            </>
+          )}
+
+          {paymentStep === 'success' && (
+            <>
+              <View style={styles.successIcon}>
+                <Feather name="check-circle" size={48} color={colors.success} />
+              </View>
+              <Text style={styles.successTitle}>Payment Successful!</Text>
+              <Text style={styles.successAmount}>
+                ${(getAmountInCents() / 100).toFixed(2)} received
+              </Text>
+            </>
+          )}
+
+          {paymentStep === 'error' && (
+            <>
+              <View style={styles.errorIcon}>
+                <Feather name="alert-circle" size={48} color={colors.destructive} />
+              </View>
+              <Text style={styles.errorTitle}>Payment Failed</Text>
+              <Text style={styles.modalStepSubtitle}>
+                {terminal.error || 'The payment could not be processed. Please try again.'}
+              </Text>
+              <Button
+                variant="default"
+                onPress={() => {
+                  setPaymentStep('ready');
+                  handleTapToPay();
+                }}
+                fullWidth
+              >
+                Try Again
+              </Button>
             </>
           )}
         </View>
+
+        {(paymentStep === 'waiting' || paymentStep === 'connecting') && (
+          <View style={styles.modalFooter}>
+            <Button variant="outline" onPress={handleCancelPayment} fullWidth>
+              Cancel Payment
+            </Button>
+          </View>
+        )}
       </View>
     </Modal>
   );
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Stack.Screen options={{ title: 'Collect Payment' }} />
-        <ActivityIndicator size="large" color={colors.primary} />
+  const renderQRModal = () => (
+    <Modal
+      visible={showQRModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={handleCloseQRModal}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Payment QR Code</Text>
+          <TouchableOpacity onPress={handleCloseQRModal} activeOpacity={0.7}>
+            <Feather name="x" size={24} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.modalContent}>
+          {qrLoading ? (
+            <>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.modalStepTitle}>Generating QR Code...</Text>
+            </>
+          ) : qrPaymentUrl ? (
+            <>
+              <Text style={styles.qrAmountDisplay}>
+                ${(getAmountInCents() / 100).toFixed(2)}
+              </Text>
+              
+              {selectedInvoice && (
+                <Text style={styles.modalStepSubtitle}>
+                  {selectedInvoice.invoiceNumber} • {selectedInvoice.clientName}
+                </Text>
+              )}
+              
+              <View style={[styles.qrCodeContainer, { marginTop: spacing.xl }]}>
+                <View style={styles.qrCodeWrapper}>
+                  <Image
+                    source={{ 
+                      uri: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrPaymentUrl)}&margin=10` 
+                    }}
+                    style={styles.qrCodeImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              </View>
+              
+              <Text style={styles.modalStepSubtitle}>
+                Customer can scan this code to pay securely online
+              </Text>
+
+              <TouchableOpacity 
+                style={styles.qrUrlContainer}
+                onPress={handleCopyPaymentUrl}
+                activeOpacity={0.7}
+              >
+                <Feather name="link" size={16} color={colors.mutedForeground} />
+                <Text style={styles.qrUrlText} numberOfLines={1}>
+                  {qrPaymentUrl}
+                </Text>
+                <Feather name="copy" size={16} color={colors.primary} />
+              </TouchableOpacity>
+
+              <View style={styles.qrActionButtons}>
+                <Button 
+                  variant="outline" 
+                  onPress={handleCopyPaymentUrl}
+                  style={{ flex: 1 }}
+                >
+                  <Feather name="copy" size={18} color={colors.foreground} />
+                  <Text style={{ marginLeft: spacing.xs }}>Copy Link</Text>
+                </Button>
+                <Button 
+                  variant="default" 
+                  onPress={handleSharePaymentUrl}
+                  style={{ flex: 1 }}
+                >
+                  <Feather name="share" size={18} color={colors.primaryForeground} />
+                  <Text style={{ marginLeft: spacing.xs, color: colors.primaryForeground }}>Share</Text>
+                </Button>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.modalStepSubtitle}>Failed to generate QR code</Text>
+          )}
+        </View>
+
+        <View style={styles.modalFooter}>
+          <Button variant="outline" onPress={handleCloseQRModal} fullWidth>
+            Done
+          </Button>
+        </View>
       </View>
-    );
-  }
+    </Modal>
+  );
+
+  const renderPaymentLinkModal = () => (
+    <Modal
+      visible={showPaymentLinkModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={handleClosePaymentLinkModal}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Send Payment Link</Text>
+          <TouchableOpacity onPress={handleClosePaymentLinkModal} activeOpacity={0.7}>
+            <Feather name="x" size={24} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
+          <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
+            <View style={styles.readyIcon}>
+              <Feather name="link" size={64} color={colors.primary} />
+            </View>
+            <Text style={styles.qrAmountDisplay}>
+              ${(getAmountInCents() / 100).toFixed(2)}
+            </Text>
+            {selectedInvoice && (
+              <Text style={styles.modalStepSubtitle}>
+                {selectedInvoice.invoiceNumber} • {selectedInvoice.clientName}
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.paymentLinkInputContainer}>
+            <View>
+              <Text style={styles.paymentLinkLabel}>Send via Email</Text>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <TextInput
+                  style={[styles.descriptionInput, { flex: 1, marginTop: 0 }]}
+                  placeholder="Enter email address"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={linkRecipientEmail}
+                  onChangeText={setLinkRecipientEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <Button 
+                  variant="default" 
+                  onPress={sendPaymentLinkViaEmail}
+                  disabled={sendingLink || !linkRecipientEmail.trim()}
+                >
+                  {sendingLink ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Feather name="send" size={18} color={colors.primaryForeground} />
+                  )}
+                </Button>
+              </View>
+            </View>
+
+            <View>
+              <Text style={styles.paymentLinkLabel}>Send via SMS</Text>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <TextInput
+                  style={[styles.descriptionInput, { flex: 1, marginTop: 0 }]}
+                  placeholder="Enter phone number"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={linkRecipientPhone}
+                  onChangeText={setLinkRecipientPhone}
+                  keyboardType="phone-pad"
+                />
+                <Button 
+                  variant="default" 
+                  onPress={sendPaymentLinkViaSMS}
+                  disabled={sendingLink || !linkRecipientPhone.trim()}
+                >
+                  {sendingLink ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Feather name="send" size={18} color={colors.primaryForeground} />
+                  )}
+                </Button>
+              </View>
+              <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: spacing.xs }}>
+                Note: SMS may be disabled during beta
+              </Text>
+            </View>
+
+            <View style={{ marginTop: spacing.lg }}>
+              <Text style={styles.paymentLinkLabel}>Or share manually</Text>
+              <TouchableOpacity 
+                style={styles.qrUrlContainer}
+                onPress={handleCopyPaymentLink}
+                activeOpacity={0.7}
+              >
+                <Feather name="link" size={16} color={colors.mutedForeground} />
+                <Text style={styles.qrUrlText} numberOfLines={1}>
+                  {paymentLinkRequest?.paymentUrl || 'Loading...'}
+                </Text>
+                <Feather name="copy" size={16} color={colors.primary} />
+              </TouchableOpacity>
+              
+              <View style={[styles.qrActionButtons, { marginTop: spacing.md }]}>
+                <Button 
+                  variant="outline" 
+                  onPress={handleCopyPaymentLink}
+                  style={{ flex: 1 }}
+                >
+                  <Feather name="copy" size={18} color={colors.foreground} />
+                  <Text style={{ marginLeft: spacing.xs }}>Copy</Text>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onPress={handleSharePaymentLink}
+                  style={{ flex: 1 }}
+                >
+                  <Feather name="share" size={18} color={colors.foreground} />
+                  <Text style={{ marginLeft: spacing.xs }}>Share</Text>
+                </Button>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        <View style={styles.modalFooter}>
+          <Button variant="outline" onPress={handleClosePaymentLinkModal} fullWidth>
+            Done
+          </Button>
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Collect Payment' }} />
-      
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.pageContent}>
-          {renderStripeWarning()}
-          {renderKPIStrip()}
-          {renderUnifiedPaymentCard()}
-          {renderRecordPaymentCard()}
-          {renderActiveRequests()}
-          {renderHistory()}
-          {renderEmptyState()}
-        </View>
-      </ScrollView>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.container}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={refreshData}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          <View style={styles.header}>
+            <Text style={styles.pageTitle}>Collect Payment</Text>
+            <Text style={styles.pageSubtitle}>Get paid instantly with multiple options</Text>
+          </View>
 
-      {renderCreateModal()}
-      {renderRecordPaymentModal()}
-      {renderReceiptModal()}
-      {renderTapToPayModal()}
-      {renderShareModal()}
-      
-      {renderPickerModal(
-        showInvoicePicker,
-        () => setShowInvoicePicker(false),
-        'Select Invoice',
-        unpaidInvoices.map(inv => ({
-          value: inv.id,
-          label: `${inv.number} - ${formatCurrency(inv.total)} - ${inv.title}`,
-        })),
-        pickerContext === 'create' ? selectedInvoiceId : pickerContext === 'record' ? recordInvoiceId : receiptInvoiceId,
-        (value) => {
-          if (pickerContext === 'create') setSelectedInvoiceId(value);
-          else if (pickerContext === 'record') setRecordInvoiceId(value);
-          else setReceiptInvoiceId(value);
-        },
-        true
-      )}
-      
-      {renderPickerModal(
-        showClientPicker,
-        () => setShowClientPicker(false),
-        'Select Client',
-        clients.map(c => ({ value: c.id, label: c.name })),
-        pickerContext === 'create' ? selectedClientId : receiptClientId,
-        (value) => {
-          if (pickerContext === 'create') setSelectedClientId(value);
-          else setReceiptClientId(value);
-        },
-        true
-      )}
-      
-      {renderPickerModal(
-        showJobPicker,
-        () => setShowJobPicker(false),
-        'Select Job',
-        activeJobs.map(job => ({
-          value: job.id,
-          label: job.address ? `${job.title} • ${job.address}` : job.title,
-        })),
-        pickerContext === 'create' ? selectedJobId : receiptJobId,
-        (value) => {
-          if (pickerContext === 'create') setSelectedJobId(value);
-          else setReceiptJobId(value);
-        },
-        true
-      )}
-      
-      {renderPickerModal(
-        showExpiryPicker,
-        () => setShowExpiryPicker(false),
-        'Link Expiry',
-        expiryOptions,
-        expiresInHours,
-        setExpiresInHours
-      )}
-      
-      {renderPickerModal(
-        showMethodPicker,
-        () => setShowMethodPicker(false),
-        'Payment Method',
-        paymentMethods.map(m => ({ value: m.value, label: m.label })),
-        pickerContext === 'record' ? recordPaymentMethod : receiptPaymentMethod,
-        (value) => {
-          if (pickerContext === 'record') setRecordPaymentMethod(value);
-          else setReceiptPaymentMethod(value);
-        }
-      )}
-    </View>
+          {terminal.isSimulation && (
+            <View style={styles.demoModeBanner}>
+              <Feather name="alert-triangle" size={24} color={colors.warning} />
+              <View style={styles.demoModeText}>
+                <Text style={styles.demoModeTitle}>Demo Mode Active</Text>
+                <Text style={styles.demoModeDescription}>
+                  Payments are simulated. No actual charges will be made.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.headerBanner}>
+            <View style={styles.headerBannerRow}>
+              <Feather name="wifi" size={24} color={colors.primary} />
+              <Text style={styles.headerBannerTitle}>Accept Payments On-Site</Text>
+            </View>
+            <Text style={styles.headerBannerSubtitle}>
+              Get paid instantly with Tap to Pay, QR codes, or send a payment link
+            </Text>
+          </View>
+
+          <View style={styles.quickLinksRow}>
+            <TouchableOpacity 
+              style={styles.quickLink} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/more/invoices')}
+            >
+              <View style={styles.quickLinkIconContainer}>
+                <Feather name="file-text" size={18} color={colors.info} />
+              </View>
+              <Text style={styles.quickLinkText}>View Invoices</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.quickLink} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/more/payments')}
+            >
+              <View style={styles.quickLinkIconContainer}>
+                <Feather name="clock" size={18} color={colors.warning} />
+              </View>
+              <Text style={styles.quickLinkText}>Payment History</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.amountSection}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+              <Text style={styles.sectionLabel}>Payment Amount</Text>
+              {selectedInvoice && (
+                <TouchableOpacity 
+                  onPress={clearInvoiceSelection}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+                  <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {selectedInvoice && (
+              <View style={{
+                backgroundColor: colors.primaryLight,
+                borderRadius: radius.lg,
+                padding: spacing.md,
+                marginBottom: spacing.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                borderWidth: 1,
+                borderColor: colors.promoBorder,
+              }}>
+                <Feather name="file-text" size={18} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>
+                    {selectedInvoice.invoiceNumber}
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                    {selectedInvoice.clientName} • Due: {formatCurrency(selectedInvoice.amountDue)}
+                  </Text>
+                </View>
+                <Badge variant="success">Invoice</Badge>
+              </View>
+            )}
+            
+            <View style={styles.amountInputContainer}>
+              <Text style={styles.currencySymbol}>$</Text>
+              <TextInput
+                style={styles.amountInput}
+                placeholder="0.00"
+                placeholderTextColor={colors.mutedForeground}
+                value={amount}
+                onChangeText={setAmount}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <TextInput
+              style={styles.descriptionInput}
+              placeholder="Description (optional)"
+              placeholderTextColor={colors.mutedForeground}
+              value={description}
+              onChangeText={setDescription}
+            />
+          </View>
+
+          <Text style={styles.sectionLabel}>Payment Methods</Text>
+
+          <PaymentMethodCard
+            icon={<Feather name="smartphone" size={24} color={colors.primary} />}
+            title="Tap to Pay"
+            description="Customer taps card on your phone"
+            badge={tapToPaySupported ? "Ready" : "Build Required"}
+            badgeVariant={tapToPaySupported ? 'success' : 'warning'}
+            onPress={handleTapToPay}
+            disabled={!tapToPaySupported}
+            colors={colors}
+          />
+
+          <PaymentMethodCard
+            icon={<Feather name="grid" size={24} color={colors.primary} />}
+            title="QR Code"
+            description="Customer scans and pays online"
+            badge="Works Now"
+            badgeVariant="success"
+            onPress={handleQRCode}
+            colors={colors}
+          />
+
+          <PaymentMethodCard
+            icon={<Feather name="credit-card" size={24} color={colors.primary} />}
+            title="Payment Link"
+            description="Send via SMS or email"
+            badge="Works Now"
+            badgeVariant="success"
+            onPress={handlePaymentLink}
+            colors={colors}
+          />
+
+          <View style={styles.pendingSection}>
+            <View style={styles.pendingSectionHeader}>
+              <Feather name="clock" size={18} color={colors.foreground} />
+              <Text style={styles.pendingSectionTitle}>Pending Payments</Text>
+            </View>
+            
+            {pendingInvoices.length === 0 ? (
+              <View style={styles.emptyPending}>
+                <Feather name="check-circle" size={32} color={colors.success} />
+                <Text style={styles.emptyPendingText}>All caught up!</Text>
+              </View>
+            ) : (
+              pendingInvoices.slice(0, 5).map(invoice => {
+                const isSelected = selectedInvoice?.id === invoice.id;
+                const amountDue = (invoice.total || 0) - (invoice.amountPaid || 0);
+                return (
+                  <TouchableOpacity 
+                    key={invoice.id} 
+                    style={[
+                      styles.pendingItem,
+                      isSelected && { borderColor: colors.primary, borderWidth: 2 }
+                    ]}
+                    onPress={() => handleCollectForInvoice(invoice)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.pendingItemContent}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.pendingItemTitle}>{invoice.invoiceNumber}</Text>
+                        {isSelected && (
+                          <Badge variant="success">Selected</Badge>
+                        )}
+                        {invoice.status === 'overdue' && !isSelected && (
+                          <Badge variant="destructive">Overdue</Badge>
+                        )}
+                      </View>
+                      <Text style={styles.pendingItemClient}>{getClientName(invoice.clientId)}</Text>
+                    </View>
+                    <View style={styles.pendingItemRight}>
+                      <Text style={styles.pendingItemAmount}>{formatCurrency(amountDue)}</Text>
+                      <View style={[
+                        styles.collectButton,
+                        isSelected && { backgroundColor: colors.success }
+                      ]}>
+                        <Feather 
+                          name={isSelected ? "check" : "credit-card"} 
+                          size={14} 
+                          color={colors.primaryForeground} 
+                        />
+                        <Text style={styles.collectButtonText}>
+                          {isSelected ? 'Ready' : 'Collect'}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </View>
+
+          <Card style={styles.infoCard}>
+            <CardContent>
+              <Text style={styles.infoCardTitle}>Accepted Payment Methods</Text>
+              <Text style={styles.infoCardText}>
+                Visa, Mastercard, American Express, Apple Pay, Google Pay
+              </Text>
+              <Text style={styles.infoCardFees}>
+                2.9% + $0.30 per transaction Deposits within 2 business days
+              </Text>
+            </CardContent>
+          </Card>
+
+          {!tapToPaySupported && (
+            <View style={styles.warningCard}>
+              <Text style={styles.warningTitle}>Tap to Pay Requires Native Build</Text>
+              <Text style={styles.warningText}>
+                Tap to Pay uses your phone's NFC chip and requires building the app with EAS Build. 
+                QR codes and payment links work in Expo Go.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+
+        {renderTapToPayModal()}
+        {renderReceiptModal()}
+        {renderQRModal()}
+        {renderPaymentLinkModal()}
+      </View>
+    </>
   );
+
+  function renderReceiptModal() {
+    return (
+      <Modal
+        visible={showReceiptModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCloseReceiptModal}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Send Receipt</Text>
+            <TouchableOpacity onPress={handleCloseReceiptModal} activeOpacity={0.7}>
+              <Feather name="x" size={24} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalContent}>
+            <View style={styles.successIcon}>
+              <Feather name="check-circle" size={48} color={colors.success} />
+            </View>
+            <Text style={styles.successTitle}>Payment Complete!</Text>
+            <Text style={styles.successAmount}>
+              ${(lastPaymentAmount / 100).toFixed(2)} received
+            </Text>
+            
+            {selectedInvoice && (
+              <Text style={[styles.modalStepSubtitle, { marginTop: spacing.sm }]}>
+                {selectedInvoice.invoiceNumber} • {selectedInvoice.clientName}
+              </Text>
+            )}
+
+            <View style={{ marginTop: spacing.xl, width: '100%', gap: spacing.md }}>
+              <View>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentMethodCard,
+                    sendingReceipt && styles.paymentMethodCardDisabled
+                  ]}
+                  onPress={sendReceiptEmail}
+                  disabled={sendingReceipt}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.paymentMethodIcon, { backgroundColor: colors.infoLight }]}>
+                    <Feather name="mail" size={24} color={colors.info} />
+                  </View>
+                  <View style={styles.paymentMethodContent}>
+                    <Text style={styles.paymentMethodTitle}>Email Receipt</Text>
+                    <Text style={styles.paymentMethodDescription}>
+                      {manualEmail || selectedInvoice?.clientEmail || 'Enter email below'}
+                    </Text>
+                  </View>
+                  {sendingReceipt ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Feather name="send" size={20} color={colors.mutedForeground} />
+                  )}
+                </TouchableOpacity>
+                {!selectedInvoice?.clientEmail && (
+                  <TextInput
+                    style={styles.receiptInput}
+                    placeholder="Enter email address"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={manualEmail}
+                    onChangeText={setManualEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                )}
+              </View>
+
+              <View>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentMethodCard,
+                    sendingReceipt && styles.paymentMethodCardDisabled
+                  ]}
+                  onPress={sendReceiptSMS}
+                  disabled={sendingReceipt}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.paymentMethodIcon, { backgroundColor: colors.successLight }]}>
+                    <Feather name="message-circle" size={24} color={colors.success} />
+                  </View>
+                  <View style={styles.paymentMethodContent}>
+                    <Text style={styles.paymentMethodTitle}>SMS Receipt</Text>
+                    <Text style={styles.paymentMethodDescription}>
+                      {manualPhone || selectedInvoice?.clientPhone || 'Enter phone below'}
+                    </Text>
+                  </View>
+                  {sendingReceipt ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Feather name="send" size={20} color={colors.mutedForeground} />
+                  )}
+                </TouchableOpacity>
+                {!selectedInvoice?.clientPhone && (
+                  <TextInput
+                    style={styles.receiptInput}
+                    placeholder="Enter phone number"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={manualPhone}
+                    onChangeText={setManualPhone}
+                    keyboardType="phone-pad"
+                  />
+                )}
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.modalFooter}>
+            <Button variant="outline" onPress={handleCloseReceiptModal} fullWidth>
+              Skip - No Receipt Needed
+            </Button>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 }
-
-const createStyles = (colors: ThemeColors) => {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    loadingContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.background,
-    },
-    scrollView: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingBottom: spacing['3xl'],
-    },
-    pageContent: {
-      padding: spacing.lg,
-      gap: spacing.lg,
-    },
-
-    stripeWarningBanner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: colorWithOpacity(colors.warning, 0.08),
-      borderWidth: 1,
-      borderColor: colorWithOpacity(colors.warning, 0.2),
-      borderRadius: radius.lg,
-      padding: spacing.md,
-      gap: spacing.md,
-    },
-    stripeWarningContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      flex: 1,
-    },
-    stripeWarningText: {
-      ...typography.caption,
-      color: colors.warning,
-      fontWeight: '500',
-      flex: 1,
-    },
-    stripeConnectBtn: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-    },
-    stripeConnectBtnText: {
-      ...typography.caption,
-      fontWeight: '600',
-      color: colors.foreground,
-    },
-
-    kpiStrip: {
-      flexDirection: 'row',
-      gap: spacing.md,
-    },
-    kpiCard: {
-      flex: 1,
-      backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      paddingVertical: spacing.lg,
-      paddingHorizontal: spacing.md,
-      alignItems: 'center',
-    },
-    kpiValue: {
-      fontSize: 22,
-      fontWeight: '700',
-      color: colors.foreground,
-    },
-    kpiLabel: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      marginTop: 2,
-    },
-
-    // Unified Payment Card
-    unifiedPaymentCard: {
-      backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      borderWidth: 2,
-      padding: spacing.lg,
-      marginBottom: spacing.md,
-    },
-    unifiedPaymentHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-      marginBottom: spacing.lg,
-    },
-    unifiedPaymentIconContainer: {
-      width: 48,
-      height: 48,
-      borderRadius: radius.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    unifiedPaymentHeaderText: {
-      flex: 1,
-    },
-    unifiedPaymentTitle: {
-      ...typography.bodySemibold,
-      fontSize: 17,
-      color: colors.foreground,
-    },
-    unifiedPaymentSubtitle: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    paymentMethodTabs: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      marginBottom: spacing.md,
-    },
-    paymentMethodTab: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      backgroundColor: colors.background,
-    },
-    paymentMethodTabActive: {
-      backgroundColor: colors.card,
-    },
-    paymentMethodTabText: {
-      fontSize: 12,
-      fontWeight: '500',
-    },
-    paymentMethodContent: {
-      marginTop: spacing.sm,
-    },
-    paymentMethodContentInner: {
-      gap: spacing.md,
-    },
-    paymentMethodInfoBox: {
-      backgroundColor: colors.muted,
-      borderRadius: radius.lg,
-      padding: spacing.xl,
-      alignItems: 'center',
-    },
-    paymentMethodInfoIcon: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing.md,
-    },
-    paymentMethodInfoTitle: {
-      ...typography.bodySemibold,
-      fontSize: 16,
-      color: colors.foreground,
-      marginBottom: 4,
-    },
-    paymentMethodInfoDesc: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      textAlign: 'center',
-      maxWidth: 260,
-    },
-    paymentMethodInfoNote: {
-      ...typography.caption,
-      fontSize: 11,
-      color: colors.mutedForeground,
-      textAlign: 'center',
-      marginTop: spacing.md,
-    },
-    paymentMethodButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.sm,
-      paddingVertical: spacing.md,
-      borderRadius: radius.md,
-      height: 48,
-    },
-    paymentMethodButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-    },
-    stripeDisabledNote: {
-      ...typography.caption,
-      fontSize: 11,
-      color: colors.warning,
-      textAlign: 'center',
-    },
-
-    // Record Payment Card
-    recordPaymentCard: {
-      backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      padding: spacing.lg,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-      marginBottom: spacing.lg,
-    },
-    recordPaymentIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    recordPaymentText: {
-      flex: 1,
-    },
-    recordPaymentTitle: {
-      ...typography.body,
-      fontWeight: '500',
-      color: colors.foreground,
-    },
-    recordPaymentSubtitle: {
-      ...typography.caption,
-      fontSize: 11,
-      color: colors.mutedForeground,
-    },
-
-    // Legacy styles (kept for backward compatibility)
-    tapToPayCard: {
-      backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      borderWidth: 2,
-      padding: spacing.lg,
-    },
-    tapToPayContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-    },
-    tapToPayIconContainer: {
-      width: 48,
-      height: 48,
-      borderRadius: radius.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    tapToPayText: {
-      flex: 1,
-    },
-    tapToPayTitle: {
-      ...typography.bodySemibold,
-      fontSize: 17,
-      color: colors.foreground,
-    },
-    tapToPaySubtitle: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-
-    secondaryActionsGrid: {
-      flexDirection: 'row',
-      gap: spacing.md,
-    },
-    secondaryActionCard: {
-      flex: 1,
-      backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      padding: spacing.lg,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-    },
-    secondaryActionIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    secondaryActionText: {
-      flex: 1,
-    },
-    secondaryActionTitle: {
-      ...typography.caption,
-      fontWeight: '600',
-      color: colors.foreground,
-    },
-    secondaryActionSubtitle: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      fontSize: 11,
-    },
-
-    section: {
-      marginTop: spacing.sm,
-    },
-    sectionHeader: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      fontWeight: '600',
-      marginBottom: spacing.md,
-      letterSpacing: 0.5,
-    },
-
-    activeRequestCard: {
-      backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      marginBottom: spacing.md,
-      overflow: 'hidden',
-    },
-    activeRequestContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: spacing.md,
-    },
-    activeRequestLeft: {
-      alignItems: 'flex-end',
-    },
-    activeRequestAmount: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: colors.foreground,
-    },
-    activeRequestTime: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      fontSize: 11,
-    },
-    activeRequestDivider: {
-      width: 1,
-      height: 32,
-      backgroundColor: colors.cardBorder,
-      marginHorizontal: spacing.md,
-    },
-    activeRequestRight: {
-      flex: 1,
-    },
-    activeRequestDescription: {
-      ...typography.body,
-      color: colors.foreground,
-      fontWeight: '500',
-    },
-    activeRequestInvoice: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    activeRequestActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      paddingHorizontal: spacing.md,
-      paddingBottom: spacing.md,
-      gap: spacing.sm,
-    },
-    activeRequestActionBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-    },
-    activeRequestActionText: {
-      ...typography.caption,
-      fontWeight: '600',
-    },
-    activeRequestCancelBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    historyCard: {
-      backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      overflow: 'hidden',
-    },
-    historyItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: spacing.md,
-    },
-    historyItemBorder: {
-      borderBottomWidth: 1,
-      borderBottomColor: colors.cardBorder,
-    },
-    historyItemLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      flex: 1,
-    },
-    historyItemContent: {
-      flex: 1,
-    },
-    historyItemAmount: {
-      ...typography.body,
-      fontWeight: '600',
-      color: colors.foreground,
-    },
-    historyItemDescription: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    historyItemRight: {
-      alignItems: 'flex-end',
-    },
-    historyItemStatus: {
-      ...typography.caption,
-      fontWeight: '600',
-    },
-    historyItemDate: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      fontSize: 11,
-    },
-
-    statusBadge: {
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 4,
-      borderRadius: radius.sm,
-    },
-    statusBadgeText: {
-      fontSize: 12,
-      fontWeight: '600',
-    },
-    emptyState: {
-      alignItems: 'center',
-      paddingVertical: spacing['3xl'],
-      paddingHorizontal: spacing.xl,
-    },
-    emptyIcon: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
-      backgroundColor: colors.muted,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing.lg,
-    },
-    emptyTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-      marginBottom: spacing.sm,
-    },
-    emptySubtitle: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      textAlign: 'center',
-    },
-
-    dateGroupHeader: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      fontWeight: '600',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      marginTop: spacing.md,
-      marginBottom: spacing.sm,
-    },
-    receiptCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      padding: spacing.md,
-      marginBottom: spacing.sm,
-      gap: spacing.md,
-    },
-    receiptIconContainer: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colorWithOpacity(colors.success, 0.12),
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    receiptContent: {
-      flex: 1,
-    },
-    receiptTop: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 2,
-    },
-    receiptNumber: {
-      ...typography.bodySemibold,
-      color: colors.foreground,
-    },
-    receiptAmount: {
-      ...typography.bodySemibold,
-      color: colors.success,
-    },
-    receiptBottom: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-    },
-    receiptMeta: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-
-    pastRequestCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.cardBorder,
-    },
-    pastRequestLeft: {
-      flex: 1,
-      marginRight: spacing.md,
-    },
-    pastRequestAmount: {
-      ...typography.body,
-      fontWeight: '600',
-      color: colors.mutedForeground,
-    },
-    pastRequestDescription: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      justifyContent: 'flex-end',
-    },
-    modalContainer: {
-      backgroundColor: colors.card,
-      borderTopLeftRadius: radius.xl,
-      borderTopRightRadius: radius.xl,
-      maxHeight: '85%',
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: spacing.lg,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.cardBorder,
-    },
-    modalTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-    },
-    modalScroll: {
-      padding: spacing.lg,
-      maxHeight: 400,
-    },
-    modalFooter: {
-      flexDirection: 'row',
-      gap: spacing.md,
-      padding: spacing.lg,
-      paddingBottom: spacing['3xl'],
-      borderTopWidth: 1,
-      borderTopColor: colors.cardBorder,
-    },
-    modalButtonSecondary: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: spacing.md,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-    },
-    modalButtonSecondaryText: {
-      ...typography.button,
-      color: colors.foreground,
-    },
-    modalButtonPrimary: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: spacing.md,
-      borderRadius: radius.md,
-      backgroundColor: colors.primary,
-    },
-    modalButtonPrimaryText: {
-      ...typography.button,
-      color: colors.primaryForeground,
-    },
-    modalButtonDisabled: {
-      opacity: 0.5,
-    },
-    modalHandle: {
-      position: 'absolute',
-      top: spacing.sm,
-      left: '50%',
-      marginLeft: -20,
-      width: 40,
-      height: 4,
-      backgroundColor: colors.muted,
-      borderRadius: radius.pill,
-    },
-    modalTitleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-    },
-    modalIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    modalCloseBtn: {
-      width: 40,
-      height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: radius.md,
-    },
-    modalContent: {
-      padding: spacing.lg,
-    },
-    tapToPaySubtitle: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      paddingHorizontal: spacing.lg,
-      marginTop: -spacing.sm,
-    },
-    tapToPayInfo: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: spacing.sm,
-      backgroundColor: colorWithOpacity(colors.primary, 0.08),
-      padding: spacing.md,
-      borderRadius: radius.md,
-      marginTop: spacing.sm,
-    },
-    tapToPayInfoText: {
-      ...typography.caption,
-      color: colors.primary,
-      flex: 1,
-      lineHeight: 18,
-    },
-    inputGroup: {
-      marginBottom: spacing.lg,
-    },
-    inputLabel: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      fontWeight: '600',
-      marginBottom: spacing.sm,
-    },
-    textInput: {
-      backgroundColor: colors.background,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
-      ...typography.body,
-      color: colors.foreground,
-    },
-
-    formGroup: {
-      marginBottom: spacing.lg,
-    },
-    formLabel: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      marginBottom: spacing.sm,
-      fontWeight: '600',
-    },
-    formInput: {
-      backgroundColor: colors.background,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
-      ...typography.body,
-      color: colors.foreground,
-    },
-    formTextarea: {
-      minHeight: 80,
-      textAlignVertical: 'top',
-    },
-    formSelect: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: colors.background,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
-      minHeight: 48,
-    },
-    formSelectText: {
-      ...typography.body,
-      color: colors.foreground,
-      flex: 1,
-    },
-    formSelectPlaceholder: {
-      color: colors.mutedForeground,
-    },
-    amountInput: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.background,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      borderRadius: radius.md,
-    },
-    amountPrefix: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      paddingLeft: spacing.md,
-      fontWeight: '600',
-    },
-    amountInputField: {
-      flex: 1,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.md,
-      ...typography.body,
-      color: colors.foreground,
-    },
-
-    shareModalContainer: {
-      backgroundColor: colors.card,
-      borderTopLeftRadius: radius.xl,
-      borderTopRightRadius: radius.xl,
-      maxHeight: '90%',
-    },
-    shareModalHeader: {
-      alignItems: 'center',
-      paddingTop: spacing.md,
-      paddingBottom: spacing.lg,
-      paddingHorizontal: spacing.lg,
-    },
-    shareModalHandle: {
-      width: 36,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.border,
-      marginBottom: spacing.md,
-    },
-    shareModalTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-    },
-    shareModalClose: {
-      position: 'absolute',
-      right: spacing.lg,
-      top: spacing.lg,
-    },
-    shareAmountBanner: {
-      backgroundColor: colors.muted,
-      paddingVertical: spacing.md,
-      alignItems: 'center',
-    },
-    shareAmountLabel: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    shareAmountValue: {
-      fontSize: 28,
-      fontWeight: '700',
-      color: colors.foreground,
-    },
-    shareTabsContainer: {
-      flexDirection: 'row',
-      borderBottomWidth: 1,
-      borderBottomColor: colors.cardBorder,
-    },
-    shareTabItem: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.xs,
-      paddingVertical: spacing.md,
-      borderBottomWidth: 2,
-      borderBottomColor: 'transparent',
-    },
-    shareTabItemActive: {
-      borderBottomColor: colors.primary,
-    },
-    shareTabText: {
-      ...typography.button,
-      color: colors.mutedForeground,
-    },
-    shareTabTextActive: {
-      color: colors.primary,
-    },
-    shareContent: {
-      padding: spacing.lg,
-      paddingBottom: spacing['3xl'],
-    },
-
-    qrContainer: {
-      alignItems: 'center',
-    },
-    qrWrapper: {
-      padding: spacing.lg,
-      backgroundColor: colors.white,
-      borderRadius: radius.lg,
-      ...shadows.md,
-    },
-    qrImage: {
-      width: 180,
-      height: 180,
-    },
-    qrLoading: {
-      width: 180,
-      height: 180,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.md,
-    },
-    qrLoadingText: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    qrFallback: {
-      width: 180,
-      height: 180,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.sm,
-    },
-    qrFallbackText: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    qrHint: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      marginTop: spacing.lg,
-    },
-    copyLinkButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.sm,
-      marginTop: spacing.lg,
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.xl,
-      borderRadius: radius.md,
-      backgroundColor: colors.primary,
-    },
-    copyLinkButtonText: {
-      ...typography.button,
-      color: colors.primaryForeground,
-    },
-
-    linkContainer: {
-      alignItems: 'center',
-    },
-    linkBox: {
-      backgroundColor: colors.muted,
-      borderRadius: radius.md,
-      padding: spacing.md,
-      width: '100%',
-    },
-    linkText: {
-      ...typography.caption,
-      color: colors.foreground,
-      fontFamily: isIOS ? 'Menlo' : 'monospace',
-    },
-    linkHint: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      marginTop: spacing.md,
-    },
-
-    sendContainer: {
-      gap: spacing.lg,
-    },
-    emailAppButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.md,
-      paddingVertical: spacing.lg,
-      borderRadius: radius.md,
-      backgroundColor: colors.primary,
-    },
-    emailAppButtonText: {
-      ...typography.button,
-      color: colors.primaryForeground,
-    },
-    divider: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-    },
-    dividerLine: {
-      flex: 1,
-      height: 1,
-      backgroundColor: colors.cardBorder,
-    },
-    dividerText: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    sendInputGroup: {
-      gap: spacing.sm,
-    },
-    sendInputLabel: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    sendInputRow: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-    },
-    sendInput: {
-      flex: 1,
-      backgroundColor: colors.background,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
-      ...typography.body,
-      color: colors.foreground,
-    },
-    sendButton: {
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
-      borderRadius: radius.md,
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    sendButtonDisabled: {
-      opacity: 0.5,
-    },
-    sendButtonText: {
-      ...typography.button,
-      color: colors.primaryForeground,
-    },
-
-    pickerOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      justifyContent: 'flex-end',
-    },
-    pickerContainer: {
-      backgroundColor: colors.card,
-      borderTopLeftRadius: radius.xl,
-      borderTopRightRadius: radius.xl,
-      maxHeight: '60%',
-    },
-    pickerHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: spacing.lg,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.cardBorder,
-    },
-    pickerTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-    },
-    pickerScroll: {
-      padding: spacing.lg,
-      paddingBottom: spacing['3xl'],
-    },
-    pickerOption: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.md,
-      borderRadius: radius.md,
-      marginBottom: spacing.xs,
-    },
-    pickerOptionSelected: {
-      backgroundColor: colors.muted,
-    },
-    pickerOptionText: {
-      ...typography.body,
-      color: colors.foreground,
-      flex: 1,
-      marginRight: spacing.md,
-    },
-  });
-};
