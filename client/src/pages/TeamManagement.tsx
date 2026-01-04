@@ -42,7 +42,11 @@ import {
   Users,
   UserCheck,
   UserX,
-  Eye
+  Eye,
+  Send,
+  AlertTriangle,
+  Calendar,
+  RotateCcw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -895,16 +899,95 @@ export default function TeamManagement() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredMembers.map((member) => (
+              {filteredMembers.map((member) => {
+                const isPending = member.inviteStatus === 'pending';
+                const isDeclined = member.inviteStatus === 'declined';
+                const inviteSentDate = member.createdAt ? new Date(member.createdAt) : null;
+                const expiresDate = inviteSentDate ? new Date(inviteSentDate.getTime() + 7 * 24 * 60 * 60 * 1000) : null;
+                const isExpiringSoon = expiresDate && (expiresDate.getTime() - Date.now()) < 2 * 24 * 60 * 60 * 1000;
+                
+                return (
                 <div
                   key={member.id}
-                  className="p-4 border rounded-lg hover-elevate"
+                  className={`p-4 border rounded-lg hover-elevate ${
+                    isPending 
+                      ? 'border-yellow-300 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-900/10' 
+                      : isDeclined
+                        ? 'border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-900/10'
+                        : ''
+                  }`}
                   data-testid={`team-member-${member.id}`}
                 >
+                  {/* Pending Invite Banner */}
+                  {isPending && (
+                    <div className="flex items-center gap-3 mb-4 pb-4 border-b border-yellow-200 dark:border-yellow-800">
+                      <div className="w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-900/50 flex items-center justify-center flex-shrink-0">
+                        <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">Invitation Pending</p>
+                        <div className="flex items-center gap-3 text-xs text-yellow-700 dark:text-yellow-400 flex-wrap">
+                          {inviteSentDate && (
+                            <span className="flex items-center gap-1">
+                              <Send className="h-3 w-3" />
+                              Sent {inviteSentDate.toLocaleDateString('en-AU')}
+                            </span>
+                          )}
+                          {expiresDate && (
+                            <span className={`flex items-center gap-1 ${isExpiringSoon ? 'text-orange-600 dark:text-orange-400 font-medium' : ''}`}>
+                              <Calendar className="h-3 w-3" />
+                              {isExpiringSoon && <AlertTriangle className="h-3 w-3" />}
+                              Expires {expiresDate.toLocaleDateString('en-AU')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          onClick={() => resendInviteMutation.mutate(member.id)}
+                          disabled={resendInviteMutation.isPending}
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                          data-testid={`button-resend-invite-${member.id}`}
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          Resend
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm(`Cancel invitation for ${member.firstName} ${member.lastName}?`)) {
+                              removeMutation.mutate(member.id);
+                            }
+                          }}
+                          disabled={removeMutation.isPending}
+                          className="border-yellow-400 dark:border-yellow-600 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/30"
+                          data-testid={`button-cancel-invite-${member.id}`}
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Top Row - Avatar, Name, Status */}
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-base font-semibold text-primary">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isPending 
+                        ? 'bg-yellow-100 dark:bg-yellow-900/50' 
+                        : isDeclined
+                          ? 'bg-red-100 dark:bg-red-900/50'
+                          : 'bg-primary/10'
+                    }`}>
+                      <span className={`text-base font-semibold ${
+                        isPending 
+                          ? 'text-yellow-700 dark:text-yellow-400' 
+                          : isDeclined
+                            ? 'text-red-700 dark:text-red-400'
+                            : 'text-primary'
+                      }`}>
                         {member.firstName?.charAt(0)}{member.lastName?.charAt(0)}
                       </span>
                     </div>
@@ -913,7 +996,7 @@ export default function TeamManagement() {
                         <h3 className="font-semibold text-lg" data-testid={`text-member-name-${member.id}`}>
                           {member.firstName} {member.lastName}
                         </h3>
-                        {getStatusBadge(member)}
+                        {!isPending && getStatusBadge(member)}
                         <Badge variant="outline" className="text-xs">
                           {getRoleName(member.roleId)}
                         </Badge>
@@ -942,6 +1025,20 @@ export default function TeamManagement() {
                           </span>
                         )}
                       </div>
+                      
+                      {/* Email Preview for Pending */}
+                      {isPending && (
+                        <div className="mt-3 p-3 bg-white dark:bg-gray-900 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                          <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            Invitation email sent to:
+                          </p>
+                          <p className="text-sm font-medium">{member.email}</p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            They can click the link in the email to create an account and join your team as a <span className="font-medium">{getRoleName(member.roleId)}</span>.
+                          </p>
+                        </div>
+                      )}
 
                       {/* Location & Controls Row (only for accepted members) */}
                       {member.inviteStatus === 'accepted' && (
@@ -966,66 +1063,57 @@ export default function TeamManagement() {
                       )}
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex flex-col gap-2 flex-shrink-0">
-                      {member.inviteStatus === 'accepted' && (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => setCommandCenterMemberId(member.id)}
-                            data-testid={`button-view-details-${member.id}`}
-                          >
-                            <Eye className="h-3 w-3 mr-1" />
-                            View Details
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setAssignJobMember(member)}
-                            data-testid={`button-assign-job-${member.id}`}
-                          >
-                            <Briefcase className="h-3 w-3 mr-1" />
-                            Assign Job
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPermissionsMember(member)}
-                            data-testid={`button-permissions-${member.id}`}
-                          >
-                            <Key className="h-3 w-3 mr-1" />
-                            Permissions
-                          </Button>
-                        </>
-                      )}
-                      {member.inviteStatus === 'pending' && (
+                    {/* Action Buttons - only show for accepted/declined members */}
+                    {!isPending && (
+                      <div className="flex flex-col gap-2 flex-shrink-0">
+                        {member.inviteStatus === 'accepted' && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => setCommandCenterMemberId(member.id)}
+                              data-testid={`button-view-details-${member.id}`}
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View Details
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setAssignJobMember(member)}
+                              data-testid={`button-assign-job-${member.id}`}
+                            >
+                              <Briefcase className="h-3 w-3 mr-1" />
+                              Assign Job
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPermissionsMember(member)}
+                              data-testid={`button-permissions-${member.id}`}
+                            >
+                              <Key className="h-3 w-3 mr-1" />
+                              Permissions
+                            </Button>
+                          </>
+                        )}
                         <Button
-                          variant="outline"
+                          variant="destructive"
                           size="sm"
-                          onClick={() => resendInviteMutation.mutate(member.id)}
-                          disabled={resendInviteMutation.isPending}
-                          data-testid={`button-resend-invite-${member.id}`}
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to remove ${member.firstName} ${member.lastName}?`)) {
+                              removeMutation.mutate(member.id);
+                            }
+                          }}
+                          disabled={removeMutation.isPending}
+                          data-testid={`button-remove-${member.id}`}
                         >
-                          Resend Invite
+                          Remove
                         </Button>
-                      )}
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to remove ${member.firstName} ${member.lastName}?`)) {
-                            removeMutation.mutate(member.id);
-                          }
-                        }}
-                        disabled={removeMutation.isPending}
-                        data-testid={`button-remove-${member.id}`}
-                      >
-                        Remove
-                      </Button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </CardContent>

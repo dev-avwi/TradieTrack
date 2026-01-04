@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { CheckCircle2, Users, AlertCircle, Loader2, Building2, UserPlus } from "lucide-react";
+import { CheckCircle2, Users, AlertCircle, Loader2, Building2, UserPlus, Shield, LogIn, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 
@@ -31,6 +32,7 @@ export default function AcceptInvite() {
   
   const [acceptStatus, setAcceptStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [countdown, setCountdown] = useState(3);
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -59,6 +61,22 @@ export default function AcceptInvite() {
     }
   }, [inviteData]);
 
+  useEffect(() => {
+    if (acceptStatus === 'success') {
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setLocation('/');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [acceptStatus, setLocation]);
+
   const handleAcceptAsExistingUser = async () => {
     setAcceptStatus('loading');
     try {
@@ -72,10 +90,6 @@ export default function AcceptInvite() {
           title: "Welcome to the team!",
           description: `You've joined ${inviteData?.invite?.businessName}`,
         });
-        
-        setTimeout(() => {
-          setLocation('/');
-        }, 2000);
       } else {
         setAcceptStatus('error');
         setErrorMessage(data.error || 'Failed to accept invitation');
@@ -125,10 +139,6 @@ export default function AcceptInvite() {
           title: "Account created!",
           description: `You've joined ${inviteData?.invite?.businessName}`,
         });
-        
-        setTimeout(() => {
-          setLocation('/');
-        }, 2000);
       } else {
         setAcceptStatus('error');
         setErrorMessage(data.error || 'Failed to accept invitation');
@@ -216,19 +226,40 @@ export default function AcceptInvite() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="flex items-center gap-2 justify-center text-2xl text-green-600">
-              <CheckCircle2 className="h-6 w-6" />
+          <CardHeader className="text-center pb-4">
+            <div className="mx-auto mb-4 h-20 w-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <CheckCircle2 className="h-10 w-10 text-green-600" />
+            </div>
+            <CardTitle className="text-2xl text-green-600">
               Welcome to the Team!
             </CardTitle>
+            <CardDescription className="text-base mt-2">
+              You've successfully joined <span className="font-semibold text-foreground">{inviteData?.invite?.businessName}</span>
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-700 dark:text-green-400">
-                You've successfully joined {inviteData?.invite?.businessName}. Redirecting to dashboard...
-              </AlertDescription>
-            </Alert>
+          <CardContent className="space-y-6">
+            <div className="bg-muted/50 rounded-lg p-4 text-center space-y-2">
+              <p className="text-sm text-muted-foreground">What happens next:</p>
+              <div className="space-y-1">
+                <p className="font-medium">You'll have access to jobs, schedules, and team features</p>
+                <p className="text-sm text-muted-foreground">based on your assigned role as <span className="font-medium text-foreground">{inviteData?.invite?.roleName}</span></p>
+              </div>
+            </div>
+            
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Redirecting to dashboard in {countdown}...</span>
+              </div>
+              <Button 
+                onClick={() => setLocation('/')} 
+                className="w-full"
+                data-testid="button-go-to-dashboard"
+              >
+                Go to Dashboard Now
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -241,34 +272,38 @@ export default function AcceptInvite() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center pb-4">
           <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
             <Users className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">You're Invited!</CardTitle>
           <CardDescription className="text-base mt-2">
-            Join <span className="font-semibold text-foreground">{invite.businessName}</span> on TradieTrack
+            {invite.inviterName} has invited you to join their team
           </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-6">
-          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <Building2 className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Business</p>
-                <p className="font-medium">{invite.businessName}</p>
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-5 space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Building2 className="h-6 w-6 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Join as</p>
+                <p className="text-xl font-semibold text-foreground">{invite.businessName}</p>
               </div>
             </div>
+            
+            <Separator />
+            
             <div className="flex items-center gap-3">
-              <UserPlus className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Your Role</p>
-                <p className="font-medium">{invite.roleName}</p>
+              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                <Shield className="h-5 w-5 text-muted-foreground" />
               </div>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Invited by <span className="font-medium text-foreground">{invite.inviterName}</span>
+              <div>
+                <p className="text-xs text-muted-foreground">Your Role</p>
+                <p className="font-semibold">{invite.roleName}</p>
+              </div>
             </div>
           </div>
 
@@ -281,9 +316,12 @@ export default function AcceptInvite() {
 
           {isLoggedIn ? (
             <div className="space-y-4">
-              <p className="text-sm text-center text-muted-foreground">
-                You're signed in. Click below to join the team.
-              </p>
+              <div className="bg-muted/50 rounded-lg p-4 text-center">
+                <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mb-2" />
+                <p className="text-sm font-medium">You're signed in</p>
+                <p className="text-xs text-muted-foreground">Click below to accept and join the team</p>
+              </div>
+              
               <Button
                 onClick={handleAcceptAsExistingUser}
                 disabled={acceptStatus === 'loading'}
@@ -297,109 +335,138 @@ export default function AcceptInvite() {
                     Joining team...
                   </>
                 ) : (
-                  "Accept Invitation & Join Team"
+                  <>
+                    Accept Invitation & Join
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
                 )}
               </Button>
             </div>
           ) : (
-            <form onSubmit={handleAcceptAsNewUser} className="space-y-4">
-              <p className="text-sm text-center text-muted-foreground">
-                Create your account to join the team
-              </p>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={invite.email}
-                  disabled
-                  className="bg-muted"
-                  data-testid="input-email"
-                />
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold">Create Account & Join</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Create your TradieTrack account to join the team
+                </p>
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
+              <form onSubmit={handleAcceptAsNewUser} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="firstName"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                    placeholder="First name"
-                    required
-                    data-testid="input-first-name"
+                    id="email"
+                    type="email"
+                    value={invite.email}
+                    disabled
+                    className="bg-muted"
+                    data-testid="input-email"
                   />
                 </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                      placeholder="First name"
+                      required
+                      data-testid="input-first-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                      placeholder="Last name"
+                      required
+                      data-testid="input-last-name"
+                    />
+                  </div>
+                </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="password">Password</Label>
                   <Input
-                    id="lastName"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                    placeholder="Last name"
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="Create a password (min 8 characters)"
                     required
-                    data-testid="input-last-name"
+                    minLength={8}
+                    data-testid="input-password"
                   />
                 </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    placeholder="Confirm your password"
+                    required
+                    data-testid="input-confirm-password"
+                  />
+                </div>
+                
+                <Button
+                  type="submit"
+                  disabled={acceptStatus === 'loading'}
+                  className="w-full"
+                  size="lg"
+                  data-testid="button-create-account-and-join"
+                >
+                  {acceptStatus === 'loading' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    <>
+                      Create Account & Join Team
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </form>
+              
+              <div className="relative">
+                <Separator />
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs text-muted-foreground">
+                  OR
+                </span>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder="Create a password (min 8 characters)"
-                  required
-                  minLength={8}
-                  data-testid="input-password"
-                />
+              <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <LogIn className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-medium">Already have an account?</p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Sign in with your existing TradieTrack account to accept this invitation
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setLocation(`/login?redirect=/accept-invite/${token}`)}
+                  className="w-full"
+                  data-testid="button-sign-in-to-accept"
+                >
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Sign In to Accept
+                </Button>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                  placeholder="Confirm your password"
-                  required
-                  data-testid="input-confirm-password"
-                />
-              </div>
-              
-              <Button
-                type="submit"
-                disabled={acceptStatus === 'loading'}
-                className="w-full"
-                size="lg"
-                data-testid="button-create-account-and-join"
-              >
-                {acceptStatus === 'loading' ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating account...
-                  </>
-                ) : (
-                  "Create Account & Join Team"
-                )}
-              </Button>
-            </form>
+            </div>
           )}
-          
-          <div className="text-center">
-            <Button
-              variant="link"
-              onClick={() => setLocation('/login')}
-              className="text-sm text-muted-foreground"
-              data-testid="link-login-instead"
-            >
-              Already have an account? Sign in instead
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>

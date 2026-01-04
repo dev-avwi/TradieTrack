@@ -37,8 +37,11 @@ import {
   AlertTriangle,
   TrendingUp,
   Zap,
-  Smartphone
+  Smartphone,
+  Building2,
+  Info
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, formatDistanceToNow } from "date-fns";
 
 interface PaymentRequest {
@@ -100,6 +103,169 @@ interface Receipt {
   createdAt: string;
 }
 
+type PaymentMethodType = 'card' | 'bank_transfer' | 'becs_debit';
+
+interface PaymentMethodRecommendation {
+  recommended: PaymentMethodType;
+  strength: 'suggested' | 'recommended' | 'strongly_recommended';
+  reason: string;
+  savings: number;
+}
+
+function getPaymentMethodRecommendation(amount: number): PaymentMethodRecommendation {
+  const cardFeePercent = 0.0195;
+  const cardFeeFixed = 0.30;
+  const cardFee = amount * cardFeePercent + cardFeeFixed;
+  const becsFee = 0.50;
+  
+  if (amount < 200) {
+    return {
+      recommended: 'card',
+      strength: 'suggested',
+      reason: 'Quick & convenient for smaller amounts',
+      savings: 0,
+    };
+  } else if (amount <= 1000) {
+    return {
+      recommended: 'bank_transfer',
+      strength: 'recommended',
+      reason: `Saves ~$${cardFee.toFixed(2)} in processing fees`,
+      savings: cardFee,
+    };
+  } else {
+    return {
+      recommended: 'bank_transfer',
+      strength: 'strongly_recommended',
+      reason: `Saves ~$${cardFee.toFixed(2)} in processing fees`,
+      savings: cardFee,
+    };
+  }
+}
+
+function calculateFee(amount: number, method: PaymentMethodType): { fee: number; feeString: string } {
+  if (method === 'card') {
+    const fee = amount * 0.0195 + 0.30;
+    return { fee, feeString: `~$${fee.toFixed(2)} fee` };
+  } else if (method === 'becs_debit') {
+    return { fee: 0.50, feeString: '~$0.50 flat fee' };
+  } else {
+    return { fee: 0, feeString: 'No fees' };
+  }
+}
+
+interface PaymentMethodSelectorProps {
+  amount: number;
+  selectedMethod: PaymentMethodType;
+  onMethodChange: (method: PaymentMethodType) => void;
+}
+
+function PaymentMethodSelector({ amount, selectedMethod, onMethodChange }: PaymentMethodSelectorProps) {
+  const recommendation = getPaymentMethodRecommendation(amount);
+  
+  const methods: Array<{
+    id: PaymentMethodType;
+    label: string;
+    description: string;
+    icon: typeof CreditCard;
+  }> = [
+    {
+      id: 'card',
+      label: 'Card',
+      description: 'Quick & Easy - ~1.95% + $0.30 fee',
+      icon: CreditCard,
+    },
+    {
+      id: 'bank_transfer',
+      label: 'Bank Transfer',
+      description: 'No fees - Details shown on invoice',
+      icon: Building2,
+    },
+    {
+      id: 'becs_debit',
+      label: 'BECS Direct Debit',
+      description: '~$0.50 flat fee',
+      icon: Banknote,
+    },
+  ];
+
+  return (
+    <div className="space-y-2">
+      <Label>Payment Method</Label>
+      <div className="grid gap-2">
+        {methods.map((method) => {
+          const isSelected = selectedMethod === method.id;
+          const isRecommended = recommendation.recommended === method.id;
+          const { feeString } = calculateFee(amount, method.id);
+          const Icon = method.icon;
+          
+          return (
+            <div
+              key={method.id}
+              onClick={() => onMethodChange(method.id)}
+              className={`relative flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                isSelected 
+                  ? 'border-primary bg-primary/5' 
+                  : 'border-border hover:border-muted-foreground/50'
+              }`}
+              data-testid={`payment-method-${method.id}`}
+            >
+              <div className={`rounded-lg p-2 ${isSelected ? 'bg-primary/10' : 'bg-muted'}`}>
+                <Icon className={`h-4 w-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`font-medium text-sm ${isSelected ? 'text-primary' : ''}`}>
+                    {method.label}
+                  </span>
+                  {isRecommended && amount > 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge 
+                          variant={recommendation.strength === 'strongly_recommended' ? 'default' : 'secondary'}
+                          className={`text-xs ${recommendation.strength === 'strongly_recommended' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}`}
+                          data-testid="badge-recommended"
+                        >
+                          {recommendation.strength === 'strongly_recommended' ? 'Best Value' : 'Recommended'}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-sm">{recommendation.reason}</p>
+                        {recommendation.savings > 0 && (
+                          <p className="text-xs text-emerald-400 mt-1">
+                            Save ${recommendation.savings.toFixed(2)} compared to card payment
+                          </p>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {amount > 0 ? feeString : method.description}
+                </p>
+              </div>
+              <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 ${
+                isSelected ? 'border-primary' : 'border-muted-foreground/50'
+              }`}>
+                {isSelected && (
+                  <div className="h-2 w-2 rounded-full bg-primary" />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {amount > 200 && selectedMethod === 'card' && (
+        <div className="flex items-start gap-2 p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg mt-2">
+          <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700 dark:text-amber-300">
+            Consider Bank Transfer to save ~${calculateFee(amount, 'card').fee.toFixed(2)} in fees
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CollectPayment() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -126,6 +292,7 @@ export default function CollectPayment() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [expiresInHours, setExpiresInHours] = useState("24");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType>("card");
   
   const [recordAmount, setRecordAmount] = useState("");
   const [recordInvoiceId, setRecordInvoiceId] = useState("");
@@ -428,6 +595,7 @@ export default function CollectPayment() {
     setSelectedInvoiceId("");
     setSelectedJobId("");
     setExpiresInHours("24");
+    setSelectedPaymentMethod("card");
   };
 
   const resetRecordForm = () => {
@@ -1070,6 +1238,12 @@ export default function CollectPayment() {
               />
             </div>
 
+            <PaymentMethodSelector
+              amount={parseFloat(newAmount) || 0}
+              selectedMethod={selectedPaymentMethod}
+              onMethodChange={setSelectedPaymentMethod}
+            />
+
             <div className="space-y-2">
               <Label>Expires in</Label>
               <Select value={expiresInHours} onValueChange={setExpiresInHours}>
@@ -1099,6 +1273,7 @@ export default function CollectPayment() {
                 invoiceId: selectedInvoiceId || undefined,
                 jobId: selectedJobId || undefined,
                 expiresInHours: parseInt(expiresInHours),
+                paymentMethod: selectedPaymentMethod,
               })}
               disabled={!newAmount || !newDescription || createMutation.isPending}
               data-testid="button-create-request"
