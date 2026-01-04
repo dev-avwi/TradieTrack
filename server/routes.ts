@@ -3448,6 +3448,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== PAYMENT SETTINGS ROUTES =====
+  
+  // Get payment method settings (available methods, fees, bank details)
+  app.get("/api/payment-settings", requireAuth, async (req: any, res) => {
+    try {
+      const settings = await storage.getBusinessSettings(req.userId);
+      if (!settings) {
+        return res.status(404).json({ error: "Business settings not found" });
+      }
+      
+      // Calculate fees for display
+      const cardFeePercent = 1.95;
+      const cardFeeFixed = 0.30;
+      const becsFee = 0.50; // Flat fee for BECS Direct Debit
+      const bankTransferFee = 0; // Free for direct bank transfer
+      
+      res.json({
+        // Bank transfer details
+        bankBsb: settings.bankBsb || null,
+        bankAccountNumber: settings.bankAccountNumber || null,
+        bankAccountName: settings.bankAccountName || null,
+        
+        // Enabled payment methods
+        acceptCardPayments: settings.acceptCardPayments ?? true,
+        acceptBankTransfer: settings.acceptBankTransfer ?? true,
+        acceptBecsDebit: settings.acceptBecsDebit ?? false,
+        acceptPayto: settings.acceptPayto ?? false,
+        defaultPaymentMethod: settings.defaultPaymentMethod || 'card',
+        
+        // Card surcharge settings
+        enableCardSurcharge: settings.enableCardSurcharge ?? false,
+        cardSurchargePercent: parseFloat(String(settings.cardSurchargePercent || '1.95')),
+        cardSurchargeFixedCents: settings.cardSurchargeFixedCents ?? 30,
+        surchargeDisclaimer: settings.surchargeDisclaimer || 'A surcharge applies to credit/debit card payments to cover processing fees.',
+        
+        // Early payment discount
+        enableEarlyPaymentDiscount: settings.enableEarlyPaymentDiscount ?? false,
+        earlyPaymentDiscountPercent: parseFloat(String(settings.earlyPaymentDiscountPercent || '2.00')),
+        earlyPaymentDiscountDays: settings.earlyPaymentDiscountDays ?? 7,
+        
+        // Fee information for display
+        feeInfo: {
+          card: { percent: cardFeePercent, fixed: cardFeeFixed, description: 'Card payments (Visa, Mastercard)' },
+          becs: { flat: becsFee, description: 'BECS Direct Debit (bank account)' },
+          bankTransfer: { flat: bankTransferFee, description: 'Direct bank transfer (BSB/Account)' },
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching payment settings:", error);
+      res.status(500).json({ error: "Failed to fetch payment settings" });
+    }
+  });
+  
+  // Update payment settings
+  app.patch("/api/payment-settings", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const {
+        bankBsb,
+        bankAccountNumber,
+        bankAccountName,
+        acceptCardPayments,
+        acceptBankTransfer,
+        acceptBecsDebit,
+        acceptPayto,
+        defaultPaymentMethod,
+        enableCardSurcharge,
+        cardSurchargePercent,
+        cardSurchargeFixedCents,
+        surchargeDisclaimer,
+        enableEarlyPaymentDiscount,
+        earlyPaymentDiscountPercent,
+        earlyPaymentDiscountDays,
+      } = req.body;
+      
+      // Build update object with only provided fields
+      const updateData: any = {};
+      if (bankBsb !== undefined) updateData.bankBsb = bankBsb;
+      if (bankAccountNumber !== undefined) updateData.bankAccountNumber = bankAccountNumber;
+      if (bankAccountName !== undefined) updateData.bankAccountName = bankAccountName;
+      if (acceptCardPayments !== undefined) updateData.acceptCardPayments = acceptCardPayments;
+      if (acceptBankTransfer !== undefined) updateData.acceptBankTransfer = acceptBankTransfer;
+      if (acceptBecsDebit !== undefined) updateData.acceptBecsDebit = acceptBecsDebit;
+      if (acceptPayto !== undefined) updateData.acceptPayto = acceptPayto;
+      if (defaultPaymentMethod !== undefined) updateData.defaultPaymentMethod = defaultPaymentMethod;
+      if (enableCardSurcharge !== undefined) updateData.enableCardSurcharge = enableCardSurcharge;
+      if (cardSurchargePercent !== undefined) updateData.cardSurchargePercent = String(cardSurchargePercent);
+      if (cardSurchargeFixedCents !== undefined) updateData.cardSurchargeFixedCents = cardSurchargeFixedCents;
+      if (surchargeDisclaimer !== undefined) updateData.surchargeDisclaimer = surchargeDisclaimer;
+      if (enableEarlyPaymentDiscount !== undefined) updateData.enableEarlyPaymentDiscount = enableEarlyPaymentDiscount;
+      if (earlyPaymentDiscountPercent !== undefined) updateData.earlyPaymentDiscountPercent = String(earlyPaymentDiscountPercent);
+      if (earlyPaymentDiscountDays !== undefined) updateData.earlyPaymentDiscountDays = earlyPaymentDiscountDays;
+      
+      const settings = await storage.updateBusinessSettings(req.userId, updateData);
+      if (!settings) {
+        return res.status(404).json({ error: "Business settings not found" });
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating payment settings:", error);
+      res.status(500).json({ error: "Failed to update payment settings" });
+    }
+  });
+
   // ===== SMS BRANDING SETTINGS ROUTES =====
   
   // Get current SMS branding settings
@@ -9110,22 +9214,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stripe = await getUncachableStripeClient();
 
       if (stripe) {
+        // Determine enabled payment methods based on business settings
+        const paymentMethods: string[] = [];
+        if (business.acceptCardPayments !== false) {
+          paymentMethods.push('card');
+        }
+        if (business.acceptBecsDebit) {
+          paymentMethods.push('au_becs_debit'); // BECS Direct Debit for Australian bank accounts
+        }
+        // Fallback to card if no methods enabled
+        if (paymentMethods.length === 0) {
+          paymentMethods.push('card');
+        }
+        
+        // Calculate card surcharge if enabled
+        let finalAmountCents = totalAmountCents;
+        let surchargeAmountCents = 0;
+        let surchargeDescription = '';
+        
+        // Note: Stripe Checkout applies the same amount to all payment methods
+        // To properly apply card-only surcharges, we'd need separate sessions or use Stripe's dynamic pricing
+        // For now, we inform the customer about the surcharge in metadata
+        if (business.enableCardSurcharge && business.acceptCardPayments !== false) {
+          const surchargePercent = parseFloat(String(business.cardSurchargePercent || '1.95'));
+          const surchargeFixed = business.cardSurchargeFixedCents || 30;
+          surchargeAmountCents = Math.round((totalAmountCents * surchargePercent / 100) + surchargeFixed);
+          // For card-only surcharge, we add it as a separate line item for transparency
+          surchargeDescription = business.surchargeDisclaimer || 'Card payment processing fee';
+        }
+        
+        // Build line items
+        const lineItems: any[] = [
+          {
+            price_data: {
+              currency: 'aud',
+              product_data: {
+                name: `Invoice #${invoice.number || invoice.id.substring(0, 8).toUpperCase()}`,
+                description: invoice.title || 'Invoice payment',
+              },
+              unit_amount: totalAmountCents,
+            },
+            quantity: 1,
+          },
+        ];
+        
+        // Add surcharge line item if card surcharge enabled and card is the only method
+        // (For mixed payment methods, surcharge is handled differently or not applied)
+        if (surchargeAmountCents > 0 && paymentMethods.length === 1 && paymentMethods[0] === 'card') {
+          lineItems.push({
+            price_data: {
+              currency: 'aud',
+              product_data: {
+                name: 'Card Payment Surcharge',
+                description: surchargeDescription,
+              },
+              unit_amount: surchargeAmountCents,
+            },
+            quantity: 1,
+          });
+          finalAmountCents += surchargeAmountCents;
+        }
+
         // Build checkout session config
         const sessionConfig: any = {
-          payment_method_types: ['card'],
-          line_items: [
-            {
-              price_data: {
-                currency: 'aud',
-                product_data: {
-                  name: `Invoice #${invoice.number || invoice.id.substring(0, 8).toUpperCase()}`,
-                  description: invoice.title || 'Invoice payment',
-                },
-                unit_amount: totalAmountCents,
-              },
-              quantity: 1,
-            },
-          ],
+          payment_method_types: paymentMethods,
+          line_items: lineItems,
           mode: 'payment',
           success_url: `${req.headers.origin}/invoices/${invoice.id}?payment=success`,
           cancel_url: `${req.headers.origin}/invoices/${invoice.id}?payment=cancelled`,
@@ -9135,6 +9288,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             invoiceId: invoice.id,
             userId: req.userId,
             businessName: business.businessName || '',
+            surchargeApplied: surchargeAmountCents > 0 ? 'true' : 'false',
+            surchargeAmount: (surchargeAmountCents / 100).toFixed(2),
+            originalAmount: (totalAmountCents / 100).toFixed(2),
           },
         };
 

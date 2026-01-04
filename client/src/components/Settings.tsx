@@ -56,7 +56,12 @@ import {
   CheckCircle2,
   Check,
   Building2,
-  MapPin
+  MapPin,
+  Wallet,
+  Banknote,
+  Percent,
+  AlertCircle,
+  DollarSign
 } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1635,6 +1640,9 @@ export default function Settings({
             </CardContent>
           </Card>
 
+          {/* Payment Methods & Fees Card */}
+          <PaymentMethodsSettings />
+
           {/* Digital Signature Card */}
           <Card>
             <CardHeader>
@@ -2844,6 +2852,392 @@ function DeveloperTab() {
         </CardContent>
       </Card>
     </>
+  );
+}
+
+// Payment Methods Settings Component
+function PaymentMethodsSettings() {
+  const { toast } = useToast();
+  
+  // Fetch payment settings
+  const { data: paymentSettings, isLoading } = useQuery<{
+    bankBsb: string | null;
+    bankAccountNumber: string | null;
+    bankAccountName: string | null;
+    acceptCardPayments: boolean;
+    acceptBankTransfer: boolean;
+    acceptBecsDebit: boolean;
+    acceptPayto: boolean;
+    defaultPaymentMethod: string;
+    enableCardSurcharge: boolean;
+    cardSurchargePercent: number;
+    cardSurchargeFixedCents: number;
+    surchargeDisclaimer: string;
+    enableEarlyPaymentDiscount: boolean;
+    earlyPaymentDiscountPercent: number;
+    earlyPaymentDiscountDays: number;
+    feeInfo: {
+      card: { percent: number; fixed: number; description: string };
+      becs: { flat: number; description: string };
+      bankTransfer: { flat: number; description: string };
+    };
+  }>({
+    queryKey: ['/api/payment-settings'],
+  });
+  
+  const [localSettings, setLocalSettings] = useState({
+    bankBsb: '',
+    bankAccountNumber: '',
+    bankAccountName: '',
+    acceptCardPayments: true,
+    acceptBankTransfer: true,
+    acceptBecsDebit: false,
+    acceptPayto: false,
+    enableCardSurcharge: false,
+    cardSurchargePercent: 1.95,
+    cardSurchargeFixedCents: 30,
+    surchargeDisclaimer: 'A surcharge applies to credit/debit card payments to cover processing fees.',
+    enableEarlyPaymentDiscount: false,
+    earlyPaymentDiscountPercent: 2.00,
+    earlyPaymentDiscountDays: 7,
+  });
+  
+  // Sync local state with fetched data
+  useEffect(() => {
+    if (paymentSettings) {
+      setLocalSettings({
+        bankBsb: paymentSettings.bankBsb || '',
+        bankAccountNumber: paymentSettings.bankAccountNumber || '',
+        bankAccountName: paymentSettings.bankAccountName || '',
+        acceptCardPayments: paymentSettings.acceptCardPayments,
+        acceptBankTransfer: paymentSettings.acceptBankTransfer,
+        acceptBecsDebit: paymentSettings.acceptBecsDebit,
+        acceptPayto: paymentSettings.acceptPayto,
+        enableCardSurcharge: paymentSettings.enableCardSurcharge,
+        cardSurchargePercent: paymentSettings.cardSurchargePercent,
+        cardSurchargeFixedCents: paymentSettings.cardSurchargeFixedCents,
+        surchargeDisclaimer: paymentSettings.surchargeDisclaimer,
+        enableEarlyPaymentDiscount: paymentSettings.enableEarlyPaymentDiscount,
+        earlyPaymentDiscountPercent: paymentSettings.earlyPaymentDiscountPercent,
+        earlyPaymentDiscountDays: paymentSettings.earlyPaymentDiscountDays,
+      });
+    }
+  }, [paymentSettings]);
+  
+  const updateMutation = useMutation({
+    mutationFn: async (data: Partial<typeof localSettings>) => {
+      return apiRequest('/api/payment-settings', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/payment-settings'] });
+      toast({
+        title: "Payment settings saved",
+        description: "Your payment method preferences have been updated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to save",
+        description: error.message || "Could not update payment settings.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const handleSave = () => {
+    updateMutation.mutate(localSettings);
+  };
+  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Wallet className="h-5 w-5" />
+          Payment Methods & Fees
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Accept multiple payment methods and reduce processing fees. Offer bank transfer for lower costs or pass card fees to customers.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Bank Transfer Details */}
+        <div className="space-y-4">
+          <Label className="text-base font-semibold flex items-center gap-2">
+            <Banknote className="h-4 w-4" />
+            Bank Transfer Details
+          </Label>
+          <p className="text-sm text-muted-foreground -mt-2">
+            Customers can pay directly to your bank account (no fees!)
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="bank-bsb">BSB</Label>
+              <Input
+                id="bank-bsb"
+                value={localSettings.bankBsb}
+                onChange={(e) => setLocalSettings(prev => ({ ...prev, bankBsb: e.target.value }))}
+                placeholder="000-000"
+                maxLength={7}
+                data-testid="input-bank-bsb"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bank-account-number">Account Number</Label>
+              <Input
+                id="bank-account-number"
+                value={localSettings.bankAccountNumber}
+                onChange={(e) => setLocalSettings(prev => ({ ...prev, bankAccountNumber: e.target.value }))}
+                placeholder="12345678"
+                data-testid="input-bank-account-number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bank-account-name">Account Name</Label>
+              <Input
+                id="bank-account-name"
+                value={localSettings.bankAccountName}
+                onChange={(e) => setLocalSettings(prev => ({ ...prev, bankAccountName: e.target.value }))}
+                placeholder="Your Business Name"
+                data-testid="input-bank-account-name"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <Separator />
+        
+        {/* Payment Methods Toggle */}
+        <div className="space-y-4">
+          <Label className="text-base font-semibold">Accepted Payment Methods</Label>
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-lg border">
+              <div className="flex items-center gap-3">
+                <CreditCard className="h-5 w-5 text-blue-600" />
+                <div>
+                  <Label className="font-medium">Card Payments</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Visa, Mastercard via Stripe (~{paymentSettings?.feeInfo?.card?.percent || 1.95}% + ${paymentSettings?.feeInfo?.card?.fixed || 0.30})
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={localSettings.acceptCardPayments}
+                onCheckedChange={(checked) => setLocalSettings(prev => ({ ...prev, acceptCardPayments: checked }))}
+                data-testid="switch-accept-card"
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 rounded-lg border">
+              <div className="flex items-center gap-3">
+                <Banknote className="h-5 w-5 text-green-600" />
+                <div>
+                  <Label className="font-medium">Bank Transfer</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Direct deposit to your bank account (FREE)
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={localSettings.acceptBankTransfer}
+                onCheckedChange={(checked) => setLocalSettings(prev => ({ ...prev, acceptBankTransfer: checked }))}
+                data-testid="switch-accept-bank-transfer"
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 rounded-lg border">
+              <div className="flex items-center gap-3">
+                <Building2 className="h-5 w-5 text-purple-600" />
+                <div>
+                  <Label className="font-medium">BECS Direct Debit</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Debit from customer's bank account (~${paymentSettings?.feeInfo?.becs?.flat || 0.50} flat fee)
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={localSettings.acceptBecsDebit}
+                onCheckedChange={(checked) => setLocalSettings(prev => ({ ...prev, acceptBecsDebit: checked }))}
+                data-testid="switch-accept-becs"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <Separator />
+        
+        {/* Card Surcharge Settings */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-base font-semibold flex items-center gap-2">
+                <Percent className="h-4 w-4" />
+                Card Payment Surcharge
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Pass card processing fees to customers who pay by card
+              </p>
+            </div>
+            <Switch
+              checked={localSettings.enableCardSurcharge}
+              onCheckedChange={(checked) => setLocalSettings(prev => ({ ...prev, enableCardSurcharge: checked }))}
+              data-testid="switch-card-surcharge"
+            />
+          </div>
+          
+          {localSettings.enableCardSurcharge && (
+            <div className="pl-4 border-l-2 border-primary/20 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="surcharge-percent">Surcharge Percentage (%)</Label>
+                  <Input
+                    id="surcharge-percent"
+                    type="number"
+                    step="0.01"
+                    value={localSettings.cardSurchargePercent}
+                    onChange={(e) => setLocalSettings(prev => ({ ...prev, cardSurchargePercent: parseFloat(e.target.value) || 0 }))}
+                    data-testid="input-surcharge-percent"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="surcharge-fixed">Fixed Fee (cents)</Label>
+                  <Input
+                    id="surcharge-fixed"
+                    type="number"
+                    value={localSettings.cardSurchargeFixedCents}
+                    onChange={(e) => setLocalSettings(prev => ({ ...prev, cardSurchargeFixedCents: parseInt(e.target.value) || 0 }))}
+                    data-testid="input-surcharge-fixed"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="surcharge-disclaimer">Surcharge Disclaimer</Label>
+                <Input
+                  id="surcharge-disclaimer"
+                  value={localSettings.surchargeDisclaimer}
+                  onChange={(e) => setLocalSettings(prev => ({ ...prev, surchargeDisclaimer: e.target.value }))}
+                  placeholder="A surcharge applies to credit/debit card payments..."
+                  data-testid="input-surcharge-disclaimer"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This message is shown to customers before they pay
+                </p>
+              </div>
+              
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-900">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                  <div className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>Australian Law:</strong> You can only surcharge up to the actual cost of accepting card payments. 
+                    Make sure your surcharge does not exceed your actual processing fees.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <Separator />
+        
+        {/* Early Payment Discount */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-base font-semibold flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Early Payment Discount
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Encourage faster payments by offering a discount for paying early (e.g., via bank transfer)
+              </p>
+            </div>
+            <Switch
+              checked={localSettings.enableEarlyPaymentDiscount}
+              onCheckedChange={(checked) => setLocalSettings(prev => ({ ...prev, enableEarlyPaymentDiscount: checked }))}
+              data-testid="switch-early-payment-discount"
+            />
+          </div>
+          
+          {localSettings.enableEarlyPaymentDiscount && (
+            <div className="pl-4 border-l-2 border-primary/20 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="discount-percent">Discount Percentage (%)</Label>
+                  <Input
+                    id="discount-percent"
+                    type="number"
+                    step="0.01"
+                    value={localSettings.earlyPaymentDiscountPercent}
+                    onChange={(e) => setLocalSettings(prev => ({ ...prev, earlyPaymentDiscountPercent: parseFloat(e.target.value) || 0 }))}
+                    data-testid="input-discount-percent"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="discount-days">If Paid Within (Days)</Label>
+                  <Input
+                    id="discount-days"
+                    type="number"
+                    value={localSettings.earlyPaymentDiscountDays}
+                    onChange={(e) => setLocalSettings(prev => ({ ...prev, earlyPaymentDiscountDays: parseInt(e.target.value) || 0 }))}
+                    data-testid="input-discount-days"
+                  />
+                </div>
+              </div>
+              
+              <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+                  <div className="text-sm text-green-800 dark:text-green-200">
+                    <strong>Example:</strong> "{localSettings.earlyPaymentDiscountPercent}% discount if paid within {localSettings.earlyPaymentDiscountDays} days" will be shown on invoices.
+                    This encourages bank transfers (free) over card payments (1.95%+ fee).
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex justify-end pt-4">
+          <Button
+            onClick={handleSave}
+            disabled={updateMutation.isPending}
+            data-testid="button-save-payment-settings"
+          >
+            {updateMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Payment Settings
+              </>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
