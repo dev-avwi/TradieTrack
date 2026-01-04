@@ -687,6 +687,11 @@ export const quotes = pgTable("quotes", {
   // Multi-option interactive quotes
   isMultiOption: boolean("is_multi_option").default(false), // Whether quote has multiple options for client to choose
   selectedOptionId: varchar("selected_option_id"), // Which option the client selected (if multi-option)
+  // Xero integration tracking
+  isXeroImport: boolean("is_xero_import").default(false), // Whether quote was imported from Xero
+  xeroQuoteId: varchar("xero_quote_id"), // Xero quote ID
+  xeroContactId: varchar("xero_contact_id"), // Xero contact ID for client mapping
+  xeroSyncedAt: timestamp("xero_synced_at"), // When quote was last synced with Xero
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -762,7 +767,9 @@ export const invoices = pgTable("invoices", {
   nextRecurrenceDate: timestamp("next_recurrence_date"),
   archivedAt: timestamp("archived_at"), // When the invoice was archived
   // Xero integration tracking
+  isXeroImport: boolean("is_xero_import").default(false), // Whether invoice was imported from Xero
   xeroInvoiceId: varchar("xero_invoice_id"), // Xero invoice ID to prevent duplicate pushes
+  xeroContactId: varchar("xero_contact_id"), // Xero contact ID for client mapping
   xeroSyncedAt: timestamp("xero_synced_at"), // When invoice was last synced to Xero
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
