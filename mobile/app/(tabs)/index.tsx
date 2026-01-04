@@ -9,7 +9,9 @@ import {
   Linking,
   ActivityIndicator,
   Alert,
-  Platform
+  Platform,
+  AppState,
+  AppStateStatus
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -179,12 +181,28 @@ function TimeTrackingWidget() {
   const [isPausing, setIsPausing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isStartingTimer, setIsStartingTimer] = useState<string | null>(null);
+  const appStateRef = useRef(AppState.currentState);
 
   useEffect(() => {
     loadTimeData();
     loadTodaysJobs();
-    const interval = setInterval(loadTimeData, 30000);
-    return () => clearInterval(interval);
+    // Refresh every 15 seconds for more responsive updates
+    const interval = setInterval(loadTimeData, 15000);
+    
+    // Auto-refresh when app comes to foreground
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
+        // App has come to the foreground - refresh data
+        loadTimeData();
+        loadTodaysJobs();
+      }
+      appStateRef.current = nextAppState;
+    });
+    
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, []);
 
   const loadTodaysJobs = async () => {

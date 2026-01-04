@@ -1084,11 +1084,54 @@ export default function InvoiceDetailScreen() {
             {(invoice.status === 'sent' || invoice.status === 'overdue') && (
               <TouchableOpacity 
                 style={[styles.primaryActionButton, { backgroundColor: '#FF9500' }]}
-                onPress={handleRecordOnSitePayment}
+                onPress={handleMarkPaid}
               >
                 <Feather name="dollar-sign" size={20} color="#FFFFFF" />
                 <Text style={styles.primaryActionText}>Record Paid</Text>
               </TouchableOpacity>
+            )}
+
+            {/* Paid invoice actions */}
+            {isPaid && (
+              <>
+                {/* Send Receipt - for paid invoices */}
+                <TouchableOpacity 
+                  style={[styles.primaryActionButton, { backgroundColor: '#007AFF' }]}
+                  onPress={handleSendReceipt}
+                  disabled={isSendingReceipt || !client?.email}
+                >
+                  {isSendingReceipt ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Feather name="mail" size={20} color="#FFFFFF" />
+                  )}
+                  <Text style={styles.primaryActionText}>
+                    {isSendingReceipt ? 'Sending...' : 'Send Receipt'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* View Receipt - for paid invoices with linked receipt */}
+                {linkedReceipt && (
+                  <TouchableOpacity 
+                    style={[styles.primaryActionButton, { backgroundColor: '#34C759' }]}
+                    onPress={() => router.push(`/more/receipt/${linkedReceipt.id}`)}
+                  >
+                    <Feather name="file-text" size={20} color="#FFFFFF" />
+                    <Text style={styles.primaryActionText}>View Receipt</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Create Receipt - for paid invoices without linked receipt */}
+                {!linkedReceipt && (
+                  <TouchableOpacity 
+                    style={[styles.primaryActionButton, { backgroundColor: '#34C759' }]}
+                    onPress={() => router.push(`/more/receipt/new?invoiceId=${id}`)}
+                  >
+                    <Feather name="plus" size={20} color="#FFFFFF" />
+                    <Text style={styles.primaryActionText}>Create Receipt</Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </View>
 

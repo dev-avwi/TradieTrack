@@ -19,6 +19,8 @@ import {
   Dimensions,
   Animated,
   Easing,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
@@ -1794,6 +1796,9 @@ export default function JobDetailScreen() {
     }
   }, [isTimerForThisJob]);
 
+  // Create ref for AppState tracking
+  const appStateRef = useRef(AppState.currentState);
+
   useEffect(() => {
     loadJob();
     fetchActiveTimer();
@@ -1806,6 +1811,21 @@ export default function JobDetailScreen() {
     loadJobExpenses();
     loadAutomationSettings();
     // Forms data is loaded by JobForms component via callbacks
+    
+    // Auto-refresh when app comes to foreground
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
+        // App has come to the foreground - refresh job data and timer
+        loadJob();
+        fetchActiveTimer();
+        loadTimeEntries();
+      }
+      appStateRef.current = nextAppState;
+    });
+    
+    return () => {
+      subscription.remove();
+    };
   }, [id]);
 
   useEffect(() => {
