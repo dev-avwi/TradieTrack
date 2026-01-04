@@ -859,6 +859,8 @@ function AppLayout() {
       hasInitialSynced.current = false;
       // Invalidate all queries
       queryClient.clear();
+      // Navigate to auth page immediately after logout
+      setLocation('/auth');
       // Force refetch of auth status which will show login screen
       setAuthKey(prev => prev + 1);
     } catch (error) {
@@ -867,6 +869,8 @@ function AppLayout() {
       clearSessionToken();
       // Reset sync flag even on error
       hasInitialSynced.current = false;
+      // Navigate to auth page even on error
+      setLocation('/auth');
       // Force refetch anyway to check auth status
       setAuthKey(prev => prev + 1);
     }
@@ -893,6 +897,13 @@ function AppLayout() {
           onNeedOnboarding={handleNeedOnboarding}
         />
       );
+    }
+    // Show privacy policy and terms of service without authentication (Apple App Store requirement)
+    if (location === '/privacy' || location === '/privacy-policy') {
+      return <PrivacyPolicy />;
+    }
+    if (location === '/terms' || location === '/terms-of-service') {
+      return <TermsOfService />;
     }
     // Show landing page for all other routes when not authenticated
     return <LandingPage />;
