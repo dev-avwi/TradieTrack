@@ -170,61 +170,80 @@ async function getUserAccessToken(userId: string): Promise<string> {
     throw new Error('Google Calendar authorization incomplete. Please reconnect your calendar.');
   }
   
-  // Check if token is expired or about to expire (within 5 minutes)
+  // Check if token is expired or about to expire (within 10 minutes for proactive refresh)
   const tokenExpiry = settings.googleCalendarTokenExpiry 
     ? new Date(settings.googleCalendarTokenExpiry).getTime() 
     : 0;
-  const isExpired = tokenExpiry < Date.now() + 5 * 60 * 1000;
+  const PROACTIVE_REFRESH_BUFFER = 10 * 60 * 1000; // 10 minutes before expiry
+  const isExpiringSoon = tokenExpiry < Date.now() + PROACTIVE_REFRESH_BUFFER;
   
-  if (!isExpired && settings.googleCalendarAccessToken) {
-    console.log(`[GoogleCalendar] Using cached token for user ${userId}, expires in ${Math.round((tokenExpiry - Date.now()) / 1000 / 60)} minutes`);
+  if (!isExpiringSoon && settings.googleCalendarAccessToken) {
+    const minutesLeft = Math.round((tokenExpiry - Date.now()) / 1000 / 60);
+    console.log(`[GoogleCalendar] Using cached token for user ${userId}, expires in ${minutesLeft} minutes`);
     return settings.googleCalendarAccessToken;
   }
   
-  // Refresh the token
-  console.log(`[GoogleCalendar] Token expired or missing for user ${userId}, refreshing...`);
-  try {
-    const oauth2Client = getOAuth2Client();
-    oauth2Client.setCredentials({
-      refresh_token: settings.googleCalendarRefreshToken
-    });
-    
-    const { credentials } = await oauth2Client.refreshAccessToken();
-    
-    if (!credentials.access_token) {
-      throw new Error('No access token returned from refresh');
-    }
-    
-    // Update stored tokens (keep the existing refresh token if not provided)
-    await storage.updateBusinessSettings(userId, {
-      googleCalendarAccessToken: credentials.access_token,
-      googleCalendarRefreshToken: credentials.refresh_token || settings.googleCalendarRefreshToken,
-      googleCalendarTokenExpiry: credentials.expiry_date ? new Date(credentials.expiry_date) : null,
-    });
-    
-    console.log(`[GoogleCalendar] Successfully refreshed token for user ${userId}`);
-    return credentials.access_token;
-  } catch (error: any) {
-    console.error('[GoogleCalendar] Token refresh failed:', error.message || error);
-    
-    // Check if this is an invalid_grant error (token revoked or expired)
-    const errorMessage = error.message || '';
-    const isTokenRevoked = errorMessage.includes('invalid_grant') || 
-                           errorMessage.includes('Token has been revoked') ||
-                           errorMessage.includes('Token has been expired');
-    
-    if (isTokenRevoked) {
-      // Mark as disconnected so user can reconnect
-      await storage.updateBusinessSettings(userId, {
-        googleCalendarConnected: false,
-        googleCalendarAccessToken: null,
+  // Proactively refresh the token before it expires
+  console.log(`[GoogleCalendar] Token ${tokenExpiry < Date.now() ? 'expired' : 'expiring soon'} for user ${userId}, refreshing proactively...`);
+  
+  // Retry logic for transient failures
+  const MAX_RETRIES = 3;
+  let lastError: any = null;
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const oauth2Client = getOAuth2Client();
+      oauth2Client.setCredentials({
+        refresh_token: settings.googleCalendarRefreshToken
       });
-      throw new Error('Google Calendar access was revoked. Please reconnect your calendar in Settings.');
+      
+      const { credentials } = await oauth2Client.refreshAccessToken();
+      
+      if (!credentials.access_token) {
+        throw new Error('No access token returned from refresh');
+      }
+      
+      // Update stored tokens (keep the existing refresh token if not provided)
+      await storage.updateBusinessSettings(userId, {
+        googleCalendarAccessToken: credentials.access_token,
+        googleCalendarRefreshToken: credentials.refresh_token || settings.googleCalendarRefreshToken,
+        googleCalendarTokenExpiry: credentials.expiry_date ? new Date(credentials.expiry_date) : null,
+      });
+      
+      console.log(`[GoogleCalendar] Successfully refreshed token for user ${userId} (attempt ${attempt})`);
+      return credentials.access_token;
+    } catch (error: any) {
+      lastError = error;
+      const errorMessage = error.message || '';
+      
+      // Check if this is a permanent error (token revoked or expired)
+      const isPermanentError = errorMessage.includes('invalid_grant') || 
+                               errorMessage.includes('Token has been revoked') ||
+                               errorMessage.includes('Token has been expired') ||
+                               errorMessage.includes('unauthorized_client');
+      
+      if (isPermanentError) {
+        console.error(`[GoogleCalendar] Token permanently invalid for user ${userId}:`, errorMessage);
+        // Mark as disconnected so user can reconnect
+        await storage.updateBusinessSettings(userId, {
+          googleCalendarConnected: false,
+          googleCalendarAccessToken: null,
+        });
+        throw new Error('Google Calendar access was revoked or expired. Please reconnect your calendar in Settings → Integrations.');
+      }
+      
+      // For transient errors, retry with exponential backoff
+      if (attempt < MAX_RETRIES) {
+        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+        console.warn(`[GoogleCalendar] Token refresh attempt ${attempt} failed, retrying in ${delay/1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
-    
-    // For other errors, don't disconnect - might be a temporary issue
-    throw new Error(`Failed to refresh Google Calendar token: ${error.message}`);
   }
+  
+  // All retries exhausted
+  console.error('[GoogleCalendar] Token refresh failed after all retries:', lastError?.message || lastError);
+  throw new Error(`Failed to refresh Google Calendar token after ${MAX_RETRIES} attempts. Please try again or reconnect your calendar.`);
 }
 
 // Check if Google Calendar is connected for a user

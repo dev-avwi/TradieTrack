@@ -5,12 +5,14 @@ import nodemailer from 'nodemailer';
 import { sendEmail as sendPlatformEmail } from './emailService';
 import { encrypt, decrypt, isEncryptionEnabled } from './cryptoHelper';
 import { isGmailConnected, sendViaGmailAPI, getGmailProfile } from './gmailClient';
+import { isOutlookConnected, sendViaOutlookAPI, getOutlookProfile } from './outlookClient';
 
 // Email Integration Service - Manages tradie email connections
 // Tradies can connect their own Gmail, Outlook, or SMTP email to send quotes/invoices
 // Security: SMTP passwords are encrypted at rest using AES-256-GCM when EMAIL_ENCRYPTION_KEY is set
 // Gmail: Uses Replit's managed OAuth connector - NOTE: This is a platform-level connection
 // that applies to the entire application, not per-user. See getGmailConnectionStatus for details.
+// Outlook: Uses Microsoft Graph API with per-user OAuth tokens stored in businessSettings
 
 interface SendEmailOptions {
   to: string;
@@ -171,6 +173,9 @@ export async function sendEmailViaIntegration(options: SendEmailOptions): Promis
   
   // Check if Gmail is connected via Replit connector
   const gmailConnected = await isGmailConnected();
+  
+  // Check if Outlook is connected for this user
+  const outlookConnected = await isOutlookConnected(userId);
 
   // Log the email attempt
   const [logEntry] = await db.insert(emailDeliveryLogs).values({
@@ -194,7 +199,17 @@ export async function sendEmailViaIntegration(options: SendEmailOptions): Promis
       console.warn(`SMTP sending failed, trying fallback: ${smtpResult.error}`);
     }
 
-    // 2. Try Gmail via Replit connector (if available)
+    // 2. Try Outlook via Microsoft Graph API (if connected for this user)
+    if (outlookConnected) {
+      console.log('Attempting Outlook via Microsoft Graph API');
+      const outlookResult = await sendViaOutlookAPI(userId, { to, subject, html, text, attachments });
+      if (outlookResult.success) {
+        return { ...outlookResult, sentVia: 'outlook' };
+      }
+      console.warn(`Outlook sending failed, trying fallback: ${outlookResult.error}`);
+    }
+
+    // 3. Try Gmail via Replit connector (if available)
     if (gmailConnected) {
       console.log('Attempting Gmail via Replit connector');
       const gmailResult = await sendViaGmailDirect({ to, subject, html, text, attachments });
@@ -204,7 +219,7 @@ export async function sendEmailViaIntegration(options: SendEmailOptions): Promis
       console.warn(`Gmail connector failed, falling back to SendGrid: ${gmailResult.error}`);
     }
 
-    // 3. Final fallback - SendGrid platform email
+    // 4. Final fallback - SendGrid platform email
     console.log('Using SendGrid platform email as final fallback');
     return await sendViaPlatform({ to, subject, html, text });
   };

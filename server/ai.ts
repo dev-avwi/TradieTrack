@@ -1384,7 +1384,8 @@ Return a JSON object with this exact structure:
       ];
 
       // Add each photo URL as an image content part
-      for (const photoUrl of photoUrls.slice(0, 5)) { // Limit to 5 photos to avoid token limits
+      // Increased limit from 5 to 15 photos for larger jobs - uses low detail mode to manage tokens
+      for (const photoUrl of photoUrls.slice(0, 15)) {
         contentParts.push({
           type: "image_url",
           image_url: { url: photoUrl, detail: "low" }

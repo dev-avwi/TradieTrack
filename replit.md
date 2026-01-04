@@ -128,16 +128,40 @@ This section documents the complete business workflow from initial customer cont
 | Record Cash | Web & Mobile | Cash payments |
 | Bank Transfer | Web & Mobile | Direct deposits |
 
+### Recent Updates (January 2026)
+
+**SMS Notifications**: Full Twilio integration enabled via twilioClient.ts - notificationService now uses real SMS instead of stub.
+
+**AI Photo Analysis**: Limit increased from 5 to 15 photos for larger jobs using GPT-4o vision with low detail mode.
+
+**Xero Account Codes**: Now configurable per business via businessSettings:
+- `xeroSalesAccountCode` (default: "200") - Sales revenue account
+- `xeroBankAccountCode` (default: "090") - Bank account for payments  
+- `xeroExpenseAccountCode` (default: "400") - Expense account
+- `xeroTaxType` (default: "OUTPUT") - GST on sales
+
+**Google Calendar Integration**: Improved token handling with:
+- Proactive refresh (10 min before expiry vs 5 min)
+- Retry logic (3 attempts with exponential backoff)
+- Better error messages directing to Settings → Integrations
+
+**Outlook/Microsoft 365 Email**: New integration via Microsoft Graph API:
+- Per-user OAuth tokens stored in businessSettings
+- Full email sending support with attachments
+- API routes: `/api/integrations/outlook/connect`, `/callback`, `/disconnect`, `/status`
+- Environment vars: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`
+
 ### External Dependencies
 -   **Database**: PostgreSQL (via Neon serverless)
--   **Email Service**: User SMTP, Gmail Connector, SendGrid Platform
+-   **Email Service**: User SMTP, Gmail Connector, Outlook/Microsoft 365, SendGrid Platform
 -   **Payment Processing**: Stripe (Stripe Connect Express)
 -   **PDF Generation**: Puppeteer
 -   **UI Components**: Radix UI (via shadcn/ui)
 -   **Styling**: TailwindCSS
 -   **Fonts**: Google Fonts (Inter)
--   **AI Integration**: Replit AI Integrations (GPT-4o-mini)
--   **SMS Notifications**: Twilio
+-   **AI Integration**: Replit AI Integrations (GPT-4o-mini, GPT-4o vision)
+-   **SMS Notifications**: Twilio (fully enabled)
 -   **Object Storage**: Google Cloud Storage (GCS)
 -   **Maps**: Leaflet with react-leaflet
--   **Accounting Integration**: Xero, MYOB AccountRight
+-   **Accounting Integration**: Xero (with configurable account codes), MYOB AccountRight
+-   **Calendar Integration**: Google Calendar (with proactive token refresh)

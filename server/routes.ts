@@ -5529,6 +5529,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== Outlook/Microsoft 365 Email Integration ==========
+  
+  // Outlook OAuth - Start connection flow
+  app.post("/api/integrations/outlook/connect", requireAuth, async (req: any, res) => {
+    try {
+      const { getAuthorizationUrl, isOutlookConfigured } = await import('./outlookClient');
+      
+      if (!isOutlookConfigured()) {
+        return res.status(400).json({ error: "Outlook integration not configured. Set MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET." });
+      }
+      
+      const userContext = await getUserContext(req.userId);
+      const authUrl = getAuthorizationUrl(userContext.effectiveUserId);
+      
+      res.json({ authUrl });
+    } catch (error: any) {
+      console.error("Error starting Outlook OAuth:", error);
+      res.status(500).json({ error: error.message || "Failed to start Outlook connection" });
+    }
+  });
+  
+  // Outlook OAuth callback (with CSRF protection via signed state)
+  app.get("/api/integrations/outlook/callback", async (req: any, res) => {
+    try {
+      const { handleOAuthCallback, validateAndExtractState } = await import('./outlookClient');
+      
+      const { code, state, error: oauthError } = req.query;
+      
+      if (oauthError) {
+        console.error("[Outlook] OAuth error:", oauthError);
+        return res.redirect(`/integrations?error=${encodeURIComponent(oauthError as string)}`);
+      }
+      
+      if (!code || !state) {
+        return res.redirect('/integrations?error=missing_parameters');
+      }
+      
+      // Validate HMAC-signed state to prevent CSRF attacks
+      const stateValidation = validateAndExtractState(decodeURIComponent(state as string));
+      if (!stateValidation.valid || !stateValidation.userId) {
+        console.error("[Outlook] Invalid or expired OAuth state");
+        return res.redirect('/integrations?error=invalid_state');
+      }
+      
+      const result = await handleOAuthCallback(code as string, stateValidation.userId);
+      
+      if (result.success) {
+        res.redirect('/integrations?success=outlook_connected');
+      } else {
+        res.redirect(`/integrations?error=${encodeURIComponent(result.error || 'connection_failed')}`);
+      }
+    } catch (error: any) {
+      console.error("Error handling Outlook callback:", error);
+      res.redirect(`/integrations?error=${encodeURIComponent(error.message || 'callback_failed')}`);
+    }
+  });
+  
+  // Outlook disconnect
+  app.post("/api/integrations/outlook/disconnect", requireAuth, async (req: any, res) => {
+    try {
+      const { disconnectOutlook } = await import('./outlookClient');
+      
+      const userContext = await getUserContext(req.userId);
+      await disconnectOutlook(userContext.effectiveUserId);
+      
+      res.json({ success: true, message: "Outlook disconnected successfully" });
+    } catch (error: any) {
+      console.error("Error disconnecting Outlook:", error);
+      res.status(500).json({ error: error.message || "Failed to disconnect Outlook" });
+    }
+  });
+  
+  // Outlook connection status
+  app.get("/api/integrations/outlook/status", requireAuth, async (req: any, res) => {
+    try {
+      const { getConnectionInfo } = await import('./outlookClient');
+      
+      const userContext = await getUserContext(req.userId);
+      const status = await getConnectionInfo(userContext.effectiveUserId);
+      
+      res.json(status);
+    } catch (error: any) {
+      console.error("Error getting Outlook status:", error);
+      res.status(500).json({ error: error.message || "Failed to get Outlook status" });
+    }
+  });
+
   // Platform stats endpoint - returns beta status
   app.get("/api/platform/stats", async (req, res) => {
     res.json({
@@ -5581,6 +5668,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       googleAuth: {
         callbackUri: `${baseUrl}/api/auth/google/callback`,
         instructions: "Add this URI to your Google Cloud Console for authentication/login OAuth"
+      },
+      outlook: {
+        callbackUri: `${baseUrl}/api/integrations/outlook/callback`,
+        instructions: "Add this URI to your Microsoft Azure App Registration under Authentication > Redirect URIs (Web)"
       }
     });
   });

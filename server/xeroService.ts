@@ -251,6 +251,11 @@ export async function syncInvoicesToXero(userId: string): Promise<{ synced: numb
 
         const lineItems = await storage.getInvoiceLineItems(invoice.id);
         
+        // Get business settings for configurable Xero account codes
+        const businessSettings = await storage.getBusinessSettings(userId);
+        const salesAccountCode = businessSettings?.xeroSalesAccountCode || "200";
+        const taxType = businessSettings?.xeroTaxType || "OUTPUT";
+        
         const invoiceDate = (invoice as any).issueDate || invoice.createdAt;
         const xeroInvoice = {
           type: "ACCREC" as any, // Xero invoice type
@@ -262,7 +267,8 @@ export async function syncInvoicesToXero(userId: string): Promise<{ synced: numb
             description: item.description,
             quantity: parseFloat(item.quantity || "1"),
             unitAmount: parseFloat(item.unitPrice || "0"),
-            accountCode: "200",
+            accountCode: salesAccountCode,
+            taxType: taxType,
           })),
           date: invoiceDate ? new Date(invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split('T')[0] : undefined,
@@ -340,6 +346,11 @@ export async function syncSingleInvoiceToXero(userId: string, invoiceId: string)
 
     const lineItems = await storage.getInvoiceLineItems(invoice.id);
     
+    // Get business settings for configurable Xero account codes
+    const businessSettings = await storage.getBusinessSettings(userId);
+    const salesAccountCode = businessSettings?.xeroSalesAccountCode || "200";
+    const taxType = businessSettings?.xeroTaxType || "OUTPUT";
+    
     const invoiceDate = (invoice as any).issueDate || invoice.createdAt;
     const xeroInvoice = {
       type: "ACCREC" as any, // Xero invoice type
@@ -351,7 +362,8 @@ export async function syncSingleInvoiceToXero(userId: string, invoiceId: string)
         description: item.description,
         quantity: parseFloat(item.quantity || "1"),
         unitAmount: parseFloat(item.unitPrice || "0"),
-        accountCode: "200",
+        accountCode: salesAccountCode,
+        taxType: taxType,
       })),
       date: invoiceDate ? new Date(invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split('T')[0] : undefined,
@@ -413,13 +425,17 @@ export async function markInvoicePaidInXero(userId: string, invoiceId: string): 
 
     xero.setTokenSet(tokenSet);
 
+    // Get business settings for configurable bank account code
+    const businessSettings = await storage.getBusinessSettings(userId);
+    const bankAccountCode = businessSettings?.xeroBankAccountCode || "090";
+    
     // Create a payment in Xero to mark the invoice as paid
     const payment = {
       invoice: {
         invoiceID: invoice.xeroInvoiceId,
       },
       account: {
-        code: "090", // Default bank account code - typically "Business Bank Account"
+        code: bankAccountCode, // Configurable bank account code
       },
       date: new Date().toISOString().split('T')[0],
       amount: parseFloat(invoice.total || "0"),
@@ -569,6 +585,11 @@ export async function syncQuoteToXero(userId: string, quoteId: string): Promise<
 
     const lineItems = await storage.getQuoteLineItems(quoteId);
     
+    // Get business settings for configurable Xero account codes
+    const businessSettings = await storage.getBusinessSettings(userId);
+    const salesAccountCode = businessSettings?.xeroSalesAccountCode || "200";
+    const taxType = businessSettings?.xeroTaxType || "OUTPUT";
+    
     // Create as DRAFT invoice in Xero (quotes are drafts until accepted)
     const xeroInvoice = {
       type: "ACCREC" as any,
@@ -580,8 +601,8 @@ export async function syncQuoteToXero(userId: string, quoteId: string): Promise<
         description: item.description,
         quantity: parseFloat(item.quantity || "1"),
         unitAmount: parseFloat(item.unitPrice || "0"),
-        accountCode: "200", // Default sales account
-        taxType: "OUTPUT", // GST on sales (Australia)
+        accountCode: salesAccountCode,
+        taxType: taxType,
       })),
       date: new Date().toISOString().split('T')[0],
       reference: `Quote: ${quote.number || (quote as any).quoteNumber}`,

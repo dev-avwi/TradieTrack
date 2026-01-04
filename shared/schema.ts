@@ -406,6 +406,17 @@ export const businessSettings = pgTable("business_settings", {
   googleCalendarRefreshToken: text("google_calendar_refresh_token"),
   googleCalendarTokenExpiry: timestamp("google_calendar_token_expiry"),
   googleCalendarEmail: text("google_calendar_email"),
+  // Xero Integration Settings (configurable account codes)
+  xeroSalesAccountCode: text("xero_sales_account_code").default('200'), // Default sales revenue account
+  xeroBankAccountCode: text("xero_bank_account_code").default('090'), // Default bank account for payments
+  xeroExpenseAccountCode: text("xero_expense_account_code").default('400'), // Default expense account
+  xeroTaxType: text("xero_tax_type").default('OUTPUT'), // GST on sales (Australia)
+  // Outlook/Microsoft 365 Integration
+  outlookConnected: boolean("outlook_connected").default(false),
+  outlookAccessToken: text("outlook_access_token"),
+  outlookRefreshToken: text("outlook_refresh_token"),
+  outlookTokenExpiry: timestamp("outlook_token_expiry"),
+  outlookEmail: text("outlook_email"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

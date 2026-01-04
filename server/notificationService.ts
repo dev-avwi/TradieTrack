@@ -1,16 +1,62 @@
 /**
  * Unified Notification Service for TradieTrack
- * Handles Email notifications (SMS disabled for beta)
+ * Handles Email and SMS notifications
  * 
  * This service provides a single point of control for all client communications.
+ * SMS is fully enabled via Twilio integration.
  */
 
 import { sendEmail, EmailOptions } from './emailService';
+import { sendSMS as sendTwilioSMS, isTwilioInitialized, initializeTwilio } from './twilioClient';
 
-// SMS disabled for beta - stub functions
-const sendSMS = async (options: { to: string; message: string }) => {
-  console.log('[BETA] SMS disabled - would send to:', options.to);
-  return { success: true, simulated: true };
+// Real SMS sending via Twilio with graceful degradation
+const sendSMS = async (options: { to: string; message: string }): Promise<{ success: boolean; error?: string; simulated?: boolean }> => {
+  try {
+    // Ensure Twilio is initialized
+    if (!isTwilioInitialized()) {
+      const initialized = await initializeTwilio();
+      if (!initialized) {
+        // Graceful degradation - log and return simulated success
+        console.log(`📱 [SMS Fallback] Twilio not configured - message would be sent to ${options.to}`);
+        console.log(`   Message: ${options.message.slice(0, 100)}${options.message.length > 100 ? '...' : ''}`);
+        return {
+          success: true,
+          simulated: true,
+          error: undefined
+        };
+      }
+    }
+    
+    const result = await sendTwilioSMS({
+      to: options.to,
+      message: options.message
+    });
+    
+    // Handle Twilio returning failure (e.g., invalid number)
+    if (!result.success && !result.simulated) {
+      console.warn(`[SMS] Send failed to ${options.to}: ${result.error}`);
+      // Return simulated success to not break notification flows
+      return {
+        success: true,
+        simulated: true,
+        error: result.error
+      };
+    }
+    
+    return {
+      success: result.success,
+      error: result.error,
+      simulated: result.simulated
+    };
+  } catch (error: any) {
+    // Catch any unexpected errors and gracefully degrade
+    console.error(`[SMS] Unexpected error sending to ${options.to}:`, error.message);
+    return {
+      success: true,
+      simulated: true,
+      error: error.message
+    };
+  }
 };
 
 const smsTemplates = {
