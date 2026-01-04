@@ -80,6 +80,7 @@ export default function InvoiceDetailScreen() {
   const [paymentReference, setPaymentReference] = useState('');
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
   const [isSendingInvoice, setIsSendingInvoice] = useState(false);
+  const [isSendingPaymentLinkEmail, setIsSendingPaymentLinkEmail] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
   
@@ -662,6 +663,33 @@ export default function InvoiceDetailScreen() {
       });
     } catch (error) {
       Alert.alert('Share Payment Link', paymentUrl);
+    }
+  };
+
+  const handleEmailPaymentLink = async () => {
+    if (!invoice || !client?.email || isSendingPaymentLinkEmail) return;
+    
+    const paymentUrl = getPaymentLinkUrl();
+    if (!paymentUrl) {
+      Alert.alert('No Payment Link', 'Please generate a payment link first before emailing it.');
+      return;
+    }
+    
+    setIsSendingPaymentLinkEmail(true);
+    try {
+      const response = await api.post<{ message?: string }>(`/api/invoices/${id}/send-payment-link`);
+      
+      if (response.error) {
+        Alert.alert('Error', response.error);
+      } else {
+        const message = response.data?.message || `Payment link emailed to ${client.email}`;
+        Alert.alert('Payment Link Sent', message);
+      }
+    } catch (error) {
+      console.log('Error sending payment link email:', error);
+      Alert.alert('Error', 'Failed to send payment link. Please try again.');
+    } finally {
+      setIsSendingPaymentLinkEmail(false);
     }
   };
 
@@ -1585,6 +1613,20 @@ export default function InvoiceDetailScreen() {
                             <Feather name="copy" size={16} color={colors.primary} />
                             <Text style={styles.copyLinkButtonText}>Copy</Text>
                           </TouchableOpacity>
+                          {client?.email && (
+                            <TouchableOpacity 
+                              style={styles.copyLinkButton}
+                              onPress={handleEmailPaymentLink}
+                              disabled={isSendingPaymentLinkEmail}
+                            >
+                              {isSendingPaymentLinkEmail ? (
+                                <ActivityIndicator size="small" color={colors.primary} />
+                              ) : (
+                                <Feather name="mail" size={16} color={colors.primary} />
+                              )}
+                              <Text style={styles.copyLinkButtonText}>Email</Text>
+                            </TouchableOpacity>
+                          )}
                         </View>
                       </View>
                     ) : (
