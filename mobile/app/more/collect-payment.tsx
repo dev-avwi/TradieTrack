@@ -677,7 +677,10 @@ export default function CollectScreen() {
       const invoice = invoices.find(i => i.id === invoiceId);
       if (invoice) {
         const client = clients.find(c => c.id === invoice.clientId);
-        const amountDue = (invoice.total || 0) - (invoice.amountPaid || 0);
+        // Parse amounts - database stores dollars as strings
+        const invoiceTotal = typeof invoice.total === 'string' ? parseFloat(invoice.total) : (invoice.total || 0);
+        const invoicePaid = typeof invoice.amountPaid === 'string' ? parseFloat(invoice.amountPaid) : (invoice.amountPaid || 0);
+        const invoiceAmountDue = invoiceTotal - invoicePaid;
         
         setSelectedInvoice({
           id: invoice.id,
@@ -686,12 +689,12 @@ export default function CollectScreen() {
           clientName: client?.name || 'Unknown Client',
           clientEmail: client?.email,
           clientPhone: client?.phone,
-          total: invoice.total || 0,
-          amountPaid: invoice.amountPaid || 0,
-          amountDue,
+          total: invoiceTotal,
+          amountPaid: invoicePaid,
+          amountDue: invoiceAmountDue,
         });
         
-        setAmount((amountDue / 100).toFixed(2));
+        setAmount(invoiceAmountDue.toFixed(2));
         setDescription(`Payment for ${invoice.invoiceNumber}`);
         hasAutoSelectedInvoice.current = true;
       }
@@ -713,7 +716,10 @@ export default function CollectScreen() {
   // Handle collecting payment for a specific invoice
   const handleCollectForInvoice = (invoice: any) => {
     const client = getClient(invoice.clientId);
-    const amountDue = (invoice.total || 0) - (invoice.amountPaid || 0);
+    // Parse amounts - database stores dollars as strings
+    const invoiceTotal = typeof invoice.total === 'string' ? parseFloat(invoice.total) : (invoice.total || 0);
+    const invoicePaid = typeof invoice.amountPaid === 'string' ? parseFloat(invoice.amountPaid) : (invoice.amountPaid || 0);
+    const amountDue = invoiceTotal - invoicePaid;
     
     setSelectedInvoice({
       id: invoice.id,
@@ -722,13 +728,13 @@ export default function CollectScreen() {
       clientName: client?.name || 'Unknown Client',
       clientEmail: client?.email,
       clientPhone: client?.phone,
-      total: invoice.total || 0,
-      amountPaid: invoice.amountPaid || 0,
+      total: invoiceTotal,
+      amountPaid: invoicePaid,
       amountDue,
     });
     
     // Pre-fill the amount and description
-    setAmount((amountDue / 100).toFixed(2));
+    setAmount(amountDue.toFixed(2));
     setDescription(`Payment for ${invoice.invoiceNumber}`);
   };
 
@@ -739,12 +745,18 @@ export default function CollectScreen() {
     setDescription('');
   };
 
-  const formatCurrency = (amount: number) => {
-    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
+  const formatCurrency = (amount: number | string) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(num)) return '$0.00';
+    return `$${num.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const pendingInvoices = invoices.filter(i => i.status === 'sent' || i.status === 'overdue');
-  const totalPending = pendingInvoices.reduce((sum, i) => sum + ((i.total || 0) - (i.amountPaid || 0)), 0);
+  const totalPending = pendingInvoices.reduce((sum, i) => {
+    const total = typeof i.total === 'string' ? parseFloat(i.total) : (i.total || 0);
+    const paid = typeof i.amountPaid === 'string' ? parseFloat(i.amountPaid) : (i.amountPaid || 0);
+    return sum + (total - paid);
+  }, 0);
   const overdueCount = invoices.filter(i => i.status === 'overdue').length;
 
   const getAmountInCents = (): number => {
@@ -822,7 +834,7 @@ export default function CollectScreen() {
 
       await api.post('/api/payments/send-receipt', {
         email: recipientEmail,
-        amount: lastPaymentAmount,
+        amount: lastPaymentAmount / 100, // Convert cents to dollars for API
         description: description || 'Payment received',
         invoiceId: selectedInvoice?.id,
         invoiceNumber: selectedInvoice?.invoiceNumber,
@@ -853,7 +865,7 @@ export default function CollectScreen() {
 
       await api.post('/api/payments/send-receipt', {
         phone: recipientPhone,
-        amount: lastPaymentAmount,
+        amount: lastPaymentAmount / 100, // Convert cents to dollars for API
         description: description || 'Payment received',
         invoiceId: selectedInvoice?.id,
         invoiceNumber: selectedInvoice?.invoiceNumber,
