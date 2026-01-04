@@ -19,6 +19,7 @@ import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { useWorkerPermission } from '../../src/hooks/useWorkerPermission';
 import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { XeroBadge } from '../../src/components/ui/XeroBadge';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
@@ -933,8 +934,9 @@ function TodayJobCard({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.9}
-      style={styles.jobCard}
+      style={[styles.jobCard, job.isXeroImport && { overflow: 'visible' }]}
     >
+      {job.isXeroImport && <XeroBadge size="sm" />}
       {/* Left Accent Bar */}
       <View style={[styles.jobCardAccent, { backgroundColor: getAccentColor() }]} />
       

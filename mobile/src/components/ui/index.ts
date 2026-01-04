@@ -3,3 +3,4 @@ export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 export { Badge } from './Badge';
 export { Input } from './Input';
 export { StatusBadge } from './StatusBadge';
+export { XeroBadge } from './XeroBadge';

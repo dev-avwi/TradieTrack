@@ -17,6 +17,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { api, API_URL } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { XeroBadge } from '../../src/components/ui/XeroBadge';
 import { EmailComposeModal } from '../../src/components/EmailComposeModal';
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'paid' | 'overdue' | 'recurring' | 'archived';
@@ -83,10 +84,11 @@ function InvoiceCard({
 
   return (
     <TouchableOpacity 
-      style={styles.invoiceCard}
+      style={[styles.invoiceCard, invoice.isXeroImport && { overflow: 'visible' }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
+      {invoice.isXeroImport && <XeroBadge size="sm" />}
       <View style={styles.invoiceCardContent}>
         {/* Main row: Left info + Right amount/actions */}
         <View style={styles.cardMainRow}>

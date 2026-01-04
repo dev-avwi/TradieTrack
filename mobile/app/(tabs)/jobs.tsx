@@ -18,6 +18,7 @@ import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { XeroBadge } from '../../src/components/ui/XeroBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
@@ -225,8 +226,9 @@ function JobCard({
   return (
     <AnimatedCardPressable
       onPress={onPress}
-      style={styles.jobCard}
+      style={[styles.jobCard, job.isXeroImport && { overflow: 'visible' }]}
     >
+      {job.isXeroImport && <XeroBadge size="sm" />}
       <View style={styles.jobCardContent}>
         <View style={styles.jobCardStatusRow}>
           <StatusBadge status={job.status} size="sm" />

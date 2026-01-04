@@ -17,6 +17,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { api, API_URL } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { XeroBadge } from '../../src/components/ui/XeroBadge';
 import { EmailComposeModal } from '../../src/components/EmailComposeModal';
 
 type FilterKey = 'all' | 'draft' | 'sent' | 'accepted' | 'rejected' | 'archived';
@@ -119,10 +120,11 @@ function QuoteCard({
 
   return (
     <TouchableOpacity 
-      style={styles.quoteCard}
+      style={[styles.quoteCard, quote.isXeroImport && { overflow: 'visible' }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
+      {quote.isXeroImport && <XeroBadge size="sm" />}
       <View style={styles.quoteCardContent}>
         {/* Main row: Left info + Right amount/actions */}
         <View style={styles.cardMainRow}>
