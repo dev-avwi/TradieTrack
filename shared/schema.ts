@@ -417,6 +417,26 @@ export const businessSettings = pgTable("business_settings", {
   outlookRefreshToken: text("outlook_refresh_token"),
   outlookTokenExpiry: timestamp("outlook_token_expiry"),
   outlookEmail: text("outlook_email"),
+  // Structured Bank Account Details (for bank transfer payments)
+  bankBsb: text("bank_bsb"), // Australian BSB (6 digits)
+  bankAccountNumber: text("bank_account_number"), // Account number
+  bankAccountName: text("bank_account_name"), // Account holder name (e.g., "Mike's Plumbing Pty Ltd")
+  // Payment Method Preferences
+  acceptCardPayments: boolean("accept_card_payments").default(true), // Accept Stripe card payments
+  acceptBankTransfer: boolean("accept_bank_transfer").default(true), // Accept manual bank transfers
+  acceptBecsDebit: boolean("accept_becs_debit").default(false), // Accept BECS Direct Debit (Australia)
+  acceptPayTo: boolean("accept_payto").default(false), // Accept PayTo real-time payments (Australia)
+  // Card Surcharge Settings (fee pass-through to reduce costs)
+  enableCardSurcharge: boolean("enable_card_surcharge").default(false), // Pass card fees to customer
+  cardSurchargePercent: decimal("card_surcharge_percent", { precision: 4, scale: 2 }).default('1.95'), // Default 1.95%
+  cardSurchargeFixedCents: integer("card_surcharge_fixed_cents").default(30), // Fixed fee component (30 cents)
+  surchargeDisclaimer: text("surcharge_disclaimer"), // Custom disclaimer text for invoices
+  // Early Payment Discount (incentivize bank transfer over card)
+  enableEarlyPaymentDiscount: boolean("enable_early_payment_discount").default(false),
+  earlyPaymentDiscountPercent: decimal("early_payment_discount_percent", { precision: 4, scale: 2 }).default('2.00'), // 2% discount
+  earlyPaymentDiscountDays: integer("early_payment_discount_days").default(7), // If paid within 7 days
+  // Default Payment Method for invoices
+  defaultPaymentMethod: text("default_payment_method").default('card'), // 'card', 'bank_transfer', 'becs', 'payto'
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
