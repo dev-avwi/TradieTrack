@@ -15,7 +15,7 @@ Key architectural and design decisions include:
 -   **Adaptive Solo/Team Mode**: Features adjust (e.g., time tracking, GPS check-in) based on the business's team size.
 -   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators, professional confirmation emails, and rollback capabilities.
 -   **Live Quote/Invoice Editor**: Real-time preview with templates, catalog items, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
--   **Payment Collection**: Features Stripe Payment Links, a dedicated "Tap to Pay Request Flow" for in-person payments, QR code support, comprehensive receipt generation, and a "Record Payment" button.
+-   **Payment Collection**: Features Stripe Payment Links, a dedicated "Tap to Pay Request Flow" for in-person payments, QR code support, comprehensive receipt generation, "Record Payment" button, and **Quick Collect Payment** for on-site collection directly from accepted quotes.
 -   **Quote Acceptance Flow**: Automates job status updates upon client acceptance, with a "Create Job" button to convert accepted quotes into jobs.
 -   **Subscription & Billing System**: Three-tier pricing (Free, Pro, Team) with trials, Stripe checkout, and automated reminders.
 -   **Email Automation**: SendGrid integration for customizable invoice/quote emails with AI suggestions.
@@ -122,6 +122,7 @@ This section documents the complete business workflow from initial customer cont
 
 | Method | Availability | Best For |
 |--------|--------------|----------|
+| Quick Collect | Web & Mobile | Fast on-site collection from accepted quotes (no invoice required) |
 | Tap to Pay (NFC) | Mobile only (iPhone XS+) | In-person after job |
 | QR Code | Web & Mobile | In-person, customer has phone |
 | Payment Link | Web & Mobile | Remote payment via SMS/email |
@@ -129,6 +130,13 @@ This section documents the complete business workflow from initial customer cont
 | Bank Transfer | Web & Mobile | Direct deposits |
 
 ### Recent Updates (January 2026)
+
+**Quick Collect Payment Feature**: New on-site payment collection directly from accepted quotes without requiring a separate invoice step. Available on both web and mobile:
+- Shows on jobs with status 'done' or 'in_progress' that have an accepted quote but no invoice
+- Supports cash, card, and bank transfer payment methods
+- Auto-creates paid invoice and receipt in one step
+- Backend API: `/api/jobs/:id/quick-collect`
+- Mobile parity: Full implementation in mobile/app/job/[id].tsx with native UI
 
 **SMS Notifications**: Full Twilio integration enabled via twilioClient.ts - notificationService now uses real SMS instead of stub.
 

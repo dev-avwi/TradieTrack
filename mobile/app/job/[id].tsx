@@ -940,6 +940,89 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
+  // Quick Collect Payment Styles
+  quickCollectCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    ...shadows.sm,
+  },
+  quickCollectHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  quickCollectIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  quickCollectTitleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  quickCollectTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  quickCollectBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.md,
+  },
+  quickCollectBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  quickCollectDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: spacing.md,
+  },
+  quickCollectAmountBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    marginBottom: spacing.md,
+  },
+  quickCollectAmountLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  quickCollectAmountValue: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  quickCollectButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  quickCollectButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+  },
+  quickCollectButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   activityCard: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
@@ -2471,6 +2554,71 @@ export default function JobDetailScreen() {
     );
   };
 
+  // Quick Collect Payment - for collecting payment directly from accepted quote without invoice
+  const [isQuickCollecting, setIsQuickCollecting] = useState(false);
+  
+  const handleQuickCollect = async (paymentMethod: 'cash' | 'card' | 'bank_transfer') => {
+    if (!quote || !job || quote.status !== 'accepted') {
+      Alert.alert('Error', 'An accepted quote is required for quick payment');
+      return;
+    }
+    
+    if (isQuickCollecting) return; // Prevent duplicate submissions
+
+    const total = typeof quote.total === 'number' ? quote.total : parseFloat(String(quote.total) || '0');
+    const formatAmount = (amount: number) => 
+      new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
+
+    const methodLabels: Record<string, string> = {
+      cash: 'Cash',
+      card: 'Card',
+      bank_transfer: 'Bank Transfer',
+    };
+
+    Alert.alert(
+      'Quick Collect Payment',
+      `Collect ${formatAmount(total)} via ${methodLabels[paymentMethod]}?\n\nThis will automatically create an invoice marked as paid and generate a receipt.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Collect Payment',
+          onPress: async () => {
+            setIsQuickCollecting(true);
+            try {
+              const response = await api.post<{ receiptId: string; invoiceId: string }>(`/api/jobs/${job.id}/quick-collect`, {
+                quoteId: quote.id,
+                paymentMethod,
+                amount: String(total.toFixed(2)),
+              });
+              
+              if (response.error) {
+                Alert.alert('Error', response.error);
+                return;
+              }
+              
+              Alert.alert(
+                'Payment Collected!',
+                `${formatAmount(total)} collected successfully.\n\nInvoice and receipt have been created.`,
+                [
+                  {
+                    text: 'View Receipt',
+                    onPress: () => response.data?.receiptId && router.push(`/more/receipt/${response.data.receiptId}`),
+                  },
+                  { text: 'OK', style: 'cancel' },
+                ]
+              );
+              handleRefresh();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to collect payment');
+            } finally {
+              setIsQuickCollecting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
@@ -3602,6 +3750,70 @@ export default function JobDetailScreen() {
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />
+
+      {/* Quick Collect Payment - Shows when job is done/in_progress with accepted quote but no invoice yet */}
+      {(job.status === 'done' || job.status === 'in_progress') && quote && quote.status === 'accepted' && !invoice && canCollectPayments && (
+        <View style={[styles.quickCollectCard, { borderColor: colors.cardBorder }]}>
+          <View style={styles.quickCollectHeader}>
+            <View style={[styles.quickCollectIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.15) }]}>
+              <Feather name="credit-card" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <View style={styles.quickCollectTitleContainer}>
+              <Text style={[styles.quickCollectTitle, { color: colors.foreground }]}>Collect Payment Now</Text>
+              <View style={[styles.quickCollectBadge, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.quickCollectBadgeText, { color: colors.mutedForeground }]}>Based on quote</Text>
+              </View>
+            </View>
+          </View>
+          <Text style={[styles.quickCollectDescription, { color: colors.mutedForeground }]}>
+            Collect payment using the accepted quote amount. Invoice and receipt will be created automatically.
+          </Text>
+          <View style={[styles.quickCollectAmountBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.quickCollectAmountLabel, { color: colors.mutedForeground }]}>Quote total</Text>
+            <Text style={[styles.quickCollectAmountValue, { color: colors.primary }]}>
+              {formatCurrency(typeof quote.total === 'number' ? quote.total : parseFloat(String(quote.total) || '0'))}
+            </Text>
+          </View>
+          <View style={styles.quickCollectButtons}>
+            <TouchableOpacity
+              style={[styles.quickCollectButton, { backgroundColor: colors.primary }, isQuickCollecting && { opacity: 0.6 }]}
+              onPress={() => handleQuickCollect('cash')}
+              activeOpacity={0.8}
+              disabled={isQuickCollecting}
+              data-testid="button-quick-collect-cash"
+            >
+              {isQuickCollecting ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+              ) : (
+                <>
+                  <Feather name="dollar-sign" size={iconSizes.md} color={colors.primaryForeground} />
+                  <Text style={[styles.quickCollectButtonText, { color: colors.primaryForeground }]}>Cash</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.quickCollectButton, { backgroundColor: colors.muted }, isQuickCollecting && { opacity: 0.6 }]}
+              onPress={() => handleQuickCollect('card')}
+              activeOpacity={0.8}
+              disabled={isQuickCollecting}
+              data-testid="button-quick-collect-card"
+            >
+              <Feather name="credit-card" size={iconSizes.md} color={colors.foreground} />
+              <Text style={[styles.quickCollectButtonText, { color: colors.foreground }]}>Card</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.quickCollectButton, { backgroundColor: colors.muted }, isQuickCollecting && { opacity: 0.6 }]}
+              onPress={() => handleQuickCollect('bank_transfer')}
+              activeOpacity={0.8}
+              disabled={isQuickCollecting}
+              data-testid="button-quick-collect-bank"
+            >
+              <Feather name="home" size={iconSizes.md} color={colors.foreground} />
+              <Text style={[styles.quickCollectButtonText, { color: colors.foreground }]}>Bank</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Payment Collection Card - for collecting payment on invoiced jobs */}
       <PaymentCollectionCard

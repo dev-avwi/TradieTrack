@@ -17,6 +17,7 @@ import EmailTemplateEditor, { EmailTemplate } from "./EmailTemplateEditor";
 import GeofenceSettingsCard from "./GeofenceSettingsCard";
 import { LinkedDocumentsCard } from "./JobWorkflowComponents";
 import JobFlowWizard from "@/components/JobFlowWizard";
+import QuickCollectPayment from "./QuickCollectPayment";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -164,6 +165,7 @@ export default function JobDetailView({
   const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
   const [rollbackTargetStatus, setRollbackTargetStatus] = useState<JobStatus | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showQuickCollect, setShowQuickCollect] = useState(false);
   
   // Update current time every second for live timer display
   useEffect(() => {
@@ -999,6 +1001,41 @@ export default function JobDetailView({
           />
         )}
 
+        {/* Quick Collect Payment - Shows when job is done/in_progress with accepted quote but no invoice yet */}
+        {(job.status === 'done' || job.status === 'in_progress') && linkedQuote && linkedQuote.status === 'accepted' && !linkedInvoice && (
+          <Card className="border-trade/30 bg-trade/5" data-testid="card-quick-collect">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                  Collect Payment Now
+                </CardTitle>
+                <Badge variant="secondary" className="text-xs">Based on quote</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-3">
+                Collect payment immediately using the accepted quote amount. An invoice and receipt will be created automatically.
+              </p>
+              <div className="flex items-center justify-between mb-4 p-3 rounded-lg bg-background border">
+                <span className="text-sm text-muted-foreground">Quote total</span>
+                <span className="text-lg font-bold" style={{ color: 'hsl(var(--trade))' }}>
+                  ${parseFloat(linkedQuote.total as string || '0').toFixed(2)}
+                </span>
+              </div>
+              <Button
+                className="w-full"
+                style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+                onClick={() => setShowQuickCollect(true)}
+                data-testid="button-quick-collect-open"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Quick Collect Payment
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Collect Payment Section - Shows when invoice is unpaid */}
         {linkedInvoice && !isTradie && (linkedInvoice.status === 'sent' || linkedInvoice.status === 'overdue' || linkedInvoice.status === 'partial') && (
           <Card data-testid="card-collect-payment">
@@ -1812,6 +1849,24 @@ export default function JobDetailView({
         }}
         hasSafetyForms={hasSafetyForms && !hasCompletedSafetyForm}
       />
+
+      {/* Quick Collect Payment Modal */}
+      {linkedQuote && linkedQuote.status === 'accepted' && client && (
+        <QuickCollectPayment
+          open={showQuickCollect}
+          onOpenChange={setShowQuickCollect}
+          jobId={jobId}
+          jobTitle={job?.title || 'Job'}
+          quoteId={linkedQuote.id}
+          quoteTotal={linkedQuote.total as string || '0'}
+          quoteGst={(parseFloat(linkedQuote.total as string || '0') * 0.0909).toFixed(2)}
+          clientName={client.name}
+          clientId={client.id}
+          onSuccess={(receiptId) => {
+            navigate(`/receipts/${receiptId}`);
+          }}
+        />
+      )}
     </PageShell>
   );
 }

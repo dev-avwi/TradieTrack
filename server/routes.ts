@@ -7781,6 +7781,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Quick Collect Payment - collect payment at job site without full invoice workflow
+  app.post("/api/jobs/:id/quick-collect", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { quoteId, paymentMethod, amount, notes } = req.body;
+      
+      // Validate inputs
+      if (!quoteId || !paymentMethod || !amount) {
+        return res.status(400).json({ error: "Missing required fields: quoteId, paymentMethod, amount" });
+      }
+      
+      const validMethods = ['cash', 'card', 'bank_transfer', 'stripe_link'];
+      if (!validMethods.includes(paymentMethod)) {
+        return res.status(400).json({ error: "Invalid payment method" });
+      }
+
+      // Get the job
+      const job = await storage.getJob(req.params.id, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      // Get the quote
+      const quote = await storage.getQuote(quoteId, userContext.effectiveUserId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+
+      // Verify quote is accepted
+      if (quote.status !== 'accepted') {
+        return res.status(400).json({ error: "Only accepted quotes can be used for quick payment" });
+      }
+
+      // Get client
+      const client = await storage.getClient(quote.clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Handle Stripe payment link flow
+      if (paymentMethod === 'stripe_link') {
+        // For stripe_link, create a payment request and send it
+        try {
+          const paymentRequest = await storage.createPaymentRequest({
+            clientId: client.id,
+            amount: amount,
+            type: 'payment_link',
+            status: 'pending',
+            notes: notes || `Quick payment for ${job.title}`,
+          }, userContext.effectiveUserId);
+
+          // Create Stripe payment link if Stripe is available
+          if (isStripeInitialized()) {
+            const stripe = getUncachableStripeClient();
+            const host = req.get('host') || 'localhost';
+            const protocol = req.get('x-forwarded-proto') || (host.includes('replit') ? 'https' : 'http');
+            
+            const session = await stripe.checkout.sessions.create({
+              mode: 'payment',
+              line_items: [{
+                price_data: {
+                  currency: 'aud',
+                  product_data: {
+                    name: job.title || 'Job Payment',
+                    description: `Payment for ${job.title}${job.address ? ` at ${job.address}` : ''}`,
+                  },
+                  unit_amount: Math.round(parseFloat(amount) * 100),
+                },
+                quantity: 1,
+              }],
+              success_url: `${protocol}://${host}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+              cancel_url: `${protocol}://${host}/jobs/${job.id}`,
+              metadata: {
+                jobId: job.id,
+                quoteId: quote.id,
+                clientId: client.id,
+                paymentRequestId: paymentRequest.id,
+                quickCollect: 'true',
+              },
+            });
+
+            // Update payment request with Stripe link
+            await storage.updatePaymentRequest(paymentRequest.id, {
+              paymentLink: session.url,
+              stripeSessionId: session.id,
+            }, userContext.effectiveUserId);
+
+            // Send SMS with payment link if client has phone
+            if (client.phone) {
+              const business = await storage.getBusinessSettings(userContext.effectiveUserId);
+              const message = `Hi ${client.firstName || 'there'}, here's your payment link for ${job.title || 'your recent job'} from ${business?.businessName || 'your tradesperson'}: ${session.url}. Amount: $${parseFloat(amount).toFixed(2)}`;
+              await sendSMS({ to: client.phone, message });
+            }
+
+            return res.json({
+              success: true,
+              paymentLinkSent: true,
+              paymentRequestId: paymentRequest.id,
+              paymentLink: session.url,
+            });
+          } else {
+            return res.status(400).json({ error: "Stripe is not configured for payment links" });
+          }
+        } catch (stripeError: any) {
+          console.error("Stripe payment link error:", stripeError);
+          return res.status(500).json({ error: `Failed to create payment link: ${stripeError.message}` });
+        }
+      }
+
+      // For immediate payment methods (cash, card, bank_transfer), create invoice + receipt
+      const parsedAmount = parseFloat(amount);
+      const gstRate = 0.10; // Australian GST
+      const gstAmount = parsedAmount - (parsedAmount / (1 + gstRate));
+      const subtotal = parsedAmount - gstAmount;
+
+      // Get quote line items to copy to invoice
+      const quoteLineItems = await storage.getQuoteLineItems(quoteId);
+
+      // Generate invoice number
+      const existingInvoices = await storage.getInvoices(userContext.effectiveUserId);
+      const year = new Date().getFullYear();
+      const invoiceCount = existingInvoices.length + 1;
+      const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const invoiceNumber = `INV${year}-${String(invoiceCount).padStart(3, '0')}-${randomSuffix}`;
+
+      // Create invoice marked as paid
+      const invoice = await storage.createInvoice({
+        clientId: client.id,
+        jobId: job.id,
+        quoteId: quote.id,
+        number: invoiceNumber,
+        title: job.title || 'Job Payment',
+        description: notes || `Quick payment collected for ${job.title}`,
+        status: 'paid',
+        subtotal: subtotal.toFixed(2),
+        gstAmount: gstAmount.toFixed(2),
+        total: parsedAmount.toFixed(2),
+        dueDate: new Date(),
+        sentAt: new Date(),
+        paidAt: new Date(),
+      }, userContext.effectiveUserId);
+
+      // Copy line items from quote to invoice
+      for (const item of quoteLineItems) {
+        await storage.createInvoiceLineItem({
+          invoiceId: invoice.id,
+          description: item.description,
+          quantity: String(item.quantity),
+          unitPrice: item.unitPrice,
+          total: item.total,
+        }, userContext.effectiveUserId);
+      }
+
+      // Generate receipt number
+      const existingReceipts = await storage.getReceipts(userContext.effectiveUserId);
+      const receiptCount = existingReceipts.length + 1;
+      const receiptNumber = `REC-${String(receiptCount).padStart(6, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+
+      // Create receipt
+      const receipt = await storage.createReceipt({
+        invoiceId: invoice.id,
+        clientId: client.id,
+        receiptNumber: receiptNumber,
+        amount: parsedAmount.toFixed(2),
+        gstAmount: gstAmount.toFixed(2),
+        paymentMethod: paymentMethod,
+        paidAt: new Date(),
+        notes: notes || `Quick collect at job site`,
+      }, userContext.effectiveUserId);
+
+      // Update job status to invoiced if not already
+      if (job.status === 'done') {
+        await storage.updateJob(job.id, {
+          status: 'invoiced',
+          invoicedAt: new Date(),
+        }, userContext.effectiveUserId);
+      }
+
+      // Log activity
+      await logActivity(
+        userContext.effectiveUserId,
+        'payment_received',
+        `Quick Payment Collected - ${job.title || 'Job'}`,
+        `$${parsedAmount.toFixed(2)} collected via ${paymentMethod} for ${client.firstName || client.email || 'client'}`,
+        'invoice',
+        invoice.id,
+        {
+          jobId: job.id,
+          quoteId: quote.id,
+          clientName: client.firstName || client.email,
+          amount: parsedAmount,
+          paymentMethod,
+          quickCollect: true,
+        }
+      );
+
+      res.json({
+        success: true,
+        invoiceId: invoice.id,
+        receiptId: receipt.id,
+        invoiceNumber: invoice.number,
+        receiptNumber: receipt.receiptNumber,
+        amount: parsedAmount,
+      });
+    } catch (error: any) {
+      console.error("Error in quick collect payment:", error);
+      res.status(500).json({ error: error.message || "Failed to collect payment" });
+    }
+  });
+
   app.delete("/api/jobs/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       // Use effectiveUserId (business owner's ID) for multi-tenant data scoping
