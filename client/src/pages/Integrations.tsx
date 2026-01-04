@@ -84,6 +84,13 @@ interface GoogleCalendarStatus {
   message?: string;
 }
 
+interface OutlookStatus {
+  configured: boolean;
+  connected: boolean;
+  email?: string;
+  message?: string;
+}
+
 interface MyobStatus {
   configured: boolean;
   connected: boolean;
@@ -604,6 +611,53 @@ export default function Integrations() {
     },
   });
 
+  // Outlook/Microsoft 365 integration queries and mutations
+  const { data: outlookStatus, refetch: refetchOutlook } = useQuery<OutlookStatus>({
+    queryKey: ['/api/integrations/outlook/status'],
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  const connectOutlookMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/outlook/connect');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to start Outlook connection",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disconnectOutlookMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/outlook/disconnect');
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Disconnected",
+        description: "Outlook has been disconnected successfully",
+      });
+      refetchOutlook();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to disconnect Outlook",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Twilio SMS integration queries and mutations
   const { data: twilioSettings, refetch: refetchTwilio } = useQuery<TwilioSettings>({
     queryKey: ['/api/settings/sms-branding'],
@@ -677,6 +731,14 @@ export default function Integrations() {
       });
       refetchXero();
       window.history.replaceState({}, '', '/integrations');
+    } else if (success === 'outlook_connected') {
+      setUrlParamsHandled(true);
+      toast({
+        title: "Outlook Connected",
+        description: "Your Outlook account has been successfully linked. Emails will now send from your account.",
+      });
+      refetchOutlook();
+      window.history.replaceState({}, '', '/integrations');
     } else if (error) {
       setUrlParamsHandled(true);
       toast({
@@ -685,12 +747,14 @@ export default function Integrations() {
           ? "Failed to connect to Xero. Please try again."
           : error === 'google_calendar_auth_failed'
           ? "Failed to connect to Google Calendar. Please try again."
+          : error === 'invalid_state' || error === 'outlook_auth_failed'
+          ? "Failed to connect to Outlook. Please try again."
           : `Connection error: ${error}`,
         variant: "destructive",
       });
       window.history.replaceState({}, '', '/integrations');
     }
-  }, [urlParamsHandled, toast, refetchGoogleCalendar, refetchXero]);
+  }, [urlParamsHandled, toast, refetchGoogleCalendar, refetchXero, refetchOutlook]);
 
   const handleOpenTwilioSetup = () => {
     // Pre-fill with existing values (don't show masked values in editable fields)
@@ -1334,6 +1398,136 @@ export default function Integrations() {
                 </div>
               </CollapsibleContent>
             </Collapsible>
+          </CardContent>
+        </Card>
+
+        {/* Outlook/Microsoft 365 Email Integration */}
+        <Card data-testid="card-outlook-integration">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  outlookStatus?.connected ? 'bg-blue-100 dark:bg-blue-900/50' :
+                  'bg-gray-100 dark:bg-gray-800/50'
+                }`}>
+                  <Mail className={`w-5 h-5 ${
+                    outlookStatus?.connected ? 'text-blue-600 dark:text-blue-400' :
+                    'text-gray-500 dark:text-gray-400'
+                  }`} />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Outlook / Microsoft 365</CardTitle>
+                  <p className="text-xs text-muted-foreground">Send emails from your Outlook account</p>
+                </div>
+              </div>
+              {outlookStatus?.connected ? (
+                <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Connected
+                </Badge>
+              ) : outlookStatus?.configured === false ? (
+                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                  Not Configured
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                  Not Connected
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-4">
+            {outlookStatus?.connected ? (
+              <>
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      {outlookStatus.email || 'Outlook Account'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Quotes and invoices will be sent from your Outlook account
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-foreground">Features enabled:</p>
+                  <ul className="text-xs text-muted-foreground space-y-1.5">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3 h-3 text-green-500" />
+                      Send quotes and invoices via Outlook
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3 h-3 text-green-500" />
+                      Emails appear from your business address
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3 h-3 text-green-500" />
+                      PDF attachments included
+                    </li>
+                  </ul>
+                </div>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => disconnectOutlookMutation.mutate()}
+                  disabled={disconnectOutlookMutation.isPending}
+                  className="w-full"
+                  data-testid="button-disconnect-outlook"
+                >
+                  {disconnectOutlookMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Link2Off className="w-4 h-4 mr-2" />
+                  )}
+                  Disconnect Outlook
+                </Button>
+              </>
+            ) : outlookStatus?.configured === false ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Outlook integration is not configured. Contact support to enable this feature.
+                </p>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                    <div className="text-xs text-muted-foreground">
+                      <p>Microsoft credentials must be configured by the platform administrator.</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Connect your Outlook or Microsoft 365 account to send quotes and invoices directly from your business email.
+                </p>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p><strong>Professional emails:</strong> Sent from your own email address</p>
+                      <p><strong>Works with:</strong> Outlook.com, Hotmail, Microsoft 365</p>
+                      <p><strong>Secure:</strong> We never store your password</p>
+                    </div>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => connectOutlookMutation.mutate()}
+                  disabled={connectOutlookMutation.isPending}
+                  className="w-full"
+                  data-testid="button-connect-outlook"
+                >
+                  {connectOutlookMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Mail className="w-4 h-4 mr-2" />
+                  )}
+                  Connect Outlook
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
