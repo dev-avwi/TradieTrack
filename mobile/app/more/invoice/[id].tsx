@@ -796,8 +796,22 @@ export default function InvoiceDetailScreen() {
       if (!uri) {
         throw new Error('Failed to generate PDF');
       }
-      setPdfUri(uri);
-      setShowShareSheet(true);
+      
+      // Directly open native share sheet (like receipts) for reliable saving
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Save Invoice ${invoice?.invoiceNumber}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        // Fallback: Copy to document directory
+        const fileName = `${invoice?.invoiceNumber || 'invoice'}.pdf`;
+        const destUri = `${FileSystem.documentDirectory}${fileName}`;
+        await FileSystem.copyAsync({ from: uri, to: destUri });
+        Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
+      }
     } catch (error: any) {
       console.log('PDF download error:', error);
       const message = error?.message || 'Failed to download PDF. Please try again.';
