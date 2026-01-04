@@ -1606,7 +1606,7 @@ export async function createDemoTeamMembers() {
     // Check if demo worker account needs to be updated (indicates config change)
     const existingTeamMembers = await storage.getTeamMembers(demoUser.id);
     const hasWorkerDemoAccount = existingTeamMembers.some(m => m.email === DEMO_WORKER.email);
-    const hasInvitedMembers = existingTeamMembers.some(m => m.inviteStatus === 'invited');
+    const hasInvitedMembers = existingTeamMembers.some(m => m.inviteStatus === 'pending');
     
     // Force reset if: team config changed (no worker account or no invited members)
     const needsReset = existingTeamMembers.length > 0 && (!hasWorkerDemoAccount || !hasInvitedMembers);
@@ -1704,7 +1704,7 @@ export async function createDemoTeamMembers() {
         lat: -16.8513, // Whitfield
         lng: 145.7109,
         statusMessage: 'Emergency callout',
-        inviteStatus: 'invited' as const, // Pending invite - for testing invite flow
+        inviteStatus: 'pending' as const, // Pending invite - for testing invite flow
       },
       {
         firstName: 'Emma',
@@ -1715,7 +1715,7 @@ export async function createDemoTeamMembers() {
         lat: -16.9187, // Cairns Esplanade
         lng: 145.7788,
         statusMessage: 'Lunch break',
-        inviteStatus: 'invited' as const, // Pending invite - for testing invite flow
+        inviteStatus: 'pending' as const, // Pending invite - for testing invite flow
       },
       {
         firstName: 'Trent',

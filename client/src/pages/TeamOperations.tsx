@@ -102,6 +102,7 @@ import {
   Navigation2,
   Car,
   MessageSquare,
+  RotateCcw,
 } from "lucide-react";
 import {
   Sheet,
@@ -1041,6 +1042,27 @@ function TeamAdminTab() {
     },
   });
 
+  const resendInviteMutation = useMutation({
+    mutationFn: async (memberId: string) => {
+      const response = await apiRequest('POST', `/api/team/members/${memberId}/resend-invite`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
+      toast({
+        title: "Invite resent",
+        description: "The invitation has been resent successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to resend invite",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const updatePermissionsMutation = useMutation({
     mutationFn: async ({ memberId, permissions, useCustomPermissions }: { memberId: string; permissions: string[]; useCustomPermissions: boolean }) => {
       const response = await apiRequest('PATCH', `/api/team/members/${memberId}/permissions`, { 
@@ -1116,13 +1138,16 @@ function TeamAdminTab() {
         member.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         member.email?.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const matchesStatus = statusFilter === "all" || member.inviteStatus === statusFilter;
+      // Handle 'pending' filter to also match legacy 'invited' status
+      const matchesStatus = statusFilter === "all" || 
+        member.inviteStatus === statusFilter ||
+        (statusFilter === "pending" && member.inviteStatus === "invited");
       
       return matchesSearch && matchesStatus;
     });
   }, [teamMembers, searchQuery, statusFilter]);
 
-  const pendingCount = teamMembers?.filter(m => m.inviteStatus === 'pending').length || 0;
+  const pendingCount = teamMembers?.filter(m => m.inviteStatus === 'pending' || m.inviteStatus === 'invited').length || 0;
   const activeCount = teamMembers?.filter(m => m.inviteStatus === 'accepted').length || 0;
 
   if (membersLoading || rolesLoading) {
@@ -1173,14 +1198,43 @@ function TeamAdminTab() {
       <div className="grid gap-4">
         {filteredMembers.map((member) => {
           const role = roles?.find(r => r.id === member.roleId);
+          const isPending = member.inviteStatus === 'pending' || member.inviteStatus === 'invited';
           return (
-            <Card key={member.id} data-testid={`member-card-${member.id}`}>
+            <Card 
+              key={member.id} 
+              data-testid={`member-card-${member.id}`}
+              className={isPending ? 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20' : ''}
+            >
               <CardContent className="p-4">
+                {isPending && (
+                  <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+                      <Clock className="h-4 w-4" />
+                      <span>Invitation pending</span>
+                      {member.inviteSentAt && (
+                        <span className="text-xs text-muted-foreground">
+                          (sent {formatDistanceToNow(new Date(member.inviteSentAt), { addSuffix: true })})
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => resendInviteMutation.mutate(member.id)}
+                      disabled={resendInviteMutation.isPending}
+                      className="text-amber-700 border-amber-300 hover:bg-amber-100 dark:text-amber-300 dark:border-amber-700 dark:hover:bg-amber-900/50"
+                      data-testid={`button-resend-${member.id}`}
+                    >
+                      <RotateCcw className="h-3 w-3 mr-1" />
+                      Resend
+                    </Button>
+                  </div>
+                )}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-center gap-3 sm:gap-4">
-                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
+                    <Avatar className={`h-10 w-10 sm:h-12 sm:w-12 shrink-0 ${isPending ? 'opacity-70' : ''}`}>
                       <AvatarImage src={member.profileImageUrl} />
-                      <AvatarFallback>
+                      <AvatarFallback className={isPending ? 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300' : ''}>
                         {getInitials(member.firstName, member.lastName, member.email)}
                       </AvatarFallback>
                     </Avatar>
@@ -1191,7 +1245,10 @@ function TeamAdminTab() {
                       <p className="text-sm text-muted-foreground truncate">{member.email}</p>
                       <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-1">
                         <Badge variant="secondary" className="text-xs">{role?.name || 'No Role'}</Badge>
-                        <Badge variant={member.inviteStatus === 'accepted' ? 'default' : 'outline'} className="text-xs">
+                        <Badge 
+                          variant={member.inviteStatus === 'accepted' ? 'default' : 'secondary'} 
+                          className={`text-xs ${isPending ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'}`}
+                        >
                           {member.inviteStatus === 'accepted' ? 'Active' : 'Pending'}
                         </Badge>
                         {member.hourlyRate && (

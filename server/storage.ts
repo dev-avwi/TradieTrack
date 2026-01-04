@@ -2472,9 +2472,17 @@ export class PostgresStorage implements IStorage {
   }
 
   async getTeamMembers(businessOwnerId: string): Promise<TeamMember[]> {
+    // Include both active members AND pending invitations (which have isActive=false until accepted)
     return await db.select().from(teamMembers)
-      .where(and(eq(teamMembers.businessOwnerId, businessOwnerId), eq(teamMembers.isActive, true)))
-      .orderBy(teamMembers.startDate);
+      .where(and(
+        eq(teamMembers.businessOwnerId, businessOwnerId), 
+        or(
+          eq(teamMembers.isActive, true),
+          eq(teamMembers.inviteStatus, 'pending'),
+          eq(teamMembers.inviteStatus, 'invited')
+        )
+      ))
+      .orderBy(teamMembers.createdAt);
   }
 
   async getTeamMember(id: string, businessOwnerId: string): Promise<TeamMember | undefined> {
