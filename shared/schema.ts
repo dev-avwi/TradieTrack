@@ -584,7 +584,8 @@ export const jobs = pgTable("jobs", {
   // Geocoded coordinates for map display
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
-  status: text("status").notNull().default('pending'), // pending, scheduled, in_progress, done, invoiced
+  status: text("status").notNull().default('pending'), // pending, scheduled, in_progress, done, invoiced, cancelled
+  cancellationReason: text("cancellation_reason"), // Reason for cancellation if status is cancelled
   scheduledAt: timestamp("scheduled_at"),
   scheduledTime: text("scheduled_time"), // Time of day in HH:MM format
   estimatedDuration: integer("estimated_duration").default(60), // Duration in minutes
