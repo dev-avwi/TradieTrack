@@ -312,6 +312,199 @@ export async function createDemoUserAndData() {
           phone: "(07) 4444 8899",
           address: "42 Captain Cook Highway, Clifton Beach QLD 4879",
           notes: "Cafe owner - commercial kitchen work"
+        },
+        // Additional clients for expanded demo data (24 more)
+        {
+          userId: demoUser.id,
+          name: "Karen Mitchell",
+          email: "karen.m@gmail.com",
+          phone: "(07) 4555 0011",
+          address: "7 Marlin Drive, Cairns North QLD 4870",
+          notes: "Regular customer - annual maintenance"
+        },
+        {
+          userId: demoUser.id,
+          name: "Bruce Campbell",
+          email: "bruce.campbell@outlook.com",
+          phone: "(07) 4666 2233",
+          address: "23 Barramundi Street, Portsmith QLD 4870",
+          notes: "Industrial property - factory plumbing"
+        },
+        {
+          userId: demoUser.id,
+          name: "Sophie Turner",
+          email: "sophie.t@icloud.com",
+          phone: "(07) 4777 3344",
+          address: "89 Barrier Reef Drive, Manoora QLD 4870",
+          notes: "Renovating heritage home - careful work required"
+        },
+        {
+          userId: demoUser.id,
+          name: "James O'Connor",
+          email: "james.oconnor@bigpond.com",
+          phone: "(07) 4888 4455",
+          address: "16 Sugar Mill Road, Edmonton QLD 4869",
+          notes: "Retired plumber - knows what he wants"
+        },
+        {
+          userId: demoUser.id,
+          name: "Priya Sharma",
+          email: "priya.sharma@email.com",
+          phone: "(07) 4999 5566",
+          address: "44 Lotus Court, Brinsmead QLD 4870",
+          notes: "Prefers email communication"
+        },
+        {
+          userId: demoUser.id,
+          name: "William Foster",
+          email: "will.foster@yahoo.com.au",
+          phone: "(07) 4111 6677",
+          address: "31 Crocodile Crescent, Bentley Park QLD 4869",
+          notes: "Builder - subcontract work available"
+        },
+        {
+          userId: demoUser.id,
+          name: "Michelle Lee",
+          email: "michelle.lee@gmail.com",
+          phone: "(07) 4222 7788",
+          address: "52 Palm Street, Mooroobool QLD 4870",
+          notes: "Landlord with 5 rental properties"
+        },
+        {
+          userId: demoUser.id,
+          name: "Daniel Brown",
+          email: "dan.brown@tradiemail.com.au",
+          phone: "(07) 4333 8899",
+          address: "8 Cassowary Close, Kanimbla QLD 4870",
+          notes: "Commercial property investor"
+        },
+        {
+          userId: demoUser.id,
+          name: "Rachel Green",
+          email: "rachel.g@outlook.com.au",
+          phone: "(07) 4444 9900",
+          address: "77 Dugong Drive, Woree QLD 4868",
+          notes: "Daycare centre manager - after hours work only"
+        },
+        {
+          userId: demoUser.id,
+          name: "Andrew Kelly",
+          email: "andrew.kelly@email.com",
+          phone: "(07) 4555 0022",
+          address: "19 Reef Close, Earlville QLD 4870",
+          notes: "Restaurant owner - multiple venues"
+        },
+        {
+          userId: demoUser.id,
+          name: "Christina Nguyen",
+          email: "christina.n@icloud.com",
+          phone: "(07) 4666 1133",
+          address: "35 Rainforest Way, Bayview Heights QLD 4868",
+          notes: "New build project manager"
+        },
+        {
+          userId: demoUser.id,
+          name: "Peter MacDonald",
+          email: "peter.mac@bigpond.net.au",
+          phone: "(07) 4777 2244",
+          address: "62 Coral Sea Boulevard, Stratford QLD 4870",
+          notes: "Strata manager for 3 complexes"
+        },
+        {
+          userId: demoUser.id,
+          name: "Susan Williams",
+          email: "susan.w@gmail.com",
+          phone: "(07) 4888 3355",
+          address: "41 Mangrove Circuit, Machans Beach QLD 4878",
+          notes: "Elderly pensioner - needs patience"
+        },
+        {
+          userId: demoUser.id,
+          name: "Tony Rizzo",
+          email: "tony.rizzo@email.com.au",
+          phone: "(07) 4999 4466",
+          address: "28 Olive Lane, Parramatta Park QLD 4870",
+          notes: "Italian restaurant - commercial kitchen"
+        },
+        {
+          userId: demoUser.id,
+          name: "Helen Andrews",
+          email: "helen.a@yahoo.com.au",
+          phone: "(07) 4111 5577",
+          address: "15 Pandanus Street, Holloways Beach QLD 4878",
+          notes: "Beachfront unit - cyclone season prep needed"
+        },
+        {
+          userId: demoUser.id,
+          name: "Mark Thompson",
+          email: "mark.t@outlook.com",
+          phone: "(07) 4222 6688",
+          address: "73 Cane Toad Close, White Rock QLD 4868",
+          notes: "Builder referral from William Foster"
+        },
+        {
+          userId: demoUser.id,
+          name: "Jessica Liu",
+          email: "jessica.liu@gmail.com",
+          phone: "(07) 4333 7799",
+          address: "9 Fern Tree Court, Caravonica QLD 4878",
+          notes: "Airbnb host - quick turnarounds"
+        },
+        {
+          userId: demoUser.id,
+          name: "Craig Patterson",
+          email: "craig.p@tradiemail.com.au",
+          phone: "(07) 4444 8800",
+          address: "56 Tuna Terrace, Yorkeys Knob QLD 4878",
+          notes: "Fishing boat captain - flexible schedule"
+        },
+        {
+          userId: demoUser.id,
+          name: "Amanda Cole",
+          email: "amanda.cole@icloud.com",
+          phone: "(07) 4555 9911",
+          address: "22 Paradise Parade, Port Douglas QLD 4877",
+          notes: "Luxury resort manager"
+        },
+        {
+          userId: demoUser.id,
+          name: "Gary Hughes",
+          email: "gary.hughes@bigpond.com",
+          phone: "(07) 4666 0022",
+          address: "38 Pioneer Street, Cairns City QLD 4870",
+          notes: "Commercial building owner - CBD"
+        },
+        {
+          userId: demoUser.id,
+          name: "Natalie Wood",
+          email: "natalie.w@email.com",
+          phone: "(07) 4777 1133",
+          address: "64 Barrier Reef Boulevard, Trinity Beach QLD 4879",
+          notes: "Medical centre manager"
+        },
+        {
+          userId: demoUser.id,
+          name: "Simon Clarke",
+          email: "simon.c@outlook.com.au",
+          phone: "(07) 4888 2244",
+          address: "11 Saltwater Close, Kewarra Beach QLD 4879",
+          notes: "Property developer - ongoing work"
+        },
+        {
+          userId: demoUser.id,
+          name: "Linda Martinez",
+          email: "linda.m@gmail.com",
+          phone: "(07) 4999 3355",
+          address: "47 Sunset Boulevard, Palm Cove QLD 4879",
+          notes: "Hotel owner - 24hr emergency contact"
+        },
+        {
+          userId: demoUser.id,
+          name: "Robert Yang",
+          email: "robert.yang@email.com.au",
+          phone: "(07) 4111 4466",
+          address: "33 Ocean View Drive, Clifton Beach QLD 4879",
+          notes: "New customer - referred by Google"
         }
       ];
 
@@ -649,6 +842,744 @@ export async function createDemoUserAndData() {
           scheduledAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
           completedAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000),
           notes: "Invoice paid - excellent property manager"
+        },
+
+        // ============================================
+        // ADDITIONAL JOBS (57 more for expanded demo data)
+        // Mix of pending, scheduled, in_progress, done, invoiced
+        // ============================================
+
+        // PENDING JOBS (10 more)
+        {
+          userId: demoUser.id,
+          clientId: createdClients[16].id,
+          title: "Annual Hot Water Service",
+          description: "Regular maintenance and anode check on electric hot water system",
+          address: createdClients[16].address || "",
+          latitude: "-16.9050",
+          longitude: "145.7680",
+          status: "pending" as const,
+          notes: "Customer prefers morning appointments"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[17].id,
+          title: "Factory Bathroom Renovation",
+          description: "Complete renovation of staff amenities - 4 toilets, 3 showers",
+          address: createdClients[17].address || "",
+          latitude: "-16.9380",
+          longitude: "145.7520",
+          status: "pending" as const,
+          notes: "Large commercial job - needs site inspection"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[18].id,
+          title: "Heritage Home Pipe Replacement",
+          description: "Replace galvanized pipes with copper throughout heritage home",
+          address: createdClients[18].address || "",
+          latitude: "-16.8920",
+          longitude: "145.7650",
+          status: "pending" as const,
+          notes: "Heritage listed - careful work required"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[20].id,
+          title: "Bathroom Vanity Installation",
+          description: "Install new double vanity with matching tapware",
+          address: createdClients[20].address || "",
+          latitude: "-16.8750",
+          longitude: "145.7200",
+          status: "pending" as const,
+          notes: "Customer supplying vanity - we supply tapware"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[22].id,
+          title: "Multi-Unit Hot Water Quote",
+          description: "Quote for replacing 5 hot water systems in rental properties",
+          address: createdClients[22].address || "",
+          latitude: "-16.8680",
+          longitude: "145.7350",
+          status: "pending" as const,
+          notes: "Landlord wants energy efficient options"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[24].id,
+          title: "Daycare Centre Compliance",
+          description: "Install backflow prevention and drinking fountain for daycare",
+          address: createdClients[24].address || "",
+          latitude: "-16.9420",
+          longitude: "145.7480",
+          status: "pending" as const,
+          notes: "Must meet childcare regulations"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[26].id,
+          title: "New Build Bathroom Rough-In",
+          description: "Rough-in plumbing for master ensuite and main bathroom",
+          address: createdClients[26].address || "",
+          latitude: "-16.8550",
+          longitude: "145.6980",
+          status: "pending" as const,
+          notes: "Working with builder - tight timeline"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[27].id,
+          title: "Strata Complex Pipe Assessment",
+          description: "Assess common area plumbing in 12-unit complex",
+          address: createdClients[27].address || "",
+          latitude: "-16.8920",
+          longitude: "145.7580",
+          status: "pending" as const,
+          notes: "Body corporate approval required"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[29].id,
+          title: "Commercial Kitchen Fit-Out",
+          description: "Complete plumbing fit-out for new Italian restaurant",
+          address: createdClients[29].address || "",
+          latitude: "-16.9180",
+          longitude: "145.7750",
+          status: "pending" as const,
+          notes: "Council approval pending"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[31].id,
+          title: "Heritage Building Water Main",
+          description: "Replace water main to heritage building in CBD",
+          address: createdClients[31].address || "",
+          latitude: "-16.9200",
+          longitude: "145.7700",
+          status: "pending" as const,
+          notes: "Road permit required"
+        },
+
+        // SCHEDULED JOBS (15 more)
+        {
+          userId: demoUser.id,
+          clientId: createdClients[16].id,
+          title: "Blocked Kitchen Drain",
+          description: "Clear blocked kitchen drain and check trap",
+          address: createdClients[16].address || "",
+          latitude: "-16.9050",
+          longitude: "145.7680",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 60,
+          notes: "Standard drain clearing"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[19].id,
+          title: "Tap Replacement",
+          description: "Replace kitchen mixer tap - customer supplied",
+          address: createdClients[19].address || "",
+          latitude: "-16.9450",
+          longitude: "145.7380",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 45,
+          notes: "Customer has already purchased tap"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[21].id,
+          title: "Gas Appliance Service",
+          description: "Annual gas heater and cooktop service",
+          address: createdClients[21].address || "",
+          latitude: "-16.8850",
+          longitude: "145.7150",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 90,
+          notes: "Issue gas compliance certificate"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[23].id,
+          title: "Toilet Cistern Repair",
+          description: "Fix running toilet - replace cistern internals",
+          address: createdClients[23].address || "",
+          latitude: "-16.8780",
+          longitude: "145.7420",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 45,
+          assignedTo: demoWorkerId,
+          notes: "Quick job - elderly customer"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[25].id,
+          title: "Restaurant Grease Trap",
+          description: "Install new grease trap for restaurant expansion",
+          address: createdClients[25].address || "",
+          latitude: "-16.8980",
+          longitude: "145.7620",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 240,
+          notes: "Large commercial job - all day"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[28].id,
+          title: "Elderly Home Safety Bars",
+          description: "Install grab rails in bathroom and toilet",
+          address: createdClients[28].address || "",
+          latitude: "-16.8420",
+          longitude: "145.7280",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 120,
+          notes: "NDIS funded - need invoice for claim"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[30].id,
+          title: "Unit Cyclone Prep",
+          description: "Check all taps, pipes and connections before cyclone season",
+          address: createdClients[30].address || "",
+          latitude: "-16.8380",
+          longitude: "145.7220",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 90,
+          notes: "Beachfront property - salt corrosion check"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[32].id,
+          title: "New Home Fit-Out",
+          description: "Complete fit-out plumbing for new 3-bed home",
+          address: createdClients[32].address || "",
+          latitude: "-16.8580",
+          longitude: "145.6950",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 11 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 480,
+          notes: "Builder coordination - week long job"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[33].id,
+          title: "Airbnb Quick Turnaround",
+          description: "Fix leaking shower and replace toilet seat",
+          address: createdClients[33].address || "",
+          latitude: "-16.8650",
+          longitude: "145.7080",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 60,
+          notes: "Guest arriving 3pm - must be done by 2pm"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[34].id,
+          title: "Boat Moorings Water Line",
+          description: "Install water line to new boat mooring",
+          address: createdClients[34].address || "",
+          latitude: "-16.8120",
+          longitude: "145.7150",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 180,
+          notes: "Marine grade fittings required"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[35].id,
+          title: "Resort Pool Plumbing",
+          description: "Repair main pool pump and check filtration system",
+          address: createdClients[35].address || "",
+          latitude: "-16.4850",
+          longitude: "145.4650",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 13 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 240,
+          notes: "Port Douglas - early start for travel"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[36].id,
+          title: "Office Building Maintenance",
+          description: "Quarterly plumbing inspection and minor repairs",
+          address: createdClients[36].address || "",
+          latitude: "-16.9220",
+          longitude: "145.7720",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 180,
+          notes: "Commercial building - after hours preferred"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[37].id,
+          title: "Medical Centre Backflow",
+          description: "Annual backflow prevention test and certification",
+          address: createdClients[37].address || "",
+          latitude: "-16.7920",
+          longitude: "145.6980",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 90,
+          notes: "Council compliance - certificate required"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[38].id,
+          title: "Development Site Inspection",
+          description: "Pre-construction plumbing assessment for new units",
+          address: createdClients[38].address || "",
+          latitude: "-16.7850",
+          longitude: "145.6920",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 16 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 120,
+          notes: "Large development - ongoing work potential"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[39].id,
+          title: "Hotel Emergency Line",
+          description: "Install dedicated emergency water shut-off",
+          address: createdClients[39].address || "",
+          latitude: "-16.7580",
+          longitude: "145.6720",
+          status: "scheduled" as const,
+          scheduledAt: new Date(Date.now() + 17 * 24 * 60 * 60 * 1000),
+          estimatedDuration: 150,
+          notes: "24hr property - work around guests"
+        },
+
+        // IN PROGRESS JOBS (5 more)
+        {
+          userId: demoUser.id,
+          clientId: createdClients[17].id,
+          title: "Factory Toilet Block",
+          description: "Renovating staff toilet block - day 2 of 3",
+          address: createdClients[17].address || "",
+          latitude: "-16.9380",
+          longitude: "145.7520",
+          status: "in_progress" as const,
+          scheduledAt: new Date(),
+          startedAt: new Date(Date.now() - 8 * 60 * 60 * 1000),
+          notes: "Multi-day job - good progress"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[21].id,
+          title: "Builder New Home Plumbing",
+          description: "First fix plumbing for new construction",
+          address: createdClients[21].address || "",
+          latitude: "-16.8850",
+          longitude: "145.7150",
+          status: "in_progress" as const,
+          scheduledAt: new Date(),
+          startedAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
+          assignedTo: demoWorkerId,
+          notes: "Large new build - Jake handling"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[23].id,
+          title: "Emergency Burst Pipe",
+          description: "Emergency call-out for burst copper pipe in ceiling",
+          address: createdClients[23].address || "",
+          latitude: "-16.8780",
+          longitude: "145.7420",
+          status: "in_progress" as const,
+          scheduledAt: new Date(),
+          startedAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
+          notes: "Water damage - plumber on site"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[27].id,
+          title: "Strata Common Area",
+          description: "Replacing shared hot water system for units 1-6",
+          address: createdClients[27].address || "",
+          latitude: "-16.8920",
+          longitude: "145.7580",
+          status: "in_progress" as const,
+          scheduledAt: new Date(),
+          startedAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
+          notes: "Large job - body corporate approved"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[29].id,
+          title: "Restaurant Dishwasher Install",
+          description: "Installing commercial dishwasher with grease trap connection",
+          address: createdClients[29].address || "",
+          latitude: "-16.9180",
+          longitude: "145.7750",
+          status: "in_progress" as const,
+          scheduledAt: new Date(),
+          startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+          notes: "Commercial kitchen - after hours work"
+        },
+
+        // DONE JOBS (15 more)
+        {
+          userId: demoUser.id,
+          clientId: createdClients[16].id,
+          title: "Laundry Tap Repair",
+          description: "Fixed dripping laundry tap - replaced washer and seat",
+          address: createdClients[16].address || "",
+          latitude: "-16.9050",
+          longitude: "145.7680",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000),
+          notes: "Quick job - customer very happy"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[18].id,
+          title: "Bathroom Vanity Install",
+          description: "Installed new vanity basin and tapware",
+          address: createdClients[18].address || "",
+          latitude: "-16.8920",
+          longitude: "145.7650",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+          notes: "Heritage home - careful work required"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[19].id,
+          title: "Gas Cooktop Connection",
+          description: "Connected new gas cooktop with compliance certificate",
+          address: createdClients[19].address || "",
+          latitude: "-16.9450",
+          longitude: "145.7380",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000 + 1.5 * 60 * 60 * 1000),
+          notes: "Gas certificate issued"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[20].id,
+          title: "Shower Screen Leak",
+          description: "Resealed shower screen and fixed drain issue",
+          address: createdClients[20].address || "",
+          latitude: "-16.8750",
+          longitude: "145.7200",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000 + 1 * 60 * 60 * 1000),
+          notes: "Water damage prevented"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[22].id,
+          title: "Hot Water System Replace",
+          description: "Replaced failed electric hot water with heat pump",
+          address: createdClients[22].address || "",
+          latitude: "-16.8680",
+          longitude: "145.7350",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000),
+          notes: "Customer happy with energy savings"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[24].id,
+          title: "Blocked Sewer Line",
+          description: "Cleared blocked sewer line with CCTV inspection",
+          address: createdClients[24].address || "",
+          latitude: "-16.9420",
+          longitude: "145.7480",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+          notes: "Root intrusion found - recommend annual clearing"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[25].id,
+          title: "Restaurant Emergency",
+          description: "Fixed burst hot water line during service",
+          address: createdClients[25].address || "",
+          latitude: "-16.8980",
+          longitude: "145.7620",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000 + 1 * 60 * 60 * 1000),
+          notes: "Emergency call-out - after hours"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[26].id,
+          title: "New Build Final Fix",
+          description: "Final fix plumbing - toilets, taps, and connections",
+          address: createdClients[26].address || "",
+          latitude: "-16.8550",
+          longitude: "145.6980",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+          notes: "Multi-day job completed"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[28].id,
+          title: "Tap Replacement Set",
+          description: "Replaced all bathroom and kitchen taps",
+          address: createdClients[28].address || "",
+          latitude: "-16.8420",
+          longitude: "145.7280",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000),
+          notes: "Elderly customer - explained all new fixtures"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[30].id,
+          title: "Annual Maintenance",
+          description: "Annual plumbing inspection and minor repairs",
+          address: createdClients[30].address || "",
+          latitude: "-16.8380",
+          longitude: "145.7220",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+          notes: "Regular maintenance contract"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[31].id,
+          title: "CBD Office Repairs",
+          description: "Fixed multiple running toilets and leaking taps",
+          address: createdClients[31].address || "",
+          latitude: "-16.9200",
+          longitude: "145.7700",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000),
+          notes: "After hours work - building manager happy"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[33].id,
+          title: "Airbnb Turnaround",
+          description: "Fixed blocked drain and toilet before guest arrival",
+          address: createdClients[33].address || "",
+          latitude: "-16.8650",
+          longitude: "145.7080",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000 + 1 * 60 * 60 * 1000),
+          notes: "Quick turnaround for Airbnb host"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[35].id,
+          title: "Resort Spa Repairs",
+          description: "Fixed spa jets and replumbed circulation system",
+          address: createdClients[35].address || "",
+          latitude: "-16.4850",
+          longitude: "145.4650",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000),
+          notes: "Port Douglas resort - long travel"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[37].id,
+          title: "Medical Centre Sink",
+          description: "Installed new handwash sink in treatment room",
+          address: createdClients[37].address || "",
+          latitude: "-16.7920",
+          longitude: "145.6980",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+          notes: "Healthcare standard installation"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[39].id,
+          title: "Hotel Room Batch",
+          description: "Fixed plumbing issues in 6 hotel rooms",
+          address: createdClients[39].address || "",
+          latitude: "-16.7580",
+          longitude: "145.6720",
+          status: "done" as const,
+          scheduledAt: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 23 * 24 * 60 * 60 * 1000),
+          notes: "Multi-day hotel job"
+        },
+
+        // INVOICED JOBS (12 more)
+        {
+          userId: demoUser.id,
+          clientId: createdClients[16].id,
+          title: "Toilet Suite Installation",
+          description: "Installed new wall-hung toilet suite",
+          address: createdClients[16].address || "",
+          latitude: "-16.9050",
+          longitude: "145.7680",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000),
+          notes: "Invoice sent - awaiting payment"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[18].id,
+          title: "Heritage Kitchen Plumbing",
+          description: "Complete kitchen replumb for heritage renovation",
+          address: createdClients[18].address || "",
+          latitude: "-16.8920",
+          longitude: "145.7650",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 33 * 24 * 60 * 60 * 1000),
+          notes: "Large renovation job - paid"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[20].id,
+          title: "Bathroom Renovation",
+          description: "Complete bathroom renovation plumbing",
+          address: createdClients[20].address || "",
+          latitude: "-16.8750",
+          longitude: "145.7200",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 38 * 24 * 60 * 60 * 1000),
+          notes: "Large job - invoice paid"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[21].id,
+          title: "Builder Final Payment",
+          description: "Final fix plumbing for new home construction",
+          address: createdClients[21].address || "",
+          latitude: "-16.8850",
+          longitude: "145.7150",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000),
+          notes: "Builder progress payment"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[22].id,
+          title: "Multi-Property Service",
+          description: "Annual maintenance on 5 rental properties",
+          address: createdClients[22].address || "",
+          latitude: "-16.8680",
+          longitude: "145.7350",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 48 * 24 * 60 * 60 * 1000),
+          notes: "Landlord account - paid"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[25].id,
+          title: "Restaurant Fit-Out Complete",
+          description: "Complete plumbing fit-out for new restaurant",
+          address: createdClients[25].address || "",
+          latitude: "-16.8980",
+          longitude: "145.7620",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 55 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 52 * 24 * 60 * 60 * 1000),
+          notes: "Large commercial job - paid"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[27].id,
+          title: "Strata Hot Water Upgrade",
+          description: "Upgraded shared hot water system for 12 units",
+          address: createdClients[27].address || "",
+          latitude: "-16.8920",
+          longitude: "145.7580",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 57 * 24 * 60 * 60 * 1000),
+          notes: "Body corporate - payment pending"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[29].id,
+          title: "Commercial Kitchen Complete",
+          description: "Full commercial kitchen plumbing installation",
+          address: createdClients[29].address || "",
+          latitude: "-16.9180",
+          longitude: "145.7750",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 65 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 62 * 24 * 60 * 60 * 1000),
+          notes: "Large commercial - invoice paid"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[31].id,
+          title: "CBD Building Upgrade",
+          description: "Major plumbing upgrade for commercial building",
+          address: createdClients[31].address || "",
+          latitude: "-16.9200",
+          longitude: "145.7700",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 67 * 24 * 60 * 60 * 1000),
+          notes: "Commercial building - paid"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[35].id,
+          title: "Resort Pool Renovation",
+          description: "Complete pool and spa plumbing renovation",
+          address: createdClients[35].address || "",
+          latitude: "-16.4850",
+          longitude: "145.4650",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 72 * 24 * 60 * 60 * 1000),
+          notes: "Port Douglas resort - large job paid"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[37].id,
+          title: "Medical Centre Upgrade",
+          description: "Compliance upgrade for medical centre",
+          address: createdClients[37].address || "",
+          latitude: "-16.7920",
+          longitude: "145.6980",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 78 * 24 * 60 * 60 * 1000),
+          notes: "Healthcare compliance - paid"
+        },
+        {
+          userId: demoUser.id,
+          clientId: createdClients[39].id,
+          title: "Hotel Bathroom Renovation",
+          description: "Renovated 10 hotel room bathrooms",
+          address: createdClients[39].address || "",
+          latitude: "-16.7580",
+          longitude: "145.6720",
+          status: "invoiced" as const,
+          scheduledAt: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000),
+          completedAt: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000),
+          notes: "Large hotel job - invoice paid"
         }
       ];
 
@@ -928,7 +1859,429 @@ export async function createDemoUserAndData() {
       await storage.createQuoteLineItem({ quoteId: rejectedQuote3.id, description: "Access Work and Making Good", quantity: "1.00", unitPrice: "1500.00", total: "1500.00", sortOrder: 3 });
       await storage.createQuoteLineItem({ quoteId: rejectedQuote3.id, description: "Labour (64 hours over 8 days)", quantity: "64.00", unitPrice: "120.00", total: "7680.00", sortOrder: 4 });
 
-      console.log('✅ 13 Demo quotes created (3 draft, 4 sent, 3 accepted, 3 rejected)');
+      // ============================================
+      // ADDITIONAL QUOTES (27 more for 40+ total)
+      // ============================================
+
+      // Additional DRAFT quotes (5 more)
+      const draft4Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[16].id,
+        title: "Hot Water System Upgrade",
+        description: "Upgrade to heat pump hot water system with solar assist",
+        status: "draft" as const,
+        subtotal: "3200.00",
+        gstAmount: "320.00",
+        total: "3520.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        number: draft4Num
+      });
+
+      const draft5Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[17].id,
+        title: "Factory Amenities Upgrade",
+        description: "Complete staff bathroom and kitchen plumbing renovation",
+        status: "draft" as const,
+        subtotal: "12500.00",
+        gstAmount: "1250.00",
+        total: "13750.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        number: draft5Num
+      });
+
+      const draft6Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[19].id,
+        title: "Laundry Renovation Plumbing",
+        description: "New laundry trough, taps, and washing machine connections",
+        status: "draft" as const,
+        subtotal: "850.00",
+        gstAmount: "85.00",
+        total: "935.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        number: draft6Num
+      });
+
+      const draft7Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[21].id,
+        title: "Gas BBQ Connection",
+        description: "Install permanent gas line to outdoor BBQ area",
+        status: "draft" as const,
+        subtotal: "680.00",
+        gstAmount: "68.00",
+        total: "748.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        number: draft7Num
+      });
+
+      const draft8Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[23].id,
+        title: "Bathroom Accessibility Upgrade",
+        description: "Install grab rails, raised toilet, and accessible shower",
+        status: "draft" as const,
+        subtotal: "2450.00",
+        gstAmount: "245.00",
+        total: "2695.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        number: draft8Num
+      });
+
+      // Additional SENT quotes (8 more)
+      const sent5Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[18].id,
+        title: "Heritage Bathroom Restoration",
+        description: "Restore original bathroom with period-appropriate fixtures",
+        status: "sent" as const,
+        subtotal: "5800.00",
+        gstAmount: "580.00",
+        total: "6380.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        number: sent5Num
+      });
+
+      const sent6Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[20].id,
+        title: "Second Bathroom Addition",
+        description: "Full second bathroom rough-in and fit-out",
+        status: "sent" as const,
+        subtotal: "6200.00",
+        gstAmount: "620.00",
+        total: "6820.00",
+        validUntil: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+        number: sent6Num
+      });
+
+      const sent7Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[22].id,
+        title: "Multi-Property Hot Water",
+        description: "Replace 5 hot water systems across rental portfolio",
+        status: "sent" as const,
+        subtotal: "8500.00",
+        gstAmount: "850.00",
+        total: "9350.00",
+        validUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+        number: sent7Num
+      });
+
+      const sent8Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[25].id,
+        title: "Restaurant Kitchen Upgrade",
+        description: "Commercial dishwasher and additional sink installation",
+        status: "sent" as const,
+        subtotal: "4800.00",
+        gstAmount: "480.00",
+        total: "5280.00",
+        validUntil: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        number: sent8Num
+      });
+
+      const sent9Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[27].id,
+        title: "Strata Pipe Upgrade",
+        description: "Replace common area copper pipes to PEX",
+        status: "sent" as const,
+        subtotal: "15200.00",
+        gstAmount: "1520.00",
+        total: "16720.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        number: sent9Num
+      });
+
+      const sent10Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[31].id,
+        title: "CBD Office Bathroom Fit-Out",
+        description: "New executive bathroom with premium fixtures",
+        status: "sent" as const,
+        subtotal: "8900.00",
+        gstAmount: "890.00",
+        total: "9790.00",
+        validUntil: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+        number: sent10Num
+      });
+
+      const sent11Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[35].id,
+        title: "Resort Pool Upgrade",
+        description: "Complete pool and spa plumbing renovation",
+        status: "sent" as const,
+        subtotal: "22000.00",
+        gstAmount: "2200.00",
+        total: "24200.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        number: sent11Num
+      });
+
+      const sent12Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[37].id,
+        title: "Medical Centre Compliance",
+        description: "Healthcare compliance upgrade with backflow prevention",
+        status: "sent" as const,
+        subtotal: "4200.00",
+        gstAmount: "420.00",
+        total: "4620.00",
+        validUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        number: sent12Num
+      });
+
+      // Additional ACCEPTED quotes (7 more)
+      const accepted4Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[24].id,
+        title: "Daycare Centre Plumbing",
+        description: "Child-safe fixtures and drinking fountains",
+        status: "accepted" as const,
+        subtotal: "3600.00",
+        gstAmount: "360.00",
+        total: "3960.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+        acceptedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        acceptedBy: "Rachel Green",
+        number: accepted4Num
+      });
+
+      const accepted5Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[26].id,
+        title: "New Build Final Fix",
+        description: "Final fix plumbing for new construction",
+        status: "accepted" as const,
+        subtotal: "4800.00",
+        gstAmount: "480.00",
+        total: "5280.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+        acceptedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+        acceptedBy: "Christina Nguyen",
+        number: accepted5Num
+      });
+
+      const accepted6Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[29].id,
+        title: "Commercial Kitchen Fit-Out",
+        description: "Full commercial kitchen plumbing installation",
+        status: "accepted" as const,
+        subtotal: "9500.00",
+        gstAmount: "950.00",
+        total: "10450.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        acceptedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+        acceptedBy: "Tony Rizzo",
+        number: accepted6Num
+      });
+
+      const accepted7Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[33].id,
+        title: "Airbnb Bathroom Refresh",
+        description: "Quick bathroom update for holiday rental",
+        status: "accepted" as const,
+        subtotal: "1850.00",
+        gstAmount: "185.00",
+        total: "2035.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        acceptedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        acceptedBy: "Jessica Liu",
+        number: accepted7Num
+      });
+
+      const accepted8Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[36].id,
+        title: "Office Building Maintenance",
+        description: "Annual maintenance contract for commercial building",
+        status: "accepted" as const,
+        subtotal: "2400.00",
+        gstAmount: "240.00",
+        total: "2640.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        acceptedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        acceptedBy: "Gary Hughes",
+        number: accepted8Num
+      });
+
+      const accepted9Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[38].id,
+        title: "Development Site Plumbing",
+        description: "Rough-in plumbing for 4-unit development",
+        status: "accepted" as const,
+        subtotal: "18500.00",
+        gstAmount: "1850.00",
+        total: "20350.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+        acceptedAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+        acceptedBy: "Simon Clarke",
+        number: accepted9Num
+      });
+
+      const accepted10Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[39].id,
+        title: "Hotel Room Upgrades",
+        description: "Bathroom upgrades for 8 hotel rooms",
+        status: "accepted" as const,
+        subtotal: "12800.00",
+        gstAmount: "1280.00",
+        total: "14080.00",
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+        acceptedAt: new Date(Date.now() - 32 * 24 * 60 * 60 * 1000),
+        acceptedBy: "Linda Martinez",
+        number: accepted10Num
+      });
+
+      // Additional REJECTED quotes (7 more)
+      const rejected4Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[16].id,
+        title: "Rainwater Tank System",
+        description: "Large rainwater collection and distribution system",
+        status: "rejected" as const,
+        subtotal: "8500.00",
+        gstAmount: "850.00",
+        total: "9350.00",
+        validUntil: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
+        number: rejected4Num
+      });
+
+      const rejected5Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[18].id,
+        title: "Full Home Repipe",
+        description: "Complete copper to PEX repipe throughout house",
+        status: "rejected" as const,
+        subtotal: "14500.00",
+        gstAmount: "1450.00",
+        total: "15950.00",
+        validUntil: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+        number: rejected5Num
+      });
+
+      const rejected6Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[21].id,
+        title: "Solar Hot Water Premium",
+        description: "Premium evacuated tube solar hot water system",
+        status: "rejected" as const,
+        subtotal: "7200.00",
+        gstAmount: "720.00",
+        total: "7920.00",
+        validUntil: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+        number: rejected6Num
+      });
+
+      const rejected7Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[27].id,
+        title: "Complex-Wide Upgrade",
+        description: "Complete plumbing upgrade for entire apartment complex",
+        status: "rejected" as const,
+        subtotal: "45000.00",
+        gstAmount: "4500.00",
+        total: "49500.00",
+        validUntil: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+        number: rejected7Num
+      });
+
+      const rejected8Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[30].id,
+        title: "Beachfront Remodel",
+        description: "Complete plumbing remodel for beachfront property",
+        status: "rejected" as const,
+        subtotal: "18000.00",
+        gstAmount: "1800.00",
+        total: "19800.00",
+        validUntil: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 55 * 24 * 60 * 60 * 1000),
+        number: rejected8Num
+      });
+
+      const rejected9Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[34].id,
+        title: "Marina Facility Upgrade",
+        description: "Water and waste system upgrade for marina facilities",
+        status: "rejected" as const,
+        subtotal: "25000.00",
+        gstAmount: "2500.00",
+        total: "27500.00",
+        validUntil: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 65 * 24 * 60 * 60 * 1000),
+        number: rejected9Num
+      });
+
+      const rejected10Num = await storage.generateQuoteNumber(demoUser.id);
+      await storage.createQuote({
+        userId: demoUser.id,
+        clientId: createdClients[37].id,
+        title: "Medical Centre Expansion",
+        description: "Plumbing for new wing of medical centre",
+        status: "rejected" as const,
+        subtotal: "32000.00",
+        gstAmount: "3200.00",
+        total: "35200.00",
+        validUntil: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000),
+        number: rejected10Num
+      });
+
+      console.log('✅ 40 Demo quotes created (8 draft, 12 sent, 10 accepted, 10 rejected)');
 
       // ============================================
       // CREATE MULTIPLE INVOICES ACROSS ALL STATUSES
@@ -1200,7 +2553,427 @@ export async function createDemoUserAndData() {
       await storage.createInvoiceLineItem({ invoiceId: paidInvoice6.id, description: "Burst Pipe Repair", quantity: "1.00", unitPrice: "280.00", total: "280.00", sortOrder: 2 });
       await storage.createInvoiceLineItem({ invoiceId: paidInvoice6.id, description: "Water Damage Mitigation", quantity: "1.00", unitPrice: "200.00", total: "200.00", sortOrder: 3 });
 
-      console.log('✅ 13 Demo invoices created (2 draft, 4 sent, 2 overdue, 6 paid)');
+      // ============================================
+      // ADDITIONAL INVOICES (27 more for 40+ total)
+      // ============================================
+
+      // Additional DRAFT invoices (4 more)
+      const draft2InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[16].id,
+        title: "Annual Hot Water Service",
+        description: "Scheduled maintenance for hot water system",
+        status: "draft" as const,
+        subtotal: "180.00",
+        gstAmount: "18.00",
+        total: "198.00",
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        number: draft2InvNum
+      });
+
+      const draft3InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[18].id,
+        title: "Heritage Bathroom Quote Preparation",
+        description: "Site inspection and quote preparation for heritage bathroom",
+        status: "draft" as const,
+        subtotal: "150.00",
+        gstAmount: "15.00",
+        total: "165.00",
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        number: draft3InvNum
+      });
+
+      const draft4InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[21].id,
+        title: "Gas Appliance Inspection",
+        description: "Annual gas compliance inspection",
+        status: "draft" as const,
+        subtotal: "220.00",
+        gstAmount: "22.00",
+        total: "242.00",
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        number: draft4InvNum
+      });
+
+      const draft5InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[23].id,
+        title: "Accessibility Assessment",
+        description: "NDIS bathroom accessibility assessment",
+        status: "draft" as const,
+        subtotal: "180.00",
+        gstAmount: "18.00",
+        total: "198.00",
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        number: draft5InvNum
+      });
+
+      // Additional SENT invoices (8 more)
+      const sent5InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[17].id,
+        title: "Factory Drain Clearing",
+        description: "Industrial drain clearing and inspection",
+        status: "sent" as const,
+        subtotal: "450.00",
+        gstAmount: "45.00",
+        total: "495.00",
+        dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        number: sent5InvNum
+      });
+
+      const sent6InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[19].id,
+        title: "Tap Washer Replacement",
+        description: "Replace worn tap washers throughout home",
+        status: "sent" as const,
+        subtotal: "120.00",
+        gstAmount: "12.00",
+        total: "132.00",
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        number: sent6InvNum
+      });
+
+      const sent7InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[20].id,
+        title: "Shower Leak Repair",
+        description: "Fixed leaking shower and resealed screen",
+        status: "sent" as const,
+        subtotal: "280.00",
+        gstAmount: "28.00",
+        total: "308.00",
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+        number: sent7InvNum
+      });
+
+      const sent8InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[22].id,
+        title: "Hot Water System Replacement",
+        description: "New heat pump hot water system installation",
+        status: "sent" as const,
+        subtotal: "2800.00",
+        gstAmount: "280.00",
+        total: "3080.00",
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+        number: sent8InvNum
+      });
+
+      const sent9InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[25].id,
+        title: "Restaurant Emergency Repair",
+        description: "Emergency burst hot water line repair",
+        status: "sent" as const,
+        subtotal: "380.00",
+        gstAmount: "38.00",
+        total: "418.00",
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        number: sent9InvNum
+      });
+
+      const sent10InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[28].id,
+        title: "Elderly Care Bathroom",
+        description: "Grab rails and safety fixtures installation",
+        status: "sent" as const,
+        subtotal: "850.00",
+        gstAmount: "85.00",
+        total: "935.00",
+        dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        number: sent10InvNum
+      });
+
+      const sent11InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[33].id,
+        title: "Airbnb Quick Fix",
+        description: "Emergency drain clearing before guest arrival",
+        status: "sent" as const,
+        subtotal: "180.00",
+        gstAmount: "18.00",
+        total: "198.00",
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        number: sent11InvNum
+      });
+
+      const sent12InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[37].id,
+        title: "Medical Centre Sink Install",
+        description: "New handwash sink in treatment room",
+        status: "sent" as const,
+        subtotal: "680.00",
+        gstAmount: "68.00",
+        total: "748.00",
+        dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        number: sent12InvNum
+      });
+
+      // Additional OVERDUE invoices (4 more)
+      const overdue3InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[27].id,
+        title: "Strata Hot Water Service",
+        description: "Common area hot water system maintenance",
+        status: "sent" as const,
+        subtotal: "420.00",
+        gstAmount: "42.00",
+        total: "462.00",
+        dueDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        number: overdue3InvNum
+      });
+
+      const overdue4InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[30].id,
+        title: "Beachfront Unit Maintenance",
+        description: "Annual plumbing inspection and minor repairs",
+        status: "sent" as const,
+        subtotal: "350.00",
+        gstAmount: "35.00",
+        total: "385.00",
+        dueDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+        number: overdue4InvNum
+      });
+
+      const overdue5InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[31].id,
+        title: "CBD Office Repairs",
+        description: "Fixed running toilets and leaking taps",
+        status: "sent" as const,
+        subtotal: "520.00",
+        gstAmount: "52.00",
+        total: "572.00",
+        dueDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+        number: overdue5InvNum
+      });
+
+      const overdue6InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[34].id,
+        title: "Marina Water Line",
+        description: "Water line installation to boat mooring",
+        status: "sent" as const,
+        subtotal: "980.00",
+        gstAmount: "98.00",
+        total: "1078.00",
+        dueDate: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000),
+        number: overdue6InvNum
+      });
+
+      // Additional PAID invoices (11 more)
+      const paid7InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice7 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[16].id,
+        title: "Laundry Tap Repair",
+        description: "Fixed dripping laundry tap",
+        status: "paid" as const,
+        subtotal: "120.00",
+        gstAmount: "12.00",
+        total: "132.00",
+        dueDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        number: paid7InvNum
+      });
+
+      const paid8InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice8 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[18].id,
+        title: "Bathroom Vanity Install",
+        description: "New vanity basin and tapware installation",
+        status: "paid" as const,
+        subtotal: "680.00",
+        gstAmount: "68.00",
+        total: "748.00",
+        dueDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        number: paid8InvNum
+      });
+
+      const paid9InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice9 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[19].id,
+        title: "Gas Cooktop Connection",
+        description: "New gas cooktop connection with compliance certificate",
+        status: "paid" as const,
+        subtotal: "280.00",
+        gstAmount: "28.00",
+        total: "308.00",
+        dueDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+        number: paid9InvNum
+      });
+
+      const paid10InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice10 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[24].id,
+        title: "Blocked Sewer Line",
+        description: "Sewer line clearing with CCTV inspection",
+        status: "paid" as const,
+        subtotal: "450.00",
+        gstAmount: "45.00",
+        total: "495.00",
+        dueDate: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+        number: paid10InvNum
+      });
+
+      const paid11InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice11 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[26].id,
+        title: "New Build Final Fix",
+        description: "Final fix plumbing for new construction",
+        status: "paid" as const,
+        subtotal: "2400.00",
+        gstAmount: "240.00",
+        total: "2640.00",
+        dueDate: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        number: paid11InvNum
+      });
+
+      const paid12InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice12 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[29].id,
+        title: "Commercial Kitchen Complete",
+        description: "Full commercial kitchen plumbing installation",
+        status: "paid" as const,
+        subtotal: "5800.00",
+        gstAmount: "580.00",
+        total: "6380.00",
+        dueDate: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 56 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 32 * 24 * 60 * 60 * 1000),
+        number: paid12InvNum
+      });
+
+      const paid13InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice13 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[35].id,
+        title: "Resort Spa Repairs",
+        description: "Fixed spa jets and replumbed circulation system",
+        status: "paid" as const,
+        subtotal: "1850.00",
+        gstAmount: "185.00",
+        total: "2035.00",
+        dueDate: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 63 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 38 * 24 * 60 * 60 * 1000),
+        number: paid13InvNum
+      });
+
+      const paid14InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice14 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[36].id,
+        title: "Office Building Maintenance",
+        description: "Quarterly plumbing inspection and minor repairs",
+        status: "paid" as const,
+        subtotal: "650.00",
+        gstAmount: "65.00",
+        total: "715.00",
+        dueDate: new Date(Date.now() - 49 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+        number: paid14InvNum
+      });
+
+      const paid15InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice15 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[38].id,
+        title: "Development Site Rough-In",
+        description: "Rough-in plumbing for 4-unit development - Stage 1",
+        status: "paid" as const,
+        subtotal: "8500.00",
+        gstAmount: "850.00",
+        total: "9350.00",
+        dueDate: new Date(Date.now() - 56 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 77 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 52 * 24 * 60 * 60 * 1000),
+        number: paid15InvNum
+      });
+
+      const paid16InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice16 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[39].id,
+        title: "Hotel Room Upgrades",
+        description: "Bathroom upgrades for 8 hotel rooms",
+        status: "paid" as const,
+        subtotal: "4200.00",
+        gstAmount: "420.00",
+        total: "4620.00",
+        dueDate: new Date(Date.now() - 63 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 84 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 58 * 24 * 60 * 60 * 1000),
+        number: paid16InvNum
+      });
+
+      const paid17InvNum = await storage.generateInvoiceNumber(demoUser.id);
+      const paidInvoice17 = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[20].id,
+        title: "Bathroom Renovation Complete",
+        description: "Full bathroom renovation plumbing",
+        status: "paid" as const,
+        subtotal: "3200.00",
+        gstAmount: "320.00",
+        total: "3520.00",
+        dueDate: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000),
+        sentAt: new Date(Date.now() - 91 * 24 * 60 * 60 * 1000),
+        paidAt: new Date(Date.now() - 65 * 24 * 60 * 60 * 1000),
+        number: paid17InvNum
+      });
+
+      console.log('✅ 40 Demo invoices created (6 draft, 12 sent, 6 overdue, 17 paid)');
 
       // ============================================
       // CREATE RECEIPTS FOR ALL PAID INVOICES (6 total)
@@ -1284,13 +3057,259 @@ export async function createDemoUserAndData() {
         paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
       });
 
-      console.log('✅ 6 Demo receipts created for paid invoices');
-      console.log(`   Receipt ${receipt1.receiptNumber} → Invoice ${paid1InvNum}`);
-      console.log(`   Receipt ${receipt2.receiptNumber} → Invoice ${paid2InvNum}`);
-      console.log(`   Receipt ${receipt3.receiptNumber} → Invoice ${paid3InvNum}`);
-      console.log(`   Receipt ${receipt4.receiptNumber} → Invoice ${paid4InvNum}`);
-      console.log(`   Receipt ${receipt5.receiptNumber} → Invoice ${paid5InvNum}`);
-      console.log(`   Receipt ${receipt6.receiptNumber} → Invoice ${paid6InvNum}`);
+      // ============================================
+      // ADDITIONAL RECEIPTS (19 more for 25+ total)
+      // ============================================
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice7.id,
+        clientId: createdClients[16].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-007`,
+        amount: "132.00",
+        gstAmount: "12.00",
+        subtotal: "120.00",
+        description: "Payment for laundry tap repair",
+        paymentMethod: 'card',
+        paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice8.id,
+        clientId: createdClients[18].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-008`,
+        amount: "748.00",
+        gstAmount: "68.00",
+        subtotal: "680.00",
+        description: "Payment for bathroom vanity installation",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice9.id,
+        clientId: createdClients[19].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-009`,
+        amount: "308.00",
+        gstAmount: "28.00",
+        subtotal: "280.00",
+        description: "Payment for gas cooktop connection",
+        paymentMethod: 'cash',
+        paidAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice10.id,
+        clientId: createdClients[24].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-010`,
+        amount: "495.00",
+        gstAmount: "45.00",
+        subtotal: "450.00",
+        description: "Payment for blocked sewer line clearing",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice11.id,
+        clientId: createdClients[26].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-011`,
+        amount: "2640.00",
+        gstAmount: "240.00",
+        subtotal: "2400.00",
+        description: "Payment for new build final fix plumbing",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice12.id,
+        clientId: createdClients[29].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-012`,
+        amount: "6380.00",
+        gstAmount: "580.00",
+        subtotal: "5800.00",
+        description: "Payment for commercial kitchen fit-out",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 32 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice13.id,
+        clientId: createdClients[35].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-013`,
+        amount: "2035.00",
+        gstAmount: "185.00",
+        subtotal: "1850.00",
+        description: "Payment for resort spa repairs",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 38 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice14.id,
+        clientId: createdClients[36].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-014`,
+        amount: "715.00",
+        gstAmount: "65.00",
+        subtotal: "650.00",
+        description: "Payment for office building maintenance",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice15.id,
+        clientId: createdClients[38].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-015`,
+        amount: "9350.00",
+        gstAmount: "850.00",
+        subtotal: "8500.00",
+        description: "Payment for development site rough-in plumbing",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 52 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice16.id,
+        clientId: createdClients[39].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-016`,
+        amount: "4620.00",
+        gstAmount: "420.00",
+        subtotal: "4200.00",
+        description: "Payment for hotel room upgrades",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 58 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice17.id,
+        clientId: createdClients[20].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-017`,
+        amount: "3520.00",
+        gstAmount: "320.00",
+        subtotal: "3200.00",
+        description: "Payment for bathroom renovation complete",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 65 * 24 * 60 * 60 * 1000)
+      });
+
+      // Additional receipts for variety (partial payments, different methods)
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice4.id,
+        clientId: createdClients[6].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-018`,
+        amount: "1540.00",
+        gstAmount: "140.00",
+        subtotal: "1400.00",
+        description: "Progress payment 2 - rough-in plumbing",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice11.id,
+        clientId: createdClients[26].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-019`,
+        amount: "1320.00",
+        gstAmount: "120.00",
+        subtotal: "1200.00",
+        description: "Final payment - new build plumbing",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice15.id,
+        clientId: createdClients[38].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-020`,
+        amount: "4675.00",
+        gstAmount: "425.00",
+        subtotal: "4250.00",
+        description: "Progress payment - development site stage 2",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 48 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice12.id,
+        clientId: createdClients[29].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-021`,
+        amount: "3190.00",
+        gstAmount: "290.00",
+        subtotal: "2900.00",
+        description: "Deposit - commercial kitchen",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice16.id,
+        clientId: createdClients[39].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-022`,
+        amount: "2310.00",
+        gstAmount: "210.00",
+        subtotal: "2100.00",
+        description: "Progress payment - hotel room batch 1",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 62 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice13.id,
+        clientId: createdClients[35].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-023`,
+        amount: "1017.50",
+        gstAmount: "92.50",
+        subtotal: "925.00",
+        description: "Deposit - resort spa repairs",
+        paymentMethod: 'card',
+        paidAt: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice17.id,
+        clientId: createdClients[20].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-024`,
+        amount: "1760.00",
+        gstAmount: "160.00",
+        subtotal: "1600.00",
+        description: "Deposit - bathroom renovation",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000)
+      });
+
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: paidInvoice14.id,
+        clientId: createdClients[36].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-025`,
+        amount: "357.50",
+        gstAmount: "32.50",
+        subtotal: "325.00",
+        description: "Quarterly maintenance retainer",
+        paymentMethod: 'bank_transfer',
+        paidAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000)
+      });
+
+      console.log('✅ 25 Demo receipts created for paid invoices');
     
     // Check if demo user has SMS conversations (separate from client check)
     const existingSmsConversations = await storage.getSmsConversationsByBusiness(demoUser.id);
