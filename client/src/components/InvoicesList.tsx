@@ -627,6 +627,7 @@ export default function InvoicesList({
               paidAt={invoice.paidAt}
               dueDate={invoice.dueDate}
               xeroInvoiceId={invoice.xeroInvoiceId}
+              isXeroImport={invoice.isXeroImport}
               onViewClick={onViewInvoice}
               onSendClick={handleSendInvoice}
               onCreatePaymentLink={handleCreatePaymentLink}

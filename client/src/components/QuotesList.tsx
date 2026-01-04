@@ -537,6 +537,7 @@ export default function QuotesList({
               status={quote.status}
               validUntil={quote.validUntil ? new Date(quote.validUntil).toLocaleDateString() : ''}
               sentAt={quote.sentAt ? new Date(quote.sentAt).toLocaleDateString() : undefined}
+              isXeroImport={quote.isXeroImport}
               onViewClick={onViewQuote}
               onSendClick={handleSendQuote}
               onConvertToInvoice={handleConvertToInvoice}

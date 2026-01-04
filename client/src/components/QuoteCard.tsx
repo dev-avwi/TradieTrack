@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, User, Calendar, ChevronRight, ArrowRight } from "lucide-react";
 import StatusBadge from "./StatusBadge";
+import XeroRibbon from "./XeroRibbon";
 
 interface QuoteCardProps {
   id: string;
@@ -12,6 +13,7 @@ interface QuoteCardProps {
   status: 'draft' | 'sent' | 'accepted' | 'rejected';
   validUntil?: string;
   sentAt?: string;
+  isXeroImport?: boolean;
   onViewClick?: (id: string) => void;
   onSendClick?: (id: string) => void;
   onConvertToInvoice?: (id: string) => void;
@@ -26,6 +28,7 @@ export default function QuoteCard({
   status, 
   validUntil,
   sentAt,
+  isXeroImport,
   onViewClick, 
   onSendClick,
   onConvertToInvoice 
@@ -39,11 +42,12 @@ export default function QuoteCard({
 
   return (
     <Card 
-      className="hover-elevate active-elevate-2 cursor-pointer"
+      className="hover-elevate active-elevate-2 cursor-pointer relative overflow-visible"
       style={{ borderRadius: '14px' }}
       onClick={() => onViewClick?.(id)}
       data-testid={`quote-card-${id}`}
     >
+      {isXeroImport && <XeroRibbon size="sm" />}
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 space-y-2">

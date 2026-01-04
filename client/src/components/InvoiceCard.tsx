@@ -15,6 +15,7 @@ interface InvoiceCardProps {
   paidAt?: string;
   dueDate?: string;
   xeroInvoiceId?: string;
+  isXeroImport?: boolean;
   onViewClick?: (id: string) => void;
   onSendClick?: (id: string) => void;
   onCreatePaymentLink?: (id: string) => void;
@@ -32,6 +33,7 @@ export default function InvoiceCard({
   paidAt,
   dueDate,
   xeroInvoiceId,
+  isXeroImport,
   onViewClick, 
   onSendClick,
   onCreatePaymentLink,
@@ -51,7 +53,7 @@ export default function InvoiceCard({
       onClick={() => onViewClick?.(id)}
       data-testid={`invoice-card-${id}`}
     >
-      {xeroInvoiceId && <XeroRibbon size="sm" />}
+      {(isXeroImport || xeroInvoiceId) && <XeroRibbon size="sm" />}
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 space-y-2">

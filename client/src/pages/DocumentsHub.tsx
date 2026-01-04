@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import { SendConfirmationDialog } from "@/components/SendConfirmationDialog";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
+import XeroRibbon from "@/components/XeroRibbon";
 
 interface DocumentsHubProps {
   onNavigate?: (path: string) => void;
@@ -149,10 +150,11 @@ function CompactQuoteCard({ quote, onView, onSend, onConvert, linkedInvoice, onV
   
   return (
     <Card 
-      className="hover-elevate active-elevate-2 cursor-pointer transition-all"
+      className="hover-elevate active-elevate-2 cursor-pointer transition-all relative overflow-visible"
       onClick={onView}
       data-testid={`quote-card-${quote.id}`}
     >
+      {quote.isXeroImport && <XeroRibbon size="sm" />}
       <CardContent className="p-3">
         {/* Header row: Title + Status Badge */}
         <div className="flex items-start justify-between gap-2 mb-1">
@@ -247,10 +249,11 @@ function CompactInvoiceCard({
   
   return (
     <Card 
-      className="hover-elevate active-elevate-2 cursor-pointer transition-all"
+      className="hover-elevate active-elevate-2 cursor-pointer transition-all relative overflow-visible"
       onClick={onView}
       data-testid={`invoice-card-${invoice.id}`}
     >
+      {invoice.isXeroImport && <XeroRibbon size="sm" />}
       <CardContent className="p-3">
         {/* Header row: Title + Status Badge */}
         <div className="flex items-start justify-between gap-2 mb-1">
