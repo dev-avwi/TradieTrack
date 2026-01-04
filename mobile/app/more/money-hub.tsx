@@ -26,7 +26,7 @@ interface Invoice {
   number?: string;
   title?: string;
   clientId: string;
-  total: number;
+  total: number | string;
   status: string;
   dueDate?: string;
   paidAt?: string;
@@ -39,7 +39,7 @@ interface Quote {
   number?: string;
   title?: string;
   clientId: string;
-  total: number;
+  total: number | string;
   status: string;
   validUntil?: string;
   createdAt?: string;
@@ -87,13 +87,16 @@ type TabType = 'overview' | 'invoices' | 'quotes' | 'payments';
 type InvoiceFilterType = 'all' | 'outstanding' | 'overdue' | 'paid' | 'draft';
 type TimeRangeType = '7d' | '30d' | '90d' | 'all';
 
-const formatCurrency = (amount: number) => {
+// Format currency from dollar amounts (database values and server-converted Stripe values)
+const formatCurrency = (amount: number | string) => {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return '$0';
   return new Intl.NumberFormat('en-AU', {
     style: 'currency',
     currency: 'AUD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount / 100);
+  }).format(num);
 };
 
 export default function MoneyHubScreen() {
@@ -165,8 +168,8 @@ export default function MoneyHubScreen() {
         })
         .reduce((sum: number, e: any) => sum + (parseFloat(e.amount) || 0), 0);
       setExpenseSummary({
-        totalExpenses: totalExpenses * 100,
-        thisMonthExpenses: thisMonthExpenses * 100,
+        totalExpenses,
+        thisMonthExpenses,
         expenseCount: expenses.length,
       });
     } catch (error) {
@@ -288,27 +291,34 @@ export default function MoneyHubScreen() {
   const stats = useMemo(() => {
     const now = new Date();
     const thirtyDaysAgo = subDays(now, 30);
+    
+    // Helper to safely parse total (handles string or number)
+    const parseTotal = (total: number | string | undefined): number => {
+      if (total === undefined || total === null) return 0;
+      const num = typeof total === 'string' ? parseFloat(total) : total;
+      return isNaN(num) ? 0 : num;
+    };
 
     const outstanding = invoices.filter(
       inv => inv.status !== 'paid' && inv.status !== 'draft'
     );
-    const outstandingTotal = outstanding.reduce((sum, inv) => sum + inv.total, 0);
+    const outstandingTotal = outstanding.reduce((sum, inv) => sum + parseTotal(inv.total), 0);
 
     const overdue = outstanding.filter(
       inv => inv.dueDate && isBefore(new Date(inv.dueDate), now)
     );
-    const overdueTotal = overdue.reduce((sum, inv) => sum + inv.total, 0);
+    const overdueTotal = overdue.reduce((sum, inv) => sum + parseTotal(inv.total), 0);
 
     const paid = invoices.filter(inv => inv.status === 'paid');
-    const paidTotal = paid.reduce((sum, inv) => sum + inv.total, 0);
+    const paidTotal = paid.reduce((sum, inv) => sum + parseTotal(inv.total), 0);
 
     const recentPaid = paid.filter(
       inv => inv.paidAt && isAfter(new Date(inv.paidAt), thirtyDaysAgo)
     );
-    const recentPaidTotal = recentPaid.reduce((sum, inv) => sum + inv.total, 0);
+    const recentPaidTotal = recentPaid.reduce((sum, inv) => sum + parseTotal(inv.total), 0);
 
     const pendingQuotes = quotes.filter(q => q.status === 'sent' || q.status === 'viewed');
-    const pendingQuotesTotal = pendingQuotes.reduce((sum, q) => sum + q.total, 0);
+    const pendingQuotesTotal = pendingQuotes.reduce((sum, q) => sum + parseTotal(q.total), 0);
 
     return {
       outstandingTotal,

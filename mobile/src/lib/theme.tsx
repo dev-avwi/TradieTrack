@@ -513,8 +513,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // Get colors from advanced theme store
   const advancedThemeMode = useAdvancedThemeStore(state => state.mode);
-  const getActivePalette = useAdvancedThemeStore(state => state.getActivePalette);
+  const activePresetId = useAdvancedThemeStore(state => state.activePresetId);
   const customPalette = useAdvancedThemeStore(state => state.customPalette);
+  const getActivePalette = useAdvancedThemeStore(state => state.getActivePalette);
   
   useEffect(() => {
     SecureStore.getItemAsync('theme_mode').then(stored => {
@@ -540,10 +541,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const colors = useMemo(() => {
     const baseColors = isDark ? darkColors : lightColors;
     
-    // First check for advanced theme customizations
-    if (customPalette?.primary) {
-      const brandPalette = generateBrandPalette(customPalette.primary, isDark);
-      return { ...baseColors, ...brandPalette };
+    // Get the active palette from advanced theme store (considers presets + custom overrides)
+    const activePalette = getActivePalette();
+    
+    // Check if the active palette has a custom primary color (from preset or custom override)
+    // This works for both default preset with customizations and non-default presets
+    if (activePalette?.primary) {
+      const isDefaultBlue = activePalette.primary.toUpperCase() === '#3B82F6';
+      // Only apply brand palette if it's not the default blue (meaning user changed it)
+      if (!isDefaultBlue || customPalette?.primary || activePresetId !== 'default') {
+        const brandPalette = generateBrandPalette(activePalette.primary, isDark);
+        return { ...baseColors, ...brandPalette };
+      }
     }
     
     // Then fall back to business settings brand color
@@ -558,12 +567,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     
     return baseColors;
-  }, [isDark, brandColorFromSettings, customPalette]);
+  }, [isDark, brandColorFromSettings, customPalette, activePresetId, getActivePalette]);
 
   const shadows = useMemo(() => getShadows(isDark), [isDark]);
   
-  // Effective brand color - prefer advanced theme, then business settings
-  const brandColor = customPalette?.primary || brandColorFromSettings;
+  // Effective brand color - use active palette primary if customized, otherwise business settings
+  const activePaletteForBrand = getActivePalette();
+  const brandColor = activePaletteForBrand?.primary || customPalette?.primary || brandColorFromSettings;
 
   return (
     <ThemeContext.Provider value={{ themeMode, isDark, colors, shadows, brandColor, setThemeMode }}>

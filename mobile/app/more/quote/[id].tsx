@@ -439,6 +439,7 @@ export default function QuoteDetailScreen() {
                 body: JSON.stringify({
                   clientId: quote.clientId,
                   quoteId: quote.id,
+                  title: quote.title || `Invoice from Quote #${quote.quoteNumber || id?.slice(0, 6)}`,
                   lineItems: quote.lineItems || [],
                   subtotal: quote.subtotal,
                   gstAmount: quote.gstAmount,
