@@ -2926,10 +2926,7 @@ function PaymentMethodsSettings() {
   
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<typeof localSettings>) => {
-      return apiRequest('/api/payment-settings', {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('PATCH', '/api/payment-settings', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/payment-settings'] });
@@ -2948,7 +2945,15 @@ function PaymentMethodsSettings() {
   });
   
   const handleSave = () => {
-    updateMutation.mutate(localSettings);
+    // Validate numeric fields before saving
+    const validatedSettings = {
+      ...localSettings,
+      cardSurchargePercent: isNaN(localSettings.cardSurchargePercent) ? 1.95 : Math.max(0, Math.min(10, localSettings.cardSurchargePercent)),
+      cardSurchargeFixedCents: isNaN(localSettings.cardSurchargeFixedCents) ? 30 : Math.max(0, Math.min(500, localSettings.cardSurchargeFixedCents)),
+      earlyPaymentDiscountPercent: isNaN(localSettings.earlyPaymentDiscountPercent) ? 2.0 : Math.max(0, Math.min(20, localSettings.earlyPaymentDiscountPercent)),
+      earlyPaymentDiscountDays: isNaN(localSettings.earlyPaymentDiscountDays) ? 7 : Math.max(1, Math.min(60, localSettings.earlyPaymentDiscountDays)),
+    };
+    updateMutation.mutate(validatedSettings);
   };
   
   if (isLoading) {
