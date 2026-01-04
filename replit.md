@@ -54,11 +54,12 @@ Key architectural and design decisions include:
 - Role: Worker on Mike's Plumbing team (Jake Morrison)
 
 **Demo Data:**
-- 16 clients (realistic Cairns QLD area addresses with GPS coordinates)
-- 23 jobs (4 pending, 9 scheduled, 3 in_progress, 4 done, 3 invoiced)
-- 13 quotes (3 draft, 4 sent, 3 accepted, 3 rejected)
-- 13 invoices (2 draft, 4 sent, 2 overdue, 6 paid)
-- 6 receipts (for paid invoices)
+- 10 clients (realistic Cairns QLD area addresses with GPS coordinates)
+- 40 jobs (5 pending, 8 scheduled, 6 in_progress, 8 done, 8 invoiced, 5 cancelled)
+- 9 quotes (2 draft, 3 sent, 2 accepted, 2 rejected) - includes 2 Xero-imported quotes
+- 11 invoices (2 draft, 3 sent, 2 overdue, 4 paid) - includes 2 Xero-imported invoices
+- 3 receipts (for paid invoices)
+- 3-4 Xero-sourced items marked with isXeroImport flags for integration visibility testing
 
 ### Complete Tradie Workflow Guide
 
@@ -130,6 +131,12 @@ This section documents the complete business workflow from initial customer cont
 | Bank Transfer | Web & Mobile | Direct deposits |
 
 ### Recent Updates (January 2026)
+
+**Xero Integration Visibility Badges**: Visual badges on job, quote, and invoice cards to distinguish Xero-imported items from TradieTrack-created items:
+- Web: XeroRibbon component with corner badge (client/src/components/XeroRibbon.tsx)
+- Mobile: XeroBadge component (mobile/src/components/ui/XeroBadge.tsx)
+- Integrated on QuoteCard, InvoiceCard, JobCard, TodayJobCard, DocumentsHub
+- Xero blue (#13B5EA) branding consistent with Xero's design system
 
 **Quick Collect Payment Feature**: New on-site payment collection directly from accepted quotes without requiring a separate invoice step. Available on both web and mobile:
 - Shows on jobs with status 'done' or 'in_progress' that have an accepted quote but no invoice
