@@ -1,30 +1,32 @@
 import sgMail from '@sendgrid/mail';
 
-// Initialize SendGrid with API key or use mock mode
+// Initialize SendGrid with API key - REQUIRED for production
 const initializeSendGrid = () => {
   if (process.env.SENDGRID_API_KEY) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     console.log('✅ SendGrid initialized for email sending');
     return true;
   }
-  console.log('⚠️ SendGrid API key not found, using mock email service for testing');
+  // In production, this is a critical error
+  if (process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT) {
+    console.error('❌ CRITICAL: SendGrid API key not configured - emails will fail');
+  } else {
+    console.log('⚠️ SendGrid API key not found - development mode, emails will fail with clear errors');
+  }
   return false;
 };
 
 // Initialize on module load
 const isSendGridConfigured = initializeSendGrid();
 
-// Mock email service for testing
+// Fallback service that returns clear failure - NO silent success in production
 const mockEmailService = {
   send: async (emailData: any) => {
-    console.log('\n🎭 MOCK EMAIL SERVICE - Email would be sent:');
-    console.log('📧 To:', emailData.to);
-    console.log('📤 From:', emailData.from?.email || emailData.from);
-    console.log('📝 Subject:', emailData.subject);
-    console.log('📄 Content Type:', emailData.html ? 'HTML' : 'Text');
-    console.log('✅ Mock email sent successfully\n');
-    
-    return Promise.resolve([{ statusCode: 202, headers: {}, body: {} }]);
+    const errorMsg = 'Email service not configured - SendGrid API key required';
+    console.error(`❌ EMAIL FAILED: ${errorMsg}`);
+    console.error(`   Recipient: ${emailData.to}`);
+    console.error(`   Subject: ${emailData.subject}`);
+    throw new Error(errorMsg);
   }
 };
 

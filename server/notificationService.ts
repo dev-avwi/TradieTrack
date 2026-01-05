@@ -9,20 +9,21 @@
 import { sendEmail, EmailOptions } from './emailService';
 import { sendSMS as sendTwilioSMS, isTwilioInitialized, initializeTwilio } from './twilioClient';
 
-// Real SMS sending via Twilio with graceful degradation
+// Real SMS sending via Twilio - NO silent success fallbacks in production
 const sendSMS = async (options: { to: string; message: string }): Promise<{ success: boolean; error?: string; simulated?: boolean }> => {
   try {
     // Ensure Twilio is initialized
     if (!isTwilioInitialized()) {
       const initialized = await initializeTwilio();
       if (!initialized) {
-        // Graceful degradation - log and return simulated success
-        console.log(`📱 [SMS Fallback] Twilio not configured - message would be sent to ${options.to}`);
-        console.log(`   Message: ${options.message.slice(0, 100)}${options.message.length > 100 ? '...' : ''}`);
+        // Return actual failure - do NOT silently succeed
+        const errorMsg = 'SMS service not configured - Twilio credentials required';
+        console.error(`❌ SMS FAILED: ${errorMsg}`);
+        console.error(`   Recipient: ${options.to}`);
         return {
-          success: true,
-          simulated: true,
-          error: undefined
+          success: false,
+          simulated: false,
+          error: errorMsg
         };
       }
     }
@@ -32,15 +33,9 @@ const sendSMS = async (options: { to: string; message: string }): Promise<{ succ
       message: options.message
     });
     
-    // Handle Twilio returning failure (e.g., invalid number)
-    if (!result.success && !result.simulated) {
-      console.warn(`[SMS] Send failed to ${options.to}: ${result.error}`);
-      // Return simulated success to not break notification flows
-      return {
-        success: true,
-        simulated: true,
-        error: result.error
-      };
+    // Return actual result - don't mask failures
+    if (!result.success) {
+      console.error(`❌ SMS FAILED to ${options.to}: ${result.error}`);
     }
     
     return {
@@ -49,11 +44,11 @@ const sendSMS = async (options: { to: string; message: string }): Promise<{ succ
       simulated: result.simulated
     };
   } catch (error: any) {
-    // Catch any unexpected errors and gracefully degrade
-    console.error(`[SMS] Unexpected error sending to ${options.to}:`, error.message);
+    // Return actual failure - do NOT silently succeed
+    console.error(`❌ SMS ERROR sending to ${options.to}:`, error.message);
     return {
-      success: true,
-      simulated: true,
+      success: false,
+      simulated: false,
       error: error.message
     };
   }
